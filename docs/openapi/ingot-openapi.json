@@ -2033,6 +2033,14 @@
         "required" : [ "id", "kind", "trigger", "status", "startedAt", "counters" ],
         "type" : "object"
       },
+      "SecondFactorRequest" : {
+        "properties" : {
+          "code" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "SecretType" : {
         "enum" : [ "RAW", "ENCRYPTED" ],
         "type" : "string"
@@ -2573,7 +2581,7 @@
     },
     "/api/auth/login" : {
       "post" : {
-        "description" : "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer",
+        "description" : "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer. A user with an authenticator gets 200 with mfaRequired set instead of a session: the challenge cookie then goes to /api/auth/mfa/verify",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2693,6 +2701,64 @@
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get token details",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/mfa/verify" : {
+      "post" : {
+        "description" : "Completes the sign-in that the login route started for a user with an authenticator. Takes the code from the authenticator app or a recovery code, and needs the challenge cookie. The challenge is single use and expires after five minutes. Starts the browser session on success",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SecondFactorRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "summary" : "Complete a sign-in with a second factor",
         "tags" : [ "Auth" ]
       }
     },

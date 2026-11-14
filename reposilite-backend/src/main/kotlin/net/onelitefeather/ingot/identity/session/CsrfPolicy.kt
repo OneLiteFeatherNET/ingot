@@ -23,13 +23,13 @@ import java.security.MessageDigest
  * authenticated by a session or refresh cookie, and changes state, must repeat the value of the csrf cookie in the
  * `X-CSRF-Token` header. A cross-site page cannot read that cookie, so it cannot send the header.
  *
- * Requests that carry an Authorization header are not cookie requests and are exempt. So are login and setup, which
- * create the cookies in the first place.
+ * Requests that carry an Authorization header are not cookie requests and are exempt. So are login, setup and the second
+ * factor verification, which create the cookies in the first place.
  */
 internal object CsrfPolicy {
 
     private val SAFE_METHODS = setOf("GET", "HEAD", "OPTIONS", "TRACE")
-    private val EXEMPT_ROUTES = listOf("/api/auth/login", "/api/auth/setup")
+    private val EXEMPT_ROUTES = listOf("/api/auth/login", "/api/auth/setup", "/api/auth/mfa/verify")
 
     /**
      * The exempt routes, at the root and below the configured base path. The root is kept because a reverse proxy may
