@@ -20,6 +20,7 @@ import com.reposilite.configuration.local.LocalConfigurationFileException
 import net.onelitefeather.ingot.backup.runDatabaseSnapshot
 import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
 import net.onelitefeather.ingot.deploy.toStartupRefusal
+import net.onelitefeather.ingot.logging.LogSettingsRefusal
 import net.onelitefeather.ingot.settings.encryption.SettingsKeyRefusal
 import picocli.CommandLine
 import kotlin.system.exitProcess
@@ -39,6 +40,10 @@ fun main(args: Array<String>) {
         exitProcess(refusal.exitCode)
     } catch (exception: LocalConfigurationFileException) {
         // An unreadable secret file is an operator error too: one line naming the variable and the path, and the same exit code.
+        System.err.println("Ingot did not start: ${exception.message}")
+        exitProcess(1)
+    } catch (exception: LogSettingsRefusal) {
+        // A logging variable with a value the server does not accept: one line naming the variable, and the same exit code.
         System.err.println("Ingot did not start: ${exception.message}")
         exitProcess(1)
     } catch (exception: Exception) {

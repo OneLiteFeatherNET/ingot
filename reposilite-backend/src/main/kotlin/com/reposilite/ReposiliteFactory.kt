@@ -36,6 +36,8 @@ import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
 import java.time.Clock
+import net.onelitefeather.ingot.logging.LogSettings
+import net.onelitefeather.ingot.logging.applyToTinyLog
 import net.onelitefeather.ingot.web.RequestLimitSettings
 import net.onelitefeather.ingot.web.ShutdownSettings
 import java.time.Duration
@@ -43,8 +45,11 @@ import kotlin.io.path.absolutePathString
 
 object ReposiliteFactory {
 
-    fun createReposilite(parameters: ReposiliteParameters): Reposilite =
-        createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false))
+    fun createReposilite(parameters: ReposiliteParameters): Reposilite {
+        // Read first, because tinylog reads its configuration once, when the first logger uses it
+        LogSettings.read().applyToTinyLog()
+        return createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false))
+    }
 
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
         createReposilite(parameters, rootJournalist, SchemaLockFactory.DEFAULT)
