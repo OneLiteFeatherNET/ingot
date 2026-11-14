@@ -130,6 +130,8 @@ const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
 // The four entries of the rail, which the bottom bar shows too for an administrator. Administration holds the rest.
 const SECTION_LABELS = ['Browse', 'Search', 'Dashboard', 'Administration']
+// The bottom bar shows the short label of Administration, so its four equal shares fit the label on a 320 px window.
+const BAR_LABELS = ['Browse', 'Search', 'Dashboard', 'Admin']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -450,14 +452,22 @@ describe('IndexPage navigation', () => {
   it('puts the four entries in the bottom bar, with no More item, for an administrator', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    expect(barLabels(wrapper)).toEqual(SECTION_LABELS)
+    expect(barLabels(wrapper)).toEqual(BAR_LABELS)
     expect(barButtons(wrapper), 'nothing is left over for More').toHaveLength(0)
+  })
+
+  it('shows Admin in the bottom bar and Administration in the rail, with the full name as the accessible name', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    expect(barLabels(wrapper), 'the bar has the short label').toContain('Admin')
+    expect(railLabels(wrapper), 'the rail keeps the full label').toContain('Administration')
+    expect(navigations(wrapper)[0].findAll('a')[3].attributes('aria-label'), 'the accessible name is the full label').toBe('Administration')
   })
 
   it('puts Browse, Search and Administration in the bottom bar for the audit node alone, without More', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect(barLabels(wrapper)).toEqual(['Browse', 'Search', 'Administration'])
+    expect(barLabels(wrapper)).toEqual(['Browse', 'Search', 'Admin'])
     expect(barButtons(wrapper)).toHaveLength(0)
   })
 
@@ -480,14 +490,14 @@ describe('IndexPage navigation', () => {
 
     const current = navigations(wrapper).map(nav => nav.findAll('[aria-current="page"]').map(item => item.text()))
 
-    expect(current).toEqual([['Administration'], ['Administration']])
+    expect(current).toEqual([['Admin'], ['Administration']])
   })
 
   it('keeps the browsed repository path on the Browse link and opens the hub from Administration', async () => {
     const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
 
     const browse = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Browse')
-    const administration = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Administration')
+    const administration = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Admin')
 
     expect(browse.attributes('href'), 'returning to Browse keeps the place in the browser').toBe('/browse/org/repo')
     expect(administration.attributes('href'), 'an administrator opens the hub').toBe('/settings')

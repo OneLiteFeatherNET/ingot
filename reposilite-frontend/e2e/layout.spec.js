@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import AxeBuilder from '@axe-core/playwright'
 import { test, expect } from './support/fixtures.js'
 import { siteUrl } from './support/api.js'
 
@@ -345,5 +346,48 @@ test.describe('the administration page header', () => {
 
     const box = await measure.boundingBox()
     expect(box.width, 'the measure of the reading page in px').toBeLessThanOrEqual(960)
+  })
+})
+
+// The bottom navigation bar below 600 pixels: its four destinations share the width equally, and every label fits its
+// share whole, so none is cut with an ellipsis. At 320 pixels the Administration destination shows its short label.
+test.describe('the bottom navigation bar at phone width', () => {
+  test('shares the width equally and keeps every label whole at 320 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto(siteUrl('/dashboard'))
+
+    const bar = page.locator('[data-ingot-component="md-navigation-bar"]')
+    await expect(bar).toBeVisible()
+    const labels = bar.locator('li span.md-label-medium')
+    await expect(labels, 'the bar has its four destinations').toHaveCount(4)
+
+    const labelFits = await labels.evaluateAll(elements => elements.map(element => ({
+      text: element.textContent.trim(),
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+    })))
+    for (const { text, scrollWidth, clientWidth } of labelFits) {
+      expect(scrollWidth, `the label "${text}" fits its item in px`).toBeLessThanOrEqual(clientWidth)
+    }
+    expect(labelFits.map(({ text }) => text), 'the destinations, in order').toEqual(['Browse', 'Search', 'Dashboard', 'Admin'])
+
+    const widths = await bar.locator('li').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
+    expect(Math.max(...widths) - Math.min(...widths), 'the four destinations have equal widths in px').toBeLessThanOrEqual(1)
+  })
+
+  test('names the short Admin destination by its full name without an accessibility violation at 320 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto(siteUrl('/dashboard'))
+
+    const bar = page.locator('[data-ingot-component="md-navigation-bar"]')
+    await expect(bar).toBeVisible()
+    await expect(bar.getByRole('link', { name: 'Administration', exact: true }).or(bar.getByRole('button', { name: 'Administration', exact: true }))).toBeVisible()
+
+    // label-content-name-mismatch is off in the default run: it is enabled here, so the visible label must be part of the name.
+    const results = await new AxeBuilder({ page })
+      .include('[data-ingot-component="md-navigation-bar"]')
+      .withRules(['label-content-name-mismatch'])
+      .analyze()
+    expect(results.violations.map(violation => violation.id), 'no label-in-name violation in the bar').toEqual([])
   })
 })
