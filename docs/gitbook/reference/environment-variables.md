@@ -326,7 +326,7 @@ Read once at startup. `INGOT_UPLOAD_CHECKSUM_POLICY` sets the policy that a host
 | `warn` | The checksum file is stored, and the mismatch is logged and recorded in the audit log. |
 | `reject` | The checksum file is refused with `400`, nothing is stored for it, and the refusal is recorded in the audit log. |
 
-The check only compares a checksum file with an artifact that is already stored. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
+The check only compares a checksum file with an artifact that is already stored. See [Verify uploaded checksums](../publish-and-consume/verify-uploaded-checksums.md).
 
 ### Maven cache control
 

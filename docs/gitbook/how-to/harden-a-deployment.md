@@ -168,9 +168,9 @@ The steps for a first setup, a key rotation and a return to a build without encr
 
 ## 11. Token hygiene
 
-* Give each CI job or script its own machine account with the narrowest permissions it needs. Rotate its token when the job changes. See [Use tokens in CI](use-tokens-in-ci.md) for the steps and [Restrict a token to artifacts](restrict-token-to-artifacts.md) for limiting a token to a path.
+* Give each CI job or script its own machine account with the narrowest permissions it needs. Rotate its token when the job changes. See [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) for the steps and [Restrict a token to artifacts](../publish-and-consume/restrict-token-to-artifacts.md) for limiting a token to a path.
 * Do not keep a temporary admin token in the startup options. A value in `INGOT_OPTS` is part of the container configuration and shows in `docker inspect`. Start with `--token` once, create a permanent administrator, and remove the flag.
-* Revoke a token as soon as it is no longer used, and rotate a secret that may have leaked. [Use tokens in CI](use-tokens-in-ci.md) describes both.
+* Revoke a token as soon as it is no longer used, and rotate a secret that may have leaked. [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) describes both.
 
 ## 12. Admin recovery
 

@@ -8,8 +8,8 @@ This page shows how a build publishes to Ingot with a token. The token belongs t
 
 ## Prerequisites
 
-* A machine account for the build, such as `ci-deploy`. See [Manage users, teams and machine accounts](manage-users-teams-and-machine-accounts.md).
-* Rights for the machine account, given through a team. See [Grant permissions with nodes](grant-permissions-with-nodes.md).
+* A machine account for the build, such as `ci-deploy`. See [Manage users, teams and machine accounts](../how-to/manage-users-teams-and-machine-accounts.md).
+* Rights for the machine account, given through a team. See [Grant permissions with nodes](../how-to/grant-permissions-with-nodes.md).
 * The right to create tokens: the instance admin role, or the `ingot.admin.tokens` node.
 * A secret store in your CI system, such as the Actions secrets of a GitHub repository.
 
@@ -170,7 +170,7 @@ curl -u "$INGOT_TOKEN_NAME:$INGOT_TOKEN_SECRET" \
   "https://ingot.example.com/api/identity/check?principal=ci-deploy&token=github-releases&repository=releases&path=net/onelitefeather/mycelium-bom/1.0.0/mycelium-bom-1.0.0.pom&action=deploy"
 ```
 
-The answer has `"allowed": true` when the token may deploy that path. The check does not publish anything. For more about the answer, see [Check what a principal can do](check-access.md).
+The answer has `"allowed": true` when the token may deploy that path. The check does not publish anything. For more about the answer, see [Check what a principal can do](../how-to/check-access.md).
 
 ## Rotate and revoke
 
