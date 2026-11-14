@@ -93,6 +93,7 @@ class AccessTokenFacade internal constructor(
     private val subjectSource: AccessSubjectSource? = persistentRepository as? AccessSubjectSource,
     private val usageSource: TokenUsageSource? = persistentRepository as? TokenUsageSource,
     private val bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
+    private val secretVerifier: (encodedSecret: String, rawSecret: String) -> Boolean = AccessTokenSecurityProvider::matches,
 ) : Facade, Journalist {
 
     /**
@@ -410,10 +411,27 @@ class AccessTokenFacade internal constructor(
     fun importFromFile(fromFile: Path): Result<Collection<AccessTokenDetails>, Exception> =
         exportService.importFromFile(fromFile)
 
+    /**
+     * Hash that belongs to no token. A login whose name is unknown, disabled or expired is checked against it, at the
+     * work factor of real tokens, so that it takes as long as a login with a wrong secret.
+     */
+    private val dummySecretHash: String =
+        AccessTokenSecurityProvider.encodeSecret(AccessTokenSecurityProvider.generateSecret(), bcryptStrength)
+
     fun secretMatches(id: AccessTokenIdentifier, secret: String): Boolean =
         getRawAccessTokenById(id)
-            ?.let { AccessTokenSecurityProvider.matches(it.encryptedSecret, secret) }
-            ?: false
+            ?.let { secretVerifier(it.encryptedSecret, secret) }
+            ?: run {
+                verifyAgainstDummySecret(secret)
+                false
+            }
+
+    /**
+     * Spends one secret verification that is known to fail, for a login that is refused before any token secret is checked.
+     */
+    fun verifyAgainstDummySecret(secret: String) {
+        secretVerifier(dummySecretHash, secret)
+    }
 
     /**
      * Grants the permission. [audited] is `false` only for the startup bootstrap, see [createAccessToken].
