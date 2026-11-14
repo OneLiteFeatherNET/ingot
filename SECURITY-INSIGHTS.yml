@@ -1,0 +1,57 @@
+header:
+  schema-version: 2.2.0
+  last-updated: '2026-11-14'
+  last-reviewed: '2026-11-14'
+  url: https://raw.githubusercontent.com/OneLiteFeatherNET/ingot/main/SECURITY-INSIGHTS.yml
+  comment: |
+    OpenSSF Security Insights file for Ingot, a fork of Reposilite. Values marked TODO(onelitefeather)
+    are decided by the maintainers and filled in before this file is merged.
+
+project:
+  name: Ingot
+  homepage: https://github.com/OneLiteFeatherNET/ingot
+  roadmap: https://github.com/OneLiteFeatherNET/ingot/blob/main/ROADMAP.md
+  administrators:
+    - name: 'TODO(onelitefeather): maintainer name'
+      primary: true
+  documentation:
+    code-of-conduct: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/CODE_OF_CONDUCT.md
+  repositories:
+    - name: ingot
+      url: https://github.com/OneLiteFeatherNET/ingot
+      comment: |
+        Ingot server, its plugins and the dashboard.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    contact:
+      name: Ingot maintainers
+      email: 'TODO(onelitefeather): security contact address'
+      primary: true
+    policy: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/SECURITY.md
+    comment: |
+      Report privately through the GitHub Security Advisory form first:
+      https://github.com/OneLiteFeatherNET/ingot/security/advisories/new
+      The contact address above is the second private channel.
+
+repository:
+  url: https://github.com/OneLiteFeatherNET/ingot
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: 'TODO(onelitefeather): maintainer name'
+      primary: true
+  documentation:
+    contributing-guide: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/CONTRIBUTING.md
+    security-policy: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/SECURITY.md
+    governance: https://github.com/OneLiteFeatherNET/ingot/blob/main/GOVERNANCE.md
+  license:
+    url: https://github.com/OneLiteFeatherNET/ingot/blob/main/LICENSE
+    expression: Apache-2.0
+  release:
+    changelog: https://github.com/OneLiteFeatherNET/ingot/blob/main/CHANGELOG.md
+    automated-pipeline: true
+    distribution-points:
+      - uri: https://github.com/OneLiteFeatherNET/ingot/releases
+        comment: GitHub release page
