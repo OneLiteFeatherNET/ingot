@@ -1,0 +1,109 @@
+# Heavy tests: the jobs that need a container, a built image, a cluster, a browser or minutes of start-up.
+#
+# They do not run on an ordinary pull request. A maintainer starts them with a label (ci:heavy for every job, or the
+# label of one area), and the release pull request needs one full run before it can be merged. The aggregate
+# "Heavy tests" reports the outcome and is the only check a branch rule has to name.
+#
+# Fork safety: plain pull_request only. GitHub withholds secrets and gives a read-only token to a fork pull request,
+# even when a maintainer added the label, and no job here uses a secret. Only users with triage or write access can
+# add a label, so the label is the permission check.
+#
+# No path or branch-ignore filter at workflow level: a workflow skipped by a filter leaves its required checks
+# pending. Every skip is a job-level condition.
+name: "Heavy"
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [ "opened", "reopened", "synchronize", "labeled", "unlabeled" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A label that does not start with "ci:" gets a group of its own, so adding "bug" cancels no heavy run in progress.
+# Adding or removing a "ci:" label lands in the shared group, cancels the running one and starts a fresh decision.
+concurrency:
+  group: "heavy-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && (github.event.action == 'labeled' || github.event.action == 'unlabeled') && !startsWith(github.event.label.name, 'ci:')) && github.run_id || 'run' }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: "Heavy gate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.decide.outputs.jobs }}
+      integration: ${{ steps.decide.outputs.integration }}
+      images: ${{ steps.decide.outputs.images }}
+      ha: ${{ steps.decide.outputs.ha }}
+      e2e: ${{ steps.decide.outputs.e2e }}
+      helm: ${{ steps.decide.outputs.helm }}
+      search: ${{ steps.decide.outputs.search }}
+      codeql: ${{ steps.decide.outputs.codeql }}
+      requested: ${{ steps.decide.outputs.requested }}
+      full: ${{ steps.decide.outputs.full }}
+      release: ${{ steps.decide.outputs.release }}
+      ok: ${{ steps.decide.outputs.ok }}
+      reason: ${{ steps.decide.outputs.reason }}
+    steps:
+      - name: "Check out the scripts"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: "Decide which heavy jobs run"
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 .github/scripts/heavy_gate.py decide \
+            --event-name "$EVENT_NAME" --action "$ACTION" --labels "$LABELS" \
+            --head-ref "$HEAD_REF" --head-repo "$HEAD_REPO" --repo "$REPO" \
+            --output "$GITHUB_OUTPUT"
+
+  # Required check. Green on an ordinary pull request that asked for nothing, follows the heavy jobs when a label
+  # asked for them, and is red on a release pull request until every heavy job ran in full and passed.
+  heavy-tests:
+    name: "Heavy tests"
+    needs: [ gate ]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out the scripts"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: "Judge the heavy run"
+        env:
+          GATE_RESULT: ${{ needs.gate.result }}
+          NEEDS: ${{ toJSON(needs) }}
+          JOBS: ${{ needs.gate.outputs.jobs }}
+          FULL: ${{ needs.gate.outputs.full }}
+          RELEASE: ${{ needs.gate.outputs.release }}
+          OK: ${{ needs.gate.outputs.ok }}
+          REASON: ${{ needs.gate.outputs.reason }}
+        run: |
+          status=0
+          message=$(python3 .github/scripts/heavy_gate.py verdict \
+            --gate-result "$GATE_RESULT" --results "$NEEDS" --jobs "$JOBS" \
+            --full "$FULL" --release "$RELEASE" --ok "$OK" --reason "$REASON") || status=$?
+          echo "$message"
+          {
+            echo "### Heavy tests"
+            echo
+            echo "$message"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::$message"
+            exit 1
+          fi
