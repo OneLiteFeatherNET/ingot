@@ -8,6 +8,18 @@ Moving from Reposilite to Ingot changes one line: the image reference in a deplo
 
 This page covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The container upgrade tests cover 3.5.28 on SQLite and on MariaDB 11.4. Reposilite 3.6.x is not covered by these tests, see [Reposilite 3.6.x settings](#reposilite-36x-settings). For the full list of what stays the same, read [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md).
 
+The diagram shows the order of the move. The data directory stays where it is, and a rollback uses the backup and the old image reference.
+
+```mermaid
+flowchart LR
+    Backup["Back up the data directory"] --> Stop["Stop Reposilite"]
+    Stop --> Change["Change the one line"]
+    Change --> Start["Start Ingot on the same data directory"]
+    Start --> Check["Check after the move"]
+    Check -->|passes| Done["The move is done"]
+    Check -->|fails| Back["Go back with the old image reference"]
+```
+
 ## Before you begin
 
 * A [backup](../../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading) of the data directory and, for MariaDB, of the database. The first start of Ingot migrates the data, and a rollback to Reposilite does not take that migration back.
