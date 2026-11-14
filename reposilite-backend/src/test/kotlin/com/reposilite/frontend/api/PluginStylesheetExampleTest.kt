@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test
  */
 internal class PluginStylesheetExampleTest {
 
-    private val guide: Path = Path.of("..", "docs", "gitbook", "how-to", "extend-the-dashboard-from-a-plugin.md")
+    private val guide: Path = Path.of("..", "docs", "gitbook", "manage", "plugins", "extend-the-dashboard-from-a-plugin.md")
         .toAbsolutePath().normalize()
 
     private val registry: Path = Path.of("..", "reposilite-frontend", "src", "anchors", "registry.json")
