@@ -19,9 +19,14 @@ package com.reposilite.storage
 import com.fasterxml.classmate.ResolvedType
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler
 import com.fasterxml.jackson.databind.deser.ValueInstantiator
+import com.fasterxml.jackson.databind.json.JsonMapper
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.contains
 import com.github.victools.jsonschema.generator.FieldScope
 import com.github.victools.jsonschema.generator.SchemaGenerationContext
@@ -36,6 +41,12 @@ class StorageProviderSerdes {
         private val STORAGE_PROVIDERS: Map<String, Class<out StorageProviderSettings>> =
             ServiceLoader.load(StorageProviderFactory::class.java).associate { factory -> factory.type to factory.settingsType }
 
+        /** Reads decimals as exact BigDecimal, so that an unresolved block keeps the number text it was written with, trailing zeros included. */
+        private val TREE_READER: ObjectMapper = JsonMapper.builder()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .nodeFactory(JsonNodeFactory.withExactBigDecimals(true))
+            .build()
+
     }
 
     class StorageProviderDeserializationProblemHandler : DeserializationProblemHandler() {
@@ -48,13 +59,19 @@ class StorageProviderSerdes {
 
         private fun JsonParser.parseStorageProvider(): Any? =
             codec?.let {
-                val json = it.readTree<JsonNode>(this)
+                val json = TREE_READER.readTree<JsonNode>(this)
 
                 val type = json?.get("type")
                     ?.asText()
                     ?: if (json?.contains("bucketName") == true) "s3" else "fs" // currently jsonforms doesn't send 'type' when oneOf is changed in UI, so we have to guess
 
-                return it.treeToValue(json, STORAGE_PROVIDERS[type])
+                val settingsType = STORAGE_PROVIDERS[type]
+                return when {
+                    settingsType != null -> it.treeToValue(json, settingsType)
+                    // a type that is not built in may be a plugin type, which is bound once the plugins have loaded
+                    json is ObjectNode -> UnresolvedStorageProviderSettings(type, json)
+                    else -> it.treeToValue(json, null)
+                }
             }
 
     }

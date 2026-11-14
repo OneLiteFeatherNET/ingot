@@ -24,6 +24,6 @@ import com.reposilite.plugin.api.ReposilitePlugin
 class StoragePlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade =
-        StorageFacade()
+        StorageFacade(extensions().storageProviders)
 
 }

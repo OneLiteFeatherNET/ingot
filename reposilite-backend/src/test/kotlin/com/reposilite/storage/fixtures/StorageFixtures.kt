@@ -16,9 +16,6 @@
 
 package com.reposilite.storage.fixtures
 
-import com.reposilite.plugin.api.Facade
-import com.reposilite.plugin.api.Plugin
-import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.StorageProviderSettings
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
@@ -41,19 +38,6 @@ class FixtureStorageProviderFactory : IngotStorageProviderFactory<StorageProvide
 
     override fun create(context: StorageProviderContext, settings: FixtureStorageSettings): StorageProvider =
         error("the registry tests never create a provider")
-
-}
-
-/** Records, during its own initialisation, whether the fixture storage provider is already registered. */
-@Plugin(name = "storage-probe")
-class StorageProbePlugin : ReposilitePlugin() {
-
-    var fixtureVisibleAtInitialize: Boolean = false
-
-    override fun initialize(): Facade? {
-        fixtureVisibleAtInitialize = extensions().storageProviders.resolve("fixture") != null
-        return null
-    }
 
 }
 

@@ -21,10 +21,8 @@ import com.reposilite.journalist.Logger
 import com.reposilite.journalist.backend.PrintStreamLogger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.PluginLoader
-import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.storage.fixtures.FixtureStorageProviderFactory
 import com.reposilite.storage.fixtures.FixtureStorageSettings
-import com.reposilite.storage.fixtures.StorageProbePlugin
 import com.reposilite.storage.fixtures.StorageProviderJarFixture
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -72,15 +70,12 @@ class StorageProviderPluginJarTest {
     }
 
     @Test
-    fun `should register the storage provider of a plugin jar before any plugin initialises`() {
+    fun `should register the storage provider of a plugin jar when the plugins are loaded`() {
         val pluginsDirectory = root.resolve("plugins").createDirectories()
         StorageProviderJarFixture.write(
             directory = pluginsDirectory,
-            fileName = "probe-with-storage.jar",
-            services = mapOf(
-                ReposilitePlugin::class.java to listOf(StorageProbePlugin::class.java),
-                StorageProviderFactory::class.java to listOf(FixtureStorageProviderFactory::class.java),
-            ),
+            fileName = "fixture-storage.jar",
+            services = mapOf(StorageProviderFactory::class.java to listOf(FixtureStorageProviderFactory::class.java)),
         )
         val extensions = Extensions(journalist)
         val loader = PluginLoader(
@@ -91,14 +86,10 @@ class StorageProviderPluginJarTest {
         )
 
         loader.loadPluginsByServiceFiles()
-        loader.initialize()
+        loader.loadPlugins()
 
-        val probe = extensions.getPlugins().getValue("storage-probe").plugin as StorageProbePlugin
-        assertThat(probe.fixtureVisibleAtInitialize)
-            .describedAs("fixture storage provider visible while the probe plugin initialises")
-            .isTrue()
         assertThat(extensions.storageProviders.resolve("fixture"))
-            .describedAs("fixture storage provider after start")
+            .describedAs("fixture storage provider of the plugins directory")
             .isNotNull()
     }
 

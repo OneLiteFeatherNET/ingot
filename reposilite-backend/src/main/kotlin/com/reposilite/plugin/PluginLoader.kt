@@ -42,9 +42,7 @@ class PluginLoader(
 ) {
 
     fun initialize() {
-        extensions.getPlugins()
-            .values
-            .forEach { (_, plugin) -> plugin.load(this) }
+        loadPlugins()
 
         val plugins = sortPlugins()
 
@@ -57,6 +55,21 @@ class PluginLoader(
             System.gc() // startup is heavy & reflective operation, so we'd like to tell jvm to take a look on that
         }
     }
+
+    /**
+     * Calls [ReposilitePlugin.load] on every plugin, then registers the storage providers of the plugin jars. Nothing is initialised here,
+     * so repositories built during initialisation see every provider.
+     */
+    internal fun loadPlugins() {
+        extensions.getPlugins()
+            .values
+            .forEach { (_, plugin) -> plugin.load(this) }
+
+        pluginClassLoaders.forEach { extensions.storageProviders.discover(it, builtIn = false) }
+    }
+
+    /** The class loaders of the plugin jars, in the order they were opened. Their storage factories are discovered in [loadPlugins]. */
+    private val pluginClassLoaders: MutableList<ClassLoader> = mutableListOf()
 
     private fun sortPlugins(): List<PluginEntry> =
         with (extensions.getPlugins()) {
@@ -83,7 +96,7 @@ class PluginLoader(
                 .map { it.toUri().toURL() }
                 .toList()
                 .onEach { extensions.logger.debug("Plugin file: $it") }
-                .let { URLClassLoader(it.toTypedArray()) }
+                .let { URLClassLoader(it.toTypedArray()).also(pluginClassLoaders::add) }
                 .let { ServiceLoader.load(ReposilitePlugin::class.java, it) }
                 .onEach { extensions.logger.debug("Plugin class: $it") }
                 .forEach { extensions.registerPlugin(it) }
@@ -117,7 +130,9 @@ class PluginLoader(
             return
         }
 
-        ServiceLoader.load(ReposilitePlugin::class.java, URLClassLoader(jars.toTypedArray(), ReposilitePlugin::class.java.classLoader))
+        val bundledLoader = URLClassLoader(jars.toTypedArray(), ReposilitePlugin::class.java.classLoader)
+        pluginClassLoaders.add(bundledLoader)
+        ServiceLoader.load(ReposilitePlugin::class.java, bundledLoader)
             .forEach { plugin ->
                 val name = plugin::class.findAnnotation<Plugin>()?.name
                     ?: error("Bundled plugin ${plugin::class} does not have @Plugin annotation")
