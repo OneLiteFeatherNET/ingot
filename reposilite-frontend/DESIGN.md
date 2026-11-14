@@ -48,6 +48,11 @@ Source files:
   `src/style.css` gives every modal root the `--md-sys-z-dialog` stacking value. The dialog
   itself keeps a 24px side inset (set on the modal's `content-class`), caps at 560px and
   never goes below 280px.
+- **The style gate enforces these rules in `npm test` and `npm run eslint`.** It lives in
+  `src/style-gate/` and rejects a `<style>` block, an arbitrary value, a raw colour, a palette
+  colour, a Tailwind default, a literal inline style, an unknown class and an inline icon
+  outside the icon folders. Existing violations sit in its baselines, which may only shrink:
+  a fix removes its entry in the same pull request.
 
 ## Colour
 
