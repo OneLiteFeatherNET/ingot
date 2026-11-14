@@ -750,6 +750,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Trial: four integration forks instead of the two that half of the four runner cores give. Every fork starts its
+      # own MariaDB, PostgreSQL, S3, NATS and Valkey containers, so memory scales with it. Read by integrationForks() in
+      # build.gradle.kts.
+      INGOT_TEST_FORKS: "4"
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
