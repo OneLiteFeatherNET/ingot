@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // Material Symbols "key", outlined and filled (Apache 2.0). The filled glyph is the active one.
 defineProps({
   filled: {

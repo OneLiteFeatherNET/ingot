@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // Three bars of a chart. The active icon is drawn filled, the others outlined.
 defineProps({
   filled: {

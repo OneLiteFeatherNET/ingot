@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { GENERIC_KEY_PATH, brandPathOf } from './providerIcons'
 

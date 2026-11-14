@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // Material Symbols "search" (Apache 2.0). The active one is drawn heavier, as the glyph has no filled form.
 defineProps({
   filled: {

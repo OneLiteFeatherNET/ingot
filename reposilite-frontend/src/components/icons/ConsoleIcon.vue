@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // Material Symbols "terminal" (Apache 2.0). The outlined glyph is the frame with the prompt
 // filled in. The filled glyph is a solid window with the prompt cut out, which is the active one.
 defineProps({

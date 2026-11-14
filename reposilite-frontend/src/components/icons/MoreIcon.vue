@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // Material Symbols "more_horiz", outlined and filled (Apache 2.0). It marks the bottom bar's overflow destination.
 defineProps({
   filled: {
