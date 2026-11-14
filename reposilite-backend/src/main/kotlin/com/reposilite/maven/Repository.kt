@@ -29,7 +29,9 @@ import java.nio.file.attribute.FileTime
 import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import net.onelitefeather.ingot.format.RepositoryFormat
 import net.onelitefeather.ingot.repository.RegisteredRepository
+import net.onelitefeather.ingot.storage.capability.UsageCapability
 import panda.std.Result
+import panda.std.Result.ok
 
 @Suppress("DeprecatedCallableAddReplaceWith")
 class Repository internal constructor(
@@ -153,15 +155,22 @@ class Repository internal constructor(
     fun exists(location: Location): Boolean =
         storageProvider.exists(location)
 
+    /** False when the storage reports no usage of its own, so its usage and room are not answered as figures. */
+    private val reportsUsage: Boolean
+        get() = (storageProvider as? UsageCapability)?.reportsUsage ?: true
+
     @Deprecated(message = "Use Repository#storageProvider")
     fun getUsage(): Result<Long, ErrorResponse> =
-        storageProvider.usage()
+        if (reportsUsage) storageProvider.usage() else ok(NOT_REPORTED_USAGE)
 
     @Deprecated(message = "Use Repository#storageProvider")
     fun canHold(contentLength: Long): Result<*, ErrorResponse> =
-        storageProvider.canHold(contentLength)
+        if (reportsUsage) storageProvider.canHold(contentLength) else ok(Long.MAX_VALUE)
 
     fun shutdown() =
         storageProvider.shutdown()
 
 }
+
+/** The usage a storage without figures of its own reports: nothing is known about its size. */
+private const val NOT_REPORTED_USAGE = -1L

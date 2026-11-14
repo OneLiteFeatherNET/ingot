@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
@@ -21,28 +23,28 @@ import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.plugin.api.StorageUsageFigure
 import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.storage.StorageProvider
-import com.reposilite.storage.filesystem.FileSystemStorageProvider
+import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
-import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.storage.walkFiles
+import net.onelitefeather.ingot.storage.capability.QuotaSettings
+import net.onelitefeather.ingot.storage.capability.UsageCapability
 import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
-import kotlin.io.path.fileStore
 
 /**
  * A repository whose usage is measured.
  *
  * @param quota the quota as configured (for example "100%" or "10GB"), null when the storage has none
- * @param storageType the storage provider type as configured, "fs" for the file system or "s3" for object storage
+ * @param storageType the storage provider type as configured, for example "fs" or "s3", "unknown" when the settings are not known
  * @param group true for a loopback group, which proxies other local repositories and stores nothing itself
  */
 internal data class StorageTarget(
     val id: String,
     val storage: StorageProvider,
     val quota: String?,
-    val storageType: String = "fs",
+    val storageType: String = "unknown",
     val group: Boolean = false,
 )
 
@@ -57,11 +59,28 @@ internal fun storageTargets(repositories: Collection<Repository>, configured: Li
         StorageTarget(
             id = repository.name,
             storage = repository.storageProvider,
-            quota = if (group) null else (settings?.storageProvider as? FileSystemStorageProviderSettings)?.quota,
-            storageType = settings?.storageProvider?.type ?: "fs",
+            quota = if (group) null else configuredQuota(repository.storageProvider, settings?.storageProvider),
+            storageType = storageTypeOf(settings?.storageProvider),
             group = group,
         )
     }
+
+/** The quota of a storage: only when the storage declares that it supports quota, and its settings carry one. */
+internal fun configuredQuota(storage: StorageProvider, settings: StorageProviderSettings?): String? {
+    val supportsQuota = (storage as? UsageCapability)?.supportsQuota ?: false
+    return if (supportsQuota) (settings as? QuotaSettings)?.quota else null
+}
+
+/** The storage type of the settings, or unknown when this replica does not know the settings. */
+internal fun storageTypeOf(settings: StorageProviderSettings?): String =
+    settings?.type ?: "unknown"
+
+/** The type of a figure from another replica: unknown without a configured repository, else the type it carries, or the target's. */
+private fun receivedStorageType(figure: StorageUsageFigure, target: StorageTarget?): String = when {
+    target == null -> "unknown"
+    figure.storageType != "unknown" -> figure.storageType
+    else -> target.storageType
+}
 
 /**
  * Usage of one repository. [quotaBytes] is null when the quota is unknown: no quota is configured, or the
@@ -151,7 +170,7 @@ internal class StorageUsageService(
                     quota = target?.quota,
                     quotaBytes = target?.let { quotaBytes(it) },
                     fileCount = figure.fileCount,
-                    storageType = target?.storageType ?: "fs",
+                    storageType = receivedStorageType(figure, target),
                     group = target?.group ?: false,
                 )
             }
@@ -167,7 +186,7 @@ internal class StorageUsageService(
             repositories = measured
             computedAt = computed
         }
-        publish(StorageUsageRefreshedEvent(computed, measured.map { StorageUsageFigure(it.id, it.usedBytes, it.fileCount) }))
+        publish(StorageUsageRefreshedEvent(computed, measured.map { StorageUsageFigure(it.id, it.usedBytes, it.fileCount, it.storageType) }))
         return current()
     }
 
@@ -199,8 +218,8 @@ internal class StorageUsageService(
         val quota = target.quota ?: return null
         return runCatching {
             if (quota.endsWith("%")) {
-                val root = (target.storage as? FileSystemStorageProvider)?.rootDirectory ?: return null
-                (root.fileStore().totalSpace * (quota.dropLast(1).toDouble() / 100.0)).toLong()
+                val capacity = (target.storage as? UsageCapability)?.totalCapacityBytes() ?: return null
+                (capacity * (quota.dropLast(1).toDouble() / 100.0)).toLong()
             } else {
                 FileSystemStorageProviderFactory.displaySizeToBytesCount(quota)
             }

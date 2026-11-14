@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotFormatApi::class)
+@file:OptIn(ExperimentalIngotFormatApi::class, ExperimentalIngotStorageApi::class)
 
 package com.reposilite.maven
 
 import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.ClusterBus
+import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
+import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
+import net.onelitefeather.ingot.storage.capability.findSharedNamespaceConflicts
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
@@ -31,11 +36,10 @@ import com.reposilite.shared.notFoundError
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
-import com.reposilite.storage.s3.S3StorageProvider
-import com.reposilite.storage.s3.S3StorageProviderSettings
-import com.reposilite.storage.s3.findS3SharedBucketConflicts
+import com.reposilite.storage.s3.CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS
 import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
+import java.time.Duration
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
@@ -86,6 +90,10 @@ internal class RepositoryProvider(
     @Volatile
     private var clusterBusConfigured: Boolean = false
 
+    /** The bus the cluster plugin opened, which a storage that declares [ClusterCacheAware] is bound to. */
+    @Volatile
+    private var clusterBus: ClusterBus? = null
+
     init {
         clusterMaxAgeSeconds = resolutionCacheClusterMaxAge.get()
         apply(repositoriesSource.get())
@@ -97,7 +105,8 @@ internal class RepositoryProvider(
     }
 
     /** Called by the cluster plugin once its bus is open: resolution entries are bounded from now on, in every repository. */
-    fun bindToClusterBus() {
+    fun bindToClusterBus(clusterBus: ClusterBus) {
+        this.clusterBus = clusterBus
         clusterBusConfigured = true
         boundResolutionCaches()
     }
@@ -105,8 +114,8 @@ internal class RepositoryProvider(
     private fun boundResolutionCaches() {
         val maxAge = resolutionCacheMaxAge(clusterMaxAgeSeconds, clusterBusConfigured)
         repositories.values.forEach { it.resolutionCache?.maxAge = maxAge }
-        if (clusterBusConfigured) {
-            repositories.values.forEach { (it.storageProvider as? S3StorageProvider)?.bindMetadataCacheToClusterBus() }
+        clusterBus?.let { bus ->
+            repositories.values.forEach { (it.storageProvider as? ClusterCacheAware)?.bind(bus, Duration.ofSeconds(CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS)) }
         }
     }
 
@@ -133,18 +142,19 @@ internal class RepositoryProvider(
             formats = repositoryFormats,
         )
 
-        val sharedBucketConflicts = findS3SharedBucketConflicts(
+        val namespaceConflicts = findSharedNamespaceConflicts(
             configuration.mapNotNull { settings ->
-                (settings.storageProvider as? S3StorageProviderSettings)?.let { settings.id to it }
+                (settings.storageProvider as? SharedNamespaceAware)?.let { settings.id to it }
             }
         )
 
         val next = configuration.mapNotNull { settings ->
-            when (settings.id) {
-                in sharedBucketConflicts -> {
+            val conflict = namespaceConflicts[settings.id]
+            when {
+                conflict != null -> {
                     failureFacade.throwException(
                         identifier = "Cannot load repository '${settings.id}'",
-                        throwable = IllegalStateException("Its S3 key namespace overlaps another repository sharing the same bucket. Give each repository a distinct 'prefix', or enable 'sharedBucket' on every repository sharing the bucket.")
+                        throwable = IllegalStateException(conflict)
                     )
                     null
                 }

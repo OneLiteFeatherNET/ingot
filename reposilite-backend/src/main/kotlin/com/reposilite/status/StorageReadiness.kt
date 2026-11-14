@@ -23,6 +23,7 @@ import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import io.javalin.http.HttpStatus.NOT_FOUND
 import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
+import net.onelitefeather.ingot.storage.capability.ReadinessProbe
 import panda.std.Result
 
 /**
@@ -42,3 +43,10 @@ internal fun StorageProvider.probeListing(): ReadinessOutcome =
         { ReadinessOutcome.Ok },
         { error -> if (error.status == NOT_FOUND.code) ReadinessOutcome.NotFoundOk else ReadinessOutcome.Failed(error.message) },
     )
+
+/** The readiness of a storage: its own probe when it declares one, else the listing of its root. */
+internal fun readinessOf(storage: StorageProvider): ReadinessOutcome =
+    (storage as? ReadinessProbe)?.probe() ?: storage.probeListing()
+
+/** Whether an outcome counts as the backend having answered. A failed probe does not. */
+internal fun ReadinessOutcome.answered(): Boolean = this !is ReadinessOutcome.Failed

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotFormatApi::class)
+@file:OptIn(ExperimentalIngotFormatApi::class, net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
 
 package com.reposilite.maven
 
@@ -28,7 +28,7 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.shared.http.createHttpProxy
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
-import com.reposilite.storage.s3.RelatedKeyAware
+import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
 import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
 import java.nio.file.Paths

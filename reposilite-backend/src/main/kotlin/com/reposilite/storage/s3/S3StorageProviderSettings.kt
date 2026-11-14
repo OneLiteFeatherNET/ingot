@@ -23,6 +23,7 @@ import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.storage.StorageProviderSettings
 import io.javalin.openapi.Custom
 import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
+import net.onelitefeather.ingot.storage.capability.findSharedNamespaceConflicts
 import net.onelitefeather.ingot.storage.capability.SupportDetails
 
 @Doc(title = "S3 Metadata Cache", description = "Caches things like file size from S3 objects")
@@ -101,24 +102,6 @@ fun S3StorageProviderSettings.resolveKeyPrefix(repositoryName: String): String {
     }
 }
 
-fun findS3SharedBucketConflicts(repositories: List<Pair<String, S3StorageProviderSettings>>): Set<String> {
-    val conflicts = mutableSetOf<String>()
-
-    repositories
-        .filterNot { (_, settings) -> settings.bucketName.isBlank() }
-        .groupBy { (_, settings) -> settings.endpoint.trim().trimEnd('/') to settings.bucketName.trim() }
-        .values
-        .filter { it.size > 1 }
-        .forEach { group ->
-            val keyPrefixes = group.map { (id, settings) -> id to settings.resolveKeyPrefix(id) }
-            keyPrefixes.forEach { (id, keyPrefix) ->
-                // collide when key namespaces are equal or one nests under the other
-                val collides = keyPrefixes.any { (otherId, otherKeyPrefix) ->
-                    otherId != id && (keyPrefix.startsWith(otherKeyPrefix) || otherKeyPrefix.startsWith(keyPrefix))
-                }
-                if (collides) conflicts += id
-            }
-        }
-
-    return conflicts
-}
+/** The repositories whose S3 key namespaces collide, see [SharedNamespaceAware]. */
+fun findS3SharedBucketConflicts(repositories: List<Pair<String, S3StorageProviderSettings>>): Set<String> =
+    findSharedNamespaceConflicts(repositories).keys

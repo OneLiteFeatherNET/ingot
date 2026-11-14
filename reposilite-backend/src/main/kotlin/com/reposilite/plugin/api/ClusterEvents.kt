@@ -42,4 +42,12 @@ data class ReadOnlyChangedEvent(val enabled: Boolean) : Event
 /** Repository storage usage was measured again. */
 data class StorageUsageRefreshedEvent(val computedAt: Instant, val repositories: List<StorageUsageFigure>) : Event
 
-data class StorageUsageFigure(val id: String, val usedBytes: Long, val fileCount: Long)
+/**
+ * The figures of one repository. [storageType] is the type it was measured with. A figure of a replica that does not send
+ * the type reads as unknown.
+ */
+data class StorageUsageFigure(val id: String, val usedBytes: Long, val fileCount: Long, val storageType: String) {
+
+    constructor(id: String, usedBytes: Long, fileCount: Long) : this(id, usedBytes, fileCount, "unknown")
+
+}
