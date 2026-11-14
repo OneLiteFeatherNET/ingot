@@ -18,7 +18,6 @@
 import { computed, ref, watch } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import MdButton from '../md/MdButton.vue'
-import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
@@ -68,12 +67,6 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  // Where the not-found pane leads: the list of the domain. Given as a link, so it can be opened
-  // in a new tab; the click itself is handled by the page and goes through the router.
-  backHref: {
-    type: String,
-    default: undefined
-  },
   // True for the repositories of the maven domain: the pane then shows who has access, below the form.
   showAccess: {
     type: Boolean,
@@ -97,11 +90,6 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  // The page draws the heading itself when it is false, and the back arrow goes with the heading.
-  showHeader: {
-    type: Boolean,
-    default: true
-  },
   // Fields of the entry that the page edits with its own control, so the generated form leaves them out.
   omit: {
     type: Array,
@@ -114,12 +102,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['change', 'delete', 'back'])
+const emit = defineEmits(['change', 'delete'])
 
 const noun = computed(() => props.collection.noun)
 const layout = computed(() => entryLayout(props.collection.itemSchema))
-const backLabel = computed(() => `Back to ${props.collection.title.toLowerCase()}`)
-const headline = computed(() => idText(props.entry) || `Unnamed ${noun.value}`)
 const deleteOpen = ref(false)
 
 // The latest value of the whole entry, so an id typed in the field is written next to the fields the form has changed.
@@ -257,14 +243,6 @@ const formLayout = computed(() => {
     <p class="md-body-large text-on-surface-variant">
       There is no {{ collection.noun }} with the id "{{ id }}" in this configuration.
     </p>
-    <MdButton
-      variant="text"
-      type="button"
-      :href="backHref"
-      @click.prevent="emit('back')"
-    >
-      {{ backLabel }}
-    </MdButton>
   </div>
 
   <div
@@ -272,45 +250,20 @@ const formLayout = computed(() => {
     class="flex flex-col gap-6"
     data-ingot-component="entry-detail"
   >
-    <header
-      v-if="showHeader"
-      data-ingot-part="header"
-      class="flex items-center gap-2"
-    >
-      <MdIconButton
-        class="expanded:hidden"
-        :aria-label="backLabel"
-        @click="emit('back')"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" />
-        </svg>
-      </MdIconButton>
-      <h3
-        data-test="entry-title"
-        class="min-w-0 break-all md-headline-small text-on-surface"
-        :class="idText(entry) ? '' : 'italic'"
-      >
-        {{ headline }}
-      </h3>
-    </header>
-
-    <MdTextField
-      id="entry-detail-id"
-      label="Id"
-      variant="outlined"
-      autocomplete="off"
-      required
-      :model-value="idDraft"
-      supporting-text="Letters, digits, dots, underscores and hyphens. The address follows the id."
-      :error="Boolean(idError)"
-      :error-text="idError"
-      @update:model-value="onIdInput"
-    />
+    <div data-ingot-part="header">
+      <MdTextField
+        id="entry-detail-id"
+        label="Id"
+        variant="outlined"
+        autocomplete="off"
+        required
+        :model-value="idDraft"
+        supporting-text="Letters, digits, dots, underscores and hyphens. The address follows the id."
+        :error="Boolean(idError)"
+        :error-text="idError"
+        @update:model-value="onIdInput"
+      />
+    </div>
 
     <section
       v-if="typed"
@@ -318,12 +271,12 @@ const formLayout = computed(() => {
       aria-labelledby="entry-type-title"
       class="flex flex-col gap-4"
     >
-      <h4
+      <h3
         id="entry-type-title"
         class="md-title-medium text-on-surface"
       >
         Type
-      </h4>
+      </h3>
       <MdSelect
         id="entry-detail-type"
         :model-value="typeValue"
@@ -354,12 +307,12 @@ const formLayout = computed(() => {
         aria-labelledby="entry-type-removals-title"
         class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-high p-4"
       >
-        <h5
+        <h3
           id="entry-type-removals-title"
           class="md-title-small text-on-surface"
         >
           Switching to {{ typeLabelOf(pendingType).toLowerCase() }}{{ pendingRemoves ? ' removes' : '' }}
-        </h5>
+        </h3>
         <ul
           v-if="pendingRemovals.length > 0"
           class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface"
@@ -434,9 +387,9 @@ const formLayout = computed(() => {
         v-if="typeValue === 'GROUP'"
         class="flex flex-col gap-3"
       >
-        <h5 class="md-title-small text-on-surface">
+        <h3 class="md-title-small text-on-surface">
           Members
-        </h5>
+        </h3>
         <RepositoryMembersPicker
           id-prefix="entry-members"
           :model-value="members"
@@ -471,12 +424,12 @@ const formLayout = computed(() => {
       aria-labelledby="entry-danger-title"
       class="flex flex-col gap-3 rounded-corner-medium border border-error p-4"
     >
-      <h4
+      <h3
         id="entry-danger-title"
         class="md-title-medium text-error"
       >
         Danger zone
-      </h4>
+      </h3>
       <p class="md-body-medium text-on-surface-variant">
         Deleting removes this {{ collection.noun }} from the configuration when you save.
       </p>

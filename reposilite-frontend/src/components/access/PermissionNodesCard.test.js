@@ -75,7 +75,7 @@ describe('PermissionNodesCard', () => {
     it('renders the node editor under the heading Permission nodes', async () => {
       await mountCard()
 
-      expect(wrapper.find('h4').text()).toBe('Permission nodes')
+      expect(wrapper.find('h2').text()).toBe('Permission nodes')
       expect(wrapper.find('[data-test="node-editor"]').exists()).toBe(true)
     })
 

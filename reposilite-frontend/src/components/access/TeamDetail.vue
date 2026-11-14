@@ -40,12 +40,12 @@ import { useTeamDetail } from './useTeamDetail'
  *
  * Every write sends the entity tag of the detail as If-Match. A 412 opens the conflict dialog.
  * A rejection that names a reason, such as the last instance admin, is shown with the server's
- * own wording in the dialog that caused it.
+ * own wording in the dialog that caused it. The name of the team is the page heading, drawn by the
+ * page frame, so this component draws no heading and no back control of its own.
  *
  * Props:
  *   name  the team to show
- * Emits changed (after any write), deleted (the name, after the team was deleted) and back (the
- * link that closes the detail on a narrow window, where list and detail do not fit side by side).
+ * Emits changed (after any write) and deleted (the name, after the team was deleted).
  */
 const props = defineProps({
   name: {
@@ -54,7 +54,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['changed', 'deleted', 'back'])
+const emit = defineEmits(['changed', 'deleted'])
 
 const { client } = useSession()
 const api = computed(() => client.value.identity.teams)
@@ -205,18 +205,8 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
 <template>
   <section
     class="flex min-w-0 flex-col gap-4"
-    aria-labelledby="team-title"
     data-ingot-component="team-detail"
   >
-    <MdButton
-      variant="text"
-      class="self-start expanded:hidden"
-      data-test="back"
-      @click="emit('back')"
-    >
-      Back to teams
-    </MdButton>
-
     <p
       v-if="status === 'loading'"
       data-ingot-state="loading"
@@ -251,12 +241,6 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
       <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
-            <h3
-              id="team-title"
-              class="md-title-large break-words text-on-surface"
-            >
-              {{ detail.name }}
-            </h3>
             <div
               v-if="detail.instanceRole"
               class="flex flex-wrap items-center gap-2"

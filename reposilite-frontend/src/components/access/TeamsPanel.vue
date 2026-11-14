@@ -202,7 +202,6 @@ const deleted = (name) => {
         :name="name"
         @changed="load()"
         @deleted="deleted"
-        @back="close()"
       />
       <p
         v-else

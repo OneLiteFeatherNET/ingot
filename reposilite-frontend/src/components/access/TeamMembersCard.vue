@@ -104,12 +104,12 @@ const openAdd = () => {
     data-ingot-component="team-members-card"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <h4
+      <h2
         id="team-members-title"
         class="md-title-medium text-on-surface"
       >
         Members
-      </h4>
+      </h2>
       <MdButton
         variant="tonal"
         data-test="add-member"

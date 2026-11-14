@@ -59,9 +59,9 @@ const { renderers, configurationStyles } = useConfiguration()
 provide('styles', configurationStyles)
 
 const router = useRouter()
+// The first heading of the content: the page heading is the frame's, so the focus goes to the type section.
 const heading = ref(null)
 const declareOpen = ref(false)
-const typeHeading = ref(null)
 
 const collection = computed(() => collectionsOf(store.schemas.value.maven).find(list => list.key === 'repositories') ?? null)
 const entries = computed(() => store.configurations.value.maven?.repositories ?? [])
@@ -74,7 +74,7 @@ watch(() => [props.id, entries.value.length], () => {
   index.value = addresses.value.indexOf(props.id)
 }, { immediate: true })
 const entry = computed(() => (index.value >= 0 ? entries.value[index.value] : null))
-// The name of the entry in the heading and in the list; an entry without an id is named as the list names it.
+// The name of the entry, as the list and the page heading name it; an entry without an id is named as the list names it.
 const title = computed(() => idText(entry.value) || 'Unnamed repository')
 const others = computed(() => entries.value.filter((_, position) => position !== index.value))
 const otherIds = computed(() => others.value.map(idText))
@@ -93,7 +93,6 @@ const blankNotice = computed(() => blankEntriesNotice(blankCount.value))
 const writeChoice = computed(() => writePolicyOf(entry.value ?? {}))
 const offerReadOnly = computed(() => Boolean(collection.value?.itemSchema?.properties?.readOnly))
 const groupsListingIt = computed(() => groupsReferencing(entries.value, idText(entry.value)))
-const backHref = computed(() => router.resolve({ name: 'settings-repositories' }).href)
 
 // The draft entry at this position is replaced; the page never writes a key of its own besides the ones named here.
 const write = (next) => store.setEntry('maven', 'repositories', index.value, next)
@@ -120,7 +119,7 @@ const applyDeclare = async () => {
   if (Array.isArray(next.proxied)) next.proxied = next.proxied.filter(item => !isBlankEntry(item))
   write(next)
   await nextTick()
-  typeHeading.value?.focus()
+  heading.value?.focus()
 }
 
 const declare = () => {
@@ -137,8 +136,6 @@ const onDelete = () => {
   store.removeEntry('maven', 'repositories', index.value)
   router.push({ name: 'settings-repositories', query: { deleted: name } })
 }
-
-const back = () => router.push({ name: 'settings-repositories' })
 
 // A new page takes the focus on its heading, so that a screen reader announces the repository it opens.
 onMounted(() => {
@@ -172,14 +169,6 @@ onMounted(() => {
     <p class="md-body-large text-on-surface-variant">
       There is no repository with the id "{{ id }}" in this configuration.
     </p>
-    <MdButton
-      variant="text"
-      type="button"
-      :href="backHref"
-      @click.prevent="back"
-    >
-      Back to repositories
-    </MdButton>
   </div>
 
   <div
@@ -187,37 +176,18 @@ onMounted(() => {
     class="flex flex-col gap-6"
     data-ingot-component="repository-detail"
   >
-    <MdButton
-      variant="text"
-      type="button"
-      class="self-start"
-      :href="backHref"
-      @click.prevent="back"
-    >
-      Back to repositories
-    </MdButton>
-
     <header
       class="flex flex-col gap-4"
       data-ingot-part="header"
       :data-ingot-repository="title"
     >
-      <h2
-        ref="heading"
-        tabindex="-1"
-        data-test="entry-title"
-        class="min-w-0 break-all md-headline-small text-on-surface focus:outline-none"
-      >
-        {{ title }}
-      </h2>
-
       <section
         aria-labelledby="repository-type-title"
         class="flex flex-col gap-3"
       >
         <h2
           id="repository-type-title"
-          ref="typeHeading"
+          ref="heading"
           tabindex="-1"
           class="md-title-medium text-on-surface focus:outline-none"
         >
@@ -257,18 +227,15 @@ onMounted(() => {
       :entry="entry"
       :other-ids="otherIds"
       :other-tags="otherTags"
-      :back-href="backHref"
       :renderers="renderers"
       :validator="store.configurationValidator"
       :show-access="true"
       :typed="true"
-      :show-header="false"
       :omit="['redeployment', 'readOnly']"
       :references="groupsListingIt"
       :server-error="serverError"
       @change="onChange"
       @delete="onDelete"
-      @back="back"
     />
 
     <DeclareTypeDialog

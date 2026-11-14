@@ -84,7 +84,7 @@ describe('TeamParentsCard', () => {
     it('shows the parent teams as removable chips', async () => {
       await mountCard()
 
-      expect(wrapper.find('h4').text()).toBe('Inherits from')
+      expect(wrapper.find('h2').text()).toBe('Inherits from')
       expect(chips()).toEqual(['developers'])
       expect(wrapper.find('button[aria-label="Remove developers"]').exists()).toBe(true)
     })

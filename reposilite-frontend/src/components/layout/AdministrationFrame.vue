@@ -32,7 +32,8 @@ import MdSideSheet from '../md/MdSideSheet.vue'
  * Props:
  *   title        the heading, when it is not the label of the current entry
  *   description  the one-line description under the heading; by default the description of the current entry
- *   detail       true on a detail page: the trail then adds the list page of the current entry as a link
+ *   detail       true on a detail page: the trail then adds the list page of the current entry as a link, the back arrow
+ *                leads to that list, and the list description is not drawn (only the description given)
  *   label        the accessible name of the side navigation
  *   sectionLabel the first crumb, and the name of the back arrow
  *   groups       the Administration tree: [{ id, heading, links: [{ key, label, description, to }] }]; empty draws no side navigation
@@ -82,12 +83,17 @@ const crumbs = computed(() => {
   return trail
 })
 
-// Below 1240 pixels the trail is its last crumb on one line; its full text is the title and the accessible name.
-const visibleCrumbs = computed(() => (props.narrow ? crumbs.value.slice(-1) : crumbs.value))
+// Below 1240 pixels the trail is its last crumb on one line, as plain text: the back arrow beside it is the one link.
+const visibleCrumbs = computed(() => (props.narrow ? crumbs.value.slice(-1).map(crumb => ({ label: crumb.label })) : crumbs.value))
 const fullTrail = computed(() => crumbs.value.map(crumb => crumb.label).join(' / '))
 const heading = computed(() => props.title || currentLink.value?.label || props.sectionLabel)
-const lineDescription = computed(() => props.description ?? currentLink.value?.description ?? '')
-// The back arrow leads to the index. Overview is the index on narrow widths, so it draws none.
+// The list description belongs to the list; a detail page shows the description of its item only, when one is given.
+const lineDescription = computed(() => props.description ?? (props.detail ? '' : currentLink.value?.description ?? ''))
+// The back arrow leads to the list a detail page belongs to, and to the index everywhere else. Overview is the index on
+// narrow widths, so it draws none.
+const back = computed(() => (props.detail && currentLink.value
+  ? { label: currentLink.value.label, to: currentLink.value.to }
+  : { label: props.sectionLabel, to: props.indexTo }))
 const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined && !props.overview)
 // The Sections button sits beside the back arrow, so a page without one draws none. It is drawn from 600 pixels (see the
 // classes below); the sheet it opens is the same tree, in a modal side sheet, and it closes on the choice of an entry.
@@ -111,12 +117,12 @@ const sheetOpen = ref(false)
           <RouterLink
             v-if="showsBack"
             v-slot="{ href, navigate }"
-            :to="indexTo"
+            :to="back.to"
             custom
           >
             <a
               :href="href"
-              :aria-label="`Back to ${sectionLabel}`"
+              :aria-label="`Back to ${back.label}`"
               class="md-state-layer md-focus-ring relative inline-flex size-12 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
               @click="navigate"
             >

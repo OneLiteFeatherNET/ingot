@@ -263,7 +263,7 @@ describe('PrincipalsPanel', () => {
     it('shows the detail of the user named by the address next to the list', async () => {
       await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
 
-      expect(wrapper.find('#principal-title').text()).toBe('Alice Example')
+      expect(wrapper.find('[data-test="principal-display-name"]').text()).toBe('Alice Example')
       expect(principals.get).toHaveBeenCalledWith('alice')
     })
 

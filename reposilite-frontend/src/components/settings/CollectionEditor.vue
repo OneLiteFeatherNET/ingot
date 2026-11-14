@@ -25,7 +25,8 @@ import { guidedCreateKey } from './guidedCreate'
 /*
  * One collection as a list-detail layout. From 840px the list and the detail sit side by side, the
  * list in a 340px column. Below that there is one pane at a time: the list while nothing is
- * selected, the detail once an entry is, with a back button to return to the list.
+ * selected, the detail once an entry is. The page frame names the open entry and carries the way back to the list.
+ * The description of the collection belongs to the list, so it is not drawn beside an open entry.
  *
  * The address (selectedId) comes from the route. The selection itself is the stable key of the
  * entry, resolved from the address when the address changes. So while the user edits the id of the
@@ -53,10 +54,6 @@ const props = defineProps({
   selectedId: {
     type: String,
     default: null
-  },
-  backHref: {
-    type: String,
-    default: undefined
   },
   renderers: {
     type: Array,
@@ -88,7 +85,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'create', 'change', 'delete', 'back'])
+const emit = defineEmits(['select', 'create', 'change', 'delete'])
 
 provide(guidedCreateKey, computed(() => props.guidedCreate))
 
@@ -132,7 +129,7 @@ watch([addresses, () => props.keys], () => {
         {{ collection.title }}
       </h2>
       <p
-        v-if="collection.description"
+        v-if="collection.description && !hasSelection"
         class="md-body-medium text-on-surface-variant"
       >
         {{ collection.description }}
@@ -169,7 +166,6 @@ watch([addresses, () => props.keys], () => {
           :entry="selectedEntry"
           :other-ids="otherIds"
           :other-tags="otherTags"
-          :back-href="backHref"
           :renderers="renderers"
           :validator="validator"
           :show-access="showAccess"
@@ -177,7 +173,6 @@ watch([addresses, () => props.keys], () => {
           :server-error="serverError"
           @change="emit('change', { index: selectedIndex, entry: $event })"
           @delete="emit('delete', selectedIndex)"
-          @back="emit('back')"
         />
         <p
           v-else

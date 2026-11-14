@@ -241,22 +241,15 @@ describe('SettingsView collections', () => {
   it('selects the entry named by the address', async () => {
     await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'snapshots' } })
 
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
+    expect(wrapper.get('h1').text()).toBe('snapshots')
     expect(itemButtons()[1].attributes('aria-current')).toBe('true')
   })
 
-  it('says the repository was not found when the address names no entry, and links back to the list', async () => {
-    const { router } = await mountSettings({ props: { domain: 'ingot', collection: 'mirrors', entry: 'ghost' } })
+  it('says the repository was not found when the address names no entry, and draws no link of its own back to the list', async () => {
+    await mountSettings({ props: { domain: 'ingot', collection: 'mirrors', entry: 'ghost' } })
 
     expect(wrapper.text()).toContain('Repository not found')
-    const back = wrapper.findAll('a').find(link => link.text() === 'Back to mirrors')
-    expect(back?.attributes('href'), 'the not-found link goes to the settings route of the domain').toBe('/settings/ingot')
-
-    await back.trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.name).toBe('settings')
-    expect(router.currentRoute.value.params.domain).toBe('ingot')
+    expect(wrapper.findAll('a').find(link => link.text() === 'Back to mirrors'), 'the page frame carries the way back').toBeUndefined()
   })
 
   it('adds a new entry, selects it and replaces the address with the new entry', async () => {
@@ -271,7 +264,7 @@ describe('SettingsView collections', () => {
     expect(router.currentRoute.value.params.entry).toBe('backup')
     // The router hands the new address back to the view as props; the test does the same.
     await wrapper.setProps({ collection: 'mirrors', entry: 'backup' })
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('backup')
+    expect(wrapper.get('h1').text()).toBe('backup')
   })
 
   it('removes an entry only after its id is typed exactly, then returns to the list', async () => {
@@ -366,7 +359,7 @@ describe('SettingsView driven by the router', () => {
   it('selects the entry the address names when the page is opened', async () => {
     await mountAt(['/settings/ingot/mirrors/snapshots'], MIRRORS_SERVER)
 
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
+    expect(wrapper.get('h1').text()).toBe('snapshots')
   })
 
   it('pushes the address of an entry that is selected', async () => {
@@ -376,20 +369,20 @@ describe('SettingsView driven by the router', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
+    expect(wrapper.get('h1').text()).toBe('releases')
   })
 
   it('returns to the previous selection with the back button', async () => {
     const { router } = await mountAt(['/', '/settings/ingot/mirrors/releases'], MIRRORS_SERVER)
     await itemButtons()[1].trigger('click')
     await flushPromises()
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
+    expect(wrapper.get('h1').text()).toBe('snapshots')
 
     router.back()
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
+    expect(wrapper.get('h1').text()).toBe('releases')
   })
 
   it('keeps an address that names no domain and shows the hub when there are several domains', async () => {
@@ -432,14 +425,12 @@ describe('SettingsView driven by the router', () => {
     expect(wrapper.find('#maven-repositories-link-title').exists(), 'the Maven page is not the first domain any more').toBe(false)
   })
 
-  it('leads the not-found pane back to the domain list through the router', async () => {
-    const { router } = await mountAt(['/', '/settings/ingot/mirrors/ghost'])
+  it('draws the not-found pane without a link of its own, and the page frame names the missing entry', async () => {
+    await mountAt(['/', '/settings/ingot/mirrors/ghost'])
+
     expect(wrapper.text()).toContain('Repository not found')
-
-    await wrapper.findAll('a').find(link => link.text() === 'Back to mirrors').trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
+    expect(wrapper.get('h1').text(), 'the page heading names the address that was asked for').toBe('ghost')
+    expect(wrapper.findAll('a').find(link => link.text() === 'Back to mirrors'), 'no link of its own').toBeUndefined()
   })
 
   it('returns to the domain list when the selected entry is deleted', async () => {

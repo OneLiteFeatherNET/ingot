@@ -239,12 +239,12 @@ const save = async () => {
     data-ingot-component="team-parents-card"
   >
     <div class="flex flex-col gap-1">
-      <h4
+      <h2
         :id="titleId"
         class="md-title-medium text-on-surface"
       >
         Inherits from
-      </h4>
+      </h2>
       <p class="md-body-small text-on-surface-variant">
         A team gets the permission nodes of its parent teams, up to 5 levels up. Its own nodes decide first.
       </p>
