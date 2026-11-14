@@ -111,3 +111,40 @@ describe('MdNavigationBar links', () => {
     expect(label.classes(), 'the label does not wrap onto a second line').toContain('whitespace-nowrap')
   })
 })
+
+describe('MdNavigationBar widths and short labels', () => {
+  it('gives every destination an equal share of the bar, whatever its label is long', () => {
+    const items = [
+      { key: 'browse', label: 'Browse' },
+      { key: 'settings', label: 'Administration' },
+    ]
+    const wrapper = mount(MdNavigationBar, { props: { items, modelValue: 'browse' } })
+
+    for (const item of wrapper.findAll('li')) {
+      expect(item.classes(), 'an item takes an equal share of the width, not the width of its label').toEqual(expect.arrayContaining(['flex-1', 'basis-0']))
+      expect(item.classes(), 'an item is not sized by its content').not.toContain('flex-auto')
+    }
+  })
+
+  it('shows the short label of a destination in the bar in place of its label', () => {
+    const items = [{ key: 'settings', label: 'Administration', shortLabel: 'Admin' }]
+    const wrapper = mount(MdNavigationBar, { props: { items, modelValue: 'settings' } })
+
+    expect(wrapper.find('li span.md-label-medium').text()).toBe('Admin')
+  })
+
+  it('keeps the short label as the accessible name and the full label as its description', () => {
+    const items = [{ key: 'settings', label: 'Administration', shortLabel: 'Admin' }]
+    const wrapper = mount(MdNavigationBar, { props: { items, modelValue: 'settings' } })
+
+    expect(wrapper.find('button').attributes('aria-label'), 'the name is the visible text, so axe label-content-name-mismatch passes').toBeUndefined()
+    expect(wrapper.find('button').attributes('title'), 'the full label is the description').toBe('Administration')
+  })
+
+  it('names no accessible label of its own for a destination without a short label', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    expect(wrapper.find('li span.md-label-medium').text()).toBe('Overview')
+    expect(wrapper.find('button').attributes('aria-label')).toBeUndefined()
+  })
+})

@@ -33,6 +33,8 @@
  *               console, maintenance, account)
  * - route       the route name in routes.js
  * - label       the text in the rail, the bar, the breadcrumbs and the document title
+ * - shortLabel  optional. The text the bottom bar shows in place of `label`, for a label too wide for an equal share of
+ *               a 320 px window (Administration shows Admin in the bar). The rail and the other places keep `label`.
  * - area        rail for an entry of the rail, or none for a page outside it
  * - permission  { node } or { anyNode } that the route needs, { manager: false } for an open page,
  *               { signedIn: true } for a page that needs a signed in visitor only
@@ -251,6 +253,7 @@ const PAGES = [
     key: 'settings',
     route: 'settings',
     label: 'Administration',
+    shortLabel: 'Admin',
     area: 'rail',
     permission: { node: ADMIN_NODES.settings },
     reach: ADMINISTRATION_REACH,
