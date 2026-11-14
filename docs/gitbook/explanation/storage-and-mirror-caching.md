@@ -133,6 +133,12 @@ Two settings control how fresh `maven-metadata.xml` is:
 
 The `STRICT` policy makes local files the first choice for every file, including metadata. The setting description calls it full offline mode. The code does not match that description. A local miss still goes to the mirror hosts, so `STRICT` does not stop upstream requests. Do not rely on `STRICT` to run without network access.
 
+## Head cache in cluster mode
+
+The S3 provider keeps the answers of object HEAD requests in a local cache. Without a cluster bus, the expiry settings of the metadata cache apply. With a bus, every answer expires at most 300 seconds after it was stored, whatever the other settings say. Reads do not extend the bound. Any storage provider that implements `ClusterCacheAware` is bound in the same way. See [Storage capabilities](../reference/storage-providers.md#storage-capabilities).
+
+Replicas do not tell each other when an object changes yet. A write on one replica does not drop the cached answer on the others. The other replicas keep it until it expires, at most 300 seconds later. Publishing such invalidations is planned as a separate change.
+
 ## Cleanup of mirror copies
 
 The `MIRROR_CACHE` cleanup scope only considers directories that have a ledger row. Keep rules still apply first. The age of a copy is judged by its last access, through `notDownloadedForDays`, or by its modification time, through `olderThanDays`.
