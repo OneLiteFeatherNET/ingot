@@ -17,6 +17,7 @@
 import js from "@eslint/js";
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
+import tseslint from 'typescript-eslint'
 
 // Every enabled rule reports as an error. The plugin presets ship some rules as warnings, and the bulk suppressions of
 // ESLint record errors only, so those rules are raised here. A finding that is not in eslint-suppressions.json fails the run.
@@ -61,5 +62,34 @@ export default [
       'vue/jsx-uses-vars': 'error',
       'semi': ['error', 'never'],
     }
-  }
+  },
+  // TypeScript, from the first .ts file on: the recommended type-aware rules apply to .ts files. A .vue file keeps its
+  // JavaScript parser unless its script block says lang="ts", and then the TypeScript parser reads that block. The
+  // JavaScript files keep the rules above and are not given type information.
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({ ...config, files: ['**/*.ts'] })),
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: { allowDefaultProject: ['*.ts'] },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: { js: 'espree', ts: tseslint.parser, tsx: tseslint.parser, '<template>': 'espree' },
+      },
+    },
+  },
+  {
+    files: ['**/*.ts', '**/*.vue'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      // Remaining any needs a reason on the same line and an entry in src/types/any-budget.json.
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
 ].map(raiseWarnings)
