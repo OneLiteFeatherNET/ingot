@@ -82,8 +82,8 @@ internal class CleanupPlugin : ReposilitePlugin() {
             policies = { cleanupSettings.get().policies },
             // The run is synchronous, so the scheduler can mark the day done once it has ended. The tick runs on the
             // IO pool for the same reason: a run must not hold the scheduler thread.
-            start = { policy ->
-                service.runScheduled(policy.id, CleanupScheduler.dayKey(policy.id, clock))
+            start = { policy, dayLease ->
+                service.runScheduled(policy.id, dayLease)
                     .onError { if (it.status != CONFLICT.code) logger.warn("CLEANUP | Scheduled run of ${policy.id} failed: ${it.message}") }
             },
             claims = claims,
