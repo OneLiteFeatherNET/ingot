@@ -17,9 +17,70 @@
 // Static checks for the data-ingot-* anchors. They read Vue templates with the SFC compiler and never mount a component,
 // so they need no DOM, no clock and no network. Used by anchors.test.js and by the generator in scripts/anchors-doc.mjs.
 
+/// <reference types="node" />
 import { parse } from "@vue/compiler-sfc"
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
+
+// The parts of the Vue template AST that these checks read. @vue/compiler-sfc does not export the node types of the
+// compiler, so the fields are described here, as the parser fills them. The type numbers are the compiler's NodeTypes.
+interface TemplateNode {
+  type: number
+}
+
+export interface TemplateElement extends TemplateNode {
+  tag: string
+  tagType: number
+  props: Prop[]
+  children: TemplateNode[]
+}
+
+interface AttributeProp {
+  type: 6
+  name: string
+  value?: { content: string }
+}
+
+interface DirectiveProp {
+  type: 7
+  name: string
+  arg?: { isStatic?: boolean; content: string }
+  exp?: { content: string }
+}
+
+type Prop = AttributeProp | DirectiveProp
+
+export interface Anchor {
+  attribute: string
+  value: string
+  dynamic: boolean
+}
+
+export interface RegistryEntry {
+  name: string
+  file: string
+  stability: string
+  parts: string[]
+  states: string[]
+  ownElement?: boolean
+}
+
+export interface RegistryAlias {
+  name: string
+  replacedBy: string
+  removeIn: string
+}
+
+export interface Registry {
+  contract: number
+  components: RegistryEntry[]
+  aliases?: RegistryAlias[]
+}
+
+export interface SourceFile {
+  path: string
+  source: string
+}
 
 const PREFIX = "data-ingot-"
 const NODE_ELEMENT = 1
@@ -29,9 +90,9 @@ const TAG_ELEMENT = 0
 const TAG_SLOT = 2
 
 export const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
-export const STATES = Object.freeze(["current", "loading", "error", "empty", "open"])
-export const STABILITY = Object.freeze(["stable", "experimental"])
-export const KNOWN_ATTRIBUTES = Object.freeze([
+export const STATES: readonly string[] = Object.freeze(["current", "loading", "error", "empty", "open"])
+export const STABILITY: readonly string[] = Object.freeze(["stable", "experimental"])
+export const KNOWN_ATTRIBUTES: readonly string[] = Object.freeze([
   "data-ingot-component",
   "data-ingot-component-alias",
   "data-ingot-part",
@@ -43,33 +104,34 @@ export const KNOWN_ATTRIBUTES = Object.freeze([
 
 // Folders that are not annotated yet. The suite skips their components and fails if a registry entry sits in one.
 // The last batch empties the list.
-export const PENDING_AREAS = Object.freeze([])
+export const PENDING_AREAS: readonly string[] = Object.freeze([])
 
 // The only dynamic data-ingot-* bindings. Each reads a value that the same element already shows as text (see the
 // reference page, Decision 4 and 5). Anything else must be a literal.
-export const DYNAMIC_ALLOWLIST = Object.freeze([
+export const DYNAMIC_ALLOWLIST: readonly { file: string; attribute: string }[] = Object.freeze([
   { file: "src/components/repositories/RepositoriesTable.vue", attribute: "data-ingot-repository" },
   { file: "src/components/repositories/RepositoryDetail.vue", attribute: "data-ingot-repository" },
   { file: "src/components/plugins/PluginBlock.vue", attribute: "data-ingot-block" },
   { file: "src/components/plugins/PluginPageView.vue", attribute: "data-ingot-plugin-page" },
 ])
 
-export function areaOf(file) {
+export function areaOf(file: string): string {
   if (file === "src/App.vue") return "App.vue"
   const parts = file.split("/")
   if (parts[1] === "pages") return "pages"
   return parts[2]
 }
 
-function isTransparent(node) {
+function isTransparent(node: TemplateElement) {
   return node.tag === "template" || node.tag === "Teleport" || node.tag === "teleport"
 }
 
-function elementsIn(children, out = []) {
+function elementsIn(children: TemplateNode[], out: TemplateElement[] = []): TemplateElement[] {
   for (const node of children) {
     if (node.type === NODE_ELEMENT) {
-      out.push(node)
-      elementsIn(node.children, out)
+      const element = node as TemplateElement
+      out.push(element)
+      elementsIn(element.children, out)
     }
   }
   return out
@@ -77,14 +139,14 @@ function elementsIn(children, out = []) {
 
 // The elements that Vue renders at the top level. A Teleport or a plain template wrapper is looked through, because the
 // element inside it is what reaches the page. A slot renders content of its parent, not an element of its own.
-function rootsIn(children) {
+function rootsIn(children: TemplateNode[]): TemplateElement[] {
   return children
-    .filter((node) => node.type === NODE_ELEMENT && node.tagType !== TAG_SLOT)
+    .filter((node): node is TemplateElement => node.type === NODE_ELEMENT && (node as TemplateElement).tagType !== TAG_SLOT)
     .flatMap((node) => (isTransparent(node) ? rootsIn(node.children) : [node]))
 }
 
-function anchorsOf(node) {
-  const found = []
+function anchorsOf(node: TemplateElement): Anchor[] {
+  const found: Anchor[] = []
   for (const prop of node.props) {
     if (prop.type === PROP_ATTRIBUTE && prop.name.startsWith(PREFIX)) {
       found.push({ attribute: prop.name, value: prop.value ? prop.value.content : "", dynamic: false })
@@ -101,12 +163,12 @@ function anchorsOf(node) {
   return found
 }
 
-export function inspectTemplate(source, file) {
+export function inspectTemplate(source: string, file: string): { roots: TemplateElement[]; elements: TemplateElement[]; anchors: Anchor[] } {
   const { descriptor, errors } = parse(source, { filename: file })
   if (errors.length > 0) {
     throw new Error(`${file}: ${errors[0].message}`)
   }
-  const children = descriptor.template ? descriptor.template.ast.children : []
+  const children: TemplateNode[] = descriptor.template ? descriptor.template.ast!.children : []
   const elements = elementsIn(children)
   return {
     roots: rootsIn(children),
@@ -119,16 +181,16 @@ export function inspectTemplate(source, file) {
 // components (a card or a dialog around its content), the first plain element of its template.
 // A plain element is an HTML element, or a <component :is> whose rendered element is an HTML element (a button, a link).
 // A static attribute on such a tag lands on the rendered element, so it is a carrier as well.
-const isPlain = (node) => node.tagType === TAG_ELEMENT || node.tag === "component"
+const isPlain = (node: TemplateElement) => node.tagType === TAG_ELEMENT || node.tag === "component"
 
-function carriersOf(roots, elements) {
+function carriersOf(roots: TemplateElement[], elements: TemplateElement[]): TemplateElement[] {
   const native = roots.filter(isPlain)
   if (native.length > 0) return native
   return elements.filter(isPlain).slice(0, 1)
 }
 
 // The root name, the closed attribute set, and the alias attributes of one component.
-export function nameProblems(file, source, entry, registry) {
+export function nameProblems(file: string, source: string, entry: RegistryEntry, registry: Registry): string[] {
   const { roots, elements, anchors } = inspectTemplate(source, file)
   // A component that only hands its props to one child component renders no element of its own. A name on it would
   // land on the child's element, so it has none, and the registry says so with ownElement: false.
@@ -182,7 +244,7 @@ export function nameProblems(file, source, entry, registry) {
   return problems
 }
 
-export function partAndStateProblems(file, source, entry) {
+export function partAndStateProblems(file: string, source: string, entry: RegistryEntry): string[] {
   const { anchors } = inspectTemplate(source, file)
   const parts = anchors.filter((anchor) => anchor.attribute === "data-ingot-part")
   const states = anchors.filter((anchor) => anchor.attribute === "data-ingot-state")
@@ -217,7 +279,7 @@ export function partAndStateProblems(file, source, entry) {
   return problems
 }
 
-export function dynamicProblems(file, source) {
+export function dynamicProblems(file: string, source: string): string[] {
   const { anchors } = inspectTemplate(source, file)
   return anchors
     .filter((anchor) => anchor.dynamic)
@@ -225,10 +287,10 @@ export function dynamicProblems(file, source) {
     .map((anchor) => `${file}: dynamic ${anchor.attribute} binding is not on the allow-list`)
 }
 
-export function registryProblems(registry, files, pendingAreas) {
-  const problems = []
-  const counts = new Map()
-  const registered = new Set()
+export function registryProblems(registry: Registry, files: string[], pendingAreas: readonly string[]): string[] {
+  const problems: string[] = []
+  const counts = new Map<string, number>()
+  const registered = new Set<string>()
 
   for (const entry of registry.components) {
     if (!KEBAB_CASE.test(entry.name)) {
@@ -259,9 +321,9 @@ export function registryProblems(registry, files, pendingAreas) {
   return problems
 }
 
-export function aliasProblems(registry, version) {
+export function aliasProblems(registry: Registry, version: string): string[] {
   const names = new Set(registry.components.map((entry) => entry.name))
-  const problems = []
+  const problems: string[] = []
   for (const alias of registry.aliases ?? []) {
     if (!names.has(alias.replacedBy)) {
       problems.push(`alias "${alias.name}" points at "${alias.replacedBy}", which is not a registered component`)
@@ -273,7 +335,7 @@ export function aliasProblems(registry, version) {
   return problems
 }
 
-function compareVersions(a, b) {
+function compareVersions(a: string, b: string): number {
   const left = a.split(".").map(Number)
   const right = b.split(".").map(Number)
   for (let i = 0; i < 3; i++) {
@@ -286,7 +348,7 @@ function compareVersions(a, b) {
 
 const SELECTOR = /\[data-ingot|querySelector(All)?\([^)]*data-ingot|closest\([^)]*data-ingot/
 
-export function selectorProblems(files) {
+export function selectorProblems(files: SourceFile[]): string[] {
   return files
     .filter((file) => !file.path.startsWith("src/anchors/"))
     .filter((file) => SELECTOR.test(file.source))
@@ -294,11 +356,11 @@ export function selectorProblems(files) {
 }
 
 // Every component of the dashboard that carries an anchor: components without the icons, the pages and App.vue.
-export function listSourceFiles(frontendRoot) {
+export function listSourceFiles(frontendRoot: string): { path: string; area: string }[] {
   const src = join(frontendRoot, "src")
   const relative = [
-    ...readdirSync(join(src, "components"), { recursive: true }).map((path) => `components/${path}`),
-    ...readdirSync(join(src, "pages"), { recursive: true }).map((path) => `pages/${path}`),
+    ...readdirSync(join(src, "components"), { recursive: true, encoding: "utf8" }).map((path) => `components/${path}`),
+    ...readdirSync(join(src, "pages"), { recursive: true, encoding: "utf8" }).map((path) => `pages/${path}`),
     "App.vue",
   ]
   return relative
@@ -310,8 +372,8 @@ export function listSourceFiles(frontendRoot) {
 }
 
 // Every .js, .ts and .vue file under src, for the selector rule.
-export function listSourceTree(frontendRoot) {
-  return readdirSync(join(frontendRoot, "src"), { recursive: true })
+export function listSourceTree(frontendRoot: string): string[] {
+  return readdirSync(join(frontendRoot, "src"), { recursive: true, encoding: "utf8" })
     .filter((path) => path.endsWith(".js") || path.endsWith(".ts") || path.endsWith(".vue"))
     .map((path) => `src/${path}`)
     .sort()

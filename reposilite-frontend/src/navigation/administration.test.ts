@@ -29,17 +29,18 @@ import {
   unlistedRoutes
 } from './registry'
 import { ADMIN_NODES } from '../store/nodeAccess'
+import type { AdminGroup, Can } from './registry'
 
 // `can` answers for a set of nodes. Each test builds its own, so none shares state.
 const everything = () => true
 const nothing = () => false
-const only = (...nodes) => (node) => nodes.includes(node)
+const only = (...nodes: string[]): Can => (node) => nodes.includes(node)
 
-const railLabels = (can) => railGroups(can).flatMap(group => group.pages.map(page => page.label))
-const headingsOf = (groups) => groups.map(group => group.heading).filter(heading => heading !== undefined)
-const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
-const allLinks = (groups) => groups.flatMap(group => group.links)
-const keyOfLabel = (groups, label) => allLinks(groups).find(link => link.label === label)?.key
+const railLabels = (can: Can) => railGroups(can).flatMap(group => group.pages.map(page => page.label))
+const headingsOf = (groups: AdminGroup[]) => groups.map(group => group.heading).filter(heading => heading !== undefined)
+const linksOf = (groups: AdminGroup[], heading: string) => groups.find(group => group.heading === heading)?.links ?? []
+const allLinks = (groups: AdminGroup[]) => groups.flatMap(group => group.links)
+const keyOfLabel = (groups: AdminGroup[], label: string) => allLinks(groups).find(link => link.label === label)?.key
 
 describe('the breadcrumb of an Administration page', () => {
   it('starts with Administration on every Administration page, not with the page itself', () => {
@@ -148,7 +149,7 @@ describe('the Administration tree', () => {
   it('lists no Maven entry for the maven domain, which is edited on the Repositories page', () => {
     const groups = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup', 'web'] })
     expect(allLinks(groups).map(link => link.key), 'no maven key anywhere in the tree').not.toContain('settings:maven')
-    const titles = { javadoc: 'Javadoc', cleanup: 'Cleanup policies' }
+    const titles: Record<string, string> = { javadoc: 'Javadoc', cleanup: 'Cleanup policies' }
     const labelled = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup'], titleOf: (domain) => titles[domain] })
     expect(linksOf(labelled, 'Artifacts').map(link => link.label)).toEqual(['Repositories', 'Cleanup policies', 'Javadoc'])
   })
@@ -239,7 +240,7 @@ describe('route coverage of the new pages', () => {
 describe('plugin pages in the Administration tree', () => {
   afterEach(() => setContributions(null))
 
-  const contributed = (group) => ({
+  const contributed = (group: string) => ({
     version: 1,
     pages: [{ plugin: 'example', id: 'status', title: 'Status', group, area: 'maintenance', blocks: [] }],
     sections: [],

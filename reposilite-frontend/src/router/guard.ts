@@ -31,12 +31,28 @@
  * no access state while the page is still loading.
  */
 
-const managerAccess = ({ isManager, isLogged }) => {
+import type { RouteLocationRaw, RouteRecordName } from 'vue-router'
+import type { RouteMeta } from '../navigation/registry'
+
+export type ManagerAccess = 'granted' | 'denied' | 'sign-in'
+
+// The part of a resolved route that the guards read: its name and its meta.
+export interface GuardRoute {
+  name?: RouteRecordName | null
+  meta?: RouteMeta
+}
+
+// The session options a guard reads. The session may pass more than the guard reads, so other options are accepted.
+interface GuardOptions {
+  [option: string]: unknown
+}
+
+const managerAccess = ({ isManager, isLogged }: { isManager: boolean; isLogged: boolean }): ManagerAccess => {
   if (isManager) return 'granted'
   return isLogged ? 'denied' : 'sign-in'
 }
 
-const createManagerGuard = ({ whenSessionKnown }) => async (to) => {
+const createManagerGuard = ({ whenSessionKnown }: GuardOptions & { whenSessionKnown: () => Promise<unknown> }) => async (to: GuardRoute): Promise<boolean> => {
   if (!to.meta?.manager) {
     return true
   }
@@ -54,7 +70,7 @@ const createManagerGuard = ({ whenSessionKnown }) => async (to) => {
  * so a plain page load is not held back, and the page itself sends the user to the account page
  * when the flag arrives with the session.
  */
-const createPasswordChangeGuard = ({ mustChangePassword }) => (to) => {
+const createPasswordChangeGuard = ({ mustChangePassword }: GuardOptions & { mustChangePassword: () => boolean }) => (to: GuardRoute): true | RouteLocationRaw => {
   if (!mustChangePassword() || to.name === 'account') {
     return true
   }

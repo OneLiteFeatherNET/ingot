@@ -20,22 +20,25 @@
  * segments as a list, and the overview route has none at all.
  */
 
-const segmentsOf = (path) => path.split('/').filter(segment => segment !== '')
+import type { RouteLocationRaw } from 'vue-router'
 
-const qualifierOf = (params = {}) =>
+const segmentsOf = (path: string): string[] => path.split('/').filter(segment => segment !== '')
+
+// The route params of a browse route: `qualifier` is the repository path, one segment per array item.
+const qualifierOf = (params: { qualifier?: string | string[] } = {}): string =>
   [params.qualifier ?? []].flat().filter(segment => segment !== '').join('/')
 
 // The overview is the root of the browser, so the empty path maps to it rather than to a
 // browse route with nothing in it.
-const browseLocation = (path) => {
+const browseLocation = (path: string): RouteLocationRaw => {
   const qualifier = segmentsOf(path)
   return qualifier.length === 0
     ? { name: 'overview' }
     : { name: 'browse', params: { qualifier } }
 }
 
-const parentPathOf = (path) => segmentsOf(path).slice(0, -1).join('/')
+const parentPathOf = (path: string): string => segmentsOf(path).slice(0, -1).join('/')
 
-const childPath = (path, name) => [...segmentsOf(path), name].join('/')
+const childPath = (path: string, name: string): string => [...segmentsOf(path), name].join('/')
 
 export { qualifierOf, browseLocation, parentPathOf, childPath }

@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
-import { pageLabel } from '../navigation/registry'
+import type { RouteRecordName } from 'vue-router'
+import { pageLabel, type RouteMeta } from '../navigation/registry'
 import { qualifierOf } from './paths'
+
+// The part of a resolved route that the title reads.
+export interface TitledRoute {
+  name?: RouteRecordName | null
+  params?: { qualifier?: string | string[]; [param: string]: unknown }
+  meta?: RouteMeta
+}
 
 /*
  * The document title of a route: the repository path while one is browsed, the section name
  * in a manager section, and the site title alone on overview.
  */
-const pageTitle = (route, siteTitle) => {
+const pageTitle = (route: TitledRoute, siteTitle: string): string => {
   if (route.name === 'not-found') {
     return `Not found · ${siteTitle}`
   }

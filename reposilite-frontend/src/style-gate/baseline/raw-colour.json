@@ -55,7 +55,7 @@
     "count": 1
   },
   {
-    "file": "src/theme/settings.js",
+    "file": "src/theme/settings.ts",
     "match": "#006a6a",
     "count": 1
   }

@@ -215,8 +215,8 @@ for dark, and the `prefers-contrast: more` block for both high contrast schemes.
 - `logoDark` replaces the logo in the dark theme, `favicon` replaces the icon, and
   `footerText` is shown as plain text in the footer. `theme-color` is updated when present.
 - The generator is a separate chunk, loaded only when a seed is set (about 20 KB gzipped), so
-  the default theme does not pay for it. Validation lives in `src/theme/settings.js`, and the
-  generator in `src/theme/runtime.js`.
+  the default theme does not pay for it. Validation lives in `src/theme/settings.ts`, and the
+  generator in `src/theme/runtime.ts`.
 - Development: `?theme-seed=%23006a6a` previews a seed without changing the settings. It is
   read only when `import.meta.env.DEV` is true.
 - The settings are fetched from `/api/frontend/settings` in both deployments, bundled or
@@ -734,7 +734,7 @@ The Administration tree is the one navigation of the operator area. These rules 
   that page, never a second entry in the tree.
 - **Two levels.** The tree is a list of groups, each a heading over a list of pages. The headings are Artifacts, Access,
   Instance and Monitoring and support. A group keeps its id, the value a plugin manifest names (Repository, Security, System,
-  Support), and only the heading on screen changes (`GROUP_HEADINGS` in `src/navigation/registry.js`).
+  Support), and only the heading on screen changes (`GROUP_HEADINGS` in `src/navigation/registry.ts`).
 - **Group headings.** A heading is set in the primary colour at title-small, and every group after the first starts with a
   1 pixel `outline-variant` rule above it, so a group reads as a block rather than as one more entry.
 - **Order.** Entries that belong together are adjacent: Audit settings follows Audit log. The pages that are not settings

@@ -17,17 +17,17 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { ROUTES } from './routes'
+import { ROUTES, type AppRoute } from './routes'
 
 // The one list of dashboard segments. The router, the dashboard server and the backend read it,
 // and the Helm chart keeps a committed copy that CI compares with this file. Vitest runs from the
 // frontend module, so the path is taken from there; import.meta.url is not a file URL under jsdom.
-const readSegmentList = () =>
-  JSON.parse(readFileSync(resolve(process.cwd(), 'src/router/dashboard-segments.json'), 'utf8'))
+const readSegmentList = (): string[] =>
+  JSON.parse(readFileSync(resolve(process.cwd(), 'src/router/dashboard-segments.json'), 'utf8')) as string[]
 
 // The first path segment of every route that has a fixed one. The root route and the catch-all
 // have none and are left out, and so is a parameter in the first position.
-const topLevelSegmentsOf = (routes) => [
+const topLevelSegmentsOf = (routes: AppRoute[]) => [
   ...new Set(
     routes
       .map(route => route.path.split('/')[1])

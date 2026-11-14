@@ -25,7 +25,7 @@
  *
  * This module imports @material/material-color-utilities, which is around 21 KB gzipped. It is
  * therefore only loaded by appearance.js when a seed is set; the validation helpers live in
- * settings.js, which the default theme loads.
+ * settings.ts, which the default theme loads.
  */
 
 import {
@@ -42,7 +42,15 @@ import {
   argbFromHex,
   hexFromArgb
 } from '@material/material-color-utilities'
-import { THEME_STYLE_ID, normalizeAppearance, removeTheme, setThemeColour } from './settings'
+import {
+  THEME_STYLE_ID,
+  normalizeAppearance,
+  removeTheme,
+  setThemeColour,
+  type Appearance,
+  type RawAppearance,
+  type SchemeVariant
+} from './settings'
 
 export {
   THEME_STYLE_ID,
@@ -54,8 +62,11 @@ export {
   devSeedFromSearch
 } from './settings'
 
+// A scheme class of the library: each one is built from the source colour, the mode and the contrast level.
+type SchemeClass = new (sourceColorHct: Hct, isDark: boolean, contrastLevel: number) => DynamicScheme
+
 // The settings names map onto the library's schemes one for one. Each class carries its variant.
-const SCHEME_CLASSES = Object.freeze({
+const SCHEME_CLASSES: Readonly<Record<SchemeVariant, SchemeClass>> = Object.freeze({
   MONOCHROME: SchemeMonochrome,
   NEUTRAL: SchemeNeutral,
   TONAL_SPOT: SchemeTonalSpot,
@@ -65,11 +76,16 @@ const SCHEME_CLASSES = Object.freeze({
   CONTENT: SchemeContent
 })
 
-export const schemeClassFor = (name) => SCHEME_CLASSES[name]
+export const schemeClassFor = (name: SchemeVariant): SchemeClass => SCHEME_CLASSES[name]
+
+// The getters of a DynamicScheme that return a colour, which are the only ones a role may name.
+type RoleGetter = {
+  [K in keyof DynamicScheme]: DynamicScheme[K] extends number ? K : never
+}[keyof DynamicScheme]
 
 // Each entry is [CSS role name without the prefix, DynamicScheme getter]. The CSS names must
 // match src/styles/md3/color.css exactly; runtime.test.js checks that against the file.
-const ROLES = Object.freeze([
+const ROLES: readonly (readonly [string, RoleGetter])[] = Object.freeze([
   ['primary', 'primary'],
   ['on-primary', 'onPrimary'],
   ['primary-container', 'primaryContainer'],
@@ -128,11 +144,11 @@ export const ROLE_NAMES = Object.freeze(ROLES.map(([name]) => name))
  * palette of its role, so the seed still decides the neutrals and everything a key colour does
  * not name.
  */
-const schemeFor = (appearance, isDark, contrastLevel) => {
+const schemeFor = (appearance: Appearance, isDark: boolean, contrastLevel: number): DynamicScheme => {
   const sourceColorHct = Hct.fromInt(argbFromHex(appearance.seedColor))
   const Scheme = schemeClassFor(appearance.schemeVariant)
   const base = new Scheme(sourceColorHct, isDark, contrastLevel)
-  const palette = (hex, fallback) => (hex ? TonalPalette.fromInt(argbFromHex(hex)) : fallback)
+  const palette = (hex: string, fallback: TonalPalette) => (hex ? TonalPalette.fromInt(argbFromHex(hex)) : fallback)
 
   return new DynamicScheme({
     sourceColorHct,
@@ -148,12 +164,12 @@ const schemeFor = (appearance, isDark, contrastLevel) => {
   })
 }
 
-const roleValues = (scheme) =>
+const roleValues = (scheme: DynamicScheme): Map<string, string> =>
   new Map(ROLES.map(([name, getter]) => [name, hexFromArgb(scheme[getter])]))
 
 // Declarations for one block: every role, chart series 1 to 3, and the brand gradient.
 // Series 1 is the primary, 2 the tertiary and 3 the secondary; the gradient runs primary to tertiary.
-const declarationsFor = (scheme) => {
+const declarationsFor = (scheme: DynamicScheme): string[] => {
   const values = roleValues(scheme)
   const primary = values.get('primary')
   const secondary = values.get('secondary')
@@ -167,14 +183,14 @@ const declarationsFor = (scheme) => {
   ]
 }
 
-const ruleFor = (selector, scheme, indent = '') =>
+const ruleFor = (selector: string, scheme: DynamicScheme, indent = ''): string =>
   [
     `${indent}${selector} {`,
     ...declarationsFor(scheme).map(line => `${indent}  ${line}`),
     `${indent}}`
   ].join('\n')
 
-const generate = (appearance) => {
+const generate = (appearance: Appearance): { css: string; lightSurface: string } => {
   if (!appearance.seedColor) {
     return { css: '', lightSurface: '' }
   }
@@ -202,13 +218,22 @@ const generate = (appearance) => {
  * The stylesheet for an appearance block, or '' when no seed is set (the default theme).
  * Accepts the raw settings object and validates it first.
  */
-export const buildThemeCss = (raw) => generate(normalizeAppearance(raw)).css
+export const buildThemeCss = (raw?: RawAppearance | null): string => generate(normalizeAppearance(raw)).css
+
+// The five colours of the preview strip. A role that is named here always has a value.
+export interface PreviewRoles {
+  primary: string | undefined
+  secondary: string | undefined
+  tertiary: string | undefined
+  error: string | undefined
+  surface: string | undefined
+}
 
 /*
  * The colours the settings preview shows for a seed, in the light theme: the five roles of the
  * preview strip. Null when no seed is set, because then there is no generated scheme to show.
  */
-export const previewRoles = (raw) => {
+export const previewRoles = (raw?: RawAppearance | null): PreviewRoles | null => {
   const appearance = normalizeAppearance(raw)
   if (!appearance.seedColor) {
     return null
@@ -228,7 +253,7 @@ export const previewRoles = (raw) => {
  * clearing the seed restores the static stylesheet. The theme-color meta is only updated when
  * the page already has one, and it takes the light surface, which is the colour of the header.
  */
-export const applyTheme = (raw, doc = document) => {
+export const applyTheme = (raw?: RawAppearance | null, doc: Document = document): string => {
   const { css, lightSurface } = generate(normalizeAppearance(raw))
 
   if (!css) {
@@ -236,7 +261,7 @@ export const applyTheme = (raw, doc = document) => {
     return ''
   }
 
-  const existing = doc.getElementById(THEME_STYLE_ID)
+  const existing = doc.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
   const style = existing ?? doc.createElement('style')
   style.id = THEME_STYLE_ID
   style.textContent = css

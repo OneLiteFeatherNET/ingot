@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-import { createWebHistory } from 'vue-router'
+import type { Component } from 'vue'
+import { createWebHistory, type Router } from 'vue-router'
 import IndexPage from '../pages/IndexPage.vue'
 import usePlaceholders from '../store/placeholders'
 import { useSession, whenSessionKnown } from '../store/session'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
+import type { Can } from '../navigation/registry'
 
 /*
  * The application's router. It is created when the app starts, not when this module loads:
@@ -29,19 +31,24 @@ import { legacyLocation } from './legacy'
  * The base path is where the dashboard is mounted, so routes are resolved below it and the
  * links the router produces already carry it.
  */
-export function createIngotRouter() {
-  const { basePath, title } = usePlaceholders()
-  const { isManager, can, isLogged, mustChangePassword } = useSession()
+export function createIngotRouter(): Router {
+  // The store is still JavaScript, so the two values it gives are typed here, at the boundary.
+  const { basePath, title } = usePlaceholders() as { basePath: string; title: string }
+  // The store is still JavaScript, so the session values are typed here, at the boundary.
+  const { isManager, can, mustChangePassword } = useSession() as {
+    isManager: { value: boolean }
+    can: Can
+    mustChangePassword: { value: boolean }
+  }
 
   return createAppRouter({
     history: createWebHistory(basePath),
-    component: IndexPage,
+    component: IndexPage as Component,
     legacy: legacyLocation,
     siteTitle: title,
     whenSessionKnown,
     isManager: () => isManager.value,
     can,
-    isLogged: () => isLogged.value,
     mustChangePassword: () => mustChangePassword.value,
     // The same breakpoint as the side navigation: below 1240px it is an index.
     narrow: () => window.matchMedia('(max-width: 1239px)').matches

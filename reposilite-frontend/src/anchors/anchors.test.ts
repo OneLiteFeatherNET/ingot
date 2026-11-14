@@ -30,17 +30,18 @@ import {
   selectorProblems,
 } from "./checks"
 import registry from "./registry.json"
+import type { RegistryAlias, RegistryEntry } from "./checks"
 import { renderAnchorsDoc } from "./render"
 
 // Reads files and nothing else: no server, no clock, no network. Every fixture below is a string built inside its test.
 const FRONTEND_ROOT = resolve(import.meta.dirname, "../..")
 const REPO_ROOT = resolve(import.meta.dirname, "../../..")
-const read = (relative) => readFileSync(`${FRONTEND_ROOT}/${relative}`, "utf8")
+const read = (relative: string) => readFileSync(`${FRONTEND_ROOT}/${relative}`, "utf8")
 
 const REPOSITORIES_TABLE = "src/components/repositories/RepositoriesTable.vue"
 const NAVIGATION_FILE = "src/components/layout/SideNavLayout.vue"
 
-const entryFor = (name, overrides = {}) => ({
+const entryFor = (name: string, overrides: Partial<RegistryEntry> = {}): RegistryEntry => ({
   name,
   file: NAVIGATION_FILE,
   stability: "stable",
@@ -49,7 +50,7 @@ const entryFor = (name, overrides = {}) => ({
   ...overrides,
 })
 
-const registryOf = (components, aliases = []) => ({ contract: 1, components, aliases })
+const registryOf = (components: RegistryEntry[], aliases: RegistryAlias[] = []) => ({ contract: 1, components, aliases })
 
 describe("anchor checks on a single template", () => {
   it("accepts a root element that carries its registered name", () => {
@@ -339,7 +340,7 @@ describe("anchor checks across the dashboard source", () => {
   })
 
   it("has no alias whose removal version is reached", () => {
-    const packageJson = JSON.parse(read("package.json"))
+    const packageJson = JSON.parse(read("package.json")) as { version: string }
     const problems = aliasProblems(registry, packageJson.version)
 
     expect(problems, problems.join("\n")).toEqual([])
