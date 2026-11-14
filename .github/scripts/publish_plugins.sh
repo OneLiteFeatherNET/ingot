@@ -163,6 +163,11 @@ cmd_sign_jars() {
     fi
     require_var PLUGIN_PUBLIC_KEY
     gpg --batch --homedir "$PLUGIN_SIGNING_HOME" --armor --export "$SIGNING_FINGERPRINT" > "$PLUGIN_PUBLIC_KEY"
+    # The fingerprint is public. The private key never leaves the keyring.
+    echo "signing key fingerprint $SIGNING_FINGERPRINT"
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+        echo "- signing key fingerprint \`$SIGNING_FINGERPRINT\`" >> "$GITHUB_STEP_SUMMARY"
+    fi
 }
 
 cmd_check_bundled() {
