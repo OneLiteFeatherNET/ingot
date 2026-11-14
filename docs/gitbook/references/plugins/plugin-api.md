@@ -159,6 +159,25 @@ A repository format is the part of Ingot that knows one layout, such as Maven. T
 
 Every type carries `@ExperimentalIngotFormatApi`, a Kotlin opt-in marker. Code that implements or calls these types needs `@OptIn(ExperimentalIngotFormatApi::class)`, and the members may change until the format SPI is declared stable.
 
+## Storage capabilities (experimental)
+
+A storage provider or its settings states what it can do by implementing an interface of `net.onelitefeather.ingot.storage.capability`. Core asks the interface, so a provider that implements none of them keeps the defaults. The rules are in [Storage capabilities](storage-providers.md#storage-capabilities).
+
+| Type | Implemented on | Purpose |
+| --- | --- | --- |
+| `ClusterCacheAware` | Provider | `bind(clusterBus, maxAge)` once the cluster bus is open, and `invalidate(keys)`. |
+| `ClusterBus` | The cluster plugin | The bus handle that `bind` receives. A provider receives it and does not implement it. It has no members in this version. |
+| `RelatedKeyAware` | Provider | `useRelatedKeys(rule)` for the related keys of the format. |
+| `UsageCapability` | Provider | `reportsUsage`, `supportsQuota` and `totalCapacityBytes()`. |
+| `QuotaSettings` | Settings | `quota`, as configured. |
+| `ReadinessProbe` | Provider | `probe()` returns a `ReadinessOutcome`: `Ok`, `NotFoundOk` or `Failed(reason)`. |
+| `SupportDetails` | Settings or provider | `describe()` returns non-sensitive pairs for the support bundle. |
+| `SharedNamespaceAware` | Settings | `namespaceKey(repositoryName)`, `overlaps(key, otherKey)` and `overlapMessage()`. |
+
+Every type carries `@ExperimentalIngotStorageApi`. Code that implements or calls these types needs `@OptIn(ExperimentalIngotStorageApi::class)`.
+
+`RelatedKeyAware` was also declared as `com.reposilite.storage.s3.RelatedKeyAware`. That name stays on the JVM as a deprecated interface without members, so compiled plugins still link. A provider that implements the old name also implements `net.onelitefeather.ingot.storage.capability.RelatedKeyAware`, which core checks. New code uses the new name.
+
 Limits of this version:
 
 * Formats are found only on the class path of the server, through the service file `META-INF/services/net.onelitefeather.ingot.format.RepositoryFormat`. A format jar in the plugins directory is not loaded yet.
