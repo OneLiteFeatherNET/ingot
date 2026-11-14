@@ -176,6 +176,15 @@ describe('class selectors of the dashboard stylesheets', () => {
   }
 })
 
+describe('scrollbar gutter of the root element', () => {
+  it('reserves the scrollbar gutter on the root element, inside the base layer', () => {
+    const baseLayer = stylesheet.indexOf('@layer base {')
+    const root = stylesheet.indexOf('html {', baseLayer)
+    expect(root, 'a rule for the root element inside the base layer').toBeGreaterThan(baseLayer)
+    expect(blockAt(stylesheet, root), 'the root element keeps the gutter of a classic scrollbar').toContain('scrollbar-gutter: stable')
+  })
+})
+
 describe('reduced motion rule in the stylesheets', () => {
   const sources = [stylesheet, ...['color.css', 'typography.css', 'shape-elevation-motion.css', 'state-layer.css', 'touch-target.css']
     .map(name => readFileSync(join(process.cwd(), 'src', 'styles', 'md3', name), 'utf8'))]

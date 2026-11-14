@@ -213,10 +213,12 @@ describe('AdministrationFrame page header', () => {
     expect(crumbs[1].find('a').exists(), 'the group is not a link').toBe(false)
   })
 
-  it('draws no empty description element when the description is empty', async () => {
+  it('keeps the description line when the description is empty, so the header keeps its height', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', description: '' })
 
-    expect(wrapper.findAll('header p').filter(paragraph => paragraph.text() === ''), 'no empty paragraph in the header').toEqual([])
+    const lines = wrapper.findAll('header p')
+    expect(lines.length, 'one description line in the header').toBe(1)
+    expect(lines[0].text(), 'the line is empty').toBe('')
   })
 
   it('adds the list page as a link to the trail of a detail page, and names the page by its item', async () => {
@@ -405,5 +407,51 @@ describe('AdministrationFrame on the settings pages', () => {
     expect(crumbs[0].find('a').attributes('href'), 'Administration links to /settings').toBe('/settings')
     expect(crumbs[1].find('a').exists(), 'the group is plain text').toBe(false)
     expect(wrapper.get('h1').text(), 'the page is named by its heading').toBe('Audit settings')
+  })
+})
+
+// The rows of the title block do not depend on the page: the first row (back arrow and trail) is always drawn at the
+// minimum height of 48 pixels, the heading is one line with its full text as its title, and the description line is always
+// drawn, so the header is as tall on every page (rework-administration-layout, D3).
+describe('the title block of every administration page', () => {
+  const pages = [
+    ['the Overview', { current: 'overview', overview: true, narrow: true }, '/settings'],
+    ['a group page', { current: undefined, narrow: true }, '/settings'],
+    ['a list page', { current: 'page:users', narrow: true }, '/access/users'],
+    ['a detail page', { current: 'page:audit', detail: true, narrow: true, title: 'e2e-operator' }, '/audit'],
+  ]
+
+  // The first row of the title block: the first child of the block that holds the heading and the description.
+  const firstRowOf = (wrapper) => wrapper.get('header').element.firstElementChild.firstElementChild
+
+  for (const [name, props, url] of pages) {
+    it(`draws the first row of the title block at the minimum height of 48 pixels on ${name}`, async () => {
+      const wrapper = await mountFrame(props, url)
+
+      expect(firstRowOf(wrapper).classList, 'the first row is drawn even when it holds no back arrow or trail').toContain('min-h-12')
+    })
+
+    it(`draws the heading on one line, with its full text as its title, on ${name}`, async () => {
+      const wrapper = await mountFrame(props, url)
+
+      const heading = wrapper.get('h1')
+      expect(heading.classes(), 'the heading is truncated to one line').toContain('truncate')
+      expect(heading.attributes('title'), 'the full heading is the title of the heading').toBe(heading.text())
+    })
+
+    it(`draws the description line with the one-line class, even when the page has no description, on ${name}`, async () => {
+      const wrapper = await mountFrame(props, url)
+
+      const description = wrapper.get('header p')
+      expect(description.classes(), 'the description line is drawn with the one-line class').toEqual(expect.arrayContaining(['truncate', 'min-h-lh']))
+    })
+  }
+
+  it('reserves 48 pixels for the actions row beside the title, so a button row does not change the header height', async () => {
+    const shortcuts = [{ label: 'Audit log', to: { name: 'audit' } }]
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true, shortcuts }, '/audit')
+
+    const actions = wrapper.get('[aria-label="Related pages"]').element.parentElement
+    expect(actions.classList, 'the actions row has the minimum height of 48 pixels').toContain('min-h-12')
   })
 })

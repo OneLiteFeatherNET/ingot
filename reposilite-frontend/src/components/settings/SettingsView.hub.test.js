@@ -212,6 +212,14 @@ describe('the Overview page at /settings', () => {
     expect(wrapper.text()).toContain('Loading configuration')
   })
 
+  it('reserves the height of the first row of the page for the loading text, so the page does not shrink when it arrives', async () => {
+    await mountAt({ loaded: false, hang: true })
+
+    const loading = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Loading configuration')
+    expect(loading, 'the loading paragraph is drawn').toBeDefined()
+    expect(loading.classes(), 'the loading text has the minimum height of the header row (48 pixels)').toContain('min-h-12')
+  })
+
   it('draws the dashboard link to a visitor with the dashboard node', async () => {
     await mountAt()
 
