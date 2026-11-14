@@ -82,6 +82,10 @@ internal class OpenSearchSearchBackend(
     private val writer = OpenSearchWriter(http, breaker, alias, settings.bulkSize, redactor)
     private val reader = OpenSearchReader(client, alias) { status() }
 
+    /** The uuid of the physical index, read at [open]; null before the backend is open. */
+    @Volatile
+    private var identity: String? = null
+
     override val id: String = OpenSearchBackendFactory.ID
 
     /** The cluster cannot commit with the cursor of a rebuild, so the rebuild applies its page first and commits the cursor after. */
@@ -101,15 +105,20 @@ internal class OpenSearchSearchBackend(
                 val indices = mapper.readTree(answer.body).fieldNames().asSequence().toList()
                 check(indices.size == 1) { "the alias $alias points to ${indices.size} indices, one is expected" }
                 verifyVersion(indices.single())
+                identity = indexUuid(indices.single())
             }
             404 -> {
                 createIndex()
                 verifyVersion(physical)
                 client.read("POST", "/_aliases", mapOf("actions" to listOf(mapOf("add" to mapOf("index" to physical, "alias" to alias)))))
+                identity = indexUuid(physical)
             }
             else -> throw IllegalStateException(redactor.redact("the alias $alias cannot be read, the cluster answered ${answer.status}"))
         }
     }
+
+    /** The uuid of the physical index that the alias points to, read at [open]. An operator who recreates the index gets a new uuid. */
+    override fun indexIdentity(): String? = identity
 
     /** Nothing to release: the connections belong to the JDK client, which closes with the process. */
     override fun close() = Unit
@@ -279,6 +288,14 @@ internal class OpenSearchSearchBackend(
 
     /** The refresh interval of the index. No connection detail is reported: the URL, the user name and the password stay out. */
     override fun properties(): Map<String, String> = mapOf("refreshInterval" to OpenSearchIndexDefinition.REFRESH_INTERVAL)
+
+    /** The uuid of [index] from its settings. A reply without one is an error, as the rebuild cursor could not be checked. */
+    private fun indexUuid(index: String): String {
+        val uuid = client.read("GET", "/$index/_settings/index.uuid").path(index)
+            .path("settings").path("index").path("uuid").asText()
+        check(uuid.isNotBlank()) { "the index $index reports no uuid" }
+        return uuid
+    }
 
     // ---- writes by query ----------------------------------------------------------------------------------------------
 
