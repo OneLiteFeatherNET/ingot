@@ -1169,3 +1169,36 @@ jobs:
 
       - name: "Run the workflow script tests"
         run: python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests -v
+
+  # The required check for everything that must stay fast. It is green when each light job succeeded or was skipped,
+  # and red when one failed or was cancelled. The summary lists each light job's duration against its budget, and a
+  # job over budget only warns, so a slow runner does not block a merge. Container images, the Helm chart, the HA smoke
+  # test and the dashboard end-to-end job are heavy and are not part of it.
+  light-checks:
+    name: "Light checks"
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, script-tests]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      # The job list of this run. The jobs of this run that are still running have no end time and are left out.
+      - name: "Read the job durations"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
+            --jq '{jobs: .jobs}' | jq -s '{jobs: map(.jobs) | add}' > "$RUNNER_TEMP/jobs.json" \
+            || echo '{"jobs":[]}' > "$RUNNER_TEMP/jobs.json"
+
+      - name: "Check the light jobs and report their durations"
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          JOBS_FILE: ${{ runner.temp }}/jobs.json
+        run: |
+          set -o pipefail
+          python3 .github/scripts/light_checks.py | tee -a "$GITHUB_STEP_SUMMARY"
