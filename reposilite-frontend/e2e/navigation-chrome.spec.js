@@ -112,10 +112,8 @@ test.describe('top bar alignment', () => {
       const bar = await edgesOf(topBar(page))
       const navigation = await edgesOf(rail(page))
 
-      // The root element reserves the scrollbar gutter (scrollbar-gutter: stable), so the page ends at the gutter, not at the window.
-      const pageRight = await page.evaluate(() => document.body.getBoundingClientRect().right)
       expect(bar.left, 'the bar starts at the right edge of the rail').toBe(navigation.right)
-      expect(bar.right, 'the bar reaches the right edge of the page, which ends at the scrollbar gutter').toBe(pageRight)
+      expect(bar.right, 'the bar reaches the window edge').toBe(width)
       expect(bar.top, 'the bar is at the top of the window').toBe(0)
     })
 

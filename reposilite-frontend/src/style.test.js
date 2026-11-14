@@ -176,6 +176,26 @@ describe('class selectors of the dashboard stylesheets', () => {
   }
 })
 
+describe('top bar bleed utility', () => {
+  const utilityAt = stylesheet.indexOf('@utility top-bar-bleed {')
+
+  it('is declared as a utility in src/style.css', () => {
+    expect(utilityAt, 'a @utility top-bar-bleed block in src/style.css').toBeGreaterThanOrEqual(0)
+  })
+
+  it('pulls the bar over the scrollbar gutter and pads it back, so the bar reaches the window edge', () => {
+    const block = blockAt(stylesheet, utilityAt)
+    expect(block, 'the negative margin of the gutter').toContain('margin-right: calc(100% - 100vw)')
+    expect(block, 'the padding that keeps the content in place').toContain('padding-right: calc(100vw - 100%)')
+  })
+
+  it('accounts for the 96 pixel rail in top-bar-bleed-rail from 600 pixels', () => {
+    const at = stylesheet.indexOf('@utility top-bar-bleed-rail {')
+    expect(at, 'a @utility top-bar-bleed-rail block').toBeGreaterThanOrEqual(0)
+    expect(blockAt(stylesheet, at), 'the margin takes the rail width off the body width').toContain('var(--spacing-md-rail)')
+  })
+})
+
 describe('scrollbar gutter of the root element', () => {
   it('reserves the scrollbar gutter on the root element, inside the base layer', () => {
     const baseLayer = stylesheet.indexOf('@layer base {')

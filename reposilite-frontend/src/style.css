@@ -128,6 +128,11 @@
    */
   html {
     scrollbar-gutter: stable;
+    /*
+     * The top bar reaches the window edge, inside the gutter, so the page is wider than its client area by the gutter. The
+     * viewport clips that overflow, so no horizontal scrollbar appears. Nothing on the dashboard scrolls sideways.
+     */
+    overflow-x: clip;
   }
 
   /*
@@ -212,6 +217,36 @@
  * side padding that several views rely on without writing it themselves: 16px in a compact window and 24px from the
  * medium window class. A view's own px-* utility is not used on a container (see window-margins.test.js).
  */
+/*
+ * The top bar paints over the scrollbar gutter of the root element (see the html rule of the base layer). The body is
+ * narrower than the window by that gutter, so a negative margin of the same size brings the bar to the window edge, and
+ * the padding takes the size back, so the bar's content keeps its place. From 1600 pixels the bar keeps its 16px inset.
+ * On a page with the navigation rail the page wrapper starts 96 pixels in from 600 pixels, so the bar's containing block
+ * is that much narrower: top-bar-bleed-rail accounts for it. Without the rail the body is the containing block.
+ */
+@utility top-bar-bleed {
+  margin-right: calc(100% - 100vw);
+  padding-right: calc(100vw - 100%);
+
+  @media (width >= 1600px) {
+    padding-right: calc(100vw - 100% + 1rem);
+  }
+}
+
+@utility top-bar-bleed-rail {
+  margin-right: calc(100% - 100vw);
+  padding-right: calc(100vw - 100%);
+
+  @media (width >= 600px) {
+    margin-right: calc(100% + var(--spacing-md-rail) - 100vw);
+    padding-right: calc(100vw - 100% - var(--spacing-md-rail));
+  }
+
+  @media (width >= 1600px) {
+    padding-right: calc(100vw - 100% - var(--spacing-md-rail) + 1rem);
+  }
+}
+
 @utility container {
   padding-inline: var(--md-sys-window-margin-compact);
 

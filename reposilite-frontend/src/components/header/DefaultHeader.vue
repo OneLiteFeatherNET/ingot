@@ -15,6 +15,7 @@
   -->
 
 <script setup>
+import { computed } from 'vue'
 import usePlaceholders from '../../store/placeholders'
 import MenuPanel from './MenuPanel.vue'
 
@@ -25,11 +26,19 @@ import MenuPanel from './MenuPanel.vue'
  * Reading pages keep their own measure at the start of the content column, and the title row does not follow it.
  */
 const { title } = usePlaceholders()
+
+// The bar paints over the scrollbar gutter (see top-bar-bleed in style.css). On a page with the navigation rail the
+// page wrapper starts 96 pixels in from 600 pixels, which the bar's bleed has to account for.
+const props = defineProps({
+  railed: { type: Boolean, default: false }
+})
+const bleed = computed(() => (props.railed ? 'top-bar-bleed-rail' : 'top-bar-bleed'))
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-30 bg-surface-container text-on-surface xlarge:pr-4"
+    class="sticky top-0 z-30 bg-surface-container text-on-surface"
+    :class="bleed"
     data-ingot-component="default-header"
   >
     <!-- The top app bar: the title on the left, the account actions on the right. -->

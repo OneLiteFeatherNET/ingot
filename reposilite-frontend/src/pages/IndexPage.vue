@@ -335,7 +335,7 @@ const activeLabel = computed(() => pageLabel(section.value))
       the bottom of the window. From 1600px the sheet also rounds its top right corner and keeps
       a 16px gap to the window edge.
     -->
-    <DefaultHeader />
+    <DefaultHeader :railed="hasNavigation" />
     <!--
       The corners stay put while the page scrolls: the sheet's own corner scrolls under the top
       bar with the rest of the page, so these two sticky pieces paint the same corners again at the

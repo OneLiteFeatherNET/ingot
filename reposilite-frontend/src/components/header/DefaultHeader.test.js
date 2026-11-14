@@ -54,10 +54,10 @@ describe('DefaultHeader', () => {
     expect(wrapper.find('header').classes()).toEqual(expect.arrayContaining(['sticky', 'top-0']))
   })
 
-  it('ends the bar 16px short of the window from 1600px up, as the content sheet does', () => {
+  it('paints the bar over the scrollbar gutter, and keeps its 16px inset from 1600px up, as the content sheet does', () => {
     const wrapper = mountHeader()
 
-    expect(wrapper.find('header').classes(), 'the bar and the sheet share one right edge').toContain('xlarge:pr-4')
+    expect(wrapper.find('header').classes(), 'the bar reaches the window edge through the bleed utility (see style.css)').toContain('top-bar-bleed')
   })
 
   it('places the title in the container the page content uses, so both start at one x', () => {
