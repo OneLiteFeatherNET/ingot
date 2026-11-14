@@ -56,6 +56,26 @@ const dashboardText = () => ({
   },
 })
 
+/*
+ * The comments of the source document are for the people who edit it: the license notice of the file and the
+ * section markers. Vite copies them into the built page, where every visitor would receive the notice. Comments
+ * inside script and style elements are left alone, and so are conditional comments, which browsers read.
+ */
+const COMMENT_OR_RAW_TEXT = /(<(script|style)\b[\s\S]*?<\/\2\s*>)|(<!--[\s\S]*?-->)/gi
+const CONDITIONAL_COMMENT = /^<!--(\[if\b|<!\[endif\])/
+
+export const stripHtmlComments = () => ({
+  name: 'ingot-strip-html-comments',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'post',
+    handler: (html) => html.replace(COMMENT_OR_RAW_TEXT, (match, rawText, _tag, comment) => {
+      if (rawText !== undefined || comment === undefined) return match
+      return CONDITIONAL_COMMENT.test(comment) ? match : ''
+    }),
+  },
+})
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -68,6 +88,7 @@ export default defineConfig({
     visualizer(),
     mountPoint(),
     ...(dashboardBuild ? [dashboardText()] : []),
+    stripHtmlComments(),
   ],
   // Served by the server itself, the placeholder is substituted on the way out and the
   // asset URLs come out right. Served by anything else nothing substitutes it, and since
