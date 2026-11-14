@@ -172,10 +172,14 @@ class CiSbomJobTest(unittest.TestCase):
             "the sbom job must hold contents: read and nothing else, so no identity token is requested",
         )
 
-    def test_sbom_job_runs_on_pull_requests_only(self):
+    def test_sbom_job_skips_pushes(self):
         condition = str(self.workflow["jobs"]["sbom"].get("if", ""))
 
-        self.assertIn("github.event_name == 'pull_request'", condition)
+        self.assertIn(
+            "github.event_name != 'push'",
+            condition,
+            "the sbom job runs on pull requests and the nightly schedule, not on a push to main",
+        )
 
     def test_sbom_job_validates_the_generated_sboms(self):
         steps = self.workflow["jobs"]["sbom"]["steps"]
