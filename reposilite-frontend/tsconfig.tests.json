@@ -1,7 +1,7 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["src/**/*.test.ts", "src/**/*.ts", "src/**/*.vue", "src/**/*.js", "src/env.d.ts", "e2e/**/*"],
-  "exclude": ["node_modules", "src/**/*.test.js", "src/**/*TestKit.js"],
+  "exclude": ["node_modules", "src/**/*.test.js", "src/**/*TestKit.js", "src/components/migration/testing.js"],
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",
