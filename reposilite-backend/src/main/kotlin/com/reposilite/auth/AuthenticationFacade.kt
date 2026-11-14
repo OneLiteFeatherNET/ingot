@@ -16,6 +16,10 @@
 
 package com.reposilite.auth
 
+import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.Expiry
+import com.github.benmanes.caffeine.cache.Cache as CaffeineCache
+import com.github.benmanes.caffeine.cache.Ticker as CaffeineTicker
 import com.google.common.cache.Cache
 import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
@@ -41,16 +45,19 @@ import com.reposilite.token.api.AccessTokenDto
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
+import panda.std.reactive.Subscriber
 import java.time.Clock
 import java.time.Duration
 import java.util.SortedSet
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.TimeUnit.HOURS
 import java.util.concurrent.TimeUnit.NANOSECONDS
 
 private data class FailedAttempt(
     val count: Int,
-    val firstFailureMillis: Long
+    /** Clock time of the attempt that reached the limit, null while the limit has not been reached. */
+    val limitReachedMillis: Long?,
+    /** Clock time of the last failed attempt, from which the lifetime of the record is counted. */
+    val writtenAtMillis: Long,
 )
 
 class AuthenticationFacade(
@@ -69,6 +76,9 @@ class AuthenticationFacade(
          * write and not from the last hit, so that a credential in continuous use is checked again once per bound.
          */
         val CREDENTIAL_CACHE_MAX_AGE: Duration = Duration.ofMinutes(1)
+
+        /** Lower bound for the lifetime of a failure record, which is longer whenever the ban is longer. */
+        private val FAILED_ATTEMPT_MIN_LIFETIME: Duration = Duration.ofHours(1)
     }
 
     /**
@@ -93,16 +103,45 @@ class AuthenticationFacade(
     private val cacheLock = Any()
     private val tokenGeneration = AtomicLong()
 
-    private val failedAttempts: Cache<String, FailedAttempt> by lazy {
-        CacheBuilder
+    /**
+     * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
+     * forgotten while the ban it started is still running, also when the ban duration is changed at runtime.
+     */
+    private val failedAttempts: CaffeineCache<String, FailedAttempt> by lazy {
+        Caffeine
             .newBuilder()
-            .concurrencyLevel(2)
-            .expireAfterWrite(1, HOURS)
+            .ticker(CaffeineTicker { clock.millis() * 1_000_000L })
+            .expireAfter(failedAttemptExpiry)
             .build()
         }
 
+    private val failedAttemptExpiry = object : Expiry<String, FailedAttempt> {
+
+        override fun expireAfterCreate(key: String, value: FailedAttempt, currentTime: Long): Long =
+            failedAttemptLifetime().toNanos()
+
+        override fun expireAfterUpdate(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long =
+            failedAttemptLifetime().toNanos()
+
+        override fun expireAfterRead(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long {
+            val remainingMillis = value.writtenAtMillis + failedAttemptLifetime().toMillis() - clock.millis()
+            return maxOf(0L, remainingMillis) * 1_000_000L
+        }
+
+    }
+
+    /** Rewrites every failure record, so that its lifetime is counted again with the current ban duration. */
+    private fun refreshFailedAttemptLifetimes() {
+        failedAttempts.asMap().forEach { (ip, attempt) -> failedAttempts.put(ip, attempt) }
+    }
+
+    private fun failedAttemptLifetime(): Duration =
+        maxOf(FAILED_ATTEMPT_MIN_LIFETIME, Duration.ofSeconds(bruteForceProtectionSettings.map { it.banDurationSeconds }))
+
     init {
         accessTokenFacade.onTokenChanged { forgetCachedCredentials(it) }
+        // A longer ban must also keep the records that were written before the change
+        bruteForceProtectionSettings.subscribe(Subscriber { refreshFailedAttemptLifetimes() })
     }
 
     fun registerAuthenticator(authenticator: Authenticator) {
@@ -193,15 +232,25 @@ class AuthenticationFacade(
             return false
         }
 
-        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
-        val trackedDuration = System.currentTimeMillis() - attempt.firstFailureMillis
+        if (attempt.limitReachedMillis == null) {
+            return false
+        }
 
-        if (trackedDuration < banDuration) {
+        if (isBanned(attempt)) {
             return true // Host is still blocked
         }
 
         failedAttempts.invalidate(ip) // Ban duration has passed, unblocking the host
         return false
+    }
+
+    /**
+     * The ban lasts the configured duration counted from the attempt that reached the limit, on the injected clock.
+     */
+    private fun isBanned(attempt: FailedAttempt): Boolean {
+        val reachedAt = attempt.limitReachedMillis ?: return false
+        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
+        return clock.millis() - reachedAt < banDuration
     }
 
     private fun trackBruteForceAttempt(ip: String, success: Boolean) {
@@ -210,15 +259,23 @@ class AuthenticationFacade(
         }
 
         if (success) {
-            failedAttempts.invalidate(ip)
+            val current = failedAttempts.getIfPresent(ip)
+            // A valid login from a shared address must not lift a ban that is still running
+            if (current == null || !isBanned(current)) {
+                failedAttempts.invalidate(ip)
+            }
             return
         }
 
         val current = failedAttempts.getIfPresent(ip)
+        val count = (current?.count ?: 0) + 1
+        val maxAttempts = bruteForceProtectionSettings.map { it.maxAttempts }
+        val now = clock.millis()
         val updated =
             FailedAttempt(
-                count = (current?.count ?: 0) + 1,
-                firstFailureMillis = current?.firstFailureMillis ?: System.currentTimeMillis()
+                count = count,
+                limitReachedMillis = if (count >= maxAttempts) current?.limitReachedMillis ?: now else null,
+                writtenAtMillis = now,
             )
         failedAttempts.put(ip, updated)
 
