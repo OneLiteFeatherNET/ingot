@@ -30,8 +30,11 @@ import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
+import com.reposilite.web.api.describeSecuritySchemes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
+import net.onelitefeather.ingot.identity.session.SessionCookies
 import com.reposilite.web.infrastructure.ApiCacheBypassHandler
 import com.reposilite.web.infrastructure.EndpointAccessLoggingHandler
 import com.reposilite.web.infrastructure.createReposiliteDsl
@@ -221,14 +224,15 @@ internal object JavalinConfiguration {
                     it.description(frontendSettings.description)
                     it.version(VERSION)
                 }
-                // The two credential forms the API accepts: an access token as HTTP Basic, and the bearer session of a login.
-                // Routes that need a login refer to them by name, so a generated client knows to send either one.
+                // The credentials the API accepts: an access token as HTTP Basic or as a bearer value, and the browser session
+                // cookie of a login. Routes that need a login list them as alternatives, so a generated client sends one of them.
                 builder.withBasicAuth(TOKEN_BASIC_SCHEME) { }
                 builder.withBearerAuth(SESSION_BEARER_SCHEME) { }
+                builder.withCookieAuth(SESSION_COOKIE_SCHEME, SessionCookies.SESSION) { }
             }
             // Enums that grow get x-extensible-enum, so clients accept values they do not know yet.
             openapi.withDefinitionProcessor { document ->
-                ExtensibleEnumSchemas.apply(document, listOf(RunTrigger::class.java)).toString()
+                describeSecuritySchemes(ExtensibleEnumSchemas.apply(document, listOf(RunTrigger::class.java))).toString()
             }
         })
     }
