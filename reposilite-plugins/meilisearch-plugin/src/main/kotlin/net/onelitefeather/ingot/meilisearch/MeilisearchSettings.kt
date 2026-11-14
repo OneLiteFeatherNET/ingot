@@ -44,6 +44,8 @@ internal class MeilisearchSettings private constructor(
     val taskWaitSeconds: Int,
     /** Documents per upsert request. */
     val batchSize: Int,
+    /** Files read for a group sort by modification or size, the aggregates of the groups (gap G4). */
+    val aggregateSortLimit: Int,
 ) {
 
     companion object {
@@ -52,6 +54,7 @@ internal class MeilisearchSettings private constructor(
         const val DEFAULT_TIMEOUT_SECONDS: Int = 30
         const val DEFAULT_TASK_WAIT_SECONDS: Int = 20
         const val DEFAULT_BATCH_SIZE: Int = 1000
+        const val DEFAULT_AGGREGATE_SORT_LIMIT: Int = 100_000
 
         private val INDEX_UID = Regex("[A-Za-z0-9_-]{1,64}")
 
@@ -78,6 +81,7 @@ internal class MeilisearchSettings private constructor(
                 timeoutSeconds = variables.integer("TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS, 1..300),
                 taskWaitSeconds = variables.integer("TASK_WAIT_SECONDS", DEFAULT_TASK_WAIT_SECONDS, 1..60),
                 batchSize = variables.integer("BATCH_SIZE", DEFAULT_BATCH_SIZE, 1..10_000),
+                aggregateSortLimit = variables.integer("AGGREGATE_SORT_LIMIT", DEFAULT_AGGREGATE_SORT_LIMIT, 1..1_000_000),
             )
             if (allowHttp) log(PLAIN_HTTP_WARNING)
             return settings

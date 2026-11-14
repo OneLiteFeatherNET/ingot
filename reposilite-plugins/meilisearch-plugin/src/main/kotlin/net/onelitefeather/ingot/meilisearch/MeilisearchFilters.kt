@@ -1,0 +1,115 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@file:OptIn(ExperimentalIngotSearchApi::class)
+
+package net.onelitefeather.ingot.meilisearch
+
+import net.onelitefeather.ingot.search.SearchUnavailableException
+import net.onelitefeather.ingot.search.access.PathPredicate
+import net.onelitefeather.ingot.search.access.SearchAccess
+import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+
+/**
+ * The filter expressions of the Meilisearch backend (design D6). The access value of a caller becomes one filter of every
+ * request, so no row outside it is ever returned. A path predicate is rendered from the directories of a row, which hold every
+ * ancestor directory of its path, so no string range is needed. A `Legacy` predicate is refused: a plain string prefix cannot be
+ * expressed in this filter language.
+ */
+internal object MeilisearchFilters {
+
+    /** Matches every document: every document has an id. */
+    const val ALL_ROWS: String = "id EXISTS"
+
+    /** Matches no document. */
+    const val NO_ROWS: String = "id NOT EXISTS"
+
+    /**
+     * The filter of an access value, or null when the caller has no repository at all, so that the answer is empty without a
+     * request. Each repository is one condition on its repository and its path predicate; the conditions are joined with or.
+     */
+    fun access(access: SearchAccess): String? {
+        val parts = access.repositories.map { entry ->
+            val repository = "repository = ${quote(entry.repository)}"
+            if (entry.path == PathPredicate.All) {
+                "($repository)"
+            } else {
+                "($repository AND ${path(entry.path)})"
+            }
+        }
+        return when (parts.size) {
+            0 -> null
+            1 -> parts.single()
+            else -> parts.joinToString(separator = " OR ", prefix = "(", postfix = ")")
+        }
+    }
+
+    /** The directories of a path: every ancestor directory from the top down, for example `a/b` for `a/b/c.jar`. */
+    fun directoriesOf(path: String): List<String> {
+        val segments = path.split('/')
+        return (1 until segments.size).map { segments.subList(0, it).joinToString("/") }
+    }
+
+    /** The condition of a path predicate over the path and the directories of a row. */
+    fun path(predicate: PathPredicate): String = when (predicate) {
+        PathPredicate.All -> ALL_ROWS
+        PathPredicate.Never -> NO_ROWS
+        is PathPredicate.Exact -> pathOrDirectory(predicate.prefix)
+        is PathPredicate.Subtree -> pathOrDirectory(predicate.segments.joinToString("/"))
+        is PathPredicate.Legacy -> throw SearchUnavailableException("legacy grants are not supported by the meilisearch backend")
+        is PathPredicate.Conjunction -> if (predicate.parts.isEmpty()) {
+            ALL_ROWS
+        } else {
+            predicate.parts.joinToString(separator = " AND ", prefix = "(", postfix = ")") { path(it) }
+        }
+        is PathPredicate.Precedence -> precedence(predicate)
+    }
+
+    /**
+     * The first match rule (design D6): a rule allows a row when the row matches its condition and no earlier rule matches it.
+     * The allowed rules are joined with or; no allowed rule matches nothing.
+     */
+    private fun precedence(predicate: PathPredicate.Precedence): String {
+        val earlier = mutableListOf<String>()
+        val allowed = mutableListOf<String>()
+        predicate.rules.forEach { rule ->
+            val condition = path(rule.condition)
+            if (rule.allowed) {
+                allowed += if (earlier.isEmpty()) {
+                    "($condition)"
+                } else {
+                    "($condition AND NOT (${earlier.joinToString(" OR ")}))"
+                }
+            }
+            earlier += condition
+        }
+        return when (allowed.size) {
+            0 -> NO_ROWS
+            1 -> allowed.single()
+            else -> allowed.joinToString(separator = " OR ", prefix = "(", postfix = ")")
+        }
+    }
+
+    private fun pathOrDirectory(path: String): String =
+        "(path = ${quote(path)} OR directories = ${quote(path)})"
+
+    /** A string value of the filter language, with the backslash and the quote escaped. */
+    fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    /** A list of values as the `IN` list of the filter language. */
+    fun inList(values: Collection<String>): String = values.joinToString(separator = ", ", prefix = "[", postfix = "]") { quote(it) }
+
+}
