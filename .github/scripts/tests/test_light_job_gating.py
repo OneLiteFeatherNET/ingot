@@ -78,6 +78,24 @@ class LightJobGatingTest(unittest.TestCase):
         self.assertIn(f"{SCOPE}.outputs.image == 'true'", text)
         self.assertIn(f"{SCOPE}.outputs.chart == 'true'", text)
 
+    def test_script_tests_job_runs_the_workflow_script_tests(self):
+        block = job_block(self.workflow, "script-tests")
+        self.assertIsNotNone(block, "ci.yml has no script-tests job")
+        self.assertIn('name: "Workflow script tests"', block)
+        self.assertIn("python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests", block)
+        self.assertIn("pyyaml", block)
+        self.assertIn("jsonschema", block)
+
+    def test_script_tests_job_runs_when_the_pull_request_touches_github_files(self):
+        # The scope step turns image and chart on together only for a path it cannot place, and a workflow or
+        # script edit is one of those.
+        block = job_block(self.workflow, "script-tests")
+        text = condition(block)
+        self.assertIn("needs: coverage-changes", block)
+        self.assertIn(f"{SCOPE}.result != 'success'", text)
+        self.assertIn(f"{SCOPE}.outputs.image == 'true' && {SCOPE}.outputs.chart == 'true'", text)
+        self.assertIn("github.event_name != 'push'", text)
+
     def test_jobs_that_gate_nothing_stay_free_of_the_scope_step(self):
         # Container images, the Helm chart and the HA smoke test are heavy jobs and are not touched here.
         for job in ("images", "chart", "ha-smoke", "dashboard-e2e"):
