@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref, reactive } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { computeAccessibleName } from 'dom-accessibility-api'
 import MenuPanel from './MenuPanel.vue'
 
 // The session and the theme are replaced, so each test states who is signed in and which theme is on.
@@ -82,13 +83,27 @@ describe('MenuPanel, signed in', () => {
     return mounted
   }
 
-  it('shows the account as one button, named after the signed in user', () => {
+  it('shows the account as one button, with the name of the user in it', () => {
     mounted = mountPanel()
 
     const triggers = mounted.wrapper.findAll('button[aria-haspopup="menu"]')
     expect(triggers, 'one account button').toHaveLength(1)
-    expect(triggers[0].attributes('aria-label'), 'the visible name is the accessible name, so no label overrides it').toBeUndefined()
     expect(triggers[0].text(), 'the name is part of the button').toContain('Alice Example')
+  })
+
+  it('names the account button Account menu, followed by the name of the user', () => {
+    mounted = mountPanel()
+
+    const trigger = accountTrigger(mounted.wrapper).element
+    expect(computeAccessibleName(trigger), 'a screen reader hears that the button opens a menu, and whose').toBe('Account menu for Alice Example')
+  })
+
+  it('computes the account button name from its content, so the visible name is part of it', () => {
+    mounted = mountPanel()
+
+    const trigger = accountTrigger(mounted.wrapper).element
+    expect(trigger.hasAttribute('aria-label'), 'no label overrides the content (WCAG 2.5.3, Label in Name)').toBe(false)
+    expect(computeAccessibleName(trigger), 'the visible name is contained in the accessible name').toContain('Alice Example')
   })
 
   it('draws the first letter of the name as the avatar, hidden from assistive technology', () => {
