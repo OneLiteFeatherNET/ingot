@@ -133,6 +133,7 @@
 * [References](references/README.md)
 * [Architecture](references/architecture/README.md)
   * [Architecture overview](references/architecture/architecture-overview.md)
+  * [Deployment modes](references/architecture/deployment-modes.md)
   * [Backend architecture](references/architecture/backend-architecture.md)
   * [High availability support](references/architecture/high-availability-support.md)
   * [Multi-replica operation](references/architecture/multi-replica-operation.md)
