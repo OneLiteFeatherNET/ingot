@@ -7,6 +7,7 @@ description: Architecture of Ingot. Lists the pages that explain the parts, the 
 These pages explain how the parts of Ingot work and why. [Architecture overview](architecture-overview.md) is the map.
 
 * [Architecture overview](architecture-overview.md)
+* [Deployment modes](deployment-modes.md)
 * [Backend architecture](backend-architecture.md)
 * [High availability support](high-availability-support.md)
 * [Multi-replica operation](multi-replica-operation.md)
