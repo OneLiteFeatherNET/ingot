@@ -140,7 +140,7 @@ Behavior of the entrypoint:
 | No `--working-directory` or `-wd` in the options | `--working-directory=/app/data` is added in front of the options. |
 | Container starts as a user other than root | `PUID`, `PGID` and `INGOT_FORCE_CHOWN` are not read. The server starts as that user. |
 | Container starts as root | The `reposilite` account is set to `PUID` and `PGID`. Then the data directory owner is compared with these ids. When they differ, or when `INGOT_FORCE_CHOWN` is `true`, `/app` and `/var/log/reposilite` are changed to the service account. A warning about the changed owner is printed when the data directory owner differs. The server then runs as `reposilite`. |
-| Log files | The entrypoint sets `-Dtinylog.writerFile.file=/var/log/reposilite/log_{date}.txt` and `-Dtinylog.writerFile.latest=/var/log/reposilite/latest.log`. |
+| Log files | The entrypoint sets `-Dtinylog.writerFile.file=/var/log/reposilite/log_{date}.txt` and `-Dtinylog.writerFile.latest=/var/log/reposilite/latest.log`. With `INGOT_LOG_FILE=false` no file is written there. See [Logging](#logging). |
 
 The Compose files in the repository read `PORT`, `MEMORY`, `JAVA_COMPOSE_OPTS` and `INGOT_COMPOSE_OPTS` from a `.env` file and build `JAVA_OPTS` and `INGOT_OPTS` from them. These four names are Compose variables. The server does not read them.
 
@@ -267,6 +267,18 @@ The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in 
 | `INGOT_OPENSEARCH_REPLICAS` | `REPOSILITE_OPENSEARCH_REPLICAS` | `1` | 0 to 10 | Replicas of the index, set when the index is created. |
 
 The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../../configure/search/choose-a-search-backend.md).
+
+### Logging
+
+Each variable reads its `INGOT_` name first and falls back to its `REPOSILITE_` spelling when the first is unset or blank. With none of them set, the console and the log files are the same as before. A value that is not accepted stops the start with a message that names the variable.
+
+| Variable | Legacy | Default | Accepted values | Effect |
+| --- | --- | --- | --- | --- |
+| `INGOT_LOG_FILE` | `REPOSILITE_LOG_FILE` | `true` | `true` or `false` | `false` stops the rolling log file, so no file is created or written. The console still shows every line. Use it with a read-only root filesystem and no volume for the logs. |
+| `INGOT_LOG_FORMAT` | `REPOSILITE_LOG_FORMAT` | `text` | `text` or `json` | `json` writes one JSON object per console line with `time`, `level` and `message`, and `trace_id` and `span_id` while a span is active. The log files stay in text form. See [Monitor status and failures](../how-to/monitor-status-and-failures.md#structured-console-output). |
+| `INGOT_LOG_LEVEL` | `REPOSILITE_LOG_LEVEL` | `INFO` | `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG` or `TRACE` | The console threshold. The `--level` flag wins over it. |
+| `INGOT_LOG_LEVELS` | `REPOSILITE_LOG_LEVELS` | none | Comma-separated `package=level` pairs, with `trace`, `debug`, `info`, `warn` or `error` | Level of the named package and its sub-packages, for messages that come through SLF4J from that package. Packages that are not listed keep the levels of `tinylog.properties`. Ingot's own console lines have no package of their own in the log, so they follow `INGOT_LOG_LEVEL`. |
+| `INGOT_ACCESS_LOG` | `REPOSILITE_ACCESS_LOG` | `false` | `true` | `true` writes one INFO line per request: method, path without the query string, status, duration in milliseconds, response size in bytes when the response has a `Content-Length`, client address and user. The line never holds the query string, the `Authorization` header or a cookie. Any other value keeps it off. |
 
 ### Plugin store
 
