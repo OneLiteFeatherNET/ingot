@@ -426,6 +426,15 @@ dependencies {
     )
 }
 
+// The Elasticsearch backend of the plugin, compiled classes only, for the same reason as the OpenSearch one above.
+val elasticsearchPlugin = project(":reposilite-plugins:elasticsearch-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(elasticsearchPlugin.layout.buildDirectory.dir("classes/kotlin/main"))
+            .builtBy(":reposilite-plugins:elasticsearch-plugin:compileKotlin"),
+    )
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
