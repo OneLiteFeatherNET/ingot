@@ -160,6 +160,12 @@ class LocalConfiguration : Facade {
     @Description("# and you should always prioritize subdomain over this option.")
     val basePath = mutableReference("/")
 
+    @Description("")
+    @Description("# Plugins to install from the plugin store, as a comma-separated list of groupId:artifactId:version.")
+    @Description("# The list is read at start and joined with the INGOT_PLUGINS variable. Empty means no store plugin.")
+    @Description("# Sources and trusted keys are set with INGOT_PLUGIN_SOURCES and INGOT_PLUGIN_TRUSTED_KEYS, see the plugin store reference.")
+    val plugins = reference("")
+
     /* Shared settings */
 
     @Description("")

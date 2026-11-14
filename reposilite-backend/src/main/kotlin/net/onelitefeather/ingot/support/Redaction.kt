@@ -65,6 +65,7 @@ object Redaction {
         "hostname", "port", "sslEnabled", "sslPort", "enforceSsl", "webThreadPool", "ioThreadPool", "databaseThreadPool",
         "compressionStrategy", "idleTimeout", "bypassExternalCache", "cachedLogSize", "defaultFrontend", "basePath",
         "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "debugEnabled", "pluginUi", "pluginStyles",
+        "plugins",
     )
 
     /** Local keys that hold a secret or a path to one. They are always withheld. */

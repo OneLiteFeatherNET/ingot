@@ -29,6 +29,7 @@ import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
 import net.onelitefeather.ingot.deploy.logWarnings
+import net.onelitefeather.ingot.plugin.store.PluginStoreFactory
 import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.support.SupportBundleSetting
 import net.onelitefeather.ingot.schema.SchemaLock
@@ -128,7 +129,13 @@ object ReposiliteFactory {
         journalist.logger.info("--- Loading plugins:")
 
         try {
-            val pluginLoader = PluginLoader(parameters.pluginDirectory, reposilite.extensions)
+            val pluginStore = PluginStoreFactory.create(
+                environment = System.getenv(),
+                localSelection = localConfiguration.plugins.get(),
+                dataDirectory = parameters.workingDirectory,
+                journalist = journalist,
+            )
+            val pluginLoader = PluginLoader(parameters.pluginDirectory, reposilite.extensions, pluginStore = pluginStore)
             pluginLoader.extensions.registerFacade(reposilite)
             pluginLoader.loadPluginsByServiceFiles()
             pluginLoader.initialize()

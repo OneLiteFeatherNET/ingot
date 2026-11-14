@@ -72,6 +72,9 @@ dependencies {
         implementation("org.bouncycastle:bcutil-jdk18on:1.85") {
             because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
         }
+        implementation("org.bouncycastle:bcpg-jdk18on:1.85") {
+            because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
+        }
         implementation("org.apache.httpcomponents.core5:httpcore5:5.4.3") {
             because("CVE-2026-54399 is fixed in 5.4.3")
         }
@@ -111,6 +114,8 @@ dependencies {
     // login code calls it directly, so it must not depend on a transitive version that another library could change.
     val bouncyCastle = "1.84"
     implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastle")
+    // OpenPGP support for the signature check of plugin jars from the plugin store. It is released with bcprov, see the constraints.
+    implementation("org.bouncycastle:bcpg-jdk18on:$bouncyCastle")
 
     // JWT for browser sessions (HS256 only). Verification pins the algorithm, so an unsigned token is never accepted.
     val nimbus = "10.9.1"

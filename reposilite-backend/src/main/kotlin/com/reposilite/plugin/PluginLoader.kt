@@ -18,6 +18,9 @@ package com.reposilite.plugin
 
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
+import net.onelitefeather.ingot.plugin.store.PluginStore
+import net.onelitefeather.ingot.plugin.store.StoreEntry
+import net.onelitefeather.ingot.plugin.store.StoreState
 import kotlin.reflect.full.findAnnotation
 import panda.std.Result.supplyThrowing
 import java.io.File
@@ -39,7 +42,16 @@ class PluginLoader(
     private val bundledPluginsDirectory: Path = Path.of(System.getProperty("ingot.bundledPlugins") ?: DEFAULT_BUNDLED_PLUGINS_DIRECTORY),
     /** The environment the switch is read from. Injected so that tests do not change the process environment. */
     private val environment: Map<String, String> = System.getenv(),
+    /** The plugin store. Its plugins load after the plugins directory and before the bundled jars. Null when no store is configured. */
+    private val pluginStore: PluginStore? = null,
 ) {
+
+    private val storeStates: MutableList<StoreEntry> = mutableListOf()
+    private val storePluginIds: MutableSet<String> = mutableSetOf()
+
+    /** The outcome of every plugin that the store selected, in selection order, as the status of the store shows it. */
+    val storeEntries: List<StoreEntry>
+        get() = storeStates.toList()
 
     fun initialize() {
         loadPlugins()
@@ -50,8 +62,23 @@ class PluginLoader(
             extensions.logger.info(it.joinToString(", ", transform = { (metadata, _) -> metadata.name }))
         }
 
-        plugins.forEach { (_, plugin) ->
-            plugin.initialize()?.apply { extensions.registerFacade(this) }
+        initializePlugins(plugins)
+    }
+
+    /**
+     * Initialises the given plugins in order. A store plugin whose initialise throws is marked as failed and the start goes on,
+     * while any other failure stops the start as before.
+     */
+    internal fun initializePlugins(plugins: List<PluginEntry>) {
+        plugins.forEach { (metadata, plugin) ->
+            try {
+                plugin.initialize()?.apply { extensions.registerFacade(this) }
+            } catch (exception: Exception) {
+                if (metadata.name !in storePluginIds) {
+                    throw exception
+                }
+                markStoreFailure(metadata.name, exception)
+            }
             System.gc() // startup is heavy & reflective operation, so we'd like to tell jvm to take a look on that
         }
     }
@@ -102,7 +129,103 @@ class PluginLoader(
                 .forEach { extensions.registerPlugin(it) }
         }
 
+        loadStorePlugins()
         loadBundledPlugins()
+    }
+
+    /**
+     * Loads the verified jars of the plugin store, after the plugins directory and before the bundled jars. A plugin id that a
+     * jar of the plugins directory already holds shadows the store plugin. A store plugin that the bundled jars would replace
+     * wins over them, because the bundled jars are skipped when their id is registered. Nothing here stops the start: an
+     * entry that cannot be loaded is reported in [storeEntries] and the start goes on.
+     */
+    private fun loadStorePlugins() {
+        val store = pluginStore ?: return
+        val resolved = try {
+            store.resolve()
+        } catch (exception: Exception) {
+            extensions.logger.error("Plugin store could not be resolved, the server starts without store plugins: ${exception.message}")
+            return
+        }
+
+        resolved.forEach { entry ->
+            val outcome = if (entry.loadable) loadStoreJar(entry) else entry
+            storeStates += outcome
+            logStoreEntry(outcome)
+        }
+    }
+
+    private fun loadStoreJar(entry: StoreEntry): StoreEntry {
+        val jar = requireNotNull(entry.jar) { "A loadable store entry has a jar" }
+        val declared = try {
+            declaredStorePlugins(jar)
+        } catch (exception: Exception) {
+            return entry.copy(state = StoreState.REFUSED, reason = "the jar cannot be loaded: ${exception.message}")
+        } catch (linkage: LinkageError) {
+            return entry.copy(state = StoreState.REFUSED, reason = "the jar cannot be loaded: ${linkage.message}")
+        }
+
+        if (declared.size != 1) {
+            return entry.copy(state = StoreState.REFUSED, reason = "the jar must declare exactly one plugin, it declares ${declared.size}")
+        }
+        val plugin = declared.single()
+        val name = plugin::class.findAnnotation<Plugin>()?.name
+            ?: return entry.copy(state = StoreState.REFUSED, reason = "the plugin class has no @Plugin annotation")
+
+        val expected = entry.pluginId
+        if (name != expected) {
+            return entry.copy(
+                state = StoreState.REFUSED,
+                reason = "the jar declares the plugin id $name but its catalogue entry names $expected, so the jar is refused",
+            )
+        }
+        if (extensions.getPlugins().containsKey(name)) {
+            return entry.copy(
+                state = StoreState.SHADOWED,
+                reason = "a jar in the plugins directory has the same plugin id, so the store plugin is not loaded",
+            )
+        }
+
+        extensions.registerPlugin(plugin)
+        storePluginIds += name
+        return entry
+    }
+
+    /**
+     * The plugins that the jar declares in its own service file. A service lookup through the loader would also return the
+     * built-in plugins of the parent loader, so the names are read from the jar and each class is instantiated from it.
+     */
+    private fun declaredStorePlugins(jar: Path): List<ReposilitePlugin> {
+        val names = JarFile(jar.toFile()).use { jarFile ->
+            val service = jarFile.getEntry("META-INF/services/${ReposilitePlugin::class.java.name}") ?: return emptyList()
+            jarFile.getInputStream(service).bufferedReader().use { reader ->
+                reader.readLines().map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
+            }
+        }
+        val loader = URLClassLoader(arrayOf(jar.toUri().toURL()), ReposilitePlugin::class.java.classLoader)
+        return names.map { name ->
+            Class.forName(name, true, loader).getDeclaredConstructor().newInstance() as ReposilitePlugin
+        }
+    }
+
+    private fun markStoreFailure(name: String, exception: Exception) {
+        val index = storeStates.indexOfFirst { it.pluginId == name && it.loadable }
+        if (index < 0) {
+            return
+        }
+        val failed = storeStates[index].copy(state = StoreState.FAILED, reason = "initialize failed: ${exception.message}")
+        storeStates[index] = failed
+        extensions.logger.warn("Store plugin $name failed in initialize and is marked as failed. Routes it registered before the failure stay until the next start.")
+        logStoreEntry(failed)
+    }
+
+    private fun logStoreEntry(entry: StoreEntry) {
+        val id = entry.pluginId ?: entry.coordinate.toString()
+        when (entry.state) {
+            StoreState.LOADED, StoreState.CACHED -> extensions.logger.info("Plugin store: $id ${entry.state} from ${entry.source}")
+            StoreState.UNVERIFIED -> extensions.logger.warn("Plugin store: $id is UNVERIFIED, its signature is not checked because unsigned content is allowed")
+            else -> extensions.logger.warn("Plugin store: $id ${entry.state}, ${entry.reason}")
+        }
     }
 
     /**
