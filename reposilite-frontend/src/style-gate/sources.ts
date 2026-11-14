@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, type Dirent } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 
 const SCANNED_EXTENSIONS = ['.vue', '.js', '.ts', '.css']
 
 // The shipped sources under src/, read from disk. Tests and the gate itself are left out, so the gate never scans its
 // own fixtures. Paths are relative to the frontend directory, with forward slashes, so that they match the baselines.
-export function collectSources(srcDir) {
+export function collectSources(srcDir: string): Array<{ file: string; text: string }> {
   const frontendDir = dirname(srcDir)
 
   return walk(srcDir)
@@ -34,8 +34,8 @@ export function collectSources(srcDir) {
     .map((file) => ({ file, text: readFileSync(join(frontendDir, file), 'utf8') }))
 }
 
-const walk = (directory) =>
-  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+const walk = (directory: string): string[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry: Dirent) => {
     const path = join(directory, entry.name)
     return entry.isDirectory() ? walk(path) : [path]
   })

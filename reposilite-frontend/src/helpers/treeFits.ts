@@ -25,5 +25,13 @@
 export const TOP_BAR_HEIGHT = 64
 export const TREE_MARGIN = 16
 
-export const treeFits = ({ navHeight, viewportHeight, topBarHeight, saveBarHeight = 0, margin = TREE_MARGIN }) =>
+export interface TreeFitInput {
+  navHeight: number
+  viewportHeight: number
+  topBarHeight: number
+  saveBarHeight?: number
+  margin?: number
+}
+
+export const treeFits = ({ navHeight, viewportHeight, topBarHeight, saveBarHeight = 0, margin = TREE_MARGIN }: TreeFitInput): boolean =>
   navHeight <= viewportHeight - topBarHeight - saveBarHeight - 2 * margin

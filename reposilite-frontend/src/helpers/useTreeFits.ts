@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { inject, onBeforeUnmount, ref, watch } from 'vue'
+import { inject, onBeforeUnmount, ref, watch, type InjectionKey } from 'vue'
 import { TOP_BAR_HEIGHT, TREE_MARGIN, treeFits } from './treeFits'
 
 /*
@@ -25,12 +25,15 @@ import { TOP_BAR_HEIGHT, TREE_MARGIN, treeFits } from './treeFits'
  * The size observer is injected under `treeObserverKey`, so a test can pass a fake that it triggers by hand. The default
  * observes the tree with a ResizeObserver and the window with a resize listener.
  */
-export const treeObserverKey = Symbol('treeObserver')
+// Calls onChange when the element or the window changes size, and returns the function that stops it.
+export type TreeObserver = (element: HTMLElement, onChange: () => void) => () => void
+
+export const treeObserverKey: InjectionKey<TreeObserver> = Symbol('treeObserver')
 
 // The sticky wrapper of the save bar, drawn by SettingsView while something is unsaved.
 const SAVE_BAR = '.settings-save-bar'
 
-export const observeTree = (element, onChange) => {
+export const observeTree: TreeObserver = (element, onChange) => {
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onChange)
   observer?.observe(element)
   window.addEventListener('resize', onChange)
@@ -42,10 +45,10 @@ export const observeTree = (element, onChange) => {
 
 // `getElement` returns the element of the tree, or nothing while the tree is not drawn. The result `fits` is true when
 // the tree may be sticky; `measure` takes the decision again, and the caller calls it when the save bar appears.
-export const useTreeFits = (getElement) => {
+export const useTreeFits = (getElement: () => HTMLElement | null | undefined) => {
   const observe = inject(treeObserverKey, observeTree)
   const fits = ref(false)
-  let stopObserving = null
+  let stopObserving: (() => void) | null = null
 
   const measure = () => {
     const element = getElement()
@@ -53,7 +56,7 @@ export const useTreeFits = (getElement) => {
       fits.value = false
       return
     }
-    const bar = document.querySelector(SAVE_BAR)
+    const bar = document.querySelector<HTMLElement>(SAVE_BAR)
     fits.value = treeFits({
       navHeight: element.offsetHeight,
       viewportHeight: window.innerHeight,

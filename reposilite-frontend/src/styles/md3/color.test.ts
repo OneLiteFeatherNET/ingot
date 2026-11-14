@@ -50,15 +50,18 @@ const TEXT_PAIRS = [
 
 const CHART_SERIES = 8
 
+type Theme = 'light' | 'dark'
+type Declarations = Record<string, string>
+
 const CONTRAST_ROOT_LIGHT = ':root:not(.dark)'
 const CONTRAST_DARK = '.dark'
 
 // Blocks are plain `selector { --name: value; }` rules. Comments are stripped first, and the
 // @media (prefers-contrast: more) block is cut out on its own because it nests rules.
-const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '')
+const stripComments = (text: string): string => text.replace(/\/\*[\s\S]*?\*\//g, '')
 
-const parseDeclarations = (body) => {
-  const map = {}
+const parseDeclarations = (body: string): Declarations => {
+  const map: Declarations = {}
   for (const match of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
     map[match[1]] = match[2].trim()
   }
@@ -66,8 +69,8 @@ const parseDeclarations = (body) => {
 }
 
 // Every rule whose selector is exactly `selector`, merged in source order (later wins).
-const rulesFor = (text, selector) => {
-  const map = {}
+const rulesFor = (text: string, selector: string): Declarations => {
+  const map: Declarations = {}
   for (const match of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (match[1].trim() === selector) Object.assign(map, parseDeclarations(match[2]))
   }
@@ -75,7 +78,7 @@ const rulesFor = (text, selector) => {
 }
 
 // The body of the first @media block whose prelude contains `query`, brace-matched.
-const mediaBody = (text, query) => {
+const mediaBody = (text: string, query: string): string => {
   const start = text.indexOf(`@media ${query}`)
   if (start === -1) return ''
   const open = text.indexOf('{', start)
@@ -93,65 +96,65 @@ const mediaBody = (text, query) => {
 const sheet = stripComments(css)
 // The base theme is the sheet without the high-contrast media block, which repeats .dark.
 const baseSheet = sheet.replace(/@media \(prefers-contrast: more\) \{[\s\S]*?\n\}\n/, '')
-const THEMES = {
+const THEMES: Record<Theme, Declarations> = {
   light: rulesFor(baseSheet, ':root'),
   dark: rulesFor(baseSheet, '.dark')
 }
 
 // A value with var() references, resolved against the same theme, so a role that refers to another role compares by
 // the colour it shows.
-const resolveColour = (theme, value) => value.replace(/var\((--[\w-]+)\)/g, (_, name) => resolveColour(theme, THEMES[theme][name]))
-const CONTRAST = {
+const resolveColour = (theme: Theme, value: string): string => value.replace(/var\((--[\w-]+)\)/g, (_: string, name: string) => resolveColour(theme, THEMES[theme][name]))
+const CONTRAST: Record<Theme, Declarations> = {
   light: rulesFor(mediaBody(sheet, '(prefers-contrast: more)'), CONTRAST_ROOT_LIGHT),
   dark: rulesFor(mediaBody(sheet, '(prefers-contrast: more)'), CONTRAST_DARK)
 }
 
 // Merged view for a theme: the base values, with the high-contrast values on top when asked.
-const colours = (theme, { highContrast = false } = {}) => ({
+const colours = (theme: Theme, { highContrast = false }: { highContrast?: boolean } = {}): Declarations => ({
   ...THEMES[theme],
   ...(highContrast ? CONTRAST[theme] : {})
 })
 
-const channel = (value) => {
+const channel = (value: number): number => {
   const c = value / 255
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
 }
 
-const hexToRgb = (hex) => {
+const hexToRgb = (hex: string): number[] => {
   const full = hex.length === 4 ? `#${[...hex.slice(1)].map((d) => d + d).join('')}` : hex
   return [1, 3, 5].map((i) => parseInt(full.slice(i, i + 2), 16))
 }
 
-const luminance = (hex) => {
+const luminance = (hex: string): number => {
   const [r, g, b] = hexToRgb(hex).map(channel)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-const contrastRatio = (a, b) => {
+const contrastRatio = (a: string, b: string): number => {
   const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x)
   return (lighter + 0.05) / (darker + 0.05)
 }
 
 // CIE76 colour difference, through CIE L*a*b* with a D65 white point.
-const toLab = (hex) => {
+const toLab = (hex: string): number[] => {
   const [r, g, b] = hexToRgb(hex).map(channel)
   const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
   const y = 0.2126 * r + 0.7152 * g + 0.0722 * b
   const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
-  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
+  const f = (t: number): number => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
   return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))]
 }
 
-const deltaE = (a, b) => {
+const deltaE = (a: string, b: string): number => {
   const [l1, a1, b1] = toLab(a)
   const [l2, a2, b2] = toLab(b)
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2)
 }
 
-const chartSeries = (values) => Array.from({ length: CHART_SERIES }, (_, i) => values[`--md-ext-color-chart-${i + 1}`])
+const chartSeries = (values: Declarations): string[] => Array.from({ length: CHART_SERIES }, (_, i) => values[`--md-ext-color-chart-${i + 1}`])
 
 describe('colour roles', () => {
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`defines every role as a hex value in the ${theme} theme`, () => {
       const values = colours(theme)
       const roles = Object.keys(values).filter((name) => name.startsWith('--md-sys-color-'))
@@ -201,7 +204,7 @@ describe('colour roles', () => {
   // The steel seed's neutral palette leaves a slight blue tint on the dark surface (chroma 6.4), so the
   // bound allows that tint and still rejects a strong colour cast.
   it('keeps the surfaces near neutral, with at most the slight tint of the seed', () => {
-    for (const theme of ['light', 'dark']) {
+    for (const theme of ['light', 'dark'] as const) {
       const [, a, b] = toLab(THEMES[theme]['--md-sys-color-surface'])
       const chroma = Math.hypot(a, b)
       expect(chroma, `the ${theme} surface should be near neutral (CIE LCh chroma ${chroma.toFixed(1)})`).toBeLessThan(8)
@@ -246,7 +249,7 @@ describe('brand expression', () => {
   })
 
   it('keeps the brand gradient free of the OLF pink', () => {
-    for (const theme of ['light', 'dark']) {
+    for (const theme of ['light', 'dark'] as const) {
       const gradient = THEMES[theme]['--olf-gradient'].toLowerCase()
       for (const pink of ['#ec008b', '#91268f', '#f7931d']) {
         expect(gradient, `the ${theme} gradient should not contain ${pink}`).not.toContain(pink)
@@ -266,7 +269,7 @@ describe('brand expression', () => {
 })
 
 describe('chart series', () => {
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`gives every series at least 3:1 against the surfaces in the ${theme} theme`, () => {
       const series = chartSeries(THEMES[theme])
       const surfaces = ['--md-sys-color-surface', '--md-sys-color-surface-container-highest']
@@ -290,7 +293,7 @@ describe('chart series', () => {
   }
 
   it('starts the series with the steel blue, not magenta or pink', () => {
-    for (const theme of ['light', 'dark']) {
+    for (const theme of ['light', 'dark'] as const) {
       const [first] = chartSeries(THEMES[theme])
       const [, a, b] = toLab(first)
       const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
@@ -299,7 +302,7 @@ describe('chart series', () => {
     }
   })
 
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`keeps no series equal to a status colour in the ${theme} theme`, () => {
       const statuses = [THEMES[theme]['--md-ext-color-success'], THEMES[theme]['--md-ext-color-warning'], THEMES[theme]['--md-sys-color-error']]
       for (const [index, colour] of chartSeries(THEMES[theme]).entries()) {
@@ -330,7 +333,7 @@ const EXT_TOKEN_NAMES = [
 ]
 
 describe('token names', () => {
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`keeps the 49 MD3 role names unchanged in the ${theme} theme`, () => {
       const names = Object.keys(THEMES[theme]).filter((name) => name.startsWith('--md-sys-color-')).sort()
       expect(names, 'a role was renamed or removed; plugins that read it would break').toEqual([...MD3_ROLE_NAMES].sort())
@@ -346,7 +349,7 @@ describe('token names', () => {
 
 describe('interface contrast', () => {
   // WCAG 1.4.11: the outline of an interactive control needs 3:1 against the surface it sits on.
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`keeps the outline at 3:1 or more on the surfaces in the ${theme} theme`, () => {
       for (const surface of ['--md-sys-color-surface', '--md-sys-color-surface-container-highest']) {
         const ratio = contrastRatio(THEMES[theme]['--md-sys-color-outline'], THEMES[theme][surface])
@@ -368,15 +371,15 @@ describe('interface contrast', () => {
 
 // Machado, Oliveira and Fernandes (2009), severity 1.0, applied to linear RGB. Used only to check
 // that the status colours stay apart for a viewer with a colour vision deficiency.
-const CVD_MATRICES = {
+const CVD_MATRICES: Record<string, number[][]> = {
   protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
   deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
   tritanopia: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]]
 }
 
-const simulate = (hex, matrix) => {
+const simulate = (hex: string, matrix: number[][]): string => {
   const linear = hexToRgb(hex).map(channel)
-  const encode = (c) => {
+  const encode = (c: number): number => {
     const v = Math.min(1, Math.max(0, c))
     return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055
   }
@@ -388,7 +391,7 @@ describe('colour vision', () => {
   // Every status also has a word beside it, so colour is not the only signal. The colour check keeps
   // the three statuses from collapsing into one hue for a viewer who cannot tell red from green or
   // blue from yellow. The threshold is 5 CIE76 units, below the lowest pair in the current palette (5.8).
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     for (const [deficiency, matrix] of Object.entries(CVD_MATRICES)) {
       it(`keeps the success, warning and error colours at least 5 apart under ${deficiency} in the ${theme} theme`, () => {
         const statuses = {
@@ -408,7 +411,7 @@ describe('colour vision', () => {
 })
 
 describe('field container role', () => {
-  const declared = (theme) => rulesFor(baseSheet, theme)
+  const declared = (theme: string): Declarations => rulesFor(baseSheet, theme)
 
   it('is declared in the light theme as the surface role', () => {
     expect(declared(':root')['--md-field-container'], 'the light field container').toBe('var(--md-sys-color-surface)')

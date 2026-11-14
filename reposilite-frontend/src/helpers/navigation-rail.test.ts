@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { RAIL_WIDTH_VARIABLE, publishRailWidth, clearRailWidth, railWidth } from './navigation-rail'
 
 describe('navigation rail width', () => {
-  let root
+  let root: HTMLElement
 
   beforeEach(() => {
     root = document.createElement('html')

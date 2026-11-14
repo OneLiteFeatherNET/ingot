@@ -46,6 +46,6 @@ describe('bottom bar token', () => {
   })
 
   it('equals BOTTOM_BAR_HEIGHT in pixels at the 16px root size', () => {
-    expect(Number(match[1]) * 16, 'the token in pixels').toBe(BOTTOM_BAR_HEIGHT)
+    expect(Number(match?.[1]) * 16, 'the token in pixels').toBe(BOTTOM_BAR_HEIGHT)
   })
 })

@@ -16,17 +16,19 @@
 
 // The one place that reads the system time. Code asks for now() and tests fix it with
 // setClock(), so no result depends on the day the suite runs.
-const systemClock = () => new Date()
+type Clock = () => Date
 
-let clock = systemClock
+const systemClock: Clock = () => new Date()
 
-const now = () => clock()
+let clock: Clock = systemClock
 
-const setClock = (fn) => {
+const now = (): Date => clock()
+
+const setClock = (fn: Clock): void => {
   clock = fn
 }
 
-const resetClock = () => {
+const resetClock = (): void => {
   clock = systemClock
 }
 

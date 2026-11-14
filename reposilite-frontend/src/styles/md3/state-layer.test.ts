@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url'
 const stateLayerCss = readFileSync(fileURLToPath(new URL('./state-layer.css', import.meta.url)), 'utf8')
 
 // The text of the @utility block with the given name, from its opening brace to the brace that closes it.
-function utilityBlock(css, name) {
+function utilityBlock(css: string, name: string) {
   const start = css.indexOf(`@utility ${name} {`)
   if (start === -1) return ''
   let depth = 0

@@ -15,16 +15,16 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, type Dirent } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const SOURCE_ROOT = join(process.cwd(), 'src')
 
 // Every component and script under src, read from disk. Test files are not shipped, so they are left out.
-const sourceFiles = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+const sourceFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry: Dirent) => {
   const path = join(directory, entry.name)
   if (entry.isDirectory()) return sourceFiles(path)
-  const shipped = (entry.name.endsWith('.vue') || entry.name.endsWith('.js')) && !entry.name.endsWith('.test.js')
+  const shipped = (entry.name.endsWith('.vue') || entry.name.endsWith('.js') || entry.name.endsWith('.ts')) && !/\.test\.(js|ts)$/.test(entry.name)
   return shipped ? [path] : []
 })
 
@@ -44,14 +44,14 @@ describe('window breakpoints in the components', () => {
 })
 
 // The lines of every shipped source that match a pattern, as `file:line`.
-const offendersOf = (pattern) => sourceFiles(SOURCE_ROOT).flatMap((file) =>
+const offendersOf = (pattern: RegExp): string[] => sourceFiles(SOURCE_ROOT).flatMap((file) =>
   readFileSync(file, 'utf8')
     .split('\n')
     .flatMap((line, index) => (pattern.test(line) ? [`${relative(process.cwd(), file)}:${index + 1}`] : []))
 )
 
 // Values that a view must take from a token. Each one names the replacement in its message.
-const TOKEN_LITERALS = [
+const TOKEN_LITERALS: Array<[RegExp, string]> = [
   [/(?:peer|group)-[\w:-]*:opacity-\[/, 'a state opacity: use opacity-md-state-hover, -focus or -pressed'],
   [/group-hover:\[--md-state/, 'an inline state opacity: use the md-state-hover utility with a variant'],
   [/has-focus-visible:outline|has-\[input:focus/, 'a focus ring on a container: use has-focus-visible:md-focus-ring-within'],
@@ -81,6 +81,6 @@ describe('style literals of the views and primitives', () => {
   })
 
   it('keeps the bottom bar offset in the spacing token and not in a 5rem literal', () => {
-    expect(offendersOf(/\b5rem\b/).filter((line) => line.includes('src/pages/IndexPage.vue')), 'the bottom bar height is md-bottom-bar').toEqual([])
+    expect(offendersOf(/\b5rem\b/).filter((line: string) => line.includes('src/pages/IndexPage.vue')), 'the bottom bar height is md-bottom-bar').toEqual([])
   })
 })

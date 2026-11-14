@@ -18,15 +18,39 @@
 // more occurrences than recorded is a new violation, and fewer is a fix that left its entry behind. An allowlist entry
 // removes its occurrences from the comparison, and an entry that matches nothing is dead.
 
-const keyOf = (file, match) => `${file}\u0000${match}`
+export interface Occurrence {
+  file: string
+  match: string
+}
 
-const labelOf = (file, match) => `${file}: "${match}"`
+export interface BaselineEntry extends Occurrence {
+  count: number
+}
+
+export interface AllowlistEntry extends Occurrence {
+  reason: string
+}
+
+export interface Problem extends Occurrence {
+  kind: 'unexpected' | 'stale' | 'dead'
+  found: number
+  recorded: number
+  message: string
+}
+
+const keyOf = (file: string, match: string): string => `${file}\u0000${match}`
+
+const labelOf = (file: string, match: string): string => `${file}: "${match}"`
 
 // occurrences: [{ file, match }], one per match. baseline: [{ file, match, count }]. allowlist: [{ file, match, reason }].
-export function checkRatchet({ occurrences, baseline, allowlist }) {
+export function checkRatchet({ occurrences, baseline, allowlist }: {
+  occurrences: Occurrence[]
+  baseline: BaselineEntry[]
+  allowlist: AllowlistEntry[]
+}): Problem[] {
   const allowed = new Set(allowlist.map((entry) => keyOf(entry.file, entry.match)))
-  const found = new Map()
-  const rawFound = new Map()
+  const found = new Map<string, number>()
+  const rawFound = new Map<string, number>()
 
   for (const { file, match } of occurrences) {
     const key = keyOf(file, match)
@@ -38,7 +62,7 @@ export function checkRatchet({ occurrences, baseline, allowlist }) {
 
   const recorded = new Map(baseline.map((entry) => [keyOf(entry.file, entry.match), entry.count]))
   const keys = new Set([...found.keys(), ...recorded.keys()])
-  const problems = []
+  const problems: Problem[] = []
 
   for (const key of keys) {
     const [file, match] = key.split('\u0000')
@@ -82,25 +106,30 @@ export function checkRatchet({ occurrences, baseline, allowlist }) {
   return problems.sort((left, right) => keyOf(left.file, left.match).localeCompare(keyOf(right.file, right.match)))
 }
 
-const isText = (value) => typeof value === 'string' && value.length > 0
+const isText = (value: unknown): value is string => typeof value === 'string' && value.length > 0
 
 // Parses a baseline or an allowlist file. The shape is checked here so that a malformed file fails the test by name.
 // A baseline entry carries a positive count and is unique by file and match. An allowlist entry carries a reason
 // string, which the gate test requires to be non-empty.
-export function parseList(text, kind) {
-  const entries = JSON.parse(text)
+export function parseList(text: string, kind: 'baseline'): BaselineEntry[]
+export function parseList(text: string, kind: 'allowlist'): AllowlistEntry[]
+export function parseList(text: string, kind: 'baseline' | 'allowlist'): BaselineEntry[] | AllowlistEntry[] {
+  const parsed: unknown = JSON.parse(text)
 
-  if (!Array.isArray(entries)) {
+  if (!Array.isArray(parsed)) {
     throw new Error(`the ${kind} file must hold a JSON array`)
   }
 
-  const seen = new Set()
+  // The shape of every entry is checked in the loop below, before the array is returned as its declared type.
+  const entries = parsed as Array<Partial<BaselineEntry & AllowlistEntry> | null>
+
+  const seen = new Set<string>()
   for (const entry of entries) {
     if (!isText(entry?.file) || !isText(entry?.match)) {
       throw new Error(`every ${kind} entry needs a file and a match: ${JSON.stringify(entry)}`)
     }
 
-    if (kind === 'baseline' && !(Number.isInteger(entry.count) && entry.count > 0)) {
+    if (kind === 'baseline' && !(typeof entry.count === 'number' && Number.isInteger(entry.count) && entry.count > 0)) {
       throw new Error(`a baseline entry needs a positive integer count: ${JSON.stringify(entry)}`)
     }
 
@@ -115,5 +144,5 @@ export function parseList(text, kind) {
     seen.add(key)
   }
 
-  return entries
+  return entries as BaselineEntry[] | AllowlistEntry[]
 }

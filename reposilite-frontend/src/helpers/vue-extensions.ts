@@ -1,4 +1,4 @@
-const property = (type, required) =>
+const property = <T>(type: T, required: boolean): { type: T; required: boolean } =>
   ({ type, required })
 
 export {

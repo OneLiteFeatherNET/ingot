@@ -16,16 +16,16 @@
 
 import { describe, it, expect } from 'vitest'
 import { join } from 'node:path'
-import { RULES } from './rules'
+import { RULES, type Rule } from './rules'
 import { scanFile } from './scan'
 import { createResolver } from './tailwind'
 
 // Fixtures are strings built inside each test. Nothing is read from disk here, and the resolver is built per call.
 const SRC = join(process.cwd(), 'src')
 
-const ruleNamed = (id) => RULES.find((rule) => rule.id === id)
+const ruleNamed = (id: string): Rule => RULES.find((rule) => rule.id === id)!
 
-const found = async (ruleId, file, text) => scanFile(ruleNamed(ruleId), file, text, await createResolver(SRC))
+const found = async (ruleId: string, file: string, text: string) => scanFile(ruleNamed(ruleId), file, text, await createResolver(SRC))
 
 const VUE = 'src/components/Fixture.vue'
 const SCRIPT = 'src/store/fixture.js'

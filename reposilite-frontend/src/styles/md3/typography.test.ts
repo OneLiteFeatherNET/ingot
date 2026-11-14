@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
  * The values follow the material-web token references (`_md-sys-typescale.scss` and
  * `_md-sys-motion.scss`, v0_192).
  */
-const read = (relativePath) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
+const read = (relativePath: string) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
 
 const typography = read('./typography.css')
 const motion = read('./shape-elevation-motion.css')
@@ -59,7 +59,7 @@ describe('extra long motion durations', () => {
 })
 
 // The body of the @utility block of the given name.
-const utilityOf = (name) => {
+const utilityOf = (name: string) => {
   const start = typography.indexOf(`@utility ${name} {`)
   return start < 0 ? '' : typography.slice(start, typography.indexOf('\n}', start) + 2)
 }

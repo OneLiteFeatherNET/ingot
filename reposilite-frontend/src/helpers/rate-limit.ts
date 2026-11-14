@@ -17,24 +17,39 @@
 // A sign in that is answered with 429 carries a Retry-After header: the seconds until the
 // server accepts another attempt. These helpers read it and word it for the sign in dialog.
 
-const headerOf = (headers, name) =>
-  headers?.get?.(name) ?? headers?.[name] ?? headers?.['Retry-After'] ?? null
+// The headers of a response: a headers object with a get method (axios), or a plain record.
+interface ResponseHeaders {
+  get?: (name: string) => unknown
+  [name: string]: unknown
+}
+
+// The part of a failed request that this module reads. Any other error has no response and reads as unknown.
+interface FailedRequest {
+  response?: { status?: number; headers?: unknown }
+}
+
+// A header value is read as text when it is a string or a number, and as no value otherwise.
+const headerOf = (headers: unknown, name: string): string | null => {
+  const bag = headers as ResponseHeaders | null | undefined
+  const value = bag?.get?.(name) ?? bag?.[name] ?? bag?.['Retry-After'] ?? null
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null
+}
 
 /** The seconds a failed request must wait, or null when the response does not say. */
-export const retryAfterSeconds = (error) => {
-  const value = String(headerOf(error?.response?.headers, 'retry-after') ?? '').trim()
+export const retryAfterSeconds = (error: unknown): number | null => {
+  const value = (headerOf((error as FailedRequest | null | undefined)?.response?.headers, 'retry-after') ?? '').trim()
   return /^\d+$/.test(value) ? Number(value) : null
 }
 
 /** The instant (milliseconds) at which another attempt is allowed, or null when it is unknown. */
-export const rateLimitedUntil = (error, nowMs) => {
-  if (error?.response?.status !== 429) return null
+export const rateLimitedUntil = (error: unknown, nowMs: number): number | null => {
+  if ((error as FailedRequest | null | undefined)?.response?.status !== 429) return null
   const seconds = retryAfterSeconds(error)
   return seconds === null ? null : nowMs + seconds * 1000
 }
 
 /** "Too many attempts, try again in N minutes", rounded up to whole minutes and never under one. */
-export const rateLimitMessage = (seconds) => {
+export const rateLimitMessage = (seconds: number | null | undefined): string => {
   if (seconds === null || seconds === undefined) return 'Too many attempts, try again later'
   const minutes = Math.max(1, Math.ceil(seconds / 60))
   return `Too many attempts, try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`

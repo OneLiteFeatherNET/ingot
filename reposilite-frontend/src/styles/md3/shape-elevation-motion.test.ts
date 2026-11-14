@@ -23,7 +23,7 @@ import { join } from 'node:path'
 const stylesheet = readFileSync(join(process.cwd(), 'src', 'style.css'), 'utf8')
 
 // The text of the block that starts at `start`, from its at-rule to the brace that closes it.
-const blockAt = (css, start) => {
+const blockAt = (css: string, start: number) => {
   let depth = 0
   for (let index = css.indexOf('{', start); index < css.length; index++) {
     if (css[index] === '{') depth++
@@ -113,7 +113,7 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     expect(shapeRoot, 'the key shadow role').toContain('--md-sys-shadow-key: rgb(0 0 0 / 0.3);')
     expect(shapeRoot, 'the ambient shadow role').toContain('--md-sys-shadow-ambient: rgb(0 0 0 / 0.15);')
     for (const level of [1, 2, 3, 4, 5]) {
-      const line = shapeRoot.split('\n').find((text) => text.includes(`--md-sys-elevation-level${level}:`))
+      const line = shapeRoot.split('\n').find((text: string) => text.includes(`--md-sys-elevation-level${level}:`))
       expect(line, `elevation level ${level} refers to the key shadow role`).toContain('var(--md-sys-shadow-key)')
       expect(line, `elevation level ${level} refers to the ambient shadow role`).toContain('var(--md-sys-shadow-ambient)')
     }

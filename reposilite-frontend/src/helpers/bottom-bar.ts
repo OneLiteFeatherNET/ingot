@@ -26,4 +26,4 @@ export const BOTTOM_BAR_HEIGHT = 80
 
 export const BOTTOM_BAR_VARIABLE = '--app-bottom-bar-height'
 
-export const bottomBarHeight = (hasBar) => (hasBar ? `${BOTTOM_BAR_HEIGHT}px` : '0px')
+export const bottomBarHeight = (hasBar: boolean): string => (hasBar ? `${BOTTOM_BAR_HEIGHT}px` : '0px')

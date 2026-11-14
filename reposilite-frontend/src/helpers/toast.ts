@@ -25,8 +25,38 @@ import { snackbar } from '../store/snackbar'
  * A duration of `null` keeps the notice until it is dismissed. Success and info notices
  * leave by themselves, warnings and errors stay.
  */
-const show = (tone) => (message, options = {}) =>
-  snackbar.enqueue({ message, tone, ...options })
+export type Tone = 'info' | 'success' | 'warning' | 'error'
+
+export interface ToastOptions {
+  action?: { label: string; onClick: () => void }
+  duration?: number | null
+}
+
+// The queue is still a JavaScript module, and TypeScript infers its types from it: the entries as never[], and the
+// enqueue parameter with action as null. This view names the shape the helpers read and write, until the store has
+// types of its own, and it is the only place that bridges the two.
+interface Notice {
+  message: string
+  tone: Tone
+  action?: ToastOptions['action']
+  duration?: number | null
+}
+
+interface NoticeQueue {
+  entries: { value: Notice[] }
+  enqueue(notice: Notice): unknown
+}
+
+const queue = snackbar as unknown as NoticeQueue
+
+const show = (tone: Tone) => (message: string, options: ToastOptions = {}) =>
+  queue.enqueue({ message, tone, ...options })
+
+// The fields of a failed request that the message is read from. Any other value reads as its text.
+interface FailedRequest {
+  message?: unknown
+  response?: { status?: number; data?: { message?: unknown } }
+}
 
 /**
  * The readable part of a failed request.
@@ -37,12 +67,15 @@ const show = (tone) => (message, options = {}) =>
  * was refused or the host was unreachable, the user was told nothing at all. That is the
  * most common failure there is, and it was the one case with no message.
  */
-const errorMessage = (error) => withoutExceptionName(
-  error?.response?.data?.message ||
-  (error?.response?.status ? `Request failed with status ${error.response.status}` : null) ||
-  error?.message ||
-  `${error}`
-)
+const errorMessage = (error: unknown): string => {
+  const failure = error as FailedRequest | null | undefined
+  return withoutExceptionName(
+    failure?.response?.data?.message ||
+    (failure?.response?.status ? `Request failed with status ${failure.response.status}` : null) ||
+    failure?.message ||
+    String(error)
+  )
+}
 
 /*
  * A Java failure reaches the dashboard as "java.lang.IllegalArgumentException: text", and the class name is no part of
@@ -50,14 +83,14 @@ const errorMessage = (error) => withoutExceptionName(
  */
 const JAVA_EXCEPTION_NAME = /^(?:[a-z_$][\w$]*\.)+[A-Z][\w$]*:\s*/
 
-const withoutExceptionName = (text) => String(text).replace(JAVA_EXCEPTION_NAME, '')
+const withoutExceptionName = (text: unknown): string => String(text).replace(JAVA_EXCEPTION_NAME, '')
 
 const createInfoToast = show('info')
 
 // An info notice that is skipped while one with the same text is still in the queue, so a burst of
 // refused navigations shows the message once.
-const createInfoToastOnce = (message, options) =>
-  snackbar.entries.value.some(entry => entry.message === message)
+const createInfoToastOnce = (message: string, options?: ToastOptions) =>
+  queue.entries.value.some(entry => entry.message === message)
     ? null
     : createInfoToast(message, options)
 

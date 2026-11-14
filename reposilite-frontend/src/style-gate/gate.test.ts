@@ -17,11 +17,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { RULES } from './rules'
+import { RULES, type Rule } from './rules'
 import { collectSources } from './sources'
 import { scanSources } from './scan'
 import { createResolver } from './tailwind'
-import { checkRatchet, parseList } from './ratchet'
+import { checkRatchet, parseList, type Problem } from './ratchet'
 
 // The repository test. It reads the committed sources, baselines and allowlists under the frontend directory, where
 // vitest runs, and never writes. Every test rebuilds its inputs from disk, so no state carries from one test to another.
@@ -29,10 +29,10 @@ const FRONTEND = process.cwd()
 const SRC = join(FRONTEND, 'src')
 const GATE = join(SRC, 'style-gate')
 
-const readGateFile = (folder, ruleId) => readFileSync(join(GATE, folder, `${ruleId}.json`), 'utf8')
+const readGateFile = (folder: string, ruleId: string): string => readFileSync(join(GATE, folder, `${ruleId}.json`), 'utf8')
 
-const problemsOf = async (ruleId) => {
-  const rule = RULES.find((candidate) => candidate.id === ruleId)
+const problemsOf = async (ruleId: string) => {
+  const rule = RULES.find((candidate) => candidate.id === ruleId)!
   const resolver = await createResolver(SRC)
   const occurrences = scanSources(rule, collectSources(SRC), resolver)
   const baseline = parseList(readGateFile('baseline', ruleId), 'baseline')
@@ -41,7 +41,7 @@ const problemsOf = async (ruleId) => {
   return checkRatchet({ occurrences, baseline, allowlist })
 }
 
-const messagesOf = (problems, kind, rule) =>
+const messagesOf = (problems: Problem[], kind: Problem['kind'], rule: Rule): string[] =>
   problems.filter((problem) => problem.kind === kind).map((problem) => `${problem.message}. ${rule.hint}`)
 
 for (const rule of RULES) {

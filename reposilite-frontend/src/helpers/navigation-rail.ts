@@ -24,12 +24,12 @@ export const RAIL_WIDTH = 96
 
 export const RAIL_WIDTH_VARIABLE = '--app-rail-width'
 
-export const railWidth = () => `${RAIL_WIDTH}px`
+export const railWidth = (): string => `${RAIL_WIDTH}px`
 
-export const publishRailWidth = (root = document.documentElement) => {
+export const publishRailWidth = (root: HTMLElement = document.documentElement): void => {
   root.style.setProperty(RAIL_WIDTH_VARIABLE, railWidth())
 }
 
-export const clearRailWidth = (root = document.documentElement) => {
+export const clearRailWidth = (root: HTMLElement = document.documentElement): void => {
   root.style.removeProperty(RAIL_WIDTH_VARIABLE)
 }

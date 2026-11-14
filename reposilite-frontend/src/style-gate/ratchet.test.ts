@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { checkRatchet } from './ratchet'
 
 // Occurrences are plain { file, match } pairs, one per matched token in the source. Each test builds its own inputs.
-const occurrences = (file, match, count) => Array.from({ length: count }, () => ({ file, match }))
+const occurrences = (file: string, match: string, count: number) => Array.from({ length: count }, () => ({ file, match }))
 
 const FILE = 'src/components/Fixture.vue'
 

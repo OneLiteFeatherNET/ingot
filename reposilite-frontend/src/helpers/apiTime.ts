@@ -27,7 +27,7 @@
  */
 
 /** The moment an Instant from the API names, or null when it was not sent or is epoch zero. */
-const instantToDate = (epochSeconds) => {
+const instantToDate = (epochSeconds: unknown): Date | null => {
   if (typeof epochSeconds !== 'number' || !Number.isFinite(epochSeconds) || epochSeconds <= 0) {
     return null
   }
@@ -35,8 +35,11 @@ const instantToDate = (epochSeconds) => {
 }
 
 /** The UTC midnight of a LocalDate from the API, or null when it is not a [year, month, day] array. */
-const localDateToDate = (value) => {
-  if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isInteger)) {
+const isYearMonthDay = (value: unknown): value is [number, number, number] =>
+  Array.isArray(value) && value.length === 3 && value.every((part: unknown) => Number.isInteger(part))
+
+const localDateToDate = (value: unknown): Date | null => {
+  if (!isYearMonthDay(value)) {
     return null
   }
   const [year, month, day] = value
