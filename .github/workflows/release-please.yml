@@ -320,6 +320,144 @@ jobs:
           set -euo pipefail
           gh release upload "$TAG" "$RUNNER_TEMP/ingot-${VERSION}-openapi.json" --clobber
 
+  # Publishes the official plugins and their signed catalogue to the official Maven repository, on releases only. Nightlies
+  # and pull requests never reach this job, and a manual container rebuild does not either.
+  #
+  # The jar that the image bundles must be the jar that is published: the digests are compared before anything is uploaded,
+  # so a rebuild that produced other bytes fails the release instead of splitting the two. The signing key is read only in
+  # the plugin-release environment, imported into a keyring that the last step deletes, and never printed. Jars and their
+  # signatures go up before the catalogue, and the published files are downloaded again and checked with the public key
+  # alone. The logic lives in .github/scripts/publish_plugins.sh. See .github/RELEASE.md, "Plugins".
+  #
+  # A missing repository URL is a warning in the job summary, not a failure: the image and the jars do not depend on it.
+  plugins:
+    name: "Plugin catalogue"
+    needs: [ release-please, container ]
+    if: >-
+      needs.release-please.outputs.release_created == 'true'
+      && needs.container.result == 'success'
+    runs-on: ubuntu-latest
+    environment: plugin-release
+    # Two releases writing the catalogue at once would each read the old one and lose the other's entry.
+    concurrency:
+      group: plugin-catalogue
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      # Pulls the released server image to compare the bundled jar.
+      packages: read
+      # Build provenance for the plugin jars, stored as GitHub attestations.
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.release-please.outputs.version }}
+      PLUGIN_REPOSITORY_URL: ${{ vars.PLUGIN_REPOSITORY_URL }}
+      PLUGIN_SIGNING_KEY_ID: ${{ vars.PLUGIN_SIGNING_KEY_ID }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      # The working paths sit under the runner's temporary directory. The job context cannot read runner.temp, so they
+      # are written to the environment file here.
+      - name: "Prepare the working paths"
+        run: |
+          set -euo pipefail
+          {
+            echo "PLUGIN_STAGE=$RUNNER_TEMP/plugin-stage"
+            echo "PLUGIN_SIGNING_HOME=$RUNNER_TEMP/plugin-signing"
+            echo "PLUGIN_PUBLIC_KEY=$RUNNER_TEMP/plugin-public-key.asc"
+            echo "PLUGIN_REMOTE_COPY=$RUNNER_TEMP/remote-catalogue.json"
+          } >> "$GITHUB_ENV"
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # Fails before the build when the key or the key id is missing, and before any upload in every case.
+      - name: "Check the signing configuration"
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_REPOSITORY_TOKEN: ${{ secrets.PLUGIN_REPOSITORY_TOKEN }}
+        run: .github/scripts/publish_plugins.sh check-config
+
+      - name: "Note that the plugin repository is not configured"
+        if: vars.PLUGIN_REPOSITORY_URL == ''
+        run: |
+          set -euo pipefail
+          echo "::warning title=Plugin repository not configured::PLUGIN_REPOSITORY_URL is not set in the plugin-release environment, so no plugin or catalogue is uploaded in this release. The release itself is not affected."
+          {
+            echo "### Plugin catalogue"
+            echo ""
+            echo "PLUGIN_REPOSITORY_URL is not set in the plugin-release environment. Nothing was uploaded, and the release is not affected."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "Build the plugin jar"
+        run: ./gradlew :reposilite-plugins:opensearch-plugin:shadowJar
+
+      - name: "Stage the plugin jar in the Maven layout"
+        run: .github/scripts/publish_plugins.sh stage
+
+      - name: "Sign the plugin jars"
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_PASSPHRASE }}
+        run: .github/scripts/publish_plugins.sh sign-jars
+
+      # The image is pulled read only, with the built-in token. A jar that differs from the released image fails here.
+      - name: "Log in to the registry for the bundled plugin comparison"
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Compare the bundled plugin with the released jar"
+        run: .github/scripts/publish_plugins.sh check-bundled
+
+      # Provenance from this run, next to the PGP signature. A reviewer checks it with gh attestation verify.
+      - name: "Attest the plugin jars"
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/plugin-stage/net/onelitefeather/ingot/*/*/*.jar
+
+      - name: "Fetch the listed plugin catalogue"
+        env:
+          PLUGIN_REPOSITORY_TOKEN: ${{ secrets.PLUGIN_REPOSITORY_TOKEN }}
+        run: .github/scripts/publish_plugins.sh fetch
+
+      - name: "Generate the plugin catalogue"
+        run: .github/scripts/publish_plugins.sh generate
+
+      - name: "Sign the plugin catalogue"
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_PASSPHRASE }}
+        run: .github/scripts/publish_plugins.sh sign-catalogue
+
+      # Jars and signatures first, the catalogue last. A jar that is already published must have the same bytes.
+      - name: "Upload the plugin jars and the catalogue"
+        if: vars.PLUGIN_REPOSITORY_URL != ''
+        env:
+          PLUGIN_REPOSITORY_TOKEN: ${{ secrets.PLUGIN_REPOSITORY_TOKEN }}
+        run: .github/scripts/publish_plugins.sh upload
+
+      # Downloads with the public key only, so an anonymous reader can repeat exactly this check.
+      - name: "Verify the published plugins"
+        if: vars.PLUGIN_REPOSITORY_URL != ''
+        run: .github/scripts/publish_plugins.sh verify
+
+      - name: "Remove the signing keyring"
+        if: always()
+        run: rm -rf "$PLUGIN_SIGNING_HOME"
+
   # Publishes the Helm chart as OCI on releases only, and only after the container job of the
   # same release pushed the images the chart deploys. Release Please writes the release version
   # into Chart.yaml, so the chart carries the version of those images.
