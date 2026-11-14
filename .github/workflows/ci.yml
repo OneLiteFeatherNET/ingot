@@ -258,8 +258,11 @@ jobs:
   #
   # Nothing is pushed. This answers "does it build", which is the failure mode that used to
   # escape; the release job stays the only thing that publishes.
-  images:
-    name: "Container images"
+  # Builds the two images once for this commit and hands them to the jobs that run them. The server and the
+  # dashboard are built for linux/amd64 and loaded, the arm64 legs are built afterwards on the same builder, so the
+  # pinned build stage is reused from its local cache and the Gradle build runs once.
+  images-build:
+    name: "Build the container images"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -267,7 +270,7 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
-      # For the arm64 leg further down. Only the run stages are emulated; the Gradle and npm
+      # For the arm64 legs further down. Only the run stages are emulated; the Gradle and npm
       # builds are pinned to the native platform in the Dockerfiles.
       - name: "Set up QEMU"
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
@@ -290,8 +293,7 @@ jobs:
       - name: "Run the release script tests"
         run: python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests -v
 
-      # Built for the host architecture and loaded, because the checks below run it. The
-      # other published architecture is covered by its own step at the end.
+      # Built for the host architecture and loaded, because the jobs that use them run them.
       - name: "Build the server image"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -319,17 +321,64 @@ jobs:
           cache-from: type=gha,scope=ci-dashboard
           cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-dashboard' || '' }}
 
-      # Building an image proves the Dockerfile parses. Everything that has actually gone
-      # wrong with these two was runtime behaviour that a build cannot see: privileges the
-      # entrypoint could no longer drop, an environment variable read and ignored, a log
-      # directory that stayed empty, an nginx serving no server block.
-      #
+      # The jobs below load these into their own Docker stores. Both tags are kept by the save.
+      - name: "Save the container images"
+        run: docker save ingot:ci ingot-dashboard:ci --output "$RUNNER_TEMP/ingot-images.tar"
+
+      # The archive holds compressed layers already, so the upload stores it without compressing it again.
+      - name: "Publish the container images"
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/ingot-images.tar
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+      # Neither loaded nor pushed: a single Docker image store cannot hold two
+      # architectures under one tag, and the question here is only whether it builds.
+      # No cache export: the build stage is shared with the amd64 build above through the builder's
+      # local cache, so the Gradle build runs once and nothing is written to the Actions cache.
+      - name: "Build the server image for arm64"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+
+      - name: "Build the dashboard image for arm64"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: reposilite-frontend/Dockerfile
+          platforms: linux/arm64
+          push: false
+
+  # Runs the server image and the dashboard image the way a deployment does. It needs an image that
+  # already exists, which is why it cannot be part of the normal build.
+  container-tests:
+    name: "Container tests"
+    needs: images-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/container-images
+
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
+
       # The suite lives in reposilite-backend/src/containerTest and runs both images the way
       # a deployment does, including an upgrade rehearsal against the real upstream image,
       # two replicas that find each other through a NATS broker on one MariaDB database, and
       # the previous release running beside the new image on that database.
-      # It is a suite of its own because it needs an image that already exists, which is why
-      # it cannot be part of the normal build.
       - name: "Set up Java"
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
@@ -390,30 +439,23 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
 
-      # Both images are published for linux/arm64 as well, and the run stages are the part
-      # that is genuinely built per architecture: creating the service account, copying
-      # files, rendering an nginx config. Emulated, those are seconds, because the Gradle
-      # and npm work is pinned to the native platform and is already in the cache from the
-      # steps above. The alternative is finding out at release time.
-      #
-      # Neither loaded nor pushed: a single Docker image store cannot hold two
-      # architectures under one tag, and the question here is only whether it builds.
-      # No cache export: the build stage is shared with the amd64 build above through the builder's
-      # local cache, so the Gradle build runs once and nothing is written to the Actions cache.
-      - name: "Build the server image for arm64"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
-        with:
-          context: .
-          platforms: linux/arm64
-          push: false
-
-      - name: "Build the dashboard image for arm64"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
-        with:
-          context: .
-          file: reposilite-frontend/Dockerfile
-          platforms: linux/arm64
-          push: false
+  # The required check. It passes only when the image build and the container tests both succeeded.
+  images:
+    name: "Container images"
+    needs: [images-build, container-tests]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Check the image build and the container tests"
+        env:
+          BUILD: ${{ needs.images-build.result }}
+          TESTS: ${{ needs.container-tests.result }}
+        run: |
+          echo "Image build: $BUILD. Container tests: $TESTS."
+          test "$BUILD" = success
+          test "$TESTS" = success
 
   # The chart is linted and rendered without a cluster first, because a broken template is the
   # cheapest thing to catch. Then chart-testing installs both deploy modes on a kind cluster
@@ -478,6 +520,7 @@ jobs:
 
   chart:
     name: "Helm chart"
+    needs: images-build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -539,31 +582,14 @@ jobs:
         with:
           cluster_name: ingot
 
-      - name: "Set up Buildx"
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
-
-      # Built for the host architecture and loaded into the local image store, so kind can take
-      # them from there. The tags are the ones the ci values files of the chart name.
-      - name: "Build the server image"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
-          context: .
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: ingot:ci
-          cache-from: type=gha,scope=ci-server
+          name: container-images
+          path: ${{ runner.temp }}/container-images
 
-      - name: "Build the dashboard image"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
-        with:
-          context: .
-          file: reposilite-frontend/Dockerfile
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: ingot-dashboard:ci
-          cache-from: type=gha,scope=ci-dashboard
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
 
       - name: "Load the images into kind"
         run: kind load docker-image ingot:ci ingot-dashboard:ci --name ingot
@@ -619,6 +645,7 @@ jobs:
   # two deploys at the same moment, a refresh token moved between replicas, and both replicas listing both instances.
   ha-smoke:
     name: "HA smoke test"
+    needs: images-build
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -637,31 +664,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: "Set up Buildx"
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
-
-      # The same images and cache scopes as the chart job, built for the host architecture and loaded into the local
-      # image store, so that kind can take them from there.
-      - name: "Build the server image"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
-          context: .
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: ingot:ci
-          cache-from: type=gha,scope=ci-server
+          name: container-images
+          path: ${{ runner.temp }}/container-images
 
-      - name: "Build the dashboard image"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
-        with:
-          context: .
-          file: reposilite-frontend/Dockerfile
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: ingot-dashboard:ci
-          cache-from: type=gha,scope=ci-dashboard
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
 
       - name: "Set up kind"
         uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa  # v1.15.1
