@@ -14,6 +14,7 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.web.infrastructure.ReposiliteDsl.ReposiliteConfiguration
 import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.logging.AccessLogHandler
 import net.onelitefeather.ingot.identity.session.SessionCookies
 import panda.std.reactive.Reference
 import panda.std.asSuccess
@@ -122,7 +123,10 @@ fun createReposiliteDsl(
             logger = journalist.logger,
             ctx = this,
             accessTokenFacade = accessTokenFacade,
-            authenticationResult = javalinLazy { authenticate() },
+            // The name of the resolved token goes to the request, where the access record reads it
+            authenticationResult = javalinLazy {
+                authenticate().also { result -> result.orNull()?.let { attribute(AccessLogHandler.USER_ATTRIBUTE, it.name) } }
+            },
             readOnly = readOnly,
         )
 
