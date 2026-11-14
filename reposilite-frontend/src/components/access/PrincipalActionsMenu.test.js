@@ -368,6 +368,27 @@ describe('PrincipalActionsMenu', () => {
   })
 
   describe('delete', () => {
+    // The username and the display name are swapped on purpose: the dialog must name what has to be typed.
+    const SWAPPED = { name: 'sdsdfsdf', kind: 'USER', displayName: 'sdfsdfsdf', disabled: true }
+
+    it('names the username in the dialog text, not the display name', async () => {
+      await mountMenu({ principal: SWAPPED })
+      await chooseItem('delete')
+
+      expect(dialog().textContent, 'the text names the username that has to be typed').toContain('sdsdfsdf and their tokens are deleted')
+      expect(dialog().textContent, 'the display name is not the name of the user here').not.toContain('sdfsdfsdf and their tokens')
+    })
+
+    it('enables the delete button for the username when the display name differs', async () => {
+      await mountMenu({ principal: SWAPPED })
+      await chooseItem('delete')
+
+      await typeInDialog('sdfsdfsdf')
+      expect(dialogButton('Delete').disabled, 'the display name does not unlock the deletion').toBe(true)
+      await typeInDialog('sdsdfsdf')
+      expect(dialogButton('Delete').disabled, 'the username does').toBe(false)
+    })
+
     it('keeps the delete button disabled until the username is typed', async () => {
       await mountMenu()
       await chooseItem('delete')
