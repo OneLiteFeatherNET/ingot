@@ -53,3 +53,96 @@ describe('global reduced motion rule in the stylesheet', () => {
     expect(block, 'the transition duration').toContain('transition-duration: 0.01ms')
   })
 })
+
+// The top-level blocks of a stylesheet as { header, body }, comments removed first. The header is the text between the
+// previous statement and the opening brace, so it reads as the selector or at-rule of the block.
+const topLevelBlocks = (css) => {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const blocks = []
+  let depth = 0
+  let start = 0
+  let boundary = 0
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index]
+    if (character === '{') {
+      if (depth === 0) {
+        blocks.push({ header: text.slice(boundary, index).trim(), open: index })
+      }
+      depth++
+    } else if (character === '}') {
+      depth--
+      if (depth === 0) {
+        const last = blocks[blocks.length - 1]
+        last.body = text.slice(last.open + 1, index)
+        boundary = index + 1
+      }
+    } else if (character === ';' && depth === 0) {
+      boundary = index + 1
+    }
+  }
+  return blocks
+}
+
+// The selectors that sit outside every cascade layer. The two token hooks, :root and .dark, are allowed: they only
+// declare custom properties. Blocks of at-rules are skipped, except @media, which is searched for the same rules.
+const unlayeredSelectors = (css) => {
+  const found = []
+  const visit = (text) => {
+    for (const block of topLevelBlocks(text)) {
+      if (block.header.startsWith('@media')) {
+        visit(block.body)
+      } else if (!block.header.startsWith('@') && !block.header.startsWith(':root') && block.header !== '.dark') {
+        found.push(block.header)
+      }
+    }
+  }
+  visit(css)
+  return found
+}
+
+describe('cascade layers of the dashboard styles', () => {
+  const materialSheets = ['color.css', 'typography.css', 'shape-elevation-motion.css', 'state-layer.css', 'touch-target.css']
+    .map(name => [name, readFileSync(join(process.cwd(), 'src', 'styles', 'md3', name), 'utf8')])
+
+  it('orders the layers so that ingot-plugins comes last', () => {
+    expect(stylesheet, 'the layer statement names ingot-plugins as the last layer').toContain(
+      '@layer theme, base, components, utilities, ingot-plugins;'
+    )
+  })
+
+  it('leaves no selector outside a layer in the stylesheet', () => {
+    expect(unlayeredSelectors(stylesheet), 'every selector of src/style.css sits inside a layer or is a utility').toEqual([])
+  })
+
+  for (const [name, source] of materialSheets) {
+    it(`leaves no selector outside a layer in src/styles/md3/${name}`, () => {
+      expect(unlayeredSelectors(source), `every selector of ${name} sits inside a layer or is a utility`).toEqual([])
+    })
+  }
+})
+
+describe('container utility', () => {
+  const utilityAt = stylesheet.indexOf('@utility container {')
+  const containerUtility = utilityAt < 0 ? '' : blockAt(stylesheet, utilityAt)
+
+  it('is declared as a utility, so that the breakpoint tokens do not add width steps to Tailwind\'s own container', () => {
+    expect(utilityAt, 'a @utility container block in src/style.css').toBeGreaterThanOrEqual(0)
+  })
+
+  // Tailwind 4 derives the built-in container width steps from every --breakpoint token. The named window breakpoints
+  // must not add steps, so the utility keeps the five steps that the dashboard had before.
+  for (const step of ['40rem', '48rem', '64rem', '80rem', '96rem']) {
+    it(`keeps the width step of ${step} and no other`, () => {
+      expect(containerUtility, `the container utility caps the width at ${step}`).toMatch(
+        new RegExp(`@media \\(width >= ${step}\\)\\s*\\{\\s*max-width: ${step}`)
+      )
+    })
+  }
+
+  it('keeps the 16px gutter below 600px and the 24px gutter from 600px', () => {
+    expect(containerUtility, 'the compact gutter of 16px').toContain('padding-inline: 16px')
+    expect(containerUtility, 'the medium gutter of 24px from 600px').toMatch(
+      /@media \(width >= 600px\)\s*\{\s*padding-inline: 24px/
+    )
+  })
+})
