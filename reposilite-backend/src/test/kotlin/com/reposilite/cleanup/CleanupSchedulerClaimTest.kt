@@ -161,6 +161,7 @@ internal class CleanupSchedulerClaimTest {
     /** The claims of an instance that stops before it completes a run, so the key is never marked as done. */
     private class StoppedClaims(private val delegate: ScheduledJobClaims) : ScheduledJobClaims by delegate {
         override fun complete(key: String, done: Boolean) = Unit
+        override fun release(lease: ScheduledJobClaims.Lease, done: Boolean) = Unit
     }
 
     private fun instanceScheduler(
@@ -171,7 +172,7 @@ internal class CleanupSchedulerClaimTest {
     ) = CleanupScheduler(
         clock = clock,
         policies = { listOf(policy) },
-        start = {
+        start = { _, _ ->
             started.add(instance)
             if (stopsInRun) throw SimulatedStop()
         },
@@ -183,7 +184,7 @@ internal class CleanupSchedulerClaimTest {
         CleanupScheduler(
             clock = clock,
             policies = { listOf(policy) },
-            start = { started.add(it.id) },
+            start = { policy, _ -> started.add(policy.id) },
             claims = claims,
             journalist = InMemoryLogger(),
         )

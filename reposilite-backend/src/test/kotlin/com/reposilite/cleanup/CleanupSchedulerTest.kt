@@ -52,7 +52,7 @@ internal class CleanupSchedulerTest {
         CleanupScheduler(
             clock = clock,
             policies = { policies.toList() },
-            start = { started += it.id },
+            start = { policy, _ -> started += policy.id },
             claims = ScheduledJobClaims.Unshared,
             journalist = InMemoryLogger(),
         )
