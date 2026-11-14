@@ -94,6 +94,7 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | `TEAM_DELETED` | A team is deleted (`deleteTeam`). | `team` |
 | `TEAM_MEMBERSHIP_CHANGED` | The manual members of a team change (`replaceMembers`), or a login synchronises the groups of an external provider (`ExternalGroupSync`). The synchronisation writes one event per team and login, with the actor `system:<provider>`. | `team`, `added`, `removed` (principal names) |
 | `TEAM_GRANTS_CHANGED` | The grants of a team are replaced and differ from before (`replaceGrants`). | `team`, `added`, `removed` (entries like `repository=<name or *> path=<prefix or *> role=<ROLE>`) |
+| `EXTERNAL_REF_UNGUARDED` | A write sets, changes or clears the external reference of a team without the admin area `ingot.admin.idp` (`createTeam` and `updateTeam`). In `enforce` the write is refused with 403 and the outcome is `refused`. In `warn` the write proceeds, the outcome is `allowed`, and a warning is logged. Not recorded in `off`. | `team`, `reference` (the requested reference, empty when the reference is cleared), `caller` (the principal name), `mode` (`enforce` or `warn`), `outcome` (`refused` or `allowed`) |
 | `LAST_ADMIN_REVOKED_BY_PROVIDER` | A group synchronisation leaves no usable instance admin although there was one before (`ExternalGroupSync.reportLastAdminRevoked`). One event per affected admin. The actor is `system:<provider>`. | `provider`, `principal` |
 
 ### Maintenance

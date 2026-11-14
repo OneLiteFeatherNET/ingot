@@ -49,6 +49,7 @@ The action `*` covers all four actions.
 | `audit` | None. Accepted in node text. The audit endpoints need the instance admin status. |
 | `console` | The console endpoints and the support endpoints: the system information (`/api/admin/support/system-info`), the support bundle (`/api/admin/support/bundle`) and their availability. The console needs the instance admin status. |
 | `dashboard` | None. Accepted in node text. |
+| `idp` | Linking a team to an identity provider group. A write that sets, changes or clears the external reference of a team needs this area, see [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md#the-external-reference-of-a-team). The area is not checked by any other endpoint. |
 
 The areas `users`, `tokens` and `teams` are checked by their own endpoints. Every other endpoint that requires an admin checks the instance admin status, which means `ingot.admin.*` (or `*`). The HTTP API page lists which endpoint needs which check.
 
@@ -152,7 +153,7 @@ Checks and messages, with the placeholders as they appear in the message:
 | Wildcard inside a repository name | The repository '...' of '...' is invalid, a wildcard must be the whole repository segment |
 | Empty repository segment | The repository '...' of '...' is invalid, a wildcard must be the whole repository segment |
 | Repository name with an `artifact` segment | The repository node '...' is invalid. A repository name may not contain a segment named 'artifact', because the first '.artifact.' after 'ingot.repository.' separates the repository from the artifact part |
-| Unknown admin area | The admin area '...' of '...' is unknown, supported: settings, users, teams, tokens, maintenance, audit, console, dashboard or * |
+| Unknown admin area | The admin area '...' of '...' is unknown, supported: settings, users, teams, tokens, maintenance, audit, console, dashboard, idp or * |
 | Artifact node without an action | The artifact node '...' needs a groupId and an action, for example ingot.artifact.net.example.deploy |
 | Unknown artifact action | The action '...' of '...' is unknown for an artifact node, supported: read, deploy, delete or * (manage is not scoped to a path, use a repository node) |
 | More than one colon | The coordinate '...' of '...' can contain only one ':' between the groupId and the artifactId |
