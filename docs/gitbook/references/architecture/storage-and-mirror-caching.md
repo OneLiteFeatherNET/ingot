@@ -26,6 +26,29 @@ For most files, Ingot tries the local storage first. Remote hosts are tried only
 * **Remote first** for `maven-metadata.xml` under `PRIORITIZE_UPSTREAM_METADATA`, the default policy. Ingot asks the upstream hosts first, unless the local copy is younger than `metadataMaxAge`. A `metadataMaxAge` of 0 means the upstream is asked on every request.
 * **Remote first** when the resolution cache has recorded that a host serves this directory (see [Resolution cache](#resolution-cache)).
 
+The diagram shows the default local-first path for a file in a proxy repository. The `store` setting of the host decides whether a copy is kept.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    participant L as Repository storage
+    participant U as Mirror host
+    C->>S: GET file
+    S->>L: Look for a local copy
+    alt A local copy exists
+        L-->>S: File
+        S-->>C: File
+    else The local copy is missing
+        S->>U: GET the same path
+        U-->>S: File
+        opt store is true
+            S->>L: Write a copy
+        end
+        S-->>C: File
+    end
+```
+
 A file must pass the rules of a host before Ingot asks that host. The host is skipped when:
 
 * the file extension is not in `allowedExtensions`. The default list covers `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum types, `.asc` and `.sigstore.json`. Extensionless files need the marker `<none>`.
