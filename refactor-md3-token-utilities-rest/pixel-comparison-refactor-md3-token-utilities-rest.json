@@ -1,0 +1,602 @@
+[
+  {
+    "file": "dark/dashboard-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      1465
+    ]
+  },
+  {
+    "file": "dark/dashboard-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      1449
+    ]
+  },
+  {
+    "file": "dark/dashboard-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      1449
+    ]
+  },
+  {
+    "file": "dark/dashboard-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      2007
+    ]
+  },
+  {
+    "file": "dark/dashboard-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      1895
+    ],
+    "pixels": 19,
+    "box": [
+      31,
+      830,
+      85,
+      853
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_dashboard-390.png"
+  },
+  {
+    "file": "dark/dashboard-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      1627
+    ]
+  },
+  {
+    "file": "dark/dialog-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      900
+    ]
+  },
+  {
+    "file": "dark/dialog-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  {
+    "file": "dark/dialog-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      900
+    ]
+  },
+  {
+    "file": "dark/dialog-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      900
+    ]
+  },
+  {
+    "file": "dark/dialog-390.png",
+    "status": "identical",
+    "size": [
+      390,
+      900
+    ]
+  },
+  {
+    "file": "dark/dialog-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      900
+    ]
+  },
+  {
+    "file": "dark/menu-1024.png",
+    "status": "differs",
+    "size": [
+      1024,
+      900
+    ],
+    "pixels": 161,
+    "box": [
+      20,
+      83,
+      1000,
+      889
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_menu-1024.png"
+  },
+  {
+    "file": "dark/menu-1440.png",
+    "status": "differs",
+    "size": [
+      1440,
+      900
+    ],
+    "pixels": 25,
+    "box": [
+      848,
+      730,
+      968,
+      841
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_menu-1440.png"
+  },
+  {
+    "file": "dark/menu-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      900
+    ]
+  },
+  {
+    "file": "dark/menu-320.png",
+    "status": "differs",
+    "size": [
+      320,
+      900
+    ],
+    "pixels": 50,
+    "box": [
+      16,
+      454,
+      304,
+      853
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_menu-320.png"
+  },
+  {
+    "file": "dark/menu-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      900
+    ],
+    "pixels": 50,
+    "box": [
+      16,
+      454,
+      374,
+      853
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_menu-390.png"
+  },
+  {
+    "file": "dark/menu-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      900
+    ]
+  },
+  {
+    "file": "dark/repositories-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      1345
+    ]
+  },
+  {
+    "file": "dark/repositories-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      1317
+    ]
+  },
+  {
+    "file": "dark/repositories-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      1317
+    ]
+  },
+  {
+    "file": "dark/repositories-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      1661
+    ]
+  },
+  {
+    "file": "dark/repositories-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      1617
+    ],
+    "pixels": 19,
+    "box": [
+      305,
+      829,
+      369,
+      838
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_repositories-390.png"
+  },
+  {
+    "file": "dark/repositories-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      1505
+    ]
+  },
+  {
+    "file": "dark/repository-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      3062
+    ]
+  },
+  {
+    "file": "dark/repository-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      3074
+    ]
+  },
+  {
+    "file": "dark/repository-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      3074
+    ]
+  },
+  {
+    "file": "dark/repository-320.png",
+    "status": "differs",
+    "size": [
+      320,
+      4018
+    ],
+    "pixels": 18,
+    "box": [
+      244,
+      829,
+      304,
+      852
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_repository-320.png"
+  },
+  {
+    "file": "dark/repository-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      3666
+    ],
+    "pixels": 19,
+    "box": [
+      305,
+      829,
+      369,
+      838
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/dark_repository-390.png"
+  },
+  {
+    "file": "dark/repository-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      3334
+    ]
+  },
+  {
+    "file": "light/dashboard-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      1465
+    ]
+  },
+  {
+    "file": "light/dashboard-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      1449
+    ]
+  },
+  {
+    "file": "light/dashboard-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      1449
+    ]
+  },
+  {
+    "file": "light/dashboard-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      2007
+    ]
+  },
+  {
+    "file": "light/dashboard-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      1895
+    ],
+    "pixels": 9,
+    "box": [
+      20,
+      829,
+      85,
+      853
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_dashboard-390.png"
+  },
+  {
+    "file": "light/dashboard-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      1627
+    ]
+  },
+  {
+    "file": "light/dialog-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      900
+    ]
+  },
+  {
+    "file": "light/dialog-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  {
+    "file": "light/dialog-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      900
+    ]
+  },
+  {
+    "file": "light/dialog-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      900
+    ]
+  },
+  {
+    "file": "light/dialog-390.png",
+    "status": "identical",
+    "size": [
+      390,
+      900
+    ]
+  },
+  {
+    "file": "light/dialog-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      900
+    ]
+  },
+  {
+    "file": "light/menu-1024.png",
+    "status": "differs",
+    "size": [
+      1024,
+      900
+    ],
+    "pixels": 11,
+    "box": [
+      270,
+      537,
+      437,
+      841
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_menu-1024.png"
+  },
+  {
+    "file": "light/menu-1440.png",
+    "status": "differs",
+    "size": [
+      1440,
+      900
+    ],
+    "pixels": 20,
+    "box": [
+      848,
+      730,
+      968,
+      841
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_menu-1440.png"
+  },
+  {
+    "file": "light/menu-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      900
+    ]
+  },
+  {
+    "file": "light/menu-320.png",
+    "status": "differs",
+    "size": [
+      320,
+      900
+    ],
+    "pixels": 35,
+    "box": [
+      16,
+      454,
+      304,
+      853
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_menu-320.png"
+  },
+  {
+    "file": "light/menu-390.png",
+    "status": "identical",
+    "size": [
+      390,
+      900
+    ]
+  },
+  {
+    "file": "light/menu-600.png",
+    "status": "differs",
+    "size": [
+      600,
+      900
+    ],
+    "pixels": 75,
+    "box": [
+      20,
+      83,
+      590,
+      888
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_menu-600.png"
+  },
+  {
+    "file": "light/repositories-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      1345
+    ]
+  },
+  {
+    "file": "light/repositories-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      1317
+    ]
+  },
+  {
+    "file": "light/repositories-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      1317
+    ]
+  },
+  {
+    "file": "light/repositories-320.png",
+    "status": "identical",
+    "size": [
+      320,
+      1661
+    ]
+  },
+  {
+    "file": "light/repositories-390.png",
+    "status": "differs",
+    "size": [
+      390,
+      1617
+    ],
+    "pixels": 7,
+    "box": [
+      305,
+      830,
+      369,
+      837
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_repositories-390.png"
+  },
+  {
+    "file": "light/repositories-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      1505
+    ]
+  },
+  {
+    "file": "light/repository-1024.png",
+    "status": "identical",
+    "size": [
+      1024,
+      3062
+    ]
+  },
+  {
+    "file": "light/repository-1440.png",
+    "status": "identical",
+    "size": [
+      1440,
+      3074
+    ]
+  },
+  {
+    "file": "light/repository-1920.png",
+    "status": "identical",
+    "size": [
+      1920,
+      3074
+    ]
+  },
+  {
+    "file": "light/repository-320.png",
+    "status": "differs",
+    "size": [
+      320,
+      4018
+    ],
+    "pixels": 7,
+    "box": [
+      244,
+      829,
+      304,
+      852
+    ],
+    "diff_image": "/tmp/claude-1000/-mnt-projects-oss-onelitefeather-Ingot/868aa698-cc84-447e-ae9e-d945ffbeb997/scratchpad/md3-rest/diffs/light_repository-320.png"
+  },
+  {
+    "file": "light/repository-390.png",
+    "status": "identical",
+    "size": [
+      390,
+      3666
+    ]
+  },
+  {
+    "file": "light/repository-600.png",
+    "status": "identical",
+    "size": [
+      600,
+      3334
+    ]
+  }
+]

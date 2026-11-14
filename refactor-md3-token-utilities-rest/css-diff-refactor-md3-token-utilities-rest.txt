@@ -1,0 +1,215 @@
+rules: 977 before, 1008 after; only before 54, only after 84
+declarations: only before 65, only after 146
+--- declarations only before
+- .md-snackbar-enter-active[data-v-a15fd038],.md-snackbar-leave-active[data-v-a15fd038] :: transition:opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard), transform var(--md-sys-motion-duratio
+- .md-snackbar-enter-from[data-v-a15fd038],.md-snackbar-leave-to[data-v-a15fd038] :: opacity:0
+- .md-snackbar-enter-from[data-v-a15fd038],.md-snackbar-leave-to[data-v-a15fd038] :: transform:translateY(8px)
+- @media (prefers-reduced-motion:reduce) :: .md-snackbar-enter-active[data-v-a15fd038],.md-snackbar-leave-active[data-v-a15fd038]{transition:none
+- @layer components :: .md-state-layer{--md-state-opacity:0
+- @layer components :: isolation:isolate
+- @layer components :: position:relative
+- @media (hover:hover) :: .md-state-layer:hover{--md-state-opacity:.08
+- .md-state-layer:focus-visible,.md-state-layer:active :: --md-state-opacity:.12
+- .md-state-layer.is-dragged :: --md-state-opacity:.16
+- .md-focus-ring:focus-visible :: outline:3px solid var(--md-sys-color-secondary)
+- .md-focus-ring:focus-visible :: outline-offset:2px
+- .md-focus-ring-inset:focus-visible :: outline:3px solid var(--md-sys-color-secondary)
+- .md-focus-ring-inset:focus-visible :: outline-offset:-3px
+- @media (prefers-reduced-motion:reduce) :: .md-state-layer:before{transition:none
+- .md-touch-target:after :: min-width:48px
+- .md-touch-target:after :: min-height:48px
+- .vfm :: z-index:var(--md-sys-z-dialog)
+- @layer utilities :: .pointer-events-auto{pointer-events:auto
+- .top-\[calc\(4rem\+1rem\)\] :: top:5rem
+- .bottom-\[calc\(5rem\+env\(safe-area-inset-bottom\)\+0\.5rem\)\] :: bottom:calc(5rem + env(safe-area-inset-bottom) + .5rem)
+- .size-\[18px\] :: width:18px
+- .size-\[18px\] :: height:18px
+- .md-router-view :: min-height:calc(100vh - 2rem)
+- .w-\[min\(320px\,calc\(100vw-56px\)\)\] :: width:min(320px,100vw - 56px)
+- .skeleton-bars :: animation:.8s ease-out .2s both skeleton-fade-in
+- .bg-\[var\(--md-field-container\,var\(--md-sys-color-surface\)\)\] :: background-color:var(--md-field-container,var(--md-sys-color-surface))
+- .bg-scrim\/32\! :: background-color:var(--md-sys-color-scrim)!important
+- @supports (color:color-mix(in lab, red, red)) :: .bg-scrim\/32\!{background-color:color-mix(in oklab, var(--md-sys-color-scrim) 32%, transparent)!important
+- .bg-scrim\/40 :: background-color:var(--md-sys-color-scrim)
+- @supports (color:color-mix(in lab, red, red)) :: .bg-scrim\/40{background-color:color-mix(in oklab, var(--md-sys-color-scrim) 40%, transparent)
+- .group-hover\:opacity-\[0\.08\]:is(:where(.group):hover *) :: opacity:.08
+- .group-hover\:\[--md-state-opacity\:0\.08\]:is(:where(.group):hover *) :: --md-state-opacity:.08
+- .group-focus-visible\:opacity-\[0\.12\]:is(:where(.group):focus-visible *) :: opacity:.12
+- .group-active\:opacity-\[0\.12\]:is(:where(.group):active *) :: opacity:.12
+- @media (hover:hover) :: .peer-hover\:opacity-\[0\.08\]:is(:where(.peer):hover~*){opacity:.08
+- .peer-focus\:bg-\[var\(--md-field-container\,var\(--md-sys-color-surface\)\)\]:is(:where(.peer):focus~*) :: background-color:var(--md-field-container,var(--md-sys-color-surface))
+- .peer-focus-visible\:opacity-\[0\.12\]:is(:where(.peer):focus-visible~*),.peer-active\:opacity-\[0\.12\]:is(:where(.peer):active~*) :: opacity:.12
+- .peer-\[\:not\(\:placeholder-shown\)\]\:bg-\[var\(--md-field-container\,var\(--md-sys-color-surface\)\)\]:is(:where(.peer):not(:placeholder-shown)~*) :: background-color:var(--md-field-container,var(--md-sys-color-surfac
+- .has-focus-visible\:outline-3:has(:focus-visible) :: outline-style:var(--tw-outline-style)
+- .has-focus-visible\:outline-3:has(:focus-visible) :: outline-width:3px
+- .has-focus-visible\:outline-offset-2:has(:focus-visible) :: outline-offset:2px
+- .has-focus-visible\:outline-secondary:has(:focus-visible) :: outline-color:var(--md-sys-color-secondary)
+- .has-focus-visible\:outline-solid:has(:focus-visible) :: --tw-outline-style:solid
+- .has-focus-visible\:outline-solid:has(:focus-visible) :: outline-style:solid
+- .has-\[input\:focus-visible\]\:outline-3:has(:is(input:focus-visible)) :: outline-style:var(--tw-outline-style)
+- .has-\[input\:focus-visible\]\:outline-3:has(:is(input:focus-visible)) :: outline-width:3px
+- .has-\[input\:focus-visible\]\:outline-offset-2:has(:is(input:focus-visible)) :: outline-offset:2px
+- .has-\[input\:focus-visible\]\:outline-secondary:has(:is(input:focus-visible)) :: outline-color:var(--md-sys-color-secondary)
+- .medium\:min-h-\[calc\(100dvh_-_4rem\)\] :: min-height:calc(100dvh - 4rem)
+- .max-medium\:pt-\[calc\(5rem\+env\(safe-area-inset-bottom\)\)\] :: padding-top:calc(5rem + env(safe-area-inset-bottom))
+- .\[\&\>svg\]\:size-\[18px\]>svg :: width:18px
+- .\[\&\>svg\]\:size-\[18px\]>svg :: height:18px
+- :root :: --md-sys-color-surface-tint:#0062a1
+- :root :: --olf-gradient:linear-gradient(135deg, #0062a1 0%, #565a8b 100%)
+- .dark :: --olf-gradient:linear-gradient(135deg, #9ccaff 0%, #bfc2fa 100%)
+- :root :: --md-sys-elevation-level1:0 1px 2px 0 #0000004d, 0 1px 3px 1px #00000026
+- :root :: --md-sys-elevation-level2:0 1px 2px 0 #0000004d, 0 2px 6px 2px #00000026
+- :root :: --md-sys-elevation-level3:0 1px 3px 0 #0000004d, 0 4px 8px 3px #00000026
+- :root :: --md-sys-elevation-level4:0 2px 3px 0 #0000004d, 0 6px 10px 4px #00000026
+- :root :: --md-sys-elevation-level5:0 4px 4px 0 #0000004d, 0 8px 12px 6px #00000026
+- @layer ingot-plugins;@keyframes skeleton-fade-in :: 0%{opacity:0
+- @property --tw-translate-x :: syntax:"*"
+- @property --tw-translate-x :: inherits:false
+- @property --tw-translate-x :: initial-value:0
+--- declarations only after
++ .md-snackbar-enter-active[data-v-d1ce8673],.md-snackbar-leave-active[data-v-d1ce8673] :: transition:opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard), transform var(--md-sys-motion-duratio
++ .md-snackbar-enter-from[data-v-d1ce8673],.md-snackbar-leave-to[data-v-d1ce8673] :: opacity:0
++ .md-snackbar-enter-from[data-v-d1ce8673],.md-snackbar-leave-to[data-v-d1ce8673] :: transform:translateY(8px)
++ @media (prefers-reduced-motion:reduce) :: .md-snackbar-enter-active[data-v-d1ce8673],.md-snackbar-leave-active[data-v-d1ce8673]{transition:none
++ @layer theme :: --ease-out:cubic-bezier(0, 0, .2, 1)
++ @layer theme :: --z-index-md-sticky:20
++ @layer theme :: --z-index-md-top-bar:30
++ @layer theme :: --z-index-md-menu:50
++ @layer theme :: --z-index-md-dialog:var(--md-sys-z-dialog)
++ @layer theme :: --z-index-md-snackbar:1100
++ @layer theme :: --opacity-md-scrim:32%
++ @layer theme :: --opacity-md-scrim-strong:40%
++ @layer theme :: --spacing-md-icon:1.125rem
++ @layer theme :: --spacing-md-top-bar:4rem
++ @layer theme :: --spacing-md-rail:6rem
++ @layer theme :: --spacing-md-bottom-bar:5rem
++ @layer theme :: --container-md-reading:60rem
++ @layer theme :: --container-md-sheet:20rem
++ @layer theme :: --container-md-snackbar:35rem
++ @layer theme :: --animate-md-linear-slide:md-linear-slide 1.6s var(--md-sys-motion-easing-standard) infinite
++ @layer theme :: --animate-md-linear-slide-reduced:md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite
++ @layer theme :: --animate-md-snackbar-enter:md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both
++ @layer theme :: --animate-md-snackbar-leave:md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both
++ @layer theme :: --animate-skeleton-fade-in:skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both
++ @layer theme :: --opacity-md-disabled-container:var(--md-sys-state-disabled-container-opacity)
++ @layer theme :: --opacity-md-disabled-content:var(--md-sys-state-disabled-content-opacity)
++ @layer components :: .vfm{z-index:var(--md-sys-z-dialog)
++ @layer utilities :: .md-state-layer{--md-state-opacity:0
++ @layer utilities :: isolation:isolate
++ @layer utilities :: position:relative
++ @media (hover:hover) :: .md-state-layer:hover{--md-state-opacity:var(--md-sys-state-hover-opacity)
++ .md-state-layer:focus-visible :: --md-state-opacity:var(--md-sys-state-focus-opacity)
++ .md-state-layer:active :: --md-state-opacity:var(--md-sys-state-pressed-opacity)
++ .md-state-layer[class~=is-dragged] :: --md-state-opacity:var(--md-sys-state-dragged-opacity)
++ .pointer-events-auto :: pointer-events:auto
++ .md-touch-target:after :: min-width:var(--md-sys-touch-target-size)
++ .md-touch-target:after :: min-height:var(--md-sys-touch-target-size)
++ .top-\[calc\(var\(--spacing-md-top-bar\)\+--spacing\(4\)\)\] :: top:calc(var(--spacing-md-top-bar) + calc(var(--spacing) * 4))
++ .top-md-top-bar :: top:var(--spacing-md-top-bar)
++ .bottom-\[calc\(var\(--spacing-md-bottom-bar\)\+env\(safe-area-inset-bottom\)\+--spacing\(2\)\)\] :: bottom:calc(var(--spacing-md-bottom-bar) + env(safe-area-inset-bottom) + calc(var(--spacing) * 2))
++ .z-md-dialog :: z-index:var(--z-index-md-dialog)
++ .z-md-menu :: z-index:var(--z-index-md-menu)
++ .z-md-snackbar :: z-index:var(--z-index-md-snackbar)
++ .z-md-sticky :: z-index:var(--z-index-md-sticky)
++ .z-md-top-bar :: z-index:var(--z-index-md-top-bar)
++ .size-md-icon,.md-icon-svg>svg :: width:var(--spacing-md-icon)
++ .size-md-icon,.md-icon-svg>svg :: height:var(--spacing-md-icon)
++ .md-router-view :: min-height:calc(100vh - calc(var(--spacing) * 8))
++ .min-h-md-top-bar :: min-height:var(--spacing-md-top-bar)
++ .w-\[min\(var\(--container-md-sheet\)\,calc\(100vw-56px\)\)\] :: width:min(var(--container-md-sheet), calc(100vw - 56px))
++ .w-md-rail :: width:var(--spacing-md-rail)
++ .max-w-md-reading :: max-width:var(--container-md-reading)
++ .max-w-md-snackbar :: max-width:var(--container-md-snackbar)
++ .animate-md-linear-slide :: animation:var(--animate-md-linear-slide)
++ .animate-md-linear-slide-reduced :: animation:var(--animate-md-linear-slide-reduced)
++ .animate-md-snackbar-enter :: animation:var(--animate-md-snackbar-enter)
++ .animate-md-snackbar-leave :: animation:var(--animate-md-snackbar-leave)
++ .animate-skeleton-fade-in,.skeleton-bars :: animation:var(--animate-skeleton-fade-in)
++ .bg-md-field-container :: background-color:var(--md-field-container)
++ .bg-on-surface\/md-disabled-container :: background-color:var(--md-sys-color-on-surface)
++ @supports (color:color-mix(in lab, red, red)) :: .bg-on-surface\/md-disabled-container{background-color:color-mix(in oklab, var(--md-sys-color-on-surface) var(--md-sys-state-disabled-container-opacity), transparent)
++ .bg-scrim\/md-scrim :: background-color:var(--md-sys-color-scrim)
++ @supports (color:color-mix(in lab, red, red)) :: .bg-scrim\/md-scrim{background-color:color-mix(in oklab, var(--md-sys-color-scrim) var(--opacity-md-scrim), transparent)
++ .bg-scrim\/md-scrim\! :: background-color:var(--md-sys-color-scrim)!important
++ @supports (color:color-mix(in lab, red, red)) :: .bg-scrim\/md-scrim\!{background-color:color-mix(in oklab, var(--md-sys-color-scrim) var(--opacity-md-scrim), transparent)!important
++ .bg-scrim\/md-scrim-strong :: background-color:var(--md-sys-color-scrim)
++ @supports (color:color-mix(in lab, red, red)) :: .bg-scrim\/md-scrim-strong{background-color:color-mix(in oklab, var(--md-sys-color-scrim) var(--opacity-md-scrim-strong), transparent)
++ .md-code-medium :: font-family:var(--font-mono)
++ .md-code-medium :: font-size:var(--md-sys-typescale-body-medium-size)
++ .md-code-medium :: line-height:var(--md-sys-typescale-body-medium-line-height)
++ .md-code-medium :: font-weight:var(--md-sys-typescale-body-medium-weight)
++ .md-code-medium :: letter-spacing:var(--md-sys-typescale-body-medium-tracking)
++ .md-code-small :: font-family:var(--font-mono)
++ .md-code-small :: font-size:var(--md-sys-typescale-body-small-size)
++ .md-code-small :: line-height:var(--md-sys-typescale-body-small-line-height)
++ .md-code-small :: font-weight:var(--md-sys-typescale-body-small-weight)
++ .md-code-small :: letter-spacing:var(--md-sys-typescale-body-small-tracking)
++ .text-on-surface\/md-disabled-content :: color:var(--md-sys-color-on-surface)
++ @supports (color:color-mix(in lab, red, red)) :: .text-on-surface\/md-disabled-content{color:color-mix(in oklab, var(--md-sys-color-on-surface) var(--md-sys-state-disabled-content-opacity), transparent)
++ .opacity-md-state-focus :: opacity:var(--md-sys-state-focus-opacity)
++ .opacity-md-state-hover :: opacity:var(--md-sys-state-hover-opacity)
++ .opacity-md-state-pressed :: opacity:var(--md-sys-state-pressed-opacity)
++ .md-focus-ring:focus-visible :: outline:var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)
++ .md-focus-ring:focus-visible :: outline-offset:var(--md-sys-focus-ring-offset)
++ .md-focus-ring-inset:focus-visible :: outline:var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)
++ .md-focus-ring-inset:focus-visible :: outline-offset:calc(var(--md-sys-focus-ring-width) * -1)
++ .md-focus-ring-within :: outline:var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)
++ .md-focus-ring-within :: outline-offset:var(--md-sys-focus-ring-offset)
++ .duration-md-short2 :: --tw-duration:var(--md-sys-motion-duration-short2)
++ .duration-md-short2 :: transition-duration:var(--md-sys-motion-duration-short2)
++ .ease-out :: --tw-ease:var(--ease-out)
++ .ease-out :: transition-timing-function:var(--ease-out)
++ .md-state-dragged :: --md-state-opacity:var(--md-sys-state-dragged-opacity)
++ .md-state-focus :: --md-state-opacity:var(--md-sys-state-focus-opacity)
++ .md-state-focus\! :: --md-state-opacity:var(--md-sys-state-focus-opacity)!important
++ .md-state-hover :: --md-state-opacity:var(--md-sys-state-hover-opacity)
++ .md-state-pressed :: --md-state-opacity:var(--md-sys-state-pressed-opacity)
++ .group-hover\:opacity-md-state-hover:is(:where(.group):hover *) :: opacity:var(--md-sys-state-hover-opacity)
++ .group-hover\:md-state-hover:is(:where(.group):hover *) :: --md-state-opacity:var(--md-sys-state-hover-opacity)
++ .group-focus-visible\:opacity-md-state-focus:is(:where(.group):focus-visible *) :: opacity:var(--md-sys-state-focus-opacity)
++ .group-active\:opacity-md-state-pressed:is(:where(.group):active *) :: opacity:var(--md-sys-state-pressed-opacity)
++ @media (hover:hover) :: .peer-hover\:opacity-md-state-hover:is(:where(.peer):hover~*){opacity:var(--md-sys-state-hover-opacity)
++ .peer-hover\:md-state-hover:is(:where(.peer):hover~*) :: --md-state-opacity:var(--md-sys-state-hover-opacity)
++ .peer-focus\:bg-md-field-container:is(:where(.peer):focus~*) :: background-color:var(--md-field-container)
++ .peer-focus-visible\:opacity-md-state-focus:is(:where(.peer):focus-visible~*) :: opacity:var(--md-sys-state-focus-opacity)
++ .peer-focus-visible\:md-state-focus:is(:where(.peer):focus-visible~*) :: --md-state-opacity:var(--md-sys-state-focus-opacity)
++ .peer-active\:opacity-md-state-pressed:is(:where(.peer):active~*) :: opacity:var(--md-sys-state-pressed-opacity)
++ .peer-active\:md-state-pressed:is(:where(.peer):active~*) :: --md-state-opacity:var(--md-sys-state-pressed-opacity)
++ .peer-\[\:not\(\:placeholder-shown\)\]\:bg-md-field-container:is(:where(.peer):not(:placeholder-shown)~*) :: background-color:var(--md-field-container)
++ .has-focus-visible\:md-focus-ring-within:has(:focus-visible) :: outline:var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)
++ .has-focus-visible\:md-focus-ring-within:has(:focus-visible) :: outline-offset:var(--md-sys-focus-ring-offset)
++ .medium\:min-h-\[calc\(100dvh_-_var\(--spacing-md-top-bar\)\)\] :: min-height:calc(100dvh - var(--spacing-md-top-bar))
++ .max-medium\:pt-\[calc\(var\(--spacing-md-bottom-bar\)\+env\(safe-area-inset-bottom\)\)\] :: padding-top:calc(var(--spacing-md-bottom-bar) + env(safe-area-inset-bottom))
++ :root :: --md-sys-color-surface-tint:var(--md-sys-color-primary)
++ :root :: --md-field-container:var(--md-sys-color-surface)
++ :root :: --olf-gradient:linear-gradient(135deg, var(--md-sys-color-surface-tint) 0%, #565a8b 100%)
++ .dark :: --md-sys-color-surface-tint:var(--md-sys-color-primary)
++ .dark :: --md-field-container:var(--md-sys-color-surface)
++ .dark :: --olf-gradient:linear-gradient(135deg, var(--md-sys-color-surface-tint) 0%, var(--md-sys-color-tertiary-fixed-dim) 100%)
++ :root :: --md-sys-shadow-key:#0000004d
++ :root :: --md-sys-shadow-ambient:#00000026
++ :root :: --md-sys-elevation-level1:0 1px 2px 0 var(--md-sys-shadow-key), 0 1px 3px 1px var(--md-sys-shadow-ambient)
++ :root :: --md-sys-elevation-level2:0 1px 2px 0 var(--md-sys-shadow-key), 0 2px 6px 2px var(--md-sys-shadow-ambient)
++ :root :: --md-sys-elevation-level3:0 1px 3px 0 var(--md-sys-shadow-key), 0 4px 8px 3px var(--md-sys-shadow-ambient)
++ :root :: --md-sys-elevation-level4:0 2px 3px 0 var(--md-sys-shadow-key), 0 6px 10px 4px var(--md-sys-shadow-ambient)
++ :root :: --md-sys-elevation-level5:0 4px 4px 0 var(--md-sys-shadow-key), 0 8px 12px 6px var(--md-sys-shadow-ambient)
++ @keyframes md-linear-slide :: 0%{transform:translate(-100%)
++ @keyframes md-snackbar-enter :: 0%{opacity:0
++ @keyframes md-snackbar-enter :: transform:translateY(8px)
++ to :: transform:translateY(0)
++ @keyframes md-snackbar-leave :: 0%{opacity:1
++ @keyframes md-snackbar-leave :: transform:translateY(0)
++ to :: transform:translateY(8px)
++ @keyframes skeleton-fade-in :: 0%{opacity:0
++ :root :: --md-sys-state-hover-opacity:.08
++ :root :: --md-sys-state-focus-opacity:.12
++ :root :: --md-sys-state-pressed-opacity:.12
++ :root :: --md-sys-state-dragged-opacity:.16
++ :root :: --md-sys-state-disabled-container-opacity:.12
++ :root :: --md-sys-state-disabled-content-opacity:.38
++ :root :: --md-sys-focus-ring-width:3px
++ :root :: --md-sys-focus-ring-offset:2px
++ :root :: --md-sys-touch-target-size:48px
++ @layer ingot-plugins;@property --tw-translate-x :: syntax:"*"
++ @layer ingot-plugins;@property --tw-translate-x :: inherits:false
++ @layer ingot-plugins;@property --tw-translate-x :: initial-value:0
