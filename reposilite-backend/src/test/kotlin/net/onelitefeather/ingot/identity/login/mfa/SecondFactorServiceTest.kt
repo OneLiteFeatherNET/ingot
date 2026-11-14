@@ -186,9 +186,9 @@ internal class SecondFactorServiceTest {
     @Test
     fun `a second authenticator does not issue recovery codes again`() {
         withFixture { fixture ->
-            fixture.enrolAuthenticator()
+            val firstSeed = fixture.enrolAuthenticator()
             clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
-            val started = fixture.service.enrolmentStart(fixture.principalId, "alice") as TotpEnrolmentStart.Started
+            val started = fixture.service.enrolmentStart(fixture.principalId, "alice", code = currentCode(firstSeed), ip = IP) as TotpEnrolmentStart.Started
 
             val outcome = fixture.service.confirmEnrolment(fixture.principalId, "alice", currentCode(started.seed), IP)
 
@@ -473,6 +473,84 @@ internal class SecondFactorServiceTest {
         val seed = checkNotNull(fixture.seed) { "enrol an authenticator before regenerating recovery codes" }
         val outcome = fixture.service.regenerateRecoveryCodes(fixture.principalId, "alice", currentCode(seed), IP, AuditActor.SYSTEM_ACTOR)
         return (outcome as RecoveryCodesOutcome.Regenerated).codes.first()
+    }
+
+    /** Enrols a second authenticator. The proof for the enrolment is a current code of [proofSeed]. Returns the new seed. */
+    private fun Fixture.enrolSecondAuthenticator(proofSeed: ByteArray): ByteArray {
+        // The proof is a code of a new step: the code that confirmed the first factor is already used.
+        clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+        val started = service.enrolmentStart(principalId, "alice", code = currentCode(proofSeed), ip = IP) as TotpEnrolmentStart.Started
+        val confirmation = service.confirmEnrolment(principalId, "alice", currentCode(started.seed), ip = IP)
+        assertThat(confirmation).`as`("second enrolment confirmed").isInstanceOf(EnrolmentConfirmation.Confirmed::class.java)
+        return started.seed
+    }
+
+    @Test
+    fun `a second enrolment without a current code is refused`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+
+            val outcome = fixture.service.enrolmentStart(fixture.principalId, "alice", code = null, ip = IP)
+
+            assertThat(outcome).`as`("second enrolment without a proof").isEqualTo(TotpEnrolmentStart.ProofRequired)
+        }
+    }
+
+    @Test
+    fun `a second enrolment with a current code of an existing factor is accepted`() {
+        withFixture { fixture ->
+            val seed = fixture.enrolAuthenticator()
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+
+            val outcome = fixture.service.enrolmentStart(fixture.principalId, "alice", code = currentCode(seed), ip = IP)
+
+            assertThat(outcome).`as`("second enrolment with a proof").isInstanceOf(TotpEnrolmentStart.Started::class.java)
+        }
+    }
+
+    @Test
+    fun `removing a factor with its own code is refused while another factor exists`() {
+        withFixture { fixture ->
+            val firstSeed = fixture.enrolAuthenticator()
+            fixture.enrolSecondAuthenticator(firstSeed)
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+            val first = fixture.service.factorsOf(fixture.principalId).first().id
+
+            val outcome = fixture.service.removeFactor(fixture.principalId, "alice", first, currentCode(firstSeed), IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("removal with the factor's own code").isEqualTo(FactorRemoval.WrongCode)
+            assertThat(fixture.service.factorsOf(fixture.principalId)).`as`("factors after the refusal").hasSize(2)
+        }
+    }
+
+    @Test
+    fun `removing a factor with the code of another factor is accepted`() {
+        withFixture { fixture ->
+            val firstSeed = fixture.enrolAuthenticator()
+            val secondSeed = fixture.enrolSecondAuthenticator(firstSeed)
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+            val first = fixture.service.factorsOf(fixture.principalId).first().id
+
+            val outcome = fixture.service.removeFactor(fixture.principalId, "alice", first, currentCode(secondSeed), IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("removal with another factor's code").isEqualTo(FactorRemoval.Removed)
+        }
+    }
+
+    @Test
+    fun `a failed code locks the account for every address, not only the one that failed`() {
+        withFixture(settings = LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5)) { fixture ->
+            fixture.enrolAuthenticator()
+            val seed = checkNotNull(fixture.seed)
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+            val challenge = fixture.signInChallenge()
+            repeat(3) { fixture.service.completeChallenge(challenge, wrongCodeFor(seed), "10.0.0.1") }
+
+            val fromAnotherAddress = fixture.service.completeChallenge(challenge, currentCode(seed), "10.0.0.2")
+
+            assertThat(fromAnotherAddress).`as`("right code from a rotated address").isInstanceOf(ChallengeCompletion.Blocked::class.java)
+        }
     }
 
     private companion object {

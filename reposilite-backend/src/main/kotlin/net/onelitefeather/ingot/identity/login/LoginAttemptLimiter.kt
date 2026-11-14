@@ -105,6 +105,10 @@ internal class LoginAttemptLimiter(
         fun mfaAddressKey(address: String): String =
             digest("mfa|address|$address")
 
+        /** The key of an account across every address, so that rotating addresses does not multiply the attempts. */
+        fun mfaAccountKey(username: String): String =
+            digest("mfa|account|${username.lowercase()}")
+
         private fun digest(value: String): String =
             MessageDigest.getInstance("SHA-256")
                 .digest(value.toByteArray(Charsets.UTF_8))

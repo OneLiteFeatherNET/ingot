@@ -113,6 +113,12 @@ internal class LdapAuthenticator(
                         ).accessToken
                 }
                 .filter({ !it.isExpired() }) { unauthorized("Invalid authorization credentials") }
+                // A token with the name of the directory user is reached with the directory password. That is refused for a
+                // token whose user has a second factor, because the factor would not apply to this login.
+                .filter({ token -> !DirectoryTokenMatch.refused(accessTokenFacade.subjectOf(token.identifier), accessTokenFacade.secondFactorGuard) }) {
+                    journalist.logger.warn("Directory login refused: the token of this name belongs to a user with a second factor")
+                    unauthorized("Invalid authorization credentials")
+                }
         }
 
     private fun createDirContext(user: String, password: String): Result<out DirContext, ErrorResponse> =

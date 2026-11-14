@@ -101,8 +101,8 @@ class LoginFacade internal constructor(
     fun mustChangePassword(principalId: Int): Boolean =
         service?.mustChangePassword(principalId) ?: false
 
-    fun startAuthenticatorEnrolment(principalId: Int, account: String): TotpEnrolmentStart =
-        secondFactor?.enrolmentStart(principalId, account)
+    fun startAuthenticatorEnrolment(principalId: Int, account: String, code: String?, ip: String): TotpEnrolmentStart =
+        secondFactor?.enrolmentStart(principalId, account, code, ip)
             ?: TotpEnrolmentStart.Unavailable("Second factors need the database")
 
     fun confirmAuthenticatorEnrolment(principalId: Int, account: String, code: String, ip: String): EnrolmentConfirmation =

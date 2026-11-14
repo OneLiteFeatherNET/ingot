@@ -75,6 +75,34 @@ class SecondFactorStore(
         }
     }
 
+    /**
+     * Turns a pending enrolment into a factor and, when [recoveryHashes] is given, stores the first set of recovery codes, all
+     * in one transaction. The update is guarded by the pending row, so of two confirmations of one enrolment only one writes.
+     */
+    fun confirmWithRecoveryCodes(id: Int, at: Instant, step: Long, recoveryHashes: List<String>?): Boolean =
+        transaction(database) {
+            val confirmed = MfaFactorTable.update(
+                where = { (MfaFactorTable.id eq id) and MfaFactorTable.confirmedAt.isNull() },
+                body = {
+                    it[MfaFactorTable.confirmedAt] = at
+                    it[MfaFactorTable.lastUsedStep] = step
+                    it[MfaFactorTable.lastUsedAt] = at
+                },
+            ) > 0
+            if (confirmed && recoveryHashes != null) {
+                val principalId = MfaFactorTable.selectAll().where { MfaFactorTable.id eq id }.single()[MfaFactorTable.principalId].value
+                MfaRecoveryCodeTable.deleteWhere { MfaRecoveryCodeTable.principalId eq principalId }
+                recoveryHashes.forEach { hash ->
+                    MfaRecoveryCodeTable.insert {
+                        it[MfaRecoveryCodeTable.principalId] = EntityID(principalId, PrincipalTable)
+                        it[MfaRecoveryCodeTable.codeHash] = hash
+                        it[MfaRecoveryCodeTable.createdAt] = at
+                    }
+                }
+            }
+            confirmed
+        }
+
     fun insertPendingTotp(principalId: Int, factorKey: String, name: String, secret: String, at: Instant) {
         transaction(database) {
             MfaFactorTable.insert {

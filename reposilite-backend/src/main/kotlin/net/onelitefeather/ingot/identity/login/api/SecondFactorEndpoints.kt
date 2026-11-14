@@ -22,6 +22,7 @@ import com.reposilite.shared.badRequestError
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.AccessTokenType
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
@@ -62,7 +63,14 @@ internal class SecondFactorEndpoints(
 
     private data class Caller(val principalId: Int, val name: String)
 
+    /**
+     * The signed-in user of a browser session. An access token is refused, even one of the user: a token is a long-lived
+     * secret that Maven, CI or a script keeps, and a second factor must not be reachable with it.
+     */
     private fun callerOf(identifier: AccessTokenIdentifier): Result<Caller, ErrorResponse> {
+        if (identifier.type != AccessTokenType.PRINCIPAL) {
+            return errorResponse(FORBIDDEN, "Second factors are managed from a browser session, not with an access token")
+        }
         val subject = accessTokens.subjectOf(identifier)
         val principalId = subject.principalId
         val name = subject.principalName
@@ -104,12 +112,18 @@ internal class SecondFactorEndpoints(
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
     )
-    private val startTotp = ReposiliteRoute<AuthenticatorEnrolmentDto>("/api/identity/me/factors/totp", Route.POST) {
+    private val startTotp = ReposiliteRoute<AuthenticatorEnrolmentDto>("/api/identity/me/factors/totp", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         authenticated {
-            response = callerOf(identifier).flatMap { user ->
-                when (val started = facade.startAuthenticatorEnrolment(user.principalId, user.name)) {
+            val caller = callerOf(identifier)
+            // A user who has a factor sends a current code of it, see SecondFactorService.enrolmentStart. The body may be empty
+            // for a user without a factor.
+            val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
+            response = caller.flatMap { user ->
+                when (val started = facade.startAuthenticatorEnrolment(user.principalId, user.name, code, ctx.ip())) {
                     is TotpEnrolmentStart.Started -> AuthenticatorEnrolmentDto(otpauthUri = started.otpauthUri).asSuccess()
                     is TotpEnrolmentStart.Unavailable -> errorResponse(CONFLICT, started.reason)
+                    TotpEnrolmentStart.ProofRequired -> errorResponse(FORBIDDEN, "Adding a factor needs a current code of an existing factor")
+                    is TotpEnrolmentStart.Blocked -> tooManyRequests(ctx, started.retryAfterSeconds, "Too many failed codes, try again later")
                 }
             }
         }

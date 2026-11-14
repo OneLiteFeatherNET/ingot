@@ -81,6 +81,12 @@ class ReposiliteParameters : Runnable {
      */
     var settingsSecretEnvironment: Map<String, String>? = null
 
+    /**
+     * The clock of the second factor codes. Null uses the system clock. Only the integration test harness sets it, so that a test
+     * can compute the codes the server expects.
+     */
+    var clock: java.time.Clock? = null
+
     @Option(names = ["--ignore-shared-configuration-errors"], description = ["Ignore errors while loading shared configuration file"])
     var ignoreSharedConfigurationErrors = false
 

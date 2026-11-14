@@ -51,6 +51,11 @@ sealed interface TotpEnrolmentStart {
     /** Authenticator codes need the settings key, because the seed must be stored reversibly. [reason] says what to set. */
     data class Unavailable(val reason: String) : TotpEnrolmentStart
 
+    /** A user with a factor starts another one only with a current code of one of their factors. */
+    data object ProofRequired : TotpEnrolmentStart
+
+    data class Blocked(val retryAfterSeconds: Long) : TotpEnrolmentStart
+
 }
 
 sealed interface EnrolmentConfirmation {
@@ -150,8 +155,11 @@ internal class SecondFactorService(
     private val hasLocalPassword: (Int) -> Boolean = { true },
 ) {
 
-    /** Starts an enrolment. A previous enrolment that never got its code is replaced. */
-    fun enrolmentStart(principalId: Int, account: String): TotpEnrolmentStart {
+    /**
+     * Starts an enrolment. A previous enrolment that never got its code is replaced. A user who already has a factor must
+     * prove the session with a current code of one of their factors ([code]), so that a stolen session cannot add a factor.
+     */
+    fun enrolmentStart(principalId: Int, account: String, code: String? = null, ip: String = ""): TotpEnrolmentStart {
         if (!seeds.available) {
             return TotpEnrolmentStart.Unavailable(
                 "Authenticator codes need the settings key: set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first. Passkeys and recovery codes need no key."
@@ -161,6 +169,16 @@ internal class SecondFactorService(
             return TotpEnrolmentStart.Unavailable(
                 "Authenticator codes are offered for accounts with a local password in this version. Directory accounts follow in a later change."
             )
+        }
+        if (store.findFactors(principalId).isNotEmpty()) {
+            if (code == null) {
+                return TotpEnrolmentStart.ProofRequired
+            }
+            when (checkCode(principalId, account, code, ip, context = "enrolment")) {
+                CodeCheck.Rejected -> return TotpEnrolmentStart.ProofRequired
+                is CodeCheck.Blocked -> return TotpEnrolmentStart.Blocked(retryAfterOf(account, ip))
+                is CodeCheck.Accepted -> Unit
+            }
         }
         val seed = ByteArray(TotpAlgorithm.SEED_BYTES).also { random.nextBytes(it) }
         val factorKey = UUID.randomUUID().toString()
@@ -186,8 +204,12 @@ internal class SecondFactorService(
             audit(failure(account, ip, "enrolment"))
             return EnrolmentConfirmation.WrongCode
         }
-        store.confirm(pending.id, now, step)
-        val codes = if (store.hasRecoveryCodes(principalId)) null else newRecoveryCodes(principalId)
+        // The factor and its recovery codes are written in one transaction, guarded by the pending row: a concurrent second
+        // confirmation of the same enrolment loses and issues nothing.
+        val codes = if (store.hasRecoveryCodes(principalId)) null else RecoveryCodes.generate(random)
+        if (!store.confirmWithRecoveryCodes(pending.id, now, step, codes?.map { RecoveryCodes.hash(it) })) {
+            return EnrolmentConfirmation.NoPendingEnrolment
+        }
         audit(AuditEvent(action = AuditAction.MFA_FACTOR_ENROLLED, actor = AuditActor.named(account, ip), details = mapOf("principal" to account, "kind" to KIND_TOTP)))
         return EnrolmentConfirmation.Confirmed(codes)
     }
@@ -245,7 +267,11 @@ internal class SecondFactorService(
         if (store.findFactor(principalId, factorId) == null) {
             return FactorRemoval.NotFound
         }
-        return when (val check = checkCode(principalId, account, code, ip, context = "change")) {
+        // A factor is removed with a code of another factor, or with its own code only when it is the last one. A recovery
+        // code is accepted in every case.
+        val remaining = store.findFactors(principalId).size
+        val allowed: (FactorRow) -> Boolean = { factor -> factor.id != factorId || remaining == 1 }
+        return when (val check = checkCode(principalId, account, code, ip, context = "change", allowed = allowed)) {
             CodeCheck.Rejected -> FactorRemoval.WrongCode
             is CodeCheck.Blocked -> FactorRemoval.Blocked(check.retryAfterSeconds)
             is CodeCheck.Accepted -> {
@@ -299,14 +325,21 @@ internal class SecondFactorService(
      * Checks a code for [principalId]: six digits are an authenticator code, anything else a recovery code. A rejected code
      * counts as a failure and is audited without the code. A blocked attempt is refused before any code is looked at.
      */
-    private fun checkCode(principalId: Int, account: String, code: String, ip: String, context: String): CodeCheck {
+    private fun checkCode(
+        principalId: Int,
+        account: String,
+        code: String,
+        ip: String,
+        context: String,
+        allowed: (FactorRow) -> Boolean = { true },
+    ): CodeCheck {
         val keys = keysOf(account, ip)
         limiter.retryAfter(keys)?.let { wait ->
             audit(failure(account, ip, context))
             return CodeCheck.Blocked(ceilSeconds(wait))
         }
         val accepted = if (isSixDigits(code.trim())) {
-            acceptAuthenticatorCode(principalId, code.trim())
+            acceptAuthenticatorCode(principalId, code.trim(), allowed)
         } else {
             acceptRecoveryCode(principalId, code)
         }
@@ -318,9 +351,9 @@ internal class SecondFactorService(
         return accepted
     }
 
-    private fun acceptAuthenticatorCode(principalId: Int, code: String): CodeCheck? {
+    private fun acceptAuthenticatorCode(principalId: Int, code: String, allowed: (FactorRow) -> Boolean): CodeCheck? {
         val now = clock.instant()
-        for (factor in store.findFactors(principalId).filter { it.kind == KIND_TOTP }) {
+        for (factor in store.findFactors(principalId).filter { it.kind == KIND_TOTP && allowed(it) }) {
             val seed = runCatching { seeds.open(factor.factorKey, checkNotNull(factor.secret)) }.getOrNull() ?: continue
             val step = TotpAlgorithm.matchingStep(seed, code, now.epochSecond) ?: continue
             // The code matched this factor. It is accepted only if no code of the same or a later step was accepted before.
@@ -348,8 +381,16 @@ internal class SecondFactorService(
             success = false,
         )
 
+    /**
+     * The keys of a second factor check: the account and address, the address alone, and the account across every address.
+     * The account key is what stops a client that rotates its address from trying the whole code space of one user.
+     */
     private fun keysOf(account: String, ip: String): List<String> =
-        listOf(LoginAttemptLimiter.mfaUserKey(account, ip), LoginAttemptLimiter.mfaAddressKey(ip))
+        listOf(LoginAttemptLimiter.mfaUserKey(account, ip), LoginAttemptLimiter.mfaAddressKey(ip), LoginAttemptLimiter.mfaAccountKey(account))
+
+    /** The whole seconds until the lock on the keys of this account and address ends. */
+    private fun retryAfterOf(account: String, ip: String): Long =
+        limiter.retryAfter(keysOf(account, ip))?.let { ceilSeconds(it) } ?: 1L
 
     private fun isSixDigits(value: String): Boolean =
         value.length == TotpAlgorithm.DIGITS && value.all { it in '0'..'9' }

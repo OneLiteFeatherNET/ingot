@@ -13,6 +13,7 @@ import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
@@ -59,7 +60,7 @@ class LoginPlugin : ReposilitePlugin() {
     override fun initialize(): Facade {
         val database = reposilite().database
         val auditExtensions = extensions()
-        val clock = Clock.systemUTC()
+        val clock = parameters().clock ?: Clock.systemUTC()
         val loginSettings = facade<SharedConfigurationFacade>().getDomainSettings<LoginSettings>()
         val audit: (AuditEvent) -> Unit = { auditExtensions.emitEvent(it) }
         val oidcCatalog = OidcProviderCatalog(loginSettings, warn = { logger.warn(it) })
@@ -184,6 +185,7 @@ class LoginPlugin : ReposilitePlugin() {
         }
 
         val loginFacade = LoginFacade(loginService, sessions, ownTokens, secondFactors)
+        accessTokenFacade.secondFactorGuard = { principalId -> loginFacade.hasSecondFactor(principalId) }
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->

@@ -21,10 +21,15 @@ import com.reposilite.ReposiliteParameters
 import com.reposilite.ReposiliteSpecification
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.shared.ErrorResponse
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Base64
 import kong.unirest.core.Unirest
+import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.OwnTokenOutcome
 import net.onelitefeather.ingot.identity.login.api.LoginResponse
@@ -52,8 +57,12 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
     /** A client without cookie management, so that the test decides which cookie a request carries. */
     private val http = Unirest.spawnInstance().also { it.config().enableCookieManagement(false) }
 
+    /** The clock of the server, fixed, so that the codes of the test are the codes of the server at any time of day. */
+    private val serverClock = Clock.fixed(Instant.parse("2026-11-14T10:00:00Z"), ZoneOffset.UTC)
+
     override fun overrideParameters(parameters: ReposiliteParameters) {
         parameters.settingsSecretEnvironment = mapOf(SettingsKeySources.KEY to key)
+        parameters.clock = serverClock
     }
 
     private val loginFacade: LoginFacade
@@ -70,14 +79,19 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
     /** A user with a confirmed authenticator. Returns the id and the seed of the authenticator. */
     private fun userWithAuthenticator(username: String): Pair<Int, ByteArray> {
         val principalId = checkNotNull(loginFacade.createUser(username, username, password)) { "user $username" }.id
-        val started = loginFacade.startAuthenticatorEnrolment(principalId, username) as TotpEnrolmentStart.Started
+        val started = loginFacade.startAuthenticatorEnrolment(principalId, username, code = null, ip = "127.0.0.1") as TotpEnrolmentStart.Started
         val now = TotpAlgorithm.code(started.seed, currentStep())
         val confirmed = loginFacade.confirmAuthenticatorEnrolment(principalId, username, now, ip = "127.0.0.1")
         assertThat(confirmed).`as`("enrolment with the current code").isInstanceOf(EnrolmentConfirmation.Confirmed::class.java)
         return principalId to started.seed
     }
 
-    private fun currentStep(): Long = System.currentTimeMillis() / 1000 / TotpAlgorithm.STEP_SECONDS
+    private fun issueToken(principalId: Int, name: String): CreatedTokenDto {
+        val issued = loginFacade.issueOwnToken(principalId, AuditActor.named(name, "127.0.0.1"), SelfTokenRequest(name = name))
+        return (issued as OwnTokenOutcome.Issued).dto
+    }
+
+    private fun currentStep() = serverClock.instant().epochSecond / TotpAlgorithm.STEP_SECONDS
 
     @Test
     fun `a password login of a user with an authenticator answers with a challenge and sets no session cookie`() {
@@ -151,6 +165,55 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
 
         // then: it is answered without any challenge
         assertThat(response.status).`as`("status with the token").isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `a basic token cannot list the second factors of its user`() {
+        val (principalId, _) = userWithAuthenticator("sara-mfa")
+        val token = issueToken(principalId, "sara-ci")
+
+        val response = http.get("$base/api/identity/me/factors").basicAuth(token.token.name, token.secret).asString()
+
+        assertThat(response.status).`as`("status of a token request").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot start an authenticator enrolment`() {
+        val (principalId, _) = userWithAuthenticator("tara-mfa")
+        val token = issueToken(principalId, "tara-ci")
+
+        val response = http.post("$base/api/identity/me/factors/totp").basicAuth(token.token.name, token.secret).asString()
+
+        assertThat(response.status).`as`("status of a token enrolment").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot remove a factor even with a code`() {
+        val (principalId, seed) = userWithAuthenticator("ursula-mfa")
+        val factorId = loginFacade.secondFactorsOf(principalId).single().id
+        val token = issueToken(principalId, "ursula-ci")
+
+        val response = http.delete("$base/api/identity/me/factors/$factorId")
+            .basicAuth(token.token.name, token.secret)
+            .header("Content-Type", "application/json")
+            .body("""{"code":"${TotpAlgorithm.code(seed, currentStep() + 1)}"}""")
+            .asString()
+
+        assertThat(response.status).`as`("status of a token removal").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot regenerate recovery codes`() {
+        val (principalId, seed) = userWithAuthenticator("vera-mfa")
+        val token = issueToken(principalId, "vera-ci")
+
+        val response = http.post("$base/api/identity/me/recovery-codes")
+            .basicAuth(token.token.name, token.secret)
+            .header("Content-Type", "application/json")
+            .body("""{"code":"${TotpAlgorithm.code(seed, currentStep() + 1)}"}""")
+            .asString()
+
+        assertThat(response.status).`as`("status of a token regeneration").isEqualTo(FORBIDDEN.code)
     }
 
     @Test

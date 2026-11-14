@@ -209,7 +209,7 @@ internal class SecondFactorLoginGateTest {
             // A directory account has a principal but no local password, so it has no credential row.
             val directoryAccount = checkNotNull(gate.identities.createPrincipal(PrincipalKind.USER, "bob", "bob", false, clock.instant())).id
 
-            val outcome = gate.facade.startAuthenticatorEnrolment(directoryAccount, "bob")
+            val outcome = gate.facade.startAuthenticatorEnrolment(directoryAccount, "bob", code = null, ip = IP)
 
             assertThat(outcome).`as`("enrolment of a directory account").isInstanceOf(TotpEnrolmentStart.Unavailable::class.java)
         }

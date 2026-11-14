@@ -620,6 +620,13 @@ class AccessTokenFacade internal constructor(
     internal fun getAccessTokenDetailsById(id: AccessTokenIdentifier): AccessTokenDetails? =
         getRawAccessTokenById(id)?.let { AccessTokenDetails(it, getPermissions(id), getRoutes(id)) }
 
+    /**
+     * Whether a principal has a second factor. The login plugin sets it; until then no principal has one. Used where a token
+     * could be reached with a password instead of its secret, see the directory login of the Basic authentication.
+     */
+    @Volatile
+    var secondFactorGuard: (Int) -> Boolean = { false }
+
     fun getAccessToken(name: String): AccessTokenDto? =
         (temporaryRepository.findAccessTokenByName(name) ?: persistentRepository.findAccessTokenByName(name))?.toDto()
 
