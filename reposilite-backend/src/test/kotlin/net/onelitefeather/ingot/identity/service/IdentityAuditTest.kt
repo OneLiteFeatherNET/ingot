@@ -131,8 +131,8 @@ internal class IdentityAuditTest {
     fun `creating, updating and deleting a team each record one event`() {
         withService { service, _, events ->
             // when
-            service.createTeam(CreateTeamRequest(name = "deployers"), operator)
-            service.updateTeam("deployers", UpdateTeamRequest(description = "Releases"), ifMatch = null, actor = operator)
+            service.createTeam(CreateTeamRequest(name = "deployers"), operator, caller = WriteCaller.System)
+            service.updateTeam("deployers", UpdateTeamRequest(description = "Releases"), ifMatch = null, actor = operator, caller = WriteCaller.System)
             service.deleteTeam("deployers", ifMatch = null, actor = operator)
 
             // then
@@ -148,7 +148,7 @@ internal class IdentityAuditTest {
             // given: two members
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "alice"))
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "bob"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
             events.clear()
 
@@ -166,7 +166,7 @@ internal class IdentityAuditTest {
     fun `replacing grants records the grants that were added and removed`() {
         withService { service, _, events ->
             // given
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "READ")), ifMatch = null)
             events.clear()
 
@@ -222,7 +222,7 @@ internal class IdentityAuditTest {
     fun `granting and revoking the instance role of a team record the team`() {
         withService { service, _, events ->
             // given
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             events.clear()
 
             // when

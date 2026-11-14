@@ -204,6 +204,8 @@ class IdentityStore(
         }
 
     fun updateTeam(id: Int, description: String?, externalRef: String?, updateExternalRef: Boolean) {
+        // An update that names no column has nothing to write, and an UPDATE without columns is not valid SQL.
+        if (description == null && !updateExternalRef) return
         transaction(database) {
             TeamTable.update(where = { TeamTable.id eq id }, body = {
                 if (description != null) it[TeamTable.description] = description

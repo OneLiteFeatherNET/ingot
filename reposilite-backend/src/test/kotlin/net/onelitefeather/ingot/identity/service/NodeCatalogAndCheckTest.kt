@@ -15,6 +15,7 @@
  */
 package net.onelitefeather.ingot.identity.service
 
+import com.reposilite.audit.api.AuditActor
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
@@ -171,7 +172,7 @@ internal class NodeCatalogAndCheckTest {
             // given: alice is in deployers, which may deploy to releases
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
 
@@ -192,8 +193,8 @@ internal class NodeCatalogAndCheckTest {
         withService { service, _ ->
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
-            service.createTeam(CreateTeamRequest(name = "release-managers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "release-managers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("release-managers", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
             service.replaceTeamParents("deployers", listOf("release-managers"), ifMatch = null)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
@@ -211,7 +212,7 @@ internal class NodeCatalogAndCheckTest {
         withService { service, _ ->
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
             service.createToken("alice", CreateTokenRequest(name = "alice-read", scopes = listOf("READ")))
@@ -240,7 +241,7 @@ internal class NodeCatalogAndCheckTest {
             // given: alice may deploy to releases, except below net.onelitefeather
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes(
                 "deployers",
                 listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
@@ -318,7 +319,7 @@ internal class NodeCatalogAndCheckTest {
     /** Alice is in deployers, which may deploy to releases, and the artifact group below is denied to her. */
     private fun aliceInDeployersWithDeniedGroup(service: IdentityFacade) {
         service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-        service.createTeam(CreateTeamRequest(name = "deployers"))
+        service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
         service.replaceTeamNodes(
             "deployers",
             listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
@@ -364,7 +365,7 @@ internal class NodeCatalogAndCheckTest {
         withService { service, _ ->
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceGrants(
                 "deployers",
                 ReplaceGrantsRequest(listOf(GrantRequest(repository = "releases", pathPrefix = "net/onelitefeather", role = "DEPLOY"))).grants,

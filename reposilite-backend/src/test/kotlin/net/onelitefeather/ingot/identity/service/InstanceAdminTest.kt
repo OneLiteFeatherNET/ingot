@@ -163,7 +163,7 @@ internal class InstanceAdminTest {
             // given: a team with the instance role and a member that has a token
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -184,7 +184,7 @@ internal class InstanceAdminTest {
             // given: a team whose member is the only admin
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -202,7 +202,7 @@ internal class InstanceAdminTest {
             // given: a team whose member is the only admin
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -221,7 +221,7 @@ internal class InstanceAdminTest {
             // given: a team with the instance role whose only member is the only usable admin
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -242,7 +242,7 @@ internal class InstanceAdminTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "root"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
             service.createToken("root", CreateTokenRequest(name = "root-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
             service.grantPrincipalInstanceAdmin("root", ifMatch = null)
@@ -263,7 +263,7 @@ internal class InstanceAdminTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "helper"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot", "helper"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -284,7 +284,7 @@ internal class InstanceAdminTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "parked", disabled = true))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
             service.createToken("parked", CreateTokenRequest(name = "parked-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot", "parked"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -304,7 +304,7 @@ internal class InstanceAdminTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "expired"))
             service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
             service.createToken("expired", CreateTokenRequest(name = "expired-token", expiresAt = Instant.parse("2026-01-01T00:00:00Z")))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("ci-bot", "expired"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -324,7 +324,7 @@ internal class InstanceAdminTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "manual"))
             service.createToken("synced", CreateTokenRequest(name = "synced-token"))
             service.createToken("manual", CreateTokenRequest(name = "manual-token"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             store.addMember(store.findTeam("operators")!!.id, store.findPrincipal("synced")!!.id, TeamMemberSource.SYNC)
             service.replaceMembers("operators", listOf("manual"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
@@ -425,7 +425,7 @@ internal class InstanceAdminTest {
     fun `a team grant request is unaffected by the instance role of the team`() {
         withService { service, _ ->
             // given: a team with the instance role
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
             // when: the grants are replaced
