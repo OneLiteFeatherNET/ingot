@@ -384,6 +384,26 @@ class ChartRenderTest(unittest.TestCase):
             "probes.readinessPath must not change the split liveness probe",
         )
 
+    # The server listens on the container port, which is service.port. A probe on another port fails every time and
+    # restarts the pod, so the probes follow the container port unless probes.port is set explicitly.
+    def test_probes_use_the_service_port_by_default(self):
+        deployment = named(render({"service": {"port": 9000}}), "Deployment", SERVER)
+        for probe in ("readinessProbe", "livenessProbe"):
+            self.assertEqual(9000, container(deployment)[probe]["httpGet"]["port"],
+                             f"the {probe} must probe the container port, which is service.port")
+
+    def test_startup_probe_uses_the_service_port_by_default_in_split_mode(self):
+        deployment = named(render(dict(split_values(), service={"port": 9000})), "Deployment", SERVER)
+        self.assertEqual(9000, container(deployment)["startupProbe"]["httpGet"]["port"],
+                         "the split startup probe must probe the container port, which is service.port")
+
+    def test_explicit_probes_port_wins_over_the_service_port(self):
+        values = {"service": {"port": 9000}, "probes": {"port": 8081}}
+        deployment = named(render(values), "Deployment", SERVER)
+        for probe in ("readinessProbe", "livenessProbe"):
+            self.assertEqual(8081, container(deployment)[probe]["httpGet"]["port"],
+                             f"an explicit probes.port must win over service.port for the {probe}")
+
     def test_pod_disruption_budget_is_absent_by_default(self):
         self.assertEqual([], of_kind(render(), "PodDisruptionBudget"), "no PodDisruptionBudget by default")
 

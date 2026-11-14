@@ -155,6 +155,17 @@ Name of the service account to use
 {{- end }}
 
 {{/*
+Port of the server probes: probes.port when it is set, otherwise service.port, the container port the server listens on.
+*/}}
+{{- define "ingot.probePort" -}}
+{{- if .Values.probes.port }}
+{{- .Values.probes.port }}
+{{- else }}
+{{- .Values.service.port }}
+{{- end }}
+{{- end }}
+
+{{/*
 Probe path of the server workload: the server root in allInOne mode, the health endpoint in split mode.
 */}}
 {{- define "ingot.serverProbePath" -}}
