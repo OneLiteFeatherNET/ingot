@@ -34,7 +34,7 @@ Renewal does not keep a login alive forever. The refresh token has two limits:
 
 The idle limit never reaches past the absolute limit, so the absolute limit is the one that decides in the end.
 
-The diagram follows one browser session from the login to a renewal. The session token lasts 15 minutes, and a refresh token can be used once.
+The diagram follows one browser session from the login to a renewal. The session token lasts 15 minutes by default, and a refresh token can be used once.
 
 ```mermaid
 sequenceDiagram
@@ -44,7 +44,7 @@ sequenceDiagram
     S-->>B: Cookies ingot_session, ingot_refresh and ingot_csrf
     B->>S: Request with the cookies
     S-->>B: Answer
-    Note over B,S: After 15 minutes the session token has run out
+    Note over B,S: After the session lifetime (15 minutes by default) the session token has run out
     B->>S: Request with the expired session token
     S-->>B: 401
     B->>S: Refresh with the refresh token
