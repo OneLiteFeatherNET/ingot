@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { computeAccessibleName } from 'dom-accessibility-api'
 import MdOverflowMenu from './MdOverflowMenu.vue'
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper.
@@ -197,15 +198,16 @@ describe('MdOverflowMenu', () => {
       expect(trigger().text(), 'the default text is not drawn').not.toBe('Actions')
     })
 
-    it('keeps the label as the accessible name of the trigger when a trigger slot is used', async () => {
+    it('leaves the name of a trigger with a slot to its content, so the content can carry the visible name', async () => {
       wrapper = mount(MdOverflowMenu, {
         props: { label: 'Account menu for Alice', items: ITEMS },
-        slots: { trigger: '<span aria-hidden="true">A</span><span class="sr-only">Alice</span>' },
+        slots: { trigger: '<span class="sr-only">Account menu for</span> <span aria-hidden="true">A</span> <span>Alice</span>' },
         attachTo: document.body
       })
       await flushPromises()
 
-      expect(trigger().attributes('aria-label'), 'the button is announced as the menu, not only by its visible content').toBe('Account menu for Alice')
+      expect(trigger().attributes('aria-label'), 'no label overrides the content (WCAG 2.5.3, Label in Name)').toBeUndefined()
+      expect(computeAccessibleName(trigger().element), 'the content gives the name, and the visible name is part of it').toBe('Account menu for Alice')
     })
 
     it('keeps aria-haspopup and aria-expanded correct on a trigger with a slot', async () => {

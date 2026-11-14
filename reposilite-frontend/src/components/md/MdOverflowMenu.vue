@@ -32,9 +32,9 @@ import MdButton from './MdButton.vue'
  *          An item with `type: 'radio'` and `checked` is a menu radio button, drawn as the choice in use. An item
  *          with `type: 'separator'` is a divider between groups, and takes no focus.
  * Slots:
- *   trigger  the content of the button, in place of the word Actions. The button keeps the label as its accessible
- *            name, so the label says that it opens a menu and should contain the visible text, such as "Account
- *            menu for Alice" over the visible name Alice
+ *   trigger  the content of the button, in place of the word Actions. The button is then named by its content, so the
+ *            content carries the name: visually hidden text that says it opens a menu, followed by the visible name.
+ *            The label names the menu alone (the menu element is labelled by it)
  *   header   a line above the items, such as the name of the signed in user; it is not a menu item
  * Emits:
  *   select  the value of the chosen item; the menu closes and the focus returns to the button
@@ -187,7 +187,7 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
       variant="text"
       type="button"
       :class="triggerClass"
-      :aria-label="label"
+      :aria-label="$slots.trigger ? undefined : label"
       aria-haspopup="menu"
       :aria-expanded="menuOpen ? 'true' : 'false'"
       @click="toggle"
