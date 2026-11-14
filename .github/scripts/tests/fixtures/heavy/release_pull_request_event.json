@@ -1,0 +1,16 @@
+{
+  "action": "synchronize",
+  "number": 400,
+  "pull_request": {
+    "number": 400,
+    "title": "chore(main): release 1.4.0",
+    "head": {
+      "ref": "release-please--branches--main",
+      "sha": "1111111111111111111111111111111111111111",
+      "repo": { "full_name": "OneLiteFeatherNET/ingot" }
+    },
+    "base": { "ref": "main" },
+    "labels": [ { "name": "autorelease: pending" }, { "name": "ci:heavy" } ]
+  },
+  "repository": { "full_name": "OneLiteFeatherNET/ingot" }
+}
