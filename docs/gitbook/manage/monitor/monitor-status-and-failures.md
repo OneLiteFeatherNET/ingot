@@ -185,5 +185,5 @@ Compose users, or anyone who runs Grafana without the sidecar, can import the sa
 
 ## Related
 
-* [Verify an upgrade](../upgrade/verify-an-upgrade.md) lists the checks to run after an upgrade.
+* [Verify an upgrade](../upgrade/upgrade-ingot.md#verify-an-upgrade) lists the checks to run after an upgrade.
 * [Search filters and API](../../references/http-api/search-filters-and-api.md) describes the search index status, which is a separate endpoint.

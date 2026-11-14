@@ -219,7 +219,7 @@ For the jar and its SBOMs, follow [Verify the SBOMs of a release](verify-release
 ## 15. Keep up with releases
 
 * Watch the releases of the repository, or subscribe to its release feed, and read the [upgrade changes](../../release-notes/upgrade-changes.md) before each upgrade.
-* Back up before each upgrade and verify the result, as described in [Back up before upgrading](../upgrade/back-up-before-upgrading.md) and [Verify an upgrade](../upgrade/verify-an-upgrade.md).
+* Back up before each upgrade and verify the result, as described in [Back up before upgrading](../upgrade/upgrade-ingot.md#back-up-before-upgrading) and [Verify an upgrade](../upgrade/upgrade-ingot.md#verify-an-upgrade).
 * Security fixes are made for the latest minor release line and for `main`. The [security policy](../../../../.github/SECURITY.md) lists the supported versions. Report a vulnerability through the security advisory form of the repository, not through a public issue.
 
 ## Compose file with the hardening applied

@@ -11,7 +11,7 @@ The example throughout is the staging release of Ingot: a Flux `HelmRelease` nam
 ## Before you begin
 
 * The release name and namespace of the existing release, from `helm list -n <namespace>`.
-* A copy of the data, if the release has a volume. See [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md).
+* A copy of the data, if the release has a volume. See [Back up before upgrading](../../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading).
 * The `helm diff` plugin, which shows the change before it is applied:
 
   ```bash

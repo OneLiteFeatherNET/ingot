@@ -4,10 +4,7 @@ description: Upgrade Ingot. Lists the pages that upgrade Ingot and import the to
 
 # Upgrade
 
-Take a backup, upgrade, verify, and know how to go back.
+Take a backup, upgrade, verify, and know how to go back. [Upgrade Ingot](upgrade-ingot.md) has all four parts: [back up](upgrade-ingot.md#back-up-before-upgrading), [upgrade](upgrade-ingot.md#upgrade-from-ingot-11x), [verify](upgrade-ingot.md#verify-an-upgrade) and [roll back](upgrade-ingot.md#roll-back-an-upgrade).
 
-* [Back up before upgrading](back-up-before-upgrading.md)
-* [Upgrade from Ingot 1.1.x](upgrade-ingot.md)
-* [Verify an upgrade](verify-an-upgrade.md)
-* [Roll back an upgrade](roll-back-an-upgrade.md)
+* [Upgrade Ingot](upgrade-ingot.md)
 * [Upgrade from Reposilite 2.x](upgrade-from-reposilite-2.md)

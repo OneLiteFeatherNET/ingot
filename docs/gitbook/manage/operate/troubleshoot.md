@@ -219,12 +219,12 @@ The cluster bus is optional. Without `INGOT_CLUSTER_URL` it is off, and nothing 
 
 ## Upgrade
 
-Read [Back up before upgrading](../upgrade/back-up-before-upgrading.md) first, and keep the backup until [Verify an upgrade](../upgrade/verify-an-upgrade.md) passes.
+Read [Back up before upgrading](../upgrade/upgrade-ingot.md#back-up-before-upgrading) first, and keep the backup until [Verify an upgrade](../upgrade/upgrade-ingot.md#verify-an-upgrade) passes.
 
 **Symptom:** the start stops with `Identity migration copied <n> token(s), expected <m>`, `created <n> machine principal(s)`, `created <n> grant(s)` or `grant plan disagrees with the legacy routes`.
 
 * **Cause:** a check of the migration found that the copied rows do not match the legacy rows. The check rolls the migration back, so the data is in the state of the previous release.
-* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](../upgrade/roll-back-an-upgrade.md) and [Token migration](../../references/architecture/token-migration.md).
+* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](../upgrade/upgrade-ingot.md#roll-back-an-upgrade) and [Token migration](../../references/architecture/token-migration.md).
 
 **Symptom:** a token from Reposilite does not work, or it works with other rights.
 
@@ -254,6 +254,6 @@ Read [Back up before upgrading](../upgrade/back-up-before-upgrading.md) first, a
 ## Related pages
 
 * [Monitor status and failures](../monitor/monitor-status-and-failures.md) describes the status, the failure list and the logs.
-* [Verify an upgrade](../upgrade/verify-an-upgrade.md) lists the checks after an upgrade.
+* [Verify an upgrade](../upgrade/upgrade-ingot.md#verify-an-upgrade) lists the checks after an upgrade.
 * [Troubleshoot external login](../../configure/authentication/troubleshoot-external-login.md) covers the login errors of external providers.
 * [Collect a support bundle](collect-a-support-bundle.md) describes what to attach to a ticket.

@@ -121,7 +121,7 @@ Both pods must be `Running`. With the spread constraint, they land in different 
 
 ## Upgrade a multi-replica release
 
-Upgrade one release at a time with the same chart version and values file as before. During a rolling update, a replica of the previous release may keep running while the new release changes the schema. The rule that makes this safe, and its test evidence, is in [Rolling upgrade rule](../../references/architecture/high-availability-support.md#rolling-upgrade-rule). Read it before you upgrade across a release that changes the schema. Start with [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md).
+Upgrade one release at a time with the same chart version and values file as before. During a rolling update, a replica of the previous release may keep running while the new release changes the schema. The rule that makes this safe, and its test evidence, is in [Rolling upgrade rule](../../references/architecture/high-availability-support.md#rolling-upgrade-rule). Read it before you upgrade across a release that changes the schema. Start with [Back up before upgrading](../../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading).
 
 ## Related
 
