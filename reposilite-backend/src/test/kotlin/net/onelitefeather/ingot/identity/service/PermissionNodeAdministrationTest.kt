@@ -54,7 +54,7 @@ internal class PermissionNodeAdministrationTest {
     fun `a team keeps the node list it was given`() {
         withService { service, _, _ ->
             // given
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             // when
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
@@ -68,7 +68,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a denied node is stored with allowed false`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
 
@@ -79,7 +79,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `replacing a node list drops the nodes that are no longer listed`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("*", true), NodeDto("ingot.admin.users", true)), ifMatch = null)
 
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.admin.users", true)), ifMatch = null)
@@ -113,7 +113,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses a node list and lists every invalid node in the message`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamNodes(
                 "deployers",
@@ -134,7 +134,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `answers each invalid node as a problem of its own row`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamNodes(
                 "deployers",
@@ -153,7 +153,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `answers a node listed twice as a problem of that row`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamNodes("deployers", listOf(NodeDto("*", true), NodeDto("*", false)), ifMatch = null)
 
@@ -164,7 +164,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a refused node list stores nothing`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("*", true)), ifMatch = null)
 
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.admin.billing", true)), ifMatch = null)
@@ -176,7 +176,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses the same node twice in one list`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamNodes("deployers", listOf(NodeDto("*", true), NodeDto("*", false)), ifMatch = null)
 
@@ -187,7 +187,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a node list with a stale tag is refused`() {
         withService { service, _, _ ->
-            val first = service.createTeam(CreateTeamRequest(name = "deployers")).orNull()!!
+            val first = service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).orNull()!!
             service.replaceTeamNodes("deployers", listOf(NodeDto("*", true)), ifMatch = null)
 
             val result = service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.admin.users", true)), ifMatch = first.etag)
@@ -199,7 +199,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a node change changes the entity tag of the team`() {
         withService { service, _, _ ->
-            val before = service.createTeam(CreateTeamRequest(name = "deployers")).orNull()!!
+            val before = service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).orNull()!!
 
             val after = service.replaceTeamNodes("deployers", listOf(NodeDto("*", true)), ifMatch = null).orNull()!!
 
@@ -210,7 +210,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a node change is audited once with the added and removed nodes`() {
         withService { service, _, events ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.read", true), NodeDto("ingot.repository.releases.delete", false)), ifMatch = null, actor = operator)
 
@@ -226,7 +226,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `an unchanged node list records no event`() {
         withService { service, _, events ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("*", true)), ifMatch = null)
             val recorded = events.count { it.action == AuditAction.NODES_CHANGED }
 
@@ -239,7 +239,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a refused node change records no event`() {
         withService { service, _, events ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.admin.billing", true)), ifMatch = null)
 
@@ -250,8 +250,8 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a team parent is stored and read back`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "release-managers"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "release-managers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             service.replaceTeamParents("deployers", listOf("release-managers"), ifMatch = null)
 
@@ -262,7 +262,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a team cannot be its own parent`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamParents("deployers", listOf("deployers"), ifMatch = null)
 
@@ -273,8 +273,8 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses a parent change that closes a cycle`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "a"))
-            service.createTeam(CreateTeamRequest(name = "b"))
+            service.createTeam(CreateTeamRequest(name = "a"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "b"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamParents("a", listOf("b"), ifMatch = null)
 
             val result = service.replaceTeamParents("b", listOf("a"), ifMatch = null)
@@ -289,7 +289,7 @@ internal class PermissionNodeAdministrationTest {
     fun `accepts an inheritance chain of eight levels`() {
         withService { service, _, _ ->
             val chain = (0..8).map { "c$it" }
-            chain.forEach { service.createTeam(CreateTeamRequest(name = it)) }
+            chain.forEach { service.createTeam(CreateTeamRequest(name = it), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System) }
 
             (0..7).forEach { index -> service.replaceTeamParents(chain[index], listOf(chain[index + 1]), ifMatch = null) }
 
@@ -301,7 +301,7 @@ internal class PermissionNodeAdministrationTest {
     fun `refuses an inheritance chain of nine levels`() {
         withService { service, _, _ ->
             val chain = (0..9).map { "c$it" }
-            chain.forEach { service.createTeam(CreateTeamRequest(name = it)) }
+            chain.forEach { service.createTeam(CreateTeamRequest(name = it), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System) }
             (0..7).forEach { index -> service.replaceTeamParents(chain[index], listOf(chain[index + 1]), ifMatch = null) }
 
             val result = service.replaceTeamParents("c8", listOf("c9"), ifMatch = null)
@@ -314,7 +314,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses a parent that is not a team`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamParents("deployers", listOf("nobody"), ifMatch = null)
 
@@ -325,8 +325,8 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `answers each unknown parent as a problem of its own row`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
-            service.createTeam(CreateTeamRequest(name = "release-managers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "release-managers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceTeamParents("deployers", listOf("release-managers", "nobody", "ghost"), ifMatch = null)
 
@@ -338,8 +338,8 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `a parent change is audited as a team update`() {
         withService { service, _, events ->
-            service.createTeam(CreateTeamRequest(name = "release-managers"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "release-managers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             service.replaceTeamParents("deployers", listOf("release-managers"), ifMatch = null, actor = operator)
 
@@ -351,7 +351,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses a repository-wide grant because nodes are the way to grant it`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "DEPLOY")), ifMatch = null)
 
@@ -363,7 +363,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `accepts a path-scoped deploy grant`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
 
@@ -374,7 +374,7 @@ internal class PermissionNodeAdministrationTest {
     @Test
     fun `refuses an admin grant on a path, because admin applies to a whole repository`() {
         withService { service, _, _ ->
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com", role = "ADMIN")), ifMatch = null)
 

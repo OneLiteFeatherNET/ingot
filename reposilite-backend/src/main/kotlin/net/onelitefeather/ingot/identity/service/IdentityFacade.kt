@@ -316,8 +316,8 @@ class IdentityFacade(
 
     fun createTeam(
         request: CreateTeamRequest,
-        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
-        caller: AccessTokenIdentifier? = null,
+        actor: AuditActor,
+        caller: WriteCaller,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
         if (request.name?.trim()?.startsWith("machine:", ignoreCase = true) == true) {
@@ -327,7 +327,8 @@ class IdentityFacade(
             ?: return badRequestError(nameProblem(request.name, MAX_TEAM_NAME_LENGTH, "Team name"))
         if (store.findTeam(name) != null) return errorResponse(CONFLICT, "Team '$name' already exists")
         val reference = request.externalRef?.takeIf { it.isNotBlank() }
-        if (reference != null) guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, name, reference, actor)?.let { return it }
+        // A new team holds no rights yet, so only the idp right is checked for its link.
+        if (reference != null) guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, name, reference, rights = null, actor)?.let { return it }
 
         val team = store.createTeam(name, request.description.orEmpty(), reference)
             ?: return errorResponse(CONFLICT, "Team '$name' already exists")
@@ -342,24 +343,23 @@ class IdentityFacade(
         name: String,
         request: UpdateTeamRequest,
         ifMatch: String?,
-        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
-        caller: AccessTokenIdentifier? = null,
+        actor: AuditActor,
+        caller: WriteCaller,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        // Only a write that sets, changes or clears the reference is guarded. Repeating the current reference is no change.
-        val requested = request.externalRef
-        if (requested != null) {
-            val reference = requested.takeIf { it.isNotBlank() }
-            if (reference != team.externalRef?.takeIf { it.isNotBlank() }) {
-                guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, team.name, reference.orEmpty(), actor)?.let { return it }
-            }
+        // Only a change of the reference is guarded and written. A repeated reference leaves the stored value alone, so a
+        // stale write cannot restore a link that was removed after this team was read.
+        val linkChanges = ExternalReferenceChange.changes(team.externalRef, request.externalRef)
+        if (linkChanges) {
+            val reference = ExternalReferenceChange.normalised(request.externalRef).orEmpty()
+            guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, team.name, reference, rights = rightsOfTeam(team), actor)?.let { return it }
         }
 
-        store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = request.externalRef != null)
+        store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = linkChanges)
         val changed = listOfNotNull(
             "description".takeIf { request.description != null && request.description != team.description },
-            "externalRef".takeIf { request.externalRef != null && request.externalRef != team.externalRef },
+            "externalRef".takeIf { linkChanges },
         )
         if (changed.isNotEmpty()) audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to changed))
         return snapshotOf(publicTeam(name)!!).asSuccess()
@@ -1086,14 +1086,20 @@ class IdentityFacade(
     }
 
     /**
-     * The guard of a write to an external reference. Null when the write may proceed. A caller without `ingot.admin.idp` is
-     * refused in enforce mode. In warn mode the write proceeds and is recorded and logged. In off mode nothing is checked. A
-     * write without a caller is internal and is not guarded.
+     * The guard of a write that changes the external reference of a team. Null when the write may proceed. The caller needs
+     * the admin area `ingot.admin.idp`, and the rights of the team when it has any, because the members of a linked team
+     * receive those rights at the next login. In enforce mode a caller that lacks one of them is refused with a generic 403,
+     * and the refusal is audited. In warn mode the write proceeds, is audited and logged. In off mode nothing is checked. The
+     * system is not a token, so it is not checked.
      */
-    private fun <T> guardExternalRef(caller: AccessTokenIdentifier?, team: String, reference: String, actor: AuditActor): IdentityResult<T>? {
-        if (caller == null || idpGuard == IdpGuardMode.OFF) return null
-        val subject = accessTokens.subjectOf(caller)
-        if (PermissionEvaluator.allowsAdminArea(subject, "idp")) return null
+    private fun <T> guardExternalRef(caller: WriteCaller, team: String, reference: String, rights: Rights?, actor: AuditActor): IdentityResult<T>? {
+        if (caller !is WriteCaller.Token || idpGuard == IdpGuardMode.OFF) return null
+        val subject = accessTokens.subjectOf(caller.identifier)
+        val reason = when {
+            !PermissionEvaluator.allowsAdminArea(subject, "idp") -> "idp"
+            rights != null && !callerHolds(caller.identifier, rights) -> "rights"
+            else -> return null
+        }
 
         val refused = idpGuard == IdpGuardMode.ENFORCE
         audit(
@@ -1104,12 +1110,17 @@ class IdentityFacade(
                 "caller" to subject.principalName,
                 "mode" to idpGuard.name.lowercase(),
                 "outcome" to if (refused) "refused" else "allowed",
+                "reason" to reason,
             ),
         )
         if (refused) {
-            return errorResponse(FORBIDDEN, "Linking a team to an identity provider group needs the admin area ingot.admin.idp. The caller does not hold it.")
+            val message = when (reason) {
+                "idp" -> "Linking a team to an identity provider group needs the admin area ingot.admin.idp. The caller does not hold it."
+                else -> "The caller does not hold the rights of this team, so it cannot change the link to an identity provider group."
+            }
+            return errorResponse(FORBIDDEN, message)
         }
-        warnings("Team '$team' is linked to the provider group '$reference' by '${subject.principalName}' without ingot.admin.idp")
+        warnings("Team '$team' is linked to the provider group '$reference' by '${subject.principalName}' without the rights the link needs ($reason)")
         return null
     }
 
