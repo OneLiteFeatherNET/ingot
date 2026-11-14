@@ -97,6 +97,8 @@ Files of `PRIVATE` and `HIDDEN` repositories, and files that a group serves from
 
 No configuration change is needed. To restore the old `public` value for these answers, set `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC=true`. Do that only when the cache in front of Ingot may keep access-controlled files for other clients. See [Environment variables](environment-variables.md#maven-cache-control).
 
+Directory listings are not cacheable either, in HTML and in the JSON listings under `/api/maven/details`. They answer `Cache-Control: no-cache, no-store, max-age=0` and `Vary: Authorization, Cookie`, because a listing shows the caller only what the caller may read. Artifacts are unchanged. No client depends on a shared cache storing listings.
+
 ### Mirror extensions
 
 The default `allowedExtensions` of a mirrored repository now includes `.sigstore.json`. A stored list is kept on upgrade and is not rewritten. To let a mirror with a stored list serve Sigstore bundles, add `.sigstore.json` to its `allowedExtensions` in the settings.
