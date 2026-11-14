@@ -211,6 +211,10 @@ internal class OpenApiCompletenessTest {
                 "a before-handler that enforces the admin area of plugin dashboard pages on plugin data routes; it answers no request itself",
             "AFTER /{repository}/{*}" to
                 "an after-handler that adds the WWW-Authenticate challenge to 401 responses; it answers no request itself",
+            "BEFORE /*" to
+                "access log handler, not a REST route: a before-handler that stamps the request start time; it answers no request itself",
+            "AFTER /*" to
+                "access log handler, not a REST route: an after-handler that writes the access record; it answers no request itself",
         )
 
         /**
