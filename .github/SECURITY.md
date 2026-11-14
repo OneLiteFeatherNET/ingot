@@ -2,14 +2,15 @@
 
 ## Supported Versions
 
-Security fixes are made on the latest minor release line of Ingot, which is `1.1.x` at the time of writing, and on
-the `main` branch. No published statement covers older Ingot release lines yet.
+The release lines of Ingot and how long each one receives fixes are described in [SUPPORT.md](../SUPPORT.md).
+Security fixes are made on the `main` branch.
 
 | Version                    | Supported                                                     |
 |:---------------------------|:--------------------------------------------------------------|
-| Ingot `1.1.x` (latest)     | Security fixes                                                |
+| Ingot `1.1.x` (latest)     | Every fix                                                     |
+| Ingot `1.0.x`              | Security fixes only, window ended on 2026-11-07               |
 | Ingot `main`               | Security fixes                                                |
-| Ingot releases before 1.1  | Not covered by a published statement yet                      |
+| Older Ingot release lines  | Not supported                                                 |
 | Upstream Reposilite 3.x    | Not supported here, report to the upstream project            |
 | Upstream Reposilite < 3.x  | Not supported                                                 |
 
