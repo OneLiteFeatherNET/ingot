@@ -92,6 +92,8 @@ const onAccountSelect = (value) => {
           class="flex size-8 shrink-0 items-center justify-center rounded-corner-full bg-primary-container md-title-small text-on-primary-container"
           aria-hidden="true"
         >{{ initial }}</span>
+        <!-- The button is named by its content: the words before the name say that it opens the account menu. -->
+        <span class="sr-only">Account menu for</span>{{ ' ' }}
         <!-- Below 900px the name leaves the layout but stays the button's accessible name. -->
         <span
           data-test="account-name"
