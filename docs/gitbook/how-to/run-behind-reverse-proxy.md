@@ -185,6 +185,7 @@ With the setting in place:
 
 * The client address header is only read when the connection comes from a trusted proxy. A request that reaches Ingot directly is recorded under its own address, whatever header it carries.
 * When the header holds a list, the client is the rightmost address that is not a trusted proxy. Whatever a client prepends to the list is ignored.
+* `X-Forwarded-Proto` counts for the `Secure` flag of the session cookies and for `Strict-Transport-Security` only when the connection comes from a trusted proxy. A direct request is not treated as HTTPS because of that header.
 * A malformed entry, such as a host name or a prefix out of range, stops the start with a message that names the entry. Ingot does not guess.
 
 The setting works with any header name in `forwardedIp`. Leaving it unset keeps the behavior of earlier versions, so an existing installation needs no change.

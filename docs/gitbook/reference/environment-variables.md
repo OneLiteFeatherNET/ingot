@@ -125,6 +125,7 @@ The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
 | `INGOT_OPTS` | `REPOSILITE_OPTS` | empty | Command line parameters for the server, see [Command line parameters](configuration-and-startup.md#command-line-parameters). The value is split at white space. When `INGOT_OPTS` is empty or unset, `REPOSILITE_OPTS` is used. The two are not combined. |
+| `INGOT_ARGS` | none | not read | Not an input. The entrypoint assigns its own shell variable of this name from `INGOT_OPTS`, or from `REPOSILITE_OPTS` when `INGOT_OPTS` is empty or unset, and passes it to the server. Setting `INGOT_ARGS` in the environment has no effect. Use `INGOT_OPTS`. |
 | `JAVA_OPTS` | none | empty | Options for the JVM, for example `-Xmx1g` or `-Dingot.local.port=9090`. There is no `INGOT_` spelling. |
 | `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
 | `PUID` | none | `977` | User id of the `reposilite` service account. Read only when the container starts as root. |
@@ -150,7 +151,7 @@ The server adds security headers to its responses. Two of them can be changed. T
 | Variable | System property | Default | Meaning |
 | --- | --- | --- | --- |
 | `INGOT_REPOSITORY_SANDBOX` | `ingot.repository.sandbox` | `true` | Repository files and the generated directory index are served with `Content-Security-Policy: sandbox`, so a browser runs an uploaded page without the origin of the dashboard. `false` leaves them without this header. The value is matched without regard to case, any other value keeps the sandbox. |
-| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. Unset, zero or a value that is not a number sends no header. |
+| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. With trusted proxies configured, that header counts only when the request comes from one of them, see [Trust your proxies](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). Unset, zero or a value that is not a number sends no header. |
 
 The complete list of headers is in [Security headers](../explanation/security-headers.md).
 
