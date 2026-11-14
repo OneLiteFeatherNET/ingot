@@ -99,6 +99,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-chip` | experimental | `src/components/md/MdChip.vue` | none | none |
 | `md-chip-input` | experimental | `src/components/md/MdChipInput.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
+| `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none |
 | `md-linear-progress` | experimental | `src/components/md/MdLinearProgress.vue` | none | none |
 | `md-navigation-bar` | experimental | `src/components/md/MdNavigationBar.vue` | none | none |
