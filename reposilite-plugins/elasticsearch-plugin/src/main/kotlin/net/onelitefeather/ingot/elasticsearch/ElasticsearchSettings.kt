@@ -46,6 +46,17 @@ internal class ElasticsearchSettings private constructor(
     val replicas: Int,
 ) {
 
+    /**
+     * The value of the `Authorization` header of every request: the `ApiKey` scheme of the key, or the basic scheme of the user and
+     * the password, or null for a cluster without security. The header never leaves the plugin except in a request.
+     */
+    val authorization: String? = when {
+        apiKey != null -> "ApiKey $apiKey"
+        username != null && password != null ->
+            "Basic " + java.util.Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+        else -> null
+    }
+
     companion object {
 
         const val DEFAULT_INDEX: String = "ingot-artifacts"
