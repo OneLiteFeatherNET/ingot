@@ -21,6 +21,10 @@
  *   --md-sys-elevation-level<n>     -> shadow-elevation-<n>   (n = 0 to 5)
  *   --md-sys-motion-easing-<name>   -> ease-md-<name>
  *   --md-sys-motion-duration-<name> -> duration-md-<name>
+ *   --md-sys-motion-duration-<name> -> the animate-* tokens below, built from the durations
+ *
+ * The layout, stacking and scrim sizes of the dashboard are named here too, so that a view
+ * takes them from a utility and not from a literal (see DESIGN.md, layout and stacking).
  */
 
 :root {
@@ -34,16 +38,24 @@
   --md-sys-shape-corner-full: 9999px;
 
   /*
+   * Shadow roles: the key shadow and the ambient shadow of every elevation level. The values
+   * are the same in both themes. The elevation levels below refer to the roles, so a change to
+   * the shadow of the dashboard is one edit.
+   */
+  --md-sys-shadow-key: rgb(0 0 0 / 0.3);
+  --md-sys-shadow-ambient: rgb(0 0 0 / 0.15);
+
+  /*
    * Elevation: each level is a key shadow plus an ambient shadow, as in the MD3 spec. The
    * same shadows are used in both themes. MD3 would lighten a dark surface instead of
    * shadowing it; that refinement is left to the views that need it.
    */
   --md-sys-elevation-level0: none;
-  --md-sys-elevation-level1: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15);
-  --md-sys-elevation-level2: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);
-  --md-sys-elevation-level3: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);
-  --md-sys-elevation-level4: 0 2px 3px 0 rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);
-  --md-sys-elevation-level5: 0 4px 4px 0 rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);
+  --md-sys-elevation-level1: 0 1px 2px 0 var(--md-sys-shadow-key), 0 1px 3px 1px var(--md-sys-shadow-ambient);
+  --md-sys-elevation-level2: 0 1px 2px 0 var(--md-sys-shadow-key), 0 2px 6px 2px var(--md-sys-shadow-ambient);
+  --md-sys-elevation-level3: 0 1px 3px 0 var(--md-sys-shadow-key), 0 4px 8px 3px var(--md-sys-shadow-ambient);
+  --md-sys-elevation-level4: 0 2px 3px 0 var(--md-sys-shadow-key), 0 6px 10px 4px var(--md-sys-shadow-ambient);
+  --md-sys-elevation-level5: 0 4px 4px 0 var(--md-sys-shadow-key), 0 8px 12px 6px var(--md-sys-shadow-ambient);
 
   /*
    * Stacking order for dialogs. Page content can be positioned with a z-index of its own
@@ -79,6 +91,166 @@
   --md-sys-motion-duration-extra-long2: 800ms;
   --md-sys-motion-duration-extra-long3: 900ms;
   --md-sys-motion-duration-extra-long4: 1000ms;
+}
+
+/*
+ * The named sizes of the dashboard. Each name is a Tailwind key: z-md-* for the stacking order, bg-scrim/md-scrim for
+ * the overlays, size-md-icon for the icons, the spacing keys for the layout (top-md-top-bar, w-md-rail, ...) and the
+ * container keys for the widths (max-w-md-reading, ...). The values are literal here, except the dialog, which keeps
+ * the foundation value above for the vue-final-modal rule.
+ */
+@theme {
+  --z-index-md-sticky: 20;
+  --z-index-md-top-bar: 30;
+  --z-index-md-menu: 50;
+  --z-index-md-dialog: var(--md-sys-z-dialog);
+  --z-index-md-snackbar: 1100;
+
+  --opacity-md-scrim: 32%;
+  --opacity-md-scrim-strong: 40%;
+
+  --spacing-md-icon: 1.125rem;
+  --spacing-md-top-bar: 4rem;
+  --spacing-md-rail: 6rem;
+  --spacing-md-bottom-bar: 5rem;
+
+  --container-md-reading: 60rem;
+  --container-md-sheet: 20rem;
+  --container-md-snackbar: 35rem;
+
+  /*
+   * Animations. Each token is built from the motion tokens, and its keyframes sit next to it, so a token and the
+   * curve it uses travel together. The skeleton keeps ease-out: a motion easing token would change the curve.
+   */
+  --animate-md-linear-slide: md-linear-slide 1.6s var(--md-sys-motion-easing-standard) infinite;
+  --animate-md-linear-slide-reduced: md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite;
+  --animate-md-snackbar-enter: md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
+  --animate-md-snackbar-leave: md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
+  --animate-skeleton-fade-in: skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both;
+}
+
+@keyframes md-linear-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes md-snackbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes md-snackbar-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * One utility per motion duration token. Tailwind 4 has no theme namespace for durations, so the family is written out.
+ * --tw-duration is set as well, because the transition utilities (transition-colors and the like) read it.
+ */
+@utility duration-md-short1 {
+  --tw-duration: var(--md-sys-motion-duration-short1);
+  transition-duration: var(--md-sys-motion-duration-short1);
+}
+
+@utility duration-md-short2 {
+  --tw-duration: var(--md-sys-motion-duration-short2);
+  transition-duration: var(--md-sys-motion-duration-short2);
+}
+
+@utility duration-md-short3 {
+  --tw-duration: var(--md-sys-motion-duration-short3);
+  transition-duration: var(--md-sys-motion-duration-short3);
+}
+
+@utility duration-md-short4 {
+  --tw-duration: var(--md-sys-motion-duration-short4);
+  transition-duration: var(--md-sys-motion-duration-short4);
+}
+
+@utility duration-md-medium1 {
+  --tw-duration: var(--md-sys-motion-duration-medium1);
+  transition-duration: var(--md-sys-motion-duration-medium1);
+}
+
+@utility duration-md-medium2 {
+  --tw-duration: var(--md-sys-motion-duration-medium2);
+  transition-duration: var(--md-sys-motion-duration-medium2);
+}
+
+@utility duration-md-medium3 {
+  --tw-duration: var(--md-sys-motion-duration-medium3);
+  transition-duration: var(--md-sys-motion-duration-medium3);
+}
+
+@utility duration-md-medium4 {
+  --tw-duration: var(--md-sys-motion-duration-medium4);
+  transition-duration: var(--md-sys-motion-duration-medium4);
+}
+
+@utility duration-md-long1 {
+  --tw-duration: var(--md-sys-motion-duration-long1);
+  transition-duration: var(--md-sys-motion-duration-long1);
+}
+
+@utility duration-md-long2 {
+  --tw-duration: var(--md-sys-motion-duration-long2);
+  transition-duration: var(--md-sys-motion-duration-long2);
+}
+
+@utility duration-md-long3 {
+  --tw-duration: var(--md-sys-motion-duration-long3);
+  transition-duration: var(--md-sys-motion-duration-long3);
+}
+
+@utility duration-md-long4 {
+  --tw-duration: var(--md-sys-motion-duration-long4);
+  transition-duration: var(--md-sys-motion-duration-long4);
+}
+
+@utility duration-md-extra-long1 {
+  --tw-duration: var(--md-sys-motion-duration-extra-long1);
+  transition-duration: var(--md-sys-motion-duration-extra-long1);
+}
+
+@utility duration-md-extra-long2 {
+  --tw-duration: var(--md-sys-motion-duration-extra-long2);
+  transition-duration: var(--md-sys-motion-duration-extra-long2);
+}
+
+@utility duration-md-extra-long3 {
+  --tw-duration: var(--md-sys-motion-duration-extra-long3);
+  transition-duration: var(--md-sys-motion-duration-extra-long3);
+}
+
+@utility duration-md-extra-long4 {
+  --tw-duration: var(--md-sys-motion-duration-extra-long4);
+  transition-duration: var(--md-sys-motion-duration-extra-long4);
 }
 
 @theme inline {

@@ -35,12 +35,17 @@ function utilityBlock(css, name) {
 }
 
 describe('state layers, focus rings and the touch target are utilities', () => {
-  it.each(['md-state-layer', 'md-focus-ring', 'md-focus-ring-inset', 'md-touch-target'])(
+  it.each(['md-state-layer', 'md-focus-ring', 'md-focus-ring-inset'])(
     'declares %s with @utility',
     (name) => {
       expect(utilityBlock(stateLayerCss, name), `a @utility ${name} block`).not.toBe('')
     }
   )
+
+  it('declares md-touch-target with @utility, in the touch target file', () => {
+    const touchTargetCss = readFileSync(fileURLToPath(new URL('./touch-target.css', import.meta.url)), 'utf8')
+    expect(utilityBlock(touchTargetCss, 'md-touch-target'), 'a @utility md-touch-target block').not.toBe('')
+  })
 
   it.each(['md-state-hover', 'md-state-focus', 'md-state-pressed', 'md-state-dragged', 'md-focus-ring-within'])(
     'declares the variant-driven utility %s',

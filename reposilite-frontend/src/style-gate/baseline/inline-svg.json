@@ -92,7 +92,7 @@
   {
     "file": "src/components/settings/EntryDetail.vue",
     "match": "<svg",
-    "count": 2
+    "count": 1
   },
   {
     "file": "src/components/settings/EntryList.vue",

@@ -65,7 +65,6 @@
  * window class.
  */
 @theme {
-  --font-mono: Consolas, Monaco, monospace;
   --md-sys-window-margin-compact: 16px;
   --md-sys-window-margin-medium: 24px;
 }
@@ -148,38 +147,6 @@
 
 @layer components {
   /*
-   * The inverse corners that finish the content sheet where it meets the navigation frame (see
-   * IndexPage.vue). Each piece is a square of the corner radius with a circle of the page colour
-   * cut out of it, so the frame shows in the corner outside the arc. The circle's centre is the
-   * corner of the square that touches the sheet. The piece takes the frame colour from the role,
-   * so the runtime theme and dark mode follow without a change here.
-   */
-  .pane-corner {
-    position: absolute;
-    top: 0;
-    width: var(--md-sys-shape-corner-extra-large);
-    height: var(--md-sys-shape-corner-extra-large);
-  }
-
-  .pane-corner-start {
-    left: 0;
-    background: radial-gradient(
-      circle at 100% 100%,
-      transparent var(--md-sys-shape-corner-extra-large),
-      var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
-    );
-  }
-
-  .pane-corner-end {
-    right: 0;
-    background: radial-gradient(
-      circle at 0 100%,
-      transparent var(--md-sys-shape-corner-extra-large),
-      var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
-    );
-  }
-
-  /*
    * vue-final-modal sets no z-index unless it is given a zIndexFn, so a dialog would sit at
    * `auto` and any positioned page element with a z-index (a copy button, say) would paint
    * over it. Every dialog root takes the stacking token from the MD3 foundation instead.
@@ -187,6 +154,38 @@
   .vfm {
     z-index: var(--md-sys-z-dialog);
   }
+}
+
+/*
+ * The inverse corners that finish the content sheet where it meets the navigation frame (see IndexPage.vue). Each piece
+ * is a square of the corner radius with a circle of the page colour cut out of it, so the frame shows in the corner
+ * outside the arc. The circle's centre is the corner of the square that touches the sheet. The piece takes the frame
+ * colour from the role, so the runtime theme and dark mode follow without a change here. pane-corner-start is the piece
+ * on the left edge of the sheet and pane-corner-end the one on the right.
+ */
+@utility pane-corner {
+  position: absolute;
+  top: 0;
+  width: var(--md-sys-shape-corner-extra-large);
+  height: var(--md-sys-shape-corner-extra-large);
+}
+
+@utility pane-corner-start {
+  left: 0;
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent var(--md-sys-shape-corner-extra-large),
+    var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
+  );
+}
+
+@utility pane-corner-end {
+  right: 0;
+  background: radial-gradient(
+    circle at 0 100%,
+    transparent var(--md-sys-shape-corner-extra-large),
+    var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
+  );
 }
 
 /*
@@ -203,22 +202,14 @@
 }
 
 @utility md-router-view {
-  min-height: calc(100vh - 2rem);
+  min-height: calc(100vh - --spacing(8));
 }
 
 /*
  * Skeleton placeholders: the card and its background appear at once, only these bars fade
- * in, so a fast response replaces them before they get a chance to flicker.
+ * in, so a fast response replaces them before they get a chance to flicker. The animation
+ * token and its keyframes are in src/styles/md3/shape-elevation-motion.css.
  */
 @utility skeleton-bars {
-  animation: skeleton-fade-in 0.8s ease-out 0.2s both;
-}
-
-@keyframes skeleton-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  @apply animate-skeleton-fade-in;
 }

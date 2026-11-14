@@ -97,6 +97,10 @@ const THEMES = {
   light: rulesFor(baseSheet, ':root'),
   dark: rulesFor(baseSheet, '.dark')
 }
+
+// A value with var() references, resolved against the same theme, so a role that refers to another role compares by
+// the colour it shows.
+const resolveColour = (theme, value) => value.replace(/var\((--[\w-]+)\)/g, (_, name) => resolveColour(theme, THEMES[theme][name]))
 const CONTRAST = {
   light: rulesFor(mediaBody(sheet, '(prefers-contrast: more)'), CONTRAST_ROOT_LIGHT),
   dark: rulesFor(mediaBody(sheet, '(prefers-contrast: more)'), CONTRAST_DARK)
@@ -154,7 +158,7 @@ describe('colour roles', () => {
 
       expect(roles.length, 'the theme should define all 49 MD3 colour roles, fixed roles included').toBe(49)
       for (const name of roles) {
-        expect(values[name], `${name} should be a six digit hex value`).toMatch(/^#[0-9a-f]{6}$/i)
+        expect(resolveColour(theme, values[name]), `${name} should be a six digit hex value`).toMatch(/^#[0-9a-f]{6}$/i)
       }
     })
 
@@ -230,8 +234,8 @@ describe('high contrast', () => {
 
 describe('brand expression', () => {
   it('runs the brand gradient at 135 degrees from the primary to the tertiary of the default scheme', () => {
-    const light = THEMES.light['--olf-gradient']
-    const dark = THEMES.dark['--olf-gradient']
+    const light = resolveColour('light', THEMES.light['--olf-gradient'])
+    const dark = resolveColour('dark', THEMES.dark['--olf-gradient'])
 
     expect(light, 'the gradient should be defined on :root').toBe(
       'linear-gradient(135deg, #0062a1 0%, #565a8b 100%)'
@@ -296,11 +300,8 @@ describe('chart series', () => {
   })
 })
 
-// The source without the high contrast block, whose nested rules repeat the selectors of the base blocks.
-const baseColourSource = stripComments(css).replace(/@media \(prefers-contrast: more\) \{[\s\S]*?\n\}\n/, '')
-
 describe('field container role', () => {
-  const declared = (theme) => rulesFor(baseColourSource, theme)
+  const declared = (theme) => rulesFor(baseSheet, theme)
 
   it('is declared in the light theme as the surface role', () => {
     expect(declared(':root')['--md-field-container'], 'the light field container').toBe('var(--md-sys-color-surface)')
@@ -312,7 +313,7 @@ describe('field container role', () => {
 })
 
 describe('colour values are written once', () => {
-  const source = baseColourSource
+  const source = baseSheet
 
   it('has one root block and one dark block for the colour roles, extension tokens and gradients', () => {
     expect(source.match(/^:root \{/gm) ?? [], 'the top-level :root blocks').toHaveLength(1)
@@ -328,11 +329,14 @@ describe('colour values are written once', () => {
     expect(rulesFor(source, '.dark')['--md-sys-color-surface-tint'], 'the dark surface tint').toBe('var(--md-sys-color-primary)')
   })
 
-  it('draws the brand gradient from the primary and tertiary roles, without a hex value of its own', () => {
-    const gradient = rulesFor(source, ':root')['--olf-gradient']
-    expect(gradient, 'the light gradient').toBe('linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-tertiary) 100%)')
-    expect(rulesFor(source, '.dark')['--olf-gradient'], 'the dark gradient').toBe(
-      'linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-tertiary) 100%)'
+  it('starts the brand gradient from the surface tint role, which repeats the primary value', () => {
+    expect(rulesFor(source, ':root')['--olf-gradient'], 'the light gradient').toMatch(/^linear-gradient\(135deg, var\(--md-sys-color-surface-tint\) 0%, /)
+    expect(rulesFor(source, '.dark')['--olf-gradient'], 'the dark gradient').toMatch(/^linear-gradient\(135deg, var\(--md-sys-color-surface-tint\) 0%, /)
+  })
+
+  it('ends the dark brand gradient on the tertiary fixed dim role, which keeps its value under prefers-contrast', () => {
+    expect(rulesFor(source, '.dark')['--olf-gradient']).toBe(
+      'linear-gradient(135deg, var(--md-sys-color-surface-tint) 0%, var(--md-sys-color-tertiary-fixed-dim) 100%)'
     )
   })
 })
