@@ -304,7 +304,7 @@ const itemClass = 'md-state-layer relative flex w-full items-center rounded-corn
       :failure="failure"
       @confirm="remove()"
     >
-      {{ label }} and {{ isUser ? 'their' : 'its' }} tokens are deleted. This cannot be undone.
+      {{ principal.name }} and {{ isUser ? 'their' : 'its' }} tokens are deleted. This cannot be undone.
     </ConfirmActionDialog>
   </div>
 </template>
