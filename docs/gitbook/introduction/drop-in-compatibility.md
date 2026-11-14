@@ -33,7 +33,7 @@ A data directory written by Reposilite is read by Ingot as it is. The configurat
 
 A repository may carry a `format` key in `configuration.shared.json`. A configuration without the key is read as it always was, because the key is optional and means `maven2`. Ingot does not add the key to a repository that did not have it. See [Repository settings](../reference/repository-settings.md#format).
 
-Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](token-migration.md) for the design.
+Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](../explanation/token-migration.md) for the design.
 
 ### The configuration
 
@@ -54,8 +54,8 @@ Plugin packages keep the names `com.reposilite.*`, so the plugin code is unchang
 Some things work differently, while the outside stays the same.
 
 * **Tokens belong to accounts.** A token from Reposilite becomes a machine account, which holds the token and a private team. The rights of the token move to that team. Rights are now shown and managed per account.
-* **Administrators have a role.** The old MANAGER permission becomes the instance administrator role. See [Identity model](identity-model.md).
-* **The dashboard has a login.** Users sign in with a password or an external login provider. The dashboard then keeps a browser session in cookies. See [Sessions, login and CSRF](sessions-and-login.md).
+* **Administrators have a role.** The old MANAGER permission becomes the instance administrator role. See [Identity model](../explanation/identity-model.md).
+* **The dashboard has a login.** Users sign in with a password or an external login provider. The dashboard then keeps a browser session in cookies. See [Sessions, login and CSRF](../explanation/sessions-and-login.md).
 * **Settings are written back.** In the default mode, Ingot rewrites `configuration.cdn` at every start. Settings that come from environment variables or system properties are not written into the file.
 * **Unknown environment settings are reported.** An `INGOT_LOCAL_` or `REPOSILITE_LOCAL_` variable that Ingot does not know is logged as a warning and ignored. It does not stop the start.
 * **Some new features are on by default.** Artifact search, for example, is enabled by default. Check the defaults before you assume a feature is off.
@@ -74,7 +74,7 @@ A repository with a `format` key is also a rollback concern. Reposilite and earl
 
 ## Related pages
 
-* [Token migration](token-migration.md) explains how old tokens become machine accounts.
+* [Token migration](../explanation/token-migration.md) explains how old tokens become machine accounts.
 * [Upgrade from Reposilite 3.x](../how-to/upgrade-from-reposilite.md) lists the steps.
 * [Upgrade changes and supported paths](../reference/upgrade-changes.md) lists each change.
-* [Identity model](identity-model.md) explains the new objects.
+* [Identity model](../explanation/identity-model.md) explains the new objects.

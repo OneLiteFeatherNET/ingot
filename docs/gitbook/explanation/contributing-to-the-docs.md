@@ -83,5 +83,5 @@ If a screenshot is really needed, keep it next to the page in the repository, gi
 
 ## Related pages
 
-* [Drop-in compatibility with Reposilite](drop-in-compatibility.md) explains the promise that the docs must keep.
+* [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md) explains the promise that the docs must keep.
 * [Frequently asked questions](../reference/faq.md) shows how an answer links to the pages that give the details.

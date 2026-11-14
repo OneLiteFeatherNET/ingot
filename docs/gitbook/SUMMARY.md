@@ -5,16 +5,16 @@
 ## Introduction
 
 * [Introduction](introduction/README.md)
-* [What is Ingot](explanation/what-is-ingot.md)
-* [How Ingot compares](explanation/how-ingot-compares.md)
-* [Drop-in compatibility with Reposilite](explanation/drop-in-compatibility.md)
+* [What is Ingot](introduction/what-is-ingot.md)
+* [How Ingot compares](introduction/how-ingot-compares.md)
+* [Drop-in compatibility with Reposilite](introduction/drop-in-compatibility.md)
 
 ## Get started
 
 * [Get started](get-started/README.md)
-* [First steps with Docker](tutorials/first-steps-with-docker.md)
-* [Set up users, teams and single sign on](tutorials/set-up-users-teams-and-sso.md)
-* [Set up the first administrator](how-to/set-up-first-admin.md)
+* [First steps with Docker](get-started/first-steps-with-docker.md)
+* [Set up users, teams and single sign on](get-started/set-up-users-teams-and-sso.md)
+* [Set up the first administrator](get-started/set-up-first-admin.md)
 
 ## Set up
 

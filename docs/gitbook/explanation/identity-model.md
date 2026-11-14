@@ -77,6 +77,6 @@ Requests, the access check and artifact search all ask the same evaluator for a 
 
 * [How permissions are evaluated](permission-evaluation.md) explains the order of the decision.
 * [Token migration](token-migration.md) explains how old tokens became machine accounts.
-* [Drop-in compatibility with Reposilite](drop-in-compatibility.md) explains what stays the same for existing installations.
+* [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md) explains what stays the same for existing installations.
 * [Permission nodes](../reference/permission-nodes.md) lists the node grammar.
 * [Access tokens and routes](../reference/access-tokens-and-routes.md) lists the token formats and the legacy route grants.

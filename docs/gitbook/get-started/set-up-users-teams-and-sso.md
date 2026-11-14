@@ -110,4 +110,4 @@ If the button does not appear, the provider is off or it lacks a required value,
 ## Next steps
 
 * [First steps with Docker](first-steps-with-docker.md) shows how to create the repository and the deploy token that this tutorial relies on.
-* [Set up the first administrator](../how-to/set-up-first-admin.md) explains the setup code in detail.
+* [Set up the first administrator](set-up-first-admin.md) explains the setup code in detail.
