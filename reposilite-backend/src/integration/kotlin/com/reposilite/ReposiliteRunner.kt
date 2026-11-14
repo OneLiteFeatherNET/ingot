@@ -28,6 +28,7 @@ import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.token.AccessTokenSecurityProvider
 import net.dzikoysk.cdn.KCdnFactory
+import net.onelitefeather.ingot.logging.AccessLogSetting
 import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.support.SupportBundleSetting
 import net.onelitefeather.ingot.web.ShutdownSettings
@@ -98,6 +99,10 @@ internal abstract class ReposiliteRunner {
     protected open fun supportBundleSetting(): SupportBundleSetting =
         SupportBundleSetting(enabled = true)
 
+    /** The access record switch of the instance. Tests default to off, as the server does without `INGOT_ACCESS_LOG`. */
+    protected open fun accessLogSetting(): AccessLogSetting =
+        AccessLogSetting(enabled = false)
+
     /** Waits out the pre-stop delay. Tests replace it with a recorder, so no test waits on the wall clock. */
     protected open fun awaitDelay(duration: Duration) {
         Thread.sleep(duration.toMillis())
@@ -132,6 +137,7 @@ internal abstract class ReposiliteRunner {
             maxConcurrentRequests = maxConcurrentRequests(),
             readOnlySetting = readOnlySetting(),
             supportBundleSetting = supportBundleSetting(),
+            accessLogSetting = accessLogSetting(),
             awaitDelay = ::awaitDelay,
         )
         reposilite.journalist.setVisibleThreshold(Channel.WARN)
