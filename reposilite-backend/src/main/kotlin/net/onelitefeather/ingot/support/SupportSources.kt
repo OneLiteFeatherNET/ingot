@@ -40,6 +40,8 @@ class SupportSources(
     val localValues: () -> Map<String, String?> = { emptyMap() },
     val sharedDomains: () -> List<SharedDomainDocument> = { emptyList() },
     val repositoryStorage: () -> List<RepositoryStorage> = { emptyList() },
+    /** The non-sensitive details of each repository storage, by repository. */
+    val repositoryDetails: () -> Map<String, Map<String, String>> = { emptyMap() },
     val plugins: () -> List<PluginFact> = { emptyList() },
     /** The cluster section as this instance sees it, already without bus credentials. Null without a bus. */
     val cluster: () -> ClusterStatusResponse? = { null },

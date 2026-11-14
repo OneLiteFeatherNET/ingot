@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.repository
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.StorageUsageRefreshedEvent
+import net.onelitefeather.ingot.storage.capability.ClusterBus
 
 /**
  * The write side of the repository caches that a cluster bus drives: the resolution cache and the storage usage figures. It is
@@ -28,8 +31,8 @@ interface RepositoryCacheCoordinator : Facade {
     /** Drops the resolution entry of [path] in [repository], as a remote instance announced. */
     fun invalidateResolution(repository: String, path: String)
 
-    /** Bounds the lifetime of resolution entries, because a cluster bus is open for this instance. */
-    fun bindToClusterBus()
+    /** Bounds the lifetime of resolution entries and the storage caches, because a cluster bus is open for this instance. */
+    fun bindToClusterBus(clusterBus: ClusterBus)
 
     /** Keeps the usage figures another instance computed, see the storage usage service. */
     fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean
