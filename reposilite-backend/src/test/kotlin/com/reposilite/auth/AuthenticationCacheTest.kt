@@ -6,6 +6,7 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.unauthorized
+import com.reposilite.shared.unauthorizedError
 import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
@@ -84,6 +85,37 @@ internal class AuthenticationCacheTest {
 
         // then: the entry expired from its write time and the credentials were checked again
         assertThat(spy.calls).`as`("authenticator calls at the bound").isEqualTo(2)
+    }
+
+    @Test
+    fun `should check a cached directory login again once a second factor changes`() {
+        // given: a directory login that succeeded and is cached under the credentials of the user
+        createToken("ldap-user", "directory-secret")
+        var directoryAccepts = true
+        val directory = object : Authenticator {
+            override fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
+                if (directoryAccepts) Result.ok(tokens.getAccessToken("ldap-user")!!)
+                else unauthorizedError("Invalid authorization credentials")
+            override fun enabled(): Boolean = true
+            override fun priority(): Double = 0.0
+            override fun realm(): String = "directory"
+        }
+        val facade = AuthenticationFacade(
+            journalist = journalist,
+            authenticators = sortedSetOf(Authenticator.priorityComparator, directory),
+            accessTokenFacade = tokens,
+            clock = clock,
+            ticker = ticker,
+        )
+        assertOk(facade.authenticateByCredentials(Credentials("host", "ldap-user", "directory-secret")))
+
+        // when: a second factor of the owner is confirmed, so the directory login is refused from now on, and the cache is cleared
+        directoryAccepts = false
+        facade.forgetAllCachedCredentials()
+        val response = facade.authenticateByCredentials(Credentials("host", "ldap-user", "directory-secret"))
+
+        // then: the credentials are checked again and refused
+        assertError(unauthorized("Invalid authorization credentials"), response)
     }
 
     @Test

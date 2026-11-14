@@ -146,6 +146,20 @@ internal class CsrfPolicyTest {
     }
 
     @Test
+    fun `exempts the second factor verification below the configured base path`() {
+        assertThat(CsrfPolicy.violation(request(path = "/reposilite/api/auth/mfa/verify", csrfCookie = null, csrfHeader = null), basePath = "/reposilite"))
+            .describedAs("the verification creates the session cookies, so it is exempt where login is")
+            .isFalse()
+    }
+
+    @Test
+    fun `does not exempt a repository path that merely ends with the verification path`() {
+        assertThat(CsrfPolicy.violation(request(path = "/releases/api/auth/mfa/verify", csrfHeader = null), basePath = "/"))
+            .describedAs("the same exact rule as login applies to the verification")
+            .isTrue()
+    }
+
+    @Test
     fun `does not exempt setup below a prefix`() {
         assertThat(CsrfPolicy.violation(request(path = "/releases/api/auth/setup", csrfHeader = null)))
             .describedAs("only the exact route is exempt, so a path below another prefix is not the setup endpoint")

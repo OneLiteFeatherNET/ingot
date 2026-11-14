@@ -21,3 +21,6 @@ const val TOKEN_BASIC_SCHEME = "tokenBasic"
 
 /** The OpenAPI name of the bearer session that a login returns. */
 const val SESSION_BEARER_SCHEME = "sessionBearer"
+
+/** The OpenAPI name of the browser session cookie that a login sets. Routes that only a browser session may call declare it. */
+const val SESSION_COOKIE_SCHEME = "sessionCookie"

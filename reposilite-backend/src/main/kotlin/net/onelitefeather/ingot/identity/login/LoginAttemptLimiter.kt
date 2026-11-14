@@ -95,6 +95,20 @@ internal class LoginAttemptLimiter(
         fun addressKey(address: String): String =
             digest("address|$address")
 
+        /**
+         * The keys of failed second factor codes. They are kept apart from the password keys, so a password login that
+         * succeeds does not reset the failures of the codes.
+         */
+        fun mfaUserKey(username: String, address: String): String =
+            digest("mfa|user|${username.lowercase()}|$address")
+
+        fun mfaAddressKey(address: String): String =
+            digest("mfa|address|$address")
+
+        /** The key of an account across every address, so that rotating addresses does not multiply the attempts. */
+        fun mfaAccountKey(username: String): String =
+            digest("mfa|account|${username.lowercase()}")
+
         private fun digest(value: String): String =
             MessageDigest.getInstance("SHA-256")
                 .digest(value.toByteArray(Charsets.UTF_8))

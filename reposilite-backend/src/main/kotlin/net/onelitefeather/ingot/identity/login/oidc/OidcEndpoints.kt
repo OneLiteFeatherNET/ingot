@@ -98,13 +98,18 @@ internal class AuthOidcEndpoints(
         clearCookie(ctx, OidcStateCookie.COOKIE)
 
         when (outcome) {
-            is OidcFinish.LoggedIn -> {
-                val session = facade.startSession(outcome.principal, ctx.ip(), ctx.header("User-Agent"))
-                if (session == null) {
-                    ctx.redirect(loginErrorLocation(base, "no_database"))
-                } else {
-                    writeSessionCookies(ctx, session, base)
-                    ctx.redirect(trimmedBase(base) + outcome.redirect)
+            // A user with an authenticator signs in with the password and the code. An external login would skip the code, so it
+            // is refused until the external provider's own second factor is trusted (identity model 15, open point).
+            is OidcFinish.LoggedIn -> when {
+                facade.hasSecondFactor(outcome.principal.id) -> ctx.redirect(loginErrorLocation(base, "second_factor_required"))
+                else -> {
+                    val session = facade.startSession(outcome.principal, ctx.ip(), ctx.header("User-Agent"))
+                    if (session == null) {
+                        ctx.redirect(loginErrorLocation(base, "no_database"))
+                    } else {
+                        writeSessionCookies(ctx, session, base)
+                        ctx.redirect(trimmedBase(base) + outcome.redirect)
+                    }
                 }
             }
             is OidcFinish.Failed -> ctx.redirect(loginErrorLocation(base, outcome.code))

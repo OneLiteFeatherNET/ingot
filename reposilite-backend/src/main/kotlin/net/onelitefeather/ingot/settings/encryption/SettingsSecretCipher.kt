@@ -56,6 +56,12 @@ class SettingsSecretCipher(
         get() = previous?.keyId
 
     /**
+     * The codecs of the configured keys, the active one first. Used for secrets that are not shared settings, such as the seeds
+     * of authenticator codes. Empty when no key is configured.
+     */
+    fun codecs(): List<SettingsEnvelopeCodec> = listOfNotNull(active, previous)
+
+    /**
      * @throws IllegalStateException when no key is active
      */
     fun seal(domain: String, path: String, plain: String): String {

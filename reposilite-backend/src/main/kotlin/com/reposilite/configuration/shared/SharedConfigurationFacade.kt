@@ -354,6 +354,10 @@ class SharedConfigurationFacade(
         }
     }
 
+    /** The codecs of the configured settings keys, the active one first. Empty while no key is configured. */
+    fun settingsCodecs(): List<SettingsEnvelopeCodec> =
+        secretCipher?.codecs().orEmpty()
+
     /**
      * True when settings secret references are switched on, so a stored reference is resolved when the document is loaded.
      */
