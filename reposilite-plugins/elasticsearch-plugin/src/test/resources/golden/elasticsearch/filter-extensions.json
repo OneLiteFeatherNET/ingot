@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"terms": {"extension": ["jar", "pom"]}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}
