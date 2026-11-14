@@ -1,5 +1,5 @@
 ---
-description: How to write and change the Ingot documentation. Covers the four Diataxis modes, the description front matter, the rules for SUMMARY.md and links, the house style with no dashes, how to verify a claim in the code, and how to handle screenshots.
+description: How to write and change the Ingot documentation. Covers the four Diataxis modes, the description front matter, the rules for SUMMARY.md and links, the house style with no dashes, how to verify a claim in the code, and how to add diagrams and images.
 ---
 
 # Contributing to the docs
@@ -75,11 +75,18 @@ A claim in the docs is a statement about the behaviour of Ingot, so check it in 
 
 The sources of a claim belong in the pull request description, not in the page. A reviewer should be able to follow a claim to the code without a page full of file paths.
 
-## Screenshots
+## Diagrams and images
 
-The pages of the docs have no screenshots at the moment. Describe a screen in text, with the exact name of each label, button and page. The text stays correct when the layout changes, and a reviewer can check it against the code.
+Draw a diagram when a picture shows a structure or a flow faster than text, such as the parts of an installation or the order of a request. The text around it still carries every fact, so a reader who cannot see the picture loses nothing.
 
-If a screenshot is really needed, keep it next to the page in the repository, give it alt text that says what the picture shows, and do not rely on the picture for a step that the text must also explain. A screenshot that shows a secret, a host name of a real instance or a personal account is not allowed, and must be replaced with an example.
+* **Use Mermaid first.** Write the diagram as a fenced code block with the language `mermaid`. GitBook renders it as a native diagram block, and GitHub renders the same source, so the source is the diagram and no generated file needs to be kept in step.
+* **Leave the colors to the theme.** Do not use `classDef`, `style` or `fill` in a Mermaid diagram, so that it stays legible in the light and the dark theme.
+* **Introduce it with one sentence** that says what the diagram shows. Keep it to about 12 nodes, and use the exact names of the docs in the labels, such as `INGOT_TARGET`, `allInOne` and `split`.
+* **Check every node and arrow in the code** on the main branch, as for any other claim.
+* **Use a committed image only when Mermaid cannot draw the picture.** Keep the files in `docs/gitbook/.gitbook/assets/` and refer to them with a relative path. For a diagram, commit a light and a dark SVG, and show them with a `<picture>` element whose `<source media="(prefers-color-scheme: dark)">` points to the dark file. Give every image alt text that says what it shows.
+* **Host large screenshots at `img.onelitefeather.net`.** Small images and all diagrams stay in the repository, because they are reviewed with the page. An external URL that moves leaves a broken image.
+
+Describe a screen in text as well, with the exact name of each label, button and page. A screenshot that shows a secret, a host name of a real instance or a personal account is not allowed, and must be replaced with an example.
 
 ## Related pages
 

@@ -6,6 +6,19 @@ description: Gives an overview of the parts of an Ingot installation, which are 
 
 This page shows the parts of an Ingot installation and how they fit together. It is a map. Each part has a page that goes into detail, and this page links to them.
 
+The diagram shows the parts of one server and what it talks to. A dashed arrow is optional.
+
+```mermaid
+flowchart LR
+    Client["Client: build tool, browser or script"] --> Server
+    Dashboard["Dashboard"] --> Server
+    Plugins["Plugins"] --> Server
+    Server["Server (one JVM process)"] --> Database[("Database")]
+    Server --> Storage[("Storage: file system or S3")]
+    Server --> Search["Search backend"]
+    Server -.-> Bus["Cluster bus (NATS or Redis)"]
+```
+
 ## Components
 
 | Component | What it does | Read more |
