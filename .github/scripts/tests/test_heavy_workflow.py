@@ -137,6 +137,30 @@ class ConcurrencyTest(unittest.TestCase):
         self.assertIn("github.event_name == 'pull_request'", str(load()["concurrency"]["cancel-in-progress"]))
 
 
+class IntegrationJobTest(unittest.TestCase):
+    def job(self):
+        return load()["jobs"]["integration"]
+
+    def test_the_check_name_is_the_one_the_design_names(self):
+        self.assertEqual("Integration tests (backend)", self.job()["name"])
+
+    def test_the_job_runs_with_four_forks(self):
+        self.assertEqual("4", str(self.job()["env"]["INGOT_TEST_FORKS"]))
+
+    def test_a_run_that_asked_for_full_ignores_the_selection(self):
+        text = read_text()
+        self.assertIn("FULL: ${{ needs.gate.outputs.full }}", text)
+        self.assertIn('[ "$EVENT" != "pull_request" ] || [ "$FULL" = "true" ]', text)
+
+    def test_a_selection_without_an_integration_filter_runs_the_full_suite(self):
+        self.assertIn("grep -q '^integration='", read_text())
+
+    def test_the_full_suite_step_runs_unless_the_selection_is_partial(self):
+        steps = {step["name"]: step for step in self.job()["steps"]}
+        self.assertIn("!= 'partial'", steps["Run the full integration suite"]["if"])
+        self.assertIn("== 'partial'", steps["Run the selected integration tests"]["if"])
+
+
 class GateAndAggregateTest(unittest.TestCase):
     def test_the_gate_and_the_aggregate_exist_with_their_check_names(self):
         jobs = load()["jobs"]
