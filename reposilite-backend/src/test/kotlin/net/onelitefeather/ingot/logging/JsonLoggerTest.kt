@@ -18,6 +18,10 @@ package net.onelitefeather.ingot.logging
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.reposilite.journalist.Channel
+import io.opentelemetry.api.trace.Span
+import io.opentelemetry.api.trace.SpanContext
+import io.opentelemetry.api.trace.TraceFlags
+import io.opentelemetry.api.trace.TraceState
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
@@ -168,6 +172,32 @@ internal class JsonLoggerTest {
         val node = mapper.readTree(console.lines().single())
         assertThat(node.has("trace_id")).describedAs("trace_id without a span").isFalse()
         assertThat(node.has("span_id")).describedAs("span_id without a span").isFalse()
+    }
+
+    @Test
+    fun `should omit trace fields when no span is current in the OpenTelemetry API`() {
+        // given: the console reads the active span through the real API, and no span is current on this thread
+        val console = Console(trace = OpenTelemetryTraceContext)
+
+        // when: a line is logged
+        console.logger().log(Channel.INFO, "outside any span")
+
+        // then: neither field is written, not even as null
+        val node = mapper.readTree(console.lines().single())
+        assertThat(node.has("trace_id")).describedAs("trace_id without a span").isFalse()
+        assertThat(node.has("span_id")).describedAs("span_id without a span").isFalse()
+    }
+
+    @Test
+    fun `should write the ids of the span that the OpenTelemetry API reports as current`() {
+        val console = Console(trace = OpenTelemetryTraceContext)
+        val spanContext = SpanContext.create("4bf92f3577b34da6a3ce929d0e0e4736", "00f067aa0ba902b7", TraceFlags.getSampled(), TraceState.getDefault())
+
+        Span.wrap(spanContext).makeCurrent().use { console.logger().log(Channel.INFO, "inside a span") }
+
+        val node = mapper.readTree(console.lines().single())
+        assertThat(node["trace_id"].asText()).describedAs("trace_id of the current span").isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736")
+        assertThat(node["span_id"].asText()).describedAs("span_id of the current span").isEqualTo("00f067aa0ba902b7")
     }
 
     private inner class Console(
