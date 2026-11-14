@@ -104,6 +104,7 @@
 * [Audit events](reference/audit-events.md)
 * [Console commands](reference/console-commands.md)
 * [OpenSearch search backend](reference/opensearch-search-backend.md)
+* [Meilisearch search backend](reference/meilisearch-search-backend.md)
 
 ### Identity and access
 
