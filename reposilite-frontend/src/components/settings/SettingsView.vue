@@ -614,7 +614,7 @@ watch(
     </template>
     <p
       v-else-if="!loadError"
-      class="mt-6 md-body-large text-on-surface-variant"
+      class="mt-6 min-h-12 md-body-large text-on-surface-variant"
     >
       Loading configuration
     </p>

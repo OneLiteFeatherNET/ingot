@@ -110,10 +110,8 @@ const sheetOpen = ref(false)
   >
     <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between">
       <div class="flex min-w-0 flex-col gap-1 medium:basis-80 medium:grow">
-        <div
-          v-if="showsBack || crumbs.length > 0"
-          class="flex min-w-0 items-center gap-2"
-        >
+        <!-- The first row is always drawn, even with no back arrow and no trail, so every page has the same header height. -->
+        <div class="flex min-h-12 min-w-0 items-center gap-2">
           <RouterLink
             v-if="showsBack"
             v-slot="{ href, navigate }"
@@ -186,20 +184,22 @@ const sheetOpen = ref(false)
         </div>
         <h1
           id="administration-title"
-          class="md-headline-medium text-on-surface"
+          class="md-headline-medium truncate text-on-surface"
+          :title="heading"
         >
           {{ heading }}
         </h1>
+        <!-- The description line is always drawn, empty when the page has none, so a page change does not add or remove a line. -->
         <p
-          v-if="lineDescription"
-          class="md-body-large text-on-surface-variant"
+          class="md-body-large min-h-lh truncate text-on-surface-variant"
+          :title="lineDescription || undefined"
         >
           {{ lineDescription }}
         </p>
       </div>
       <div
         v-if="$slots.actions || shortcuts.length > 0 || showsSections"
-        class="flex max-w-full flex-wrap items-center gap-2"
+        class="flex min-h-12 max-w-full flex-wrap items-center gap-2"
       >
         <button
           v-if="showsSections"

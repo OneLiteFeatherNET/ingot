@@ -123,6 +123,14 @@
   }
 
   /*
+   * The root element always reserves the room of a classic vertical scrollbar, so a page that starts or stops scrolling does
+   * not change the width of the frame (rework-administration-layout, D1). Overlay scrollbars take no room, so nothing changes there.
+   */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  /*
    * Preflight styles an <input> only when it has a type. Thirteen inputs in the dashboard
    * have none, and they are laid out against the bare box, so the Preflight declarations
    * are put back for that one selector.
