@@ -294,6 +294,19 @@ object PermissionEvaluator {
             .sorted()
     }
 
+    /**
+     * The node patterns the subject is denied, the counterpart of [effectiveNodes]: the denying rules of the owner and of its
+     * token, each distinct pattern that the evaluator still denies. A denial that a more specific allow overrides is left out.
+     */
+    fun effectiveDenials(subject: AccessSubject): List<String> {
+        if (subject.disabled) return emptyList()
+        return subject.levels.flatMap { level -> level.rules.filterNot { it.allowed }.map { it.pattern.text } }
+            .plus(subject.tokenRules.orEmpty().filterNot { it.allowed }.map { it.pattern.text })
+            .distinct()
+            .filterNot { text -> decideNode(subject, NodePattern.of(text)).allowed }
+            .sorted()
+    }
+
     // internals
 
     /** The answer of the rules of the owner, without the token. */
