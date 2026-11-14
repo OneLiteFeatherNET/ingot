@@ -370,6 +370,41 @@ internal class ElasticsearchSettingsTest {
             .hasMessageContaining("INGOT_ELASTICSEARCH_INDEX")
     }
 
+    @Test
+    fun `should build the ApiKey authorization from the key when a key is set`() {
+        // when: the settings are read with a key
+        val settings = ElasticsearchSettings.read(withKey(), noFileExpected)
+
+        // then: the header is the ApiKey scheme with the key as it was given
+        assertThat(settings.authorization).`as`("authorization header").isEqualTo("ApiKey $apiKey")
+    }
+
+    @Test
+    fun `should build the basic authorization from the user and the password when no key is set`() {
+        // when: the settings are read with a user and a password, and plain HTTP off
+        val settings = ElasticsearchSettings.read(
+            withUrl("INGOT_ELASTICSEARCH_USERNAME" to "indexer", "INGOT_ELASTICSEARCH_PASSWORD" to "s3cret"),
+            noFileExpected,
+        )
+
+        // then: the header is the basic scheme of the user and the password
+        assertThat(settings.authorization)
+            .`as`("authorization header")
+            .isEqualTo("Basic " + java.util.Base64.getEncoder().encodeToString("indexer:s3cret".toByteArray()))
+    }
+
+    @Test
+    fun `should send no authorization when the cluster runs without security`() {
+        // when: plain HTTP is switched on and no credential is set
+        val settings = ElasticsearchSettings.read(
+            mapOf("INGOT_ELASTICSEARCH_URLS" to "http://search.example.test:9200", "INGOT_ELASTICSEARCH_ALLOW_HTTP" to "true"),
+            noFileExpected,
+        )
+
+        // then: no authorization header is built
+        assertThat(settings.authorization).`as`("authorization header").isNull()
+    }
+
     private fun withUrl(vararg extra: Pair<String, String>): Map<String, String> =
         mapOf("INGOT_ELASTICSEARCH_URLS" to https) + extra
 
