@@ -24,6 +24,8 @@ plugins {
 
 dependencies {
     compileOnly(project(":reposilite-backend"))
+    // The HTTP transport, circuit breaker and redactor shared with the other search plugins. The shadow jar bundles it.
+    implementation(project(":reposilite-search-http"))
     // The server's Jackson: compile against the version the server ships, the plugin loader resolves it to the server copy at run time.
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.7")
 

@@ -16,7 +16,7 @@
 
 @file:OptIn(ExperimentalIngotSearchApi::class)
 
-package net.onelitefeather.ingot.opensearch
+package net.onelitefeather.ingot.search.http
 
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
@@ -27,10 +27,10 @@ import java.io.IOException
 import java.time.Duration
 
 /** The circuit breaker of the transport, driven by an injected clock. */
-internal class OpenSearchCircuitBreakerTest {
+internal class SearchCircuitBreakerTest {
 
     private val clock = ManualClock()
-    private val breaker = OpenSearchCircuitBreaker(clock)
+    private val breaker = SearchCircuitBreaker(clock)
 
     private fun transportFailure(): Nothing = throw IOException("connection refused")
 

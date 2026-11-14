@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package net.onelitefeather.ingot.opensearch
+package net.onelitefeather.ingot.search.http
 
 /**
- * Removes the configured secrets and the user information of every URL from a text before the text leaves the plugin, in a
+ * Removes the configured secrets and the user information of every URL from a text before the text leaves a search plugin, in a
  * status, a problem body or a log line. A cluster may echo the credentials it was sent, so the text is never trusted.
  * Each secret is replaced by `***`, longest first, and blank secrets are ignored, because replacing an empty value would
  * change every character.
  */
-internal class OpenSearchRedactor(secrets: Collection<String>) {
+class CredentialRedactor(secrets: Collection<String>) {
 
     private val values: List<String> = secrets.filter { it.isNotBlank() }.sortedByDescending { it.length }
 
