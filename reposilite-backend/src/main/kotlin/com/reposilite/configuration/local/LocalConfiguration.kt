@@ -48,11 +48,11 @@ class LocalConfiguration : Facade {
 
     @Description("# Database configuration. Supported storage providers:")
     @Description("# - mariadb localhost:3306 database user password")
+    @Description("# - postgresql localhost:5432 database user password")
     @Description("# - sqlite reposilite.db")
     @Description("# - sqlite --temporary")
     @Description("# Experimental providers (not covered with tests):")
     @Description("# - mysql localhost:3306 database user password")
-    @Description("# - postgresql localhost:5432 database user password")
     @Description("# - h2 reposilite")
     @Description("# You can also provide a custom JDBC URL to pass extra properties to the driver:")
     @Description("# - jdbc:mariadb://localhost:3306/db?sslMode=verify-full user password")

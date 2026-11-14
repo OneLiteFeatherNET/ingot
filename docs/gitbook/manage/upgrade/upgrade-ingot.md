@@ -72,7 +72,7 @@ The archive exists and is not empty. For SQLite, `tar -tzf ingot-backup-<date>.t
 * **Mirror cache.** The `mirror_cache_entry` table gains a nullable `source_host` column. Existing rows keep working without a value.
 * **Tokens.** If the instance has persistent tokens, they are copied once to machine principals. The log shows a line of the form `Identity | migrated 7 access token(s) to machine principals`.
 * **Search index.** The index is empty, so the first start runs a full rebuild in the background. Until it completes, the index state is **Building**.
-* **Schema lock.** On MariaDB and MySQL, the first start creates the `ingot_lock` table. Replicas that start together take turns on the schema, and a replica may wait for the others for a short time. No setting has to change. `INGOT_LOCAL_SCHEMALOCKTIMEOUT` (seconds, default `300`) is optional. See [Multi-replica operation](../../references/architecture/multi-replica-operation.md#schema-initialisation).
+* **Schema lock.** On MariaDB, MySQL and PostgreSQL, the first start creates the `ingot_lock` table. On PostgreSQL the schema lock is a session lock, and the table holds the metadata leases. Replicas that start together take turns on the schema, and a replica may wait for the others for a short time. No setting has to change. `INGOT_LOCAL_SCHEMALOCKTIMEOUT` (seconds, default `300`) is optional. See [Multi-replica operation](../../references/architecture/multi-replica-operation.md#schema-initialisation).
 
 ### Upgrade prerequisites
 
