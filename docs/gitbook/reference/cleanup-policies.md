@@ -97,7 +97,8 @@ When both criteria are set, a version has to match both. When only `keepLatest` 
 `manual` means the policy runs only when you start it. A time such as `04:30` means once a day at that time, in the time zone of the server.
 
 * A scheduler checks the policies every 30 seconds. A policy starts when the clock of the server shows the scheduled hour and minute and the policy is enabled.
-* An instance that is not running at that minute does not start the run for that day. Ingot does not catch up later.
+* An instance that is not running at that minute does not start the run for that day, unless catch-up is on. Ingot does not catch up later by default.
+* With [`INGOT_CLEANUP_CATCHUP=true`](environment-variables.md#cleanup-variables), an instance that was not running at that minute makes up the run at its first check after that minute, for up to six hours after the scheduled time. A run whose six hours have passed does not start that day, and a run that is due on one UTC day is not made up on the next. The lease of the day is the same as for an on-time run, so the run starts once, on one instance.
 * Instances that share a database run a policy once per UTC day. The day is held under the key `cleanup:<id>:<date>`, where the date is the UTC date. The run keeps that key while it runs and marks the day as done when it ends, so no other instance starts that day again.
 * If the instance that started the day stops before its run ends, a later check on the same UTC day takes the day over once the key has not been renewed for 60 seconds, and runs the policy again from a fresh plan. A day that has ended, with success or with a failure, is never run again.
 * While a run holds the lease `cleanup:<id>:active`, no other run of that policy starts on any instance that shares the database, manual or scheduled. A scheduled run that finds a manual run in progress writes a skip to the log and does not retry that day.

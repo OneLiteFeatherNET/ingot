@@ -121,7 +121,7 @@ The scheduled cleanup and the audit retention purge hold their daily run as a le
 | --- | --- | --- |
 | Manual run while a run of the same policy is live on another instance | Started, and could delete the same versions at the same time | Answers `409` and deletes nothing |
 | Scheduled run whose instance stopped before the run ended | The day was lost, and no instance ran it | A later check on the same UTC day takes the day over after 60 seconds, and runs it once |
-| Scheduled run that was not started at its minute | Not run | Still not run. Ingot does not catch up later |
+| Scheduled run that was not started at its minute | Not run | Still not run. Ingot does not catch up later, unless `INGOT_CLEANUP_CATCHUP=true` is set. With that variable it is made up within six hours, once per UTC day |
 
 No configuration, environment variable, volume or plugin changes. The schedule itself does not move. The lease table `scheduled_job_claim` gets one column, `lease_epoch`, which is added at start and is `0` for every existing row. Each grant of a lease raises it, so a replica that lost its lease cannot renew or release the grant of the replica that took over.
 

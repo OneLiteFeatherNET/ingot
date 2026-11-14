@@ -141,6 +141,26 @@ internal class CleanupSchedulerClaimTest {
     }
 
     @Test
+    fun `makes up a run missed at the scheduled minute once on one instance when catch-up is on`() {
+        SqliteTestDatabase().use { shared ->
+            val started = ConcurrentLinkedQueue<String>()
+            // given: no instance was up at 02:00, and both instances have catch-up on
+            clock.advance(Duration.ofMinutes(40))
+            val schedulers = listOf("instance-a", "instance-b").map { instanceId ->
+                scheduler(SqlScheduledJobClaims(shared.database, clock, instanceId), started, catchUp = true)
+            }
+
+            // when: both instances tick at the first tick after the scheduled time, and again five minutes later
+            runAtOnce(schedulers.map { scheduler -> { scheduler.tick() } })
+            clock.advance(Duration.ofMinutes(5))
+            runAtOnce(schedulers.map { scheduler -> { scheduler.tick() } })
+
+            // then: exactly one instance makes the run up, and the day is not run again
+            assertThat(started.toList()).`as`("runs of the policy for the missed day").hasSize(1)
+        }
+    }
+
+    @Test
     fun `does not start a run at a later tick when no instance started it at the scheduled minute`() {
         SqliteTestDatabase().use { shared ->
             val started = ConcurrentLinkedQueue<String>()
@@ -180,13 +200,14 @@ internal class CleanupSchedulerClaimTest {
         journalist = InMemoryLogger(),
     )
 
-    private fun scheduler(claims: ScheduledJobClaims, started: ConcurrentLinkedQueue<String>) =
+    private fun scheduler(claims: ScheduledJobClaims, started: ConcurrentLinkedQueue<String>, catchUp: Boolean = false) =
         CleanupScheduler(
             clock = clock,
             policies = { listOf(policy) },
             start = { policy, _ -> started.add(policy.id) },
             claims = claims,
             journalist = InMemoryLogger(),
+            catchUp = catchUp,
         )
 
 }
