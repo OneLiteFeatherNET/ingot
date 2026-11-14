@@ -111,4 +111,4 @@ To replace the bundled icon without a link, put your own `favicon.png` into the 
 
 ## Related
 
-* [Monitor status and failures](monitor-status-and-failures.md) describes the health and status endpoints.
+* [Monitor status and failures](../how-to/monitor-status-and-failures.md) describes the health and status endpoints.

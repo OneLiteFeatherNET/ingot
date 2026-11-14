@@ -10,7 +10,7 @@ Release builds and snapshot builds often end up in the same repository, or a sna
 
 * Be a manager of the instance, so that you can change the maven settings.
 * Know which repositories hold your release builds and which hold snapshots, for example `releases` and `snapshots`.
-* Read the [repository settings reference](../reference/repository-settings.md#version-policy-and-read-only) once. It lists every status code and the write policies.
+* Read the [repository settings reference](../../reference/repository-settings.md#version-policy-and-read-only) once. It lists every status code and the write policies.
 
 Nothing is rewritten by this change. A repository that sets neither key keeps accepting both kinds of version, and no stored file is deleted when you set a policy.
 
@@ -32,7 +32,7 @@ In the settings document the same choice is the key `versionPolicy`:
 }
 ```
 
-Choose **Not set, accepts both** to remove the key again. A proxy and a group take no version policy, so the choice is not offered for them, see [Repository types](../reference/repository-types.md).
+Choose **Not set, accepts both** to remove the key again. A proxy and a group take no version policy, so the choice is not offered for them, see [Repository types](../../reference/repository-types.md).
 
 ## Check the setup with a deploy
 
@@ -55,13 +55,13 @@ A repository that has reached its final state can be frozen on its own, without 
 
 A frozen repository refuses every deploy, every delete and every POM generation with `405`, and the message names the repository. Downloads and searches keep working. Scheduled cleanup skips the repository, and the cleanup preview lists it as skipped.
 
-The instance-wide read-only mode is a different switch. While it is on, every write answers `503`, in every repository, and that answer comes first. See [Freeze writes for maintenance](freeze-writes-for-maintenance.md).
+The instance-wide read-only mode is a different switch. While it is on, every write answers `503`, in every repository, and that answer comes first. See [Freeze writes for maintenance](../../how-to/freeze-writes-for-maintenance.md).
 
 To unfreeze, choose **Allow redeploy** or **Allow once** again. Choosing **Read-only** keeps the redeploy choice of the repository, so switching back restores it.
 
 ## Read the write policy in the list
 
-The repository list shows the write policy of every repository that takes uploads: **Allow redeploy**, **Allow once** or **Read-only**. The same value is in the API as `writePolicy`, see [HTTP API](../reference/http-api.md). A repository without an upload policy is a proxy or a group.
+The repository list shows the write policy of every repository that takes uploads: **Allow redeploy**, **Allow once** or **Read-only**. The same value is in the API as `writePolicy`, see [HTTP API](../../reference/http-api.md). A repository without an upload policy is a proxy or a group.
 
 ## Know what each answer means
 
@@ -74,4 +74,4 @@ The repository list shows the write policy of every repository that takes upload
 
 ## Roll back
 
-A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](roll-back-an-upgrade.md).
+A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md).

@@ -77,7 +77,7 @@ A GitHub provider is an entry with `icon` set to `GITHUB`. GitHub has no ID toke
 
 ### Provider guides
 
-Step-by-step guides for Keycloak, Authentik, Okta, Google Workspace, Microsoft Entra ID and GitHub are linked from [Configure generic OIDC login](../how-to/configure-oidc-login.md). The rules for groups are in [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md), and the messages behind the codes below are in [Troubleshoot external login](../how-to/troubleshoot-external-login.md).
+Step-by-step guides for Keycloak, Authentik, Okta, Google Workspace, Microsoft Entra ID and GitHub are linked from [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md). The rules for groups are in [Map provider groups to teams](../configure/authentication/map-provider-groups-to-teams.md), and the messages behind the codes below are in [Troubleshoot external login](../configure/authentication/troubleshoot-external-login.md).
 
 ### Microsoft Entra ID
 

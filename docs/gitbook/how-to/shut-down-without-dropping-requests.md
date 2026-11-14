@@ -100,5 +100,5 @@ The log shows these lines, in this order:
 ## Related
 
 * [Multi-replica operation](../explanation/multi-replica-operation.md) describes the sequence and what it does not provide.
-* [Limit concurrent requests](limit-concurrent-requests.md) describes the refusals that the limit gives, which also spare the status endpoints.
+* [Limit concurrent requests](../configure/limit-concurrent-requests.md) describes the refusals that the limit gives, which also spare the status endpoints.
 * [Monitor status and failures](monitor-status-and-failures.md) describes the health and readiness answers in full.

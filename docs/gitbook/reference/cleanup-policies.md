@@ -6,7 +6,7 @@ description: Reference for the cleanup policies of Ingot, with every policy fiel
 
 A cleanup policy deletes old versions of artifacts from the repositories it lists. Policies are stored in the `cleanup` settings domain, in its `policies` list. The list is empty by default. Ingot deletes nothing until a policy is run by hand, or is enabled and has a schedule.
 
-To set up a policy step by step, follow [Set cleanup policies](../how-to/set-cleanup-policies.md).
+To set up a policy step by step, follow [Set cleanup policies](../configure/repositories/set-cleanup-policies.md).
 
 ## Policy fields
 
@@ -166,6 +166,6 @@ A run is not a snapshot of the preview. A run plans again at the moment it start
 
 ## Related
 
-* [Set cleanup policies](../how-to/set-cleanup-policies.md) walks through creating, previewing and running a policy.
+* [Set cleanup policies](../configure/repositories/set-cleanup-policies.md) walks through creating, previewing and running a policy.
 * [Repository settings](repository-settings.md) describes the repository fields that a policy depends on, such as `preserveSnapshots` and the proxied entries with `store`.
 * [Repository types](repository-types.md) lists the rules for hosted, proxy and group repositories. Cleanup policies still remove mirror copies from a proxy.

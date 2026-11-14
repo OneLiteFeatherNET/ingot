@@ -4,7 +4,7 @@ description: Reference for the OpenSearch search backend of Ingot, the variables
 
 # OpenSearch search backend
 
-The OpenSearch backend is an opt-in plugin that answers artifact search from an OpenSearch 2.x cluster instead of the database. It ships in the server image as `opensearch-plugin.jar` in `/app/bundled-plugins/`, and it does nothing until its switch is on. Choosing it for the cluster is a separate step, see [Choose a search backend](../how-to/choose-a-search-backend.md). For the steps of a first setup, see [Use OpenSearch for search](../how-to/use-opensearch-for-search.md).
+The OpenSearch backend is an opt-in plugin that answers artifact search from an OpenSearch 2.x cluster instead of the database. It ships in the server image as `opensearch-plugin.jar` in `/app/bundled-plugins/`, and it does nothing until its switch is on. Choosing it for the cluster is a separate step, see [Choose a search backend](../configure/search/choose-a-search-backend.md). For the steps of a first setup, see [Use OpenSearch for search](../configure/search/use-opensearch-for-search.md).
 
 {% hint style="warning" %}
 The OpenSearch index holds the path of every file of every repository, including repositories that are `HIDDEN` or `PRIVATE`. Ingot filters the results at query time, but the cluster itself is a sensitive store. Read [Security obligations](#security-obligations) before you connect a cluster.
@@ -99,7 +99,7 @@ To trust an internal certificate authority, put its certificate in a directory o
 
 ## Errors and states
 
-The backend reports one of the states of [Backend states](../how-to/choose-a-search-backend.md#backend-states). The states that the OpenSearch backend reaches are these.
+The backend reports one of the states of [Backend states](../configure/search/choose-a-search-backend.md#backend-states). The states that the OpenSearch backend reaches are these.
 
 | State | When | Detail and behavior |
 | --- | --- | --- |
@@ -108,13 +108,13 @@ The backend reports one of the states of [Backend states](../how-to/choose-a-sea
 | Busy | The cluster answers `429` or `503` to a bulk request, or it rejects an item of a bulk request as too many requests. | This is back pressure and not an error. The batch is released, the outbox waits for the `Retry-After` delay of the cluster, or 5 seconds when the header is missing, and the attempt is not counted. Entries wait in the outbox, so the index lags behind storage until the cluster accepts the batch. |
 | Rejected document | The cluster refuses a document, for example because its field does not match the mapping. | The batch fails with the error text, which is redacted. Each failed attempt is counted, and an entry becomes a dead letter after ten failures, as for the database backend. |
 
-In every state except `AVAILABLE`, search answers `503` with `Retry-After: 30`, as described in [Backend states](../how-to/choose-a-search-backend.md#backend-states). Writes are visible to search after the refresh interval of one second, and the `backend` block of the status reports the interval.
+In every state except `AVAILABLE`, search answers `503` with `Retry-After: 30`, as described in [Backend states](../configure/search/choose-a-search-backend.md#backend-states). Writes are visible to search after the refresh interval of one second, and the `backend` block of the status reports the interval.
 
 Results of a write can lag behind a deploy by about a second. A file that was deleted can still appear for that long. The verify action of the Maintenance page repairs real drift, see [Rebuild the search index](../how-to/rebuild-search-index.md).
 
 ## Related
 
-* [Use OpenSearch for search](../how-to/use-opensearch-for-search.md) is the setup, step by step.
-* [Choose a search backend](../how-to/choose-a-search-backend.md) explains the states, the cluster rule and the switch between backends.
+* [Use OpenSearch for search](../configure/search/use-opensearch-for-search.md) is the setup, step by step.
+* [Choose a search backend](../configure/search/choose-a-search-backend.md) explains the states, the cluster rule and the switch between backends.
 * [Environment variables](environment-variables.md#opensearch-search-backend) lists the variables with the other settings of the server.
 * [Write a search backend plugin](../how-to/write-a-search-backend-plugin.md) describes the interfaces that this plugin implements.

@@ -4,7 +4,7 @@ description: Write a plugin that adds an artifact search backend to Ingot, with 
 
 # Write a search backend plugin
 
-A search backend answers artifact search and holds the index that search reads. Ingot ships one, the `database` backend. A plugin can add another one, for example a service that runs a dedicated search engine. This page covers what such a plugin provides. It builds on [Write a plugin](write-a-plugin.md), which covers the jar, the plugin class and the service file. Choosing a backend as an operator is covered in [Choose a search backend](choose-a-search-backend.md).
+A search backend answers artifact search and holds the index that search reads. Ingot ships one, the `database` backend. A plugin can add another one, for example a service that runs a dedicated search engine. This page covers what such a plugin provides. It builds on [Write a plugin](write-a-plugin.md), which covers the jar, the plugin class and the service file. Choosing a backend as an operator is covered in [Choose a search backend](../configure/search/choose-a-search-backend.md).
 
 The search backend API is experimental. Its types carry `@ExperimentalIngotSearchApi`, which is an opt-in marker. Code that uses them has to opt in with `@OptIn(ExperimentalIngotSearchApi::class)`, or the compiler warns. The members may change before the API is declared stable.
 
@@ -145,6 +145,6 @@ Ingot also removes every value that the backend reads through `secret()` from it
 
 ## Related
 
-* [Choose a search backend](choose-a-search-backend.md) covers the states of a backend and the switch between backends.
+* [Choose a search backend](../configure/search/choose-a-search-backend.md) covers the states of a backend and the switch between backends.
 * [Plugin API](../reference/plugin-api.md#events) lists the events of the plugin lifecycle.
 * [Write a plugin](write-a-plugin.md) covers the jar, the plugin class and the service file.

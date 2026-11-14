@@ -4,7 +4,7 @@ description: Find the cause of common Ingot problems, from a start that is refus
 
 # Troubleshoot Ingot
 
-This page starts from what you see: a message at start, an HTTP status, or a search that returns nothing. Each entry names the cause that the code produces and the fix. For a login that fails through an external provider, see [Troubleshoot external login](troubleshoot-external-login.md), which covers the `loginError` codes in detail.
+This page starts from what you see: a message at start, an HTTP status, or a search that returns nothing. Each entry names the cause that the code produces and the fix. For a login that fails through an external provider, see [Troubleshoot external login](../configure/authentication/troubleshoot-external-login.md), which covers the `loginError` codes in detail.
 
 ## Where to look first
 
@@ -127,7 +127,7 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 
 ## Proxy and mirror
 
-A proxy repository fetches a file from its upstream and, when `store` is set, keeps a copy. The statuses it answers depend on `INGOT_PROXY_UPSTREAM_STATUS`. The default, `legacy`, keeps the answers that Reposilite always gave. `strict` reports what went wrong. The full table is in [Create a proxy repository](create-proxy-repositories.md#choose-the-status-for-upstream-failures).
+A proxy repository fetches a file from its upstream and, when `store` is set, keeps a copy. The statuses it answers depend on `INGOT_PROXY_UPSTREAM_STATUS`. The default, `legacy`, keeps the answers that Reposilite always gave. `strict` reports what went wrong. The full table is in [Create a proxy repository](../configure/repositories/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
 **Symptom:** a file that the upstream has answers `404`.
 
@@ -161,7 +161,7 @@ A proxy repository fetches a file from its upstream and, when `store` is set, ke
 
 ## Search
 
-Artifact search has its own state, which you can read from the index status endpoint. The meaning of each backend state, and what to do about it, is in [Choose a search backend](choose-a-search-backend.md#backend-states).
+Artifact search has its own state, which you can read from the index status endpoint. The meaning of each backend state, and what to do about it, is in [Choose a search backend](../configure/search/choose-a-search-backend.md#backend-states).
 
 **Symptom:** search answers `404` with `Artifact search is turned off on this instance`.
 
@@ -171,7 +171,7 @@ Artifact search has its own state, which you can read from the index status endp
 **Symptom:** search answers `503` with the title `Search backend not available`, and `Retry-After: 30`.
 
 * **Cause:** the search backend of this replica is not available. The detail names the state, such as `not installed`, `not open, its last attempt failed`, `down` or `not the backend of this cluster`.
-* **Fix:** follow the table in [Choose a search backend](choose-a-search-backend.md#backend-states) for the named state. Downloads and deploys keep working while search is down.
+* **Fix:** follow the table in [Choose a search backend](../configure/search/choose-a-search-backend.md#backend-states) for the named state. Downloads and deploys keep working while search is down.
 
 **Symptom:** search returns fewer artifacts than the repository holds, or nothing for a new upload.
 
@@ -255,5 +255,5 @@ Read [Back up before upgrading](back-up-before-upgrading.md) first, and keep the
 
 * [Monitor status and failures](monitor-status-and-failures.md) describes the status, the failure list and the logs.
 * [Verify an upgrade](verify-an-upgrade.md) lists the checks after an upgrade.
-* [Troubleshoot external login](troubleshoot-external-login.md) covers the login errors of external providers.
+* [Troubleshoot external login](../configure/authentication/troubleshoot-external-login.md) covers the login errors of external providers.
 * [Collect a support bundle](collect-a-support-bundle.md) describes what to attach to a ticket.

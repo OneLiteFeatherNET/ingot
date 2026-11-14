@@ -17,7 +17,7 @@ Ingot can let people sign in to the dashboard with an account from an OpenID Con
 ## Before you begin
 
 * An instance administrator account that you can sign in with.
-* At least one local user exists. Ingot does not create the first administrator from SSO. Create it with the setup code first, see [Enable local login and claim the first admin](../get-started/set-up-first-admin.md).
+* At least one local user exists. Ingot does not create the first administrator from SSO. Create it with the setup code first, see [Enable local login and claim the first admin](../../get-started/set-up-first-admin.md).
 * The public address of the dashboard, for example `https://repo.example.org`. Use `https://`. Plain `http://` is accepted only for the loopback hosts `localhost`, `127.0.0.1` and `[::1]`.
 * A confidential client registered at your provider, with a client id and a client secret. Ask the provider for the issuer URL. Ingot reads the rest from `<issuer>/.well-known/openid-configuration`.
 
@@ -105,7 +105,7 @@ After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`
 | `provider_unavailable` | The discovery document, the token endpoint or the key set cannot be reached, or the provider is not usable. Run **Test connection**. |
 | `token_exchange_failed` | The token endpoint refused the code. Check the client secret, the client id and the redirect URI. |
 | `invalid_id_token` | The ID token failed a check: issuer, audience, nonce, expiry, a missing subject or a missing username. Check the issuer URL and the username claim. |
-| `setup_required` | No local user exists yet. Create the first administrator, see [Enable local login and claim the first admin](../get-started/set-up-first-admin.md). |
+| `setup_required` | No local user exists yet. Create the first administrator, see [Enable local login and claim the first admin](../../get-started/set-up-first-admin.md). |
 | `user_not_provisioned` | Automatic account creation is off and the subject has no linked account. |
 | `username_taken` | A local user already has that name. |
 | `invalid_username` | The username claim is not a valid user name. |
@@ -117,4 +117,4 @@ After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`
 * [Configure Microsoft Entra ID login](configure-entra-id-login.md)
 * [Configure GitHub login](configure-github-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
-* [Recover admin access](recover-admin-access.md)
+* [Recover admin access](../../how-to/recover-admin-access.md)

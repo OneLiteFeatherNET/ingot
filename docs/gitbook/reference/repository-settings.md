@@ -82,7 +82,7 @@ Confirming removes the repository from the draft. The change takes effect when y
 
 ### Create
 
-**New repository** opens the repository wizard. The address `/settings/repositories?new=repository` opens it once and then removes the query from the address. The wizard steps are described in [Create hosted repositories](../how-to/create-hosted-repositories.md).
+**New repository** opens the repository wizard. The address `/settings/repositories?new=repository` opens it once and then removes the query from the address. The wizard steps are described in [Create hosted repositories](../configure/repositories/create-hosted-repositories.md).
 
 ## Default repositories
 
@@ -111,7 +111,7 @@ A new instance starts with three repositories. Their other fields have the defau
 | `metadataMaxAge` | Max age of metadata file | integer (seconds) | `0` | How long a stored metadata file counts as current. See [Storage policy](#storage-policy). |
 | `resolutionCacheMaxEntries` | Resolution cache size | integer, at least 0 | `0` | Size of the cache for routing decisions. `0` turns the cache off. See [Resolution cache](#resolution-cache). |
 | `proxied` | Mirrored repositories | list of [proxied entries](#proxied-entries) | empty | Repositories this repository can fetch files from. |
-| `protectedGroupPrefixes` | Protected group prefixes | list of dotted group ids, such as `net.onelitefeather` | empty | Group ids that a group serves from hosted members only, so that a proxy member never answers for them. Accepted only on a `GROUP`. See [Protect your own namespace](../how-to/create-a-group-repository.md#protect-your-own-namespace). |
+| `protectedGroupPrefixes` | Protected group prefixes | list of dotted group ids, such as `net.onelitefeather` | empty | Group ids that a group serves from hosted members only, so that a proxy member never answers for them. Accepted only on a `GROUP`. See [Protect your own namespace](../configure/repositories/create-a-group-repository.md#protect-your-own-namespace). |
 | `uploadChecksumPolicy` | Upload checksum policy | `ignore`, `warn`, `reject`, or absent | absent, which means the instance default | What happens to an uploaded checksum file that does not match its stored artifact. Absent uses `INGOT_UPLOAD_CHECKSUM_POLICY`, which is `ignore` when unset. See [Upload checksum policy](#upload-checksum-policy). |
 | `versionPolicy` | Version policy | `RELEASE`, `SNAPSHOT`, `MIXED`, or absent | absent, which means `MIXED` | Which versions a deploy may carry. Hosted and untyped repositories only. See [Version policy and read-only](#version-policy-and-read-only). |
 | `readOnly` | Read-only | boolean, or absent | absent, which means `false` | Refuses deploys and deletes with `405`. Hosted and untyped repositories only. See [Version policy and read-only](#version-policy-and-read-only). |
@@ -255,7 +255,7 @@ An entry of `proxied` describes one repository that this repository can fetch fi
 | `readTimeout` | Read Timeout | integer (seconds), at least 0 | `15` | Time to wait for data from a remote host. |
 | `authorization` | Mirror Credentials | object or absent | absent | Credentials for the referenced repository. See below. |
 | `httpProxy` | HTTP Proxy | string | empty | HTTP or SOCKS proxy for the connection to a remote host. Sensitive. |
-| `checksumPolicy` | Checksum policy | `ignore`, `warn` or `fail` | `ignore` | Checks stored copies against the checksum files of the remote. `warn` and `fail` need `store` set to `true`. See [Check checksums](../how-to/create-proxy-repositories.md#check-checksums). |
+| `checksumPolicy` | Checksum policy | `ignore`, `warn` or `fail` | `ignore` | Checks stored copies against the checksum files of the remote. `warn` and `fail` need `store` set to `true`. See [Check checksums](../configure/repositories/create-proxy-repositories.md#check-checksums). |
 | `authenticatedFetchingOnly` | Authenticated Fetching Only | boolean | `false` | Fetches an uncached file only for authenticated callers. |
 
 `authenticatedFetchingOnly` does not hide the repository from anonymous callers, use the [visibility](#visibility) for that. Turn it on together with `store`, or with a second entry that has it turned off. Files that are already stored stay readable for everyone who may read the repository.
@@ -290,7 +290,7 @@ Loopback references are how a repository serves other repositories of the instan
 | `RELEASE` | Refused with `400` | Accepted |
 | `SNAPSHOT` | Accepted | Refused with `400`, except `maven-metadata.xml` and its checksums |
 
-The `400` message names the repository and the policy, for example `Repository 'releases' has version policy RELEASE and does not accept the snapshot version 1.0-SNAPSHOT`. Nothing is stored when a deploy is refused. [Separate releases and snapshots](../how-to/separate-releases-and-snapshots.md) walks through the setup.
+The `400` message names the repository and the policy, for example `Repository 'releases' has version policy RELEASE and does not accept the snapshot version 1.0-SNAPSHOT`. Nothing is stored when a deploy is refused. [Separate releases and snapshots](../configure/repositories/separate-releases-and-snapshots.md) walks through the setup.
 
 `readOnly: true` refuses every deploy, delete and POM generation into the repository with `405`, and the message names the repository. Reads keep working, and mirror cache fills of a proxied entry are not affected. Scheduled cleanup skips the repository, and the cleanup preview lists it as skipped. The flag is distinct from the read-only mode of the whole instance, which answers `503` to every write, and that answer comes first.
 
@@ -315,5 +315,5 @@ The fields marked sensitive on this page are the S3 `endpoint`, `accessKey` and 
 ## Related
 
 * [Repository types](repository-types.md) lists the declared types and the rules they enforce.
-* [Create hosted repositories](../how-to/create-hosted-repositories.md) shows how to add a repository.
+* [Create hosted repositories](../configure/repositories/create-hosted-repositories.md) shows how to add a repository.
 * [Cleanup policies](cleanup-policies.md) lists the rules for deleting old versions.

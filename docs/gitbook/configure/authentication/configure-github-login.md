@@ -107,4 +107,4 @@ For every other code and message, see [Troubleshoot external login](troubleshoot
 * [Map provider groups to teams](map-provider-groups-to-teams.md)
 * [Troubleshoot external login](troubleshoot-external-login.md)
 * [Configure Microsoft Entra ID login](configure-entra-id-login.md)
-* [Recover admin access](recover-admin-access.md)
+* [Recover admin access](../../how-to/recover-admin-access.md)

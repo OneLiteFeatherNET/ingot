@@ -4,13 +4,13 @@ description: Create a hosted repository in Ingot with the New repository wizard 
 
 # Create hosted repositories
 
-A hosted repository stores the artifacts that you upload to it. This guide creates one with the dashboard wizard, or with the settings API, and ends with a test upload. For the idea behind repository types, read the [repository types reference](../reference/repository-types.md).
+A hosted repository stores the artifacts that you upload to it. This guide creates one with the dashboard wizard, or with the settings API, and ends with a test upload. For the idea behind repository types, read the [repository types reference](../../reference/repository-types.md).
 
 ## Before you begin
 
 * Sign in as an instance admin. Only an instance admin can change the maven settings.
 * Pick an id for the repository. It becomes the address, for example `https://repo.example.org/internal-releases`. Use letters, digits, dots, underscores and hyphens, and fewer than 64 characters. Do not use a name of a dashboard page such as `search` or `settings`.
-* Decide who may read it: `PUBLIC`, `HIDDEN` or `PRIVATE`. The [repository settings reference](../reference/repository-settings.md#visibility) lists what each value allows.
+* Decide who may read it: `PUBLIC`, `HIDDEN` or `PRIVATE`. The [repository settings reference](../../reference/repository-settings.md#visibility) lists what each value allows.
 * Decide where the files live: on the disk of the server, or in an S3 bucket. An S3 repository needs the bucket name, and often the endpoint, region and keys.
 * For the access step: know which team should publish to the repository, or let the wizard create a team for it.
 
@@ -44,7 +44,7 @@ The wizard does not set `redeployment`, `preserveSnapshots` or the optional `typ
 * **Preserved snapshots** keeps all older builds of a snapshot. It is off by default.
 * **Type** set to `HOSTED` declares the repository as hosted. Ingot then refuses proxied entries on it.
 
-The [repository settings reference](../reference/repository-settings.md) describes every field.
+The [repository settings reference](../../reference/repository-settings.md) describes every field.
 
 ## Create the repository with the API
 
@@ -92,7 +92,7 @@ The settings API replaces the whole `maven` domain on every `PUT`. Read it first
     curl -u <admin>:<secret> "https://<your-host>/api/maven/repositories?q=internal-releases"
     ```
 
-    The answer contains an entry with `"id": "internal-releases"` and your visibility. It reports the type `hosted`, see the [repository types reference](../reference/repository-types.md#derived-type).
+    The answer contains an entry with `"id": "internal-releases"` and your visibility. It reports the type `hosted`, see the [repository types reference](../../reference/repository-types.md#derived-type).
 
 2. Upload a test file with an account that has the deploy role. For a machine account made by the wizard, the user name is the machine account name and the password is the secret:
 
@@ -127,7 +127,7 @@ The settings API replaces the whole `maven` domain on every `PUT`. Read it first
 
 ## Related
 
-* [Repository settings](../reference/repository-settings.md) lists every field of a repository.
-* [Repository types](../reference/repository-types.md) explains hosted, proxy and group repositories.
+* [Repository settings](../../reference/repository-settings.md) lists every field of a repository.
+* [Repository types](../../reference/repository-types.md) explains hosted, proxy and group repositories.
 * [Create a group repository](create-a-group-repository.md) serves several repositories under one address.
 * [Set cleanup policies](set-cleanup-policies.md) removes old versions from a repository.

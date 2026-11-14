@@ -11,8 +11,8 @@ A proxy repository serves artifacts from one or more remote repositories, such a
 * A manager account, so that you can change the maven settings.
 * The URL of each remote repository, for example `https://repo.maven.apache.org/maven2` for Maven Central. The URL is the root of the repository, without a group path.
 * Credentials for each remote, only if the remote requires them.
-* Storage for the cached copies. The default is the local disk of the instance. For several replicas or large caches, use an S3 bucket, see [Use S3 storage](../set-up/cluster/use-s3-storage.md).
-* Read the [repository types reference](../reference/repository-types.md) if you want to declare the type. The type is optional.
+* Storage for the cached copies. The default is the local disk of the instance. For several replicas or large caches, use an S3 bucket, see [Use S3 storage](../../set-up/cluster/use-s3-storage.md).
+* Read the [repository types reference](../../reference/repository-types.md) if you want to declare the type. The type is optional.
 
 ## Declare the proxy
 
@@ -110,7 +110,7 @@ With `INGOT_PROXY_UPSTREAM_STATUS=strict` the proxy reports what went wrong, for
 A group repository goes on with its next member after a `404` or a failing member, and answers with the first member that has the file. When every member fails, the group answers with the worst status, so a down member gives `502` rather than a false `404`. In `strict` an upstream `404` for a metadata file is also remembered when `resolutionCacheMaxEntries` is above `0`, within that limit.
 
 {% hint style="warning" %}
-Gradle goes to the next repository only on `404`. A `502` or `504` from a repository fails the build, so choose `strict` only when you want a failing mirror to be visible and not silently skipped. The setting and its fallbacks are listed in [Environment variables](../reference/environment-variables.md#proxy-upstream-status).
+Gradle goes to the next repository only on `404`. A `502` or `504` from a repository fails the build, so choose `strict` only when you want a failing mirror to be visible and not silently skipped. The setting and its fallbacks are listed in [Environment variables](../../reference/environment-variables.md#proxy-upstream-status).
 {% endhint %}
 
 ## Keep a copy with store
@@ -126,7 +126,7 @@ With `store` set to `false`, the file is streamed to the client and not kept. Wh
 The copy and the request share one fetch when every host of the repository has `store` set to `true`. Two clients that ask for the same missing file at the same time then cause one remote request.
 
 {% hint style="warning" %}
-With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](../set-up/cluster/use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md).
+With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](../../set-up/cluster/use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md).
 {% endhint %}
 
 ## Check checksums
@@ -139,7 +139,7 @@ With `checksumPolicy` the proxy compares the artifact files it stores with the c
 | `warn` | Stores and serves the copy. A mismatch, or a remote without a checksum file, is written to the log with the file name and the remote. |
 | `fail` | Stores and serves a copy only when it matches. A copy that does not match, or a remote without any checksum file, is refused, and the next remote in `proxied` is tried. When every remote is refused the client gets `502 Bad Gateway`, and nothing is stored. |
 
-Each mismatch and each missing checksum file under `warn` or `fail` is also written to the audit log as `MIRROR_CHECKSUM_MISMATCH` or `MIRROR_CHECKSUM_MISSING`, and counted in `ingot_mirror_checksum_results_total`. See [audit events](../reference/audit-events.md#mirrors-and-protected-groups) and [monitor status and failures](monitor-status-and-failures.md).
+Each mismatch and each missing checksum file under `warn` or `fail` is also written to the audit log as `MIRROR_CHECKSUM_MISMATCH` or `MIRROR_CHECKSUM_MISSING`, and counted in `ingot_mirror_checksum_results_total`. See [audit events](../../reference/audit-events.md#mirrors-and-protected-groups) and [monitor status and failures](../../how-to/monitor-status-and-failures.md).
 
 The example enables the check for one remote:
 
@@ -168,7 +168,7 @@ You can leave `type` out or set it to `PROXY`.
 | `proxied` | Any mix of URLs and local ids | At least one URL, no local ids |
 | Rule check | None beyond the general settings rules | Checked when the settings are saved |
 
-A typed proxy is the clearest choice for a pure mirror. The typed rules and their error messages are listed in the [repository types reference](../reference/repository-types.md).
+A typed proxy is the clearest choice for a pure mirror. The typed rules and their error messages are listed in the [repository types reference](../../reference/repository-types.md).
 
 ## Verify the proxy
 
@@ -188,5 +188,5 @@ A typed proxy is the clearest choice for a pure mirror. The typed rules and thei
 
 * [Create a group repository](create-a-group-repository.md) puts several local repositories behind one URL.
 * [Create hosted repositories](create-hosted-repositories.md) covers repositories that store your own uploads.
-* [Use S3 storage](../set-up/cluster/use-s3-storage.md) for shared or large caches.
+* [Use S3 storage](../../set-up/cluster/use-s3-storage.md) for shared or large caches.
 * [Set cleanup policies](set-cleanup-policies.md) to remove old cache copies.

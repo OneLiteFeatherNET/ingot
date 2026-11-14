@@ -73,10 +73,10 @@ If normal traffic gets `503` answers, the value is below the number of requests 
 
 ## Keep the probes out of the limit
 
-The status endpoints are exempt. A liveness probe on any other path, such as `/`, is refused while the cap is reached. If the refusals last long enough for the probe to fail its threshold, the orchestrator restarts the replica. In the all-in-one mode of the Helm chart, both probes use `/` by default. Point the liveness probe at `/api/status/health`. The values are in [Shut down without dropping requests](shut-down-without-dropping-requests.md#step-4-probe-the-status-paths).
+The status endpoints are exempt. A liveness probe on any other path, such as `/`, is refused while the cap is reached. If the refusals last long enough for the probe to fail its threshold, the orchestrator restarts the replica. In the all-in-one mode of the Helm chart, both probes use `/` by default. Point the liveness probe at `/api/status/health`. The values are in [Shut down without dropping requests](../how-to/shut-down-without-dropping-requests.md#step-4-probe-the-status-paths).
 
 ## Related
 
-* [Shut down without dropping requests](shut-down-without-dropping-requests.md) covers the drain, which refuses requests in the same way.
+* [Shut down without dropping requests](../how-to/shut-down-without-dropping-requests.md) covers the drain, which refuses requests in the same way.
 * [Environment variables](../reference/environment-variables.md#request-limit-variables) lists the variable, its property and its fallback.
 * [HTTP API overview](../reference/http-api.md#overload-answers) describes the answer.

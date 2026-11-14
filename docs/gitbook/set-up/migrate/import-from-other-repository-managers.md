@@ -15,7 +15,7 @@ For Nexus Repository 3 there is a guided import in the dashboard, which runs the
 
 ## Before you begin
 
-* A repository in Ingot that will hold the artifacts. Create it first, see [Create hosted repositories](../../how-to/create-hosted-repositories.md). Do not use a `PROXY` or a `GROUP` as the target, because they refuse uploads.
+* A repository in Ingot that will hold the artifacts. Create it first, see [Create hosted repositories](../../configure/repositories/create-hosted-repositories.md). Do not use a `PROXY` or a `GROUP` as the target, because they refuse uploads.
 * An export of the source repository in the Maven layout, with paths such as `com/example/app/1.0/app-1.0.jar`. Check the export before you copy anything. An export that adds an extra top-level folder must be corrected first.
 * For the re-deploy path, a token with the deploy node for the repository, `ingot.repository.<repository>.deploy`. See [Grant permissions with nodes](../../how-to/grant-permissions-with-nodes.md).
 * Settings for the import. Read the rules below first.
@@ -98,8 +98,8 @@ The export and import steps for each source are the responsibility of the source
 ## Related
 
 * [Rebuild and verify the search index](../../how-to/rebuild-search-index.md) after a copy.
-* [Create hosted repositories](../../how-to/create-hosted-repositories.md) for the target repository.
-* [Create proxy repositories](../../how-to/create-proxy-repositories.md) if you want to keep the upstream instead of importing its files.
+* [Create hosted repositories](../../configure/repositories/create-hosted-repositories.md) for the target repository.
+* [Create proxy repositories](../../configure/repositories/create-proxy-repositories.md) if you want to keep the upstream instead of importing its files.
 
 ## Sonatype Nexus
 

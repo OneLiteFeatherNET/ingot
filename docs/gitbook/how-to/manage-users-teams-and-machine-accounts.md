@@ -124,7 +124,7 @@ The server counts an instance admin as usable only when it is enabled and holds 
 
 A team cannot become its own ancestor, and its parent chain can be at most eight levels deep. A parent list that breaks either rule returns `409 Conflict`.
 
-Users who sign in through an OIDC provider or LDAP are created at their first sign in when the provider's `autoCreateUsers` setting is `true`, which is the default. When the setting is `false`, create the user here first, with the username the provider sends. See [Configure generic OIDC login](configure-oidc-login.md).
+Users who sign in through an OIDC provider or LDAP are created at their first sign in when the provider's `autoCreateUsers` setting is `true`, which is the default. When the setting is `false`, create the user here first, with the username the provider sends. See [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md).
 
 ## Related
 

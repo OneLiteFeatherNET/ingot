@@ -91,4 +91,4 @@ If the egress matters for your bill, keep `ignore` on the large repositories, or
 * [Repository settings](../reference/repository-settings.md#upload-checksum-policy)
 * [Environment variables](../reference/environment-variables.md#upload-checksum-policy)
 * [Audit events](../reference/audit-events.md)
-* [Check checksums of proxied files](create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores
+* [Check checksums of proxied files](../configure/repositories/create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores
