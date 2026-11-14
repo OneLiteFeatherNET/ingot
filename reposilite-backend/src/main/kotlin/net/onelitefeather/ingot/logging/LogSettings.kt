@@ -16,6 +16,11 @@
 
 package net.onelitefeather.ingot.logging
 
+import com.reposilite.journalist.Channel
+
+/** The console line format. [TEXT] is the format of every earlier version. */
+enum class LogFormat { TEXT, JSON }
+
 /** A logging variable that holds a value the server does not accept. The message names the variable. */
 class LogSettingsRefusal(message: String) : IllegalArgumentException(message)
 
@@ -23,13 +28,25 @@ class LogSettingsRefusal(message: String) : IllegalArgumentException(message)
  * The logging variables of one start. Each one is read under its `INGOT_` name first and under its `REPOSILITE_` name when
  * the first is unset or blank. With nothing set, the values are the defaults of earlier versions.
  *
- * [file] tells whether the rolling log file is written.
+ * [packageLevels] holds tinylog level names in lower case, keyed by package. [level] is the console threshold from
+ * `INGOT_LOG_LEVEL`, and it is overridden by the command-line flag, see [consoleThreshold].
  */
 data class LogSettings(
     val file: Boolean = true,
+    val format: LogFormat = LogFormat.TEXT,
+    val level: Channel? = null,
+    val packageLevels: Map<String, String> = emptyMap(),
 ) {
 
+    /** The console threshold: the command-line flag when it was given, then `INGOT_LOG_LEVEL`, then INFO. */
+    fun consoleThreshold(commandLineLevel: String?): Channel =
+        commandLineLevel?.takeIf { it.isNotBlank() }?.let { Channel.of(it).orElse(Channel.INFO) }
+            ?: level
+            ?: Channel.INFO
+
     companion object {
+
+        private val ACCEPTED_LEVELS = listOf("trace", "debug", "info", "warn", "error")
 
         /**
          * Reads the logging variables from [environment]. A value that is not accepted stops the start with a
@@ -44,7 +61,25 @@ data class LogSettings(
                 }
             } ?: true
 
-            return LogSettings(file = file)
+            val format = logVariable(environment, "LOG_FORMAT")?.let { (name, value) ->
+                when {
+                    value.equals("text", ignoreCase = true) -> LogFormat.TEXT
+                    value.equals("json", ignoreCase = true) -> LogFormat.JSON
+                    else -> throw LogSettingsRefusal("Invalid value for $name: $value, expected text or json")
+                }
+            } ?: LogFormat.TEXT
+
+            val level = logVariable(environment, "LOG_LEVEL")?.let { (name, value) ->
+                Channel.of(value).orElseThrow {
+                    LogSettingsRefusal("Invalid value for $name: $value, expected one of FATAL, ERROR, WARN, INFO, DEBUG, TRACE")
+                }
+            }
+
+            val packageLevels = logVariable(environment, "LOG_LEVELS")
+                ?.let { (name, value) -> parsePackageLevels(name, value) }
+                .orEmpty()
+
+            return LogSettings(file = file, format = format, level = level, packageLevels = packageLevels)
         }
 
         /**
@@ -55,6 +90,22 @@ data class LogSettings(
             listOf("INGOT_$suffix", "REPOSILITE_$suffix")
                 .firstNotNullOfOrNull { name -> environment[name]?.trim()?.takeIf { it.isNotEmpty() }?.let { name to it } }
 
+        private fun parsePackageLevels(name: String, value: String): Map<String, String> {
+            val levels = linkedMapOf<String, String>()
+            value.split(',').map { it.trim() }.filter { it.isNotEmpty() }.forEach { entry ->
+                val (pkg, level) = entry.split('=', limit = 2).let { parts ->
+                    if (parts.size != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+                        throw LogSettingsRefusal("Invalid entry '$entry' in $name, expected package=level")
+                    }
+                    parts[0].trim() to parts[1].trim()
+                }
+                if (level.lowercase() !in ACCEPTED_LEVELS) {
+                    throw LogSettingsRefusal("Invalid level '$level' in $name entry '$entry', expected one of ${ACCEPTED_LEVELS.joinToString()}")
+                }
+                levels[pkg] = level.lowercase()
+            }
+            return levels
+        }
     }
 
 }
