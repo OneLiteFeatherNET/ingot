@@ -24,15 +24,46 @@
  */
 
 import axios from 'axios'
+import type { AxiosRequestConfig, AxiosRequestHeaders } from 'axios'
+import type { NexusConnection } from './types'
 import { createURL, handleRequest } from '../client'
+
+// What the module reads from a failed call: the status, and the body when the server sent one.
+interface FailedResponse {
+  status: number
+  statusText?: string
+  data?: unknown
+}
+
+interface ProblemBody {
+  title?: string
+  detail?: string
+  message?: string
+  type?: string
+}
+
+interface Http {
+  request(config: AxiosRequestConfig): Promise<{ data: unknown }>
+}
+
+export interface MigrationApiOptions {
+  onUnauthorized?: (problem: ApiProblem) => void
+}
+
+type JobRequest = Record<string, unknown>
 
 const MIGRATION_BASE = '/api/migration/nexus'
 
 // The address of a report download. A plain link, so the browser fetches it with the session and no credential is in it.
-const reportHref = (id, format) => createURL(`${MIGRATION_BASE}/jobs/${id}/report?format=${format}`)
+const reportHref = (id: number | string, format: string) => createURL(`${MIGRATION_BASE}/jobs/${id}/report?format=${format}`)
 
 class ApiProblem extends Error {
-  constructor({ status, title, detail, type }) {
+  status: number
+  title?: string
+  detail: string
+  type?: string
+
+  constructor({ status, title, detail, type }: { status: number; title?: string; detail?: string; type?: string }) {
     super(detail || title || `Request failed with status ${status}`)
     this.name = 'ApiProblem'
     this.status = status
@@ -42,12 +73,12 @@ class ApiProblem extends Error {
   }
 }
 
-const problemOf = (error) => {
-  const response = error?.response
+const problemOf = (error: unknown): ApiProblem => {
+  const response = (error as { response?: FailedResponse } | null | undefined)?.response
   if (!response) {
     return new ApiProblem({ status: 0, title: 'Network error', detail: 'The server could not be reached.' })
   }
-  const data = response.data && typeof response.data === 'object' ? response.data : {}
+  const data = (response.data && typeof response.data === 'object' ? response.data : {}) as ProblemBody
   return new ApiProblem({
     status: response.status,
     title: data.title ?? response.statusText ?? `Status ${response.status}`,
@@ -60,11 +91,11 @@ const problemOf = (error) => {
  * `http.request({ method, url, data, params })` resolves to `{ data }` and rejects with an axios-like error
  * (`response.status`, `response.data`). `onUnauthorized` is told once about a 401, before the caller sees it.
  */
-const createMigrationApi = (http, { onUnauthorized = () => {} } = {}) => {
-  const call = async (request) => {
+const createMigrationApi = (http: Http, { onUnauthorized = () => {} }: MigrationApiOptions = {}) => {
+  const call = async <T = unknown>(request: AxiosRequestConfig): Promise<T> => {
     try {
       const response = await http.request(request)
-      return response.data
+      return response.data as T
     } catch (error) {
       const problem = problemOf(error)
       if (problem.status === 401) onUnauthorized(problem)
@@ -73,35 +104,35 @@ const createMigrationApi = (http, { onUnauthorized = () => {} } = {}) => {
   }
 
   return {
-    testConnection: (connection) => call({ method: 'POST', url: `${MIGRATION_BASE}/connection/test`, data: connection }),
-    discover: (connection) => call({ method: 'POST', url: `${MIGRATION_BASE}/discover`, data: connection }),
-    createJob: (job) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs`, data: job }),
+    testConnection: (connection: NexusConnection) => call({ method: 'POST', url: `${MIGRATION_BASE}/connection/test`, data: connection }),
+    discover: (connection: NexusConnection) => call({ method: 'POST', url: `${MIGRATION_BASE}/discover`, data: connection }),
+    createJob: (job: JobRequest) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs`, data: job }),
     listJobs: () => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs` }),
-    getJob: (id) => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}` }),
-    pauseJob: (id) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/pause` }),
-    resumeJob: (id) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/resume` }),
-    cancelJob: (id) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/cancel` }),
-    supplyCredentials: (id, password) => call({ method: 'PUT', url: `${MIGRATION_BASE}/jobs/${id}/credentials`, data: { password } }),
-    report: (id, format = 'json') => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}/report`, params: { format } }),
-    conflicts: (id) => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}/conflicts` }),
-    deleteJob: (id) => call({ method: 'DELETE', url: `${MIGRATION_BASE}/jobs/${id}` }),
+    getJob: (id: number) => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}` }),
+    pauseJob: (id: number) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/pause` }),
+    resumeJob: (id: number) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/resume` }),
+    cancelJob: (id: number) => call({ method: 'POST', url: `${MIGRATION_BASE}/jobs/${id}/cancel` }),
+    supplyCredentials: (id: number, password: string) => call({ method: 'PUT', url: `${MIGRATION_BASE}/jobs/${id}/credentials`, data: { password } }),
+    report: (id: number, format = 'json') => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}/report`, params: { format } }),
+    conflicts: (id: number) => call({ method: 'GET', url: `${MIGRATION_BASE}/jobs/${id}/conflicts` }),
+    deleteJob: (id: number) => call({ method: 'DELETE', url: `${MIGRATION_BASE}/jobs/${id}` }),
   }
 }
 
 // The transport of the dashboard: the same cookie and CSRF handling as every other call of the dashboard.
 const dashboardHttp = {
-  request: (config) => axios.request(handleRequest({
+  request: (config: AxiosRequestConfig) => axios.request(handleRequest({
     ...config,
-    url: createURL(config.url),
+    url: createURL(config.url as string),
     withCredentials: true,
-    headers: {},
-  })),
+    headers: {} as AxiosRequestHeaders,
+  }) as AxiosRequestConfig),
 }
 
-let unauthorizedListener = () => {}
+let unauthorizedListener: (problem: ApiProblem) => void = () => {}
 
 // The page tells the module what to do on a 401 (drop the password, open the sign in dialog).
-const onMigrationUnauthorized = (listener) => {
+const onMigrationUnauthorized = (listener: (problem: ApiProblem) => void) => {
   unauthorizedListener = listener
 }
 

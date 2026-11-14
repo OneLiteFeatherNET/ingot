@@ -25,19 +25,20 @@
  */
 
 import { ref } from 'vue'
+import type { PasswordHolder } from './types'
 
-const createPasswordHolder = () => {
-  let value = null
+const createPasswordHolder = (): PasswordHolder => {
+  let value: string | null = null
   const changes = ref(0)
   const changed = () => {
     changes.value += 1
   }
   return {
-    remember(password) {
+    remember(password: string | null | undefined) {
       value = password ? String(password) : null
       changed()
     },
-    recall() {
+    recall(): string | null {
       // Reading the counter makes a computed that asks whether a password is held follow the holder.
       void changes.value
       return value

@@ -21,7 +21,9 @@
  * so the caller asks for it first and no call is made without it.
  */
 
-const connectionBodyOf = (connection, passwords) => {
+import type { Mapping, NexusConnection, PasswordHolder } from './types'
+
+const connectionBodyOf = (connection: NexusConnection | null | undefined, passwords: PasswordHolder): { url: string; user: string; password?: string } | null => {
   if (!connection) return null
   if (connection.passwordMode === 'reference') {
     return { url: connection.url, user: connection.user, password: connection.reference }
@@ -31,12 +33,12 @@ const connectionBodyOf = (connection, passwords) => {
 }
 
 // The repositories a job works on: the included rows, each with its target name when the operator renamed it.
-const jobBodyOf = ({ kind, connection, passwords, mapping }) => {
+const jobBodyOf = ({ kind, connection, passwords, mapping }: { kind: string; connection: NexusConnection | null | undefined; passwords: PasswordHolder; mapping: Mapping }) => {
   const base = connectionBodyOf(connection, passwords)
   if (!base) return null
   const included = mapping.repositories.filter(repository => repository.included)
   const targets = Object.fromEntries(included
-    .map(repository => [repository.nexusName, String(repository.targetName ?? '').trim()])
+    .map((repository): [string, string] => [repository.nexusName, String(repository.targetName ?? '').trim()])
     .filter(([nexusName, target]) => target !== '' && target !== nexusName))
   return {
     ...base,

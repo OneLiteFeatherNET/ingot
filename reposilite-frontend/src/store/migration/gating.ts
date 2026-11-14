@@ -23,9 +23,23 @@
  * The jobs are the job views of the server. A job is finished when it is COMPLETED, FAILED or CANCELLED.
  */
 
-const STEPS = ['connect', 'discover', 'mapping', 'dry-run', 'sync', 'verify', 'cut-over']
+import type { Acceptance, Mapping, MappingRow, MigrationJob, WizardFacts } from './types'
 
-const STEP_LABELS = {
+export type Step = (typeof STEPS)[number]
+
+interface StepState {
+  open: boolean
+  reason: string | null
+}
+
+export interface MappingWarning {
+  nexusName: string
+  kind: 'empty' | 'duplicate'
+}
+
+const STEPS = ['connect', 'discover', 'mapping', 'dry-run', 'sync', 'verify', 'cut-over'] as const
+
+const STEP_LABELS: Record<Step, string> = {
   connect: 'Connect',
   discover: 'Discover',
   mapping: 'Mapping',
@@ -37,24 +51,24 @@ const STEP_LABELS = {
 
 const FINISHED_STATUSES = ['COMPLETED', 'FAILED', 'CANCELLED']
 
-const isFinished = (job) => FINISHED_STATUSES.includes(job.status)
+const isFinished = (job: MigrationJob): boolean => FINISHED_STATUSES.includes(job.status)
 
 // The newest job of a kind. Ids grow with each job, so the highest id is the newest.
-const newestOf = (jobs, kind) => jobs
+const newestOf = (jobs: MigrationJob[], kind: string): MigrationJob | undefined => jobs
   .filter(job => job.kind === kind)
   .sort((a, b) => b.id - a.id)[0]
 
-const hasFinished = (jobs, kind) => jobs.some(job => job.kind === kind && isFinished(job))
+const hasFinished = (jobs: MigrationJob[], kind: string): boolean => jobs.some(job => job.kind === kind && isFinished(job))
 
-const hasAny = (jobs, kind) => jobs.some(job => job.kind === kind)
+const hasAny = (jobs: MigrationJob[], kind: string): boolean => jobs.some(job => job.kind === kind)
 
-const includedOf = (mapping) => (mapping?.repositories ?? []).filter(repository => repository.included)
+const includedOf = (mapping: Partial<Mapping> | null | undefined): MappingRow[] => (mapping?.repositories ?? []).filter(repository => repository.included)
 
-const trimmed = (value) => String(value ?? '').trim()
+const trimmed = (value?: string | null): string => String(value ?? '').trim()
 
 // Included rows whose target name is used by another included row.
-const duplicateTargets = (mapping) => {
-  const counts = new Map()
+const duplicateTargets = (mapping: Partial<Mapping> | null | undefined): Set<string> => {
+  const counts = new Map<string, number>()
   includedOf(mapping).forEach(repository => {
     const name = trimmed(repository.targetName)
     if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
@@ -66,7 +80,7 @@ const duplicateTargets = (mapping) => {
  * Which step is open and why a closed one is closed. Sync, Verify and Cut-over depend on the jobs, so they
  * open after a reload without any page state. The other steps depend on what the page holds.
  */
-const stepStates = (state, jobs) => {
+const stepStates = (state: WizardFacts, jobs: MigrationJob[]): Record<Step, StepState> => {
   const included = includedOf(state.mapping)
   const duplicates = duplicateTargets(state.mapping)
   const dryRunReady = state.discovered && included.length > 0 && duplicates.size === 0
@@ -86,7 +100,7 @@ const stepStates = (state, jobs) => {
 }
 
 // The step the jobs of a reload open, or null when they open none (the page then starts at Connect).
-const stepFromJobs = (jobs) => {
+const stepFromJobs = (jobs: MigrationJob[]): Step | null => {
   const newestImport = newestOf(jobs, 'IMPORT')
   const newestVerify = newestOf(jobs, 'VERIFY')
   if (newestImport && !isFinished(newestImport)) return 'sync'
@@ -101,7 +115,7 @@ const stepFromJobs = (jobs) => {
  * there is one, otherwise to the last open step before the first closed one, which is the step the visitor
  * should finish next. `reason` says why the requested step is closed.
  */
-const stepTarget = (requested, state, jobs) => {
+const stepTarget = (requested: Step, state: WizardFacts, jobs: MigrationJob[]): { step: Step; redirected: boolean; fromJobs: boolean; reason?: string | null } => {
   const states = stepStates(state, jobs)
   if (states[requested]?.open) return { step: requested, redirected: false, fromJobs: false }
   const reason = states[requested]?.reason ?? null
@@ -112,7 +126,7 @@ const stepTarget = (requested, state, jobs) => {
 }
 
 // What the first closed step needs, in words: the next thing the visitor has to finish. Null when every step is open.
-const nextClosedReason = (state, jobs) => {
+const nextClosedReason = (state: WizardFacts, jobs: MigrationJob[]): string | null => {
   const states = stepStates(state, jobs)
   const first = STEPS.find(step => !states[step].open)
   return first ? states[first].reason : null
@@ -122,25 +136,25 @@ const nextClosedReason = (state, jobs) => {
  * A text that changes with every choice the operator makes for the import: which repositories are included,
  * their target names and the conflict policy. The order of the rows does not matter.
  */
-const planFingerprint = (plan) => JSON.stringify({
+const planFingerprint = (plan: Partial<Mapping>): string => JSON.stringify({
   policy: plan.conflictPolicy,
   repositories: includedOf(plan)
     .map(repository => [repository.nexusName, trimmed(repository.targetName)])
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
 })
 
-const acceptanceIsCurrent = (acceptance, plan, dryRunJobId) =>
+const acceptanceIsCurrent = (acceptance: Acceptance | null | undefined, plan: Partial<Mapping>, dryRunJobId: number): boolean =>
   acceptance !== null
   && acceptance !== undefined
   && acceptance.dryRunJobId === dryRunJobId
   && acceptance.fingerprint === planFingerprint(plan)
 
 // Warnings of the included rows: an empty target name, or a name that another included row also uses.
-const mappingWarnings = (repositories) => {
+const mappingWarnings = (repositories: MappingRow[]): MappingWarning[] => {
   const duplicates = duplicateTargets({ repositories })
   return repositories
     .filter(repository => repository.included)
-    .flatMap(repository => {
+    .flatMap((repository): MappingWarning[] => {
       const name = trimmed(repository.targetName)
       if (!name) return [{ nexusName: repository.nexusName, kind: 'empty' }]
       if (duplicates.has(name)) return [{ nexusName: repository.nexusName, kind: 'duplicate' }]
@@ -152,7 +166,7 @@ const mappingWarnings = (repositories) => {
  * Why Sync cannot start. `ok` is true only when the list of reasons is empty: a finished dry run, its blockers
  * (each one named), an acceptance for this dry run and this mapping, and at least one included repository.
  */
-const syncBlockers = ({ dryRun, acceptance, rows, conflictPolicy = 'refuse' }) => {
+const syncBlockers = ({ dryRun, acceptance, rows, conflictPolicy = 'refuse' }: { dryRun: MigrationJob | null | undefined; acceptance: Acceptance | null | undefined; rows: MappingRow[]; conflictPolicy?: string }): { ok: boolean; reasons: string[] } => {
   const plan = { repositories: rows, conflictPolicy }
   const reasons = []
   const dryRunDone = dryRun !== null && dryRun !== undefined && dryRun.kind === 'DRY_RUN' && isFinished(dryRun)

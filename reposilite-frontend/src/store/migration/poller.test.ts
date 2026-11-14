@@ -26,16 +26,16 @@ const settle = async () => {
 const manualTimers = () => {
   let now = 0
   let nextId = 1
-  const pending = new Map()
+  const pending = new Map<number, { at: number; callback: () => void }>()
   return {
-    setTimeout: (callback, ms) => {
+    setTimeout: (callback: () => void, ms: number) => {
       const id = nextId++
       pending.set(id, { at: now + ms, callback })
       return id
     },
-    clearTimeout: (id) => pending.delete(id),
+    clearTimeout: (id: number) => pending.delete(id),
     delays: () => [...pending.values()].map(entry => entry.at - now),
-    async advance(ms) {
+    async advance(ms: number) {
       const target = now + ms
       for (;;) {
         const due = [...pending.entries()]
@@ -55,35 +55,35 @@ const manualTimers = () => {
 // A tab that the test can hide and show. Listeners are kept per test.
 const visibilitySource = () => {
   let hidden = false
-  const listeners = new Set()
+  const listeners = new Set<() => void>()
   return {
     isHidden: () => hidden,
-    subscribe: (listener) => {
+    subscribe: (listener: () => void) => {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    setHidden: (value) => {
+    setHidden: (value: boolean) => {
       hidden = value
       listeners.forEach(listener => listener())
     },
   }
 }
 
-const job = (overrides = {}) => ({ id: 7, kind: 'IMPORT', status: 'RUNNING', results: {}, ...overrides })
+const job = (overrides: Record<string, unknown> = {}) => ({ id: 7, kind: 'IMPORT', status: 'RUNNING', results: {}, ...overrides })
 
-const problem = (status) => Object.assign(new Error(`status ${status}`), { status })
+const problem = (status: number) => Object.assign(new Error(`status ${status}`), { status })
 
 // A fetch whose answers are queued by the test. The last answer repeats when the queue runs out.
-const scriptedFetch = (answers) => {
+const scriptedFetch = (answers: unknown[]) => {
   const queue = [...answers]
-  return vi.fn(async () => {
+  return vi.fn(() => {
     const next = queue.length > 1 ? queue.shift() : queue[0]
-    if (next instanceof Error) throw next
-    return next
+    if (next instanceof Error) return Promise.reject(next)
+    return Promise.resolve(next)
   })
 }
 
-const harness = (answers) => {
+const harness = (answers: unknown[]) => {
   const timers = manualTimers()
   const visibility = visibilitySource()
   const fetch = scriptedFetch(answers)
@@ -94,7 +94,7 @@ const harness = (answers) => {
     onUnauthorized: vi.fn(),
     onStopped: vi.fn(),
   }
-  const poller = createPoller({ fetch, timers, visibility, isFinished: (value) => value.status === 'COMPLETED', ...handlers })
+  const poller = createPoller({ fetch, timers, visibility, isFinished: (value) => (value as { status?: string } | undefined)?.status === 'COMPLETED', ...handlers })
   return { poller, timers, visibility, fetch, ...handlers }
 }
 

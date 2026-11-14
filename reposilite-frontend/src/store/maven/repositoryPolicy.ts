@@ -20,11 +20,11 @@
  * `redeployment` and `readOnly`; the settings page edits it through writePolicy.js, so the choice is made in one place.
  */
 
-const WRITE_POLICY_LABELS = {
+const WRITE_POLICY_LABELS: Record<string, string> = {
   ALLOW: 'Allow redeploy',
   ALLOW_ONCE: 'Allow once',
   READ_ONLY: 'Read-only'
 }
 
 /* The label of the write policy the server reports, or nothing for a proxy or a group, which take no uploads. */
-export const writePolicyLabelOf = (repository = {}) => WRITE_POLICY_LABELS[repository.writePolicy] ?? ''
+export const writePolicyLabelOf = (repository: { writePolicy?: string | null; [field: string]: unknown } = {}): string => WRITE_POLICY_LABELS[String(repository.writePolicy)] ?? ''

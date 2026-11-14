@@ -25,12 +25,45 @@
 
 export const LEGACY_HINT = 'No type set, behaves as before. Set a type to enforce the rules.'
 
-export const TYPE_LABELS = { hosted: 'Hosted', proxy: 'Proxy', group: 'Group', mixed: 'Mixed' }
+export interface TypeInput {
+  [field: string]: unknown
+  type?: unknown
+  typeExplicit?: unknown
+}
+
+export interface TypeBadge {
+  key: string
+  label: string
+  legacy: boolean
+  hint: string
+}
+
+export interface Mirror {
+  reference?: string | null
+  authorization?: unknown
+  [field: string]: unknown
+}
+
+export interface Removal {
+  key: string
+  label: string
+}
+
+// A repository entry of the settings form, read by field name. Only the fields the rules look at are named.
+export interface Entry {
+  id?: unknown
+  type?: unknown
+  proxied?: Mirror[]
+  storageProvider?: unknown
+  [field: string]: unknown
+}
+
+export const TYPE_LABELS: Record<string, string> = { hosted: 'Hosted', proxy: 'Proxy', group: 'Group', mixed: 'Mixed' }
 
 const TYPE_KEYS = Object.keys(TYPE_LABELS)
 
 /* The badge of one repository of the list: its key, its label, and the legacy hint when it has no type of its own. */
-export const typeBadgeOf = (repository = {}) => {
+export const typeBadgeOf = (repository: TypeInput = {}): TypeBadge => {
   const raw = typeof repository?.type === 'string' ? repository.type.toLowerCase() : ''
   const key = TYPE_KEYS.includes(raw) ? raw : 'mixed'
   const explicit = repository?.typeExplicit === true
@@ -43,23 +76,23 @@ export const typeBadgeOf = (repository = {}) => {
 }
 
 /* The badge of one entry of the settings, where the type is set exactly when the entry has one. */
-export const settingsTypeBadge = (entry = {}) => typeBadgeOf({ type: entry.type, typeExplicit: entry.type !== undefined })
+export const settingsTypeBadge = (entry: { type?: unknown; [field: string]: unknown } = {}): TypeBadge => typeBadgeOf({ type: entry.type, typeExplicit: entry.type !== undefined })
 
 /* The chips of the overview, in the order they are shown. */
 export const TYPE_FILTERS = TYPE_KEYS.map(key => ({ key, label: TYPE_LABELS[key] }))
 
 /* The types named in the address, lower cased, without unknown or repeated values. */
-export const typesFromParam = (param) => {
+export const typesFromParam = (param?: unknown): string[] => {
   const values = [param ?? []].flat()
   const keys = values
-    .filter(value => typeof value === 'string')
+    .filter((value): value is string => typeof value === 'string')
     .map(value => value.trim().toLowerCase())
     .filter(value => TYPE_KEYS.includes(value))
   return [...new Set(keys)]
 }
 
 /* The repositories whose badge is one of the selected types. No selection keeps them all. */
-export const filterByType = (repositories, selected = []) => (selected.length === 0
+export const filterByType = <T extends TypeInput>(repositories: T[], selected: string[] = []): T[] => (selected.length === 0
   ? repositories
   : repositories.filter(repository => selected.includes(typeBadgeOf(repository).key)))
 
@@ -72,25 +105,25 @@ export const SETTING_TYPE_OPTIONS = [
 ]
 
 /* An address of a remote repository: http or https, with a host and an optional path. */
-export const isRemoteUrl = (text) => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
+export const isRemoteUrl = (text?: string | null): boolean => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
 
 /*
  * A mirrored entry that names nothing: blank, or only the slash the server strips from a reference. The server
  * ignores such an entry for an untyped repository, and drops it from a typed one when it is saved.
  */
-const isBlankReference = (reference) => {
+const isBlankReference = (reference?: string | null): boolean => {
   const trimmed = String(reference ?? '').trim()
   return (trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed) === ''
 }
-export const isBlankEntry = (item) => isBlankReference(item?.reference)
+export const isBlankEntry = (item?: { reference?: string | null; [field: string]: unknown } | null): boolean => isBlankReference(item?.reference)
 
 /* The number of blank entries that a switch to `to` removes. Only a typed repository drops them. */
-export const blankEntriesRemovedBy = (entry, to) => (Array.isArray(entry?.proxied) && isTyped(to)
+export const blankEntriesRemovedBy = (entry: { proxied?: unknown; [field: string]: unknown } | null | undefined, to: string): number => (Array.isArray(entry?.proxied) && isTyped(to)
   ? entry.proxied.filter(isBlankEntry).length
   : 0)
 
 /* The line of the switch confirmation about blank entries, or nothing when a switch removes none. */
-export const blankEntriesNotice = (count) => (count === 0
+export const blankEntriesNotice = (count: number): string => (count === 0
   ? ''
   : `${count} empty ${count === 1 ? 'entry' : 'entries'} will be removed.`)
 
@@ -100,14 +133,14 @@ export const blankEntriesNotice = (count) => (count === 0
  * (see warningsFor), so no storage is ever deleted by a switch. A group keeps its mirrored entries as
  * its members (repository ids), not as remote addresses.
  */
-const KEPT = {
+const KEPT: Record<string, string[]> = {
   HOSTED: ['storageProvider', 'redeployment', 'preserveSnapshots'],
   PROXY: ['storageProvider', 'proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
   GROUP: ['storageProvider', 'proxied']
 }
 
 // The fields the form shows for a type. A group's members are edited as a list of repositories, and a group's storage is unused, so the form leaves both out.
-const SHOWN = {
+const SHOWN: Record<string, string[]> = {
   HOSTED: ['storageProvider', 'redeployment', 'preserveSnapshots'],
   PROXY: ['storageProvider', 'proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
   GROUP: []
@@ -115,7 +148,7 @@ const SHOWN = {
 
 const TYPED_FIELDS = [...new Set(Object.values(KEPT).flat())]
 
-const FIELD_LABELS = {
+const FIELD_LABELS: Record<string, string> = {
   storageProvider: 'Storage',
   redeployment: 'Redeployment',
   preserveSnapshots: 'Preserved snapshots',
@@ -126,36 +159,37 @@ const FIELD_LABELS = {
 }
 
 // A setting holds something when it is not left empty or switched off, so there is nothing to lose when it does not.
-const isSet = (value) => value !== undefined && value !== null && value !== '' && value !== false
+const isSet = (value: unknown): boolean => value !== undefined && value !== null && value !== '' && value !== false
   && !(Array.isArray(value) && value.length === 0)
 
-const isTyped = (type) => Object.prototype.hasOwnProperty.call(KEPT, type)
+const isTyped = (type: string | undefined): boolean => Object.prototype.hasOwnProperty.call(KEPT, String(type))
 
 /* The typed settings the form of this type leaves out. Nothing is left out of an entry without a type. */
-export const hiddenFormFields = (type) => (isTyped(type)
-  ? TYPED_FIELDS.filter(field => !SHOWN[type].includes(field))
+export const hiddenFormFields = (type?: string): string[] => (isTyped(type)
+  ? TYPED_FIELDS.filter(field => !SHOWN[type as string].includes(field))
   : [])
 
 // Switching between a proxy and a group changes what the mirrored entries mean, so they go too.
-const dropsMirrors = (from, to) => (from === 'PROXY' || from === 'GROUP') && (to === 'PROXY' || to === 'GROUP') && from !== to
+const dropsMirrors = (from: string, to: string): boolean => (from === 'PROXY' || from === 'GROUP') && (to === 'PROXY' || to === 'GROUP') && from !== to
 
 // The settings of the entry that the new type does not keep. Storage is never among them, see KEPT.
-const notKept = (from, to) => TYPED_FIELDS.filter(field => !KEPT[to].includes(field)
+const notKept = (from: string, to: string): string[] => TYPED_FIELDS.filter(field => !KEPT[to].includes(field)
   || (field === 'proxied' && dropsMirrors(from, to)))
 
 /* The mirrored entries that carry a credential. Their credentials go with them, so the switch names them on their own line. */
-const credentialCount = (proxied) => (Array.isArray(proxied) ? proxied.filter(item => item?.authorization != null).length : 0)
+const credentialCount = (proxied: unknown): number => (Array.isArray(proxied) ? proxied.filter((item: { authorization?: unknown } | null | undefined) => item?.authorization != null).length : 0)
 
 /*
  * What switching the entry to `to` removes, with the label the user knows it by. Empty settings are not listed.
  * Removing the mirrored entries also removes their credentials, so those are listed too, and never silently.
  */
-export const removalsFor = (entry, from, to) => {
+export const removalsFor = (entry: Entry, from: string, to: string): Removal[] => {
   if (!isTyped(to)) return []
   return notKept(from, to)
     .filter(field => isSet(entry[field]))
     .flatMap(field => {
-      const count = Array.isArray(entry[field]) && entry[field].length > 1 ? ` (${entry[field].length})` : ''
+      const value = entry[field]
+      const count = Array.isArray(value) && value.length > 1 ? ` (${value.length})` : ''
       const removal = { key: field, label: `${FIELD_LABELS[field]}${count}` }
       const credentials = field === 'proxied' ? credentialCount(entry.proxied) : 0
       return credentials > 0
@@ -168,25 +202,25 @@ export const removalsFor = (entry, from, to) => {
  * What switching the entry to `to` leaves behind without using it. A group does not use storage, so a
  * storage that is set stays configured and is named here; nothing is deleted without a removal being listed.
  */
-export const warningsFor = (entry, from, to) => {
+export const warningsFor = (entry: Entry, from: string, to: string): string[] => {
   if (to !== 'GROUP' || !isSet(entry.storageProvider)) return []
   const name = from === 'PROXY' ? 'The cache storage' : 'The storage'
   return [`${name} stays configured, but a group does not use it.`]
 }
 
 /* The note under the type of a group that still has storage: the same words as the warning, for the entry as it is. */
-export const unusedStorageNoteOf = (entry) => (entry.type === 'GROUP' && isSet(entry.storageProvider)
+export const unusedStorageNoteOf = (entry: Entry): string => (entry.type === 'GROUP' && isSet(entry.storageProvider)
   ? 'The storage stays configured, but a group does not use it.'
   : '')
 
 /* The entry with the type changed: what the new type does not keep is taken out, blank entries too, and the type is written. None takes the type away, and keeps the entries as they are. */
-export const switchedEntry = (entry, to) => {
+export const switchedEntry = (entry: Entry, to: string): Entry => {
   const next = { ...entry }
   if (!isTyped(to)) {
     delete next.type
     return next
   }
-  for (const field of notKept(entry.type ?? '', to)) delete next[field]
+  for (const field of notKept((entry.type ?? '') as string, to)) delete next[field]
   if (Array.isArray(next.proxied)) next.proxied = next.proxied.filter(item => !isBlankEntry(item))
   next.type = to
   return next
@@ -200,7 +234,7 @@ export const switchedEntry = (entry, to) => {
  */
 const DECLARED_TYPES = ['HOSTED', 'PROXY', 'GROUP']
 
-export const derivedTypeOf = (entry = {}) => {
+export const derivedTypeOf = (entry: Entry = {}): string => {
   const references = Array.isArray(entry?.proxied)
     ? entry.proxied.filter(item => !isBlankEntry(item)).map(item => String(item?.reference ?? '').trim())
     : []
@@ -216,7 +250,7 @@ export const derivedTypeOf = (entry = {}) => {
  * The effective type of an entry: the declared type when it is one of the three, otherwise the derived one.
  * `declared` tells the two apart, so the page can say "derived" next to the badge.
  */
-export const effectiveTypeOf = (entry = {}) => {
+export const effectiveTypeOf = (entry: Entry = {}): { type: string; declared: boolean } => {
   const declared = typeof entry?.type === 'string' ? entry.type.toUpperCase() : ''
   if (DECLARED_TYPES.includes(declared)) return { type: declared, declared: true }
   return { type: derivedTypeOf(entry), declared: false }
@@ -226,7 +260,7 @@ export const effectiveTypeOf = (entry = {}) => {
  * The rules the server enforces, checked before the settings are saved, so the problem is shown next to the type.
  * `otherIds` are the ids of the other repositories; a group may list only those.
  */
-export const violationsOf = (entry, { otherIds = [] } = {}) => {
+export const violationsOf = (entry: Entry, { otherIds = [] }: { otherIds?: string[] } = {}): string[] => {
   const references = Array.isArray(entry.proxied)
     ? entry.proxied.filter(item => !isBlankEntry(item)).map(item => String(item?.reference ?? ''))
     : []

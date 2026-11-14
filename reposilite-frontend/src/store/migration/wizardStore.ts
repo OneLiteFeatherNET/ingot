@@ -23,45 +23,46 @@
 
 import { reactive } from 'vue'
 import { createPasswordHolder } from './password'
+import type { Acceptance, DiscoveryReport, Mapping, MappingRow, MigrationJob, NexusConnection, PasswordHolder, WizardFacts } from './types'
 
-const createWizardStore = ({ passwords = createPasswordHolder() } = {}) => {
+const createWizardStore = ({ passwords = createPasswordHolder() }: { passwords?: PasswordHolder } = {}) => {
   const state = reactive({
-    connection: null,
-    discovery: null,
-    mapping: null,
-    acceptance: null,
-    jobs: [],
+    connection: null as NexusConnection | null,
+    discovery: null as DiscoveryReport | null,
+    mapping: null as Mapping | null,
+    acceptance: null as Acceptance | null,
+    jobs: [] as MigrationJob[],
   })
 
   return {
     state,
     passwords,
-    setConnection(connection) {
+    setConnection(connection: NexusConnection) {
       const kept = { ...connection }
       delete kept.password
       state.connection = kept
     },
-    setDiscovery(report) {
+    setDiscovery(report: DiscoveryReport) {
       state.discovery = report
     },
-    setMapping(repositories, conflictPolicy) {
+    setMapping(repositories: MappingRow[], conflictPolicy: string) {
       state.mapping = {
         repositories: repositories.map(repository => ({ ...repository })),
         conflictPolicy,
       }
     },
-    accept(acceptance) {
+    accept(acceptance: Acceptance) {
       state.acceptance = { ...acceptance }
     },
-    setJobs(jobs) {
+    setJobs(jobs: MigrationJob[]) {
       state.jobs = jobs
     },
     // A job of this visit, or a newer state of one, so every step sees the same list.
-    upsertJob(job) {
+    upsertJob(job: MigrationJob) {
       state.jobs = [...state.jobs.filter(entry => entry.id !== job.id), job]
     },
     // The page facts the gating rules read.
-    gate() {
+    gate(): WizardFacts {
       return {
         connectionTested: state.connection !== null,
         discovered: state.discovery !== null,

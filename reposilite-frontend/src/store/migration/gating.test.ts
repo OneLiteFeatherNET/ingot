@@ -25,21 +25,22 @@ import {
   mappingWarnings,
   syncBlockers,
 } from './gating'
+import type { MappingRow, WizardFacts } from './types'
 
-const row = (nexusName, targetName = nexusName, included = true) => ({ nexusName, targetName, included, supported: true })
+const row = (nexusName: string, targetName = nexusName, included = true): MappingRow => ({ nexusName, targetName, included, supported: true })
 
-const plan = (rows, conflictPolicy = 'refuse') => ({ repositories: rows, conflictPolicy })
+const plan = (rows: MappingRow[], conflictPolicy = 'refuse') => ({ repositories: rows, conflictPolicy })
 
-const job = (id, kind, status, extra = {}) => ({ id, kind, status, pauseReason: null, repositories: [], results: {}, summary: null, ...extra })
+const job = (id: number, kind: string, status: string, extra: Record<string, unknown> = {}) => ({ id, kind, status, pauseReason: null, repositories: [], results: {}, summary: null, ...extra })
 
-const freshState = (overrides = {}) => ({
+const freshState = (overrides: Partial<WizardFacts> = {}) => ({
   connectionTested: false,
   discovered: false,
   mapping: null,
   ...overrides,
 })
 
-const openIds = (states) => Object.entries(states).filter(([, state]) => state.open).map(([id]) => id)
+const openIds = (states: Record<string, { open: boolean }>) => Object.entries(states).filter(([, state]) => state.open).map(([id]) => id)
 
 describe('the wizard steps', () => {
   it('lists the seven steps in their order', () => {
@@ -203,8 +204,8 @@ describe('the warnings of a mapping', () => {
 })
 
 describe('the blockers of a sync start', () => {
-  const accepted = (rows) => ({ dryRunJobId: 4, fingerprint: planFingerprint(plan(rows)) })
-  const finishedDryRun = (blockers = []) => job(4, 'DRY_RUN', 'COMPLETED', { summary: { transferBytes: 10, formats: {}, blockers } })
+  const accepted = (rows: MappingRow[]) => ({ dryRunJobId: 4, fingerprint: planFingerprint(plan(rows)) })
+  const finishedDryRun = (blockers: string[] = []) => job(4, 'DRY_RUN', 'COMPLETED', { summary: { transferBytes: 10, formats: {}, blockers } })
 
   it('names every reason that keeps Sync disabled', () => {
     const rows = [row('a')]
