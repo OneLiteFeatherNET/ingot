@@ -10,6 +10,16 @@ This page installs Ingot with the Ingot Helm chart, which is published as an OCI
 Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../../references/architecture/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
 {% endhint %}
 
+In `allInOne` mode, the default, the chart renders one workload that serves the dashboard, the API and the repositories. The diagram shows what a release contains. The ingress or route is optional.
+
+```mermaid
+flowchart LR
+    Client["Client"] --> Route["Ingress or HTTPRoute"]
+    Route --> Service["Service ingot"]
+    Service --> Pod["Deployment ingot: dashboard, API, repositories"]
+    Pod --> Volume[("PersistentVolumeClaim at /app/data")]
+```
+
 ## Before you begin
 
 * A Kubernetes cluster and `kubectl` with access to a namespace for Ingot.

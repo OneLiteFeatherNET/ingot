@@ -54,6 +54,19 @@ Replace `1.1.1` with the release you deploy. The chart version is the release ve
 
 The server keeps its own Service and selector, so an existing release keeps its names. The dashboard has its own selector, so the server Service never sends traffic to a dashboard pod.
 
+The diagram shows the two workloads of a `split` release and how the routing reaches them. The ingress or route is optional.
+
+```mermaid
+flowchart LR
+    Client["Client"] --> Route["Ingress or HTTPRoute"]
+    Route -->|dashboard paths| DService["Service ingot-dashboard"]
+    Route -->|every other path| Service["Service ingot"]
+    DService --> Dashboard["Deployment ingot-dashboard"]
+    Service --> Server["Deployment ingot, INGOT_TARGET=server"]
+    Dashboard -->|INGOT_BACKEND| Service
+    Server --> Volume[("PersistentVolumeClaim at /app/data")]
+```
+
 ## Routing
 
 | Path | Goes to |

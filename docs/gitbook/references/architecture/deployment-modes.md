@@ -24,9 +24,9 @@ The Helm chart has a value `mode` that chooses the shape of the release. See the
 | Mode | Workloads | Target of the server |
 |:--|:--|:--|
 | `allInOne` | One Deployment that serves the dashboard and the API. This is the default. | `all` |
-| `split` | The server, and a dashboard Deployment from the dashboard image in front of it. | `server` (the chart sets `INGOT_TARGET=server`) |
+| `split` | The server, and a dashboard Deployment from the dashboard image next to it. | `server` (the chart sets `INGOT_TARGET=server`) |
 
-The diagram puts the two modes side by side. The split changes which process serves which path. It does not change the data.
+The diagram puts the two modes side by side. In `split` mode the chart routes the dashboard paths to the dashboard workload and every other path to the server, and the dashboard workload passes its other requests to the server through `INGOT_BACKEND`. The split changes which process serves which path. It does not change the data.
 
 ```mermaid
 flowchart LR
@@ -34,8 +34,10 @@ flowchart LR
         C1["Client"] --> S1["Server: dashboard, API, repositories"]
     end
     subgraph SPL["split, target server"]
-        C2["Client"] --> D2["Dashboard workload"]
-        D2 --> S2["Server: API, repositories"]
+        C2["Client"] --> Route["Ingress or HTTPRoute"]
+        Route -->|dashboard paths| D2["Dashboard workload"]
+        Route -->|every other path| S2["Server: API, repositories"]
+        D2 -->|INGOT_BACKEND| S2
     end
 ```
 
