@@ -1,0 +1,37 @@
+[
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "group",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdCheckbox.vue",
+    "match": "peer",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdNavigationRail.vue",
+    "match": "group",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdRadio.vue",
+    "match": "peer",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdSelect.vue",
+    "match": "peer",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdTextArea.vue",
+    "match": "peer",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  },
+  {
+    "file": "src/components/md/MdTextField.vue",
+    "match": "peer",
+    "reason": "Marker class read by the group-* or peer-* variants of Tailwind. It is a marker, not a utility, so it cannot resolve to a stylesheet rule."
+  }
+]

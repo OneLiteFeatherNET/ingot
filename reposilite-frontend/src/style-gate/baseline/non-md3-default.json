@@ -1,0 +1,447 @@
+[
+  {
+    "file": "src/components/access/PrincipalActionsMenu.vue",
+    "match": "z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/PrincipalsPanel.vue",
+    "match": "z-20",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/ResetPasswordDialog.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamParentsCard.vue",
+    "match": "z-20",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/check/CheckPermissionView.vue",
+    "match": "z-10",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/check/ComboboxField.vue",
+    "match": "z-20",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/nodes/NodeAddField.vue",
+    "match": "z-20",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/nodes/NodeEditor.vue",
+    "match": "z-10",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "[@media(pointer:coarse)]:opacity-100",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "group-focus-within:opacity-100",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "group-hover:opacity-100",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "opacity-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "z-10",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "rounded",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "rounded-full",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileUpload.vue",
+    "match": "z-10",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/CardMenu.vue",
+    "match": "rounded-t-full",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "rounded",
+    "count": 5
+  },
+  {
+    "file": "src/components/dashboard/FailuresSheet.vue",
+    "match": "leading-5",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/FailuresSheet.vue",
+    "match": "text-xs",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/StatusLabel.vue",
+    "match": "rounded-full",
+    "count": 1
+  },
+  {
+    "file": "src/components/header/DefaultHeader.vue",
+    "match": "z-30",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/RevokeTokenDialog.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/RotateTokenDialog.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/SecretOnceDialog.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/SecretOnceDialog.vue",
+    "match": "text-sm",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/SecretOnceDialog.vue",
+    "match": "text-xs",
+    "count": 1
+  },
+  {
+    "file": "src/components/layout/SkipLink.vue",
+    "match": "focus:z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdCheckbox.vue",
+    "match": "opacity-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdCheckbox.vue",
+    "match": "rounded-full",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdOverflowMenu.vue",
+    "match": "z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdRadio.vue",
+    "match": "opacity-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSideSheet.vue",
+    "match": "z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/CutOverStep.vue",
+    "match": "font-normal",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/DiscoverStep.vue",
+    "match": "font-normal",
+    "count": 2
+  },
+  {
+    "file": "src/components/migration/DryRunStep.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/DryRunStep.vue",
+    "match": "font-normal",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/MappingStep.vue",
+    "match": "font-normal",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/MigrationDialog.vue",
+    "match": "z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/MigrationView.vue",
+    "match": "opacity-60",
+    "count": 1
+  },
+  {
+    "file": "src/components/migration/SyncStep.vue",
+    "match": "font-normal",
+    "count": 2
+  },
+  {
+    "file": "src/components/migration/VerifyStep.vue",
+    "match": "font-normal",
+    "count": 2
+  },
+  {
+    "file": "src/components/renderers/MdColourFieldRenderer.vue",
+    "match": "opacity-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchFilters.vue",
+    "match": "opacity-70",
+    "count": 3
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "animate-pulse",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "z-40",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/PasswordDialog.vue",
+    "match": "z-50",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/RepositoryWizard.vue",
+    "match": "max-medium:rounded-none",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsDownloadMenu.vue",
+    "match": "z-20",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsImportErrors.vue",
+    "match": "font-medium",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsView.vue",
+    "match": "z-10",
+    "count": 1
+  },
+  {
+    "file": "src/components/support/SupportView.vue",
+    "match": "disabled:opacity-60",
+    "count": 1
+  },
+  {
+    "file": "src/components/support/SupportView.vue",
+    "match": "rounded-full",
+    "count": 1
+  },
+  {
+    "file": "src/components/support/SystemInfoView.vue",
+    "match": "text-sm",
+    "count": 5
+  },
+  {
+    "file": "src/components/tokens/RepositoryTypeBadge.vue",
+    "match": "opacity-80",
+    "count": 1
+  },
+  {
+    "file": "src/pages/IndexPage.vue",
+    "match": "z-20",
+    "count": 3
+  },
+  {
+    "file": "src/pages/IndexPage.vue",
+    "match": "z-30",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-blue-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-blue-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-cyan-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-cyan-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-fuchsia-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-fuchsia-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-gray-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-gray-500",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-green-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-green-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-red-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-red-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-white",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-yellow-300",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "dark:text-yellow-400",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "font-bold",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-blue-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-blue-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-cyan-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-cyan-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-fuchsia-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-fuchsia-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-gray-500",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-gray-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-gray-900",
+    "count": 2
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-green-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-green-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-red-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-red-700",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-yellow-600",
+    "count": 1
+  },
+  {
+    "file": "src/store/console/ansi.js",
+    "match": "text-yellow-700",
+    "count": 1
+  },
+  {
+    "file": "src/theme/runtime.js",
+    "match": "shadow",
+    "count": 2
+  }
+]

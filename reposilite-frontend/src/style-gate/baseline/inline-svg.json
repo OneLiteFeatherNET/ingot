@@ -1,0 +1,117 @@
+[
+  {
+    "file": "src/components/access/PrincipalsPanel.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamParentsCard.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamsPanel.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/check/CheckPermissionView.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/access/nodes/NodeInheritedSection.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/nodes/NodeRow.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/BrowserIcon.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/console/ConsoleView.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/GettingStartedCard.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/layout/AdministrationFrame.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/layout/SideNavTree.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "<svg",
+    "count": 5
+  },
+  {
+    "file": "src/components/renderers/ArrayListRenderer.vue",
+    "match": "<svg",
+    "count": 3
+  },
+  {
+    "file": "src/components/renderers/MdColourFieldRenderer.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/renderers/MdTextFieldRenderer.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/repositories/TypeBadge.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchBar.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/search/SearchResultRow.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/settings/EntryDetail.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/settings/EntryList.vue",
+    "match": "<svg",
+    "count": 2
+  },
+  {
+    "file": "src/components/settings/RepositoryMembersPicker.vue",
+    "match": "<svg",
+    "count": 3
+  },
+  {
+    "file": "src/components/settings/SettingsAttention.vue",
+    "match": "<svg",
+    "count": 1
+  },
+  {
+    "file": "src/components/tokens/SegmentedOption.vue",
+    "match": "<svg",
+    "count": 1
+  }
+]

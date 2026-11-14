@@ -1,0 +1,32 @@
+[
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "40%",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "55%",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "68%",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "80%",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/PasswordDialog.vue",
+    "match": "32%",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/PasswordDialog.vue",
+    "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
+    "count": 1
+  }
+]

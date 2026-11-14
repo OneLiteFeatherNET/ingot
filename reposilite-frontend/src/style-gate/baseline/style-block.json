@@ -1,0 +1,37 @@
+[
+  {
+    "file": "src/components/browser/FileUpload.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdLinearProgress.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/renderers/ObjectRenderer.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/renderers/OptionalRenderer.vue",
+    "match": "<style",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsView.vue",
+    "match": "<style",
+    "count": 1
+  }
+]

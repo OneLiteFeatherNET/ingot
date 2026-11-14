@@ -1,0 +1,75 @@
+{
+  "src/components/access/LdapPanel.vue": {
+    "vue/singleline-html-element-content-newline": {
+      "count": 4
+    }
+  },
+  "src/components/console/ConsoleView.vue": {
+    "vue/multiline-html-element-content-newline": {
+      "count": 2
+    }
+  },
+  "src/components/header/HeaderHero.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "src/components/icons/ContrastIcon.vue": {
+    "vue/max-attributes-per-line": {
+      "count": 4
+    }
+  },
+  "src/components/icons/DownIcon.vue": {
+    "vue/first-attribute-linebreak": {
+      "count": 1
+    },
+    "vue/html-closing-bracket-newline": {
+      "count": 2
+    },
+    "vue/html-indent": {
+      "count": 4
+    },
+    "vue/html-self-closing": {
+      "count": 1
+    }
+  },
+  "src/components/icons/EyeIcon.vue": {
+    "vue/html-closing-bracket-newline": {
+      "count": 2
+    }
+  },
+  "src/components/icons/JavaDocsIcon.vue": {
+    "vue/html-closing-bracket-newline": {
+      "count": 1
+    },
+    "vue/html-self-closing": {
+      "count": 1
+    }
+  },
+  "src/components/icons/LinkIcon.vue": {
+    "vue/html-indent": {
+      "count": 1
+    }
+  },
+  "src/components/icons/LogoutIcon.vue": {
+    "vue/first-attribute-linebreak": {
+      "count": 2
+    },
+    "vue/html-closing-bracket-newline": {
+      "count": 2
+    },
+    "vue/html-closing-bracket-spacing": {
+      "count": 1
+    }
+  },
+  "src/components/renderers/AllOfRenderer.vue": {
+    "vue/html-indent": {
+      "count": 14
+    }
+  },
+  "src/components/settings/PasswordDialog.vue": {
+    "vue/max-attributes-per-line": {
+      "count": 2
+    }
+  }
+}

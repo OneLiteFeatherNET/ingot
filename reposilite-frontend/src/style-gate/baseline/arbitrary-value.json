@@ -1,0 +1,642 @@
+[
+  {
+    "file": "src/components/access/AddMemberDialog.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 2
+  },
+  {
+    "file": "src/components/access/PrincipalActionsMenu.vue",
+    "match": "max-w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/PrincipalDetail.vue",
+    "match": "grid-cols-[auto_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/PrincipalsPanel.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 2
+  },
+  {
+    "file": "src/components/access/PrincipalsPanel.vue",
+    "match": "expanded:grid-cols-[minmax(0,380px)_minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamDetail.vue",
+    "match": "grid-cols-[auto_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamLegacyGrants.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 2
+  },
+  {
+    "file": "src/components/access/TeamMembersCard.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamParentsCard.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamParentsCard.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/TeamsPanel.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 2
+  },
+  {
+    "file": "src/components/access/TeamsPanel.vue",
+    "match": "expanded:grid-cols-[minmax(0,380px)_minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/check/CheckPermissionView.vue",
+    "match": "grid-cols-[auto_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/access/nodes/NodeInheritedSection.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/account/AccountView.vue",
+    "match": "[&>*:first-child]:min-[960px]:col-span-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/account/AccountView.vue",
+    "match": "max-w-[960px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/account/AccountView.vue",
+    "match": "min-[960px]:col-span-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/account/AccountView.vue",
+    "match": "min-[960px]:grid-cols-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/account/ProfileCard.vue",
+    "match": "grid-cols-[auto_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditEventRow.vue",
+    "match": "grid-cols-[max-content_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditEventRow.vue",
+    "match": "grid-cols-[minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditEventRow.vue",
+    "match": "min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto]",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditEventRow.vue",
+    "match": "min-[720px]:items-center",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditEventRow.vue",
+    "match": "min-[720px]:justify-end",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditView.vue",
+    "match": "min-[720px]:grid-cols-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/audit/AuditView.vue",
+    "match": "min-[720px]:grid-cols-3",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/DetailedListEntry.vue",
+    "match": "[@media(pointer:coarse)]:opacity-100",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileBrowserView.vue",
+    "match": "grid-cols-[minmax(0,1fr)]",
+    "count": 2
+  },
+  {
+    "file": "src/components/browser/FileBrowserView.vue",
+    "match": "lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileBrowserView.vue",
+    "match": "min-h-[320px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "[&>li+li]:after:absolute",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "[&>li+li]:after:bg-outline-variant",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "[&>li+li]:after:h-px",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "[&>li+li]:after:inset-x-4",
+    "count": 1
+  },
+  {
+    "file": "src/components/browser/FileList.vue",
+    "match": "[&>li+li]:after:top-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/CardMenu.vue",
+    "match": "[&::-webkit-scrollbar]:hidden",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/CardMenu.vue",
+    "match": "[scrollbar-width:none]",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/ChartCard.vue",
+    "match": "h-[220px]",
+    "count": 3
+  },
+  {
+    "file": "src/components/dashboard/FailuresSheet.vue",
+    "match": "expanded:w-[28rem]",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/PublicRepositoriesDialog.vue",
+    "match": "max-h-[50vh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/ReadOnlyToggle.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/ReadOnlyToggle.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/ResourceTrends.vue",
+    "match": "min-[1024px]:grid-cols-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/dashboard/StatusLabel.vue",
+    "match": "top-[0.5px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/header/LoginModal.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/header/MenuPanel.vue",
+    "match": "min-[900px]:not-sr-only",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/DialogShell.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "grid-cols-[auto_minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[480px]:flex",
+    "count": 3
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[480px]:flex-col",
+    "count": 3
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[480px]:grid-cols-[repeat(3,auto)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[480px]:justify-start",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[480px]:min-w-0",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[720px]:flex-row",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[720px]:items-start",
+    "count": 1
+  },
+  {
+    "file": "src/components/identity/TokenList.vue",
+    "match": "min-[720px]:justify-between",
+    "count": 1
+  },
+  {
+    "file": "src/components/layout/AdministrationFrame.vue",
+    "match": "max-w-[960px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/layout/SideNavTree.vue",
+    "match": "[&::-webkit-search-cancel-button]:hidden",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/DeletePolicyDialog.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/DryRunResult.vue",
+    "match": "max-h-[60dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/DryRunResult.vue",
+    "match": "min-w-[32rem]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/PolicyDialog.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/PolicyDialog.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/RebuildIndexDialog.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/RebuildIndexDialog.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/RunNowDialog.vue",
+    "match": "max-h-[90dvh]",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/RunNowDialog.vue",
+    "match": "w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdButton.vue",
+    "match": "[&>svg]:size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdCheckbox.vue",
+    "match": "h-[2px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdCheckbox.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdChip.vue",
+    "match": "[&>svg]:size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdChip.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdChipInput.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdChipInput.vue",
+    "match": "min-w-[8rem]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdChipInput.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdLinearProgress.vue",
+    "match": "transition-[width]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdNavigationBar.vue",
+    "match": "[&>svg]:size-6",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdNavigationRail.vue",
+    "match": "[&>svg]:size-6",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdNavigationRail.vue",
+    "match": "group-hover:[--md-state-opacity:0.08]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdOverflowMenu.vue",
+    "match": "max-w-[calc(100vw-2rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSelect.vue",
+    "match": "[&>svg]:size-6",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSelect.vue",
+    "match": "bg-[var(--md-field-container,var(--md-sys-color-surface))]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSideSheet.vue",
+    "match": "bg-[color-mix(in_srgb,var(--md-sys-color-scrim)_32%,transparent)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSideSheet.vue",
+    "match": "w-[min(320px,calc(100vw-56px))]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": "[&>svg]:size-6",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": "max-w-[560px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": "medium:left-[calc(var(--app-rail-width,0px)+1.5rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": "z-[1100]",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdTextField.vue",
+    "match": "[&>svg]:size-6",
+    "count": 2
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "[&::-webkit-scrollbar]:hidden",
+    "count": 3
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "[scrollbar-width:none]",
+    "count": 3
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "after:left-[72px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "grid-cols-[auto_minmax(0,1fr)_auto]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "grid-cols-[minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "min-[1920px]:grid-cols-[2fr_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "min-h-[320px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/overview/RepositoryOverview.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/plugins/PluginBlock.vue",
+    "match": "grid-cols-[max-content_1fr]",
+    "count": 1
+  },
+  {
+    "file": "src/components/renderers/OneOfRenderer.vue",
+    "match": "max-w-[560px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/renderers/OneOfRenderer.vue",
+    "match": "min-w-[280px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/repositories/RepositoriesTable.vue",
+    "match": "min-[1920px]:table-cell",
+    "count": 4
+  },
+  {
+    "file": "src/components/repositories/RepositoriesTable.vue",
+    "match": "min-[2560px]:table-cell",
+    "count": 2
+  },
+  {
+    "file": "src/components/repositories/RepositoriesTable.vue",
+    "match": "min-w-[40rem]",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchBar.vue",
+    "match": "[&::-webkit-search-cancel-button]:hidden",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchBar.vue",
+    "match": "has-[input:focus-visible]:outline-3",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchBar.vue",
+    "match": "has-[input:focus-visible]:outline-offset-2",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchBar.vue",
+    "match": "has-[input:focus-visible]:outline-secondary",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "grid-cols-[minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "h-[88px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/CollectionEditor.vue",
+    "match": "expanded:grid-cols-[minmax(0,340px)_minmax(0,1fr)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/EntryList.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/NewEntryDialog.vue",
+    "match": "[--md-field-container:var(--md-sys-color-surface-container-high)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/RepositoryWizard.vue",
+    "match": "[overflow-wrap:anywhere]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/RepositoryWizard.vue",
+    "match": "medium:max-h-[min(44rem,90dvh)]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/RepositoryWizard.vue",
+    "match": "medium:max-w-[560px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/RepositoryWizard.vue",
+    "match": "min-w-[280px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsDownloadMenu.vue",
+    "match": "w-[min(22rem,calc(100vw-2rem))]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsHub.vue",
+    "match": "grid-cols-[1fr_auto]",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsReviewSheet.vue",
+    "match": "expanded:w-[28rem]",
+    "count": 1
+  },
+  {
+    "file": "src/components/support/SystemInfoView.vue",
+    "match": "grid-cols-[max-content_1fr]",
+    "count": 8
+  },
+  {
+    "file": "src/components/tokens/SegmentedControl.vue",
+    "match": "rounded-[20px]",
+    "count": 1
+  },
+  {
+    "file": "src/components/tokens/SegmentedOption.vue",
+    "match": "size-[18px]",
+    "count": 1
+  },
+  {
+    "file": "src/pages/IndexPage.vue",
+    "match": "medium:min-h-[calc(100dvh_-_4rem)]",
+    "count": 1
+  },
+  {
+    "file": "src/pages/IndexPage.vue",
+    "match": "pb-[env(safe-area-inset-bottom)]",
+    "count": 1
+  }
+]

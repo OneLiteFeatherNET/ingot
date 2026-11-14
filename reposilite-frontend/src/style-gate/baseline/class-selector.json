@@ -1,0 +1,117 @@
+[
+  {
+    "file": "src/components/browser/FileUpload.vue",
+    "match": ".file-uploads",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-left-enter-active",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-left-enter-from",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-left-leave-active",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-left-leave-to",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-right-enter-active",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-right-enter-from",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-right-leave-active",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": ".slide-right-leave-to",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdLinearProgress.vue",
+    "match": ".md-linear-indeterminate",
+    "count": 2
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": ".md-snackbar-enter-active",
+    "count": 2
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": ".md-snackbar-enter-from",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": ".md-snackbar-leave-active",
+    "count": 2
+  },
+  {
+    "file": "src/components/md/MdSnackbar.vue",
+    "match": ".md-snackbar-leave-to",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsView.vue",
+    "match": ".settings-view",
+    "count": 3
+  },
+  {
+    "file": "src/helpers/useTreeFits.js",
+    "match": ".settings-save-bar",
+    "count": 1
+  },
+  {
+    "file": "src/style.css",
+    "match": ".pane-corner",
+    "count": 1
+  },
+  {
+    "file": "src/style.css",
+    "match": ".pane-corner-end",
+    "count": 1
+  },
+  {
+    "file": "src/style.css",
+    "match": ".pane-corner-start",
+    "count": 1
+  },
+  {
+    "file": "src/styles/md3/state-layer.css",
+    "match": ".md-focus-ring",
+    "count": 1
+  },
+  {
+    "file": "src/styles/md3/state-layer.css",
+    "match": ".md-focus-ring-inset",
+    "count": 1
+  },
+  {
+    "file": "src/styles/md3/state-layer.css",
+    "match": ".md-state-layer",
+    "count": 9
+  },
+  {
+    "file": "src/styles/md3/touch-target.css",
+    "match": ".md-touch-target",
+    "count": 2
+  }
+]
