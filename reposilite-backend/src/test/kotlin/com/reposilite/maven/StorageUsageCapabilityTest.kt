@@ -46,6 +46,9 @@ private class CapacityStorage(
 
 }
 
+/** A storage that delegates every call and declares no capability of its own. */
+private class PlainStorage(delegate: StorageProvider) : StorageProvider by delegate
+
 private data class ExampleSettings(override val type: String = "example") : StorageProviderSettings
 
 /**
@@ -78,7 +81,7 @@ internal class StorageUsageCapabilityTest {
     @Test
     fun `a storage without the usage capability reports no quota`() {
         // given: a storage that declares no capability at all, with settings that carry a quota
-        val storage = fileSystem("plain")
+        val storage = PlainStorage(fileSystem("plain"))
 
         // when: the quota of the repository is read
         val quota = configuredQuota(storage, FileSystemStorageProviderSettings(quota = "50%"))
