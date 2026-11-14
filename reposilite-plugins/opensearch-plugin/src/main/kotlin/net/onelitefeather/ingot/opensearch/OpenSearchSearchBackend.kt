@@ -56,13 +56,14 @@ import kotlin.random.Random
  * of the user name, even when the cluster echoes them.
  *
  * [sslContext] is null in production, which uses the JVM default context with hostname verification. The container tests pass
- * the context of their own authority.
+ * the context of their own authority. [warn] is the log sink of the backend (the logger of the context in production).
  */
 internal class OpenSearchSearchBackend(
     val settings: OpenSearchSettings,
     clock: Clock,
     sslContext: SSLContext?,
     exchange: HttpExchange? = null,
+    private val warn: (String) -> Unit = {},
 ) : ArtifactSearchBackend {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
@@ -105,13 +106,13 @@ internal class OpenSearchSearchBackend(
                 val indices = mapper.readTree(answer.body).fieldNames().asSequence().toList()
                 check(indices.size == 1) { "the alias $alias points to ${indices.size} indices, one is expected" }
                 verifyVersion(indices.single())
-                identity = indexUuid(indices.single())
+                identity = readIdentity(indices.single())
             }
             404 -> {
                 createIndex()
                 verifyVersion(physical)
                 client.read("POST", "/_aliases", mapOf("actions" to listOf(mapOf("add" to mapOf("index" to physical, "alias" to alias)))))
-                identity = indexUuid(physical)
+                identity = readIdentity(physical)
             }
             else -> throw IllegalStateException(redactor.redact("the alias $alias cannot be read, the cluster answered ${answer.status}"))
         }
@@ -289,12 +290,25 @@ internal class OpenSearchSearchBackend(
     /** The refresh interval of the index. No connection detail is reported: the URL, the user name and the password stay out. */
     override fun properties(): Map<String, String> = mapOf("refreshInterval" to OpenSearchIndexDefinition.REFRESH_INTERVAL)
 
-    /** The uuid of [index] from its settings. A reply without one is an error, as the rebuild cursor could not be checked. */
-    private fun indexUuid(index: String): String {
-        val uuid = client.read("GET", "/$index/_settings/index.uuid").path(index)
-            .path("settings").path("index").path("uuid").asText()
-        check(uuid.isNotBlank()) { "the index $index reports no uuid" }
-        return uuid
+    /**
+     * The uuid of [index] from its settings, or null when it cannot be read. The read needs indices:monitor/settings/get, which a
+     * custom role may lack, so a refusal or a reply without a uuid is not an error: the backend opens without an identity, which
+     * keeps the rebuild cursor as it was, and logs one warning.
+     */
+    private fun readIdentity(index: String): String? {
+        val reason = try {
+            val uuid = client.read("GET", "/$index/_settings/index.uuid").path(index)
+                .path("settings").path("index").path("uuid").asText()
+            if (uuid.isNotBlank()) return uuid
+            "the reply carries no uuid"
+        } catch (failure: Exception) {
+            redactor.redact(failure.message ?: OpenSearchClient.UNREACHABLE)
+        }
+        warn(
+            "the uuid of the index $index cannot be read ($reason), so a replaced index does not reset the rebuild cursor; " +
+                "the user may lack the indices:monitor/settings/get permission",
+        )
+        return null
     }
 
     // ---- writes by query ----------------------------------------------------------------------------------------------

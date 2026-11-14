@@ -46,7 +46,7 @@ internal class OpenSearchBackendFactory(
 
     override fun create(context: SearchBackendContext): ArtifactSearchBackend {
         val logger = context.logger()
-        return OpenSearchSearchBackend(settings(logger::warn), context.clock, sslContext)
+        return OpenSearchSearchBackend(settings(logger::warn), context.clock, sslContext, warn = logger::warn)
     }
 
     companion object {
