@@ -1,0 +1,22 @@
+{
+  "generated": "2026-11-01T00:00:00Z",
+  "plugins": [
+    {
+      "compatibility": {
+        "ingot": {
+          "below": "3.5.29",
+          "min": "3.5.28"
+        },
+        "pluginApi": 1
+      },
+      "coordinates": "net.onelitefeather.ingot:opensearch-plugin:3.5.28",
+      "description": "Answers artifact search from an OpenSearch cluster.",
+      "id": "opensearch-plugin",
+      "name": "OpenSearch search backend",
+      "publisher": "OneLiteFeather",
+      "sha256": "246818cf5e838c80367ead4c7644c60b13c2183e817c7f88ec92f6fb9f7efb40",
+      "yanked": false
+    }
+  ],
+  "schema": 1
+}
