@@ -20,19 +20,14 @@ package net.onelitefeather.ingot.logging
 internal const val TINYLOG_CONSOLE_CONFIGURATION = "tinylog-console.properties"
 
 /**
- * Passes the file writer switch and the package levels to tinylog as system properties. tinylog reads its configuration once,
- * when it is first used, so this runs before the first logger is created. With the variables unset it changes nothing.
+ * Passes the file writer switch to tinylog as a system property. tinylog reads its configuration once,
+ * when it is first used, so this runs before the first logger is created. With the variable unset it changes nothing.
  *
  * The file writer is removed by selecting a configuration without it, because an empty writer name would make tinylog print
- * an internal error line on the console. The package levels are tinylog's own `level@` entries.
+ * an internal error line on the console.
  */
 fun LogSettings.applyToTinyLog() {
     if (!file) {
         System.setProperty("tinylog.configuration", TINYLOG_CONSOLE_CONFIGURATION)
     }
-    if (format == LogFormat.JSON) {
-        // The console writer renders the message with its time and level; the JSON line carries those in fields of its own
-        System.setProperty("tinylog.writerJournalist.format", "{message}")
-    }
-    packageLevels.forEach { (pkg, level) -> System.setProperty("tinylog.level@$pkg", level) }
 }
