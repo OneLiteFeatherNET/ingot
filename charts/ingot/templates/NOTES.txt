@@ -8,6 +8,12 @@
 {{- $dbSet = true }}
 {{- end }}
 {{- end }}
+{{- if .Values.clusterBus.url }}
+{{- $busSet = true }}
+{{- end }}
+{{- if .Values.database.existingSecret }}
+{{- $dbSet = true }}
+{{- end }}
 {{- $memoryMetric := false }}
 {{- if .Values.autoscaling.enabled }}
 {{- range .Values.autoscaling.metrics }}
@@ -45,7 +51,7 @@ persistence with a volume that every replica can reach. This warning does not st
 
 WARNING: the server runs more than one replica (deployment.replicas or autoscaling) and neither INGOT_LOCAL_DATABASE nor REPOSILITE_LOCAL_DATABASE is set in env.
 Several replicas need one shared database, such as MariaDB or PostgreSQL. The default SQLite file is local to one pod. Set
-INGOT_LOCAL_DATABASE and the connection settings in env. Values set through envFrom are not inspected here, so this warning
+INGOT_LOCAL_DATABASE (or database.existingSecret) and the connection settings in env. Values set through envFrom are not inspected here, so this warning
 stays if the database comes from there. This warning does not stop the install.
 {{- end }}
 {{- if $memoryMetric }}
