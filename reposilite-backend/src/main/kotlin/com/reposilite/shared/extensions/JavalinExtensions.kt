@@ -153,6 +153,11 @@ internal fun Context.attachmentHeaders(
         else -> header(CACHE_CONTROL, "public, max-age=$maxAge")
     }
 
+    if (compressionStrategy != "none") {
+        // A compressed answer differs by its encoding, so a shared cache must key it by Accept-Encoding
+        header(Header.VARY, mergeVary(res().getHeaders(Header.VARY), listOf(Header.ACCEPT_ENCODING)))
+    }
+
     contentType(contentType)
 }
 
