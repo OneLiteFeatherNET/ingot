@@ -6,13 +6,13 @@ description: Move a Nexus Repository 3 installation into Ingot with the guided M
 
 The Migration page of the dashboard walks an instance administrator through an import from Nexus Repository 3 in seven steps: Connect, Discover, Mapping, Dry run, Sync, Verify and Cut-over. It calls the import API of the `nexus-import` plugin, so everything the wizard does can also be done with `curl`. The wizard only puts the steps in order and keeps you from skipping one.
 
-The page is visible only when the plugin is enabled. Switch the plugin on as described in [Import from Nexus](import-from-nexus.md#switch-it-on). Without the switch the address `/settings/migration` shows the not-found page, and no entry appears in the navigation.
+The page is visible only when the plugin is enabled. Switch the plugin on as described in [Sonatype Nexus importer](import-from-other-repository-managers.md#switch-it-on). Without the switch the address `/settings/migration` shows the not-found page, and no entry appears in the navigation.
 
 Nothing in the wizard writes to Nexus. Every step reads Nexus or writes to Ingot, and the freeze of Nexus writes at the end is a step you carry out in Nexus yourself.
 
 ## Before you begin
 
-* A Nexus credential with read access to the repositories you want to copy. See the first list in [Import from Nexus](import-from-nexus.md).
+* A Nexus credential with read access to the repositories you want to copy. See the first list in [Sonatype Nexus importer](import-from-other-repository-managers.md#sonatype-nexus-importer).
 * An Ingot account that is an instance administrator.
 * A private certificate authority for Nexus, if Nexus uses one. Provide it to Ingot as described in [Trust a private certificate](#trust-a-private-certificate) before you start.
 

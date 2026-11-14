@@ -48,8 +48,7 @@
   * [Move from Reposilite to Ingot](set-up/migrate/move-from-reposilite.md)
   * [Migrate from the upstream Helm chart](set-up/migrate/migrate-from-upstream-chart.md)
   * [Import from other repository managers](set-up/migrate/import-from-other-repository-managers.md)
-  * [Import from Nexus](set-up/migrate/import-from-nexus.md)
-  * [Use the Nexus import wizard](set-up/migrate/use-the-nexus-import-wizard.md)
+    * [Use the Nexus import wizard](set-up/migrate/use-the-nexus-import-wizard.md)
 
 ## Configure
 

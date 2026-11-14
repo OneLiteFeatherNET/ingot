@@ -31,7 +31,7 @@ New settings get the `INGOT_` prefix, and the `REPOSILITE_` spelling stays valid
 * **Artifact search** across all repositories, with a built-in database backend and a plugin point for others, including an OpenSearch backend. See [Search for artifacts](../publish-and-consume/search-for-artifacts.md).
 * **Several replicas.** A shared database, an optional cluster bus and an S3 storage provider support more than one replica. See [High availability support](../references/architecture/high-availability-support.md) for what is supported and what is tested.
 * **Operations.** An audit log with CSV export, cleanup policies, a write freeze for maintenance, a support bundle and a Helm chart. See [Review the audit log](../manage/monitor/review-audit-log.md) and [Run on Kubernetes](../set-up/kubernetes/run-on-kubernetes.md).
-* **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Import from Nexus](../set-up/migrate/import-from-nexus.md).
+* **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Sonatype Nexus importer](../set-up/migrate/import-from-other-repository-managers.md#sonatype-nexus-importer).
 * **A rebuilt dashboard** in Material Design 3, which can also run in its own container. See [Dashboard pages](../references/http-api/dashboard-pages.md).
 
 ## Licence

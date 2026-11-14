@@ -231,7 +231,7 @@ The image also ships `nexus-import-plugin.jar`, the Nexus Repository 3 importer,
 | `INGOT_NEXUS_IMPORT_AUDIT` | `REPOSILITE_NEXUS_IMPORT_AUDIT` | `per-file` | `per-file` writes one deploy event per file with the actor `migration`. `summary` writes only the run event. |
 | `INGOT_NEXUS_IMPORT_ALLOWED_HOSTS` | `REPOSILITE_NEXUS_IMPORT_ALLOWED_HOSTS` | unset (any host) | Comma-separated host names a Nexus connection may point at. |
 
-There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../../set-up/migrate/import-from-nexus.md).
+There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Sonatype Nexus importer](../../set-up/migrate/import-from-other-repository-managers.md#sonatype-nexus-importer).
 
 ### OpenSearch search backend
 
