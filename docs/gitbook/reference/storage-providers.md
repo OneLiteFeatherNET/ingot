@@ -130,6 +130,35 @@ Two S3 repositories with the same endpoint and bucket whose key prefixes are equ
 | Usage report | The storage usage API lists every object of the repository to add up the size and the file count. For S3 repositories `quota` and `quotaBytes` are `null`. |
 | Cost of the report | Listing takes time on a large bucket. The report is computed in the background. |
 
+## Storage capabilities
+
+A provider from a plugin gets the behaviour of `fs` and `s3` by implementing the interfaces of `net.onelitefeather.ingot.storage.capability`. Core asks the interface and never the concrete class, so a provider that does not implement an interface does not get that behaviour. The package is experimental, see [Plugin API](plugin-api.md#storage-capabilities-experimental).
+
+| Interface | Implemented on | What it changes |
+| --- | --- | --- |
+| `SharedNamespaceAware` | The settings | Two repositories whose namespace keys overlap are not loaded. Both fail with the message of the settings. An S3 repository keeps its message. |
+| `QuotaSettings` | The settings | The configured quota is reported. |
+| `UsageCapability` | The provider | `reportsUsage` false reports usage `-1` and no room limit. `supportsQuota` decides whether a configured quota is reported. `totalCapacityBytes()` is the base of a percentage quota. |
+| `ReadinessProbe` | The provider | Replaces the listing of the root in the readiness check. |
+| `ClusterCacheAware` | The provider | Bound to the cluster bus with a maximum age, see [Head cache in cluster mode](../explanation/storage-and-mirror-caching.md#head-cache-in-cluster-mode). |
+| `SupportDetails` | The settings or the provider | Adds the `details` map of the repository storage in the support bundle. Only non-sensitive values. |
+| `RelatedKeyAware` | The provider | Gives the related keys of the repository format to the S3 head cache. |
+
+Rules that hold for every provider:
+
+* **Namespace.** Keys are opaque to core. Only the settings compare them. The default is equality, and S3 refuses a repository whose key prefix equals or nests under another one in the same endpoint and bucket.
+* **Quota.** A quota is reported only when the provider supports it and its settings carry one. Enforcement stays with the file system provider. A plugin provider with a quota reports it, but nothing refuses an upload for it.
+* **Storage type.** The type comes from the settings. A repository without settings is reported as `unknown`, not as `fs`.
+* **Readiness.** A probe answers one of three outcomes:
+
+| Outcome | Meaning | Readiness check |
+| --- | --- | --- |
+| `Ok` | The root answered a listing, empty or not. | Answered. |
+| `NotFoundOk` | The backend answered that the root does not exist. | Answered. |
+| `Failed(reason)` | The backend did not answer, or refused the request. The reason is redacted like the rest of the status output. | Not answered. |
+
+A provider without a probe is checked with the listing of its root, so a not found answer counts as answered. The S3 provider maps an access denied answer to not found, so an S3 probe cannot yet tell a refused credential from an empty bucket.
+
 ## Storage usage API
 
 The storage usage API reports the measured usage of all repositories. It needs the manager permission.
@@ -150,8 +179,8 @@ Response fields:
 | `repositories[].usedBytes` | Total size of the files. |
 | `repositories[].fileCount` | Number of files. |
 | `repositories[].quota` | The configured quota, or `null` when there is none. S3 repositories and groups have none. |
-| `repositories[].quotaBytes` | The quota in bytes, or `null` when unknown. A percentage is taken of the total capacity of the disk. |
-| `repositories[].storageType` | `fs` or `s3`. |
+| `repositories[].quotaBytes` | The quota in bytes, or `null` when unknown. A percentage is taken of the total capacity that the provider reports: the disk for `fs`, nothing for `s3`. |
+| `repositories[].storageType` | The configured type: `fs`, `s3`, or the type of a plugin provider. `unknown` when this replica has no settings for the repository, for example a figure received from another replica for a repository it does not configure. |
 | `repositories[].group` | `true` for a repository that only proxies other local repositories. |
 
 ## Related pages
