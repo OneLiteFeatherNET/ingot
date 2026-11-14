@@ -15,6 +15,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { bottomBarHeight, BOTTOM_BAR_HEIGHT } from './bottom-bar'
 
 // Whether the bar is on screen at the current width is decided by CSS (the snackbar only reads
@@ -30,5 +32,20 @@ describe('bottomBarHeight', () => {
 
   it('exposes the bar height as a number of pixels for other code', () => {
     expect(BOTTOM_BAR_HEIGHT).toBe(80)
+  })
+})
+
+// The bar height is written twice on purpose: the layout reads the spacing token in CSS, and the script writes the
+// pixel value to the document root. The test keeps the two in step; 1rem is 16px at the default root size.
+describe('bottom bar token', () => {
+  const tokens = readFileSync(resolve(process.cwd(), 'src/styles/md3/shape-elevation-motion.css'), 'utf8')
+  const match = tokens.match(/--spacing-md-bottom-bar:\s*([\d.]+)rem;/)
+
+  it('declares the bottom bar height as a spacing token in rem', () => {
+    expect(match, 'a --spacing-md-bottom-bar token of the form 5rem').not.toBeNull()
+  })
+
+  it('equals BOTTOM_BAR_HEIGHT in pixels at the 16px root size', () => {
+    expect(Number(match[1]) * 16, 'the token in pixels').toBe(BOTTOM_BAR_HEIGHT)
   })
 })

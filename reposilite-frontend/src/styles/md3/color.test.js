@@ -295,3 +295,44 @@ describe('chart series', () => {
     }
   })
 })
+
+// The source without the high contrast block, whose nested rules repeat the selectors of the base blocks.
+const baseColourSource = stripComments(css).replace(/@media \(prefers-contrast: more\) \{[\s\S]*?\n\}\n/, '')
+
+describe('field container role', () => {
+  const declared = (theme) => rulesFor(baseColourSource, theme)
+
+  it('is declared in the light theme as the surface role', () => {
+    expect(declared(':root')['--md-field-container'], 'the light field container').toBe('var(--md-sys-color-surface)')
+  })
+
+  it('is declared in the dark theme as the surface role', () => {
+    expect(declared('.dark')['--md-field-container'], 'the dark field container').toBe('var(--md-sys-color-surface)')
+  })
+})
+
+describe('colour values are written once', () => {
+  const source = baseColourSource
+
+  it('has one root block and one dark block for the colour roles, extension tokens and gradients', () => {
+    expect(source.match(/^:root \{/gm) ?? [], 'the top-level :root blocks').toHaveLength(1)
+    expect(source.match(/^\.dark \{/gm) ?? [], 'the top-level .dark blocks').toHaveLength(1)
+  })
+
+  it('has one @theme inline block', () => {
+    expect(source.match(/@theme inline \{/g) ?? [], 'the @theme inline blocks').toHaveLength(1)
+  })
+
+  it('refers to the primary role for the surface tint instead of repeating its hex value', () => {
+    expect(rulesFor(source, ':root')['--md-sys-color-surface-tint'], 'the light surface tint').toBe('var(--md-sys-color-primary)')
+    expect(rulesFor(source, '.dark')['--md-sys-color-surface-tint'], 'the dark surface tint').toBe('var(--md-sys-color-primary)')
+  })
+
+  it('draws the brand gradient from the primary and tertiary roles, without a hex value of its own', () => {
+    const gradient = rulesFor(source, ':root')['--olf-gradient']
+    expect(gradient, 'the light gradient').toBe('linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-tertiary) 100%)')
+    expect(rulesFor(source, '.dark')['--olf-gradient'], 'the dark gradient').toBe(
+      'linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-tertiary) 100%)'
+    )
+  })
+})

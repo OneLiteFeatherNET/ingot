@@ -141,3 +141,47 @@ describe('container utility', () => {
     )
   })
 })
+
+// Every class selector of the dashboard stylesheets, found in the selector text of each rule (comments removed).
+// Rules inside @utility and @custom-variant blocks are not selectors of the stylesheet, so they are skipped.
+const classSelectorsOf = (css) => {
+  const classes = []
+  const visit = (text) => {
+    for (const block of topLevelBlocks(text)) {
+      if (block.header.startsWith('@media') || block.header.startsWith('@layer')) {
+        visit(block.body)
+      } else if (!block.header.startsWith('@')) {
+        classes.push(...[...block.header.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map((match) => match[1]))
+      }
+    }
+  }
+  visit(css)
+  return classes
+}
+
+describe('class selectors of the dashboard stylesheets', () => {
+  const sheets = ['color.css', 'typography.css', 'shape-elevation-motion.css', 'state-layer.css', 'touch-target.css']
+    .map(name => [name, readFileSync(join(process.cwd(), 'src', 'styles', 'md3', name), 'utf8')])
+
+  it('keeps only the .dark colour hook and the .vfm library hook as class selectors in src/style.css', () => {
+    const unexpected = classSelectorsOf(stylesheet).filter((name) => name !== 'dark' && name !== 'vfm')
+    expect(unexpected, 'a class selector in src/style.css that is not a documented hook: convert it to a utility').toEqual([])
+  })
+
+  for (const [name, source] of sheets) {
+    it(`keeps only the .dark colour hook as a class selector in src/styles/md3/${name}`, () => {
+      const unexpected = classSelectorsOf(source).filter((className) => className !== 'dark')
+      expect(unexpected, `a class selector in ${name} that is not the dark colour hook: convert it to a utility`).toEqual([])
+    })
+  }
+})
+
+describe('reduced motion rule in the stylesheets', () => {
+  const sources = [stylesheet, ...['color.css', 'typography.css', 'shape-elevation-motion.css', 'state-layer.css', 'touch-target.css']
+    .map(name => readFileSync(join(process.cwd(), 'src', 'styles', 'md3', name), 'utf8'))]
+
+  it('is written once across the dashboard stylesheet and the token files', () => {
+    const count = sources.reduce((total, css) => total + css.split('prefers-reduced-motion').length - 1, 0)
+    expect(count, 'the prefers-reduced-motion rule appears once, in the base layer of src/style.css').toBe(1)
+  })
+})
