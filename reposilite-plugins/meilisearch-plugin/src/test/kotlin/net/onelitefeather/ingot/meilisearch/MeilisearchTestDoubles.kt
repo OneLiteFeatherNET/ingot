@@ -79,12 +79,25 @@ internal class FakeMeilisearch(@Suppress("unused") private val clock: ManualCloc
 
     fun taskPolls(uid: Long): Int = polls[uid] ?: 0
 
+    /** Answers the request of [method] at exactly [path] with [status] and [body]. */
+    fun on(method: String, path: String, status: Int = 200, body: String = "{}") {
+        route({ it.method == method && it.uri.path == path }) { HttpAnswer(status, emptyMap(), body) }
+    }
+
+    /** Makes every request fail at the transport, as a server that is down does. */
+    fun unreachable() {
+        down = true
+    }
+
+    private var down = false
+
     private fun route(matches: (HttpCall) -> Boolean, answer: (HttpCall) -> HttpAnswer) {
         routes.add(matches to answer)
     }
 
     override fun exchange(call: HttpCall): HttpAnswer {
         calls.add(call)
+        if (down) throw java.io.IOException("connection refused by the fake")
         val taskUid = TASK_PATH.matchEntire(call.uri.path)?.groupValues?.get(1)?.toLong()
         if (call.method == "GET" && taskUid != null) {
             polls[taskUid] = taskPolls(taskUid) + 1
