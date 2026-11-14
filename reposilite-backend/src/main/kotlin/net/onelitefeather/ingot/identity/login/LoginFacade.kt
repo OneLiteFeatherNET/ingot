@@ -75,6 +75,11 @@ class LoginFacade internal constructor(
         return LoginOutcome.SecondFactorRequired(challenge = factors.startChallenge(outcome.principal.id))
     }
 
+    /** Records the login of a user whose session started after the second factor, see [LoginService.recordLoginSucceeded]. */
+    fun recordSessionIssued(principalName: String, ip: String) {
+        service?.recordLoginSucceeded(principalName, ip)
+    }
+
     /** Completes a sign-in that waits for its second factor. The caller starts the session only on [ChallengeCompletion.Verified]. */
     fun completeSecondFactor(challenge: String, code: String, ip: String): ChallengeCompletion =
         secondFactor?.completeChallenge(challenge, code, ip) ?: ChallengeCompletion.Gone

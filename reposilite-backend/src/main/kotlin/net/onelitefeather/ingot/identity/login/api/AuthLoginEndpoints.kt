@@ -135,6 +135,7 @@ internal class AuthLoginEndpoints(
                 is ChallengeCompletion.Verified -> {
                     ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
                     startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id))
+                        .also { if (it.isOk) facade.recordSessionIssued(outcome.principal.name, ctx.ip()) }
                 }
                 ChallengeCompletion.WrongCode -> unauthorizedError("Invalid code")
                 ChallengeCompletion.Gone -> {

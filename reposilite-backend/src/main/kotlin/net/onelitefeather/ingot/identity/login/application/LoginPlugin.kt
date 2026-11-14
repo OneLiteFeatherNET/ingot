@@ -102,6 +102,21 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // Second factors of password logins. Authenticator seeds are sealed with the settings key, read on every use, so a key
+        // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
+        val secondFactors = database?.let { database ->
+            val credentials = LoginStore(database, clock)
+            SecondFactorService(
+                store = SecondFactorStore(database, clock),
+                identities = IdentityStore(database),
+                limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
+                seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
+                clock = clock,
+                audit = audit,
+                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
+            )
+        }
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -110,6 +125,7 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = loginSettings,
                 clock = clock,
                 audit = audit,
+                secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {
@@ -123,21 +139,6 @@ class LoginPlugin : ReposilitePlugin() {
                     }
                     oidc + listOfNotNull(directories?.announcement())
                 },
-            )
-        }
-
-        // Second factors of password logins. Authenticator seeds are sealed with the settings key, read on every use, so a key
-        // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
-        val secondFactors = database?.let { database ->
-            val credentials = LoginStore(database, clock)
-            SecondFactorService(
-                store = SecondFactorStore(database, clock),
-                identities = IdentityStore(database),
-                limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
-                seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
-                clock = clock,
-                audit = audit,
-                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
             )
         }
 
