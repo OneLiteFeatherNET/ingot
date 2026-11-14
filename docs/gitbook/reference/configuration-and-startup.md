@@ -106,6 +106,7 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 | `pluginUi` | Boolean | `true` | Lets server plugins contribute dashboard pages, menu entries and settings sections as data. `false` shows only what Ingot ships: the plugin manifest is empty and contributed pages are not served. The routes of the plugins are not changed. See [Plugin API](plugin-api.md#dashboard-pages). |
 | `pluginStyles` | Boolean | `true` | Lets server plugins ship a stylesheet for the signed in dashboard. `false` empties the stylesheet list of the manifest and answers `404` on the stylesheet address. Pages and settings sections are not affected. See [Plugin API](plugin-api.md#stylesheet). |
 | `basePath` | String | `/` | Base path of the instance. A subdomain is preferred over a custom base path. |
+| `plugins` | String | empty | Plugins to install from the plugin store, as a comma-separated list of `groupId:artifactId:version`. Joined with `INGOT_PLUGINS`. Empty means no store plugin. See [Plugin store](environment-variables.md#plugin-store). |
 
 ### Shared settings and search
 

@@ -67,6 +67,7 @@ For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the 
 | `hideSettingsSecrets` | `INGOT_LOCAL_HIDESETTINGSSECRETS` | `REPOSILITE_LOCAL_HIDESETTINGSSECRETS` |
 | `pluginUi` | `INGOT_LOCAL_PLUGINUI` | `REPOSILITE_LOCAL_PLUGINUI` |
 | `pluginStyles` | `INGOT_LOCAL_PLUGINSTYLES` | `REPOSILITE_LOCAL_PLUGINSTYLES` |
+| `plugins` | `INGOT_LOCAL_PLUGINS` | `REPOSILITE_LOCAL_PLUGINS` |
 | `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `REPOSILITE_LOCAL_SEARCHENABLED` |
 | `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `REPOSILITE_LOCAL_SEARCHENGINE` |
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
@@ -249,6 +250,20 @@ The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in 
 | `INGOT_OPENSEARCH_REPLICAS` | `REPOSILITE_OPENSEARCH_REPLICAS` | `1` | 0 to 10 | Replicas of the index, set when the index is created. |
 
 The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../how-to/choose-a-search-backend.md).
+
+### Plugin store
+
+The plugin store installs plugins from a catalogue in a Maven repository. Nothing is downloaded and no connection is made unless `INGOT_PLUGINS` or the local key `plugins` selects a plugin. A plugin jar that the operator places in the plugins directory keeps working unchanged and wins over a store plugin with the same id. Each variable below falls back to its `REPOSILITE_` spelling when the `INGOT_` name is unset or blank.
+
+| Environment variable | Legacy environment variable | Default | Range or values | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_PLUGINS` | `REPOSILITE_PLUGINS` | none | Comma-separated `groupId:artifactId:version` | Plugins to install. Joined with the local key `plugins`, and an entry named by both is loaded once. One malformed entry refuses the whole list of its variable, and the message names the variable and the entry. |
+| `INGOT_PLUGIN_SOURCES` | `REPOSILITE_PLUGIN_SOURCES` | none | Comma-separated `https` base URLs | Maven repositories that hold `ingot-plugin-catalogue.json`, asked in this order. The first source that lists a plugin provides it. A plain `http` address is refused and not used. |
+| `INGOT_PLUGIN_TRUSTED_KEYS` | `REPOSILITE_PLUGIN_TRUSTED_KEYS` | none | Path of an ASCII-armoured OpenPGP key file, or of a directory of such files | Keys whose signatures are accepted for the catalogue and for every jar. Read once at start. A store source without a trusted key is not used. |
+| `INGOT_PLUGIN_ALLOW_UNSIGNED` | `REPOSILITE_PLUGIN_ALLOW_UNSIGNED` | `false` | `true` | Loads an unsigned catalogue or jar. Such a plugin is marked as `UNVERIFIED`, and the server logs a warning at every start. Only the value `true` turns it on. |
+| `INGOT_PLUGIN_STORE_DISABLED` | `REPOSILITE_PLUGIN_STORE_DISABLED` | `false` | `true` | Recovery switch. Skips the store for one start, so that an operator can reach the dashboard and remove a plugin. It is not a normal setting. |
+
+A store plugin whose id is also held by a jar in the plugins directory is reported as `SHADOWED`. A store plugin replaces a bundled jar with the same id, and the bundled jar is then skipped. A plugin that cannot be downloaded, verified or loaded is skipped with its reason, and the server starts.
 
 ### Support bundle switch
 
