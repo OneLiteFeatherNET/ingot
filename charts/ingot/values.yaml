@@ -355,14 +355,16 @@ probes:
   # 503 while the replica drains, which takes it out of rotation. The image must ship /api/status/ready, which the
   # release 1.1.1 does not. An older pinned image needs readinessPath set to /api/status/health, see the how-to.
   readinessPath: ""
+  # Readiness of the server. The readiness check of Ingot runs a database query and a storage listing, so one slow answer
+  # must not take the pod out of rotation: 3 seconds and 2 failures, in both modes.
   readiness:
     initialDelaySeconds: 2
     periodSeconds: 10
-    timeoutSeconds: 1
+    timeoutSeconds: 3
     successThreshold: 1
-    failureThreshold: 1
-  # Readiness of the split server. Used instead of `readiness` in split mode. The readiness check of Ingot runs a database
-  # query and a storage listing, so one slow answer must not take the pod out of rotation.
+    failureThreshold: 2
+  # Readiness of the split server. Used instead of `readiness` in split mode. Same values as `readiness`, kept as its own
+  # key so that a split operator can tune the two modes apart.
   split:
     readiness:
       initialDelaySeconds: 2

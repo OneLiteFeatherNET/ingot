@@ -161,7 +161,7 @@ The readiness probe uses `/api/status/ready`, which reports the database, the st
 Earlier chart versions probed `/` for both. A pinned image that predates `/api/status/ready` answers `404` there, so its pods never become ready. Keep such an image by setting `probes.readinessPath: /api/status/health`, which does not check the database. Upgrading the chart and the image together avoids this.
 {% endhint %}
 
-In split mode the readiness probe uses `/api/status/ready` by default, with a 3 second timeout and two failures. See [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
+In both modes the readiness probe uses `/api/status/ready` by default, with a 3 second timeout and two failures, so one slow database or storage check does not take a replica out of rotation. Split mode reads its own `probes.split.readiness` block, which has the same defaults. See [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
 
 Kubernetes ignores the `HEALTHCHECK` of the image. Only the probes of the chart apply.
 
