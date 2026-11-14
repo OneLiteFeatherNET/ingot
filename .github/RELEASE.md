@@ -47,7 +47,7 @@ The release page carries the standalone jar and two CycloneDX 1.6 SBOMs, each at
 - `ingot-<version>.cdx.json`, the libraries of the server jar.
 - `ingot-frontend-<version>.cdx.json`, the npm packages of the dashboard that the jar contains.
 
-How to verify and read the SBOMs is in [Verify the SBOMs of a release](../docs/gitbook/how-to/verify-release-sboms.md).
+How to verify and read the SBOMs is in [Verify the SBOMs of a release](../docs/gitbook/manage/operate/verify-release-sboms.md).
 
 ## Verify a release
 

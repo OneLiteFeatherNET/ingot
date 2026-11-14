@@ -9,7 +9,7 @@ Run these checks after every upgrade, before you rely on the new instance.
 ## Prerequisites
 
 * The upgraded server is running.
-* A token of an instance admin, or a token with the `ingot.admin.users` node. The principal list needs one of these. See [Permission nodes](../reference/permission-nodes.md).
+* A token of an instance admin, or a token with the `ingot.admin.users` node. The principal list needs one of these. See [Permission nodes](../../reference/permission-nodes.md).
 * A token with routes, and one action it is allowed to take and one it is not.
 * The answers from before the upgrade, for comparison.
 * The name of one artifact you know exists. Read it anonymously if it is in a public repository.

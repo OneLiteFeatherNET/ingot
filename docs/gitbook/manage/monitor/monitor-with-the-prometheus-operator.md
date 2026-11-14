@@ -112,12 +112,12 @@ Replace `ingot` with your release namespace and release name. A `401` in the tar
 * **The target is down with `401`.** The Secret of the ServiceMonitor and the `INGOT_PROMETHEUS_USER` and `INGOT_PROMETHEUS_PASSWORD` of the server differ, or `basicAuth.enabled` is `false`.
 * **The endpoint never answers `200`.** Without `INGOT_METRICS_ENABLED=true`, the image serves no metrics. Set the switch on the server.
 * **Prometheus does not load the ServiceMonitor.** Its label does not match the selector of your Prometheus instance. Set `serviceMonitor.labels` to that label.
-* **`IngotDown` fires right after the install.** Prometheus has not scraped the server yet, or the policy of [Restrict network traffic](../set-up/network/restrict-network-traffic.md) blocks the scrape. The alert clears once Prometheus scrapes the server successfully.
+* **`IngotDown` fires right after the install.** Prometheus has not scraped the server yet, or the policy of [Restrict network traffic](../../set-up/network/restrict-network-traffic.md) blocks the scrape. The alert clears once Prometheus scrapes the server successfully.
 * **A dashboard is empty.** The data source variable points at a Prometheus that does not scrape the release, or the time range is before the first scrape.
 
 ## Related
 
 * [Monitor status and failures](monitor-status-and-failures.md) lists the metrics and the alert rules, and explains installations without the image.
-* [Size the deployment](../set-up/deploy/size-the-deployment.md) uses the heap and request metrics to choose the sizes.
-* [Restrict network traffic](../set-up/network/restrict-network-traffic.md) lists how to admit the scrape.
-* [Helm chart values](../reference/helm-values.md#monitoring) lists the keys of the three objects.
+* [Size the deployment](../../set-up/deploy/size-the-deployment.md) uses the heap and request metrics to choose the sizes.
+* [Restrict network traffic](../../set-up/network/restrict-network-traffic.md) lists how to admit the scrape.
+* [Helm chart values](../../reference/helm-values.md#monitoring) lists the keys of the three objects.

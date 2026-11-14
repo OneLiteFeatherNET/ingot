@@ -47,7 +47,7 @@ Use the store when a publisher lists the plugin in a catalogue you trust. Use a 
 
 ## Install from the plugin store
 
-The store reads the catalogue of each source at start, downloads the jar of each plugin you select, and checks its digest and its signature before it loads it. Nothing is downloaded unless you select a plugin. The catalogue format, the states and the limits are in [Plugin store](../reference/plugin-store.md).
+The store reads the catalogue of each source at start, downloads the jar of each plugin you select, and checks its digest and its signature before it loads it. Nothing is downloaded unless you select a plugin. The catalogue format, the states and the limits are in [Plugin store](../../reference/plugin-store.md).
 
 Before you begin, you need:
 
@@ -122,4 +122,4 @@ For a plugin from the store, remove its coordinate from `INGOT_PLUGINS` (and fro
 | `Plugin store: <id> FAILED` | The plugin loaded but its class could not be initialised. The reason names the error, and the server starts without the plugin. |
 | `INGOT_PLUGIN_SOURCES refused` or `INGOT_PLUGINS refused` in the log | A source is not an `https` address, or a coordinate is not `groupId:artifactId:version`. The message names the entry. |
 
-For the plugin contract, see [Plugin API](../reference/plugin-api.md).
+For the plugin contract, see [Plugin API](../../reference/plugin-api.md).

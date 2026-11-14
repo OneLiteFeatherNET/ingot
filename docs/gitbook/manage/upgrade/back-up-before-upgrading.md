@@ -51,7 +51,7 @@ The upgrade rewrites the database. A rollback is only as good as the copy you ke
 
 3. If the repositories are in S3, back up the bucket as well. The data directory does not hold the artifacts of an S3 repository. Use the copy tool of your object storage, and keep the copy from the same time as the database dump.
 
-The [back up and restore](back-up-and-restore.md) page describes how to restore these copies.
+The [back up and restore](../operate/back-up-and-restore.md) page describes how to restore these copies.
 
 ## Result
 

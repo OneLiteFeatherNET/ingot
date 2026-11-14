@@ -62,7 +62,7 @@ The container image has its own health check. It reads the address that Ingot wr
 
 The console command `status` prints the same values, plus whether the instance is active.
 
-`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment of the instance. The older system property `-Dingot.status.remote-version-check=false` in `JAVA_OPTS` does the same and wins when both are set. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document. Every other connection that Ingot can open is listed in [Outbound connections](../reference/outbound-connections.md).
+`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment of the instance. The older system property `-Dingot.status.remote-version-check=false` in `JAVA_OPTS` does the same and wins when both are set. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document. Every other connection that Ingot can open is listed in [Outbound connections](../../reference/outbound-connections.md).
 
 ## Look at memory and threads over time
 
@@ -146,7 +146,7 @@ The plugin exports these metric families:
 | `ingot_http_server_requests_total` | Counter of requests, labelled `method`, `route` and `code`. |
 | `ingot_deploy_results_total{result}` | Counter of deploys, `result` is `accepted` or `rejected`. |
 | `ingot_upstream_requests_total{outcome}` | Counter of fetches from upstream hosts of proxy repositories, `outcome` is `success`, `not_found`, `failure` or `timeout`. |
-| `ingot_namespace_refusals_total{repository}` | Counter of requests that a protected group refused, by group id. A group with no refusal has no sample. Alert on an increase for a group whose builds should never be refused. See [Protect your own namespace](../configure/repositories/create-a-group-repository.md#protect-your-own-namespace). |
+| `ingot_namespace_refusals_total{repository}` | Counter of requests that a protected group refused, by group id. A group with no refusal has no sample. Alert on an increase for a group whose builds should never be refused. See [Protect your own namespace](../../configure/repositories/create-a-group-repository.md#protect-your-own-namespace). |
 | `ingot_mirror_checksum_results_total{policy,result}` | Counter of checks of mirror copies, `policy` is `warn` or `fail`, `result` is `verified`, `mismatch` or `missing`. All six series exist from the start. Alert on increases of `mismatch` and `missing` to notice a poisoned or misconfigured upstream. Mirrors with `ignore` count nothing. |
 | `ingot_mirror_cache_entries` | Gauge of the rows in the mirror cache, across all proxy repositories. |
 | `ingot_cluster_connected` | Gauge, `1` when the cluster bus is connected and `0` when it is not. Present only when a cluster bus is configured. |
@@ -185,5 +185,5 @@ Compose users, or anyone who runs Grafana without the sidecar, can import the sa
 
 ## Related
 
-* [Verify an upgrade](verify-an-upgrade.md) lists the checks to run after an upgrade.
-* [Search filters and API](../reference/search-filters-and-api.md) describes the search index status, which is a separate endpoint.
+* [Verify an upgrade](../upgrade/verify-an-upgrade.md) lists the checks to run after an upgrade.
+* [Search filters and API](../../reference/search-filters-and-api.md) describes the search index status, which is a separate endpoint.

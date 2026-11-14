@@ -11,7 +11,7 @@ The check is off by default. Nothing changes for an instance until you set a pol
 ## Prerequisites
 
 * An instance you can configure, and a repository that takes uploads. A proxy or a group repository takes no uploads, so the policy has no effect on it.
-* An account that can read the audit log, if you want to review the events. See [Review the audit log](../how-to/review-audit-log.md).
+* An account that can read the audit log, if you want to review the events. See [Review the audit log](../manage/monitor/review-audit-log.md).
 
 ## Choose a policy
 
@@ -69,7 +69,7 @@ Ingot writes the file of the refused upload nowhere, not even to a temporary loc
 
 Every mismatch under `warn` and `reject` is written to the audit log as `UPLOAD_CHECKSUM_MISMATCH`. The row names the repository, the path of the checksum file and the uploader. Its details hold `algorithm` (`md5`, `sha1`, `sha256` or `sha512`) and `outcome` (`accepted` or `rejected`). Digests are never written.
 
-To list the mismatches of one repository in the dashboard, choose the checksum mismatch action in the **Action** select of the audit log and enter the repository name in the filter form. See [Review the audit log](../how-to/review-audit-log.md). A match writes no event, so an empty result under `warn` means that every checksum file that was checked matched.
+To list the mismatches of one repository in the dashboard, choose the checksum mismatch action in the **Action** select of the audit log and enter the repository name in the filter form. See [Review the audit log](../manage/monitor/review-audit-log.md). A match writes no event, so an empty result under `warn` means that every checksum file that was checked matched.
 
 Refusals are also counted in the deploy metric `ingot_deploy_results_total` with the result `checksum_mismatch`. That series appears after the first refusal, so an instance that never refuses a file shows no change in its metrics.
 

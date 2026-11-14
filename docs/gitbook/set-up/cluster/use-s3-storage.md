@@ -181,7 +181,7 @@ Ingot finds shared buckets by comparing the endpoint text and the bucket name. U
 
 * S3 repositories have no quota. The `quota` setting applies to filesystem repositories only. The S3 provider reports its usage as unknown (`-1`) and never refuses an upload for lack of space.
 * The metadata cache is local to one instance, so instances do not share it. Leave it off when several instances serve the same repository.
-* Back up the bucket together with the database. See [Back up and restore](../../how-to/back-up-and-restore.md).
+* Back up the bucket together with the database. See [Back up and restore](../../manage/operate/back-up-and-restore.md).
 
 ## Result
 

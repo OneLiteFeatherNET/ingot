@@ -85,7 +85,7 @@ The tests named in this section are in the open pull request for `test-mixed-ver
 * **Unknown bus messages are ignored and counted.** A replica ignores an envelope with an unknown version and a message with an unknown event type, and counts both. The unit tests are `ClusterReceiverTest`: "an envelope with an unknown version is ignored and counted" and "an envelope with an unknown event type is ignored and counted". The two-replica case is `unknown bus messages are ignored and the next known event is applied`. An envelope version newer than N+1 is not covered.
 * **Concurrent deploys of one artifact are not guarded across the pair.** The metadata lock exists only in N+1. The test deploys different artifacts at the same moment, not the same artifact, so the case of one artifact is not tested.
 * **No scheduled cleanup until every replica runs N+1.** N ignores the leases of the cleanup jobs, see [Upgrade changes](../reference/upgrade-changes.md). Not tested.
-* **Token changes on N during the window.** Creating, rotating or revoking tokens on N during the window is not tested. [Upgrade from Ingot 1.1.x](../how-to/upgrade-ingot.md) asks to freeze them until every replica runs the new release.
+* **Token changes on N during the window.** Creating, rotating or revoking tokens on N during the window is not tested. [Upgrade from Ingot 1.1.x](../manage/upgrade/upgrade-ingot.md) asks to freeze them until every replica runs the new release.
 * **Deletes in a data migration.** The permission node migration deletes rows that a replica of the previous release reads. That pair does not exist yet, because the 1.1.x line has no permission nodes. A later pair with such a step needs the step deferred, or the rule narrowed.
 
 ## Failure behaviour
@@ -138,7 +138,7 @@ These values are fixed in the code. They are limits, not capacity.
 
 * [Multi-replica operation](multi-replica-operation.md) explains what each replica shares and what it keeps for itself.
 * [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md) sets up the chart for more than one replica.
-* [Upgrade from Ingot 1.1.x](../how-to/upgrade-ingot.md) gives the steps of the 1.2.0 upgrade.
+* [Upgrade from Ingot 1.1.x](../manage/upgrade/upgrade-ingot.md) gives the steps of the 1.2.0 upgrade.
 * [Upgrade changes and supported paths](../reference/upgrade-changes.md) lists the changes per release.
 * [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md) describes the optional bus.
 * [Size the deployment](../set-up/deploy/size-the-deployment.md) describes how a measurement is made.

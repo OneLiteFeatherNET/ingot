@@ -11,10 +11,10 @@ Ingot is a self-hosted Maven repository manager. It hosts, proxies and caches ar
 Pick the path that matches your role.
 
 * **Evaluator.** Read [What is Ingot](introduction/what-is-ingot.md), then [How Ingot compares](introduction/how-ingot-compares.md) and the [Architecture overview](explanation/architecture-overview.md). Start an instance with [First steps with Docker](get-started/first-steps-with-docker.md). It takes about 30 minutes.
-* **Operator.** Start with [Install with Docker](set-up/deploy/install-with-docker.md) or [Run on Kubernetes](set-up/deploy/run-on-kubernetes.md). Then read [Size the deployment](set-up/deploy/size-the-deployment.md), [Back up and restore](how-to/back-up-and-restore.md) and [Monitor status and failures](how-to/monitor-status-and-failures.md). For more than one replica, read [High availability support](explanation/high-availability-support.md).
-* **Administrator.** Follow [Set up users, teams and single sign on](get-started/set-up-users-teams-and-sso.md). Then read [Identity model](explanation/identity-model.md), [Grant permissions with nodes](how-to/grant-permissions-with-nodes.md) and [Review the audit log](how-to/review-audit-log.md).
+* **Operator.** Start with [Install with Docker](set-up/deploy/install-with-docker.md) or [Run on Kubernetes](set-up/deploy/run-on-kubernetes.md). Then read [Size the deployment](set-up/deploy/size-the-deployment.md), [Back up and restore](manage/operate/back-up-and-restore.md) and [Monitor status and failures](manage/monitor/monitor-status-and-failures.md). For more than one replica, read [High availability support](explanation/high-availability-support.md).
+* **Administrator.** Follow [Set up users, teams and single sign on](get-started/set-up-users-teams-and-sso.md). Then read [Identity model](explanation/identity-model.md), [Grant permissions with nodes](manage/access/grant-permissions-with-nodes.md) and [Review the audit log](manage/monitor/review-audit-log.md).
 * **Developer.** Read [Publish and consume artifacts](publish-and-consume/publish-and-consume-artifacts.md) and [Use tokens in CI](publish-and-consume/use-tokens-in-ci.md). Use [Search for artifacts](publish-and-consume/search-for-artifacts.md) to find what you need.
-* **Plugin author.** Read [Write a plugin](how-to/write-a-plugin.md), then the [Plugin API](reference/plugin-api.md) and [Backend architecture](explanation/backend-architecture.md). To extend the dashboard, see [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md).
+* **Plugin author.** Read [Write a plugin](manage/plugins/write-a-plugin.md), then the [Plugin API](reference/plugin-api.md) and [Backend architecture](explanation/backend-architecture.md). To extend the dashboard, see [Extend the dashboard from a plugin](manage/plugins/extend-the-dashboard-from-a-plugin.md).
 
 ## Choose by task
 
@@ -22,15 +22,15 @@ Pick the path that matches your role.
 |---|---|
 | Install and run Ingot | [Install with Docker](set-up/deploy/install-with-docker.md) or [Run the JAR](set-up/deploy/install-jar.md) |
 | Publish and consume artifacts | [Publish and consume artifacts](publish-and-consume/publish-and-consume-artifacts.md) |
-| Manage access and logins | [Manage users, teams and machine accounts](how-to/manage-users-teams-and-machine-accounts.md) |
+| Manage access and logins | [Manage users, teams and machine accounts](manage/access/manage-users-teams-and-machine-accounts.md) |
 | Create tokens for CI | [Use tokens in CI](publish-and-consume/use-tokens-in-ci.md) |
 | Search for artifacts | [Search for artifacts](publish-and-consume/search-for-artifacts.md) |
-| Operate a running instance | [Monitor status and failures](how-to/monitor-status-and-failures.md) |
+| Operate a running instance | [Monitor status and failures](manage/monitor/monitor-status-and-failures.md) |
 | Look up a setting | [Environment variables](reference/environment-variables.md) or [Configuration file and startup parameters](reference/configuration-and-startup.md) |
 
 ## Upgrade an existing installation
 
-To upgrade, start with [Back up before upgrading](how-to/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](how-to/verify-an-upgrade.md).
+To upgrade, start with [Back up before upgrading](manage/upgrade/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](manage/upgrade/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](manage/upgrade/verify-an-upgrade.md).
 
 ## What changed in 1.2.0
 

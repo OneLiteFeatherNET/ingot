@@ -117,4 +117,4 @@ After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`
 * [Configure Microsoft Entra ID login](configure-entra-id-login.md)
 * [Configure GitHub login](configure-github-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
-* [Recover admin access](../../how-to/recover-admin-access.md)
+* [Recover admin access](../../manage/access/recover-admin-access.md)

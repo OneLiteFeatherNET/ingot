@@ -12,7 +12,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **User.** A principal for a person. A user signs in to the dashboard with a password or an external login provider. See [Identity model](../explanation/identity-model.md#users-and-machine-accounts).
 
-**Machine account.** A principal for automated use, such as a CI job or a bot. It authenticates with its tokens. Every machine account has a private team. See [Manage users, teams and machine accounts](../how-to/manage-users-teams-and-machine-accounts.md).
+**Machine account.** A principal for automated use, such as a CI job or a bot. It authenticates with its tokens. Every machine account has a private team. See [Manage users, teams and machine accounts](../manage/access/manage-users-teams-and-machine-accounts.md).
 
 **Team.** A named group of principals. A team holds grants, permission nodes and the instance role, and it can inherit from parent teams. See [Identity model](../explanation/identity-model.md#teams-and-private-teams).
 
@@ -42,7 +42,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../publish-and-consume/verify-uploaded-checksums.md).
 
-**Read-only mode.** The instance-wide switch that refuses every write with `503` while reads keep working. It is not the same as the read-only setting of one repository. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+**Read-only mode.** The instance-wide switch that refuses every write with `503` while reads keep working. It is not the same as the read-only setting of one repository. See [Freeze writes for maintenance](../manage/operate/freeze-writes-for-maintenance.md).
 
 ## Operation
 
@@ -54,17 +54,17 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Lease.** A time-limited claim that one replica holds on a batch of queued work, such as search index updates. The replica extends the lease while it works. If the replica dies, the lease runs out and another replica takes the batch over. Scheduled jobs are claimed in the database in the same way, so one replica runs each job. See [Multi-replica operation](../explanation/multi-replica-operation.md).
 
-**Support bundle.** A zip file that describes one instance, its configuration and its recent log lines, without its secrets. It is downloaded by a principal with the console area. See [Collect a support bundle](../how-to/collect-a-support-bundle.md).
+**Support bundle.** A zip file that describes one instance, its configuration and its recent log lines, without its secrets. It is downloaded by a principal with the console area. See [Collect a support bundle](../manage/operate/collect-a-support-bundle.md).
 
 ## Search
 
 **Search backend.** The component that holds the artifact index and answers search. Ingot ships the `database` backend, and a plugin can register another one, such as OpenSearch. All replicas of a cluster use the same backend. See [Choose a search backend](../configure/search/choose-a-search-backend.md).
 
-**Index state.** The state of the search index, such as `Building` while the first full rebuild runs. See [Rebuild the search index](../how-to/rebuild-search-index.md).
+**Index state.** The state of the search index, such as `Building` while the first full rebuild runs. See [Rebuild the search index](../manage/operate/rebuild-search-index.md).
 
 ## Plugins
 
-**Plugin.** A jar that Ingot loads at start from its plugins directory. A plugin runs inside the server process with the same access. See [Install a plugin](../how-to/install-a-plugin.md) and [Write a plugin](../how-to/write-a-plugin.md).
+**Plugin.** A jar that Ingot loads at start from its plugins directory. A plugin runs inside the server process with the same access. See [Install a plugin](../manage/plugins/install-a-plugin.md) and [Write a plugin](../manage/plugins/write-a-plugin.md).
 
 **Catalogue.** An index of plugins, named `ingot-plugin-catalogue.json`, that a Maven repository publishes. The plugin store installs plugins from the catalogues of the sources that you list. A catalogue is verified with OpenPGP keys unless you allow unsigned ones. See [Environment variables](environment-variables.md#plugin-store).
 

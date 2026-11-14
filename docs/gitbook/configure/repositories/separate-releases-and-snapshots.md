@@ -55,7 +55,7 @@ A repository that has reached its final state can be frozen on its own, without 
 
 A frozen repository refuses every deploy, every delete and every POM generation with `405`, and the message names the repository. Downloads and searches keep working. Scheduled cleanup skips the repository, and the cleanup preview lists it as skipped.
 
-The instance-wide read-only mode is a different switch. While it is on, every write answers `503`, in every repository, and that answer comes first. See [Freeze writes for maintenance](../../how-to/freeze-writes-for-maintenance.md).
+The instance-wide read-only mode is a different switch. While it is on, every write answers `503`, in every repository, and that answer comes first. See [Freeze writes for maintenance](../../manage/operate/freeze-writes-for-maintenance.md).
 
 To unfreeze, choose **Allow redeploy** or **Allow once** again. Choosing **Read-only** keeps the redeploy choice of the repository, so switching back restores it.
 
@@ -74,4 +74,4 @@ The repository list shows the write policy of every repository that takes upload
 
 ## Roll back
 
-A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md).
+A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md).

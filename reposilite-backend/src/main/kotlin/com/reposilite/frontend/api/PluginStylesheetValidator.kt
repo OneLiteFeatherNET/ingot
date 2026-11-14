@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets.UTF_8
  * A sheet without a problem cannot make a request, cannot end its layer early and cannot spell a forbidden keyword
  * with a CSS escape, because every backslash outside a string is refused before a function name is looked at.
  *
- * The rules are documented for plugin authors in `docs/gitbook/how-to/extend-the-dashboard-from-a-plugin.md`.
+ * The rules are documented for plugin authors in `docs/gitbook/manage/plugins/extend-the-dashboard-from-a-plugin.md`.
  */
 internal object PluginStylesheetValidator {
 

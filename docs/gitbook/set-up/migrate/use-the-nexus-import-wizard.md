@@ -49,5 +49,5 @@ The wizard has no setting for the trust of a certificate. Ingot checks Nexus aga
 ## After the wizard
 
 * Keep the Nexus repositories read-only until the clients have switched, so no client writes to Nexus while it is being copied from.
-* The import creates the repository definitions in Ingot. Check their access settings before you hand out tokens. See [Manage users, teams and machine accounts](../../how-to/manage-users-teams-and-machine-accounts.md).
+* The import creates the repository definitions in Ingot. Check their access settings before you hand out tokens. See [Manage users, teams and machine accounts](../../manage/access/manage-users-teams-and-machine-accounts.md).
 * Remove the finished verify job from the Cut-over step once you are done. The repositories stay.

@@ -47,10 +47,10 @@ Before you attach it to a public issue:
 2. Look at `configuration-shared.json` and `system-info.json` for anything you would not post in public.
 3. Remove or replace whatever does not belong in the ticket, then attach the rest.
 
-If you do not want the bundle to exist on an instance at all, turn it off with `INGOT_SUPPORT_BUNDLE_ENABLED=false`. Both data endpoints then answer `404` and the pages disappear. See [Environment variables](../reference/environment-variables.md#support-bundle-switch).
+If you do not want the bundle to exist on an instance at all, turn it off with `INGOT_SUPPORT_BUNDLE_ENABLED=false`. Both data endpoints then answer `404` and the pages disappear. See [Environment variables](../../reference/environment-variables.md#support-bundle-switch).
 
 ## Related
 
-- [HTTP API: Support](../reference/http-api.md#support)
-- [Audit events](../reference/audit-events.md)
-- [Permission nodes](../reference/permission-nodes.md)
+- [HTTP API: Support](../../reference/http-api.md#support)
+- [Audit events](../../reference/audit-events.md)
+- [Permission nodes](../../reference/permission-nodes.md)

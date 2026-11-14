@@ -8,7 +8,7 @@ This guide covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The conta
 
 ## Prerequisites
 
-* A [backup](../../how-to/back-up-before-upgrading.md) of the data directory and, for MariaDB, of the database.
+* A [backup](../../manage/upgrade/back-up-before-upgrading.md) of the data directory and, for MariaDB, of the database.
 * The image `ghcr.io/onelitefeathernet/ingot:1.2.0`. Earlier Ingot releases do not run this migration.
 * The image reference of your current Reposilite release, for a rollback.
 
@@ -25,7 +25,7 @@ This guide covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The conta
        image: ghcr.io/onelitefeathernet/ingot:1.2.0
    ```
 
-3. Start the server on the same data directory. The existing data is adopted. The first start adds the identity and search tables and the configuration keys described in [Upgrade from Ingot 1.1.x](../../how-to/upgrade-ingot.md#what-changes-on-the-first-start).
+3. Start the server on the same data directory. The existing data is adopted. The first start adds the identity and search tables and the configuration keys described in [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md#what-changes-on-the-first-start).
 
 4. Read the log of the first start. If the instance had persistent tokens, it contains a line of this shape:
 
@@ -33,7 +33,7 @@ This guide covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The conta
    Identity | migrated 7 access token(s) to machine principals
    ```
 
-5. Run the checks in [Verify an upgrade](../../how-to/verify-an-upgrade.md).
+5. Run the checks in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md).
 
 ## Dashboard login with LDAP
 
@@ -54,6 +54,6 @@ Before you upgrade from 3.6.x, keep a copy of `configuration.cdn` and of the sha
 
 ## Result
 
-The server answers on its port. If the instance had persistent tokens, the log shows the migration line with their count, and the checks in [Verify an upgrade](../../how-to/verify-an-upgrade.md) pass.
+The server answers on its port. If the instance had persistent tokens, the log shows the migration line with their count, and the checks in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md) pass.
 
-To return to Reposilite, follow [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md).
+To return to Reposilite, follow [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md).

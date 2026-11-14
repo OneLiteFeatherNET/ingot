@@ -91,14 +91,14 @@ These lines are written to the server log only. They say why a `loginError` was 
 | `is already used by an earlier entry` | Settings check. Two providers have the same id. The second is skipped. |
 | `Created the synchronised admin team` | Group sync. The admin group had no team yet, and Ingot created it. This is information, not a problem. |
 | `skipped: a team of that name exists without the external reference` | Group sync. A team with the name of an admin group exists by hand. Rename or delete it, see [Map provider groups to teams](map-provider-groups-to-teams.md#when-a-team-of-that-name-exists-already). |
-| `removed the last usable instance admin` | Group sync, a warning. A provider removed the last admin. The audit log holds `LAST_ADMIN_REVOKED_BY_PROVIDER` too. See [Recover admin access](../../how-to/recover-admin-access.md#after-a-provider-removed-the-last-admin). |
+| `removed the last usable instance admin` | Group sync, a warning. A provider removed the last admin. The audit log holds `LAST_ADMIN_REVOKED_BY_PROVIDER` too. See [Recover admin access](../../manage/access/recover-admin-access.md#after-a-provider-removed-the-last-admin). |
 
 ## Where to go next
 
 * For the steps of a provider, see its guide, for example [Configure Keycloak login](configure-keycloak-login.md), [Configure Okta login](configure-okta-login.md) or [Configure Microsoft Entra ID login](configure-entra-id-login.md).
 * For the groups, see [Map provider groups to teams](map-provider-groups-to-teams.md).
 * For the settings and the codes in one place, see [Login providers](../../reference/login-providers.md).
-* If nobody can sign in as an administrator any more, see [Recover admin access](../../how-to/recover-admin-access.md).
+* If nobody can sign in as an administrator any more, see [Recover admin access](../../manage/access/recover-admin-access.md).
 
 ## Related
 

@@ -4,7 +4,7 @@ description: Reference for the audit log of Ingot. Lists every audit action with
 
 # Audit events
 
-The audit log records administrative and artifact events. Each event is one row in the table `audit_events`. This page lists what is recorded, how long it is kept, and how the log is read and exported. For the steps to read and export the log, see [Review the audit log](../how-to/review-audit-log.md). Optionally, every event is also written as a JSON line for a log collector, see [JSON lines sink](#json-lines-sink).
+The audit log records administrative and artifact events. Each event is one row in the table `audit_events`. This page lists what is recorded, how long it is kept, and how the log is read and exported. For the steps to read and export the log, see [Review the audit log](../manage/monitor/review-audit-log.md). Optionally, every event is also written as a JSON line for a log collector, see [JSON lines sink](#json-lines-sink).
 
 ## Event fields
 
@@ -147,7 +147,7 @@ Purge behaviour:
 
 ## JSON lines sink
 
-The sink writes every audit event as one JSON object per line, in addition to the table. It is off by default, and with it off the server writes nothing extra. It is switched on with the variables `INGOT_AUDIT_SINK_STDOUT` and `INGOT_AUDIT_SINK_FILE`, listed in [Environment variables](environment-variables.md#audit-sink-variables). For a collector setup, see [Forward audit events to a SIEM](../how-to/forward-audit-events-to-a-siem.md).
+The sink writes every audit event as one JSON object per line, in addition to the table. It is off by default, and with it off the server writes nothing extra. It is switched on with the variables `INGOT_AUDIT_SINK_STDOUT` and `INGOT_AUDIT_SINK_FILE`, listed in [Environment variables](environment-variables.md#audit-sink-variables). For a collector setup, see [Forward audit events to a SIEM](../manage/monitor/forward-audit-events-to-a-siem.md).
 
 ### Line fields
 

@@ -8,14 +8,14 @@ A plugin can change the dashboard in four ways today: it declares pages, it fill
 
 ## What a plugin can do today
 
-- **Declare pages.** A plugin adds its own pages to the dashboard with the `plugin-ui` facade. The text, tables, forms, actions and status blocks are drawn by the dashboard's own components, so the plugin chooses the words and the order. See [Dashboard pages](../reference/plugin-api.md#dashboard-pages).
-- **Fill placeholders.** A plugin can substitute a value into the bundled `index.html` and `.js` files with `FrontendFacade.registerPlaceholder`. A placeholder carries a value, not a rule. See [Frontend placeholders](../reference/plugin-api.md#frontend-placeholders).
+- **Declare pages.** A plugin adds its own pages to the dashboard with the `plugin-ui` facade. The text, tables, forms, actions and status blocks are drawn by the dashboard's own components, so the plugin chooses the words and the order. See [Dashboard pages](../../reference/plugin-api.md#dashboard-pages).
+- **Fill placeholders.** A plugin can substitute a value into the bundled `index.html` and `.js` files with `FrontendFacade.registerPlaceholder`. A placeholder carries a value, not a rule. See [Frontend placeholders](../../reference/plugin-api.md#frontend-placeholders).
 - **Ship a stylesheet.** A plugin delivers one CSS file that the dashboard loads for signed in callers. The file is checked when the server starts, and the rules sit in a layer of their own. See [Ship a stylesheet](#ship-a-stylesheet) below.
-- **Set the appearance.** Colours, the logo, the favicon and the footer text are configuration, see [Customize branding](../configure/customize-branding.md). They are settings, not CSS.
+- **Set the appearance.** Colours, the logo, the favicon and the footer text are configuration, see [Customize branding](../../configure/customize-branding.md). They are settings, not CSS.
 
 ## What a plugin can aim at
 
-Every component of the dashboard carries a stable name in the DOM. The names are listed in [Dashboard anchors](../reference/dashboard-anchors.md), with the parts and states that each component exposes:
+Every component of the dashboard carries a stable name in the DOM. The names are listed in [Dashboard anchors](../../reference/dashboard-anchors.md), with the parts and states that each component exposes:
 
 - `data-ingot-component="<name>"` on the element that renders a component,
 - `data-ingot-part="<part>"` on a named region inside it,
@@ -74,13 +74,13 @@ The server reads the sheet once, when the plugin registers it. A sheet that brea
 
 ### Switch the plugin styles off
 
-The operator switches all plugin stylesheets off with `INGOT_LOCAL_PLUGINSTYLES=false`. The stylesheet list of the manifest is then empty and the stylesheet address answers `404`. The pages and settings sections of the plugins keep working. See [Environment variables](../reference/environment-variables.md).
+The operator switches all plugin stylesheets off with `INGOT_LOCAL_PLUGINSTYLES=false`. The stylesheet list of the manifest is then empty and the stylesheet address answers `404`. The pages and settings sections of the plugins keep working. See [Environment variables](../../reference/environment-variables.md).
 
 ## What is still missing
 
 - **No insertion points.** A plugin cannot yet add content at a named place on an existing dashboard page. This is planned as `add-ui-insertion-points`.
 - **No theming API.** A plugin cannot yet override the colour tokens of the dashboard from its stylesheet.
-- **No plugin script in the browser.** Plugin code does not run in the dashboard, and this is not planned for now. See [Security headers](../explanation/security-headers.md#plugin-pages).
+- **No plugin script in the browser.** Plugin code does not run in the dashboard, and this is not planned for now. See [Security headers](../../explanation/security-headers.md#plugin-pages).
 
 ## Select on names in tests
 
@@ -88,6 +88,6 @@ End-to-end and component tests select by role and accessible name first, by `dat
 
 ## Related
 
-- [Dashboard anchors](../reference/dashboard-anchors.md) lists every name, its parts and states, and its stability.
-- [Dashboard pages](../reference/plugin-api.md#dashboard-pages) describes the pages a plugin declares.
+- [Dashboard anchors](../../reference/dashboard-anchors.md) lists every name, its parts and states, and its stability.
+- [Dashboard pages](../../reference/plugin-api.md#dashboard-pages) describes the pages a plugin declares.
 - [Write a plugin](write-a-plugin.md) builds a first plugin.

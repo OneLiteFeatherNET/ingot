@@ -4,7 +4,7 @@ description: Get back into an Ingot instance when no administrator can sign in, 
 
 # Recover admin access
 
-Use this guide when nobody can sign in as an instance administrator: the password is lost, the only admin left through a provider group change, or the sign-in is locked after failed attempts. The steps below change the instance, so keep a backup of the data first, see [Back up before upgrading](back-up-before-upgrading.md).
+Use this guide when nobody can sign in as an instance administrator: the password is lost, the only admin left through a provider group change, or the sign-in is locked after failed attempts. The steps below change the instance, so keep a backup of the data first, see [Back up before upgrading](../upgrade/back-up-before-upgrading.md).
 
 ## Find your case
 
@@ -113,6 +113,6 @@ If you can wait, wait for the lock to end. If you cannot, sign in from another a
 
 ## Related
 
-* [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md)
-* [Configure LDAP login](../configure/authentication/configure-ldap-login.md)
-* [Set up the first administrator](../get-started/set-up-first-admin.md)
+* [Configure generic OIDC login](../../configure/authentication/configure-oidc-login.md)
+* [Configure LDAP login](../../configure/authentication/configure-ldap-login.md)
+* [Set up the first administrator](../../get-started/set-up-first-admin.md)

@@ -4,7 +4,7 @@ description: Reference for the Ingot plugin API - coordinates, loading, lifecycl
 
 # Plugin API
 
-This page lists the types a plugin uses. For a step-by-step build, see [Write a plugin](../how-to/write-a-plugin.md). For installing a jar, see [Install a plugin](../how-to/install-a-plugin.md).
+This page lists the types a plugin uses. For a step-by-step build, see [Write a plugin](../manage/plugins/write-a-plugin.md). For installing a jar, see [Install a plugin](../manage/plugins/install-a-plugin.md).
 
 ## Coordinates and packages
 
@@ -78,7 +78,7 @@ Listeners run synchronously, on the thread that emitted the event. Listeners for
 
 Do not put secret values in `AuditEvent.details`. Use names, counts and field paths.
 
-The search backend event is experimental, like the other types of the search backend API, which carry `@ExperimentalIngotSearchApi`. A plugin registers a search backend in it, see [Write a search backend plugin](../how-to/write-a-search-backend-plugin.md).
+The search backend event is experimental, like the other types of the search backend API, which carry `@ExperimentalIngotSearchApi`. A plugin registers a search backend in it, see [Write a search backend plugin](../manage/plugins/write-a-search-backend-plugin.md).
 
 ## Kotlin helpers
 
@@ -261,7 +261,7 @@ The gate becomes blocking in a later change, once the first report has been revi
 
 ## Dashboard pages
 
-A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, frame or HTML runs in the browser. A plugin may ship one checked stylesheet, see [Stylesheet](#stylesheet). The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages). For what a plugin can target on the dashboard today and what is still missing, see [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md).
+A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, frame or HTML runs in the browser. A plugin may ship one checked stylesheet, see [Stylesheet](#stylesheet). The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages). For what a plugin can target on the dashboard today and what is still missing, see [Extend the dashboard from a plugin](../manage/plugins/extend-the-dashboard-from-a-plugin.md).
 
 ### Register a page
 
@@ -402,7 +402,7 @@ The sheet is checked against these rules, and a sheet that breaks one is dropped
 - no `expression(`, `behavior:` or `-moz-binding`,
 - balanced braces.
 
-The dashboard loads the sheet after the manifest, only for a signed in caller. The manifest lists it in `stylesheets` with its path and the SHA-256 of the served bytes, and the sheet is served at `/api/frontend/plugin-styles/<plugin>/<hash>.css`, where `<hash>` is the first 16 hexadecimal characters of that digest. The answer is cached for a year. A worked example and the authoring rules are in [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md#ship-a-stylesheet).
+The dashboard loads the sheet after the manifest, only for a signed in caller. The manifest lists it in `stylesheets` with its path and the SHA-256 of the served bytes, and the sheet is served at `/api/frontend/plugin-styles/<plugin>/<hash>.css`, where `<hash>` is the first 16 hexadecimal characters of that digest. The answer is cached for a year. A worked example and the authoring rules are in [Extend the dashboard from a plugin](../manage/plugins/extend-the-dashboard-from-a-plugin.md#ship-a-stylesheet).
 
 ### Switch
 

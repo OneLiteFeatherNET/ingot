@@ -13,23 +13,23 @@ Ingot runs in four shapes. They serve the same API, the same repositories and th
 | Helm all-in-one chart | `helm upgrade --install` with one `--version` and one values file | The same command with a newer `--version` | `helm rollback` to the revision before the upgrade |
 | Helm split chart | The same command, with the dashboard workload in the values file | The same command with a newer `--version` | `helm rollback` to a revision before the split |
 
-In every shape the data stays where the instance keeps it, the working directory or the data volume. The rollback steps therefore depend on the data as much as on the binary, and they are the same for all four shapes. Read [Back up before upgrading](../../how-to/back-up-before-upgrading.md) and [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md) before any upgrade.
+In every shape the data stays where the instance keeps it, the working directory or the data volume. The rollback steps therefore depend on the data as much as on the binary, and they are the same for all four shapes. Read [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md) and [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md) before any upgrade.
 
 ## JAR
 
 The JAR is the most direct shape. Ingot writes its configuration, database and repositories into the directory it starts in, unless you pass `--working-directory`. Upgrading means replacing one file, and rolling back means putting the old file back on the same directory.
 
 * Install: [Run the JAR](install-jar.md).
-* Upgrade: [Upgrade from Ingot 1.1.x](../../how-to/upgrade-ingot.md), or [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md) for an instance that is still on Reposilite.
-* Roll back: [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md).
+* Upgrade: [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md), or [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md) for an instance that is still on Reposilite.
+* Roll back: [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md).
 
 ## Container image
 
 The container image is the same server in a container. The data lives in the volume that you mount at `/app/data`. An upgrade is a change of the image tag, and a rollback is the same change in reverse. The data is kept across both, as long as the volume stays. The entrypoint may change the owner of the volume at start, as described in the [environment variables](../../reference/environment-variables.md) reference.
 
 * Install: [Install with Docker](install-with-docker.md).
-* Upgrade: [Upgrade from Ingot 1.1.x](../../how-to/upgrade-ingot.md) or [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md), depending on the version you run.
-* Roll back: [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md). It lists what the older version cannot read after an upgrade.
+* Upgrade: [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md) or [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md), depending on the version you run.
+* Roll back: [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md). It lists what the older version cannot read after an upgrade.
 
 ## Helm all-in-one chart
 
