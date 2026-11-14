@@ -307,9 +307,29 @@ internal class ElasticsearchSettingsTest {
     }
 
     @Test
-    fun `should refuse a cluster without any credential unless plain HTTP is switched on`() {
-        // when / then: neither a key nor a user name, and the switch is unset
-        assertThatThrownBy { ElasticsearchSettings.read(withUrl(), noFileExpected) }
+    fun `should accept an https cluster without any credential and log one warning that names no value`() {
+        // given: a sink for the log lines of the read
+        val logged = mutableListOf<String>()
+
+        // when: neither a key nor a user name is set, and the URL is https
+        val settings = ElasticsearchSettings.read(withUrl(), noFileExpected, logged::add)
+
+        // then: the start is accepted without credentials, and one warning says why that is only safe behind mTLS or a trusted network
+        assertThat(settings.apiKey).`as`("API key").isNull()
+        assertThat(settings.username).`as`("user name").isNull()
+        assertThat(logged).`as`("log lines of the read").hasSize(1)
+        assertThat(logged.single())
+            .`as`("warning of a cluster without credentials")
+            .contains("without credentials", "mTLS", "trusted network")
+            .doesNotContain("search.example.test")
+    }
+
+    @Test
+    fun `should refuse a plain HTTP cluster without any credential unless plain HTTP is switched on`() {
+        // when / then: neither a key nor a user name, the URL is http and the switch is unset
+        assertThatThrownBy {
+            ElasticsearchSettings.read(mapOf("INGOT_ELASTICSEARCH_URLS" to "http://search.example.test:9200"), noFileExpected)
+        }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("INGOT_ELASTICSEARCH_ALLOW_HTTP")
     }

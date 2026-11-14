@@ -21,6 +21,7 @@ package net.onelitefeather.ingot.elasticsearch
 import net.onelitefeather.ingot.search.backend.BackendLogger
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.SearchBackendContext
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -41,14 +42,33 @@ internal class ElasticsearchBackendFactoryTest {
             .hasMessageContaining("INGOT_ELASTICSEARCH_URLS")
     }
 
-    private fun context(): SearchBackendContext = object : SearchBackendContext {
+    @Test
+    fun `should create the backend for an https cluster without credentials and log one warning through the context`() {
+        // given: a factory for an https cluster without any credential, and a context that records its warnings
+        val warnings = mutableListOf<String>()
+        val factory = ElasticsearchBackendFactory(
+            settings = { log -> ElasticsearchSettings.read(mapOf("INGOT_ELASTICSEARCH_URLS" to "https://search.example.test:9200"), log = log) },
+        )
+
+        // when: the core creates the backend
+        val backend = factory.create(context(warnings))
+
+        // then: the backend is created and exactly one warning reached the logger of the context
+        assertThat(backend).`as`("backend").isInstanceOf(ElasticsearchSearchBackend::class.java)
+        assertThat(warnings).`as`("warnings of one create").hasSize(1)
+        assertThat(warnings.single()).`as`("warning").contains("without credentials", "mTLS", "trusted network")
+    }
+
+    private fun context(warnings: MutableList<String> = mutableListOf()): SearchBackendContext = object : SearchBackendContext {
         override val clock: Clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC)
         override val instanceId: String = "replica-test"
         override fun environment(name: String): String? = null
         override fun secret(name: String): String? = null
         override fun logger(): BackendLogger = object : BackendLogger {
             override fun info(message: String) = Unit
-            override fun warn(message: String) = Unit
+            override fun warn(message: String) {
+                warnings.add(message)
+            }
             override fun error(message: String) = Unit
         }
     }
