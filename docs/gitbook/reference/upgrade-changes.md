@@ -162,6 +162,14 @@ The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded
 
 See [OpenSearch search backend](opensearch-search-backend.md) for the variables and the security obligations of the cluster.
 
+### Elasticsearch search backend is optional and not bundled (unreleased)
+
+The Elasticsearch plugin is not part of the image. It is installed by hand, or from the plugin store, by copying `elasticsearch-plugin.jar` into the plugins directory. Without the jar nothing is loaded and no connection is made, so an existing installation behaves as before. No configuration, environment variable, volume, manifest or existing plugin changes for existing deployments.
+
+* The search backend stays `database` until `searchEngine` is set to `elasticsearch` on every replica. Install the jar first and set the search backend second, as described in [Use Elasticsearch for search](../how-to/use-elasticsearch-for-search.md).
+
+See [Elasticsearch search backend](elasticsearch-search-backend.md) for the variables, the privileges of the API key and the security obligations of the cluster.
+
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](settings-domains.md)). No configuration file, environment variable, volume or plugin changes.

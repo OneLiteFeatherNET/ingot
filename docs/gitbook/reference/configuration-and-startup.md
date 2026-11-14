@@ -113,7 +113,7 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 | --- | --- | --- | --- |
 | `hideSettingsSecrets` | Boolean | `false` | Replaces every non-empty secret in the settings API with `********`. Sending `********` back keeps the stored value. See [Settings domains](settings-domains.md#settings-api). |
 | `searchEnabled` | Boolean | `true` | `false` makes the search endpoints answer `404` and stops the index workers. The search tables stay. |
-| `searchEngine` | String | `database` | Search backend that answers artifact search and holds the index. `database` ships with Ingot, and a plugin can register more ids. Environment variable `INGOT_LOCAL_SEARCHENGINE`, with `REPOSILITE_LOCAL_SEARCHENGINE` as fallback. An id that no backend has registered answers `503` on the search routes, instead of `404`. The id `opensearch` is registered by the bundled OpenSearch plugin, and only while its switch is on. See [Choose a search backend](../how-to/choose-a-search-backend.md). |
+| `searchEngine` | String | `database` | Search backend that answers artifact search and holds the index. `database` ships with Ingot, and a plugin can register more ids. Environment variable `INGOT_LOCAL_SEARCHENGINE`, with `REPOSILITE_LOCAL_SEARCHENGINE` as fallback. An id that no backend has registered answers `503` on the search routes, instead of `404`. The id `opensearch` is registered by the bundled OpenSearch plugin, and only while its switch is on. The id `elasticsearch` is registered by the Elasticsearch plugin, which is not bundled and loads only when its jar is in the plugins directory. See [Choose a search backend](../how-to/choose-a-search-backend.md). |
 
 ### Bundled plugin switches
 
@@ -124,6 +124,8 @@ The image ships three plugins in `/app/bundled-plugins/`, and each one loads onl
 | `INGOT_METRICS_ENABLED` | `prometheus-plugin.jar` | off | Metrics endpoint. See [Prometheus plugin](environment-variables.md#prometheus-plugin). |
 | `INGOT_NEXUS_IMPORT_ENABLED` | `nexus-import-plugin.jar` | off | Nexus Repository 3 importer. See [Nexus import variables](environment-variables.md#nexus-import-variables). |
 | `INGOT_OPENSEARCH_ENABLED` | `opensearch-plugin.jar` | off | OpenSearch search backend, which registers the id `opensearch`. See [OpenSearch search backend](opensearch-search-backend.md). |
+
+The Elasticsearch plugin is not in this list, because it is not bundled. Install its jar in the plugins directory to use it, see [Elasticsearch search backend](elasticsearch-search-backend.md).
 
 ### Debug
 
