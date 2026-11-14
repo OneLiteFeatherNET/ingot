@@ -1,0 +1,14 @@
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        {"prefix": {"group_id_lc": "net"}},
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "aggs": {
+    "groups": {"terms": {"field": "gav", "size": 10002}}
+  }
+}
