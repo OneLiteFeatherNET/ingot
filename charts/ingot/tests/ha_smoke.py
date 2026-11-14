@@ -257,6 +257,17 @@ CURL_SCRIPT = (
 check runs two calls in the pod at the same moment."""
 """Runs one request from the client pod and prints the status, the headers and the base64 body."""
 
+CURL_BODYLESS_SCRIPT = (
+    'm="$1"; u="$2"; shift 2; d=$(mktemp -d)\n'
+    'code=$(curl -sS -X "$m" --max-time 240 -o "$d/out" -D "$d/hdr" -w "%{http_code}" "$@" "$u") || code=000\n'
+    'echo "$code"; cat "$d/hdr" 2>/dev/null | tr -d "\\r"; echo "---"; base64 "$d/out" 2>/dev/null | tr -d "\\n"; echo\n'
+    'rm -rf "$d"\n'
+)
+"""The same request without a body. It never reads stdin, so a stream that does not deliver end of input cannot stall it."""
+POD_TIMEOUT_SECONDS = 260
+"""The bound of one request inside the client pod, below the 300 s the driver allows kubectl exec, so a stuck request
+ends in the pod with its own message before the driver gives up."""
+
 
 def sha256_hex(data):
     return hashlib.sha256(data).hexdigest()
@@ -322,6 +333,16 @@ class Kubectl:
         return self.run(["get", "pod", pod, "-o", "jsonpath={.status.phase}"], check=False).stdout.decode().strip()
 
 
+def exec_args(method, url, headers, body):
+    """The kubectl exec arguments of one request in the client pod. A request with a body attaches stdin and streams the
+    body into the pod. A bodyless request attaches no stdin at all and runs the script that never reads it. Both are
+    bounded inside the pod by POD_TIMEOUT_SECONDS."""
+    bound = ["timeout", str(POD_TIMEOUT_SECONDS)]
+    if body:
+        return ["exec", "-i", CLIENT, "--", *bound, "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
+    return ["exec", CLIENT, "--", *bound, "sh", "-c", CURL_BODYLESS_SCRIPT, "sh", method, url, *headers]
+
+
 class ClusterHttp:
     """Requests to the pods and the Service, sent from the in-cluster client pod."""
 
@@ -329,12 +350,16 @@ class ClusterHttp:
         self.kubectl = kubectl
 
     def request(self, method, url, *, headers=(), body=b"", timeout=300):
-        args = ["exec", "-i", CLIENT, "--", "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
-        result = self.kubectl.run(args, stdin=body, timeout=timeout)
+        args = exec_args(method, url, headers, body)
+        try:
+            result = self.kubectl.run(args, stdin=body, timeout=timeout)
+        except subprocess.TimeoutExpired as expired:
+            stage = "sending the body" if body else "waiting for the answer"
+            raise SmokeFailure(f"{method} {url} did not finish within {timeout}s ({stage}, kubectl exec)") from expired
         return parse_curl_output(result.stdout.decode("utf-8", errors="replace"))
 
     def start(self, method, url, *, headers=()):
-        args = ["exec", "-i", CLIENT, "--", "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
+        args = exec_args(method, url, headers, b"")
         return subprocess.Popen(self.kubectl.argv(args), stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

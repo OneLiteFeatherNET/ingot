@@ -9,10 +9,15 @@ Run from the repository root:
     python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
 """
 
+import subprocess
 import unittest
 
 from ha_smoke import (
+    CURL_BODYLESS_SCRIPT,
     CURL_SCRIPT,
+    ClusterHttp,
+    POD_TIMEOUT_SECONDS,
+    exec_args,
     run_checks,
     READER_SCRIPT,
     READ_TIMEOUT_SECONDS,
@@ -436,3 +441,50 @@ class CurlOutputTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BodilessRequestTest(unittest.TestCase):
+
+    def test_a_bodyless_request_attaches_no_stdin(self):
+        args = exec_args("POST", "http://pod/x", [], b"")
+        self.assertNotIn("-i", args, "a request without a body must not attach stdin, or it can wait for an end of input")
+
+    def test_a_bodyless_request_does_not_read_stdin_in_the_pod(self):
+        self.assertNotIn("cat >", CURL_BODYLESS_SCRIPT, "the bodyless script must not read the standard input")
+
+    def test_a_request_with_a_body_still_attaches_stdin(self):
+        args = exec_args("PUT", "http://pod/x", [], b"data")
+        self.assertIn("-i", args, "a request with a body streams the body through stdin")
+
+    def test_both_request_shapes_are_bounded_inside_the_pod(self):
+        for args in (exec_args("POST", "http://pod/x", [], b""), exec_args("PUT", "http://pod/x", [], b"data")):
+            self.assertEqual(["timeout", str(POD_TIMEOUT_SECONDS)], args[args.index("--") + 1:args.index("--") + 3],
+                             "the pod-side timeout wraps the command so it fires before the driver's own cap")
+
+    def test_the_pod_side_bound_is_below_the_driver_cap_of_five_minutes(self):
+        self.assertLess(POD_TIMEOUT_SECONDS, 300, "the pod must give up before kubectl exec is killed at 300 s")
+
+    def test_the_bodyless_command_keeps_method_and_url_as_arguments(self):
+        args = exec_args("POST", "http://pod/run", ["-H", "X: y"], b"")
+        self.assertEqual(["POST", "http://pod/run", "-H", "X: y"], args[-4:],
+                         "the method, the url and the headers reach the script as its arguments")
+
+
+class TimeoutNamingTest(unittest.TestCase):
+
+    class TimedOutKubectl:
+        def argv(self, args):
+            return list(args)
+
+        def run(self, args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=args, timeout=300)
+
+    def test_a_timed_out_request_fails_naming_its_method_and_url(self):
+        http = ClusterHttp(self.TimedOutKubectl())
+        with self.assertRaises(SmokeFailure) as caught:
+            http.request("POST", "http://10.0.0.7:8080/api/cleanup/policies/smoke/run")
+        message = str(caught.exception)
+        self.assertIn("POST http://10.0.0.7:8080/api/cleanup/policies/smoke/run", message,
+                      "the failure must name the method and the url of the request that hung")
+        self.assertIn("waiting for the answer", message, "the failure must name the stage the request was in")
+
