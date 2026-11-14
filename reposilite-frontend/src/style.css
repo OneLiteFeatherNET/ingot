@@ -123,6 +123,14 @@
   }
 
   /*
+   * The top bar is sticky and covers the top of the window. Anything the browser scrolls into view (the focus that
+   * a navigation moves to the page, an anchor jump) lands under it unless the scroll keeps the bar's height free.
+   */
+  html {
+    scroll-padding-top: var(--spacing-md-top-bar);
+  }
+
+  /*
    * Preflight styles an <input> only when it has a type. Thirteen inputs in the dashboard
    * have none, and they are laid out against the bare box, so the Preflight declarations
    * are put back for that one selector.
