@@ -15,7 +15,6 @@
  */
 
 @file:OptIn(ExperimentalIngotStorageApi::class)
-@file:Suppress("DEPRECATION") // implements the old name of RelatedKeyAware, which core still asks for, until the callers are switched
 
 package com.reposilite.storage.s3
 
@@ -45,6 +44,7 @@ import net.onelitefeather.ingot.storage.capability.ClusterBus
 import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
 import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
 import net.onelitefeather.ingot.storage.capability.ReadinessProbe
+import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
 import net.onelitefeather.ingot.storage.capability.UsageCapability
 import panda.std.Result
 import panda.std.Result.ok

@@ -20,6 +20,7 @@ import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.storage.api.toLocation
 import net.onelitefeather.ingot.repository.RegisteredRepository
 import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
+import net.onelitefeather.ingot.storage.capability.ClusterBus
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 
 /**
@@ -41,8 +42,8 @@ internal class MavenRepositoryRegistry(
         repositoryProvider.getRepository(repository)?.resolutionCache?.invalidate(path.toLocation())
     }
 
-    override fun bindToClusterBus() =
-        repositoryProvider.bindToClusterBus()
+    override fun bindToClusterBus(clusterBus: ClusterBus) =
+        repositoryProvider.bindToClusterBus(clusterBus)
 
     override fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean =
         storageUsageService.applyReceived(event)

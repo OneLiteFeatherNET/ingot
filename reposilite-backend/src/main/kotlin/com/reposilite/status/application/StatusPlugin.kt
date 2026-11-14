@@ -36,9 +36,9 @@ import com.reposilite.status.ReadinessCheck
 import com.reposilite.status.StatusCommand
 import com.reposilite.status.StatusFacade
 import com.reposilite.status.StatusSnapshotScheduler
-import com.reposilite.status.answersListing
+import com.reposilite.status.answered
+import com.reposilite.status.readinessOf
 import com.reposilite.status.infrastructure.StatusEndpoints
-import com.reposilite.storage.api.Location
 import com.reposilite.web.HttpServer
 import com.reposilite.web.api.HttpServerStoppedEvent
 import com.reposilite.web.api.RoutingSetupEvent
@@ -82,7 +82,7 @@ internal class StatusPlugin : ReposilitePlugin() {
             },
             ReadinessCheck("storage") {
                 facade<MavenFacade>().getRepositories().all { repository ->
-                    repository.storageProvider.getFiles(Location.empty()).answersListing()
+                    readinessOf(repository.storageProvider).answered()
                 }
             },
         )

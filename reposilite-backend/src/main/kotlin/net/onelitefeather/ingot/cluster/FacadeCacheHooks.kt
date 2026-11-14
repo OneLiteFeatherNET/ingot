@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.facade
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
+import net.onelitefeather.ingot.storage.capability.ClusterBus
 
 /** Applies the cache hooks through the facades of the running server. Facades are looked up when a hook runs, not earlier. */
 internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterCacheHooks {
@@ -46,10 +47,13 @@ internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterC
     }
 
     override fun clusterBusOpened() {
-        plugin.facade<RepositoryCacheCoordinator>().bindToClusterBus()
+        plugin.facade<RepositoryCacheCoordinator>().bindToClusterBus(ClusterBusPort)
     }
 
     override fun readOnlyChanged() {
         plugin.facade<ReadOnlyFacade>().refresh()
     }
 }
+
+/** The cluster bus of this instance, as the storage capabilities see it. The bus has no members yet, so the port only identifies it. */
+internal object ClusterBusPort : ClusterBus
