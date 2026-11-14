@@ -67,6 +67,11 @@ class TriggerTest(unittest.TestCase):
         for key in ("paths", "paths-ignore", "branches-ignore"):
             self.assertNotIn(key, pull_request)
 
+    def test_workflow_dispatch_is_offered_and_the_gate_receives_the_ref(self):
+        self.assertIn("workflow_dispatch", triggers())
+        self.assertIn('--ref "$REF"', read_text())
+        self.assertIn("REF: ${{ github.ref }}", read_text())
+
     def test_only_expected_events_start_the_workflow(self):
         self.assertLessEqual(set(triggers()), {"pull_request", "workflow_dispatch"})
 

@@ -18,7 +18,7 @@ Rules, in this order:
 
 1. An unknown event or an unusable input is a scope failure: every job runs in full, `ok` is `false` and the exit
    status is 1.
-2. `workflow_dispatch` runs every job in full.
+2. `workflow_dispatch` on `refs/heads/main` runs every job in full. On any other ref nothing runs and `ok` is `false`.
 3. A release pull request needs `ci:heavy`. With it every job runs in full, without it nothing runs and `ok` is `false`.
 4. A fork pull request does not rerun on `synchronize`, because the label was given to code the maintainer reviewed.
    When a label is present `ok` is `false` until the maintainer removes and re-adds it.
@@ -48,6 +48,7 @@ AREA_LABELS = {
     "ci:search": ("search",),
     "ci:codeql": ("codeql",),
 }
+MAIN_REF = "refs/heads/main"
 RELEASE_REF_PREFIX = "release-please--"
 PULL_REQUEST_ACTIONS = ("opened", "reopened", "synchronize", "labeled", "unlabeled")
 GREEN_RESULTS = ("success", "skipped")
@@ -61,10 +62,12 @@ class Decision(NamedTuple):
     reason: str
 
 
-def decide(event_name, action, labels, head_ref, head_repo, repo) -> Decision:
+def decide(event_name, action, labels, head_ref, head_repo, repo, ref="") -> Decision:
     """Returns the heavy jobs a pull request or dispatch asks for."""
     everything = Decision(HEAVY_JOBS, True, False, True, "")
     if event_name == "workflow_dispatch":
+        if ref != MAIN_REF:
+            return Decision((), False, False, False, "an on-demand heavy run starts from main only")
         return everything._replace(reason="on-demand run: every heavy job in full")
     if event_name != "pull_request" or action not in PULL_REQUEST_ACTIONS:
         return everything._replace(ok=False, reason=f"unknown event {event_name!r} action {action!r}: running everything")
@@ -154,7 +157,7 @@ def _run_decide(args) -> int:
     failed = False
     try:
         decision = decide(args.event_name, args.action, _parse_labels(args.labels),
-                          args.head_ref, args.head_repo, args.repo)
+                          args.head_ref, args.head_repo, args.repo, args.ref)
     except ValueError as error:
         failed = True
         decision = Decision(HEAVY_JOBS, True, False, False, f"scope step failed ({error}): running everything")
@@ -192,6 +195,7 @@ def main(argv=None) -> int:
     decide_parser.add_argument("--head-ref", default="")
     decide_parser.add_argument("--head-repo", default="")
     decide_parser.add_argument("--repo", default="")
+    decide_parser.add_argument("--ref", default="", help="git ref the workflow runs on, for workflow_dispatch")
     decide_parser.add_argument("--output", default="", help="file to append the key=value lines to")
     verdict_parser = sub.add_parser("verdict")
     verdict_parser.add_argument("--gate-result", default="")
