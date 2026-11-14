@@ -1,0 +1,16 @@
+{
+  "filter": {
+    "bool": {
+      "filter": [
+        {"terms": {"extension": ["jar"]}},
+        {"term": {"origin": "HOSTED"}},
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "aggs": {
+    "buckets": {
+      "terms": {"field": "repository", "size": 20, "order": [{"_count": "desc"}, {"_key": "asc"}]}
+    }
+  }
+}

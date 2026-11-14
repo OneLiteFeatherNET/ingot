@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"prefix": {"version_lc": "1.0"}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "filter": {
+    "bool": {
+      "filter": [
+        {"terms": {"extension": ["jar"]}},
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "aggs": {
+    "buckets": {
+      "terms": {"field": "classifier", "missing": "-", "size": 20, "order": [{"_count": "desc"}, {"_key": "asc"}]}
+    }
+  }
+}
