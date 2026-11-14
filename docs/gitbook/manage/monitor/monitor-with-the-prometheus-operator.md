@@ -118,6 +118,6 @@ Replace `ingot` with your release namespace and release name. A `401` in the tar
 ## Related
 
 * [Monitor status and failures](monitor-status-and-failures.md) lists the metrics and the alert rules, and explains installations without the image.
-* [Size the deployment](../../set-up/deploy/size-the-deployment.md) uses the heap and request metrics to choose the sizes.
+* [Size the deployment](../../set-up/size-the-deployment.md) uses the heap and request metrics to choose the sizes.
 * [Restrict network traffic](../../set-up/network/restrict-network-traffic.md) lists how to admit the scrape.
 * [Helm chart values](../../references/configuration/helm-values.md#monitoring) lists the keys of the three objects.

@@ -4,7 +4,7 @@ description: Run the Ingot server without its dashboard and the dashboard in its
 
 # Run the dashboard split from the server with Helm
 
-The split deployment runs the Ingot server without its dashboard, and the dashboard in a second workload built from the dashboard image. An ingress sends the dashboard paths to the dashboard and every other path to the server, so the browser sees one address. The [separate container](run-split-dashboard-container.md) page describes the same split with Docker Compose. This page does it with the Ingot Helm chart, where the split is one value.
+The split deployment runs the Ingot server without its dashboard, and the dashboard in a second workload built from the dashboard image. An ingress sends the dashboard paths to the dashboard and every other path to the server, so the browser sees one address. The [separate container](../deploy/run-split-dashboard-container.md) page describes the same split with Docker Compose. This page does it with the Ingot Helm chart, where the split is one value.
 
 ## Before you begin
 

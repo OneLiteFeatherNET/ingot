@@ -291,4 +291,4 @@ Checks for every pull request: every relative link resolves, no dash characters 
 
 * [Contributing to the docs](contributing-to-the-docs.md) holds the rules for a single page.
 * [Architecture overview](../references/architecture/architecture-overview.md) is the page that gets the first diagram.
-* [Deploy targets](../references/configuration/deploy-targets.md) and [Deployment options compared](../set-up/deploy/deployment-options-compared.md) are the sources of the modes page.
+* [Deploy targets](../references/configuration/deploy-targets.md) and [Deployment options compared](../set-up/deployment-options-compared.md) are the sources of the modes page.

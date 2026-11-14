@@ -76,7 +76,7 @@ A `413` means that a body limit of the edge or of Ingot is too small. A `502` or
 
 ## Related
 
-* [Run on Kubernetes](../deploy/run-on-kubernetes.md)
-* [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md)
+* [Run on Kubernetes](../kubernetes/run-on-kubernetes.md)
+* [Terminate TLS at the gateway](../kubernetes/terminate-tls-at-the-gateway.md)
 * [Run behind a reverse proxy](run-behind-reverse-proxy.md)
 * [Use S3 storage](../cluster/use-s3-storage.md) for the memory that one large upload holds

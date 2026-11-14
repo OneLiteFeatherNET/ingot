@@ -32,7 +32,7 @@ Login providers and group mapping.
 
 ## Repositories
 
-Hosted, proxy and group repositories, version policies and cleanup.
+Hosted, proxy and group repositories, version policies, cleanup and checksums.
 
 * [Create hosted repositories](repositories/create-hosted-repositories.md)
 * [Create a proxy repository](repositories/create-proxy-repositories.md)
@@ -42,7 +42,7 @@ Hosted, proxy and group repositories, version policies and cleanup.
 
 ## Search
 
-The search backend.
+The search backend and its index.
 
 * [Choose a search backend](search/choose-a-search-backend.md)
 * [Use OpenSearch for search](search/use-opensearch-for-search.md)

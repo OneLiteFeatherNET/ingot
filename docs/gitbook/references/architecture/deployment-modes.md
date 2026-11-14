@@ -48,12 +48,12 @@ The mode and the number of replicas are separate choices. Several server replica
 * Use `allInOne`, or a plain JAR or container, when the dashboard and the API can share one process.
 * Use `split` when the dashboard should restart, scale or be hardened apart from the artifact store.
 
-[Deployment options compared](../../set-up/deploy/deployment-options-compared.md) compares how each shape is installed, upgraded and rolled back.
+[Deployment options compared](../../set-up/deployment-options-compared.md) compares how each shape is installed, upgraded and rolled back.
 
 ## Related pages
 
 * [Deploy targets](../configuration/deploy-targets.md)
 * [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md)
-* [Run the dashboard split from the server with Helm](../../set-up/deploy/run-split-with-helm.md)
-* [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md)
+* [Run the dashboard split from the server with Helm](../../set-up/kubernetes/run-split-with-helm.md)
+* [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md)
 * [Architecture overview](architecture-overview.md)

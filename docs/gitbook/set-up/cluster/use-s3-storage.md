@@ -93,7 +93,7 @@ Pod Identity needs no annotation on the service account. Create the association 
 
 ### Region
 
-The region of the repository is used first. When it is empty, Ingot reads `AWS_REGION` from the environment of the pod. The chart can supply it with `objectStorage.existingSecret`, see [Run on Kubernetes](../deploy/run-on-kubernetes.md#use-s3-for-repositories).
+The region of the repository is used first. When it is empty, Ingot reads `AWS_REGION` from the environment of the pod. The chart can supply it with `objectStorage.existingSecret`, see [Run on Kubernetes](../kubernetes/run-on-kubernetes.md#use-s3-for-repositories).
 
 For the fields of a repository, see [Storage providers](../../references/configuration/storage-providers.md).
 

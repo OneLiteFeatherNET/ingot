@@ -4,7 +4,7 @@ description: Route the traffic to Ingot with the Gateway API HTTPRoute that the 
 
 # Route with a Gateway API HTTPRoute
 
-The chart can render a Gateway API `HTTPRoute` instead of an ingress. The route attaches to a Gateway that you already run, and it sends the requests of the host names you list to the Ingot Service. This page sets the route up. For the certificate on the Gateway listener, see [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md).
+The chart can render a Gateway API `HTTPRoute` instead of an ingress. The route attaches to a Gateway that you already run, and it sends the requests of the host names you list to the Ingot Service. This page sets the route up. For the certificate on the Gateway listener, see [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md).
 
 ## Before you begin
 
@@ -60,7 +60,7 @@ The first command prints `True` when the Gateway accepts the route. The second p
 
 ## Related
 
-* [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md) creates the certificate and the HTTPS listener.
+* [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md) creates the certificate and the HTTPS listener.
 * [Run on Kubernetes](run-on-kubernetes.md#expose-the-instance-with-ingress) describes the ingress that you use instead of the route.
 * [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md) explains the client address that Ingot sees behind a proxy.
 * [Helm chart values](../../references/configuration/helm-values.md#routing-and-network) lists the keys of the route.
