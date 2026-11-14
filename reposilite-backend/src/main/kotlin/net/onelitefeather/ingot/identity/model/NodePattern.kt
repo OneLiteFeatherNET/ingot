@@ -170,7 +170,7 @@ class NodePattern private constructor(
 
         /** The actions of an artifact node: the repository actions that are scoped to a path, so not `manage`. */
         val ARTIFACT_ACTIONS: List<String> = listOf("read", "deploy", "delete")
-        val ADMIN_AREAS: List<String> = listOf("settings", "users", "teams", "tokens", "maintenance", "audit", "console", "dashboard")
+        val ADMIN_AREAS: List<String> = listOf("settings", "users", "teams", "tokens", "maintenance", "audit", "console", "dashboard", "idp")
 
         /** The node that allows everything. */
         val EVERYTHING: NodePattern = NodePattern("*", Kind.EVERYTHING, null, null, null)
