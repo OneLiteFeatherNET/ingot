@@ -142,6 +142,13 @@ describe('MdSideSheet', () => {
     expect(document.activeElement, 'the focus is not moved to the opener').not.toBe(opener)
   })
 
+  it('draws the close glyph through MdIcon', async () => {
+    await mountSheet()
+
+    expect(closeButton().querySelector('svg').getAttribute('data-ingot-component'), 'the glyph is the shared MdIcon').toBe('md-icon')
+    expect(closeButton().querySelector('path').getAttribute('d'), 'the glyph is the close path of CloseIcon').toBe('M6 18L18 6M6 6l12 12')
+  })
+
   it('switches off its transition for a visitor who asks for less motion', async () => {
     await mountSheet()
 
