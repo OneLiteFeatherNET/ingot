@@ -151,20 +151,17 @@ The answer is `{"status":"UP"}` with status `200`. A failing instance answers `5
 
 ## Health checks
 
-The chart runs a readiness probe and a liveness probe. In the default all-in-one mode both send `GET /` to port `8080`. Set `probes.path` to point them at another path.
+The chart runs a readiness probe and a liveness probe on port `8080`. In the default all-in-one mode the liveness probe sends `GET /api/status/health`, and the readiness probe sends `GET /api/status/ready`. Set `probes.path` to change the liveness path, for example for a proxy that only forwards some paths.
 
-Set `probes.readinessPath` to `/api/status/ready` to send only the readiness probe to the readiness endpoint. It reports the database, the storage and, with a cluster bus, the bus. A replica that fails a check leaves the load balancer rotation, and the liveness probe does not restart it, so a database outage does not restart the pod.
+The liveness probe uses the health endpoint on purpose. It answers `200` while the replica drains and while it is at its request limit, so an overloaded or draining replica is not restarted. Its readiness answer is `503` during a drain, which takes the replica out of rotation.
 
-```yaml
-probes:
-  readinessPath: /api/status/ready
-```
+The readiness probe uses `/api/status/ready`, which reports the database, the storage and, with a cluster bus, the bus. A replica that fails a check leaves the load balancer rotation, and the liveness probe does not restart it, so a database outage does not restart the pod. Set `probes.readinessPath` only to override it.
 
 {% hint style="warning" %}
-With `probes.readinessPath` empty, the all-in-one readiness probe checks whether `/` answers, so a replica whose database is down can still pass it. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
+Earlier chart versions probed `/` for both. A pinned image that predates `/api/status/ready` answers `404` there, so its pods never become ready. Keep such an image by setting `probes.readinessPath: /api/status/health`, which does not check the database. Upgrading the chart and the image together avoids this.
 {% endhint %}
 
-In split mode the readiness probe uses `/api/status/ready` by default, with a 3 second timeout and two failures. See [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
+In both modes the readiness probe uses `/api/status/ready` by default, with a 3 second timeout and two failures, so one slow database or storage check does not take a replica out of rotation. Split mode reads its own `probes.split.readiness` block, which has the same defaults. See [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
 
 Kubernetes ignores the `HEALTHCHECK` of the image. Only the probes of the chart apply.
 
@@ -432,7 +429,7 @@ The schema lock and the metadata lock are shared by all pods of one database. Th
 
 These limits still apply:
 
-* The all-in-one probes use `/` unless `probes.readinessPath` is set.
+* The all-in-one liveness probe uses `/api/status/health` unless `probes.path` is set, and the readiness probe uses `/api/status/ready` unless `probes.readinessPath` is set.
 * Shutdown does not wait for in-flight requests unless `deployment.shutdown` or `INGOT_SHUTDOWN_TIMEOUT` is set.
 
 The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.

@@ -42,7 +42,7 @@ spec:
         livenessProbe:
           failureThreshold: 3
           httpGet:
-            path: /
+            path: /api/status/health
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 2
@@ -55,15 +55,15 @@ spec:
           name: http
           protocol: TCP
         readinessProbe:
-          failureThreshold: 1
+          failureThreshold: 2
           httpGet:
-            path: /
+            path: /api/status/ready
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 2
           periodSeconds: 10
           successThreshold: 1
-          timeoutSeconds: 1
+          timeoutSeconds: 3
         resources:
           limits:
             cpu: 2

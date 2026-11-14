@@ -166,16 +166,14 @@ Probe path of the server workload: the server root in allInOne mode, the health 
 {{- end }}
 
 {{/*
-Path of the readiness probe of the server: probes.readinessPath when it is set, the readiness endpoint in split mode and
-the root path in allInOne mode. Liveness is not affected.
+Path of the readiness probe of the server: probes.readinessPath when it is set, otherwise the readiness endpoint in both
+modes. It is never the root path, which answers 503 while the server drains. Liveness is not affected.
 */}}
 {{- define "ingot.readinessProbePath" -}}
 {{- if .Values.probes.readinessPath }}
 {{- .Values.probes.readinessPath }}
-{{- else if eq .Values.mode "split" }}
-{{- "/api/status/ready" }}
 {{- else }}
-{{- .Values.probes.path }}
+{{- "/api/status/ready" }}
 {{- end }}
 {{- end }}
 
