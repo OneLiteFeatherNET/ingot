@@ -59,6 +59,7 @@ internal class SettingsEndpoints(
     private val sharedConfigurationFacade: SharedConfigurationFacade,
     private val hideSecrets: Reference<Boolean>,
     private val failureFacade: FailureFacade,
+    private val identityGuard: SettingsWriteGuard,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -170,7 +171,12 @@ internal class SettingsEndpoints(
                     ?.let { settingsReference ->
                         // Without If-Match the write is unconditional, as it always was. The precondition and the write share one lock.
                         sharedConfigurationFacade.updateDomain<SharedSettings>(this, ctx.header(Header.IF_MATCH), auditActor()) { current ->
-                            restoreStoredSecrets(this, settingsReference, body, current)
+                            restoreStoredSecrets(this, settingsReference, body, current).flatMap { restored ->
+                                // A change of an identity field is refused before it is stored, see SettingsWriteGuard.
+                                identityGuard.refusal(this, current, restored, identifier, auditActor())
+                                    ?.let { Result.error(it) }
+                                    ?: restored.asSuccess()
+                            }
                         }
                     }
                     ?.map { snapshot ->
