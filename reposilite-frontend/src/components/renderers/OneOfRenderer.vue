@@ -132,6 +132,22 @@ export const defaultValueOf = (branch) => {
   return {...value, ...Object.fromEntries(constantsOf(branch))}
 }
 
+/*
+ * The uischema of a variant without its discriminator. The select above already shows the variant, so a row
+ * with the same value beneath it only repeats it. The data keeps the discriminator; only the row is left out.
+ */
+export const withoutDiscriminator = (uischema, branch) => {
+  const discriminators = new Set(constantsOf(branch).map(([key]) => `#/properties/${key}`))
+  if (discriminators.size === 0 || !uischema) return uischema
+  const strip = (element) => ({
+    ...element,
+    elements: element.elements
+      .filter(child => !(child.type === 'Control' && discriminators.has(child.scope)))
+      .map(child => (Array.isArray(child.elements) ? strip(child) : child))
+  })
+  return Array.isArray(uischema.elements) ? strip(uischema) : uischema
+}
+
 /* A value nothing has been typed or chosen into: missing, null, or an empty string. */
 const isBlank = (value) => value === undefined || value === null || value === ''
 
@@ -216,7 +232,11 @@ export default {
       value: String(index),
       label: info.label
     })))
-    const selectedRenderInfo = computed(() => oneOfRenderInfos.value[committedIndex.value])
+    const selectedRenderInfo = computed(() => {
+      const info = oneOfRenderInfos.value[committedIndex.value]
+      if (!info) return info
+      return {...info, uischema: withoutDiscriminator(info.uischema, branches.value[committedIndex.value])}
+    })
 
     const switchTitle = computed(() => `Switch ${(jsonformsControl.value.label || 'Variants').toLowerCase()}?`)
     const switchBody = computed(() => {

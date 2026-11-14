@@ -613,7 +613,9 @@ watch(
       Loading configuration
     </p>
 
+    <!-- The reset sets every setting of every instance back to its default, so it belongs to the settings pages, not to one repository. -->
     <section
+      v-if="!repositoryPage"
       aria-labelledby="settings-danger-title"
       class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
     >

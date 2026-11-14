@@ -46,3 +46,14 @@ test.describe('repositories table layout', () => {
     })
   }
 })
+
+test.describe('repository page controls', () => {
+  test('shows one danger zone on a repository page, and no factory reset', async ({ adminPage: page, seed }, testInfo) => {
+    const repository = await seed.create(unbrokenName(testInfo, 'zone'), { description: 'Danger zone check' })
+    await page.goto(siteUrl(`/settings/repositories/${repository}`))
+
+    await expect(page.getByRole('region', { name: 'Danger zone', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Danger zone', exact: true }), 'the repository has one danger zone, the one that deletes it').toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Factory reset', exact: true }), 'a factory reset belongs to the settings page, not to one repository').toHaveCount(0)
+  })
+})
