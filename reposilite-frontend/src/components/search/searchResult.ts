@@ -22,8 +22,113 @@
  */
 import prettyBytes from 'pretty-bytes'
 import { instantToDate } from '../../helpers/apiTime'
+import type { components } from '../../types/api'
 
-const toDate = (value) => {
+type Origin = components['schemas']['Origin']
+type IndexState = components['schemas']['IndexState']
+type ApiSearchItem = components['schemas']['ArtifactSearchItem']
+type ApiSearchResponse = components['schemas']['ArtifactSearchResponse']
+type ApiSearchFacets = components['schemas']['SearchFacets']
+type ApiFileItem = components['schemas']['ArtifactFileItem']
+type ApiFilesResponse = components['schemas']['ArtifactFilesResponse']
+
+// The progress of a build is read from the index status too. The generated types do not declare
+// these two fields, so they are added here as optional values, as the fake API sends them.
+type ApiIndexStatus = Partial<components['schemas']['IndexStatus']> & {
+  repositoriesDone?: number | null
+  repositoriesTotal?: number | null
+}
+
+// What the normalizers accept: an answer may leave out any field, so every field is optional.
+type LooseItem = Partial<Omit<ApiSearchItem, 'repositories'>> & {
+  repositories?: Partial<components['schemas']['RepositoryPresence']>[]
+}
+type LoosePage = Partial<Omit<ApiSearchResponse, 'items' | 'facets' | 'indexStatus'>> & {
+  items?: LooseItem[]
+  facets?: Partial<ApiSearchFacets>
+  indexStatus?: ApiIndexStatus
+}
+type LooseFile = Partial<ApiFileItem>
+type LooseFiles = Partial<Omit<ApiFilesResponse, 'items'>> & { items?: LooseFile[] }
+
+export interface FacetBucket {
+  value: string
+  count: number
+}
+
+export interface RepositoryRef {
+  name: string
+  origin: Origin
+}
+
+export interface SearchItem {
+  groupId: string
+  artifactId: string
+  version: string
+  latestVersion: string | null
+  snapshot: boolean
+  repositories: RepositoryRef[]
+  fileCount: number
+  lastModified: Date | null
+  browseLink: string
+}
+
+export interface IndexStatus {
+  state: IndexState
+  lagSeconds: number
+  lastFullRebuild: Date | null
+  repositoriesDone: number | null
+  repositoriesTotal: number | null
+}
+
+export type Facets = Record<'repository' | 'extension' | 'classifier' | 'origin' | 'snapshot', FacetBucket[]>
+
+export interface SearchPage {
+  items: SearchItem[]
+  page: number
+  size: number
+  total: number
+  totalCapped: boolean
+  facets: Facets
+  indexStatus: IndexStatus
+}
+
+export interface SearchFile {
+  repository: string
+  path: string
+  name: string
+  classifier: string
+  extension: string
+  size: number
+  lastModified: Date | null
+  origin: Origin
+  sourceHost: string
+  sha1: string
+  browseLink: string
+}
+
+export interface SearchFiles {
+  items: SearchFile[]
+  page: number
+  size: number
+  total: number
+}
+
+export interface Notice {
+  kind: 'building' | 'missing' | 'degraded'
+  text: string
+}
+
+// The files of one open row: what has been loaded so far, and whether the last request is still on its way.
+export interface FilesState {
+  status: 'loading' | 'ready' | 'error'
+  items: SearchFile[]
+  total: number
+  page: number
+  message?: string
+}
+
+const toDate = (value: unknown): Date | null => {
   if (typeof value === 'number') return instantToDate(value)
   if (typeof value === 'string') {
     const date = new Date(value)
@@ -32,14 +137,14 @@ const toDate = (value) => {
   return null
 }
 
-const text = (value) => (typeof value === 'string' ? value : '')
-const count = (value) => (Number.isFinite(value) ? value : 0)
-const orNull = (value) => (typeof value === 'number' ? value : null)
+const text = (value: unknown): string => (typeof value === 'string' ? value : '')
+const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+const orNull = (value: unknown): number | null => (typeof value === 'number' ? value : null)
 
-const normalizeFacet = (buckets) =>
+const normalizeFacet = (buckets: FacetBucket[] | undefined): FacetBucket[] =>
   (Array.isArray(buckets) ? buckets : []).map(bucket => ({ value: String(bucket.value ?? ''), count: count(bucket.count) }))
 
-const normalizeItem = (item) => ({
+const normalizeItem = (item: LooseItem): SearchItem => ({
   groupId: text(item.groupId),
   artifactId: text(item.artifactId),
   version: text(item.version),
@@ -52,28 +157,30 @@ const normalizeItem = (item) => ({
   browseLink: text(item.browseLink)
 })
 
-const normalizeStatus = (status = {}) => ({
-  state: ['READY', 'BUILDING', 'MISSING', 'DEGRADED'].includes(status.state) ? status.state : 'READY',
+const INDEX_STATES: readonly IndexState[] = ['READY', 'BUILDING', 'MISSING', 'DEGRADED']
+
+const normalizeStatus = (status: ApiIndexStatus = {}): IndexStatus => ({
+  state: INDEX_STATES.includes(status.state as IndexState) ? status.state as IndexState : 'READY',
   lagSeconds: count(status.lagSeconds),
   lastFullRebuild: toDate(status.lastFullRebuild),
   repositoriesDone: orNull(status.repositoriesDone),
   repositoriesTotal: orNull(status.repositoriesTotal)
 })
 
-const normalizePage = (data = {}) => ({
+const normalizePage = (data: LoosePage = {}): SearchPage => ({
   items: (Array.isArray(data.items) ? data.items : []).map(normalizeItem),
   page: count(data.page),
-  size: Number.isFinite(data.size) ? data.size : 20,
+  size: Number.isFinite(data.size) ? data.size as number : 20,
   total: count(data.total),
   totalCapped: data.totalCapped === true,
   facets: Object.fromEntries(
-    ['repository', 'extension', 'classifier', 'origin', 'snapshot']
+    (['repository', 'extension', 'classifier', 'origin', 'snapshot'] as const)
       .map(name => [name, normalizeFacet(data.facets?.[name])])
-  ),
+  ) as Facets,
   indexStatus: normalizeStatus(data.indexStatus)
 })
 
-const normalizeFile = (file) => ({
+const normalizeFile = (file: LooseFile): SearchFile => ({
   repository: text(file.repository),
   path: text(file.path),
   name: text(file.name),
@@ -87,33 +194,34 @@ const normalizeFile = (file) => ({
   browseLink: text(file.browseLink)
 })
 
-const normalizeFiles = (data = {}) => ({
+const normalizeFiles = (data: LooseFiles = {}): SearchFiles => ({
   items: (Array.isArray(data.items) ? data.items : []).map(normalizeFile),
   page: count(data.page),
-  size: Number.isFinite(data.size) ? data.size : 50,
+  size: Number.isFinite(data.size) ? data.size as number : 50,
   total: count(data.total)
 })
 
 // A mirror entry is a copy of a proxy repository, and the label says so (spec section 8.1).
-const repositoryLabel = (repository) =>
+const repositoryLabel = (repository: RepositoryRef): string =>
   (repository.origin === 'MIRROR' ? `cached from ${repository.name}` : repository.name)
 
-const rowKey = (item) => `${item.groupId}:${item.artifactId}:${item.version}`
+const rowKey = (item: Pick<SearchItem, 'groupId' | 'artifactId' | 'version'>): string =>
+  `${item.groupId}:${item.artifactId}:${item.version}`
 
 // UTC on purpose: the same instant reads the same day on every machine.
-const formatDay = (date) => (date ? date.toISOString().slice(0, 10) : '')
+const formatDay = (date: Date | null): string => (date ? date.toISOString().slice(0, 10) : '')
 
-const formatSize = (bytes) => prettyBytes(bytes, { binary: true })
+const formatSize = (bytes: number): string => prettyBytes(bytes, { binary: true })
 
 // The text of the live region after a search (spec section 8.5).
-const announcement = ({ total, totalCapped }) => {
+const announcement = ({ total, totalCapped }: Pick<SearchPage, 'total' | 'totalCapped'>): string => {
   if (totalCapped) return 'More than 10 000 results'
   if (total === 0) return 'No results'
   return total === 1 ? '1 result' : `${total} results`
 }
 
 // What the index state asks the page to say, or null while the index is ready (spec section 8.3).
-const indexNotice = (status) => {
+const indexNotice = (status: IndexStatus): Notice | null => {
   if (status.state === 'BUILDING') {
     const progress = status.repositoriesTotal === null
       ? 'Indexing.'

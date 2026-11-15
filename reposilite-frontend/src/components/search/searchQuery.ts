@@ -25,17 +25,46 @@
  */
 import { textFromParam } from '../../router/url-state'
 
-const SORTS = ['groupId', 'artifactId', 'version', 'modified', 'size']
-const ORDERS = ['asc', 'desc']
-const SNAPSHOTS = ['all', 'true', 'false']
-const ORIGINS = ['all', 'hosted', 'mirror']
+const SORTS = ['groupId', 'artifactId', 'version', 'modified', 'size'] as const
+const ORDERS = ['asc', 'desc'] as const
+const SNAPSHOTS = ['all', 'true', 'false'] as const
+const ORIGINS = ['all', 'hosted', 'mirror'] as const
+
+export type Sort = typeof SORTS[number]
+export type Order = typeof ORDERS[number]
+export type Snapshot = typeof SNAPSHOTS[number]
+export type OriginFilter = typeof ORIGINS[number]
+
+// The state of the page: every parameter the address can hold, read into the type it is used as.
+export interface SearchQuery {
+  q: string
+  groupId: string
+  artifactId: string
+  version: string
+  repository: string[]
+  extension: string[]
+  classifier: string[]
+  snapshot: Snapshot
+  origin: OriginFilter
+  modifiedAfter: string
+  modifiedBefore: string
+  sizeMin: string
+  sizeMax: string
+  sort: Sort
+  order: Order
+  page: number
+  size: number
+}
+
+// The address as the router holds it: a repeated parameter is a list, and a value is text.
+export type RouteQuery = Record<string, string | string[]>
 
 const DEFAULT_SIZE = 20
 const MAX_SIZE = 100
 // The result window the server allows (page * size + size).
 const RESULT_WINDOW = 10000
 
-const DEFAULT_QUERY = Object.freeze({
+const DEFAULT_QUERY: SearchQuery = Object.freeze({
   q: '',
   groupId: '',
   artifactId: '',
@@ -55,32 +84,33 @@ const DEFAULT_QUERY = Object.freeze({
   size: DEFAULT_SIZE
 })
 
-const TEXT_KEYS = ['q', 'groupId', 'artifactId', 'version']
-const LIST_KEYS = ['repository', 'extension', 'classifier']
+const TEXT_KEYS = ['q', 'groupId', 'artifactId', 'version'] as const
+const LIST_KEYS = ['repository', 'extension', 'classifier'] as const
 // The filters, as opposed to the text, the sort and the paging.
 const FILTER_KEYS = [
   'groupId', 'artifactId', 'version', 'repository', 'extension', 'classifier', 'snapshot', 'origin',
   'modifiedAfter', 'modifiedBefore', 'sizeMin', 'sizeMax'
-]
+] as const
 
-const listFromParam = (param, normalise = value => value) => {
+const listFromParam = (param: unknown, normalise: (value: string) => string = value => value): string[] => {
   const values = [param ?? []].flat()
-    .filter(value => typeof value === 'string' && value.trim() !== '')
+    .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
     .map(value => normalise(value.trim()))
   return [...new Set(values)]
 }
 
-const oneOf = (param, allowed, fallback) => (allowed.includes(param) ? param : fallback)
+const oneOf = <T extends string>(param: unknown, allowed: readonly T[], fallback: T): T =>
+  (allowed.includes(param as T) ? (param as T) : fallback)
 
-const wholeNumber = (param, fallback) =>
+const wholeNumber = (param: unknown, fallback: number): number =>
   (typeof param === 'string' && /^\d+$/.test(param) ? Number(param) : fallback)
 
-const bytesFromParam = (param) => (typeof param === 'string' && /^\d+$/.test(param) ? param : '')
+const bytesFromParam = (param: unknown): string => (typeof param === 'string' && /^\d+$/.test(param) ? param : '')
 
-const instantFromParam = (param) =>
+const instantFromParam = (param: unknown): string =>
   (typeof param === 'string' && !Number.isNaN(Date.parse(param)) ? param : '')
 
-const parseSearchQuery = (query = {}) => ({
+const parseSearchQuery = (query: Record<string, unknown> = {}): SearchQuery => ({
   q: textFromParam(query.q),
   groupId: textFromParam(query.groupId),
   artifactId: textFromParam(query.artifactId),
@@ -101,9 +131,9 @@ const parseSearchQuery = (query = {}) => ({
 })
 
 // The address for a state: only what differs from the default, numbers as text.
-const toRouteQuery = (state) => {
-  const query = {}
-  for (const key of [...TEXT_KEYS, 'snapshot', 'origin', 'modifiedAfter', 'modifiedBefore', 'sizeMin', 'sizeMax', 'sort', 'order']) {
+const toRouteQuery = (state: SearchQuery): RouteQuery => {
+  const query: RouteQuery = {}
+  for (const key of [...TEXT_KEYS, 'snapshot', 'origin', 'modifiedAfter', 'modifiedBefore', 'sizeMin', 'sizeMax', 'sort', 'order'] as const) {
     if (state[key] !== DEFAULT_QUERY[key]) query[key] = state[key]
   }
   for (const key of LIST_KEYS) {
@@ -115,7 +145,7 @@ const toRouteQuery = (state) => {
 }
 
 // The query string of the request: the same parameters, a repeated one once per value.
-const toRequestQuery = (state) => {
+const toRequestQuery = (state: SearchQuery): string => {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(toRouteQuery(state))) {
     for (const entry of [value].flat()) params.append(key, entry)
@@ -124,20 +154,20 @@ const toRequestQuery = (state) => {
 }
 
 // Any change to the query but the page itself starts again at the first page.
-const changeQuery = (state, changes) => ({ ...state, page: 0, ...changes })
+const changeQuery = (state: SearchQuery, changes: Partial<SearchQuery>): SearchQuery => ({ ...state, page: 0, ...changes })
 
 // Clears the filters. The text and the sort stay, because they are not filters.
-const resetFilters = (state) => {
-  const cleared = { ...state, page: 0 }
+const resetFilters = (state: SearchQuery): SearchQuery => {
+  const cleared: SearchQuery = { ...state, page: 0 }
   for (const key of FILTER_KEYS) {
-    cleared[key] = Array.isArray(DEFAULT_QUERY[key]) ? [] : DEFAULT_QUERY[key]
+    Object.assign(cleared, { [key]: Array.isArray(DEFAULT_QUERY[key]) ? [] : DEFAULT_QUERY[key] })
   }
   return cleared
 }
 
 // The active filters in words, for the empty state to say what was asked.
-const activeFilters = (state) => {
-  const words = []
+const activeFilters = (state: SearchQuery): string[] => {
+  const words: string[] = []
   if (state.groupId) words.push(`group starts with ${state.groupId}`)
   if (state.artifactId) words.push(`artifact starts with ${state.artifactId}`)
   if (state.version) words.push(`version ${state.version}`)
@@ -158,12 +188,12 @@ const activeFilters = (state) => {
 }
 
 // A date input holds a day, the request an instant: a picked day is the UTC midnight that starts it.
-const dateInputValue = (instant) => (instant ? instant.slice(0, 10) : '')
+const dateInputValue = (instant: string): string => (instant ? instant.slice(0, 10) : '')
 
-const instantFromDateInput = (day) => (/^\d{4}-\d{2}-\d{2}$/.test(day) ? `${day}T00:00:00Z` : '')
+const instantFromDateInput = (day: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(day) ? `${day}T00:00:00Z` : '')
 
 // The last page the server will answer for: the pages of the total, within the result window.
-const lastPage = (total, size) => {
+const lastPage = (total: number, size: number): number => {
   const pages = Math.max(1, Math.ceil(total / size))
   const windowPages = Math.max(1, Math.floor(RESULT_WINDOW / size))
   return Math.min(pages, windowPages) - 1

@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import type { IndexStatus } from './searchResult'
 import {
   toDate,
   normalizePage,
@@ -32,7 +33,7 @@ const gav = (overrides = {}) => ({
   version: '3.14.0',
   latestVersion: '3.17.0',
   snapshot: false,
-  repositories: [{ name: 'releases', origin: 'HOSTED' }],
+  repositories: [{ name: 'releases', origin: 'HOSTED' as const }],
   fileCount: 8,
   lastModified: '2026-09-30T08:14:02Z',
   browseLink: '/browse/releases/org/apache/commons/commons-lang3/3.14.0',
@@ -160,7 +161,7 @@ describe('announcement', () => {
 })
 
 describe('indexNotice', () => {
-  const status = (overrides) => ({ state: 'READY', lagSeconds: 0, lastFullRebuild: null, repositoriesDone: null, repositoriesTotal: null, ...overrides })
+  const status = (overrides: Partial<IndexStatus>): IndexStatus => ({ state: 'READY', lagSeconds: 0, lastFullRebuild: null, repositoriesDone: null, repositoriesTotal: null, ...overrides })
 
   it('says nothing while the index is ready', () => {
     expect(indexNotice(status({}))).toBeNull()
@@ -177,7 +178,7 @@ describe('indexNotice', () => {
   })
 
   it('explains that nothing is indexed yet when the index is missing', () => {
-    expect(indexNotice(status({ state: 'MISSING' })).kind).toBe('missing')
+    expect(indexNotice(status({ state: 'MISSING' }))?.kind).toBe('missing')
   })
 
   it('says how far a degraded index lags, in whole minutes, rounded down', () => {
@@ -186,6 +187,6 @@ describe('indexNotice', () => {
   })
 
   it('does not name minutes for a degraded index that does not lag', () => {
-    expect(indexNotice(status({ state: 'DEGRADED', lagSeconds: 0 })).text).toBe('Results may be out of date.')
+    expect(indexNotice(status({ state: 'DEGRADED', lagSeconds: 0 }))?.text).toBe('Results may be out of date.')
   })
 })

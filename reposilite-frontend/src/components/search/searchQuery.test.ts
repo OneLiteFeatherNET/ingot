@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import type { SearchQuery } from './searchQuery'
 import {
   DEFAULT_QUERY,
   parseSearchQuery,
@@ -108,7 +109,7 @@ describe('toRouteQuery', () => {
   })
 
   it('writes only what differs from the defaults', () => {
-    const state = { ...DEFAULT_QUERY, q: 'commons', origin: 'mirror', page: 2 }
+    const state: SearchQuery = { ...DEFAULT_QUERY, q: 'commons', origin: 'mirror', page: 2 }
 
     expect(toRouteQuery(state)).toEqual({ q: 'commons', origin: 'mirror', page: '2' })
   })
@@ -120,7 +121,7 @@ describe('toRouteQuery', () => {
   })
 
   it('round-trips every parameter through the address', () => {
-    const state = {
+    const state: SearchQuery = {
       q: 'commons lang', groupId: 'org.apache', artifactId: 'lang', version: '3.14.0',
       repository: ['releases'], extension: ['jar', 'pom'], classifier: ['-', 'sources'],
       snapshot: 'false', origin: 'hosted', modifiedAfter: '2026-01-01T00:00:00Z',
@@ -170,7 +171,7 @@ describe('changeQuery', () => {
 
 describe('resetFilters', () => {
   it('clears every filter and keeps the text and the sort', () => {
-    const state = {
+    const state: SearchQuery = {
       ...DEFAULT_QUERY, q: 'commons', groupId: 'org', repository: ['releases'], origin: 'mirror',
       sizeMin: '5', sort: 'size', order: 'desc', page: 4
     }
@@ -185,7 +186,7 @@ describe('activeFilters', () => {
   })
 
   it('names each filter that is set, in a form a person can read', () => {
-    const state = { ...DEFAULT_QUERY, repository: ['releases'], origin: 'mirror', snapshot: 'false', sizeMin: '10' }
+    const state: SearchQuery = { ...DEFAULT_QUERY, repository: ['releases'], origin: 'mirror', snapshot: 'false', sizeMin: '10' }
 
     expect(activeFilters(state)).toEqual([
       'repository releases',

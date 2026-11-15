@@ -18,6 +18,12 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SearchBar from './SearchBar.vue'
 
+// The methods the bar exposes to its page, which the tests reach through the instance.
+interface SearchBarExposed {
+  focus: () => void
+  blur: () => void
+}
+
 const mountBar = (props = {}, slots = {}) =>
   mount(SearchBar, { props: { modelValue: '', label: 'Search things', ...props }, slots })
 
@@ -25,7 +31,7 @@ describe('SearchBar', () => {
   it('is a search landmark', () => {
     const wrapper = mountBar()
 
-    expect(wrapper.element.tagName).toBe('FORM')
+    expect((wrapper.element as HTMLElement).tagName).toBe('FORM')
     expect(wrapper.attributes('role')).toBe('search')
   })
 
@@ -62,11 +68,11 @@ describe('SearchBar', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([['']])
   })
 
-  it('does not reload the page when the form is submitted', async () => {
+  it('does not reload the page when the form is submitted', () => {
     const wrapper = mountBar({ modelValue: 'nightly' })
     const event = new Event('submit', { cancelable: true })
 
-    wrapper.element.dispatchEvent(event)
+    ;(wrapper.element as HTMLElement).dispatchEvent(event)
 
     expect(event.defaultPrevented, 'a submit must not navigate away').toBe(true)
   })
@@ -90,7 +96,7 @@ describe('SearchBar', () => {
 
     await wrapper.find('input').trigger('keydown', { key: 'ArrowDown' })
 
-    expect(wrapper.emitted('keydown')?.[0][0].key).toBe('ArrowDown')
+    expect(wrapper.emitted<[KeyboardEvent]>('keydown')?.[0][0].key).toBe('ArrowDown')
   })
 
   it('lets the page focus the input', () => {
@@ -99,7 +105,7 @@ describe('SearchBar', () => {
       attachTo: document.body
     })
 
-    wrapper.vm.focus()
+    ;(wrapper.vm as unknown as SearchBarExposed).focus()
 
     expect(document.activeElement).toBe(wrapper.find('input').element)
     wrapper.unmount()
@@ -110,9 +116,9 @@ describe('SearchBar', () => {
       props: { modelValue: '', label: 'Search things' },
       attachTo: document.body
     })
-    wrapper.vm.focus()
+    ;(wrapper.vm as unknown as SearchBarExposed).focus()
 
-    wrapper.vm.blur()
+    ;(wrapper.vm as unknown as SearchBarExposed).blur()
 
     expect(document.activeElement).not.toBe(wrapper.find('input').element)
     wrapper.unmount()
