@@ -75,10 +75,12 @@ contains <div id="app">: true
 == directory index
 GET releases/com/example/app/1.0/
 status: 200
+header: cache-control: no-cache, no-store, max-age=0
 header: content-length: 854
 header: content-security-policy: sandbox
 header: content-type: text/html
 header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Authorization, Cookie
 header: x-content-type-options: nosniff
 body:
 <!DOCTYPE html>
