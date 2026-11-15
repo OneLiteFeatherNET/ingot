@@ -211,4 +211,40 @@ test.describe('browse layout', () => {
       expect(Math.abs(right - reference), `right edge of the size of ${name} against the first row, in px`).toBeLessThanOrEqual(0.5)
     }
   })
+
+  test('shows the file names of a signed-out listing in full at 320 px', async ({ page, seed }) => {
+    await page.setViewportSize({ width: 320, height: 900 })
+    const repository = await seed.repository('names-320')
+    const directory = 'com/example/demo/1.0'
+    await seed.upload(repository, `${directory}/demo-1.0.jar`, 'jar bytes\n')
+    await seed.upload(repository, `${directory}/demo-1.0.pom`, '<project/>\n')
+    await seed.upload(repository, `${directory}/maven-metadata.xml`, '<metadata/>\n')
+    await page.goto(siteUrl(`/browse/${repository}/${directory}`))
+    await page.getByRole('button', { name: 'Compact list' }).click()
+
+    // The jar and the pom are the names the slot could cut. maven-metadata.xml keeps the view action of its row,
+    // which main reserves as well, so its name is not part of this check.
+    for (const name of ['demo-1.0.jar', 'demo-1.0.pom']) {
+      const label = page.locator('[data-ingot-component="detailed-list-entry"]').filter({ hasText: name }).locator('.md-body-large')
+      await expect(label, `the row of ${name}`).toHaveCount(1)
+      const shownInFull = await label.evaluate(element => element.scrollWidth <= element.clientWidth)
+      expect(shownInFull, `${name} is shown in full at 320 px`).toBe(true)
+    }
+    await expect(page.getByRole('link', { name: /^demo-1\.0\.pom\b/ }), 'the pom name is shown in full').toBeVisible()
+  })
+
+  test('reserves no action room in a signed-out listing without actions at 320 px', async ({ page, seed }) => {
+    await page.setViewportSize({ width: 320, height: 900 })
+    const repository = await seed.repository('no-actions-320')
+    const directory = 'com/example/demo/2.0'
+    await seed.upload(repository, `${directory}/demo-2.0.jar`, 'jar bytes\n')
+    await seed.upload(repository, `${directory}/demo-2.0-sources.jar`, 'sources\n')
+    await page.goto(siteUrl(`/browse/${repository}/${directory}`))
+    await page.getByRole('button', { name: 'Compact list' }).click()
+
+    const rows = page.locator('[data-ingot-component="detailed-list-entry"]')
+    await expect(rows, 'one row per uploaded file').toHaveCount(2)
+    const slotWidths = await rows.locator('[data-row-actions]').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
+    expect(slotWidths, 'the action slot of each row, in px').toEqual([0, 0])
+  })
 })

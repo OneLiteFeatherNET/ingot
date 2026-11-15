@@ -333,3 +333,21 @@ describe('FileList edit members of a group', () => {
     expect(wrapper.findAll('button').find(button => button.text() === 'Edit members')).toBeUndefined()
   })
 })
+
+describe('FileList action slot', () => {
+  const xml = { name: 'maven-metadata.xml', type: 'FILE', contentType: 'application/xml', contentLength: 512 }
+
+  it('gives every row no action room when no row of the listing has an action', () => {
+    const wrapper = mountList({ files: { list: [jar], error: false } })
+    const rows = wrapper.findAllComponents({ name: 'DetailedListEntry' })
+
+    expect(rows.map(row => row.props('actionSlots')), 'a signed-out listing of jars reserves nothing').toEqual([0])
+  })
+
+  it('gives every row the room of the widest row, so the sizes line up', () => {
+    const wrapper = mountList({ files: { list: [jar, xml], error: false } })
+    const rows = wrapper.findAllComponents({ name: 'DetailedListEntry' })
+
+    expect(rows.map(row => row.props('actionSlots')), 'the xml row offers one action, so each row reserves one').toEqual([1, 1])
+  })
+})

@@ -218,10 +218,10 @@ describe('DetailedListEntry actions slot', () => {
   const xml = { name: 'maven-metadata.xml', type: 'FILE', contentType: 'application/xml', contentLength: 512 }
   const javadoc = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentLength: 4096 }
   // Viewable and a javadoc: the widest set of actions a row can have.
-  const widest = { name: 'example-1.0-javadoc.xml', type: 'FILE', contentType: 'application/xml', contentLength: 1024 }
+  const widest = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentType: 'application/xml', contentLength: 1024 }
   const folder = { name: 'releases', type: 'DIRECTORY' }
 
-  const mountRow = (file) => {
+  const mountRow = (file, actionSlots) => {
     const wrapper = mount(DetailedListEntry, {
       props: {
         file,
@@ -229,7 +229,8 @@ describe('DetailedListEntry actions slot', () => {
         url: `https://repo.example/releases/net/example/${file.name}`,
         to: `/releases/net/example/${file.name}`,
         openDeleteEntryModal: () => {},
-        compactMode: true
+        compactMode: true,
+        actionSlots
       },
       global: { stubs: { 'router-link': RouterLinkStub } }
     })
@@ -241,16 +242,25 @@ describe('DetailedListEntry actions slot', () => {
     mounted.splice(0).forEach(wrapper => wrapper.unmount())
   })
 
-  it('gives every row the same actions slot, whatever actions the row has', () => {
-    const slots = [jar, xml, javadoc, widest, folder].map(file => actionsOf(mountRow(file)).classes().join(' '))
+  it('gives every row of a listing the same actions slot, whatever actions the row has', () => {
+    const slots = [jar, xml, javadoc, widest, folder].map(file => actionsOf(mountRow(file, 3)).classes().join(' '))
 
     expect(new Set(slots).size, 'the actions container of each row carries the same classes').toBe(1)
   })
 
-  it('reserves the width of the widest action set on a row with fewer actions', () => {
-    const wrapper = mountRow(jar)
+  it('sizes the slot by the widest row of the listing, not by its own actions', () => {
+    const slots = [0, 1, 2, 3].map(count => actionsOf(mountRow(jar, count)).classes())
 
-    expect(actionsOf(wrapper).classes(), 'a fixed width that holds view, javadoc and delete').toContain('w-32')
+    expect(slots.map(classes => classes.includes('w-0')), 'no action in the listing reserves no room').toEqual([true, false, false, false])
+    expect(slots.map(classes => classes.includes('w-10')), 'one action reserves one button').toEqual([false, true, false, false])
+    expect(slots.map(classes => classes.includes('w-21')), 'two actions reserve two buttons and a gap').toEqual([false, false, true, false])
+    expect(slots.map(classes => classes.includes('w-32')), 'three actions reserve three buttons and two gaps').toEqual([false, false, false, true])
+  })
+
+  it('keeps the slot of a listing on a row whose own actions are fewer', () => {
+    const wrapper = mountRow(jar, 3)
+
+    expect(actionsOf(wrapper).classes(), 'the slot is the listing width, three buttons wide').toContain('w-32')
     expect(wrapper.find('[aria-label="View example-1.0.jar in a new tab"]').exists(), 'a missing view action is not rendered').toBe(false)
     expect(wrapper.find('[aria-label="Open javadoc for example-1.0.jar in a new tab"]').exists(), 'a missing javadoc action is not rendered').toBe(false)
   })
