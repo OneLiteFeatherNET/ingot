@@ -1,6 +1,7 @@
 # Container tests of the search backends that are not the database: the OpenSearch backend of the plugin, which runs a secured
-# OpenSearch 2.x container through Testcontainers, and the Meilisearch backend of its plugin, which runs a Meilisearch 1.15
-# container through Testcontainers.
+# OpenSearch 2.x container through Testcontainers, the Elasticsearch backend of its plugin, which runs a secured Elasticsearch
+# 8.x and a secured Elasticsearch 9.x container through Testcontainers, and the Meilisearch backend of its plugin, which runs a
+# Meilisearch 1.15 container through Testcontainers.
 #
 # Called by the heavy workflow (heavy.yml) when a pull request carries ci:search or ci:heavy, and on a release pull
 # request. It runs nightly on its own as well, so that a change of the server or of the container image shows up on the
@@ -50,6 +51,10 @@ jobs:
       # The filter selects the OpenSearch contract suite and its container helpers in the integration source set.
       - name: "Run the OpenSearch backend tests"
         run: ./gradlew :reposilite-backend:integration --tests '*OpenSearch*' --max-workers=2
+
+      # The filter selects the Elasticsearch 8.x and 9.x contract suites, the restart case, in the integration source set.
+      - name: "Run the Elasticsearch backend tests"
+        run: ./gradlew :reposilite-backend:integration --tests '*Elasticsearch*' --max-workers=2
 
       # The filter selects the Meilisearch contract suite and its container helpers in the integration source set.
       - name: "Run the Meilisearch backend tests"
