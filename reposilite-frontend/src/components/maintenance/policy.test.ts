@@ -32,8 +32,9 @@ import {
   scheduleLabel,
   retentionSummary
 } from './policy'
+import type { PolicyDraft } from './policy'
 
-const draft = (overrides = {}) => ({ ...emptyDraft(), id: 'snapshots-weekly', keepLatest: '3', repositories: ['snapshots'], ...overrides })
+const draft = (overrides: Partial<PolicyDraft> = {}): PolicyDraft => ({ ...emptyDraft(), id: 'snapshots-weekly', keepLatest: '3', repositories: ['snapshots'], ...overrides })
 
 describe('validatePolicyId', () => {
   it('requires an id', () => {

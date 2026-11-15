@@ -14,24 +14,68 @@
  * limitations under the License.
  */
 
+import type { components } from '../../types/api'
+
 // Run records and dry-run previews as the cleanup endpoints send them.
 
-const STATUS_LABELS = {
+type ApiCleanupRun = components['schemas']['CleanupRunResponse']
+type ApiCleanupPreview = components['schemas']['CleanupPreviewResponse']
+type ApiPlannedDeletion = components['schemas']['PlannedDeletion']
+type CleanupRunStatus = components['schemas']['CleanupRunStatus']
+type CleanupTrigger = components['schemas']['CleanupTrigger']
+
+// A run as the endpoint sends it. The backend leaves out null fields, so only the identity is required here.
+export type CleanupRunWire = Pick<ApiCleanupRun, 'id' | 'policyId'> & Partial<ApiCleanupRun>
+
+export interface CleanupRun {
+  id: string
+  policyId: string
+  trigger: CleanupTrigger
+  startedAt: string | null
+  finishedAt: string | null
+  status: CleanupRunStatus
+  deletedCount: number
+  deletedBytes: number
+  failures: string[]
+}
+
+export type CleanupPreviewWire = Pick<ApiCleanupPreview, 'policyId'> & Partial<ApiCleanupPreview>
+
+export interface PlannedDeletionRow {
+  repository: string
+  path: string
+  version: string | null
+  sizeBytes: number
+  reason: string
+}
+
+export interface CleanupPreview {
+  policyId: string
+  evaluatedAt: string | null
+  count: number
+  totalBytes: number
+  deletions: PlannedDeletionRow[]
+  warnings: string[]
+}
+
+const STATUS_LABELS: Partial<Record<string, string>> = {
   SUCCEEDED: 'Succeeded',
   PARTIAL: 'Partly failed',
   FAILED: 'Failed'
 }
 
-const TRIGGER_LABELS = {
+const TRIGGER_LABELS: Partial<Record<string, string>> = {
   MANUAL: 'Manual',
   SCHEDULED: 'Scheduled'
 }
 
-export const statusLabel = (status) => STATUS_LABELS[status] ?? status ?? 'Unknown'
+export const statusLabel = (status: string | null | undefined): string =>
+  status == null ? 'Unknown' : (STATUS_LABELS[status] ?? status)
 
-export const triggerLabel = (trigger) => TRIGGER_LABELS[trigger] ?? trigger ?? 'Unknown'
+export const triggerLabel = (trigger: string | null | undefined): string =>
+  trigger == null ? 'Unknown' : (TRIGGER_LABELS[trigger] ?? trigger)
 
-export const normalizeRun = (wire) => ({
+export const normalizeRun = (wire: CleanupRunWire): CleanupRun => ({
   id: wire.id,
   policyId: wire.policyId,
   trigger: wire.trigger ?? 'MANUAL',
@@ -45,14 +89,17 @@ export const normalizeRun = (wire) => ({
 
 // The server sends the newest run first. The sort keeps the order right even when a list
 // was merged or filtered on the way. It returns a copy and leaves the input alone.
-export const sortNewestFirst = (runs) =>
-  [...runs].sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+export const sortNewestFirst = <T extends { startedAt: string | null }>(runs: readonly T[]): T[] =>
+  [...runs].sort((a, b) => Date.parse(b.startedAt ?? '') - Date.parse(a.startedAt ?? ''))
 
-export const lastRunOf = (runs, policyId) =>
+export const lastRunOf = <T extends { policyId: string; startedAt: string | null }>(
+  runs: readonly T[],
+  policyId: string
+): T | null =>
   sortNewestFirst(runs.filter(run => run.policyId === policyId))[0] ?? null
 
-export const normalizeDryRun = (wire) => {
-  const deletions = (wire.deletions ?? []).map(row => ({
+export const normalizeDryRun = (wire: CleanupPreviewWire): CleanupPreview => {
+  const deletions = (wire.deletions ?? []).map((row: ApiPlannedDeletion): PlannedDeletionRow => ({
     repository: row.repository,
     path: row.path,
     version: row.version ?? null,
@@ -69,4 +116,4 @@ export const normalizeDryRun = (wire) => {
   }
 }
 
-export const isNothingToDelete = (preview) => preview.count === 0
+export const isNothingToDelete = (preview: Pick<CleanupPreview, 'count'>): boolean => preview.count === 0

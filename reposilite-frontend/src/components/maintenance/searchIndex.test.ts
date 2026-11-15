@@ -27,11 +27,12 @@ import {
   runStatusLabel,
   runTriggerLabel
 } from './searchIndex'
+import type { IndexCounters, IndexRunWire, IndexStatusWire } from './searchIndex'
 
 // The Instants of the API are epoch seconds with a fraction, as Jackson writes java.time.Instant.
 const SECONDS = 1760931012.5
 
-const counters = (overrides = {}) => ({
+const counters = (overrides: Partial<IndexCounters> = {}): IndexCounters => ({
   processed: 0,
   upserted: 0,
   deleted: 0,
@@ -41,7 +42,7 @@ const counters = (overrides = {}) => ({
   ...overrides
 })
 
-const run = (overrides = {}) => ({
+const run = (overrides: Partial<IndexRunWire> = {}): IndexRunWire => ({
   id: 7,
   kind: 'REBUILD',
   trigger: 'MANUAL',
@@ -58,7 +59,7 @@ const run = (overrides = {}) => ({
   ...overrides
 })
 
-const status = (overrides = {}) => ({
+const status = (overrides: Partial<IndexStatusWire> = {}): IndexStatusWire => ({
   state: 'READY',
   lagSeconds: 0,
   lastFullRebuild: SECONDS,
@@ -76,7 +77,7 @@ describe('normalizeIndexStatus', () => {
   it('reads the instants of the status as dates from epoch seconds', () => {
     const normalized = normalizeIndexStatus(status())
 
-    expect(normalized.lastFullRebuild.getTime()).toBe(Math.round(SECONDS * 1000))
+    expect(normalized.lastFullRebuild?.getTime()).toBe(Math.round(SECONDS * 1000))
   })
 
   it('reads a status that has never completed a rebuild as no last rebuild', () => {
@@ -107,7 +108,7 @@ describe('normalizeIndexStatus', () => {
     }))
 
     expect(normalized.lastVerify).toMatchObject({ runId: 9, sampled: 2000, missing: 3, changed: 1, drift: 0.002 })
-    expect(normalized.lastVerify.at.getTime()).toBe(Math.round(SECONDS * 1000))
+    expect(normalized.lastVerify?.at?.getTime()).toBe(Math.round(SECONDS * 1000))
   })
 
   it('reads a status without a verify report as no report', () => {
@@ -132,7 +133,7 @@ describe('normalizeIndexRun', () => {
       leaseOwner: 'ingot-1#3'
     })
     expect(normalized.counters).toEqual({ processed: 500, upserted: 480, deleted: 0, unparsed: 12, skippedTooLong: 0, errors: 1 })
-    expect(normalized.leaseUntil.getTime()).toBe(Math.round((SECONDS + 120) * 1000))
+    expect(normalized.leaseUntil?.getTime()).toBe(Math.round((SECONDS + 120) * 1000))
   })
 
   it('reads a run that covers every repository as null repositories', () => {
@@ -207,7 +208,7 @@ describe('run state', () => {
   })
 
   it('names every index state, the run status, kind and trigger in words', () => {
-    for (const state of ['READY', 'BUILDING', 'MISSING', 'DEGRADED', 'UNKNOWN']) {
+    for (const state of ['READY', 'BUILDING', 'MISSING', 'DEGRADED', 'UNKNOWN'] as const) {
       expect(INDEX_STATE_LABELS[state], `label of ${state}`).toBeTruthy()
     }
     expect(runStatusLabel('CANCELLED')).toBe('Cancelled')
