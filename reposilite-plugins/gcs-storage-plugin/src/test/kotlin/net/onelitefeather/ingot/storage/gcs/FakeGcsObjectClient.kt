@@ -82,6 +82,18 @@ internal class FakeGcsObjectClient : GcsObjectClient {
         return entries.values.toList()
     }
 
+    /** Every delete request, including the ones that fail. */
+    val deletes = mutableListOf<String>()
+
+    /** Names whose next delete fails with a network error and is then deleted normally, as a retry sees it. */
+    val failingDeletes = mutableSetOf<String>()
+
+    override fun delete(name: String) {
+        deletes += name
+        if (failingDeletes.remove(name)) throw RuntimeException("network lost")
+        objects.remove(name) ?: throw GcsNotFoundException(name)
+    }
+
     override fun startUpload(name: String, contentType: String, chunkSize: Int): GcsUpload {
         openedUploads += chunkSize
         val writes = mutableListOf<Int>()
