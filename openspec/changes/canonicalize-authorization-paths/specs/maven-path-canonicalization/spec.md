@@ -2,66 +2,62 @@
 
 ## Purpose
 
-One canonical form of a repository path for every authorization decision on writes, in three modes. The default keeps today's decisions and reports the differences, so existing installations see no change.
+One canonical form of a repository path for every authorization decision on writes, always enforced. The path that is judged is the path that is stored.
 
 ## ADDED Requirements
 
-### Requirement: The mode selects the path that authorization judges
+### Requirement: Writes are judged by the canonical path
 
-Ingot SHALL read the mode from `INGOT_AUTHORIZATION_PATHS` with the values `off`, `warn` and `enforce`, falling back to `REPOSILITE_AUTHORIZATION_PATHS` when the first is unset. The default SHALL be `warn`. Upload, delete and metadata writes SHALL be judged by the raw path in `off` and `warn`, and by the canonical path in `enforce`.
+Ingot SHALL judge uploads and deletes by the canonical form of the request path, and SHALL hand the same repository and location to the storage operation. There SHALL be no setting that turns this off.
 
-#### Scenario: The default keeps the raw decision
+#### Scenario: An escaped spelling is judged as the location it is stored at
 
-- **WHEN** no switch is set and an upload to a path with an encoded character arrives
-- **THEN** the decision is the one Ingot made before this change
-
-#### Scenario: The INGOT name wins over the legacy name
-
-- **WHEN** `INGOT_AUTHORIZATION_PATHS=enforce` and `REPOSILITE_AUTHORIZATION_PATHS=off` are both set
-- **THEN** the mode is `enforce`
-
-### Requirement: Warn mode reports differences and changes no response
-
-In `warn`, Ingot SHALL compute the canonical decision alongside the raw one. When the two differ, Ingot SHALL log the request at WARN level and increment a counter. The response SHALL be the raw decision.
-
-#### Scenario: A differing upload is logged and answered as before
-
-- **WHEN** an upload to `/releases/com%2Fexample/...` is allowed on the raw path and refused on the canonical path
-- **THEN** the upload is accepted, one WARN line names both decisions, and the counter increases by one
-
-#### Scenario: A matching request is not logged
-
-- **WHEN** the raw and canonical decisions agree
-- **THEN** nothing is logged and the counter does not change
-
-### Requirement: Enforce mode judges the canonical path and refuses malformed paths first
-
-In `enforce`, Ingot SHALL refuse a path with a NUL or control character, a malformed escape, a `.` or `..` segment, or an encoded slash inside a segment with 400, before any authorization runs. Any other path SHALL be judged by its canonical form.
-
-#### Scenario: A traversal sequence is refused before authorization
-
-- **WHEN** an upload to `/releases/%2e%2e/other/file.jar` arrives in `enforce`
-- **THEN** the answer is 400 and the token's rights are not consulted
+- **WHEN** an upload to `/releases/com/ex%61mple/file.jar` arrives
+- **THEN** the decision is the one for `/releases/com/example/file.jar`, and an accepted file is stored at `com/example/file.jar`
 
 #### Scenario: A plain path is judged canonically
 
-- **WHEN** an upload to `/releases/com//example/file.jar` arrives in `enforce`
+- **WHEN** an upload to `/releases/com//example/file.jar` arrives
 - **THEN** the decision is the one for `/releases/com/example/file.jar`
 
-### Requirement: Legacy route rules see the string the decision uses
+#### Scenario: A path without escapes is unchanged
 
-The legacy route rule (case-insensitive prefix, no segment boundary) SHALL receive the same string as the decision: the raw path in `off` and `warn`, and the canonical path in `enforce`.
+- **WHEN** an upload to a path without escapes, dot segments or doubled slashes arrives
+- **THEN** the decision and the stored location are the ones Ingot used before this change
 
-#### Scenario: A legacy route judges the canonical string in enforce
+#### Scenario: A plus sign stays a plus sign
 
-- **WHEN** a legacy route `/rel` exists and `enforce` is set
-- **THEN** the route is matched against the canonical path, never against the raw one
+- **WHEN** an upload to `/releases/com/example/lib/1.0+build/lib-1.0+build.jar` arrives
+- **THEN** the file is judged and stored with the `+` kept
 
-### Requirement: Reads keep the normalized location in every mode
+### Requirement: Malformed paths are refused before authorization
 
-Reads and metadata reads SHALL keep judging the normalized location in every mode, as they do today.
+Ingot SHALL refuse a write path with a NUL or control character, a malformed escape, a `.` or `..` segment, a backslash, or an encoded slash with 400, before any authorization runs.
 
-#### Scenario: A read is unchanged by the switch
+#### Scenario: A traversal sequence is refused before authorization
 
-- **WHEN** the mode is `off`, `warn` or `enforce` and a read of a normal artifact arrives
-- **THEN** the decision is the same in all three modes
+- **WHEN** an upload to `/releases/%2e%2e/other/file.jar` arrives
+- **THEN** the answer is 400 and the token's rights are not consulted
+
+#### Scenario: An encoded slash is refused
+
+- **WHEN** an upload to `/releases/com%2Fexample/file.jar` arrives
+- **THEN** the answer is 400
+
+### Requirement: Legacy route rules see the canonical string
+
+The legacy route rule (case-insensitive prefix, no segment boundary) SHALL receive the canonical path of a write.
+
+#### Scenario: A legacy route judges the canonical string
+
+- **WHEN** a legacy route `/releases/com/example` exists and an upload to `/releases/com/ex%61mple/file.jar` arrives
+- **THEN** the route is matched against `/releases/com/example/file.jar`, never against the raw path
+
+### Requirement: Reads keep the normalized location
+
+Reads and metadata reads SHALL keep judging the decoded, normalized location, as they do today.
+
+#### Scenario: A read is unchanged
+
+- **WHEN** a read of a normal artifact arrives
+- **THEN** the decision is the one Ingot made before this change
