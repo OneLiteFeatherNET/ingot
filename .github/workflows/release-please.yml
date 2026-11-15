@@ -848,6 +848,75 @@ jobs:
           cache-from: type=gha,scope=release-dashboard
           cache-to: type=gha,mode=max,scope=release-dashboard
 
+      # The command line client ships beside the server and the dashboard, with the same version. It is
+      # its own image, so a client that changes does not rebuild the server, and a server release does not
+      # change the client.
+      - name: "Compute CLI tags and labels"
+        id: meta-cli
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ghcr.io/onelitefeathernet/ingot-cli
+          tags: |
+            type=raw,value=${{ steps.params.outputs.version }}
+            type=raw,value=latest,enable=${{ steps.params.outputs.released == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+            type=semver,pattern={{major}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+          labels: |
+            org.opencontainers.image.title=Ingot CLI
+            org.opencontainers.image.description=Command line client for a running Ingot, for exec and the interactive console
+            org.opencontainers.image.vendor=OneLiteFeather
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.params.outputs.version }}
+          annotations: |
+            org.opencontainers.image.title=Ingot CLI
+            org.opencontainers.image.description=Command line client for a running Ingot, for exec and the interactive console
+            org.opencontainers.image.vendor=OneLiteFeather
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.params.outputs.version }}
+
+      - name: "Build and push the CLI image"
+        id: cli
+        continue-on-error: true
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: ingot-cli/Dockerfile
+          platforms: ${{ steps.params.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          annotations: ${{ steps.meta-cli.outputs.annotations }}
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
+          cache-from: type=gha,scope=release-cli
+          cache-to: type=gha,mode=max,scope=release-cli
+
+      # The same back-off as the dashboard: GHCR asks for a few minutes after a failed push.
+      - name: "Wait out the registry before retrying the CLI image"
+        if: steps.cli.outcome == 'failure'
+        run: |
+          echo "The CLI image push failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry pushing the CLI image"
+        id: cli-retry
+        if: steps.cli.outcome == 'failure'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: ingot-cli/Dockerfile
+          platforms: ${{ steps.params.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          annotations: ${{ steps.meta-cli.outputs.annotations }}
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
+          cache-from: type=gha,scope=release-cli
+          cache-to: type=gha,mode=max,scope=release-cli
+
       # The job stops at the first push that fails for good, so this step runs only after
       # every push went through. For each pushed reference it reads the raw index and the
       # raw platform manifests the index lists, then the check script names any annotation
@@ -856,10 +925,11 @@ jobs:
         env:
           SERVER_TAGS: ${{ steps.meta.outputs.tags }}
           DASHBOARD_TAGS: ${{ steps.meta-dashboard.outputs.tags }}
+          CLI_TAGS: ${{ steps.meta-cli.outputs.tags }}
         run: |
           set -euo pipefail
           work="$(mktemp -d)"
-          printf '%s\n%s\n' "$SERVER_TAGS" "$DASHBOARD_TAGS" | sed '/^$/d' > "$work/references.txt"
+          printf '%s\n%s\n%s\n' "$SERVER_TAGS" "$DASHBOARD_TAGS" "$CLI_TAGS" | sed '/^$/d' > "$work/references.txt"
           check_reference() {
             local ref="$1" repository dir digest
             repository="${ref%:*}"
