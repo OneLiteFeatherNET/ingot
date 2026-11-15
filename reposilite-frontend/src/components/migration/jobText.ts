@@ -17,7 +17,12 @@
 // The words of the job states, the pause reasons and the statuses. Colour never carries a state on its own: each
 // one is named in text here, and the views add an icon or a shape next to the text.
 
-const JOB_STATUS_TEXT = {
+// A word table keyed by the server's constant names. A key the table does not know has no word.
+type WordTable = Partial<Record<string, string>>
+
+const wordOf = (table: WordTable, key: string | null | undefined): string | undefined => (key == null ? undefined : table[key])
+
+const JOB_STATUS_TEXT: WordTable = {
   QUEUED: 'Queued',
   RUNNING: 'Running',
   PAUSED: 'Paused',
@@ -26,15 +31,15 @@ const JOB_STATUS_TEXT = {
   CANCELLED: 'Cancelled',
 }
 
-const PAUSE_REASON_TEXT = {
+const PAUSE_REASON_TEXT: WordTable = {
   READ_ONLY: 'Ingot is in read-only mode. The job resumes by itself when read-only mode ends.',
   CREDENTIALS_NEEDED: 'Nexus needs the password again. Enter it to let the job continue.',
   OPERATOR: 'The job waits for you. Resume it to continue.',
 }
 
-const LOSS_STATUSES = ['MAPPED', 'PARTIAL', 'MANUAL', 'UNSUPPORTED', 'EXCLUDED']
+const LOSS_STATUSES: string[] = ['MAPPED', 'PARTIAL', 'MANUAL', 'UNSUPPORTED', 'EXCLUDED']
 
-const LOSS_STATUS_TEXT = {
+const LOSS_STATUS_TEXT: WordTable = {
   MAPPED: 'Mapped',
   PARTIAL: 'Partial',
   MANUAL: 'Manual',
@@ -42,7 +47,7 @@ const LOSS_STATUS_TEXT = {
   EXCLUDED: 'Excluded',
 }
 
-const REPOSITORY_RESULT_TEXT = {
+const REPOSITORY_RESULT_TEXT: WordTable = {
   PLANNED: 'Planned',
   COPIED: 'Copied',
   CONFLICTED: 'Conflicted',
@@ -52,12 +57,12 @@ const REPOSITORY_RESULT_TEXT = {
 }
 
 // The results a repository has when its work for the job is over. A repository still planned or copying is not.
-const SETTLED_RESULTS = ['COPIED', 'CONFLICTED', 'FAILED', 'VERIFIED', 'MISMATCH']
+const SETTLED_RESULTS: string[] = ['COPIED', 'CONFLICTED', 'FAILED', 'VERIFIED', 'MISMATCH']
 
-const statusText = (status) => JOB_STATUS_TEXT[status] ?? String(status ?? 'Unknown')
-const pauseText = (reason) => PAUSE_REASON_TEXT[reason] ?? ''
-const lossStatusText = (status) => LOSS_STATUS_TEXT[status] ?? String(status ?? '')
-const repositoryResultText = (status) => REPOSITORY_RESULT_TEXT[status] ?? String(status ?? '')
+const statusText = (status: string | null | undefined): string => wordOf(JOB_STATUS_TEXT, status) ?? String(status ?? 'Unknown')
+const pauseText = (reason: string | null | undefined): string => wordOf(PAUSE_REASON_TEXT, reason) ?? ''
+const lossStatusText = (status: string | null | undefined): string => wordOf(LOSS_STATUS_TEXT, status) ?? String(status ?? '')
+const repositoryResultText = (status: string | null | undefined): string => wordOf(REPOSITORY_RESULT_TEXT, status) ?? String(status ?? '')
 
 export {
   LOSS_STATUSES,

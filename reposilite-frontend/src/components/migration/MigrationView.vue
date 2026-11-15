@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -17,7 +17,7 @@
 
 // The page of the nexus import wizard: one heading, the step list and the step on screen. It reads the jobs of the
 // server once when it opens, and a step address that is not open goes to the step the visitor has to finish next.
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import ConnectStep from './ConnectStep.vue'
 import DiscoverStep from './DiscoverStep.vue'
@@ -28,11 +28,13 @@ import VerifyStep from './VerifyStep.vue'
 import CutOverStep from './CutOverStep.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { migrationApi, onMigrationUnauthorized } from '../../store/migration/migrationApi'
-import { STEPS, STEP_LABELS, stepStates, stepTarget, nextClosedReason } from '../../store/migration/gating'
+import { STEPS, STEP_LABELS, stepStates, stepTarget, nextClosedReason, type Step } from '../../store/migration/gating'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
 import { openLogin } from '../../store/login'
 import { useSession } from '../../store/session'
+import type { MigrationJob } from '../../store/migration/types'
+import type { Problem } from './types'
 
 const props = defineProps({
   step: {
@@ -47,12 +49,15 @@ const router = useRouter()
 
 const { isLogged } = useSession()
 const loaded = ref(false)
-const loadProblem = ref(null)
+const loadProblem = ref<Problem | null>(null)
 const notice = ref('')
+
+// The address names a step of the wizard, or it names nothing the wizard has.
+const isStep = (value: string | undefined): value is Step => (STEPS as readonly string[]).includes(value ?? '')
 // A visitor without the permission sees this state and no step, so no data is shown to them.
 const denied = computed(() => loadProblem.value?.status === 403)
 
-const STEP_VIEWS = {
+const STEP_VIEWS: Record<Step, Component> = {
   connect: ConnectStep,
   discover: DiscoverStep,
   mapping: MappingStep,
@@ -62,22 +67,23 @@ const STEP_VIEWS = {
   'cut-over': CutOverStep,
 }
 
-const root = ref(null)
-const current = computed(() => (STEPS.includes(props.step) ? props.step : STEPS[0]))
-const view = computed(() => STEP_VIEWS[current.value] ?? null)
+const root = ref<HTMLElement | null>(null)
+const current = computed<Step>(() => (isStep(props.step) ? props.step : STEPS[0]))
+const view = computed<Component | null>(() => STEP_VIEWS[current.value] ?? null)
 const states = computed(() => stepStates(wizard.gate(), wizard.state.jobs))
 
 // A step that is not open yet is still listed, with the reason in its text, so the list says what is missing.
-const reasonOf = (id) => (states.value[id].open ? '' : states.value[id].reason ?? '')
+const reasonOf = (id: Step) => (states.value[id].open ? '' : states.value[id].reason ?? '')
 
-const goTo = (step) => router.replace({ name: 'settings-migration', params: { step } })
+const goTo = (step: Step) => router.replace({ name: 'settings-migration', params: { step } })
 
 // The address decides once the jobs are known. An open step stays. A closed or unknown one goes to the step the
 // jobs open, or to the last open step before the first closed one, and says what that step still needs.
 const decide = () => {
   if (!loaded.value) return
-  const requested = STEPS.includes(props.step) ? props.step : undefined
-  const target = stepTarget(requested, wizard.gate(), wizard.state.jobs)
+  const requested = isStep(props.step) ? props.step : undefined
+  // stepTarget treats an absent step like an unknown one, and its declared parameter does not say so.
+  const target = stepTarget(requested as Step, wizard.gate(), wizard.state.jobs)
   if (!target.redirected) {
     notice.value = ''
     return
@@ -95,9 +101,9 @@ onMounted(async () => {
     openLogin()
   })
   try {
-    wizard.setJobs(await api.listJobs())
+    wizard.setJobs(await api.listJobs() as MigrationJob[])
   } catch (error) {
-    loadProblem.value = error
+    loadProblem.value = error as Problem
     wizard.setJobs([])
   }
   loaded.value = true

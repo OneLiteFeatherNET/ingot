@@ -15,7 +15,8 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
+import type { MigrationJob } from '../../store/migration/types'
 import CutOverStep from './CutOverStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { fakeApi, mountWith, cleanup } from './testing'
@@ -37,7 +38,7 @@ const importJob = () => ({
   summary: null,
 })
 
-const verifyJob = (repositories, status = 'COMPLETED') => ({
+const verifyJob = (repositories: unknown[], status = 'COMPLETED') => ({
   id: 12,
   kind: 'VERIFY',
   status,
@@ -52,7 +53,7 @@ const verified = [
   { nexusName: 'snapshots', targetName: 'snapshots', type: 'hosted', status: 'VERIFIED' },
 ]
 
-const wizardWith = (jobs) => {
+const wizardWith = (jobs: MigrationJob[]) => {
   const wizard = createWizardStore()
   wizard.setConnection({ url: 'https://nexus.example.test', user: 'importer', passwordMode: 'literal' })
   wizard.passwords.remember(PASSWORD)
@@ -60,14 +61,14 @@ const wizardWith = (jobs) => {
   return wizard
 }
 
-const checkboxOf = (wrapper, id) => wrapper.find(`#${id}`)
+const checkboxOf = (wrapper: VueWrapper, id: string) => wrapper.find(`#${id}`)
 
 describe('the Cut-over step', () => {
   it('shows the verify item as done when the newest verify job verified every repository, and does not let the operator tick it', async () => {
     const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob(), verifyJob(verified)]), at: '/settings/migration/cut-over' })
 
     const item = checkboxOf(wrapper, 'migration-cutover-verify')
-    expect(item.element.checked, 'derived from the verify job').toBe(true)
+    expect((item.element as HTMLInputElement).checked, 'derived from the verify job').toBe(true)
     expect(item.attributes('disabled'), 'the operator cannot tick it').toBeDefined()
   })
 
@@ -78,7 +79,7 @@ describe('the Cut-over step', () => {
     ]
     const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob(), verifyJob(mismatch)]), at: '/settings/migration/cut-over' })
 
-    expect(checkboxOf(wrapper, 'migration-cutover-verify').element.checked).toBe(false)
+    expect((checkboxOf(wrapper, 'migration-cutover-verify').element as HTMLInputElement).checked).toBe(false)
     expect(wrapper.find('[data-test="blocking"]').text()).toContain('snapshots')
   })
 
@@ -91,7 +92,7 @@ describe('the Cut-over step', () => {
     const wizard = wizardWith([importJob(), verifyJob(conflicted)])
     const { wrapper } = await mountWith(CutOverStep, { api, wizard, at: '/settings/migration/cut-over' })
 
-    expect(checkboxOf(wrapper, 'migration-cutover-verify').element.checked).toBe(false)
+    expect((checkboxOf(wrapper, 'migration-cutover-verify').element as HTMLInputElement).checked).toBe(false)
     expect(wrapper.find('[data-test="blocking"]').text()).toContain('snapshots')
     expect(wrapper.text()).toContain('a/b/c.jar')
   })
@@ -99,7 +100,7 @@ describe('the Cut-over step', () => {
   it('keeps the verify item unticked while no verify job has finished', async () => {
     const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob()]), at: '/settings/migration/cut-over' })
 
-    expect(checkboxOf(wrapper, 'migration-cutover-verify').element.checked).toBe(false)
+    expect((checkboxOf(wrapper, 'migration-cutover-verify').element as HTMLInputElement).checked).toBe(false)
     expect(wrapper.find('[data-test="blocking"]').text()).toMatch(/verify/i)
   })
 
@@ -112,7 +113,7 @@ describe('the Cut-over step', () => {
 
     const second = await mountWith(CutOverStep, { wizard, at: '/settings/migration/cut-over' })
 
-    expect(checkboxOf(second.wrapper, 'migration-cutover-freeze').element.checked).toBe(false)
+    expect((checkboxOf(second.wrapper, 'migration-cutover-freeze').element as HTMLInputElement).checked).toBe(false)
     expect(window.localStorage.length, 'nothing is stored').toBe(0)
   })
 
@@ -160,7 +161,7 @@ describe('the Cut-over step', () => {
     await wrapper.find('#migration-cutover-delete').trigger('click')
     expect(api.deleteJob, 'no request before the confirmation').not.toHaveBeenCalled()
 
-    document.getElementById('migration-cutover-delete-confirm').click()
+    document.getElementById('migration-cutover-delete-confirm')!.click()
     await flushPromises()
 
     expect(api.deleteJob).toHaveBeenCalledWith(12)

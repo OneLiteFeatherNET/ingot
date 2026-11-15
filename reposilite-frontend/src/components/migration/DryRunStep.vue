@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -31,6 +31,8 @@ import { jobBodyOf } from '../../store/migration/requests'
 import { acceptanceIsCurrent, mappingWarnings, planFingerprint, syncBlockers, isFinished } from '../../store/migration/gating'
 import { browserRuntime, MIGRATION_API, MIGRATION_RUNTIME, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { MigrationJob } from '../../store/migration/types'
+import type { JobView, LossReport, LossRow, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
@@ -43,10 +45,10 @@ const passwordNeeded = computed(() => wizard.state.connection?.passwordMode === 
 
 const typedPassword = ref('')
 const passwordError = ref('')
-const problem = ref(null)
+const problem = ref<Problem | null>(null)
 const starting = ref(false)
-const reloaded = ref(null)
-const report = ref({ rows: [], summary: null })
+const reloaded = ref<JobView | null>(null)
+const report = ref<LossReport>({ rows: [], summary: null })
 const reportLoaded = ref(false)
 const readReport = ref(false)
 const statusFilter = ref('')
@@ -77,7 +79,7 @@ const statusCounts = computed(() => LOSS_STATUSES.map(status => ({
 })))
 
 // The Nexus id column sorts from its header button; aria-sort on the header states the order.
-const sortByNexusId = ref('none')
+const sortByNexusId = ref<'none' | 'ascending' | 'descending'>('none')
 const toggleSort = () => {
   sortByNexusId.value = sortByNexusId.value === 'ascending' ? 'descending' : 'ascending'
 }
@@ -98,7 +100,7 @@ const visibleRows = computed(() => {
 const proposals = computed(() => rows.value.filter(row => /is taken/i.test(row.reason ?? '') && row.target && row.target !== row.nexusId))
 
 const blockers = computed(() => summary.value?.blockers ?? [])
-const rowFor = (blocker) => rows.value.find(row => blocker.includes(row.nexusId))
+const rowFor = (blocker: string): LossRow | undefined => rows.value.find(row => blocker.includes(row.nexusId))
 
 const gate = computed(() => syncBlockers({
   dryRun: dryRun.value,
@@ -107,12 +109,12 @@ const gate = computed(() => syncBlockers({
   conflictPolicy: mapping.value?.conflictPolicy ?? 'refuse',
 }))
 
-const loadReport = async (id) => {
+const loadReport = async (id: number) => {
   try {
-    report.value = await api.report(id, 'json')
+    report.value = await api.report(id, 'json') as LossReport
     reportLoaded.value = true
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 
@@ -125,6 +127,7 @@ const start = async () => {
     }
     wizard.passwords.remember(typedPassword.value)
   }
+  if (!mapping.value) return
   const body = jobBodyOf({ kind: 'DRY_RUN', connection: wizard.state.connection, passwords: wizard.passwords, mapping: mapping.value })
   if (!body) return
   starting.value = true
@@ -133,29 +136,30 @@ const start = async () => {
   reloaded.value = null
   report.value = { rows: [], summary: null }
   try {
-    const created = await api.createJob(body)
+    const created = await api.createJob(body) as MigrationJob
     typedPassword.value = ''
     wizard.upsertJob({ id: created.id, kind: created.kind, status: created.status, pauseReason: null, repositories: [], results: {}, summary: null })
     watched.follow(created.id)
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   } finally {
     starting.value = false
   }
 }
 
 const acceptReport = () => {
+  if (!dryRun.value || !mapping.value) return
   wizard.accept({ dryRunJobId: dryRun.value.id, fingerprint: planFingerprint(mapping.value) })
 }
 
-const takeProposal = (row) => {
+const takeProposal = (row: LossRow) => {
   const next = (mapping.value?.repositories ?? []).map(repository => (repository.nexusName === row.nexusId
     ? { ...repository, targetName: row.target }
     : repository))
   wizard.setMapping(next, mapping.value?.conflictPolicy ?? 'refuse')
 }
 
-const focusRow = (nexusId) => {
+const focusRow = (nexusId: string | undefined) => {
   document.getElementById(`migration-report-row-${nexusId}`)?.focus()
 }
 
@@ -163,7 +167,7 @@ const focusRow = (nexusId) => {
 onMounted(() => {
   const newest = wizard.state.jobs
     .filter(job => job.kind === 'DRY_RUN')
-    .sort((a, b) => b.id - a.id)[0]
+    .sort((a, b) => b.id - a.id)[0] as JobView | undefined
   if (!newest) return
   if (isFinished(newest)) {
     reloaded.value = newest
@@ -248,10 +252,10 @@ onMounted(() => {
         v-if="done"
         class="md-body-large text-on-surface"
       >
-        Status: {{ statusText(dryRun.status) }}
+        Status: {{ statusText(dryRun?.status) }}
       </p>
 
-      <template v-if="done && summary">
+      <template v-if="dryRun && done && summary">
         <p class="md-body-large text-on-surface">
           Estimated transfer size: {{ formatBytes(summary.transferBytes) }}.
         </p>
@@ -282,7 +286,7 @@ onMounted(() => {
               v-if="rowFor(blocker)"
               :id="`migration-blocker-show-${index}`"
               variant="text"
-              @click="focusRow(rowFor(blocker).nexusId)"
+              @click="focusRow(rowFor(blocker)?.nexusId)"
             >
               Show in report
             </MdButton>

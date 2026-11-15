@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -27,12 +27,13 @@ import { migrationApi } from '../../store/migration/migrationApi'
 import { connectionBodyOf } from '../../store/migration/requests'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { DiscoveredNexus, DiscoveredRepository, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
 
 const typedPassword = ref('')
-const problem = ref(null)
+const problem = ref<Problem | null>(null)
 const passwordError = ref('')
 const pending = ref(false)
 
@@ -42,8 +43,9 @@ const passwordNeeded = computed(() => connection.value !== null
   && connection.value.passwordMode === 'literal'
   && wizard.passwords.recall() === null)
 
-const repositories = computed(() => wizard.state.discovery?.repositories ?? [])
-const formats = computed(() => Object.entries(wizard.state.discovery?.formats ?? {})
+const discovered = computed(() => wizard.state.discovery as DiscoveredNexus | null)
+const repositories = computed<DiscoveredRepository[]>(() => discovered.value?.repositories ?? [])
+const formats = computed(() => Object.entries(discovered.value?.formats ?? {})
   .map(([format, totals]) => ({ format, ...totals })))
 
 const submit = async () => {
@@ -61,11 +63,11 @@ const submit = async () => {
   pending.value = true
   problem.value = null
   try {
-    const report = await api.discover(body)
+    const report = await api.discover(body) as DiscoveredNexus
     wizard.setDiscovery(report)
     typedPassword.value = ''
   } catch (error) {
-    problem.value = error
+    problem.value = error as Problem
   } finally {
     pending.value = false
   }

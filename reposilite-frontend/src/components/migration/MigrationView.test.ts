@@ -16,16 +16,17 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import type { Router } from 'vue-router'
 import MigrationView from './MigrationView.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { fakeApi, mountWith, cleanup } from './testing'
 
 afterEach(cleanup)
 
-const job = (id, kind, status, extra = {}) => ({ id, kind, status, pauseReason: null, repositories: [], results: {}, summary: null, ...extra })
+const job = (id: number, kind: string, status: string, extra: Record<string, unknown> = {}) => ({ id, kind, status, pauseReason: null, repositories: [], results: {}, summary: null, ...extra })
 
 // The step the address names, as the router holds it after the page settled.
-const stepOf = (router) => router.currentRoute.value.params.step
+const stepOf = (router: Router) => router.currentRoute.value.params.step
 
 const connectedWizard = () => {
   const wizard = createWizardStore()

@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import type { MigrationJob } from '../../store/migration/types'
 import VerifyStep from './VerifyStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { fakeApi, mountWith, cleanup } from './testing'
@@ -37,7 +38,7 @@ const importJob = (id = 9, status = 'COMPLETED') => ({
   summary: null,
 })
 
-const verifyJob = (status, repositories) => ({
+const verifyJob = (status: string, repositories: unknown[]) => ({
   id: 12,
   kind: 'VERIFY',
   status,
@@ -47,7 +48,7 @@ const verifyJob = (status, repositories) => ({
   summary: null,
 })
 
-const wizardWith = ({ jobs = [importJob()], literal = true } = {}) => {
+const wizardWith = ({ jobs = [importJob()], literal = true }: { jobs?: MigrationJob[]; literal?: boolean } = {}) => {
   const wizard = createWizardStore()
   wizard.setConnection({ url: 'https://nexus.example.test', user: 'importer', passwordMode: literal ? 'literal' : 'reference', reference: literal ? undefined : '${env:NEXUS_PASSWORD}' })
   if (literal) wizard.passwords.remember(PASSWORD)

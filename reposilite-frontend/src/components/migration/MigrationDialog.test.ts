@@ -15,10 +15,10 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import MigrationDialog from './MigrationDialog.vue'
 
-const mounted = []
+const mounted: VueWrapper[] = []
 
 afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())
@@ -51,8 +51,8 @@ describe('the migration dialog', () => {
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
 
-    expect(document.querySelector('[role="dialog"]').contains(document.activeElement), 'the focus is inside the dialog').toBe(true)
-    expect(document.querySelector('[role="dialog"]').getAttribute('aria-labelledby')).toBe('dialog-title')
+    expect(document.querySelector('[role="dialog"]')!.contains(document.activeElement), 'the focus is inside the dialog').toBe(true)
+    expect(document.querySelector('[role="dialog"]')!.getAttribute('aria-labelledby')).toBe('dialog-title')
   })
 
   it('closes on Escape and returns focus to the element that opened it', async () => {
@@ -61,7 +61,7 @@ describe('the migration dialog', () => {
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
 
-    document.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await flushPromises()
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
@@ -76,9 +76,9 @@ describe('the migration dialog', () => {
     const { wrapper } = await mountDialog()
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    document.getElementById('second-action').focus()
+    document.getElementById('second-action')!.focus()
 
-    document.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
     await flushPromises()
 
     expect(document.activeElement?.id, 'Tab from the last control goes to the first').toBe('first-action')
@@ -88,9 +88,9 @@ describe('the migration dialog', () => {
     const { wrapper } = await mountDialog()
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
-    document.getElementById('first-action').focus()
+    document.getElementById('first-action')!.focus()
 
-    document.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
+    document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
     await flushPromises()
 
     expect(document.activeElement?.id).toBe('second-action')

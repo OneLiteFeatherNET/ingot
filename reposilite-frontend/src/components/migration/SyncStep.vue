@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -31,6 +31,8 @@ import { jobBodyOf } from '../../store/migration/requests'
 import { isFinished, syncBlockers } from '../../store/migration/gating'
 import { browserRuntime, MIGRATION_API, MIGRATION_RUNTIME, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { MigrationJob } from '../../store/migration/types'
+import type { ConflictRow, JobView, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
@@ -38,13 +40,13 @@ const runtime = inject(MIGRATION_RUNTIME, browserRuntime())
 
 const typedPassword = ref('')
 const passwordError = ref('')
-const problem = ref(null)
+const problem = ref<Problem | null>(null)
 const starting = ref(false)
-const reloaded = ref(null)
-const conflicts = ref([])
+const reloaded = ref<JobView | null>(null)
+const conflicts = ref<ConflictRow[]>([])
 const cancelOpen = ref(false)
 
-const newest = (kind) => wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] ?? null
+const newest = (kind: string): JobView | null => (wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] as JobView | undefined) ?? null
 
 const watched = useJobWatch({
   api,
@@ -73,20 +75,26 @@ const canResume = computed(() => shown.value?.status === 'PAUSED' && shown.value
 const canCancel = computed(() => shown.value !== null && !isFinished(shown.value))
 const running = computed(() => shown.value !== null && !isFinished(shown.value))
 
-const loadConflicts = async (id) => {
+const loadConflicts = async (id: number) => {
   try {
-    conflicts.value = await api.conflicts(id)
+    conflicts.value = await api.conflicts(id) as ConflictRow[]
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 
-const act = async (call) => {
+// The job on screen. The controls that call it are only shown while a job is on screen.
+const requireShown = (): JobView => {
+  if (!shown.value) throw new Error('No import job is on screen.')
+  return shown.value
+}
+
+const act = async (call: () => Promise<void>) => {
   problem.value = null
   try {
     await call()
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 
@@ -99,6 +107,7 @@ const start = async () => {
     }
     wizard.passwords.remember(typedPassword.value)
   }
+  if (!mapping.value) return
   const body = jobBodyOf({ kind: 'IMPORT', connection: wizard.state.connection, passwords: wizard.passwords, mapping: mapping.value })
   if (!body) return
   starting.value = true
@@ -106,32 +115,35 @@ const start = async () => {
   reloaded.value = null
   conflicts.value = []
   try {
-    const created = await api.createJob(body)
+    const created = await api.createJob(body) as MigrationJob
     typedPassword.value = ''
     wizard.upsertJob({ id: created.id, kind: created.kind, status: created.status, pauseReason: null, repositories: [], results: {}, summary: null })
     watched.follow(created.id)
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   } finally {
     starting.value = false
   }
 }
 
 const pause = () => act(async () => {
-  await api.pauseJob(shown.value.id)
-  watched.follow(shown.value.id)
+  const job = requireShown()
+  await api.pauseJob(job.id)
+  watched.follow(job.id)
 })
 
 const resume = () => act(async () => {
-  await api.resumeJob(shown.value.id)
-  watched.follow(shown.value.id)
+  const job = requireShown()
+  await api.resumeJob(job.id)
+  watched.follow(job.id)
 })
 
 const confirmCancel = () => {
   cancelOpen.value = false
   return act(async () => {
-    await api.cancelJob(shown.value.id)
-    watched.follow(shown.value.id)
+    const job = requireShown()
+    await api.cancelJob(job.id)
+    watched.follow(job.id)
   })
 }
 
@@ -142,11 +154,12 @@ const sendPassword = () => act(async () => {
     return
   }
   const password = typedPassword.value
-  await api.supplyCredentials(shown.value.id, password)
+  const job = requireShown()
+  await api.supplyCredentials(job.id, password)
   wizard.passwords.remember(password)
   typedPassword.value = ''
   passwordError.value = ''
-  watched.follow(shown.value.id)
+  watched.follow(job.id)
 })
 
 // After a reload the newest import is attached to when it still runs, and shown as it ended otherwise.

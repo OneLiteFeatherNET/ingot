@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -30,6 +30,7 @@ import { connectionBodyOf } from '../../store/migration/requests'
 import { isFinished } from '../../store/migration/gating'
 import { browserRuntime, MIGRATION_API, MIGRATION_RUNTIME, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { ConflictRow, JobView, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
@@ -37,12 +38,12 @@ const runtime = inject(MIGRATION_RUNTIME, browserRuntime())
 
 const typedPassword = ref('')
 const passwordError = ref('')
-const problem = ref(null)
+const problem = ref<Problem | null>(null)
 const starting = ref(false)
-const reloaded = ref(null)
-const mismatches = ref([])
+const reloaded = ref<JobView | null>(null)
+const mismatches = ref<ConflictRow[]>([])
 
-const newest = (kind) => wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] ?? null
+const newest = (kind: string): JobView | null => (wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] as JobView | undefined) ?? null
 
 const watched = useJobWatch({
   api,
@@ -58,11 +59,11 @@ const shown = computed(() => watched.job.value ?? reloaded.value)
 const running = computed(() => shown.value !== null && !isFinished(shown.value))
 const passwordNeeded = computed(() => wizard.state.connection?.passwordMode === 'literal' && wizard.passwords.recall() === null)
 
-const loadMismatches = async (id) => {
+const loadMismatches = async (id: number) => {
   try {
-    mismatches.value = await api.conflicts(id)
+    mismatches.value = await api.conflicts(id) as ConflictRow[]
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 
@@ -83,12 +84,12 @@ const start = async () => {
   reloaded.value = null
   mismatches.value = []
   try {
-    const created = await api.createJob({ ...base, kind: 'VERIFY', verifyImportJob: importJob.value.id })
+    const created = await api.createJob({ ...base, kind: 'VERIFY', verifyImportJob: importJob.value.id }) as JobView
     typedPassword.value = ''
     wizard.upsertJob({ id: created.id, kind: created.kind, status: created.status, pauseReason: null, repositories: [], results: {}, summary: null })
     watched.follow(created.id)
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   } finally {
     starting.value = false
   }
@@ -164,7 +165,7 @@ onMounted(() => {
       </form>
 
       <JobProgress
-        v-if="running"
+        v-if="shown && running"
         :job="shown"
         label="Verify progress"
         :unreadable="watched.watching.value && watched.error.value !== null"

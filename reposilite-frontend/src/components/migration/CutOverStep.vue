@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -27,6 +27,7 @@ import usePlaceholders from '../../store/placeholders'
 import { migrationApi } from '../../store/migration/migrationApi'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { ConflictRow, JobView, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
@@ -34,11 +35,11 @@ const wizard = inject(MIGRATION_WIZARD, useWizard())
 // The two manual items. They live in this page only, so a reload clears them.
 const freezeDone = ref(false)
 const switchDone = ref(false)
-const problem = ref(null)
+const problem = ref<Problem | null>(null)
 const deleteOpen = ref(false)
-const importConflicts = ref([])
+const importConflicts = ref<ConflictRow[]>([])
 
-const newest = (kind) => wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] ?? null
+const newest = (kind: string): JobView | null => (wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] as JobView | undefined) ?? null
 
 const importJob = computed(() => newest('IMPORT'))
 const verifyJob = computed(() => newest('VERIFY'))
@@ -50,14 +51,14 @@ const blocking = computed(() => (verifyFinished.value ? verifyRows.value.filter(
 // The repositories the clients use: the included rows of the mapping, under the names Ingot gives them.
 const targets = computed(() => {
   const included = (wizard.state.mapping?.repositories ?? []).filter(repository => repository.included)
-  const rows = included.length > 0 ? included : verifyRows.value
+  const rows: Array<{ nexusName: string; targetName?: string | null }> = included.length > 0 ? included : verifyRows.value
   return rows.map(repository => repository.targetName ?? repository.nexusName)
 })
 
 const baseUrl = computed(() => (usePlaceholders().productionUrl ?? '').replace(/\/$/, ''))
 
 // The snippets carry placeholders for the token, never a secret. Ingot does not put one into a snippet.
-const mavenSnippet = (name) => [
+const mavenSnippet = (name: string) => [
   '<settings>',
   '  <mirrors>',
   '    <mirror>',
@@ -77,7 +78,7 @@ const mavenSnippet = (name) => [
   '</settings>',
 ].join('\n')
 
-const gradleSnippet = (name) => [
+const gradleSnippet = (name: string) => [
   'repositories {',
   '    maven {',
   `        url "${baseUrl.value}/${name}"`,
@@ -89,7 +90,7 @@ const gradleSnippet = (name) => [
   '}',
 ].join('\n')
 
-const copy = async (text) => {
+const copy = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
   } catch {
@@ -97,22 +98,24 @@ const copy = async (text) => {
   }
 }
 
-const loadConflicts = async (id) => {
+const loadConflicts = async (id: number) => {
   try {
-    importConflicts.value = await api.conflicts(id)
+    importConflicts.value = await api.conflicts(id) as ConflictRow[]
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 
 const removeVerifyJob = async () => {
   deleteOpen.value = false
-  const id = verifyJob.value.id
+  const job = verifyJob.value
+  if (!job) return
+  const id = job.id
   try {
     await api.deleteJob(id)
-    wizard.setJobs(wizard.state.jobs.filter(job => job.id !== id))
+    wizard.setJobs(wizard.state.jobs.filter(entry => entry.id !== id))
   } catch (failure) {
-    problem.value = failure
+    problem.value = failure as Problem
   }
 }
 

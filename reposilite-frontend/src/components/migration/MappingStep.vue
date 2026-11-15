@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -26,6 +26,8 @@ import { formatBytes } from '../maintenance/format'
 import { mappingWarnings } from '../../store/migration/gating'
 import { MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { MappingRow } from '../../store/migration/types'
+import type { DiscoveredNexus } from './types'
 
 const wizard = inject(MIGRATION_WIZARD, useWizard())
 
@@ -36,7 +38,7 @@ const POLICIES = [
 ]
 
 // The rows as the discovery gave them, with the operator's choices from the first visit applied when there are some.
-const discoveredRows = () => (wizard.state.discovery?.repositories ?? []).map(repository => ({
+const discoveredRows = (): MappingRow[] => ((wizard.state.discovery as DiscoveredNexus | null)?.repositories ?? []).map(repository => ({
   nexusName: repository.name,
   targetName: repository.name,
   included: repository.supported,
@@ -54,10 +56,10 @@ if (wizard.state.discovery && !wizard.state.mapping) {
 const rows = computed(() => wizard.state.mapping?.repositories ?? [])
 const policy = computed(() => wizard.state.mapping?.conflictPolicy ?? 'refuse')
 const warnings = computed(() => mappingWarnings(rows.value))
-const warningOf = (nexusName) => warnings.value.find(warning => warning.nexusName === nexusName)?.kind ?? null
+const warningOf = (nexusName: string) => warnings.value.find(warning => warning.nexusName === nexusName)?.kind ?? null
 
 // The radio group is driven by `chosen`, so a cancelled overwrite puts the checked radio back on the policy in force.
-const chosen = ref(policy.value)
+const chosen = ref<string>(policy.value)
 const overwriteOpen = ref(false)
 watch(policy, (value) => { chosen.value = value })
 watch(chosen, (value) => {
@@ -69,7 +71,7 @@ watch(chosen, (value) => {
   setPolicy(value)
 })
 
-const setPolicy = (value) => wizard.setMapping(rows.value, value)
+const setPolicy = (value: string) => wizard.setMapping(rows.value, value)
 
 // The policy is written before the dialog closes, so closing it any other way keeps the policy in force.
 const confirmOverwrite = () => {
@@ -85,12 +87,15 @@ watch(overwriteOpen, (open) => {
   if (!open && policy.value !== 'overwrite') chosen.value = policy.value
 })
 
-const updateRow = (nexusName, patch) => {
+const updateRow = (nexusName: string, patch: Partial<MappingRow>) => {
   const next = rows.value.map(row => (row.nexusName === nexusName ? { ...row, ...patch } : row))
   wizard.setMapping(next, policy.value)
 }
 
-const rowId = (nexusName) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
+// The include box of a row: the checked state of the box the event came from.
+const setIncluded = (nexusName: string, event: Event) => updateRow(nexusName, { included: (event.target as HTMLInputElement).checked })
+
+const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
 </script>
 
 <template>
@@ -211,7 +216,7 @@ const rowId = (nexusName) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
                   :label="`Target name for ${row.nexusName}`"
                   variant="outlined"
                   autocomplete="off"
-                  :model-value="row.targetName"
+                  :model-value="row.targetName ?? ''"
                   :error="warningOf(row.nexusName) !== null"
                   :error-text="warningOf(row.nexusName) === 'empty' ? 'Enter a target name.' : warningOf(row.nexusName) === 'duplicate' ? 'Shares this name with another included repository.' : ''"
                   @update:model-value="updateRow(row.nexusName, { targetName: $event })"
@@ -228,7 +233,7 @@ const rowId = (nexusName) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
                   :id="`migration-include-${rowId(row.nexusName)}`"
                   type="checkbox"
                   :checked="row.included"
-                  @change="updateRow(row.nexusName, { included: $event.target.checked })"
+                  @change="setIncluded(row.nexusName, $event)"
                 >
                 Include {{ row.nexusName }}
               </label>
