@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { NavigationFailureType, RouterLink, isNavigationFailure, useRoute, useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
@@ -34,7 +34,9 @@ import {
   toRequestQuery,
   toRouteQuery
 } from './searchQuery'
+import type { SearchQuery } from './searchQuery'
 import { announcement, indexNotice, normalizeFiles, normalizePage, rowKey } from './searchResult'
+import type { Facets, FilesState, SearchItem, SearchPage } from './searchResult'
 
 /*
  * The search page (spec section 8). The whole query lives in the address, so a search can be linked and
@@ -61,13 +63,21 @@ const ORDER_OPTIONS = [
   { value: 'asc', label: 'Ascending' },
   { value: 'desc', label: 'Descending' }
 ]
-const EMPTY_FACETS = { repository: [], extension: [], classifier: [], origin: [], snapshot: [] }
+const EMPTY_FACETS: Facets = { repository: [], extension: [], classifier: [], origin: [], snapshot: [] }
 const SKELETON_ROWS = 5
+
+// The HTTP answer of a failed request, when the error carries one.
+interface HttpResponse {
+  status?: number
+  data?: { message?: string }
+}
+const responseOf = (error: unknown): HttpResponse | undefined =>
+  (typeof error === 'object' && error !== null && 'response' in error ? (error as { response?: HttpResponse }).response : undefined)
 
 const query = computed(() => parseSearchQuery(route.query))
 const requestQuery = computed(() => toRequestQuery(query.value))
 
-const result = ref(null)
+const result = ref<SearchPage | null>(null)
 const loading = ref(true)
 const failure = ref('')
 const disabled = ref(false)
@@ -75,11 +85,11 @@ const announced = ref('')
 const draft = ref(query.value.q)
 const sheetOpen = ref(false)
 const activeRow = ref(0)
-const expanded = ref({})
-const filesByKey = ref({})
-const bar = ref(null)
-const list = ref(null)
-const filterButton = ref(null)
+const expanded = ref<Record<string, boolean>>({})
+const filesByKey = ref<Record<string, FilesState>>({})
+const bar = ref<InstanceType<typeof SearchBar> | null>(null)
+const list = ref<HTMLUListElement | null>(null)
+const filterButton = ref<InstanceType<typeof MdButton> | null>(null)
 const filtersTitleId = useId()
 let latestRequest = 0
 
@@ -114,10 +124,11 @@ const load = async () => {
     activeRow.value = 0
   } catch (error) {
     if (current !== latestRequest) return
-    if (error?.response?.status === 404) {
+    const response = responseOf(error)
+    if (response?.status === 404) {
       disabled.value = true
     } else {
-      const detail = error?.response?.status === 400 ? error.response.data?.message : ''
+      const detail = response?.status === 400 ? response.data?.message : ''
       failure.value = detail || `Cannot search: ${errorMessage(error)}`
     }
   } finally {
@@ -133,7 +144,7 @@ watch(() => query.value.q, (text) => {
 })
 
 // Every change is a navigation. A change that leaves the address as it was runs the search again.
-const go = async (changes) => {
+const go = async (changes: Partial<SearchQuery>) => {
   const next = toRouteQuery(changeQuery(query.value, changes))
   const outcome = await router.push({ name: route.name, query: next })
   if (isNavigationFailure(outcome, NavigationFailureType.duplicated)) await load()
@@ -142,9 +153,9 @@ const go = async (changes) => {
 const submit = () => go({ q: draft.value.trim() })
 const reset = () => go(resetFilters(query.value))
 const resetEverything = () => go({ ...resetFilters(query.value), q: '' })
-const changeFilter = (changes) => go(changes)
+const changeFilter = (changes: Partial<SearchQuery>) => go(changes)
 
-const toggleSheet = async (open) => {
+const toggleSheet = async (open: boolean) => {
   sheetOpen.value = open
   if (!open) {
     await nextTick()
@@ -153,14 +164,14 @@ const toggleSheet = async (open) => {
 }
 
 // The keys of the search box (spec section 8.2).
-const rowToggles = () => [...(list.value?.querySelectorAll('[data-row-toggle]') ?? [])]
+const rowToggles = () => [...(list.value?.querySelectorAll<HTMLElement>('[data-row-toggle]') ?? [])]
 
-const focusRow = async (index) => {
+const focusRow = async (index: number) => {
   await nextTick()
   rowToggles()[index]?.focus()
 }
 
-const onBoxKey = (event) => {
+const onBoxKey = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     draft.value = ''
     bar.value?.blur()
@@ -176,7 +187,7 @@ const onBoxKey = (event) => {
   }
 }
 
-const moveFrom = (index, direction) => {
+const moveFrom = (index: number, direction: 'next' | 'previous') => {
   if (direction === 'next') {
     const target = Math.min(index + 1, items.value.length - 1)
     activeRow.value = target
@@ -190,7 +201,7 @@ const moveFrom = (index, direction) => {
 }
 
 // "/" focuses the search box from anywhere but a field that takes text.
-const onDocumentKey = (event) => {
+const onDocumentKey = (event: KeyboardEvent) => {
   if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
   const target = event.target
   const typing = target instanceof HTMLElement
@@ -204,7 +215,7 @@ onMounted(() => document.addEventListener('keydown', onDocumentKey))
 onBeforeUnmount(() => document.removeEventListener('keydown', onDocumentKey))
 
 // The files of a row are asked for when it opens, and again for the next page on request.
-const loadFiles = async (item, page = 0) => {
+const loadFiles = async (item: SearchItem, page = 0) => {
   const key = rowKey(item)
   const generation = latestRequest
   const previous = page > 0 ? filesByKey.value[key] : undefined
@@ -232,7 +243,7 @@ const loadFiles = async (item, page = 0) => {
   }
 }
 
-const toggleRow = (item) => {
+const toggleRow = (item: SearchItem) => {
   const key = rowKey(item)
   if (expanded.value[key]) {
     const rest = { ...expanded.value }

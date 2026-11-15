@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useId } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
 import { formatDay, formatSize, repositoryLabel } from './searchResult'
+import type { FilesState, SearchFile, SearchItem } from './searchResult'
 
 /*
  * One result of the search: a version (groupId, artifactId, version) with the repositories that hold
@@ -30,16 +31,26 @@ import { formatDay, formatSize, repositoryLabel } from './searchResult'
  * The row loads nothing itself. The page hands it the state of the files, and it reports what the
  * visitor asks for.
  */
-const props = defineProps({
-  item: { type: Object, required: true },
-  expanded: { type: Boolean, default: false },
+const props = withDefaults(defineProps<{
+  item: SearchItem
+  expanded?: boolean
   // The one row of the list that is a tab stop (roving tabindex).
-  tabbable: { type: Boolean, default: false },
+  tabbable?: boolean
   // { status: 'loading' | 'error' | 'ready', items, total, message } or undefined before the first request.
-  files: { type: Object, default: undefined }
+  files?: FilesState
+}>(), {
+  expanded: false,
+  tabbable: false,
+  files: undefined
 })
 
-const emit = defineEmits(['toggle', 'focus-row', 'move', 'load-files', 'retry-files'])
+const emit = defineEmits<{
+  toggle: []
+  'focus-row': []
+  move: [direction: 'next' | 'previous']
+  'load-files': []
+  'retry-files': []
+}>()
 
 const titleId = useId()
 const regionId = useId()
@@ -48,7 +59,7 @@ const coordinates = computed(() => `${props.item.groupId}:${props.item.artifactI
 const hasNewer = computed(() => props.item.latestVersion !== null && props.item.latestVersion !== props.item.version)
 const fileCount = computed(() => `${props.item.fileCount} ${props.item.fileCount === 1 ? 'file' : 'files'}`)
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   const { key } = event
   if (key === 'ArrowDown') emit('move', 'next')
   else if (key === 'ArrowUp') emit('move', 'previous')
@@ -58,7 +69,7 @@ const onKeydown = (event) => {
   event.preventDefault()
 }
 
-const sourceOf = (file) => (file.origin === 'MIRROR'
+const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
   ? `cached from ${file.repository}${file.sourceHost ? ` (${file.sourceHost})` : ''}`
   : file.repository)
 </script>
@@ -76,7 +87,7 @@ const sourceOf = (file) => (file.origin === 'MIRROR'
           type="button"
           data-row-toggle
           :tabindex="tabbable ? 0 : -1"
-          :aria-expanded="String(expanded)"
+          :aria-expanded="expanded ? 'true' : 'false'"
           :aria-controls="expanded ? regionId : undefined"
           class="md-state-layer md-focus-ring relative flex min-h-10 min-w-0 items-center gap-2 rounded-corner-small px-2 text-left text-on-surface"
           @click="emit('toggle')"

@@ -14,12 +14,32 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { activeFilters, dateInputValue, instantFromDateInput } from './searchQuery'
+import type { SearchQuery } from './searchQuery'
+import type { Facets } from './searchResult'
+
+interface FacetOption {
+  value: string
+  count: number | null
+}
+
+interface FilterGroup {
+  key: 'repository' | 'extension' | 'classifier'
+  title: string
+  facet: keyof Facets
+  selected: string[]
+  options: FacetOption[]
+}
+
+type TextKey = 'groupId' | 'artifactId' | 'version'
+type DateKey = 'modifiedAfter' | 'modifiedBefore'
+type BytesKey = 'sizeMin' | 'sizeMax'
+type Draft = Record<TextKey | DateKey | BytesKey, string>
 
 /*
  * The filter panel of the search page: MD3 filter chips for the repository, the file extension, the
@@ -31,44 +51,47 @@ import { activeFilters, dateInputValue, instantFromDateInput } from './searchQue
  * through `change`; the page puts that into the address. The text fields keep a draft while they are
  * typed in and report it when the field is left or Enter is pressed (the native change event).
  */
-const props = defineProps({
-  query: { type: Object, required: true },
-  facets: { type: Object, required: true }
-})
+const props = defineProps<{
+  query: SearchQuery
+  facets: Facets
+}>()
 
-const emit = defineEmits(['change', 'reset'])
+const emit = defineEmits<{
+  change: [partial: Partial<SearchQuery>]
+  reset: []
+}>()
 
 const ORIGIN_OPTIONS = [
   { value: 'all', label: 'Any origin', facet: null },
   { value: 'hosted', label: 'Hosted', facet: 'HOSTED' },
   { value: 'mirror', label: 'Cached copies', facet: 'MIRROR' }
-]
+] as const
 
 const SNAPSHOT_OPTIONS = [
   { value: 'all', label: 'Any version', facet: null },
   { value: 'false', label: 'Releases', facet: 'false' },
   { value: 'true', label: 'Snapshots', facet: 'true' }
-]
+] as const
 
-const countOf = (facet, value) => props.facets[facet]?.find(bucket => bucket.value === value)?.count ?? null
+const countOf = (facet: keyof Facets, value: string): number | null => props.facets[facet]?.find(bucket => bucket.value === value)?.count ?? null
 
 // The buckets of a facet, and then any chosen value the facet no longer lists, so a chosen chip never vanishes.
-const optionsOf = (facet, selected) => {
+const optionsOf = (facet: keyof Facets, selected: string[]): FacetOption[] => {
   const listed = (props.facets[facet] ?? []).map(bucket => ({ value: bucket.value, count: bucket.count }))
   const missing = selected.filter(value => !listed.some(option => option.value === value))
   return [...listed, ...missing.map(value => ({ value, count: null }))]
 }
 
-const GROUPS = computed(() => [
-  { key: 'repository', title: 'Repository', facet: 'repository', selected: props.query.repository, label: value => value },
-  { key: 'extension', title: 'File type', facet: 'extension', selected: props.query.extension, label: value => value },
+const GROUPS = computed(() => ([
+  { key: 'repository', title: 'Repository', facet: 'repository', selected: props.query.repository, label: (value: string) => value },
+  { key: 'extension', title: 'File type', facet: 'extension', selected: props.query.extension, label: (value: string) => value },
   {
     key: 'classifier', title: 'Classifier', facet: 'classifier', selected: props.query.classifier,
-    label: value => (value === '-' ? 'none' : value)
+    label: (value: string) => (value === '-' ? 'none' : value)
   }
-].map(group => ({ ...group, options: optionsOf(group.facet, group.selected) })))
+] as const).map(group => ({ ...group, options: optionsOf(group.facet, group.selected) })))
 
-const toggleValue = (group, value) => {
+const toggleValue = (group: Pick<FilterGroup, 'key' | 'selected'>, value: string) => {
   const next = group.selected.includes(value)
     ? group.selected.filter(entry => entry !== value)
     : [...group.selected, value]
@@ -79,7 +102,7 @@ const filterWords = computed(() => activeFilters({ ...props.query, q: '' }))
 const filtersActive = computed(() => filterWords.value.length > 0)
 
 // Drafts of the fields, so typing does not change the address on every key.
-const draft = ref({})
+const draft = ref({} as Draft)
 const syncDraft = () => {
   draft.value = {
     groupId: props.query.groupId,
@@ -94,18 +117,18 @@ const syncDraft = () => {
 syncDraft()
 watch(() => props.query, syncDraft)
 
-const commitText = (key) => {
+const commitText = (key: TextKey) => {
   const value = draft.value[key].trim()
   if (value !== props.query[key]) emit('change', { [key]: value })
 }
 
-const commitDate = (key) => {
+const commitDate = (key: DateKey) => {
   const instant = instantFromDateInput(draft.value[key])
   if (instant !== props.query[key]) emit('change', { [key]: instant })
 }
 
 // A byte count is a whole number; anything else is left out rather than sent to the server.
-const commitBytes = (key) => {
+const commitBytes = (key: BytesKey) => {
   const value = /^\d+$/.test(draft.value[key].trim()) ? draft.value[key].trim() : ''
   if (value !== props.query[key]) emit('change', { [key]: value })
 }

@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
 /*
@@ -25,14 +25,23 @@ import { ref } from 'vue'
  * The page decides what Enter and the other keys do: the bar reports a submit and passes the key
  * presses of the input on, and `focus()` and `blur()` let the page move the focus in and out.
  */
-defineProps({
-  modelValue: { type: String, default: '' },
-  label: { type: String, required: true }
+withDefaults(defineProps<{
+  modelValue?: string
+  label: string
+}>(), {
+  modelValue: ''
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'keydown'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  submit: []
+  keydown: [event: KeyboardEvent]
+}>()
 
-const input = ref(null)
+const input = ref<HTMLInputElement | null>(null)
+
+// The text the visitor typed, read from the field the input event came from.
+const onInput = (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).value)
 
 defineExpose({
   focus: () => input.value?.focus(),
@@ -64,7 +73,7 @@ defineExpose({
         :placeholder="label"
         autocomplete="off"
         :value="modelValue"
-        @input="emit('update:modelValue', $event.target.value)"
+        @input="onInput"
         @keydown="emit('keydown', $event)"
       >
       <button

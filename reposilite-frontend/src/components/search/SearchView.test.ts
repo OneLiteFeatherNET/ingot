@@ -16,8 +16,11 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import { sessionState } from '../../store/session'
+import type { Router } from 'vue-router'
+import type { Ref } from 'vue'
+import * as session from '../../store/session'
 import SearchView from './SearchView.vue'
 
 // The session is replaced per file; each test sets the client and who is signed in.
@@ -28,7 +31,7 @@ vi.mock('../../store/session', async () => {
     sessionReady: ref(true),
     details: ref(undefined),
     isLogged: ref(false),
-    allowed: ref([])
+    allowed: ref<string[]>([])
   }
   return {
     sessionState: state,
@@ -37,10 +40,20 @@ vi.mock('../../store/session', async () => {
       sessionReady: state.sessionReady,
       details: state.details,
       isLogged: state.isLogged,
-      can: (node) => state.allowed.value.includes(node)
+      can: (node: string) => state.allowed.value.includes(node)
     })
   }
 })
+
+// The state the mock above exposes. The real session module does not export it, so it is read through this type.
+interface SessionState {
+  client: Ref<ReturnType<typeof clientAnswering> | null>
+  sessionReady: Ref<boolean>
+  details: Ref<{ permissions: string[] } | undefined>
+  isLogged: Ref<boolean>
+  allowed: Ref<string[]>
+}
+const { sessionState } = session as unknown as { sessionState: SessionState }
 
 // The page under test is mounted directly, so every route renders nothing.
 const page = { render: () => null }
@@ -114,45 +127,49 @@ const answerFiles = (overrides = {}) => ({
   ...overrides
 })
 
-const failing = (status, message) => Object.assign(new Error(`status ${status}`), { response: { status, data: { message } } })
+const failing = (status: number, message: string) => Object.assign(new Error(`status ${status}`), { response: { status, data: { message } } })
 
 // A client whose answers the test controls. Each test builds its own, so no call leaks between tests.
-const clientAnswering = ({ search = () => Promise.resolve({ data: answerPage() }), searchFiles = () => Promise.resolve({ data: answerFiles() }) } = {}) => ({
+// The answers of the client. A test replaces one of them to decide what the page receives.
+interface ClientAnswers {
+  search?: (query: string) => Promise<unknown>
+  searchFiles?: (params: Record<string, unknown>) => Promise<unknown>
+}
+const clientAnswering = ({ search = () => Promise.resolve({ data: answerPage() }), searchFiles = () => Promise.resolve({ data: answerFiles() }) }: ClientAnswers = {}) => ({
   maven: { search: vi.fn(search), searchFiles: vi.fn(searchFiles) }
 })
 
-let wrapper
-let router
+let wrapper: VueWrapper
+let router: Router
 
-const mountAt = async (url, { client = clientAnswering(), logged = false, allowed = [] } = {}) => {
+const mountAt = async (url: string, { client = clientAnswering(), logged = false, allowed = [] as string[] } = {}) => {
   sessionState.client.value = client
   sessionState.sessionReady.value = true
   sessionState.details.value = undefined
   sessionState.isLogged.value = logged
   sessionState.allowed.value = allowed
   router = createRouter({ history: createMemoryHistory(), routes })
-  router.push(url)
+  await router.push(url)
   await router.isReady()
-  wrapper = mount(SearchView, { global: { plugins: [router] }, attachTo: document.body })
+  wrapper = mount(SearchView, { global: { plugins: [router] }, attachTo: document.body }) as VueWrapper
   await flushPromises()
   return client
 }
 
-const box = () => wrapper.find('input[type="search"]')
+const box = () => wrapper.find<HTMLInputElement>('input[type="search"]')
 const rows = () => wrapper.findAll('[data-test="result"]')
-const rowToggles = () => wrapper.findAll('[data-row-toggle]')
-const chip = (group, value) => wrapper.find(`[data-test="chip-${group}-${value}"]`)
+const rowToggles = () => wrapper.findAll<HTMLElement>('[data-row-toggle]')
+const chip = (group: string, value: string) => wrapper.find(`[data-test="chip-${group}-${value}"]`)
 const liveRegion = () => wrapper.find('[data-test="live-region"]')
 const addressQuery = () => router.currentRoute.value.query
-const searchCalls = (client) => client.maven.search.mock.calls.map(call => call[0])
-const press = async (target, key) => {
+const searchCalls = (client: ReturnType<typeof clientAnswering>) => client.maven.search.mock.calls.map(call => call[0])
+const press = async (target: DOMWrapper<Element>, key: string) => {
   await target.trigger('keydown', { key })
   await flushPromises()
 }
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('SearchView request and address', () => {
@@ -328,7 +345,7 @@ describe('SearchView request and address', () => {
   })
 
   it('drops an answer that arrives after a newer query was asked for', async () => {
-    const slow = []
+    const slow: { query: string; resolve: (value: unknown) => void }[] = []
     const client = clientAnswering({
       search: (query) => new Promise((resolve) => { slow.push({ query, resolve }) })
     })
@@ -630,7 +647,7 @@ describe('SearchView accessibility', () => {
   })
 
   it('does not announce an old count while a new answer is awaited', async () => {
-    const pending = []
+    const pending: ((value: unknown) => void)[] = []
     const client = clientAnswering({ search: () => new Promise((resolve) => { pending.push(resolve) }) })
     await mountAt('/search', { client })
     pending[0]({ data: answerPage() })
@@ -687,7 +704,7 @@ describe('SearchView keyboard', () => {
 
   it('types a slash into a field instead of moving the focus', async () => {
     await mountAt('/search')
-    const field = wrapper.find('[data-test="field-groupId"]')
+    const field = wrapper.find<HTMLElement>('[data-test="field-groupId"]')
     field.element.focus()
 
     const event = new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true })
