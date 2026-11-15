@@ -16,9 +16,9 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Ref } from 'vue'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import PermissionNodesCard from './PermissionNodesCard.vue'
 import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
@@ -29,28 +29,32 @@ import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
  * touches the network, and every test builds its own wrapper and client.
  */
 
-const holder = vi.hoisted(() => ({ session: null }))
+type SessionHolder = { client: Ref<unknown> } | null
+
+const holder = vi.hoisted(() => ({ session: null as SessionHolder }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
+
+type ErrorLike = { message?: string; response?: { data?: { message?: string } } } | null | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as ErrorLike)?.response?.data?.message ?? (error as ErrorLike)?.message ?? `${String(error)}`
 }))
 
 describe('PermissionNodesCard', () => {
-  let wrapper
-  let nodes
+  let wrapper: VueWrapper
+  let nodes: { get: Mock; set: Mock; catalog: Mock; templates: Mock }
 
-  const mountCard = async (props = { subjectKind: 'principal', name: 'alice' }) => {
-    wrapper = mount(PermissionNodesCard, { props, attachTo: document.body })
+  const mountCard = async (props: { subjectKind: 'principal' | 'team'; name: string } = { subjectKind: 'principal', name: 'alice' }) => {
+    wrapper = mount(PermissionNodesCard, { props, attachTo: document.body }) as VueWrapper
     await flushPromises()
   }
 
   const rowNodes = () => wrapper.findAll('[data-test="node-row"] [data-node]').map(row => row.attributes('data-node'))
-  const buttonNamed = (name) => wrapper.findAll('button').find(button => button.text() === name)
-  const remove = async (node) => {
+  const buttonNamed = (name: string) => wrapper.findAll('button').find(button => button.text() === name)!
+  const remove = async (node: string) => {
     await wrapper.find(`button[aria-label="Remove ${node}"]`).trigger('click')
   }
   const save = async () => {
@@ -67,7 +71,7 @@ describe('PermissionNodesCard', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
+    wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
   })
 
@@ -173,7 +177,7 @@ describe('PermissionNodesCard', () => {
       await remove('ingot.repository.releases.read')
       await save()
 
-      expect(nodes.set.mock.calls.map(call => call[3])).toEqual(['"n1"', '"n2"'])
+      expect(nodes.set.mock.calls.map((call): unknown => call[3])).toEqual(['"n1"', '"n2"'])
     })
 
     it('tells the page and the user that the nodes were saved', async () => {
@@ -249,7 +253,7 @@ describe('PermissionNodesCard', () => {
       await remove('ingot.repository.private.read')
       await save()
 
-      expect(document.querySelector('[role="alertdialog"]').textContent).toContain('Permission nodes changed elsewhere')
+      expect(document.querySelector<HTMLElement>('[role="alertdialog"]')!.textContent).toContain('Permission nodes changed elsewhere')
       expect(createErrorToast).not.toHaveBeenCalled()
     })
 
@@ -260,9 +264,9 @@ describe('PermissionNodesCard', () => {
       await save()
       nodes.get.mockClear()
 
-      const reload = [...document.querySelectorAll('[role="alertdialog"] button')]
-        .find(button => button.textContent.trim() === 'Reload and discard my changes')
-      reload.click()
+      const reload = [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
+        .find(button => button.textContent?.trim() === 'Reload and discard my changes')
+      reload!.click()
       await flushPromises()
 
       expect(nodes.get).toHaveBeenCalledTimes(1)

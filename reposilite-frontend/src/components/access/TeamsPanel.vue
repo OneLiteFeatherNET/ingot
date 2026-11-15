@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
@@ -53,7 +53,7 @@ const newOpen = ref(false)
 
 onMounted(load)
 
-const count = (value, noun) => `${value ?? 0} ${noun}${value === 1 ? '' : 's'}`
+const count = (value: number | null | undefined, noun: string) => `${value ?? 0} ${noun}${value === 1 ? '' : 's'}`
 
 const rows = computed(() => filterTeams(teams.value, query.value).map(team => ({
   team,
@@ -65,15 +65,15 @@ const rows = computed(() => filterTeams(teams.value, query.value).map(team => ({
 const emptyText = computed(() =>
   teams.value.length === 0 ? 'There are no teams yet.' : `Nothing matches "${query.value.trim()}".`)
 
-const open = (name) => router.push({ name: 'access-team', params: { name } })
+const open = (name: string) => router.push({ name: 'access-team', params: { name } })
 const close = () => router.push({ name: 'access-teams' })
 
-const created = (name) => {
+const created = (name: string) => {
   load()
   open(name)
 }
 
-const deleted = (name) => {
+const deleted = (name: string) => {
   load()
   if (name === props.name) close()
 }

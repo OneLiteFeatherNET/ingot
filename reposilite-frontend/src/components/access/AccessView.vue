@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
+import { computed, type PropType } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../../store/session'
 import { adminGroups, pageTreeKey, sideNavOf } from '../../navigation/registry'
@@ -37,11 +37,13 @@ import CheckPermissionView from './check/CheckPermissionView.vue'
  *   tab   users, machines, teams, sso, ldap, security or check (the permission check); none shows the index
  *   name  the open user, machine account or team, if any
  */
+type AccessTab = 'users' | 'machines' | 'teams' | 'sso' | 'ldap' | 'security' | 'check'
+
 const props = defineProps({
   tab: {
-    type: String,
+    type: String as PropType<AccessTab>,
     default: undefined,
-    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check'].includes(value)
+    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check'].includes(value as AccessTab)
   },
   name: {
     type: String,

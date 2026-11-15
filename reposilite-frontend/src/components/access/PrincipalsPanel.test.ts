@@ -14,35 +14,36 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
+import type { PrincipalKind } from './accessPrincipals'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
-const wireInstant = (iso) => Date.parse(iso) / 1000
+const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted((): { session: unknown } => ({ session: null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }, message?: string } | undefined) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 const shell = { render: () => null }
 
-const makeRouter = async (url) => {
+const makeRouter = async (url: string): Promise<Router> => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
   })
   await router.push(url)
   await router.isReady()
@@ -58,7 +59,7 @@ const CI = { id: 4, kind: 'MACHINE', name: 'ci-bot', displayName: 'CI bot', disa
 const IDLE = { id: 5, kind: 'MACHINE', name: 'idle-bot', displayName: '', disabled: false, createdAt: wireInstant('2026-10-04T09:00:00Z'), lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 1, providers: [] }
 
 // What the detail view reads when a row is opened. The list never asks for it.
-const DETAILS = {
+const DETAILS: Record<string, unknown> = {
   alice: { ...ALICE, teams: [], instanceRole: false, tokens: [] },
   bob: { ...BOB, teams: [], instanceRole: false, tokens: [] },
   admin: { ...ADMIN, teams: [], instanceRole: true, tokens: [] },
@@ -75,39 +76,39 @@ const DETAILS = {
   'idle-bot': { ...IDLE, teams: [], instanceRole: false, tokens: [{ name: 'unused', lastUsedAt: null }] }
 }
 
-const dialog = () => document.querySelector('[role="dialog"]')
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
 
-const type = (id, value) => {
-  const input = document.getElementById(id)
+const type = (id: string, value: string) => {
+  const input = document.getElementById(id) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
 const submitDialog = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+  dialog().querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
 describe('PrincipalsPanel', () => {
-  let wrapper
-  let router
-  let principals
+  let wrapper: VueWrapper | undefined
+  let router: Router
+  let principals: Record<'list' | 'get' | 'create' | 'setPassword' | 'update' | 'remove' | 'grantInstanceAdmin' | 'revokeInstanceAdmin', Mock>
 
-  const mountPanel = async (props, url = '/access/users') => {
+  const mountPanel = async (props: { kind: PrincipalKind, name?: string }, url = '/access/users') => {
     router = await makeRouter(url)
     wrapper = mount(PrincipalsPanel, { props, attachTo: document.body, global: { plugins: [router] } })
     await flushPromises()
   }
 
-  const usernames = () => wrapper.findAll('[data-test="row"]').map(row => row.find('[data-test="username"]').text())
-  const rowOf = (name) =>
-    wrapper.findAll('[data-test="row"]').find(row => row.find('[data-test="username"]').text() === name)
+  const usernames = () => wrapper!.findAll('[data-test="row"]').map(row => row.find('[data-test="username"]').text())
+  const rowOf = (name: string) =>
+    wrapper!.findAll('[data-test="row"]').find(row => row.find('[data-test="username"]').text() === name)!
 
   beforeEach(() => {
     setClock(() => new Date(Date.UTC(2026, 9, 15, 12)))
     principals = {
-      list: vi.fn(async (kind) => ({ data: kind === 'USER' ? [ADMIN, ALICE, BOB] : [CI, IDLE] })),
-      get: vi.fn(async (name) => ({ data: DETAILS[name], headers: { etag: '"1"' } })),
+      list: vi.fn((kind: string) => Promise.resolve({ data: kind === 'USER' ? [ADMIN, ALICE, BOB] : [CI, IDLE] })),
+      get: vi.fn((name: string) => Promise.resolve({ data: DETAILS[name], headers: { etag: '"1"' } })),
       create: vi.fn().mockResolvedValue({ data: {} }),
       setPassword: vi.fn().mockResolvedValue({ status: 204 }),
       update: vi.fn(),
@@ -161,8 +162,8 @@ describe('PrincipalsPanel', () => {
 
       await mountPanel({ kind: 'USER' })
 
-      const menus = wrapper.findAllComponents(PrincipalActionsMenu)
-      expect(menus.map(menu => menu.props('instanceAdmin')), 'alice holds it through a team, admin directly').toEqual([false, true])
+      const menus = wrapper!.findAllComponents(PrincipalActionsMenu)
+      expect(menus.map(menu => menu.props('instanceAdmin') as boolean),'alice holds it through a team, admin directly').toEqual([false, true])
     })
 
     it('shows no instance admin chip when the list item lacks the flags', async () => {
@@ -194,7 +195,7 @@ describe('PrincipalsPanel', () => {
     it('filters the list by username', async () => {
       await mountPanel({ kind: 'USER' })
 
-      await wrapper.find('[data-test="search"]').setValue('ali')
+      await wrapper!.find('[data-test="search"]').setValue('ali')
 
       expect(usernames()).toEqual(['alice'])
     })
@@ -202,7 +203,7 @@ describe('PrincipalsPanel', () => {
     it('filters the list by display name', async () => {
       await mountPanel({ kind: 'USER' })
 
-      await wrapper.find('[data-test="search"]').setValue('builder')
+      await wrapper!.find('[data-test="search"]').setValue('builder')
 
       expect(usernames()).toEqual(['bob'])
     })
@@ -210,10 +211,10 @@ describe('PrincipalsPanel', () => {
     it('says so when nothing matches the search', async () => {
       await mountPanel({ kind: 'USER' })
 
-      await wrapper.find('[data-test="search"]').setValue('zed')
+      await wrapper!.find('[data-test="search"]').setValue('zed')
 
       expect(usernames()).toEqual([])
-      expect(wrapper.text()).toContain('Nothing matches "zed"')
+      expect(wrapper!.text()).toContain('Nothing matches "zed"')
     })
 
     it('shows the display name, the username and the Disabled chip', async () => {
@@ -263,14 +264,14 @@ describe('PrincipalsPanel', () => {
     it('shows the detail of the user named by the address next to the list', async () => {
       await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
 
-      expect(wrapper.find('[data-test="principal-display-name"]').text()).toBe('Alice Example')
+      expect(wrapper!.find('[data-test="principal-display-name"]').text()).toBe('Alice Example')
       expect(principals.get).toHaveBeenCalledWith('alice')
     })
 
     it('creates a user through the dialog: the principal first, then the password', async () => {
       await mountPanel({ kind: 'USER' })
 
-      await wrapper.find('[data-test="new-principal"]').trigger('click')
+      await wrapper!.find('[data-test="new-principal"]').trigger('click')
       await flushPromises()
       type('new-user-name', 'carol')
       type('new-user-password', 'a-long-password')
@@ -284,7 +285,7 @@ describe('PrincipalsPanel', () => {
     it('reads the list again after a user was created', async () => {
       await mountPanel({ kind: 'USER' })
 
-      await wrapper.find('[data-test="new-principal"]').trigger('click')
+      await wrapper!.find('[data-test="new-principal"]').trigger('click')
       await flushPromises()
       type('new-user-name', 'carol')
       type('new-user-password', 'a-long-password')
@@ -333,7 +334,7 @@ describe('PrincipalsPanel', () => {
     it('creates a machine account with kind MACHINE', async () => {
       await mountPanel({ kind: 'MACHINE' }, '/access/machines')
 
-      await wrapper.find('[data-test="new-principal"]').trigger('click')
+      await wrapper!.find('[data-test="new-principal"]').trigger('click')
       await flushPromises()
       type('new-machine-name', 'deploy-bot')
       await submitDialog()

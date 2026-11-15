@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import type { AxiosResponse } from 'axios'
 import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
@@ -30,7 +31,8 @@ import {
   registeredBase,
   removeProvider,
   replaceProvider,
-  validatePublicUrl
+  validatePublicUrl,
+  type OidcProvider
 } from './loginSettings'
 import { useLoginSettings } from './useLoginSettings'
 
@@ -81,21 +83,30 @@ const savePublicUrl = async () => {
 
 const dialogOpen = ref(false)
 const confirmOpen = ref(false)
-const editingId = ref(null)
-const testResults = ref({})
-const testing = ref(null)
+/** The answer of the provider test: whether the issuer answered, or the reason it did not. */
+interface OidcTestResult {
+  ok: boolean
+  error?: string
+}
+
+const editingId = ref<string | null>(null)
+const testResults = ref<Record<string, OidcTestResult>>({})
+const testing = ref<string | null>(null)
 
 const providers = computed(() => settings.value.oidcProviders)
 const editingProvider = computed(() => providers.value.find(provider => provider.id === editingId.value) ?? null)
 const takenIds = computed(() => providers.value.map(provider => provider.id).filter(id => id !== editingId.value))
 
-const STATUS_CLASSES = {
+const STATUS_CLASSES: Record<string, string> = {
   neutral: 'bg-surface-container-highest text-on-surface-variant',
   success: 'bg-surface-container-highest text-success',
   error: 'bg-error-container text-on-error-container'
 }
 
-const statusOf = (provider) => {
+// The classes of a status tone; the tone names the key.
+const classOf = (tone: string): string => STATUS_CLASSES[tone]
+
+const statusOf = (provider: OidcProvider): { tone: string; text: string } => {
   const result = testResults.value[provider.id]
   if (!result) return { tone: 'neutral', text: 'Not tested' }
   return result.ok ? { tone: 'success', text: 'Connected' } : { tone: 'error', text: 'Test failed' }
@@ -106,13 +117,13 @@ const openAdd = () => {
   dialogOpen.value = true
 }
 
-const openEdit = (provider) => {
+const openEdit = (provider: OidcProvider) => {
   editingId.value = provider.id
   dialogOpen.value = true
 }
 
 // Writes the list with one provider changed, and reports a refusal in the notice.
-const writeProviders = async (next, done) => {
+const writeProviders = async (next: OidcProvider[], done: () => void) => {
   const ok = await save({ ...settings.value, oidcProviders: next })
   if (ok) {
     done()
@@ -122,19 +133,19 @@ const writeProviders = async (next, done) => {
   return ok
 }
 
-const saveProvider = ({ provider, previousId }) =>
+const saveProvider = ({ provider, previousId }: { provider: OidcProvider; previousId?: string }) =>
   writeProviders(replaceProvider(providers.value, provider, previousId), () => {
     dialogOpen.value = false
     createSuccessToast(`Saved ${provider.label}`)
   })
 
-const setEnabled = (provider, enabled) =>
+const setEnabled = (provider: OidcProvider, enabled: boolean) =>
   writeProviders(replaceProvider(providers.value, { ...provider, enabled }, provider.id), () => {
     createSuccessToast(`${provider.label} ${enabled ? 'is offered' : 'is hidden'} at sign in`)
   })
 
 const deleteProvider = () => {
-  const id = editingId.value
+  const id = editingId.value!
   return writeProviders(removeProvider(providers.value, id), () => {
     confirmOpen.value = false
     dialogOpen.value = false
@@ -144,11 +155,11 @@ const deleteProvider = () => {
 
 // The test reads the saved provider at the issuer. A failure is an answer too, not an exception.
 const testProvider = async () => {
-  const id = editingId.value
+  const id = editingId.value as string
   testing.value = id
-  let result
+  let result: OidcTestResult
   try {
-    const response = await client.value.auth.testOidcProvider(id)
+    const response: AxiosResponse<OidcTestResult> = await client.value.auth.testOidcProvider(id)
     result = { ...response.data, ok: response.data?.ok === true }
   } catch (error) {
     result = { ok: false, error: errorMessage(error) }
@@ -280,7 +291,7 @@ onMounted(load)
         <span
           data-test="status"
           class="rounded-corner-small px-2 py-0.5 md-label-medium"
-          :class="STATUS_CLASSES[statusOf(provider).tone]"
+          :class="classOf(statusOf(provider).tone)"
         >
           {{ statusOf(provider).text }}
         </span>

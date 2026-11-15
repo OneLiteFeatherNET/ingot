@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import TeamsPanel from './TeamsPanel.vue'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted((): { session: unknown } => ({ session: null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }, message?: string } | undefined) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 const shell = { render: () => null }
@@ -45,14 +45,14 @@ const TEAMS = [
 ]
 
 describe('TeamsPanel', () => {
-  let wrapper
-  let router
-  let teams
+  let wrapper: VueWrapper | undefined
+  let router: Router
+  let teams: { list: Mock, get: Mock, create: Mock }
 
-  const mountPanel = async (props = {}, url = '/access/teams') => {
+  const mountPanel = async (props: { name?: string } = {}, url = '/access/teams') => {
     router = createRouter({
       history: createMemoryHistory(),
-      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
     })
     await router.push(url)
     await router.isReady()
@@ -64,19 +64,19 @@ describe('TeamsPanel', () => {
     await flushPromises()
   }
 
-  const names = () => wrapper.findAll('[data-test="row"] [data-test="team-name"]').map(node => node.text())
-  const row = (name) => wrapper.findAll('[data-test="row"]').find(node => node.find('[data-test="team-name"]').text() === name)
+  const names = () => wrapper!.findAll('[data-test="row"] [data-test="team-name"]').map(node => node.text())
+  const row = (name: string) => wrapper!.findAll('[data-test="row"]').find(node => node.find('[data-test="team-name"]').text() === name)
 
-  const type = async (value) => {
-    await wrapper.find('[data-test="search"]').setValue(value)
+  const type = async (value: string) => {
+    await wrapper!.find('[data-test="search"]').setValue(value)
     await flushPromises()
   }
 
   beforeEach(() => {
     teams = {
       list: vi.fn().mockResolvedValue({ data: TEAMS }),
-      get: vi.fn(async (name) => ({ data: { ...TEAMS.find(team => team.name === name), instanceRole: name === 'admins' } })),
-      create: vi.fn(async (body) => ({ data: { ...body, members: [], grants: [], instanceRole: false } }))
+      get: vi.fn((name: string) => Promise.resolve({ data: { ...TEAMS.find(team => team.name === name), instanceRole: name === 'admins' } })),
+      create: vi.fn((body: { name: string }) => Promise.resolve({ data: { ...body, members: [], grants: [], instanceRole: false } }))
     }
     holder.session = { client: ref({ identity: { teams } }) }
   })
@@ -96,21 +96,21 @@ describe('TeamsPanel', () => {
   it('shows the member count and the node count of a team', async () => {
     await mountPanel()
 
-    expect(row('developers').find('[data-test="counts"]').text()).toBe('4 members, 2 nodes')
-    expect(row('release').find('[data-test="counts"]').text()).toBe('1 member, 1 node')
+    expect(row('developers')!.find('[data-test="counts"]').text()).toBe('4 members, 2 nodes')
+    expect(row('release')!.find('[data-test="counts"]').text()).toBe('1 member, 1 node')
   })
 
   it('shows the description of a team', async () => {
     await mountPanel()
 
-    expect(row('release').find('[data-test="team-description"]').text()).toBe('Ships the artifacts')
+    expect(row('release')!.find('[data-test="team-description"]').text()).toBe('Ships the artifacts')
   })
 
   it('shows the instance admin chip on a team that holds the role, and only there', async () => {
     await mountPanel()
 
-    expect(row('admins').find('[data-test="admin-badge"]').text()).toBe('Instance admin')
-    expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(false)
+    expect(row('admins')!.find('[data-test="admin-badge"]').text()).toBe('Instance admin')
+    expect(row('developers')!.find('[data-test="admin-badge"]').exists()).toBe(false)
   })
 
   it('reads the list in one request and no detail of any team', async () => {
@@ -124,7 +124,7 @@ describe('TeamsPanel', () => {
     teams.list.mockResolvedValue({ data: [{ name: 'developers', description: '', externalRef: null, memberCount: 4, nodeCount: 2 }] })
     await mountPanel()
 
-    expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(false)
+    expect(row('developers')!.find('[data-test="admin-badge"]').exists()).toBe(false)
     expect(teams.get, 'a missing flag is not looked up').not.toHaveBeenCalled()
   })
 
@@ -149,13 +149,13 @@ describe('TeamsPanel', () => {
 
     await type('zzz')
 
-    expect(wrapper.text()).toContain('Nothing matches "zzz".')
+    expect(wrapper!.text()).toContain('Nothing matches "zzz".')
   })
 
   it('opens a team in the address when its row is clicked', async () => {
     await mountPanel()
 
-    await row('release').find('a').trigger('click')
+    await row('release')!.find('a').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/access/teams/release')
@@ -164,18 +164,18 @@ describe('TeamsPanel', () => {
   it('shows the detail of the team named by the address', async () => {
     await mountPanel({ name: 'release' }, '/access/teams/release')
 
-    expect(wrapper.find('[data-test="detail"]').text()).toBe('release')
+    expect(wrapper!.find('[data-test="detail"]').text()).toBe('release')
   })
 
   it('opens the new team after the create dialog made it', async () => {
     await mountPanel()
 
-    await wrapper.find('[data-test="new-team"]').trigger('click')
+    await wrapper!.find('[data-test="new-team"]').trigger('click')
     await flushPromises()
-    const input = document.getElementById('new-team-name')
+    const input = document.getElementById('new-team-name') as HTMLInputElement
     input.value = 'qa'
     input.dispatchEvent(new Event('input'))
-    document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { cancelable: true }))
+    document.querySelector<HTMLFormElement>('[role="dialog"] form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
     expect(teams.create).toHaveBeenCalledWith({ name: 'qa' })
@@ -185,12 +185,12 @@ describe('TeamsPanel', () => {
   it('reloads the list after a team was created', async () => {
     await mountPanel()
 
-    await wrapper.find('[data-test="new-team"]').trigger('click')
+    await wrapper!.find('[data-test="new-team"]').trigger('click')
     await flushPromises()
-    const input = document.getElementById('new-team-name')
+    const input = document.getElementById('new-team-name') as HTMLInputElement
     input.value = 'qa'
     input.dispatchEvent(new Event('input'))
-    document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { cancelable: true }))
+    document.querySelector<HTMLFormElement>('[role="dialog"] form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
     expect(teams.list).toHaveBeenCalledTimes(2)
@@ -200,6 +200,6 @@ describe('TeamsPanel', () => {
     teams.list.mockRejectedValueOnce(new Error('offline'))
     await mountPanel()
 
-    expect(wrapper.find('[role="alert"]').text()).toContain('offline')
+    expect(wrapper!.find('[role="alert"]').text()).toContain('offline')
   })
 })

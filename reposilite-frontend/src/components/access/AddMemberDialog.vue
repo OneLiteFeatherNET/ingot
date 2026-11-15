@@ -14,13 +14,14 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, useId } from 'vue'
+<script setup lang="ts">
+import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
 import TokenTag from '../tokens/TokenTag.vue'
-import { candidatePrincipals } from './accessTeams'
+import { candidatePrincipals, type TeamMember } from './accessTeams'
+import type { PrincipalSummary } from './accessPrincipals'
 
 /*
  * The principal picker of a team: a search over the users and machine accounts that are not
@@ -47,11 +48,11 @@ const props = defineProps({
     required: true
   },
   principals: {
-    type: Array,
+    type: Array as PropType<PrincipalSummary[]>,
     default: () => []
   },
   members: {
-    type: Array,
+    type: Array as PropType<TeamMember[]>,
     default: () => []
   },
   loadError: {
@@ -72,11 +73,11 @@ const emit = defineEmits(['update:modelValue', 'add'])
 
 const titleId = `add-member-title-${useId()}`
 const query = ref('')
-const picked = ref([])
+const picked = ref<string[]>([])
 
 const candidates = computed(() => candidatePrincipals(props.principals, props.members, query.value))
 
-const toggle = (name) => {
+const toggle = (name: string) => {
   picked.value = picked.value.includes(name)
     ? picked.value.filter(entry => entry !== name)
     : [...picked.value, name]

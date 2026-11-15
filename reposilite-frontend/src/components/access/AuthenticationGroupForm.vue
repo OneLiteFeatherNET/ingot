@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, onMounted, provide } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
@@ -69,7 +69,7 @@ const loaded = computed(() => domains.value.length > 0)
 // Only the group is drawn: the schema keeps the domain's shape, so the layout and the validation match Settings.
 const form = computed(() => {
   const schema = schemas.value[DOMAIN]
-  const fields = schema?.properties?.[props.group]
+  const fields = (schema?.properties as Record<string, unknown> | undefined)?.[props.group]
   if (!fields) return null
   const groupSchema = { ...schema, properties: { [props.group]: fields } }
   return { schema: groupSchema, layout: entryLayout(groupSchema, { exclude: [] }) }
@@ -79,7 +79,7 @@ const form = computed(() => {
 const dirty = computed(() => JSON.stringify(configurations.value[DOMAIN]?.[props.group])
   !== JSON.stringify(savedSettings.value[DOMAIN]?.[props.group]))
 
-const onChange = (event) => {
+const onChange = (event: { data: Record<string, unknown> }) => {
   store.setDomainData(DOMAIN, event.data)
   store.validateDomain(DOMAIN)
 }

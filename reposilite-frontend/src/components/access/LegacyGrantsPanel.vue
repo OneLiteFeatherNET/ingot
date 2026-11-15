@@ -14,8 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
+import type { PropType } from 'vue'
 import TokenTag from '../tokens/TokenTag.vue'
+import type { LegacyGrant } from './accessPrincipals'
 
 /*
  * The routes a migrated access token had, shown for reading only. They still apply to that
@@ -26,7 +28,7 @@ import TokenTag from '../tokens/TokenTag.vue'
  */
 defineProps({
   grants: {
-    type: Array,
+    type: Array as PropType<LegacyGrant[]>,
     required: true
   }
 })

@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, onMounted, useId, watch } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted, useId, watch, type PropType } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -23,7 +23,7 @@ import NodeEditor from './nodes/NodeEditor.vue'
 import { permissionNodesApi } from './nodes/permissionNodesApi'
 import { teamParentsApi } from './nodes/teamParentsApi'
 import { useInheritedNodes } from './nodes/useInheritedNodes'
-import { usePermissionNodes } from './nodes/usePermissionNodes'
+import { usePermissionNodes, type SaveResult } from './nodes/usePermissionNodes'
 
 /*
  * The "Permission nodes" card of a user, a machine account or a team: it loads the nodes of the
@@ -43,16 +43,16 @@ import { usePermissionNodes } from './nodes/usePermissionNodes'
  */
 const props = defineProps({
   subjectKind: {
-    type: String,
+    type: String as PropType<'principal' | 'team'>,
     required: true,
-    validator: (value) => ['principal', 'team'].includes(value)
+    validator: (value) => ['principal', 'team'].includes(value as string)
   },
   name: {
     type: String,
     required: true
   },
   inheritFrom: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   },
   inheritDepth: {
@@ -99,12 +99,12 @@ watch(
 )
 
 // A rejected write is reported as a toast unless the editor already shows it on the rows.
-const settle = (result) => {
+const settle = (result: SaveResult) => {
   if (result.ok) {
     createSuccessToast('Permission nodes saved')
     emit('saved')
   } else if (!result.conflict && Object.keys(rowErrors.value).length === 0 && !formError.value) {
-    createErrorToast(result.message)
+    createErrorToast(result.message!)
   }
 }
 

@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, onMounted, ref } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted, ref, type PropType } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -25,7 +25,7 @@ import NewMachineDialog from './NewMachineDialog.vue'
 import NewUserDialog from './NewUserDialog.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalDetail from './PrincipalDetail.vue'
-import { filterPrincipals, seenLabel, usedLabel } from './accessPrincipals'
+import { filterPrincipals, seenLabel, usedLabel, type PrincipalKind, type PrincipalSummary } from './accessPrincipals'
 import { usePrincipalList } from './usePrincipalList'
 
 /*
@@ -40,9 +40,9 @@ import { usePrincipalList } from './usePrincipalList'
  */
 const props = defineProps({
   kind: {
-    type: String,
+    type: String as PropType<PrincipalKind>,
     required: true,
-    validator: (value) => ['USER', 'MACHINE'].includes(value)
+    validator: (value) => ['USER', 'MACHINE'].includes(value as string)
   },
   name: {
     type: String,
@@ -80,8 +80,8 @@ const { principals, loaded, loadError, load } = usePrincipalList(props.kind, () 
 const query = ref('')
 const newOpen = ref(false)
 // The row whose actions menu is open. Rows are stacking contexts, so it must rise above its followers.
-const menuRow = ref(null)
-const toggleMenu = (name, open) => {
+const menuRow = ref<string | null>(null)
+const toggleMenu = (name: string, open: boolean) => {
   if (open) menuRow.value = name
   else if (menuRow.value === name) menuRow.value = null
 }
@@ -108,15 +108,15 @@ const rows = computed(() => filterPrincipals(principals.value, query.value).map(
 const emptyText = computed(() =>
   principals.value.length === 0 ? COPY.value.empty : `Nothing matches "${query.value.trim()}".`)
 
-const open = (name) => router.push({ name: COPY.value.detail, params: { name } })
+const open = (name: string) => router.push({ name: COPY.value.detail, params: { name } })
 const close = () => router.push({ name: COPY.value.list })
 
-const created = (name) => {
+const created = (name: string) => {
   load()
   open(name)
 }
 
-const deleted = (principal) => {
+const deleted = (principal: PrincipalSummary) => {
   load()
   if (principal.name === props.name) close()
 }

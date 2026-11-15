@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import AccessView from './AccessView.vue'
 import { authenticationStore } from './authenticationTestKit'
 import { configurationStoreKey } from '../../store/configuration'
 import { ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
 
-const holder = vi.hoisted(() => ({ session: null }))
+type SessionHolder = { client: Ref<unknown>; can: (node: string) => boolean } | null
+
+const holder = vi.hoisted(() => ({ session: null as SessionHolder }))
 
 // The configuration store reads the session when it is imported, before the test sets the holder.
 vi.mock('../../store/session', () => ({ useSession: () => holder.session ?? { client: { value: null } } }))
@@ -32,22 +34,22 @@ vi.mock('../../store/session', () => ({ useSession: () => holder.session ?? { cl
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? `${String(error)}`
 }))
 
 const shell = { render: () => null }
 
 describe('AccessView', () => {
-  let wrapper
-  let router
-  let principals
-  let teams
-  let settingsDomains
+  let wrapper: VueWrapper
+  let router: Router
+  let principals: { list: Mock; get: Mock }
+  let teams: { list: Mock; get: Mock }
+  let settingsDomains: { domains: Mock; schema: Mock }
 
-  const mountView = async (props, url = '/access/users') => {
+  const mountView = async (props: { tab?: 'users' | 'machines' | 'teams' | 'sso' | 'ldap' | 'security' | 'check'; name?: string }, url = '/access/users') => {
     router = createRouter({
       history: createMemoryHistory(),
-      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
     })
     await router.push(url)
     await router.isReady()
@@ -55,7 +57,7 @@ describe('AccessView', () => {
       props,
       attachTo: document.body,
       global: { plugins: [router], provide: { [configurationStoreKey]: authenticationStore() } }
-    })
+    }) as VueWrapper
     await flushPromises()
   }
 
@@ -105,7 +107,7 @@ describe('AccessView', () => {
   })
 
   it('makes no request for the settings domains to a visitor without the settings node', async () => {
-    holder.session.can = (node) => node !== ADMIN_NODES.settings
+    holder.session!.can = (node: string) =>node !== ADMIN_NODES.settings
 
     await mountView({ tab: 'users' })
 
@@ -114,7 +116,7 @@ describe('AccessView', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
+    wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
   })
 
@@ -141,7 +143,7 @@ describe('AccessView', () => {
   })
 
   it('hides the Security tab from a user without the instance admin node', async () => {
-    holder.session.can = (node) => node !== INSTANCE_ADMIN_NODE
+    holder.session!.can = (node: string) =>node !== INSTANCE_ADMIN_NODE
 
     await mountView({ tab: 'teams' }, '/access/teams')
 
@@ -181,7 +183,7 @@ describe('AccessView', () => {
   })
 
   it('hides the tabs whose node the user lacks', async () => {
-    holder.session.can = (node) => node === 'ingot.admin.teams'
+    holder.session!.can = (node: string) =>node === 'ingot.admin.teams'
 
     await mountView({ tab: 'teams' }, '/access/teams')
 
@@ -189,7 +191,7 @@ describe('AccessView', () => {
   })
 
   it('offers the Machine accounts tab to a user with ingot.admin.users', async () => {
-    holder.session.can = (node) => node === 'ingot.admin.users'
+    holder.session!.can = (node: string) =>node === 'ingot.admin.users'
 
     await mountView({ tab: 'machines' }, '/access/machines')
 
@@ -197,7 +199,7 @@ describe('AccessView', () => {
   })
 
   it('hides the Machine accounts tab from a user with only ingot.admin.tokens', async () => {
-    holder.session.can = (node) => node === 'ingot.admin.tokens'
+    holder.session!.can = (node: string) =>node === 'ingot.admin.tokens'
 
     await mountView({ tab: 'users' })
 

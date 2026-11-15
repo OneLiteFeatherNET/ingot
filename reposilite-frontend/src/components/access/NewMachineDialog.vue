@@ -14,14 +14,14 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
-import { buildCreateBody, validatePrincipalName } from './accessPrincipals'
+import { buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
 
 /*
  * Creates a machine account. Its tokens are created on its own page afterwards, and its rights
@@ -38,7 +38,7 @@ const props = defineProps({
     default: false
   },
   api: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalsApi, 'create'>>,
     required: true
   }
 })

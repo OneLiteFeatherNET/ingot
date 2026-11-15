@@ -14,13 +14,14 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import AddMemberDialog from './AddMemberDialog.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
-import { manualMembers } from './accessTeams'
+import { manualMembers, type CommitMembers, type MembersOutcome, type TeamDetail, type TeamMember } from './accessTeams'
+import type { PrincipalSummary } from './accessPrincipals'
 
 /*
  * The members of a team. A MANUAL member can be removed and more can be added; a SYNC member
@@ -35,11 +36,11 @@ import { manualMembers } from './accessTeams'
  */
 const props = defineProps({
   team: {
-    type: Object,
+    type: Object as PropType<TeamDetail>,
     required: true
   },
   principals: {
-    type: Array,
+    type: Array as PropType<PrincipalSummary[]>,
     default: () => []
   },
   principalsError: {
@@ -47,13 +48,13 @@ const props = defineProps({
     default: ''
   },
   commit: {
-    type: Function,
+    type: Function as PropType<CommitMembers>,
     required: true
   }
 })
 
 const addOpen = ref(false)
-const removing = ref(null)
+const removing = ref<TeamMember | null>(null)
 const removeOpen = ref(false)
 const busy = ref(false)
 const failure = ref('')
@@ -61,7 +62,7 @@ const failure = ref('')
 const disabledNames = computed(() =>
   new Set(props.principals.filter(principal => principal.disabled).map(principal => principal.name)))
 
-const run = async (names) => {
+const run = async (names: string[]): Promise<MembersOutcome> => {
   busy.value = true
   failure.value = ''
   try {
@@ -73,19 +74,19 @@ const run = async (names) => {
   }
 }
 
-const add = async (names) => {
+const add = async (names: string[]) => {
   const result = await run([...manualMembers(props.team), ...names])
   if (result.ok || result.conflict) addOpen.value = false
 }
 
-const askRemove = (member) => {
+const askRemove = (member: TeamMember) => {
   failure.value = ''
   removing.value = member
   removeOpen.value = true
 }
 
 const remove = async () => {
-  const name = removing.value.principal
+  const name = removing.value!.principal
   const result = await run(manualMembers(props.team).filter(entry => entry !== name))
   if (result.ok || result.conflict) removeOpen.value = false
 }

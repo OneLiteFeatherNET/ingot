@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import type { AxiosResponse } from 'axios'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -30,7 +31,8 @@ import TeamLegacyGrants from './TeamLegacyGrants.vue'
 import TeamMembersCard from './TeamMembersCard.vue'
 import TeamParentsCard from './TeamParentsCard.vue'
 import { manualMembers } from './accessTeams'
-import { useTeamDetail } from './useTeamDetail'
+import type { PrincipalSummary } from './accessPrincipals'
+import { useTeamDetail, type TeamWrite, type WriteResult } from './useTeamDetail'
 
 /*
  * The detail of one team: the header (name, description, external reference, the instance admin
@@ -62,7 +64,7 @@ const api = computed(() => client.value.identity.teams)
 const team = useTeamDetail(() => props.name, () => api.value)
 const { detail, status, failure, conflict } = team
 
-const principals = ref([])
+const principals = ref<PrincipalSummary[]>([])
 const principalsError = ref('')
 
 onMounted(() => {
@@ -77,7 +79,7 @@ watch(() => props.name, () => {
 
 const loadPrincipals = async () => {
   try {
-    const response = await client.value.identity.principals.list()
+    const response: AxiosResponse<PrincipalSummary[]> = await client.value.identity.principals.list()
     principals.value = response.data ?? []
     principalsError.value = ''
   } catch (error) {
@@ -86,13 +88,13 @@ const loadPrincipals = async () => {
 }
 
 // A write: the helper sends the tag; a conflict is the dialog's business, a failure is returned.
-const commit = async (run) => {
+const commit = async (run: TeamWrite): Promise<WriteResult> => {
   const result = await team.write(run)
   if (result.ok) emit('changed')
   return result
 }
 
-const setMembers = (names) => commit(etag => api.value.setMembers(props.name, names, etag))
+const setMembers = (names: string[]) => commit(etag => api.value.setMembers(props.name, names, etag))
 
 // The nodes have an entity tag of their own: after a save the team is read again, so the instance
 // admin badge and the counts follow.
@@ -114,8 +116,8 @@ const editExternalRef = ref('')
 const editBusy = ref(false)
 
 const startEdit = () => {
-  editDescription.value = detail.value.description ?? ''
-  editExternalRef.value = detail.value.externalRef ?? ''
+  editDescription.value = detail.value?.description ?? ''
+  editExternalRef.value = detail.value?.externalRef ?? ''
   editing.value = true
 }
 
@@ -143,7 +145,7 @@ const adminTarget = ref(false)
 const adminBusy = ref(false)
 const adminFailure = ref('')
 
-const askAdmin = (value) => {
+const askAdmin = (value: boolean) => {
   adminTarget.value = value
   adminFailure.value = ''
   adminOpen.value = true
@@ -403,7 +405,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
       {{ name }} and its permission nodes are deleted. The members stay, but lose what the team gave them. This cannot be undone.
     </ConfirmActionDialog>
     <ConflictDialog
-      :conflict="conflict"
+      :conflict="conflict ?? undefined"
       @reload="team.reloadConflict()"
       @overwrite="overwrite()"
       @dismiss="team.dismissConflict()"

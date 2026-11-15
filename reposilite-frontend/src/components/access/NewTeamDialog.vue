@@ -14,13 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
-import { buildTeamCreateBody, validateTeamName } from './accessTeams'
+import { buildTeamCreateBody, validateTeamName, type TeamsApi } from './accessTeams'
 
 /*
  * Creates a team: a name, and optionally a description and an external reference (the group of
@@ -37,7 +37,7 @@ const props = defineProps({
     default: false
   },
   api: {
-    type: Object,
+    type: Object as PropType<Pick<TeamsApi, 'create'>>,
     required: true
   }
 })

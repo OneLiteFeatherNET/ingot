@@ -16,9 +16,9 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Ref } from 'vue'
+import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createErrorToast } from '../../helpers/toast'
 import TeamParentsCard from './TeamParentsCard.vue'
 import { answer, failure } from './teamTestKit'
@@ -29,54 +29,58 @@ import { answer, failure } from './teamTestKit'
  * every test builds its own wrapper and client.
  */
 
-const holder = vi.hoisted(() => ({ session: null }))
+type SessionHolder = { client: Ref<unknown> } | null
+
+const holder = vi.hoisted(() => ({ session: null as SessionHolder }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
+
+type ErrorLike = { message?: string; response?: { data?: { message?: string } } } | null | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as ErrorLike)?.response?.data?.message ?? (error as ErrorLike)?.message ?? `${String(error)}`
 }))
 
 const TEAM_NAMES = ['developers', 'ops', 'release', 'staff']
 
 describe('TeamParentsCard', () => {
-  let wrapper
-  let teams
+  let wrapper: VueWrapper
+  let teams: { parents: Mock; setParents: Mock; list: Mock }
 
-  const mountCard = async (props = { name: 'ops' }) => {
-    wrapper = mount(TeamParentsCard, { props, attachTo: document.body })
+  const mountCard = async (props: { name: string } = { name: 'ops' }) => {
+    wrapper = mount(TeamParentsCard, { props, attachTo: document.body }) as VueWrapper
     await flushPromises()
   }
 
-  const input = () => wrapper.find('input[role="combobox"]')
+  const input = (): DOMWrapper<HTMLInputElement> => wrapper.find<HTMLInputElement>('input[role="combobox"]')
   const chips = () => wrapper.findAll('[data-test="parent"]').map(chip => chip.find('span').text())
   const options = () => wrapper.findAll('[data-test="suggestion"]').map(option => option.text())
   const save = () => wrapper.find('[data-test="save-parents"]')
   const error = () => wrapper.find('[data-test="parents-error"]')
 
-  const type = async (text) => {
+  const type = async (text: string) => {
     await input().trigger('focus')
     await input().setValue(text)
   }
-  const press = async (key) => {
+  const press = async (key: string) => {
     await input().trigger('keydown', { key })
   }
 
   beforeEach(() => {
     vi.mocked(createErrorToast).mockClear()
     teams = {
-      parents: vi.fn(async () => answer({ parents: ['developers'] }, '"p1"')),
-      setParents: vi.fn(async (name, parents) => answer({ parents }, '"p2"')),
-      list: vi.fn(async () => answer(TEAM_NAMES.map(name => ({ name }))))
+      parents: vi.fn(() => Promise.resolve(answer({ parents: ['developers'] }, '"p1"'))),
+      setParents: vi.fn((name: string, parents: string[]) => Promise.resolve(answer({ parents }, '"p2"'))),
+      list: vi.fn(() => Promise.resolve(answer(TEAM_NAMES.map(name => ({ name })))))
     }
     holder.session = { client: ref({ identity: { teams } }) }
   })
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
+    wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
   })
 

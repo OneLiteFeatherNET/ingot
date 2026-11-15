@@ -14,35 +14,37 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Component, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type RouteRecordRaw, type Router } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalDetail from './PrincipalDetail.vue'
 import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
-const wireInstant = (iso) => Date.parse(iso) / 1000
+const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<{ identity: Record<string, unknown>; tokens: Record<string, unknown> }> } }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
+
+type ErrorLike = { response?: { data?: { message?: string } }; message?: string } | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? `${error}`
 }))
 
-const shell = { render: () => null }
+const shell: Component = { render: () => null }
 
-const makeRouter = async () => {
+const makeRouter = async (): Promise<Router> => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
   })
   await router.push('/access/users')
   await router.isReady()
@@ -76,7 +78,7 @@ const CI = {
 }
 
 // The team tree behind the principals: developers inherits from staff, release stands alone.
-const TEAM_TREE = {
+const TEAM_TREE: Record<string, { parents: string[]; nodes: { node: string; allowed: boolean }[] }> = {
   developers: { parents: ['staff'], nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] },
   release: { parents: [], nodes: [{ node: 'ingot.repository.releases.deploy', allowed: true }] },
   staff: { parents: [], nodes: [{ node: 'ingot.admin.dashboard', allowed: false }] }
@@ -92,15 +94,15 @@ const LEGACY_TOKEN = {
 }
 
 describe('PrincipalDetail', () => {
-  let wrapper
-  let principals
-  let tokensApi
-  let legacyGet
-  let nodes
-  let teams
-  let router
+  let wrapper: VueWrapper
+  let principals: Record<string, Mock>
+  let tokensApi: Record<string, Mock>
+  let legacyGet: Mock
+  let nodes: Record<string, Mock>
+  let teams: Record<string, Mock>
+  let router: Router
 
-  const mountDetail = async (props) => {
+  const mountDetail = async (props: { name: string; kind: 'USER' | 'MACHINE' }) => {
     router = await makeRouter()
     wrapper = mount(PrincipalDetail, { props, attachTo: document.body, global: { plugins: [router] } })
     await flushPromises()
@@ -109,7 +111,7 @@ describe('PrincipalDetail', () => {
   beforeEach(() => {
     setClock(() => new Date(Date.UTC(2026, 9, 15, 12)))
     principals = {
-      get: vi.fn(async (name) => ({ data: name === 'alice' ? ALICE : CI, headers: { etag: '"1"' } })),
+      get: vi.fn(async (name: string) => ({ data: name === 'alice' ? ALICE : CI, headers: { etag: '"1"' } })),
       update: vi.fn(),
       setPassword: vi.fn(),
       grantInstanceAdmin: vi.fn(),
@@ -123,11 +125,11 @@ describe('PrincipalDetail', () => {
     }
     legacyGet = vi.fn().mockResolvedValue({ data: LEGACY_TOKEN })
     nodes = makeNodesApi()
-    nodes.get.mockImplementation(async (kind, name) => answer({
+    nodes.get.mockImplementation(async (kind: string, name: string) => answer({
       nodes: (kind === 'teams' ? TEAM_TREE[name].nodes : NODES).map(entry => ({ ...entry }))
     }, '"n1"'))
     teams = {
-      parents: vi.fn(async (name) => answer({ parents: [...TEAM_TREE[name].parents] }, '"p1"'))
+      parents: vi.fn(async (name: string) => answer({ parents: [...TEAM_TREE[name].parents] }, '"p1"'))
     }
     holder.session = {
       client: ref({
@@ -139,7 +141,7 @@ describe('PrincipalDetail', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
+    wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
     resetClock()
   })
@@ -241,7 +243,7 @@ describe('PrincipalDetail', () => {
         await mountDetail({ name: 'alice', kind: 'USER' })
 
         await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-        await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+        await wrapper.findAll('button').find(button => button.text() === 'Save')!.trigger('click')
         await flushPromises()
 
         expect(nodes.set).toHaveBeenCalledWith(
@@ -257,7 +259,7 @@ describe('PrincipalDetail', () => {
         principals.get.mockClear()
 
         await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-        await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+        await wrapper.findAll('button').find(button => button.text() === 'Save')!.trigger('click')
         await flushPromises()
 
         expect(principals.get).toHaveBeenCalledTimes(1)
@@ -324,7 +326,7 @@ describe('PrincipalDetail', () => {
     it('lists the tokens of the machine through the principal token api', async () => {
       await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
-      expect(holder.session.client.value.identity.principalTokens).toHaveBeenCalledWith('ci-bot')
+      expect(holder.session?.client.value.identity.principalTokens).toHaveBeenCalledWith('ci-bot')
       expect(tokensApi.list).toHaveBeenCalledTimes(1)
       expect(wrapper.findAll('[data-test="token-row"]')).toHaveLength(1)
     })
@@ -479,7 +481,7 @@ describe('PrincipalDetail', () => {
     })
 
     it('warns about a team that cannot be read and still shows the page and the other teams', async () => {
-      nodes.get.mockImplementation(async (kind, name) => {
+      nodes.get.mockImplementation(async (kind: string, name: string) => {
         if (kind === 'teams' && name === 'release') throw failure(404, "Team 'release' not found")
         return answer({ nodes: kind === 'teams' ? TEAM_TREE[name].nodes : NODES }, '"n1"')
       })

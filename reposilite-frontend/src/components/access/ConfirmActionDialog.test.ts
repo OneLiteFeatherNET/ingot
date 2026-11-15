@@ -15,23 +15,23 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const confirmButton = () => dialog().querySelector('[data-test="confirm-button"]')
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
+const confirmButton = () => dialog().querySelector<HTMLButtonElement>('[data-test="confirm-button"]')!
 
-const type = async (value) => {
-  const input = dialog().querySelector('input')
+const type = async (value: string) => {
+  const input = dialog().querySelector<HTMLInputElement>('input')!
   input.value = value
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
 
 describe('ConfirmActionDialog', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
-  const open = async (props = {}) => {
+  const open = async (props: Record<string, unknown> = {}) => {
     wrapper = mount(ConfirmActionDialog, {
       props: { modelValue: true, title: 'Delete user', confirmLabel: 'Delete', ...props },
       slots: { default: 'This cannot be undone.' },
@@ -59,7 +59,7 @@ describe('ConfirmActionDialog', () => {
     confirmButton().click()
     await flushPromises()
 
-    expect(wrapper.emitted('confirm'), 'a plain confirmation needs no typing').toHaveLength(1)
+    expect(wrapper!.emitted('confirm'), 'a plain confirmation needs no typing').toHaveLength(1)
   })
 
   it('keeps the button disabled until the text is typed exactly', async () => {
@@ -78,10 +78,10 @@ describe('ConfirmActionDialog', () => {
     await open({ typeToConfirm: 'alice' })
 
     await type('bob')
-    dialog().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+    dialog().querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(wrapper!.emitted('confirm')).toBeUndefined()
   })
 
   it('emits confirm once the text matches', async () => {
@@ -91,13 +91,13 @@ describe('ConfirmActionDialog', () => {
     confirmButton().click()
     await flushPromises()
 
-    expect(wrapper.emitted('confirm')).toHaveLength(1)
+    expect(wrapper!.emitted('confirm')).toHaveLength(1)
   })
 
   it('shows the failure it is given, such as the server message of a 409', async () => {
     await open({ failure: 'The last instance admin cannot be deleted.' })
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('The last instance admin cannot be deleted.')
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The last instance admin cannot be deleted.')
   })
 
   it('disables the button while the request runs', async () => {
