@@ -16,6 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { domainFormOf } from './domainForm'
+import type { DomainForm } from './domainForm'
 
 const repositoriesProperty = {
   type: 'array',
@@ -32,9 +33,9 @@ describe('domainFormOf', () => {
   it('builds the form of the properties that are not collections, and leaves the collections out', () => {
     const schema = { title: 'Maven', properties: { repositories: repositoriesProperty, resolutionCacheClusterMaxAgeSeconds: cacheField } }
 
-    const form = domainFormOf(schema, ['repositories'])
+    const form = domainFormOf(schema, ['repositories']) as DomainForm
 
-    expect(Object.keys(form.schema.properties), 'only the field that is not a collection').toEqual(['resolutionCacheClusterMaxAgeSeconds'])
+    expect(Object.keys(form.schema.properties ?? {}), 'only the field that is not a collection').toEqual(['resolutionCacheClusterMaxAgeSeconds'])
     expect(form.schema.title, 'the schema keeps the domain title').toBe('Maven')
     expect(form.layout, 'the form has a layout').toBeDefined()
   })

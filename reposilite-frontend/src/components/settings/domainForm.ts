@@ -15,13 +15,21 @@
  */
 
 import { entryLayout } from './collections'
+import type { SettingsSchema } from './collections'
+import type { VerticalLayout } from '@jsonforms/core'
+
+/* The form of the fields that are not collections: the schema of those fields and the layout that draws them. */
+export interface DomainForm {
+  schema: SettingsSchema
+  layout: VerticalLayout
+}
 
 /*
  * The fields of a domain that are not collections, as one generated form. Most domains have none of these, and then
  * null is returned and no form is drawn. The settings page and the Maven options section of the Repositories page
  * share it, so a field is shown the same way on both.
  */
-export const domainFormOf = (schema, collectionKeys = []) => {
+export const domainFormOf = (schema: SettingsSchema | undefined, collectionKeys: string[] = []): DomainForm | null => {
   if (!schema?.properties) return null
   const fields = Object.fromEntries(
     Object.entries(schema.properties).filter(([key]) => !collectionKeys.includes(key))

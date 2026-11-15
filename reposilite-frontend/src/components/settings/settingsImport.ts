@@ -22,12 +22,42 @@
  */
 
 import { humanize } from './settingsDiff'
+import type { SettingsSchema } from './collections'
 
-const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+/* A settings object: one value per domain, keyed by the domain's name. */
+export type SettingsFile = Record<string, unknown>
+
+/* One error the validator reports. Only the keywords and parameters the messages read are named. */
+export interface ValidationError {
+  keyword: string
+  instancePath?: string
+  message?: string
+  params: { allowedValues?: unknown[]; missingProperty?: string }
+}
+
+/* A compiled schema check: true when the data passes, and the errors of the last failed check otherwise. */
+export interface CompiledCheck {
+  (data: unknown): boolean
+  errors?: ValidationError[] | null
+}
+
+/* The validator the store uses to compile the schema of a domain. */
+export interface SchemaValidator {
+  compile(schema: unknown): CompiledCheck
+}
+
+/* One problem with the file: the domain, the place in it (empty for the domain as a whole) and the message. */
+export interface ImportError {
+  domain: string
+  label: string
+  message?: string
+}
+
+const isPlainObject = (value: unknown): value is SettingsFile => value !== null && typeof value === 'object' && !Array.isArray(value)
 
 /* The text of a file as settings: { ok, value } or { ok: false, error }. Nothing is checked against a schema here. */
-export const parseSettingsFile = (text) => {
-  let value
+export const parseSettingsFile = (text: string): { ok: boolean; value?: SettingsFile; error?: string } => {
+  let value: unknown
   try {
     value = JSON.parse(text)
   } catch {
@@ -44,44 +74,44 @@ export const parseSettingsFile = (text) => {
  * out, so a file with one field changed does not drop the others. A field the file does name, a list
  * for instance, is taken as the file gives it. The draft is not changed.
  */
-export const overlayImport = (file, draft) => Object.fromEntries(
+export const overlayImport = (file: SettingsFile, draft: SettingsFile | null | undefined): SettingsFile => Object.fromEntries(
   Object.entries(file).map(([domain, values]) => [
     domain,
-    isPlainObject(values) && isPlainObject(draft?.[domain]) ? { ...JSON.parse(JSON.stringify(draft[domain])), ...values } : values
+    isPlainObject(values) && isPlainObject(draft?.[domain]) ? { ...JSON.parse(JSON.stringify(draft?.[domain])) as SettingsFile, ...values } : values
   ])
 )
 
-const titleOf = (schema, key) => schema?.title ?? humanize(key)
+const titleOf = (schema: SettingsSchema | undefined, key: string): string => schema?.title ?? humanize(key)
 
 /*
  * The schema titles of the place an error is in, such as "Repositories > releases > Visibility". An
  * entry of a list is named by its id, and a missing required field by its name.
  */
-const labelOf = (schema, data, instancePath, missingProperty) => {
+const labelOf = (schema: SettingsSchema | undefined, data: unknown, instancePath: string, missingProperty?: string): string => {
   const segments = instancePath.split('/').slice(1)
-  const labels = []
-  let node = schema
-  let value = data
+  const labels: unknown[] = []
+  let node: SettingsSchema | undefined = schema
+  let value: unknown = data
   for (const segment of segments) {
     if (node?.items !== undefined && Array.isArray(value)) {
-      const entry = value[Number(segment)]
-      labels.push(entry?.id ?? `#${Number(segment) + 1}`)
+      const entry: unknown = value[Number(segment)]
+      labels.push((entry as { id?: unknown } | undefined)?.id ?? `#${Number(segment) + 1}`)
       node = node.items
       value = entry
     } else {
-      const child = node?.properties?.[segment]
+      const child: SettingsSchema | undefined = node?.properties?.[segment]
       labels.push(titleOf(child, segment))
       node = child
-      value = value?.[segment]
+      value = (value as Record<string, unknown> | undefined)?.[segment]
     }
   }
   if (missingProperty !== undefined) labels.push(titleOf(node?.properties?.[missingProperty], missingProperty))
   return labels.join(' > ')
 }
 
-const messageOf = (error) => {
+const messageOf = (error: ValidationError): string | undefined => {
   if (error.keyword === 'enum') {
-    return `must be one of ${error.params.allowedValues.map(value => JSON.stringify(value)).join(', ')}`
+    return `must be one of ${(error.params.allowedValues as unknown[]).map(value => JSON.stringify(value)).join(', ')}`
   }
   return error.message
 }
@@ -91,17 +121,21 @@ const messageOf = (error) => {
  * holds the checked values, with the schema defaults filled in, only when there are no errors. An error
  * is { domain, label, message }; `label` is empty when the error is the domain as a whole.
  */
-export const validateImport = (file, { domains, schemas, validator }) => {
-  const errors = []
-  const values = {}
+export const validateImport = (file: SettingsFile, { domains, schemas, validator }: {
+  domains: string[]
+  schemas: Record<string, SettingsSchema | undefined>
+  validator: SchemaValidator
+}): { ok: boolean; domains: SettingsFile; errors: ImportError[] } => {
+  const errors: ImportError[] = []
+  const values: SettingsFile = {}
 
   for (const domain of Object.keys(file)) {
     if (!domains.includes(domain)) {
       errors.push({ domain, label: '', message: 'Unknown settings domain' })
       continue
     }
-    const data = JSON.parse(JSON.stringify(file[domain]))
-    let validate
+    const data: unknown = JSON.parse(JSON.stringify(file[domain]))
+    let validate: CompiledCheck
     try {
       validate = validator.compile(schemas[domain])
     } catch {

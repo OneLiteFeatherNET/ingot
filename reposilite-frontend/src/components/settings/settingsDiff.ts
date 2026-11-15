@@ -32,46 +32,115 @@
 
 import isEqual from 'lodash/isEqual'
 import { isSensitive } from '../renderers/sensitive'
+import type { SettingsSchema } from './collections'
 
-const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+/* A settings object: its keys are field names, and a value is any JSON. */
+type Plain = Record<string, unknown>
 
-const clone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)))
+/* An entry of a list with ids. The id is the only field the diff reads by name. */
+interface Entry {
+  id: string
+  [field: string]: unknown
+}
 
-const unique = (values) => [...new Set(values)]
+/* The kind of one change: a value that differs, a key or entry that only the draft has, or one only the saved state has. */
+export type ChangeKind = 'changed' | 'added' | 'removed'
+
+/* A segment of the path to a value: a key, a position in a list without ids, or an entry of a list with ids. */
+export type PathSegment = string | number | { id: string }
+
+/* The repository entry (or other collection entry) a change belongs to. */
+export interface GroupRef {
+  key: string
+  title: string
+  id: string
+}
+
+/* One change between the saved settings and the draft, as the review sheet lists it. */
+export interface SettingsChange {
+  id: string
+  domain: string
+  domainTitle: string
+  kind: ChangeKind
+  group: GroupRef | null
+  path: PathSegment[]
+  label: string
+  masked: boolean
+  before: unknown
+  after: unknown
+  index?: number
+}
+
+/* The changes of one domain, grouped the way the review sheet draws them. */
+export interface ReviewGroup {
+  key: string
+  id: string | null
+  title: string
+  changes: SettingsChange[]
+}
+
+export interface ReviewSection {
+  domain: string
+  title: string
+  groups: ReviewGroup[]
+}
+
+const isPlainObject = (value: unknown): value is Plain => value !== null && typeof value === 'object' && !Array.isArray(value)
+
+const clone = <T>(value: T): T => (value === undefined ? value : JSON.parse(JSON.stringify(value)) as T)
+
+const unique = <T>(values: T[]): T[] => [...new Set(values)]
 
 /* "secretKey" -> "Secret key", used when the schema gives no title. */
-export const humanize = (key) => {
+export const humanize = (key: string): string => {
   const words = String(key).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').trim().toLowerCase()
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-const titleOf = (schema, key) => schema?.title ?? humanize(key)
+const titleOf = (schema: SettingsSchema | undefined, key: string): string => schema?.title ?? humanize(key)
 
 /* A list of entries: its items are objects with an id, and the entries are matched by it. */
-const isEntrySchema = (schema) => schema?.type === 'array' && schema.items?.properties !== undefined && 'id' in schema.items.properties
+const isEntrySchema = (schema: SettingsSchema | undefined): boolean => schema?.type === 'array' && schema.items?.properties !== undefined && 'id' in schema.items.properties
 
-const isKeyed = (list) => list.every(entry => isPlainObject(entry) && typeof entry.id === 'string')
-  && new Set(list.map(entry => entry.id)).size === list.length
+const isKeyed = (list: unknown[]): list is Entry[] => list.every(entry => isPlainObject(entry) && typeof entry.id === 'string')
+  && new Set(list.map(entry => (entry as Entry).id)).size === list.length
 
-const matchesBranch = (branch, value) => isPlainObject(value)
+const matchesBranch = (branch: SettingsSchema | undefined, value: unknown): boolean => isPlainObject(value)
   && Object.entries(branch?.properties ?? {}).some(([key, property]) => property?.const !== undefined && value[key] === property.const)
 
 /* The index of the oneOf branch a value belongs to, found by a const field such as `type: "fs"`. -1 when none. */
-const variantOf = (schema, value) => schema.oneOf.findIndex(branch => matchesBranch(branch, value))
+const variantOf = (schema: SettingsSchema, value: unknown): number => (schema.oneOf as SettingsSchema[]).findIndex(branch => matchesBranch(branch, value))
 
-const variantChanged = (schema, before, after) => schema?.oneOf !== undefined
+const variantChanged = (schema: SettingsSchema | undefined, before: unknown, after: unknown): boolean => schema?.oneOf !== undefined
   && variantOf(schema, before) !== variantOf(schema, after)
 
-const entryGroup = (group, collection, id) => group ?? { key: collection.key, title: collection.title, id }
+const entryGroup = (group: GroupRef | null, collection: { key: string; title: string }, id: string): GroupRef => group ?? { key: collection.key, title: collection.title, id }
 
-const entryLabels = (group, labels, id) => (group ? [...labels, id] : [])
+const entryLabels = (group: GroupRef | null, labels: string[], id: string): string[] => (group ? [...labels, id] : [])
+
+interface Context {
+  domain: string
+  domainTitle: string
+  out: SettingsChange[]
+}
+
+interface EmitInput {
+  kind: ChangeKind
+  path: PathSegment[]
+  group: GroupRef | null
+  labels: string[]
+  schema: SettingsSchema | undefined
+  before?: unknown
+  after?: unknown
+  index?: number
+}
 
 /*
  * Adds one change. A secret is masked: its values never leave this function, so the review can show
  * that it changed without showing what it was.
  */
-const emit = (context, { kind, path, group, labels, schema, before, after, index }) => {
-  const lastKey = typeof path.at(-1) === 'string' ? path.at(-1) : ''
+const emit = (context: Context, { kind, path, group, labels, schema, before, after, index }: EmitInput): void => {
+  const lastKey = typeof path.at(-1) === 'string' ? path.at(-1) as string : ''
   const masked = isSensitive(lastKey, schema)
   context.out.push({
     id: [context.domain, ...path.map(segment => (isPlainObject(segment) ? `@${segment.id}` : String(segment)))].join('/'),
@@ -88,7 +157,17 @@ const emit = (context, { kind, path, group, labels, schema, before, after, index
   })
 }
 
-const diffAt = (state, context) => {
+interface DiffState {
+  before: unknown
+  after: unknown
+  schema: SettingsSchema | undefined
+  path: PathSegment[]
+  labels: string[]
+  group: GroupRef | null
+  key?: string
+}
+
+const diffAt = (state: DiffState, context: Context): void => {
   const { before, after, schema, path, labels, group, key } = state
   if (isEqual(before, after)) return
 
@@ -113,21 +192,23 @@ const diffAt = (state, context) => {
   }
 
   if (Array.isArray(before) && Array.isArray(after)) {
+    const beforeList: unknown[] = before
+    const afterList: unknown[] = after
     const collection = { key: key ?? '', title: titleOf(schema, key ?? '') }
-    if (isEntrySchema(schema) && isKeyed(before) && isKeyed(after)) {
-      diffEntries({ before, after, schema, path, labels, group, collection }, context)
+    if (isEntrySchema(schema) && isKeyed(beforeList) && isKeyed(afterList)) {
+      diffEntries({ before: beforeList, after: afterList, schema: schema as SettingsSchema, path, labels, group, collection }, context)
       return
     }
-    const length = Math.max(before.length, after.length)
+    const length = Math.max(beforeList.length, afterList.length)
     for (let index = 0; index < length; index++) {
       const childPath = [...path, index]
       const childLabels = [...labels, String(index + 1)]
-      if (index >= after.length) {
-        emit(context, { kind: 'removed', path: childPath, group, labels: childLabels, schema: schema?.items, before: before[index], index })
-      } else if (index >= before.length) {
-        emit(context, { kind: 'added', path: childPath, group, labels: childLabels, schema: schema?.items, after: after[index], index })
+      if (index >= afterList.length) {
+        emit(context, { kind: 'removed', path: childPath, group, labels: childLabels, schema: schema?.items, before: beforeList[index], index })
+      } else if (index >= beforeList.length) {
+        emit(context, { kind: 'added', path: childPath, group, labels: childLabels, schema: schema?.items, after: afterList[index], index })
       } else {
-        diffAt({ before: before[index], after: after[index], schema: schema?.items, path: childPath, labels: childLabels, group }, context)
+        diffAt({ before: beforeList[index], after: afterList[index], schema: schema?.items, path: childPath, labels: childLabels, group }, context)
       }
     }
     return
@@ -137,14 +218,24 @@ const diffAt = (state, context) => {
   emit(context, { kind, path, group, labels, schema, before, after })
 }
 
-const diffEntries = ({ before, after, schema, path, labels, group, collection }, context) => {
+interface EntryDiff {
+  before: Entry[]
+  after: Entry[]
+  schema: SettingsSchema
+  path: PathSegment[]
+  labels: string[]
+  group: GroupRef | null
+  collection: { key: string; title: string }
+}
+
+const diffEntries = ({ before, after, schema, path, labels, group, collection }: EntryDiff, context: Context): void => {
   const itemSchema = schema.items
-  const savedById = new Map(before.map((entry, index) => [entry.id, { entry, index }]))
+  const savedById = new Map<string, { entry: Entry; index: number }>(before.map((entry, index) => [entry.id, { entry, index }]))
   const draftIds = new Set(after.map(entry => entry.id))
 
   for (const entry of after) {
     const id = entry.id
-    const entryPath = [...path, { id }]
+    const entryPath: PathSegment[] = [...path, { id }]
     const saved = savedById.get(id)
     if (!saved) {
       emit(context, { kind: 'added', path: entryPath, group: entryGroup(group, collection, id), labels: entryLabels(group, labels, id), schema: itemSchema })
@@ -177,11 +268,11 @@ const diffEntries = ({ before, after, schema, path, labels, group, collection },
  * The changes of every domain. `saved` and `draft` map each domain to its values, and `schemas` maps
  * each domain to its schema. The result is in domain order, then in the order of the draft.
  */
-export const diffSettings = (saved = {}, draft = {}, schemas = {}) => unique([
+export const diffSettings = (saved: Plain = {}, draft: Plain = {}, schemas: Record<string, SettingsSchema | undefined> = {}): readonly SettingsChange[] => unique([
   ...Object.keys(saved),
   ...Object.keys(draft)
 ]).flatMap(domain => {
-  const out = []
+  const out: SettingsChange[] = []
   diffAt({
     before: saved[domain],
     after: draft[domain],
@@ -194,10 +285,10 @@ export const diffSettings = (saved = {}, draft = {}, schemas = {}) => unique([
   return out
 })
 
-const locate = (root, path) => path.reduce((node, segment) => {
+const locate = (root: unknown, path: PathSegment[]): unknown => path.reduce<unknown>((node, segment) => {
   if (node === undefined || node === null) return undefined
-  if (isPlainObject(segment)) return Array.isArray(node) ? node.find(entry => entry?.id === segment.id) : undefined
-  return node[segment]
+  if (isPlainObject(segment)) return Array.isArray(node) ? (node as Entry[]).find(entry => entry?.id === segment.id) : undefined
+  return (node as Plain)[segment]
 }, root)
 
 /*
@@ -205,31 +296,31 @@ const locate = (root, path) => path.reduce((node, segment) => {
  * state. The draft is not changed; a new object is returned. Other changes stay as they are, so the
  * caller can revert them one at a time, and the diff of the result shows what is left.
  */
-export const revertChange = (draftDomain, savedDomain, change) => {
+export const revertChange = (draftDomain: Plain | undefined, savedDomain: Plain | undefined, change: SettingsChange): Plain | undefined => {
   if (change.path.length === 0) return clone(savedDomain)
 
-  const next = clone(draftDomain) ?? {}
-  const segment = change.path.at(-1)
-  const parent = locate(next, change.path.slice(0, -1))
+  const next: Plain = clone(draftDomain) ?? {}
+  const segment = change.path.at(-1) as PathSegment
+  const parent = locate(next, change.path.slice(0, -1)) as Plain | unknown[] | undefined | null
   if (parent === undefined || parent === null) return next
 
   const position = Array.isArray(parent)
-    ? (isPlainObject(segment) ? parent.findIndex(entry => entry?.id === segment.id) : segment)
+    ? (isPlainObject(segment) ? parent.findIndex(entry => (entry as Plain | undefined)?.id === segment.id) : segment as number)
     : undefined
 
   if (change.kind === 'changed') {
-    if (Array.isArray(parent)) parent[position] = clone(locate(savedDomain, change.path))
-    else parent[segment] = clone(locate(savedDomain, change.path))
+    if (Array.isArray(parent)) parent[position as number] = clone(locate(savedDomain, change.path))
+    else parent[segment as string] = clone(locate(savedDomain, change.path))
   } else if (change.kind === 'added') {
     if (Array.isArray(parent)) {
-      if (position >= 0) parent.splice(position, 1)
+      if ((position as number) >= 0) parent.splice(position as number, 1)
     } else {
-      delete parent[segment]
+      delete parent[segment as string]
     }
   } else if (change.kind === 'removed') {
     const value = clone(locate(savedDomain, change.path))
-    if (Array.isArray(parent)) parent.splice(Math.min(change.index ?? position, parent.length), 0, value)
-    else parent[segment] = value
+    if (Array.isArray(parent)) parent.splice(Math.min(change.index ?? (position as number), parent.length), 0, value)
+    else parent[segment as string] = value
   }
   return next
 }
@@ -238,8 +329,8 @@ export const revertChange = (draftDomain, savedDomain, change) => {
  * The changes as the review shows them: one section per domain, and inside it one group per entry
  * (or the domain's own fields, when the group is null). The order of the changes is kept.
  */
-export const groupChanges = (changes) => {
-  const sections = []
+export const groupChanges = (changes: readonly SettingsChange[]): ReviewSection[] => {
+  const sections: ReviewSection[] = []
   for (const change of changes) {
     let section = sections.find(entry => entry.domain === change.domain)
     if (!section) {
@@ -264,13 +355,13 @@ export const groupChanges = (changes) => {
 }
 
 /* A value as a short line of text for the review. Sensitive fields of an object are not shown. */
-export const formatChangeValue = (value) => {
+export const formatChangeValue = (value: unknown): string => {
   if (value === undefined) return 'not set'
   if (value === null) return 'null'
   if (typeof value === 'string') return JSON.stringify(value)
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   if (Array.isArray(value)) return `${value.length} ${value.length === 1 ? 'item' : 'items'}`
-  const summary = Object.entries(value)
+  const summary = Object.entries(value as Plain)
     .filter(([key, entry]) => !isSensitive(key) && (typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean'))
     .map(([key, entry]) => `${key}: ${formatChangeValue(entry)}`)
     .join(', ')

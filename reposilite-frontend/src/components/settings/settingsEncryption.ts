@@ -23,14 +23,14 @@ export const EXPORT_FORMAT = 'ingot-settings-export'
 export const MIN_PASSWORD_LENGTH = 12
 
 /* True for a file written by the password protected export, which is opened with its password before it is reviewed. */
-export const isEncryptedExport = (value) =>
-  value !== null && typeof value === 'object' && !Array.isArray(value) && value.format === EXPORT_FORMAT
+export const isEncryptedExport = (value: unknown): boolean =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) && (value as { format?: unknown }).format === EXPORT_FORMAT
 
 /*
  * The reason the password is not accepted, or null when it may be sent. Export asks for a confirmation,
  * import does not, because a wrong password there only fails the decryption.
  */
-export const passwordProblem = ({ password, confirmation = null }) => {
+export const passwordProblem = ({ password, confirmation = null }: { password: string; confirmation?: string | null }): 'short' | 'mismatch' | null => {
   if (password.length < MIN_PASSWORD_LENGTH) return 'short'
   if (confirmation !== null && confirmation !== password) return 'mismatch'
   return null
@@ -42,6 +42,6 @@ export const PASSWORD_PROBLEM_MESSAGES = {
 }
 
 /* The file name of the export, and the body of the request that makes it. */
-export const exportRequest = (password) => ({ password })
+export const exportRequest = (password: string): { password: string } => ({ password })
 
-export const importRequest = (password, exported) => ({ password, export: exported })
+export const importRequest = (password: string, exported: unknown): { password: string; export: unknown } => ({ password, export: exported })

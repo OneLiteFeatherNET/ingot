@@ -30,12 +30,82 @@
  */
 
 import { validateNewId } from './collections'
+import type { SettingsSchema } from './collections'
 import { errorMessage } from '../../helpers/toast'
 import { validatePrincipalName } from '../access/accessPrincipals'
 import { ROLES, validateTeamName } from '../access/accessTeams'
+import type { RoleEntry } from '../access/accessTeams'
 import { isRemoteUrl } from '../../store/maven/repositoryTypes'
 
 export { isRemoteUrl }
+
+/* One remote repository of a proxy: its address, and the login and password it is fetched with (both may be blank). */
+export interface Remote {
+  url: string
+  login: string
+  password: string
+}
+
+/* The values the wizard holds while the user fills the steps. */
+export interface WizardDraft {
+  type: string
+  basics: { id: string; visibility: string; description: string; tags: string }
+  storage: { kind: string; quota: string; bucketName: string; region: string; endpoint: string; accessKey: string; secretKey: string }
+  upstream: { remotes: Remote[]; store: boolean; storagePolicy: string; metadataMaxAge: string | number; resolutionCacheMaxEntries: string | number }
+  members: string[]
+  access: { mode: string; team: string; newTeam: string | null; role: string; machine: boolean; machineName: string | null; scope: string }
+}
+
+/* The field errors of a step, keyed by the field that has the problem. */
+export type StepErrors = Record<string, string>
+
+/* One step of the wizard: its key and the label the stepper shows. */
+export interface StepDef {
+  key: string
+  label: string
+}
+
+/* The repository entry the settings store receives. Optional fields are added only when the schema defines them. */
+export interface RepositoryEntry {
+  id: string
+  visibility: string
+  type: string
+  [field: string]: unknown
+}
+
+/* The ports the create sequence calls. Each one touches the settings store or the identity endpoints. */
+export interface WizardPorts {
+  addEntry(entry: RepositoryEntry): void
+  saveSettings(): Promise<void>
+  createTeam(name: string): Promise<void>
+  grantTeam(team: string, grant: { repository: string; role: string }): Promise<void>
+  createMachine(name: string): Promise<void>
+  addMachineToTeam(team: string, machine: string): Promise<void>
+  createMachineToken(machine: string, scopes: string[]): Promise<string>
+}
+
+/* One action of the create sequence: the key the progress is kept under, the labels, and what it runs. */
+export interface WizardAction {
+  key: string
+  label: string
+  created: string
+  run: () => Promise<void>
+}
+
+/* The state of one action. An error is kept only for a failed action. */
+export interface ProgressEntry {
+  state: 'pending' | 'running' | 'done' | 'failed'
+  error: string
+}
+
+/* What the success step shows: the secret of the machine token and the names it was created with. */
+export interface WizardResult {
+  secret: string | null
+  tokenName: string | null
+  machineName: string | null
+  teamName: string | null
+  role: string | null
+}
 
 /*
  * The type of the repository. Hosted is the default, so a wizard that is not changed creates the
@@ -64,8 +134,8 @@ export const TYPE_CHOICES = [
  * has its remotes, then the storage its cache is kept in; a hosted repository has its storage; a
  * group has its members and no storage of its own.
  */
-export const stepsFor = (type) => {
-  const middle = type === 'PROXY'
+export const stepsFor = (type: string): StepDef[] => {
+  const middle: StepDef[] = type === 'PROXY'
     ? [{ key: 'upstream', label: 'Remote repositories' }, { key: 'storage', label: 'Cache storage' }]
     : type === 'GROUP'
       ? [{ key: 'members', label: 'Members' }]
@@ -83,7 +153,7 @@ export const STEPS = stepsFor('HOSTED')
 
 /* The roles a repository of this type can be given. A proxy or a group takes no uploads, so only read and admin. */
 const REMOTE_ROLES = ['READ', 'ADMIN']
-export const rolesFor = (type = 'HOSTED') => ROLES.filter(role => type === 'HOSTED' || REMOTE_ROLES.includes(role.value))
+export const rolesFor = (type = 'HOSTED'): RoleEntry[] => ROLES.filter(role => type === 'HOSTED' || REMOTE_ROLES.includes(role.value))
 
 /* The password policy of a proxy: an empty choice leaves it to the server. */
 export const STORAGE_POLICIES = [
@@ -113,11 +183,11 @@ export const VISIBILITY_OPTIONS = [
 
 export const DEFAULT_QUOTA = '100%'
 const QUOTA_PATTERN = /^([1-9]\d*)([KkMmGg][Bb]|%)$/
-const S3_OPTIONAL_KEYS = ['region', 'endpoint', 'accessKey', 'secretKey']
+const S3_OPTIONAL_KEYS = ['region', 'endpoint', 'accessKey', 'secretKey'] as const
 
-export const emptyRemote = () => ({ url: '', login: '', password: '' })
+export const emptyRemote = (): Remote => ({ url: '', login: '', password: '' })
 
-export const emptyDraft = () => ({
+export const emptyDraft = (): WizardDraft => ({
   type: 'HOSTED',
   basics: { id: '', visibility: 'PUBLIC', description: '', tags: '' },
   storage: {
@@ -176,20 +246,20 @@ export const MACHINE_SCOPES = [
   { value: 'WRITE', label: 'Read and write', scopes: ['READ', 'WRITE'] }
 ]
 
-export const scopesOf = (scope) => MACHINE_SCOPES.find(entry => entry.value === scope)?.scopes ?? ['READ']
+export const scopesOf = (scope: string): string[] => MACHINE_SCOPES.find(entry => entry.value === scope)?.scopes ?? ['READ']
 
-export const roleLabelOf = (role) => ROLES.find(entry => entry.value === role)?.label ?? role
+export const roleLabelOf = (role: string): string => ROLES.find(entry => entry.value === role)?.label ?? role
 
-export const typeLabelOf = (type) => TYPE_CHOICES.find(choice => choice.value === type)?.label ?? ''
+export const typeLabelOf = (type: string): string => TYPE_CHOICES.find(choice => choice.value === type)?.label ?? ''
 
 /* What the chosen type means, in the words the choice shows. */
-export const describeType = (type) => TYPE_CHOICES.find(choice => choice.value === type)?.who ?? ''
+export const describeType = (type: string): string => TYPE_CHOICES.find(choice => choice.value === type)?.who ?? ''
 
 /*
  * Choosing a type. A proxy or a group takes no uploads, so its role and its machine token are read
  * only; a role it may not have is replaced by read. Going back to hosted changes nothing else.
  */
-export const chooseType = (draft, type) => {
+export const chooseType = (draft: WizardDraft, type: string): WizardDraft => {
   draft.type = type
   if (type !== 'HOSTED') {
     if (!REMOTE_ROLES.includes(draft.access.role)) draft.access.role = 'READ'
@@ -199,7 +269,7 @@ export const chooseType = (draft, type) => {
 }
 
 /* Which optional repository fields the schema defines. Other agents add them; the wizard shows them only when present. */
-export const optionalFieldsOf = (itemSchema) => {
+export const optionalFieldsOf = (itemSchema: SettingsSchema | undefined): { description: boolean; tags: boolean } => {
   const properties = itemSchema?.properties ?? {}
   return {
     description: 'description' in properties,
@@ -207,31 +277,31 @@ export const optionalFieldsOf = (itemSchema) => {
   }
 }
 
-export const newTeamNameOf = (draft) => {
+export const newTeamNameOf = (draft: WizardDraft): string => {
   if (draft.access.newTeam !== null) return draft.access.newTeam
   return draft.basics.id ? `${draft.basics.id}-team` : ''
 }
 
-export const machineNameOf = (draft) => {
+export const machineNameOf = (draft: WizardDraft): string => {
   if (draft.access.machineName !== null) return draft.access.machineName
   return draft.basics.id ? `${draft.basics.id}-deploy` : ''
 }
 
 /* The team the repository is given to, or an empty string when there is none. */
-export const teamNameOf = (draft) => {
+export const teamNameOf = (draft: WizardDraft): string => {
   if (draft.access.mode === 'existing') return draft.access.team
   if (draft.access.mode === 'new') return newTeamNameOf(draft).trim()
   return ''
 }
 
-const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase()
+const sameName = (a: string, b: string): boolean => String(a).trim().toLowerCase() === String(b).trim().toLowerCase()
 
-export const parseTags = (text) => [...new Set(
+export const parseTags = (text: string | null | undefined): string[] => [...new Set(
   String(text ?? '').split(',').map(tag => tag.trim()).filter(tag => tag !== '')
 )]
 
-export const validateBasics = (basics, { existingIds = [] } = {}) => {
-  const errors = {}
+export const validateBasics = (basics: WizardDraft['basics'], { existingIds = [] }: { existingIds?: string[] } = {}): StepErrors => {
+  const errors: StepErrors = {}
   const idProblem = validateNewId(basics.id, existingIds, 'repository')
   if (idProblem) errors.id = idProblem
   if (!VISIBILITY_OPTIONS.some(option => option.value === basics.visibility)) {
@@ -240,8 +310,8 @@ export const validateBasics = (basics, { existingIds = [] } = {}) => {
   return errors
 }
 
-export const validateStorage = (storage) => {
-  const errors = {}
+export const validateStorage = (storage: WizardDraft['storage']): StepErrors => {
+  const errors: StepErrors = {}
   if (storage.kind === 's3') {
     if (storage.bucketName.trim() === '') errors.bucketName = 'Enter the bucket name.'
   } else if (!QUOTA_PATTERN.test(storage.quota.trim())) {
@@ -251,8 +321,8 @@ export const validateStorage = (storage) => {
 }
 
 /* Remote repositories: at least one address, each a remote with its own login and password, and the cache settings when given. */
-export const validateUpstream = (upstream) => {
-  const errors = {}
+export const validateUpstream = (upstream: WizardDraft['upstream']): StepErrors => {
+  const errors: StepErrors = {}
   if (upstream.remotes.length === 0) errors.remote0 = 'Add at least one remote repository.'
   upstream.remotes.forEach((remote, index) => {
     const url = remote.url.trim()
@@ -275,17 +345,17 @@ export const validateUpstream = (upstream) => {
 }
 
 /* A group lists at least one repository, and each one must exist in this instance. */
-export const validateMembers = (members, existingIds = []) => {
+export const validateMembers = (members: string[], existingIds: string[] = []): StepErrors => {
   if (members.length === 0) return { members: 'Add at least one repository the group lists.' }
   const unknown = members.find(id => !existingIds.includes(id))
   return unknown === undefined ? {} : { members: `${unknown} is not a repository of this instance.` }
 }
 
-export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
+export const validateAccess = (draft: WizardDraft, { teams = [], principals = [] }: { teams?: { name: string }[]; principals?: { name: string }[] } = {}): StepErrors => {
   const { access } = draft
   if (access.mode === 'none') return {}
 
-  const errors = {}
+  const errors: StepErrors = {}
   if (access.mode === 'existing' && access.team === '') errors.team = 'Choose a team.'
   if (access.mode === 'new') {
     const name = newTeamNameOf(draft)
@@ -307,7 +377,13 @@ export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
   return errors
 }
 
-export const validateStep = (key, draft, { existingIds = [], teams = [], principals = [] } = {}) => {
+export interface StepContext {
+  existingIds?: string[]
+  teams?: { name: string }[]
+  principals?: { name: string }[]
+}
+
+export const validateStep = (key: string, draft: WizardDraft, { existingIds = [], teams = [], principals = [] }: StepContext = {}): StepErrors => {
   if (key === 'type') return TYPE_CHOICES.some(choice => choice.value === draft.type) ? {} : { type: 'Choose a type.' }
   if (key === 'basics') return validateBasics(draft.basics, { existingIds })
   if (key === 'storage') return validateStorage(draft.storage)
@@ -318,14 +394,14 @@ export const validateStep = (key, draft, { existingIds = [], teams = [], princip
 }
 
 /* The first step with a problem, or null. The steps are the ones of the chosen type; the review has no input of its own. */
-export const firstInvalidStep = (draft, context) => stepsFor(draft.type)
+export const firstInvalidStep = (draft: WizardDraft, context: StepContext): string | null => stepsFor(draft.type)
   .slice(0, -1)
   .map(step => step.key)
   .find(key => Object.keys(validateStep(key, draft, context)).length > 0) ?? null
 
-const storageProviderOf = (storage) => {
+const storageProviderOf = (storage: WizardDraft['storage']): Record<string, string> => {
   if (storage.kind !== 's3') return { type: 'fs', quota: storage.quota.trim() }
-  const provider = { type: 's3', bucketName: storage.bucketName.trim() }
+  const provider: Record<string, string> = { type: 's3', bucketName: storage.bucketName.trim() }
   // Keys are kept exactly as typed; only the blank ones are left out, so the server uses its default.
   S3_OPTIONAL_KEYS.forEach(key => {
     if (storage[key].trim() !== '') provider[key] = storage[key]
@@ -333,8 +409,8 @@ const storageProviderOf = (storage) => {
   return provider
 }
 
-const remoteEntry = (remote, store) => {
-  const entry = { reference: remote.url.trim(), store }
+const remoteEntry = (remote: Remote, store: boolean): { reference: string; store: boolean; authorization?: Record<string, string> } => {
+  const entry: { reference: string; store: boolean; authorization?: Record<string, string> } = { reference: remote.url.trim(), store }
   if (remote.login.trim() !== '') {
     entry.authorization = { method: 'BASIC', login: remote.login.trim(), password: remote.password }
   }
@@ -342,8 +418,8 @@ const remoteEntry = (remote, store) => {
 }
 
 /* A proxy's mirrored entries and cache settings. Blank cache settings are left out, so the server default applies. */
-const proxyFieldsOf = (upstream) => {
-  const fields = { proxied: upstream.remotes.map(remote => remoteEntry(remote, upstream.store)) }
+const proxyFieldsOf = (upstream: WizardDraft['upstream']): Record<string, unknown> => {
+  const fields: Record<string, unknown> = { proxied: upstream.remotes.map(remote => remoteEntry(remote, upstream.store)) }
   if (upstream.storagePolicy) fields.storagePolicy = upstream.storagePolicy
   if (String(upstream.metadataMaxAge).trim() !== '') fields.metadataMaxAge = Number(upstream.metadataMaxAge)
   if (String(upstream.resolutionCacheMaxEntries).trim() !== '') fields.resolutionCacheMaxEntries = Number(upstream.resolutionCacheMaxEntries)
@@ -355,8 +431,8 @@ const proxyFieldsOf = (upstream) => {
  * repository; a proxy has its remotes and cache settings; a group has its members, as references.
  * Optional fields are written only when the schema defines them.
  */
-export const repositoryEntry = (draft, { optional }) => {
-  const entry = {
+export const repositoryEntry = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }): RepositoryEntry => {
+  const entry: RepositoryEntry = {
     id: draft.basics.id,
     visibility: draft.basics.visibility,
     type: draft.type
@@ -372,23 +448,23 @@ export const repositoryEntry = (draft, { optional }) => {
   return entry
 }
 
-export const describeVisibility = (value) => {
+export const describeVisibility = (value: string): string => {
   const option = VISIBILITY_OPTIONS.find(entry => entry.value === value)
   return option ? `${option.label}. ${option.who}` : ''
 }
 
-export const describeStorage = (storage) => {
+export const describeStorage = (storage: WizardDraft['storage']): string => {
   if (storage.kind !== 's3') return `Filesystem, quota ${storage.quota.trim()}`
   const region = storage.region.trim()
   return `S3 bucket "${storage.bucketName.trim()}"${region ? `, region ${region}` : ''}`
 }
 
-const machineWords = (draft) => {
+const machineWords = (draft: WizardDraft): string => {
   const scope = MACHINE_SCOPES.find(entry => entry.value === draft.access.scope)?.label.toLowerCase() ?? 'read only'
   return `a machine account "${machineNameOf(draft).trim()}" with a ${scope} token`
 }
 
-export const describeAccess = (draft) => {
+export const describeAccess = (draft: WizardDraft): string => {
   const { access } = draft
   if (access.mode === 'none') return 'No access now. Add it later from the Access page.'
   const team = teamNameOf(draft)
@@ -398,8 +474,8 @@ export const describeAccess = (draft) => {
 }
 
 /* The review table: what the repository will be, in the order the wizard asked for it. */
-export const summaryRows = (draft, { optional }) => {
-  const rows = [
+export const summaryRows = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }): { label: string; value: string }[] => {
+  const rows: { label: string; value: string }[] = [
     { label: 'Repository', value: draft.basics.id },
     { label: 'Type', value: typeLabelOf(draft.type) },
     { label: 'Visibility', value: describeVisibility(draft.basics.visibility) }
@@ -420,13 +496,13 @@ export const summaryRows = (draft, { optional }) => {
 }
 
 /* The address of a repository, with no double slash whether or not the base ends in one. */
-export const repositoryUrl = ({ base, id }) => `${base.replace(/\/+$/, '')}/${id}`
+export const repositoryUrl = ({ base, id }: { base: string; id: string }): string => `${base.replace(/\/+$/, '')}/${id}`
 
 /*
  * The snippets for the success step. Credentials come from environment variables, so the secret
  * is never written into a build file. The variable names are the ones the snippets read.
  */
-export const snippetsFor = ({ id, url, tokenName }) => {
+export const snippetsFor = ({ id, url, tokenName }: { id: string; url: string; tokenName?: string | null }) => {
   const username = tokenName ?? '<token name>'
   return {
     maven: {
@@ -487,13 +563,13 @@ export const snippetsFor = ({ id, url, tokenName }) => {
  * The order is the order of a clean failure: whatever fails, everything before it exists and
  * nothing after it was started. `result` collects what the success step shows.
  */
-export const buildActions = (draft, { optional }, ports) => {
+export const buildActions = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }, ports: WizardPorts): { actions: WizardAction[]; result: WizardResult } => {
   const id = draft.basics.id
   const { access } = draft
   const team = teamNameOf(draft)
   const machine = access.mode !== 'none' && access.machine ? machineNameOf(draft).trim() : null
   const entry = repositoryEntry(draft, { optional })
-  const result = {
+  const result: WizardResult = {
     secret: null,
     tokenName: machine,
     machineName: machine,
@@ -502,7 +578,7 @@ export const buildActions = (draft, { optional }, ports) => {
   }
 
   let entryAdded = false
-  const actions = [{
+  const actions: WizardAction[] = [{
     key: 'settings',
     label: `Save repository "${id}"`,
     created: `Repository "${id}" is saved.`,
@@ -560,7 +636,7 @@ export const buildActions = (draft, { optional }, ports) => {
   return { actions, result }
 }
 
-export const createProgress = (actions) => Object.fromEntries(
+export const createProgress = (actions: WizardAction[]): Record<string, ProgressEntry> => Object.fromEntries(
   actions.map(action => [action.key, { state: 'pending', error: '' }])
 )
 
@@ -568,7 +644,7 @@ export const createProgress = (actions) => Object.fromEntries(
  * Runs the actions in order and stops at the first failure. Actions already done are skipped, so
  * calling this again after a failure retries from the failed step onwards.
  */
-export const runActions = async (actions, progress) => {
+export const runActions = async (actions: WizardAction[], progress: Record<string, ProgressEntry>): Promise<boolean> => {
   for (const action of actions) {
     if (progress[action.key].state === 'done') continue
     progress[action.key] = { state: 'running', error: '' }
@@ -583,7 +659,7 @@ export const runActions = async (actions, progress) => {
   return true
 }
 
-const FAILURE_NOTES = {
+const FAILURE_NOTES: Record<string, string> = {
   settings: 'The repository was not saved. Nothing else has been changed.',
   team: 'The repository is saved, but the team was not created. Retry creates only the team.',
   grant: 'The repository is saved, but the team was not given access to it. Retry adds only the grant.',
@@ -593,9 +669,9 @@ const FAILURE_NOTES = {
 }
 
 /* What a failed step means for the repository, so the user knows what the retry will and will not touch. */
-export const failureNote = (key) => FAILURE_NOTES[key] ?? 'This step failed. Retry runs only this step.'
+export const failureNote = (key: string): string => FAILURE_NOTES[key] ?? 'This step failed. Retry runs only this step.'
 
 /* What exists after the steps that are done, one sentence each, so a failure shows what was already created. */
-export const createdSoFar = (actions, progress) => actions
+export const createdSoFar = (actions: WizardAction[], progress: Record<string, ProgressEntry | undefined>): string[] => actions
   .filter(action => progress[action.key]?.state === 'done')
   .map(action => action.created)

@@ -112,7 +112,7 @@ describe('validateImport', () => {
 
   it('reports a wrong type by the entry that holds it', () => {
     const file = validFile()
-    file.maven.repositories.push({ id: 'snapshots', visibility: 'PUBLIC', redeployment: 'yes' })
+    ;(file.maven.repositories as Record<string, unknown>[]).push({ id: 'snapshots', visibility: 'PUBLIC', redeployment: 'yes' })
 
     const [error] = validateImport(file, { domains: ['maven'], schemas: SCHEMAS, validator: VALIDATOR }).errors
 
@@ -153,7 +153,7 @@ describe('overlayImport', () => {
 
     const merged = overlayImport({ maven: { repositories: [{ id: 'plugins' }] } }, draft)
 
-    expect(merged.maven.repositories).toEqual([{ id: 'plugins' }])
+    expect((merged.maven as { repositories: unknown }).repositories).toEqual([{ id: 'plugins' }])
   })
 
   it('takes a domain the draft does not have as it is', () => {

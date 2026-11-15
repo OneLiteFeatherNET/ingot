@@ -40,7 +40,7 @@ describe('settingsByDomain', () => {
   it('does not share objects with the source, so later edits cannot change the export', () => {
     const source = { maven: { repositories: [{ id: 'releases' }] } }
 
-    const exported = settingsByDomain(['maven'], source)
+    const exported = settingsByDomain(['maven'], source) as { maven: { repositories: { id: string }[] } }
     source.maven.repositories[0].id = 'changed'
 
     expect(exported.maven.repositories[0].id).toBe('releases')

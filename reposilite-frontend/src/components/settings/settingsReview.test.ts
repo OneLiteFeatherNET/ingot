@@ -49,7 +49,7 @@ const SCHEMAS = {
   }
 }
 
-const repo = (id, visibility) => ({ id, visibility })
+const repo = (id: string, visibility: string) => ({ id, visibility })
 
 describe('groupChanges', () => {
   it('groups the changes by domain, then by the entry they belong to, in order', () => {

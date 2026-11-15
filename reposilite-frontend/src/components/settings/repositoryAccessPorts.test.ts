@@ -16,6 +16,9 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { createAccessPorts } from './repositoryAccessPorts'
+import type { IdentityPorts } from './repositoryAccessPorts'
+
+type NodeRecord = { node: string; allowed: boolean }
 
 const TEAM = {
   name: 'developers',
@@ -31,7 +34,7 @@ const TEAM = {
 }
 
 // A fake identity client. Every call is recorded by vi.fn, so a test reads the requests back.
-const fakeIdentity = ({ team = TEAM, nodes = [], etag = '"5"' } = {}) => {
+const fakeIdentity = ({ team = TEAM, nodes = [] as NodeRecord[], etag = '"5"' }: { team?: typeof TEAM; nodes?: NodeRecord[]; etag?: string } = {}) => {
   const tokens = { create: vi.fn(async () => ({ data: { token: { name: 'team-deploy' }, secret: 'secret-1' } })) }
   return {
     teams: {
@@ -49,11 +52,16 @@ const fakeIdentity = ({ team = TEAM, nodes = [], etag = '"5"' } = {}) => {
   }
 }
 
+type FakeIdentity = ReturnType<typeof fakeIdentity>
+
+// The fake mirrors the identity client's calls; the port takes the client's type, so the fake is passed as that type.
+const portsOf = (identity: FakeIdentity) => createAccessPorts(identity as unknown as IdentityPorts)
+
 describe('create the team', () => {
   it('sends only the name of the team', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).createTeam('team-team')
+    await portsOf(identity).createTeam('team-team')
 
     expect(identity.teams.create).toHaveBeenCalledWith({ name: 'team-team' })
   })
@@ -63,7 +71,7 @@ describe('grant the team', () => {
   it('writes the nodes of the role on the repository, with the entity tag of the team', async () => {
     const identity = fakeIdentity({ nodes: [] })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'MAINTAIN' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'MAINTAIN' })
 
     expect(identity.nodes.set).toHaveBeenCalledWith(
       'teams',
@@ -80,17 +88,17 @@ describe('grant the team', () => {
   it('never writes a repository-wide grant on the grants endpoint', async () => {
     const identity = fakeIdentity({ nodes: [] })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
-    expect(identity.teams.setGrants, 'the server refuses a grant without a path').toBeUndefined()
+    expect((identity.teams as Record<string, unknown>).setGrants, 'the server refuses a grant without a path').toBeUndefined()
   })
 
   it('keeps the nodes the team has and appends the new ones last', async () => {
     const identity = fakeIdentity({ nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
-    const [, , nodes] = identity.nodes.set.mock.calls[0]
+    const [, , nodes] = identity.nodes.set.mock.calls[0] as unknown[]
     expect(nodes).toEqual([
       { node: 'ingot.repository.releases.read', allowed: true },
       { node: 'ingot.repository.team.read', allowed: true },
@@ -106,9 +114,9 @@ describe('grant the team', () => {
       ]
     })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
-    expect(identity.nodes.set.mock.calls[0][2]).toEqual([
+    expect((identity.nodes.set.mock.calls[0] as unknown[])[2]).toEqual([
       { node: 'ingot.repository.team.read', allowed: true },
       { node: 'ingot.repository.team.deploy', allowed: true }
     ])
@@ -116,14 +124,14 @@ describe('grant the team', () => {
 
   it('reads the team nodes before it writes, so the write carries a current tag', async () => {
     const identity = fakeIdentity()
-    const order = []
+    const order: string[] = []
     identity.nodes.get.mockImplementation(async () => { order.push('get'); return { data: { nodes: [] }, headers: { etag: '"7"' } } })
-    identity.nodes.set.mockImplementation(async () => { order.push('set') })
+    identity.nodes.set.mockImplementation(async () => { order.push('set'); return { data: { nodes: [] } } })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'READ' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'READ' })
 
     expect(order).toEqual(['get', 'set'])
-    expect(identity.nodes.set.mock.calls[0][3]).toBe('"7"')
+    expect((identity.nodes.set.mock.calls[0] as unknown[])[3]).toBe('"7"')
   })
 
   it('does not write again when the team already allows every node of the role, so a retry is harmless', async () => {
@@ -134,7 +142,7 @@ describe('grant the team', () => {
       ]
     })
 
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+    await portsOf(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
     expect(identity.nodes.set).not.toHaveBeenCalled()
   })
@@ -144,7 +152,7 @@ describe('create the machine account', () => {
   it('creates a principal of kind MACHINE with the name', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).createMachine('team-deploy')
+    await portsOf(identity).createMachine('team-deploy')
 
     expect(identity.principals.create).toHaveBeenCalledWith({ kind: 'MACHINE', name: 'team-deploy' })
   })
@@ -154,7 +162,7 @@ describe('add the machine account to the team', () => {
   it('sends the manual members plus the machine account, with the entity tag of the team', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).addMachineToTeam('developers', 'team-deploy')
+    await portsOf(identity).addMachineToTeam('developers', 'team-deploy')
 
     expect(identity.teams.setMembers).toHaveBeenCalledWith('developers', ['alice', 'ci-bot', 'team-deploy'], '"5"')
   })
@@ -162,15 +170,15 @@ describe('add the machine account to the team', () => {
   it('leaves the synchronized members out, because the server keeps them itself', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).addMachineToTeam('developers', 'team-deploy')
+    await portsOf(identity).addMachineToTeam('developers', 'team-deploy')
 
-    expect(identity.teams.setMembers.mock.calls[0][1]).not.toContain('bob')
+    expect((identity.teams.setMembers.mock.calls[0] as unknown[])[1]).not.toContain('bob')
   })
 
   it('does not write again when the machine account is a member already, so a retry is harmless', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).addMachineToTeam('developers', 'ci-bot')
+    await portsOf(identity).addMachineToTeam('developers', 'ci-bot')
 
     expect(identity.teams.setMembers).not.toHaveBeenCalled()
   })
@@ -180,7 +188,7 @@ describe('create the token of the machine account', () => {
   it('creates it on the machine account, named like the account, with the chosen scopes', async () => {
     const identity = fakeIdentity()
 
-    await createAccessPorts(identity).createMachineToken('team-deploy', ['READ'])
+    await portsOf(identity).createMachineToken('team-deploy', ['READ'])
 
     expect(identity.principalTokens).toHaveBeenCalledWith('team-deploy')
     expect(identity.tokens.create).toHaveBeenCalledWith({ name: 'team-deploy', expiresAt: null, scopes: ['READ'] })
@@ -189,7 +197,7 @@ describe('create the token of the machine account', () => {
   it('answers with the secret, which the server shows only once', async () => {
     const identity = fakeIdentity()
 
-    const secret = await createAccessPorts(identity).createMachineToken('team-deploy', ['READ', 'WRITE'])
+    const secret = await portsOf(identity).createMachineToken('team-deploy', ['READ', 'WRITE'])
 
     expect(secret).toBe('secret-1')
   })

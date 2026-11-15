@@ -44,7 +44,7 @@ const plainSchema = () => ({
   properties: { forwardedIp: { type: 'string' } }
 })
 
-const entries = (count) => Array.from({ length: count }, (_, index) => ({ id: `item-${index}` }))
+const entries = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `item-${index}` }))
 
 // The settings links of the Administration tree, as the view passes them: the Repositories page edits the maven domain.
 const links = () => [

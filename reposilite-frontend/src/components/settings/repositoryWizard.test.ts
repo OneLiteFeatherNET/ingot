@@ -49,27 +49,32 @@ import {
   runActions,
   failureNote
 } from './repositoryWizard'
+import type { Remote, WizardDraft, WizardPorts } from './repositoryWizard'
 
 const NO_OPTIONAL = { description: false, tags: false }
 const BOTH_OPTIONAL = { description: true, tags: true }
 
-const draftFor = (id) => {
+// The fixtures give only the fields a case reads, so a partial value is typed as the step holds it.
+const basicsOf = (basics: Partial<WizardDraft['basics']>) => basics as WizardDraft['basics']
+const storageOf = (storage: Partial<WizardDraft['storage']>) => storage as WizardDraft['storage']
+
+const draftFor = (id: string) => {
   const draft = emptyDraft()
   draft.basics.id = id
   return draft
 }
 
 // Every port records its name, so a test can read the order in which the sequence ran.
-const recordingPorts = (overrides = {}) => {
-  const calls = []
-  const ports = {
+const recordingPorts = (overrides: Partial<WizardPorts> = {}) => {
+  const calls: string[] = []
+  const ports: WizardPorts = {
     addEntry: vi.fn(() => { calls.push('addEntry') }),
     saveSettings: vi.fn(async () => { calls.push('saveSettings') }),
-    createTeam: vi.fn(async (name) => { calls.push(`createTeam:${name}`) }),
-    grantTeam: vi.fn(async (team, grant) => { calls.push(`grantTeam:${team}:${grant.repository}:${grant.role}`) }),
-    createMachine: vi.fn(async (name) => { calls.push(`createMachine:${name}`) }),
-    addMachineToTeam: vi.fn(async (team, machine) => { calls.push(`addMachineToTeam:${team}:${machine}`) }),
-    createMachineToken: vi.fn(async (machine, scopes) => { calls.push(`createMachineToken:${machine}:${scopes.join('+')}`); return 'secret-1' }),
+    createTeam: vi.fn(async (name: string) => { calls.push(`createTeam:${name}`) }),
+    grantTeam: vi.fn(async (team: string, grant: { repository: string; role: string }) => { calls.push(`grantTeam:${team}:${grant.repository}:${grant.role}`) }),
+    createMachine: vi.fn(async (name: string) => { calls.push(`createMachine:${name}`) }),
+    addMachineToTeam: vi.fn(async (team: string, machine: string) => { calls.push(`addMachineToTeam:${team}:${machine}`) }),
+    createMachineToken: vi.fn(async (machine: string, scopes: string[]) => { calls.push(`createMachineToken:${machine}:${scopes.join('+')}`); return 'secret-1' }),
     ...overrides
   }
   return { ports, calls }
@@ -77,25 +82,25 @@ const recordingPorts = (overrides = {}) => {
 
 describe('basics step', () => {
   it('asks for an id, because a repository cannot be created without one', () => {
-    expect(validateBasics({ id: '', visibility: 'PUBLIC' }, { existingIds: [] }).id).toBe('Enter an id.')
+    expect(validateBasics(basicsOf({ id: '', visibility: 'PUBLIC' }), { existingIds: [] }).id).toBe('Enter an id.')
   })
 
   it('accepts letters, digits, dots, underscores and hyphens', () => {
-    expect(validateBasics({ id: 'team.a_b-2', visibility: 'PUBLIC' }, { existingIds: [] })).toEqual({})
+    expect(validateBasics(basicsOf({ id: 'team.a_b-2', visibility: 'PUBLIC' }), { existingIds: [] })).toEqual({})
   })
 
   it('rejects characters that cannot appear in a repository address', () => {
-    const { id } = validateBasics({ id: 'team/a', visibility: 'PUBLIC' }, { existingIds: [] })
+    const { id } = validateBasics(basicsOf({ id: 'team/a', visibility: 'PUBLIC' }), { existingIds: [] })
     expect(id).toBe('Use only letters, digits, dots, underscores and hyphens.')
   })
 
   it('rejects an id that another repository already uses, ignoring case', () => {
-    const { id } = validateBasics({ id: 'releases', visibility: 'PUBLIC' }, { existingIds: ['Releases'] })
+    const { id } = validateBasics(basicsOf({ id: 'releases', visibility: 'PUBLIC' }), { existingIds: ['Releases'] })
     expect(id).toBe('A repository with this id already exists.')
   })
 
   it('requires one of the three visibilities', () => {
-    const { visibility } = validateBasics({ id: 'team', visibility: 'OPEN' }, { existingIds: [] })
+    const { visibility } = validateBasics(basicsOf({ id: 'team', visibility: 'OPEN' }), { existingIds: [] })
     expect(visibility).toBeDefined()
   })
 
@@ -116,20 +121,20 @@ describe('storage step', () => {
 
   it('accepts quotas in megabytes, gigabytes and percent', () => {
     ;['500MB', '10gb', '90%'].forEach(quota => {
-      expect(validateStorage({ kind: 'fs', quota })).toEqual({})
+      expect(validateStorage(storageOf({ kind: 'fs', quota }))).toEqual({})
     })
   })
 
   it('rejects a quota without a unit', () => {
-    expect(validateStorage({ kind: 'fs', quota: '500' }).quota).toBeDefined()
+    expect(validateStorage(storageOf({ kind: 'fs', quota: '500' })).quota).toBeDefined()
   })
 
   it('requires a bucket name for S3', () => {
-    expect(validateStorage({ kind: 's3', bucketName: '  ' }).bucketName).toBe('Enter the bucket name.')
+    expect(validateStorage(storageOf({ kind: 's3', bucketName: '  ' })).bucketName).toBe('Enter the bucket name.')
   })
 
   it('does not require region, endpoint or keys for S3', () => {
-    expect(validateStorage({ kind: 's3', bucketName: 'artifacts', region: '', endpoint: '', accessKey: '', secretKey: '' })).toEqual({})
+    expect(validateStorage(storageOf({ kind: 's3', bucketName: 'artifacts', region: '', endpoint: '', accessKey: '', secretKey: '' }))).toEqual({})
   })
 })
 
@@ -216,7 +221,7 @@ describe('step order', () => {
 
   it('reports the first step that has a problem, so the user is sent back to it', () => {
     const draft = draftFor('')
-    draft.storage = { kind: 's3', bucketName: '' }
+    draft.storage = storageOf({ kind: 's3', bucketName: '' })
     draft.access.team = 'developers'
     expect(firstInvalidStep(draft, context)).toBe('basics')
 
@@ -260,7 +265,7 @@ describe('repository entry', () => {
 
   it('keeps only the S3 settings that were filled in', () => {
     const draft = draftFor('team')
-    draft.storage = { kind: 's3', bucketName: 'artifacts', region: 'eu-central-1', endpoint: '', accessKey: '', secretKey: 'secret' }
+    draft.storage = storageOf({ kind: 's3', bucketName: 'artifacts', region: 'eu-central-1', endpoint: '', accessKey: '', secretKey: 'secret' })
     expect(repositoryEntry(draft, { optional: NO_OPTIONAL }).storageProvider).toEqual({
       type: 's3',
       bucketName: 'artifacts',
@@ -326,7 +331,7 @@ describe('review summary', () => {
   })
 
   it('describes an S3 bucket by its name and region', () => {
-    expect(describeStorage({ kind: 's3', bucketName: 'artifacts', region: 'eu-central-1' }))
+    expect(describeStorage(storageOf({ kind: 's3', bucketName: 'artifacts', region: 'eu-central-1' })))
       .toBe('S3 bucket "artifacts", region eu-central-1')
   })
 })
@@ -550,7 +555,7 @@ describe('choosing a type', () => {
 })
 
 describe('upstream step', () => {
-  const upstreamDraft = (remotes, rest = {}) => {
+  const upstreamDraft = (remotes: Remote[], rest: Partial<WizardDraft['upstream']> = {}) => {
     const draft = draftFor('central')
     draft.type = 'PROXY'
     draft.upstream = { ...draft.upstream, remotes, ...rest }
@@ -613,7 +618,7 @@ describe('upstream step', () => {
 
 describe('members step', () => {
   const context = { existingIds: ['releases', 'snapshots'] }
-  const groupDraft = (members) => {
+  const groupDraft = (members: string[]) => {
     const draft = draftFor('all')
     draft.type = 'GROUP'
     draft.members = members
