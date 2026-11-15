@@ -31,7 +31,7 @@ internal class LuceneSearchBackendContractTest : ArtifactSearchBackendContract()
             mapOf("INGOT_LUCENE_DIRECTORY" to directory.resolve("index").toString()),
             directory.resolve("unused"),
         )
-        val backend = LuceneSearchBackend(settings)
+        val backend = testBackend(settings)
         backend.open()
         return Opened(backend) { backend.close() }
     }

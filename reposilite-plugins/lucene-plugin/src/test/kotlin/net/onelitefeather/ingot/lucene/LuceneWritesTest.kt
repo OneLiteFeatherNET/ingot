@@ -71,7 +71,7 @@ internal class LuceneWritesTest {
         openDirectory: (Path) -> Directory = { FSDirectory.open(it) },
     ): LuceneSearchBackend {
         val settings = LuceneSettings.read(mapOf("INGOT_LUCENE_DIRECTORY" to directory.toString()), root.resolve("unused"))
-        return LuceneSearchBackend(settings, openDirectory).also {
+        return testBackend(settings, openDirectory).also {
             opened += it
             it.open()
         }
