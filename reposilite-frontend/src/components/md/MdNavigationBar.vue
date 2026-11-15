@@ -85,7 +85,7 @@ const select = (item, event) => {
           :type="item.href ? undefined : 'button'"
           :aria-current="isActive(item) ? 'page' : undefined"
           :title="item.shortLabel ? item.label : undefined"
-          class="md-state-layer md-focus-ring relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large p-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
+          class="md-state-layer md-focus-ring relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
           :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
           @click="select(item, $event)"
         >
