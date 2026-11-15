@@ -49,9 +49,12 @@ import java.util.UUID
 
 /**
  * The storage provider of one `azure-blob` repository. The blobs of the repository live under [blobPrefix] in one container, which the
- * [client] reaches. Uploads follow the block blob rules of design D4; the other operations are added by the following changes.
+ * [client] reaches. Uploads follow the block blob rules of design D4, and the directories follow D6.
+ *
+ * The provider does not implement `StorageEntrySource`. List Blobs pages with an opaque continuation marker, and the cursor that the
+ * SDK offers for a start key has not been confirmed against the service, so the walking fallback of the core lists the repository (D13).
  */
-internal class AzureBlobStorageProvider(
+class AzureBlobStorageProvider(
     private val failureFacade: FailureFacade,
     private val client: AzureBlobClient,
     private val blobPrefix: String,

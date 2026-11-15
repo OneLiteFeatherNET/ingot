@@ -23,7 +23,7 @@ import java.time.Instant
  * The operations of the Blob service that the provider needs, with the names of blobs already resolved. The provider talks to this
  * interface only, so its tests run against a fake, and the Azure SDK is confined to one implementation of it.
  */
-internal interface AzureBlobClient : AutoCloseable {
+interface AzureBlobClient : AutoCloseable {
 
     /** Writes [content] as one committed block blob (Put Blob), replacing a blob of the same name. */
     fun putBlob(name: String, content: ByteArray, contentType: String)
@@ -60,10 +60,10 @@ internal interface AzureBlobClient : AutoCloseable {
 }
 
 /** The committed state of a blob that the provider reports. */
-internal data class AzureBlobProperties(val contentLength: Long, val lastModified: Instant)
+data class AzureBlobProperties(val contentLength: Long, val lastModified: Instant)
 
 /** An entry of a listing by hierarchy: a blob with its properties, or a directory with none. The [name] is the full name in the container. */
-internal data class AzureBlobChild(val name: String, val properties: AzureBlobProperties?) {
+data class AzureBlobChild(val name: String, val properties: AzureBlobProperties?) {
 
     val isDirectory: Boolean
         get() = properties == null
@@ -71,14 +71,14 @@ internal data class AzureBlobChild(val name: String, val properties: AzureBlobPr
 }
 
 /** The blob, or its container, does not exist (404). */
-internal class AzureBlobNotFoundException(name: String) : RuntimeException("Azure blob '$name' does not exist")
+class AzureBlobNotFoundException(name: String) : RuntimeException("Azure blob '$name' does not exist")
 
 /**
  * The service answered with a failure that is neither a missing blob nor a refused range. Only the status and the error code of the
  * answer are kept, never the request, so a SAS token or an account key cannot reach a log through this exception.
  */
-internal class AzureServiceException(name: String, val statusCode: Int, val errorCode: String?) :
+class AzureServiceException(name: String, val statusCode: Int, val errorCode: String?) :
     RuntimeException("Azure blob '$name' answered HTTP $statusCode" + (errorCode?.let { " ($it)" } ?: ""))
 
 /** The service refused a range that starts at or after the end of the blob (416). */
-internal class AzureRangeNotSatisfiableException(name: String) : RuntimeException("Azure blob '$name' refused the requested range")
+class AzureRangeNotSatisfiableException(name: String) : RuntimeException("Azure blob '$name' refused the requested range")
