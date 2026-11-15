@@ -33,11 +33,12 @@ PR title: `feat(plugin): add the optional tier to the plugin annotation`
 
 PR title: `feat(plugin): log the tier of each loaded plugin and warn for experimental ones`
 
-- [ ] 3.1 `test(plugin)`: failing tests with a captured appender: the list line shows `name (tier)` and keeps its chunks; one WARN per
-  Experimental plugin; no tier warning for the other tiers; a Core claim from outside the image logs one warning and resolves to
-  Community. Verify: they fail.
-- [ ] 3.2 `feat(plugin)`: change the list line of `PluginLoader.initialize` and log the Experimental warning after it. Verify: the tests
-  of 3.1 pass and the start test of the bundled plugins is unchanged. Note in the commit body that the list line text changes.
+- [ ] 3.1 `test(plugin)`: failing tests with a captured appender: the existing loaded-plugins line is byte for byte identical to its
+  text before the change, with its chunks; one additional INFO line follows it with `name (tier)`; one WARN per Experimental plugin; no
+  tier warning for the other tiers; a Core claim from outside the image logs one warning and resolves to Community. Verify: they fail.
+- [ ] 3.2 `feat(plugin)`: keep the existing list line of `PluginLoader.initialize` unchanged, add the tier INFO line directly after it,
+  and log the Experimental warning. Verify: the tests of 3.1 pass and the start test of the bundled plugins is unchanged. The commit body
+  states that the existing line is unchanged and that one line is added.
 
 ## 4. Support information (red, then green)
 
@@ -114,14 +115,18 @@ PR title: `feat(ui): show the tier next to each plugin in system information`
 
 PR title: `docs(support): describe the plugin tiers in SUPPORT.md`
 
-- [ ] 10.1 `docs(support)`: add the tier section to `SUPPORT.md`, with the release lines it lists as supported and the link to the
-  definitions. Core and Official support follows those lines, not the latest release. Note in the pull request the state of
-  `add-release-branches-and-backports` from task 0.2. Verify: `openspec/specs/support-policy` scenarios are met by the text.
+- [ ] 10.1 `docs(support)`: add the tier section to `SUPPORT.md` below its existing text, which stays byte for byte unchanged: community
+  support only, no paid tier, no SLA, no fix date promised, and no feature depends on a support arrangement. Define Official as "maintained
+  and tested by the OneLiteFeather maintainers, fixed on the supported release lines, on a best effort community basis". Core and Official
+  are fixed on the release lines `SUPPORT.md` lists, not the latest release. Link the definitions. Note in the pull request the state of
+  `add-release-branches-and-backports` from task 0.2. Verify: a diff of `SUPPORT.md` shows additions only, and the `openspec/specs/support-policy`
+  scenarios are met by the text.
 
 PR title: `docs(gitbook): describe the four plugin tiers and show a badge on plugin pages`
 
 - [ ] 10.2 `docs(gitbook)`: add `references/plugins/plugin-tiers.md`, link it in `SUMMARY.md`, add a `Tier: <name>` line to each plugin page,
-  and describe the new log line and the warning in the upgrade notes under `docs/gitbook/release-notes/`. No emoji. Verify: no page links
+  and describe the additional tier line and the Experimental warning in the upgrade notes under `docs/gitbook/release-notes/`, stating
+  that the existing startup line is unchanged. No emoji. Verify: no page links
   to a missing file, and the page lists the four tiers with the support of each.
 
 ## 11. Open the code pull requests

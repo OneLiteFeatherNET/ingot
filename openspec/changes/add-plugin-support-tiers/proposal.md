@@ -21,13 +21,13 @@ requirement and task before the code pull requests are opened.
    `lucene-plugin` opt in to experimental APIs and are Experimental by question 2. Their open pull requests have no tier
    declaration yet. Default: each of them adds `tier = EXPERIMENTAL` in its registration commit, after the annotation and check
    pull requests of this change are merged. Alternative: this change adds the declaration to them.
-5. **Support promises and the release-branch change.** Core and Official promise support for the release lines that
-   `SUPPORT.md` lists as supported, not for the latest release only. `SUPPORT.md` is the single list. The parallel proposal
+5. **Support promises and the release-branch change.** Core and Official are fixed on the release lines that
+   `SUPPORT.md` lists as supported, on a best effort basis, not for the latest release only. `SUPPORT.md` is the single list. The parallel proposal
    `add-release-branches-and-backports` adds release branches and backports, and LTS lines may follow later. It is not on
    `main` yet. Default: this proposal names the dependency, and Core and Official follow whatever lines `SUPPORT.md` lists at
    the time. Alternative: wait for that proposal to merge before the support wording in `SUPPORT.md` changes.
-6. **Log line format.** The startup list of loaded plugins gets the tier in brackets after each name. Default: yes. An operator
-   who parses that line is affected. Alternative: keep the line and add a second line for the tiers.
+6. **Log line format.** Decided by the maintainer: the existing startup line of loaded plugins stays byte for byte unchanged. The
+   tiers go on one additional INFO line after it, so the drop-in contract holds for operators who parse the existing line.
 
 ## Why
 
@@ -63,14 +63,16 @@ would break that. So the tier is information and a warning, and nothing else.
   demotion ships as a new version.
 - **Where the tier shows.**
   - *Catalogue entry*: the `tier` field, read by the store and by the dashboard selection, when that list exists.
-  - *Startup log*: the line that lists loaded plugins shows each name with its tier, for example `checksum (official)`. Each
-    Experimental plugin also logs one warning line at start.
+  - *Startup log*: the existing line that lists loaded plugins is unchanged, byte for byte. One additional INFO line after it
+    lists each plugin with its tier, for example `checksum (official)`. Each Experimental plugin also logs one warning line at start.
   - *System information page*: the existing plugin list (name and version) gets a tier label. The support bundle's
     `plugins.json` gets the same field. No new dashboard page is added, because the system information page already lists the
     plugins.
   - *GitBook*: a new page `references/plugins/plugin-tiers.md` defines the four tiers and the support policy of each. Each plugin
     page gets a line `Tier: <name>` that links to it.
-  - *SUPPORT.md*: a section names the four tiers and the release lines each one receives fixes for.
+  - *SUPPORT.md*: a section names the four tiers. Its existing text stays unchanged: community support only, no paid tier and no
+    SLA. Official means a plugin maintained and tested by the OneLiteFeather maintainers, fixed on the supported release lines, on a
+    best effort community basis.
 - **Evidence rules and a CI check.** A Gradle task checks every plugin module against the rules in `plugin-tiers`. The check runs
   on every pull request in its own CI job. It fails when a declared tier has no evidence, or when a plugin uses an experimental
   API without declaring Experimental. The release generator runs the same check before it writes the catalogue.
@@ -83,8 +85,9 @@ would break that. So the tier is information and a warning, and nothing else.
   decision.
 - Support for LTS lines and the release branch model. That belongs to `add-release-branches-and-backports`, which may follow later.
   This change only refers to the lines `SUPPORT.md` lists.
-- A paid tier, a service level agreement or any restriction of a feature by tier. `SUPPORT.md` keeps saying that no feature depends
-  on a support arrangement.
+- A paid tier, a service level agreement or any restriction of a feature by tier. `SUPPORT.md` keeps saying that it describes
+  community support only, that there is no paid tier and no SLA, and that no feature depends on a support arrangement. Official
+  does not mean paid support.
 - A verified signature of the tier claim of a plugin loaded from the plugins directory. The tier of such a jar is what the jar
   declares, and the dashboard and the log say so. Only the signed catalogue of OneLiteFeather is evidence.
 - A tier filter or a tier column in a plugin browser. The plugin store and the GitBook pages show the tier, and nothing filters on it.
@@ -116,9 +119,9 @@ would break that. So the tier is information and a warning, and nothing else.
 
 - **Breaking marker.** No breaking change. The tier is an optional annotation element with a default that equals the current
   behaviour, and an optional catalogue field. No environment variable, configuration key, volume, manifest, image or plugin that an
-  existing installation uses has to change. The startup log line changes its text (question 6). That text is not a
-  configuration surface, and the tasks name it for the upgrade notes so that an operator who parses it sees the change before
-  upgrading. No plugin is refused, skipped or started in a different order because of its tier.
+  existing installation uses has to change. The existing startup log line is unchanged byte for byte (question 6), and the tier
+  information is one additional line, so an operator who parses the existing line sees no difference. No plugin is refused, skipped
+  or started in a different order because of its tier.
 - **Binary surface.** One new public enum and one new annotation element in `com.reposilite.plugin.api`. The plugin API dump of
   `plugin-abi-gate` reports both as additions. Nothing is removed or changed.
 - **Dependencies.** The change depends on nothing that is not on `main`, except the four pending plugin changes, which depend on

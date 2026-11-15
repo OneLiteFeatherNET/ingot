@@ -21,8 +21,9 @@ generator `.github/scripts/generate_plugin_catalogue.py`. Names are those of tho
 - The startup log of `PluginLoader.initialize` prints the loaded plugins in chunks of five names.
 - The catalogue is append-only and signed (`plugin-catalogue-publishing`). Its reader ignores unknown fields, so an additive
   field keeps schema 1.
-- `SUPPORT.md` says the support is community support and that no feature depends on a support arrangement. The tiers add a
-  maintainer-backed support level to that text, so `SUPPORT.md` changes too.
+- `SUPPORT.md` says the support is community support, that there is no paid tier and no SLA, and that no feature depends on a
+  support arrangement. Those sentences stay unchanged. The tier section is added below them, and it defines Official as a plugin
+  maintained and tested by the OneLiteFeather maintainers, fixed on the supported release lines, on a best effort community basis.
 
 ## Decisions
 
@@ -86,7 +87,8 @@ from the first day, because a declaration without evidence is a false promise, n
 
 ### D6: The tier is shown in four places, and no new page is added
 
-- The startup log lists each name with its tier in brackets. It is the list of `initialize`, so no other log line changes.
+- The startup log keeps the existing line of `initialize` byte for byte. The tiers are one additional INFO line logged directly after
+  it, in the same chunks of five names, in the form `checksum (official)`. No existing line changes text, and no line is removed.
 - The system information page shows the tier as a label next to the version of each plugin. The label is read from the existing
   support information, which gets the field `tier` in `PluginInformation` and `PluginFact`.
 - The support bundle `plugins.json` gets the same field.
@@ -94,17 +96,20 @@ from the first day, because a declaration without evidence is a false promise, n
 
 A dashboard plugin browser is not added. The store's selection list shows the tier when it exists, and that is its only place.
 
-### D7: Support promises refer to the release lines in SUPPORT.md
+### D7: Support is fixed on the release lines listed in SUPPORT.md
 
-Core and Official say "supported" in one sense: the release lines that `SUPPORT.md` lists as supported receive the fixes of the
-tier. The text never says "the latest release" for a tier. `SUPPORT.md` is the one list, and the GitBook page and the
-`SUPPORT.md` section both link to it, so a change of the list changes every promise at once.
+Core and Official are fixed on the release lines that `SUPPORT.md` lists as supported, on a best effort basis. Official means a
+plugin maintained and tested by the OneLiteFeather maintainers, and it does not mean paid support. The existing `SUPPORT.md` text
+stays unchanged: community support only, no paid tier, no SLA, and no fix date is promised. The text never says "the latest
+release" for a tier. `SUPPORT.md` is the one list, and the GitBook page and the `SUPPORT.md` section both link to it, so a change of
+the list changes the fixed lines of both tiers at once.
 
 The parallel change `add-release-branches-and-backports` adds release branches and backports, and LTS lines may follow it.
 This change does not depend on the branching model, only on `SUPPORT.md` naming the lines. When that change merges, the list
 it writes in `SUPPORT.md` is what Core and Official follow. Until then the list is the one `SUPPORT.md` has today.
 
-Community and Experimental receive no maintainer support in this sense. Experimental carries no promise about the API at all.
+Community plugins receive community support only, through the public discussions. Experimental plugins carry no promise about the API
+at all, and they are fixed on the same best effort basis as any other plugin.
 
 ### D8: The table of existing and pending plugins
 
@@ -142,8 +147,8 @@ registration, so the check passes on its pull request. That is a follow-up in th
 
 ## Risks
 
-- **Log parsers.** The startup log line changes its text. Operators who parse it see a difference after upgrading. The upgrade
-  notes say so. Question 6 is the switch.
+- **Log parsers.** None of the existing startup lines changes. The tier information is one additional line, so a parser of the
+  existing line sees no difference. The upgrade notes name the additional line so that a parser which matches all lines sees it.
 - **Official claims that CI does not back.** The check exists so that an unbacked claim fails. The check reads the workflow files
   by name, so a renamed job can make it fail. That is intended, and the failure names the module and the missing evidence.
 - **Experimental pressure.** Marking three search plugins and four cloud plugins Experimental puts a warning in the start log

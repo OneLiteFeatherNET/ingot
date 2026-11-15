@@ -76,15 +76,21 @@ per request.
 - **WHEN** only Core, Official and Community plugins load
 - **THEN** the log contains no tier warning
 
-### Requirement: Loaded plugins list shows the tier
+### Requirement: Existing loaded plugins line is unchanged
 
-The startup log line that lists the loaded plugins SHALL show each name followed by its effective tier in lower case in brackets,
-for example `checksum (official)`. The order and the chunks of the list SHALL NOT change.
+The existing startup log line that lists the loaded plugins SHALL remain byte for byte unchanged, with its text, its order and its
+chunks of five names. The tiers SHALL be logged on one additional INFO line directly after it, in the form `checksum (official)`.
+No existing startup line SHALL be removed or changed.
 
-#### Scenario: Mixed plugins
+#### Scenario: Existing line unchanged
+
+- **WHEN** the server starts with the same plugins as before this change
+- **THEN** the line that lists the loaded plugins is byte for byte identical to the line logged before this change
+
+#### Scenario: Tier line added after it
 
 - **WHEN** the checksum plugin and the Elasticsearch plugin load
-- **THEN** the list shows `checksum (official)` and `elasticsearch-search (experimental)`
+- **THEN** one additional INFO line follows the existing line and shows `checksum (official)` and `elasticsearch-search (experimental)`
 
 ### Requirement: Tier shown in the system information page and the support bundle
 
