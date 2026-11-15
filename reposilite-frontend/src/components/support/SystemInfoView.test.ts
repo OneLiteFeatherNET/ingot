@@ -19,7 +19,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import SystemInfoView from './SystemInfoView.vue'
 
 // The client is swapped per test through this holder. The view reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted((): { client: unknown } => ({ client: null }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -44,7 +44,7 @@ const FIXTURE = {
   }
 }
 
-const mountView = (client) => {
+const mountView = (client: unknown) => {
   session.client = client
   return mount(SystemInfoView)
 }
@@ -56,7 +56,7 @@ afterEach(() => {
 describe('SystemInfoView', () => {
   it('renders every section of the page from the system information', async () => {
     // when: the page is opened
-    const wrapper = mountView({ support: { systemInfo: vi.fn(async () => ({ data: FIXTURE })), availability: vi.fn() } })
+    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn() } })
     await flushPromises()
 
     // then: each section has its heading
@@ -67,7 +67,7 @@ describe('SystemInfoView', () => {
   })
 
   it('shows the withheld values as written, never a value that was not sent', async () => {
-    const wrapper = mountView({ support: { systemInfo: vi.fn(async () => ({ data: FIXTURE })) } })
+    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('[withheld]')
@@ -77,7 +77,7 @@ describe('SystemInfoView', () => {
 
   it('tells the visitor that the pages are turned off when the server answers 404', async () => {
     const wrapper = mountView({
-      support: { systemInfo: vi.fn(async () => Promise.reject({ response: { status: 404 } })) }
+      support: { systemInfo: vi.fn(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } }))) }
     })
     await flushPromises()
 

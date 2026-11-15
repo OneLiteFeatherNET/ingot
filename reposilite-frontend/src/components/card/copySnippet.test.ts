@@ -55,9 +55,9 @@ describe('selectText', () => {
     const selected = selectText(element)
 
     expect(selected, 'a selectable element is selected').toBe(true)
-    expect(window.getSelection().toString(), 'the selection covers the snippet').toBe(element.textContent)
+    expect(window.getSelection()!.toString(), 'the selection covers the snippet').toBe(element.textContent)
 
-    window.getSelection().removeAllRanges()
+    window.getSelection()!.removeAllRanges()
     element.remove()
   })
 

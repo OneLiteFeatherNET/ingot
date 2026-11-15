@@ -14,32 +14,31 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 /*
  * One block of a plugin page. The block is data: its text and cells are drawn by Vue interpolation, so markup a
  * plugin sends is shown as characters. A path is called only when it is below the prefix of the plugin.
  */
-import { computed, ref, watch } from 'vue'
-import axios from 'axios'
+import { computed, ref, watch, type PropType } from 'vue'
+import axios, { type AxiosRequestHeaders, type Method } from 'axios'
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import { JsonForms } from '@jsonforms/vue'
 import { createURL, handleRequest } from '../../store/client'
 import { useConfiguration } from '../../store/configuration'
-import { displayValue, pathAllowed, tableRows, BLOCK_TYPES } from './pluginBlocks'
-import { property } from '../../helpers/vue-extensions'
+import { displayValue, failureText, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
 
 const props = defineProps({
-  plugin: property(String, true),
-  block: property(Object, true),
+  plugin: { type: String, required: true },
+  block: { type: Object as PropType<PluginBlockDefinition>, required: true },
 })
 
 const { renderers } = useConfiguration()
 
 // The request of a block: credentials and the CSRF header, the same as every other call of the dashboard.
-const send = (config) => axios.request(handleRequest({ withCredentials: true, headers: {}, ...config, url: createURL(config.url) }))
-const read = (path) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} }))
+const send = (config: { method?: Method; url?: string; data?: unknown }) => axios.request(handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, ...config, url: createURL(config.url as string) }))
+const read = (path: string) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders }))
 
-const known = computed(() => BLOCK_TYPES.includes(props.block?.type))
+const known = computed(() => BLOCK_TYPES.includes(props.block?.type ?? ''))
 
 // The path a block reads from or writes to, and whether the dashboard may call it at all.
 const sourcePath = computed(() => props.block?.source)
@@ -49,11 +48,11 @@ const refused = computed(() => {
   return bad === undefined ? null : `The path ${bad} is not a route of plugin ${props.plugin}, the dashboard does not call it.`
 })
 
-const error = ref(null)
+const error = ref<string | null>(null)
 const loading = ref(false)
 
 // Key value and table: one read of the source.
-const data = ref(null)
+const data = ref<unknown>(null)
 const load = async () => {
   if (refused.value || !sourcePath.value) return
   loading.value = true
@@ -62,7 +61,7 @@ const load = async () => {
     data.value = response.data
     error.value = null
   } catch (failure) {
-    error.value = `Could not load the data: ${failure?.message ?? 'unknown error'}`
+    error.value = `Could not load the data: ${failureText(failure)}`
   } finally {
     loading.value = false
   }
@@ -77,7 +76,7 @@ const table = computed(() => tableRows(Array.isArray(data.value) ? data.value : 
 
 // Action: a confirm text is asked for first, then the call is sent.
 const confirming = ref(false)
-const outcome = ref(null)
+const outcome = ref<{ ok: boolean; text: string } | null>(null)
 const runAction = async () => {
   confirming.value = false
   outcome.value = null
@@ -85,7 +84,7 @@ const runAction = async () => {
     await send({ method: props.block.method, url: props.block.path })
     outcome.value = { ok: true, text: `${props.block.label} done` }
   } catch (failure) {
-    outcome.value = { ok: false, text: `${props.block.label} failed: ${failure?.message ?? 'unknown error'}` }
+    outcome.value = { ok: false, text: `${props.block.label} failed: ${failureText(failure)}` }
   }
 }
 const pressAction = () => {
@@ -97,7 +96,7 @@ const pressAction = () => {
 }
 
 // Status: one read at once, then one per refresh interval, and none while the page is hidden.
-const status = ref(null)
+const status = ref<{ state: string; message: string; progress?: number } | null>(null)
 const refreshMs = computed(() => (props.block?.refreshSeconds ?? 10) * 1000)
 const readStatus = async () => {
   if (refused.value || !sourcePath.value) return
@@ -105,7 +104,7 @@ const readStatus = async () => {
     status.value = (await read(sourcePath.value)).data
     error.value = null
   } catch (failure) {
-    error.value = `Could not read the status: ${failure?.message ?? 'unknown error'}`
+    error.value = `Could not read the status: ${failureText(failure)}`
   }
 }
 const { pause, resume } = useIntervalFn(readStatus, refreshMs, { immediate: false })
@@ -121,14 +120,14 @@ watch(visibility, (state) => {
 }, { immediate: true })
 
 // Form: the source fills the form, and the form is sent to its target.
-const formData = ref({})
-const formMessage = ref(null)
+const formData = ref<Record<string, unknown>>({})
+const formMessage = ref<{ ok: boolean; text: string } | null>(null)
 const loadForm = async () => {
   if (refused.value || !props.block?.source) return
   try {
     formData.value = (await read(props.block.source)).data ?? {}
   } catch (failure) {
-    error.value = `Could not load the form: ${failure?.message ?? 'unknown error'}`
+    error.value = `Could not load the form: ${failureText(failure)}`
   }
 }
 const saveForm = async () => {
@@ -137,7 +136,7 @@ const saveForm = async () => {
     await send({ method: props.block.method, url: props.block.target, data: formData.value })
     formMessage.value = { ok: true, text: 'Saved' }
   } catch (failure) {
-    formMessage.value = { ok: false, text: `Not saved: ${failure?.message ?? 'unknown error'}` }
+    formMessage.value = { ok: false, text: `Not saved: ${failureText(failure)}` }
   }
 }
 

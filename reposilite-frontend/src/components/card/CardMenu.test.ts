@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import CardMenu from './CardMenu.vue'
 
 const configurations = [
@@ -24,17 +24,17 @@ const configurations = [
 ]
 
 // CardMenu remembers the chosen tab in localStorage, so every test starts from an empty store.
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountMenu = () => {
-  wrapper = mount(CardMenu, { props: { configurations } })
+  wrapper = mount(CardMenu, { props: { configurations } }) as VueWrapper
   return wrapper
 }
 
-const tabNamed = (name) =>
-  wrapper.findAll('button').find(button => button.text() === name)
+const tabNamed = (name: string) =>
+  wrapper!.findAll('button').find(button => button.text() === name)!
 
-const indicatorOf = (tab) =>
+const indicatorOf = (tab: DOMWrapper<Element>) =>
   tab.find('[aria-hidden="true"]')
 
 describe('CardMenu tabs', () => {

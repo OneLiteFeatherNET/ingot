@@ -41,16 +41,16 @@ const mountGroup = (initial = 'b') => {
 }
 
 const radios = () => [...document.querySelectorAll('[role="radio"]')]
-const checkedLabel = () => radios().find(radio => radio.getAttribute('aria-checked') === 'true').textContent.trim()
+const checkedLabel = () => radios().find(radio => radio.getAttribute('aria-checked') === 'true')!.textContent.trim()
 
 // Sends a key to a segment and waits for Vue to paint the new selection.
-const press = async (node, key) => {
+const press = async (node: Element, key: string) => {
   node.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
   await nextTick()
 }
 
 describe('SegmentedControl', () => {
-  let mounted
+  let mounted: ReturnType<typeof mountGroup> | undefined
 
   afterEach(() => {
     mounted?.wrapper.unmount()
@@ -64,7 +64,7 @@ describe('SegmentedControl', () => {
     const group = document.querySelector('[role="radiogroup"]')
 
     expect(group, 'the track announces a single choice').not.toBeNull()
-    expect(group.getAttribute('aria-label')).toBe('Phonetics')
+    expect(group!.getAttribute('aria-label')).toBe('Phonetics')
   })
 
   it('moves the selection to the next segment on ArrowRight and focuses it', async () => {

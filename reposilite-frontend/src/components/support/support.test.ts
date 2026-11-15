@@ -20,9 +20,9 @@ import { PAGES, adminGroups, railGroups, setSupportBundleOffered } from '../../n
 import { canUse } from '../../store/nodeAccess'
 
 const CONSOLE = 'ingot.admin.console'
-const canWith = (nodes) => (node) => canUse(nodes, node)
-const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
-const keysOf = (links) => links.map(link => link.key)
+const canWith = (nodes: unknown) => (node: unknown) => canUse(nodes, node)
+const linksOf = (groups: ReturnType<typeof adminGroups>, heading: string) => groups.find(group => group.heading === heading)?.links ?? []
+const keysOf = (links: { key: string | undefined }[]) => links.map(link => link.key)
 
 // The offer of the instance is shared state of the registry, so every test starts without it.
 afterEach(() => setSupportBundleOffered(false))
@@ -93,7 +93,7 @@ describe('support routes', () => {
   })
 
   it('places both support addresses before the generic settings route, which would take the names as domains', () => {
-    const indexOf = (name) => ROUTES.findIndex(route => route.name === name)
+    const indexOf = (name: string) => ROUTES.findIndex(route => route.name === name)
 
     expect(indexOf('system-info')).toBeLessThan(indexOf('settings'))
     expect(indexOf('support')).toBeLessThan(indexOf('settings'))

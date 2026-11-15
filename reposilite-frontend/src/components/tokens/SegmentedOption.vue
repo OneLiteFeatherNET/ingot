@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 defineProps({
   on: {
     type: Boolean,
@@ -25,9 +25,9 @@ defineProps({
 // The focus ring is for keyboard focus. A pointer click has detail above 0, and a segment that
 // the keyboard had already focused would keep :focus-visible through it, so the ring would stay.
 // Blurring on a pointer click drops it; a keyboard activation (detail 0) keeps the focus.
-const onClick = (event) => {
+const onClick = (event: MouseEvent) => {
   if (event.detail > 0) {
-    event.currentTarget.blur()
+    (event.currentTarget as HTMLElement).blur()
   }
 }
 </script>

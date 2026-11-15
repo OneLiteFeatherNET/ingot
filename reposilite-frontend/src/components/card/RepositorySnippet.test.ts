@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import RepositorySnippet from './RepositorySnippet.vue'
+import type { RepositorySnippetData } from './snippetTypes'
 
-const data = {
+const data: RepositorySnippetData = {
   type: 'repository',
   repoId: 'releases-x',
   title: 'Ingot Repository',
   domain: 'http://localhost/releases'
 }
 
-const render = (lang) => mount(RepositorySnippet, { props: { configuration: { name: 'Maven', lang }, data } })
+const render = (lang: string) => mount(RepositorySnippet, { props: { configuration: { name: 'Maven', lang }, data } })
 
 describe('RepositorySnippet Maven text', () => {
   it('copies the snippet exactly as written: one element per line, no blank line between them', () => {
@@ -34,7 +35,7 @@ describe('RepositorySnippet Maven text', () => {
 
 describe('RepositorySnippet url', () => {
   it.each(['xml', 'groovy', 'kotlin', 'scala'])('marks the url of the %s snippet as its own element, never broken', (lang) => {
-    const url = render(lang).find('pre').element.querySelector('.snippet-url')
+    const url = render(lang).find('pre').element.querySelector('.snippet-url')!
 
     expect(url, 'the url is wrapped in its own element').not.toBeNull()
     expect(url.textContent, 'the wrapped element holds the url and nothing else').toBe('http://localhost/releases')

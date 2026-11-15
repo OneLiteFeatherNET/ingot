@@ -1,25 +1,25 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 
 // The client is swapped per test through this holder. The alert reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted((): { client: unknown } => ({ client: null }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
 }))
 
-const clientReturning = (state) => ({
+const clientReturning = (state: { mode: string; secretsEncrypted: boolean; plaintextSecrets: number }) => ({
   settings: {
-    encryptionState: async () => ({ data: state })
+    encryptionState: () => Promise.resolve({ data: state })
   }
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
-const mountAlert = async (client) => {
+const mountAlert = async (client: unknown) => {
   session.client = client
-  wrapper = mount(SettingsEncryptionAlert)
+  wrapper = mount(SettingsEncryptionAlert) as VueWrapper
   await flushPromises()
   return wrapper
 }
@@ -60,9 +60,7 @@ describe('SettingsEncryptionAlert', () => {
   it('stays hidden without the settings permission and shows no error', async () => {
     const forbidden = {
       settings: {
-        encryptionState: async () => {
-          throw Object.assign(new Error('Forbidden'), { response: { status: 403 } })
-        }
+        encryptionState: () => Promise.reject(Object.assign(new Error('Forbidden'), { response: { status: 403 } }))
       }
     }
     const view = await mountAlert(forbidden)

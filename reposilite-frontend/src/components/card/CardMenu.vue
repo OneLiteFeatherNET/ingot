@@ -14,19 +14,20 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { ref, watchEffect } from 'vue'
+<script setup lang="ts">
+import { ref, watchEffect, type PropType } from 'vue'
+import type { SnippetConfiguration } from './snippetTypes'
 
 defineProps({
   configurations: {
-    type: Object,
+    type: Object as PropType<SnippetConfiguration[]>,
     required: true
   }
 })
 
-const emit = defineEmits([
-  'selectTab'
-])
+const emit = defineEmits<{
+  selectTab: [tab: string]
+}>()
 
 const selectedTab = ref(localStorage.getItem('card-tab') || 'Maven')
 watchEffect(() => {
@@ -34,7 +35,7 @@ watchEffect(() => {
   emit('selectTab', selectedTab.value)
 })
 
-const selectConfiguration = (configuration) =>
+const selectConfiguration = (configuration: SnippetConfiguration) =>
   selectedTab.value = configuration.name
 </script>
 

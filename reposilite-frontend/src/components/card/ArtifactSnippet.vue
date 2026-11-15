@@ -14,24 +14,25 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import XmlTag from './XmlTag.vue'
 import CodeString from './CodeString.vue'
 import CodeBrackets from "./CodeBrackets.vue"
-import { computed, ref } from "vue"
+import { computed, ref, type PropType } from "vue"
+import type { ArtifactSnippetData, SnippetConfiguration } from './snippetTypes'
 
 defineProps({
   configuration: {
-    type: Object,
+    type: Object as PropType<SnippetConfiguration>,
     required: true
   },
   data: {
-    type: Object,
+    type: Object as PropType<ArtifactSnippetData>,
     required: true
   }
 })
 
-const preElement = ref()
+const preElement = ref<HTMLElement>()
 const content = computed(() => preElement?.value?.textContent)
 
 defineExpose({ content })

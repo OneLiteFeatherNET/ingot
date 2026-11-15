@@ -1,15 +1,15 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { setContributions } from '../../navigation/registry'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import PluginPageView from './PluginPageView.vue'
 
 // The blocks of a page link through the router, so each mount gets a fresh one.
-const mountPage = async () => {
+const mountPage = async (): Promise<VueWrapper> => {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }] })
   await router.push('/')
   await router.isReady()
-  wrapper = mount(PluginPageView, { props: { plugin: 'acme-mirror', pageId: 'mirrors' }, global: { plugins: [router] } })
+  wrapper = mount(PluginPageView, { props: { plugin: 'acme-mirror', pageId: 'mirrors' }, global: { plugins: [router] } }) as VueWrapper
   return wrapper
 }
 
@@ -30,7 +30,7 @@ const manifest = () => ({
 })
 
 // The mounted page is unmounted before the registry is cleared, so no clear re-renders a page of this test.
-let wrapper
+let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined

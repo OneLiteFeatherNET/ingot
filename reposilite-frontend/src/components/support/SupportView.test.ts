@@ -19,7 +19,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import SupportView from './SupportView.vue'
 
 // The client is swapped per test through this holder. The view reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted((): { client: unknown } => ({ client: null }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -28,10 +28,10 @@ vi.mock('../../store/session', () => ({
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: { message?: string } | undefined) => error?.message ?? 'unknown error'
 }))
 
-const mountView = (client) => {
+const mountView = (client: unknown) => {
   session.client = client
   return mount(SupportView)
 }
@@ -42,7 +42,7 @@ afterEach(() => {
 
 describe('SupportView', () => {
   it('offers the download of the support bundle', async () => {
-    const wrapper = mountView({ support: { availability: vi.fn(async () => ({ data: { enabled: true } })), bundle: vi.fn() } })
+    const wrapper = mountView({ support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })), bundle: vi.fn() } })
     await flushPromises()
 
     const button = wrapper.findAll('button').find(item => item.text().includes('Download support bundle'))
@@ -50,7 +50,7 @@ describe('SupportView', () => {
   })
 
   it('states that secrets are removed and that the zip is still read before it is attached', async () => {
-    const wrapper = mountView({ support: { availability: vi.fn(async () => ({ data: { enabled: true } })) } })
+    const wrapper = mountView({ support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Secrets are removed or masked')
@@ -58,7 +58,7 @@ describe('SupportView', () => {
   })
 
   it('says the pages are turned off and offers no download when the feature is off', async () => {
-    const wrapper = mountView({ support: { availability: vi.fn(async () => ({ data: { enabled: false } })) } })
+    const wrapper = mountView({ support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: false } })) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('turned off')

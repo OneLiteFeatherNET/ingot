@@ -14,19 +14,20 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
+import type { components } from '../../types/api'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
 const { client } = useSession()
-const info = ref(null)
+const info = ref<components['schemas']['SystemInformation'] | null>(null)
 // loading, ready, off (the opt-out answers 404) or failed
-const state = ref('loading')
+const state = ref<'loading' | 'ready' | 'off' | 'failed'>('loading')
 const failure = ref('')
 
-const entriesOf = (object) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
+const entriesOf = (object: Record<string, unknown> | undefined) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
 
 const load = async () => {
   try {
@@ -34,11 +35,11 @@ const load = async () => {
     info.value = data
     state.value = 'ready'
   } catch (error) {
-    if (error?.response?.status === 404) {
+    if ((error as { response?: { status?: number } } | undefined)?.response?.status === 404) {
       state.value = 'off'
     } else {
       state.value = 'failed'
-      failure.value = error?.message ?? 'The system information cannot be read.'
+      failure.value = (error as Error | undefined)?.message ?? 'The system information cannot be read.'
     }
   }
 }

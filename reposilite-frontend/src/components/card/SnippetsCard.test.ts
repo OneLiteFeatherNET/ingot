@@ -15,23 +15,23 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SnippetsCard from './SnippetsCard.vue'
 import { DETAILS_COLLAPSED_KEY } from './detailsCollapsed'
 
 // By default the metadata request never answers, so the card stays in its loading state. A test that
 // needs the repository level makes the request fail with a 404, as a repository path without artifacts does.
-const { content } = vi.hoisted(() => ({ content: vi.fn(() => new Promise(() => {})) }))
+const { content } = vi.hoisted(() => ({ content: vi.fn<(path: string) => Promise<unknown>>(() => new Promise(() => {})) }))
 vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
   return {
     useSession: () => ({
-      client: ref({ maven: { content: (...args) => content(...args) } })
+      client: ref({ maven: { content: (...args: [string]) => content(...args) } })
     })
   }
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountCard = async (path = '') => {
   wrapper = mount(SnippetsCard, {
@@ -43,21 +43,21 @@ const mountCard = async (path = '') => {
 }
 
 const copyButton = () =>
-  wrapper.find('button[aria-label="Copy snippet"]')
+  wrapper!.find('button[aria-label="Copy snippet"]')
 
 // Installs a clipboard for one test. The original is put back in afterEach.
-const withClipboard = (clipboard) => {
+const withClipboard = (clipboard: unknown) => {
   Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true })
 }
 
 describe('SnippetsCard copy action', () => {
   beforeEach(() => {
-    window.getSelection().removeAllRanges()
+    window.getSelection()!.removeAllRanges()
   })
 
   afterEach(() => {
-    delete navigator.clipboard
-    window.getSelection().removeAllRanges()
+    Reflect.deleteProperty(navigator, 'clipboard')
+    window.getSelection()!.removeAllRanges()
     wrapper?.unmount()
     wrapper = undefined
   })
@@ -77,7 +77,7 @@ describe('SnippetsCard copy action', () => {
     await flushPromises()
 
     expect(clipboard.writeText, 'the snippet reaches the clipboard').toHaveBeenCalledTimes(1)
-    expect(wrapper.text(), 'the user sees that the copy worked').toContain('Copied')
+    expect(wrapper!.text(), 'the user sees that the copy worked').toContain('Copied')
   })
 
   it('selects the snippet and explains how to copy it when the clipboard refuses', async () => {
@@ -87,8 +87,8 @@ describe('SnippetsCard copy action', () => {
     await copyButton().trigger('click')
     await flushPromises()
 
-    expect(window.getSelection().toString(), 'the snippet text is selected for a manual copy').toContain('repository')
-    expect(wrapper.text(), 'the user is told to copy by hand').toContain('Ctrl+C')
+    expect(window.getSelection()!.toString(), 'the snippet text is selected for a manual copy').toContain('repository')
+    expect(wrapper!.text(), 'the user is told to copy by hand').toContain('Ctrl+C')
   })
 
   it('selects the snippet when there is no clipboard API at all', async () => {
@@ -97,8 +97,8 @@ describe('SnippetsCard copy action', () => {
     await copyButton().trigger('click')
     await flushPromises()
 
-    expect(window.getSelection().toString(), 'the snippet is selected without a clipboard').toContain('repository')
-    expect(wrapper.text(), 'the user is told how to finish the copy').toContain('Ctrl+C')
+    expect(window.getSelection()!.toString(), 'the snippet is selected without a clipboard').toContain('repository')
+    expect(wrapper!.text(), 'the user is told how to finish the copy').toContain('Ctrl+C')
   })
 })
 
@@ -111,7 +111,7 @@ describe('SnippetsCard surface', () => {
   it('renders the details as a sidebar on the page surface, without a frame of its own', async () => {
     await mountCard()
 
-    const classes = wrapper.classes()
+    const classes = wrapper!.classes()
 
     expect(classes, 'no border frames the heading row').not.toContain('border')
     expect(classes, 'no fill frames the heading row').not.toContain('bg-surface')
@@ -120,7 +120,7 @@ describe('SnippetsCard surface', () => {
   it('sets the snippet text in the md body small role', async () => {
     await mountCard()
 
-    const editor = wrapper.find('.card-editor')
+    const editor = wrapper!.find('.card-editor')
     expect(editor.exists()).toBe(true)
     expect(editor.classes()).toContain('md-body-small')
     expect(editor.classes()).not.toContain('text-ssm')
@@ -129,13 +129,13 @@ describe('SnippetsCard surface', () => {
   it('keeps the copy button out of the scrolling code block', async () => {
     await mountCard()
 
-    expect(wrapper.find('.card-editor button[aria-label="Copy snippet"]').exists(), 'the copy button never covers a line of code').toBe(false)
+    expect(wrapper!.find('.card-editor button[aria-label="Copy snippet"]').exists(), 'the copy button never covers a line of code').toBe(false)
     expect(copyButton().exists(), 'the copy action is still offered').toBe(true)
   })
 
   it('draws the snippet as preformatted text that scrolls sideways instead of wrapping', async () => {
     await mountCard()
-    const editor = wrapper.find('.card-editor')
+    const editor = wrapper!.find('.card-editor')
 
     expect(editor.classes(), 'the whitespace of the snippet is kept as written').toContain('whitespace-pre')
     expect(editor.classes(), 'the snippet is cut by scrolling, not by breaking words').toContain('overflow-x-auto')
@@ -145,12 +145,12 @@ describe('SnippetsCard surface', () => {
 })
 
 describe('SnippetsCard collapsible details', () => {
-  const header = () => wrapper.find('h1 button')
-  const body = () => wrapper.find('#card-menu')
+  const header = () => wrapper!.find('h1 button')
+  const body = () => wrapper!.find('#card-menu')
 
   // A narrow or wide screen is simulated by the media query, which jsdom does not provide.
-  const withScreen = (wide) => {
-    window.matchMedia = vi.fn(() => ({ matches: wide }))
+  const withScreen = (wide: boolean) => {
+    window.matchMedia = vi.fn(() => ({ matches: wide }) as MediaQueryList)
   }
 
   beforeEach(() => {
@@ -159,7 +159,7 @@ describe('SnippetsCard collapsible details', () => {
   })
 
   afterEach(() => {
-    delete window.matchMedia
+    Reflect.deleteProperty(window, 'matchMedia')
     vi.restoreAllMocks()
     localStorage.clear()
     wrapper?.unmount()
@@ -181,7 +181,7 @@ describe('SnippetsCard collapsible details', () => {
 
     const controlled = header().attributes('aria-controls')
     expect(controlled, 'the header points at the body it toggles').toBeTruthy()
-    expect(wrapper.find(`[id="${controlled}"]`).exists(), 'the controlled body exists').toBe(true)
+    expect(wrapper!.find(`[id="${controlled}"]`).exists(), 'the controlled body exists').toBe(true)
   })
 
   it('hides the tabs and the snippet when the header is pressed', async () => {
@@ -191,7 +191,7 @@ describe('SnippetsCard collapsible details', () => {
 
     expect(header().attributes('aria-expanded'), 'the header reports the card as closed').toBe('false')
     expect(body().isVisible(), 'the tabs are hidden with the body').toBe(false)
-    expect(wrapper.find('button[aria-label="Copy snippet"]').isVisible(), 'the copy action is hidden with the body').toBe(false)
+    expect(wrapper!.find('button[aria-label="Copy snippet"]').isVisible(), 'the copy action is hidden with the body').toBe(false)
   })
 
   it('keeps the title visible while the card is collapsed', async () => {
@@ -215,7 +215,7 @@ describe('SnippetsCard collapsible details', () => {
   it('remembers a collapsed card for the next visit of this viewer', async () => {
     await mountCard()
     await header().trigger('click')
-    wrapper.unmount()
+    wrapper!.unmount()
     wrapper = undefined
 
     await mountCard()
@@ -236,18 +236,18 @@ describe('SnippetsCard collapsible details', () => {
     await header().trigger('click')
     await header().trigger('click')
 
-    expect(wrapper.emitted('update:collapsed'), 'the page follows each change').toEqual([[true], [false]])
+    expect(wrapper!.emitted('update:collapsed'), 'the page follows each change').toEqual([[true], [false]])
   })
 
   it('still toggles when the browser refuses to read or write the collapsed state', async () => {
     // Only this card's key is refused: the tab memory of the card menu is a separate store.
-    const refuse = (key) => {
+    const refuse = (key: string) => {
       if (key === DETAILS_COLLAPSED_KEY) throw new DOMException('blocked', 'SecurityError')
     }
     const realGet = Storage.prototype.getItem
     const realSet = Storage.prototype.setItem
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (key) { refuse(key); return realGet.call(this, key) })
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) { refuse(key); return realSet.call(this, key, value) })
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) { refuse(key); return realGet.call(this, key) })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) { refuse(key); return realSet.call(this, key, value) })
 
     await mountCard()
     await header().trigger('click')
@@ -258,10 +258,10 @@ describe('SnippetsCard collapsible details', () => {
 
 describe('SnippetsCard heading', () => {
   // The visible title is the short part; the full name of the card is the accessible name of its toggle.
-  const heading = () => wrapper.find('h1 button').attributes('aria-label')
+  const heading = () => wrapper!.find('h1 button').attributes('aria-label')
 
   beforeEach(() => {
-    content.mockImplementation(() => Promise.reject({ response: { status: 404 } }))
+    content.mockImplementation(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } })))
   })
 
   afterEach(() => {
@@ -279,8 +279,8 @@ describe('SnippetsCard heading', () => {
   it('shows the repository under the short heading, so the name is seen as well as announced', async () => {
     await mountCard('releases')
 
-    expect(wrapper.find('[data-test="details-subtitle"]').text(), 'the repository is written under the heading').toBe('releases')
-    expect(wrapper.find('h1 button').text(), 'the visible heading stays short').toBe('Repository details')
+    expect(wrapper!.find('[data-test="details-subtitle"]').text(), 'the repository is written under the heading').toBe('releases')
+    expect(wrapper!.find('h1 button').text(), 'the visible heading stays short').toBe('Repository details')
   })
 
   it('names only the first segment of a deeper repository path', async () => {
@@ -293,20 +293,20 @@ describe('SnippetsCard heading', () => {
   it('says what to replace on the root page, outside the snippet text', async () => {
     await mountCard('')
 
-    expect(wrapper.text(), 'the root page tells the visitor to replace the placeholder').toContain('Replace <repository> with the id of a repository from the list')
-    expect(wrapper.find('.card-editor').text(), 'the caption is not part of the copied snippet').not.toContain('Replace')
+    expect(wrapper!.text(), 'the root page tells the visitor to replace the placeholder').toContain('Replace <repository> with the id of a repository from the list')
+    expect(wrapper!.find('.card-editor').text(), 'the caption is not part of the copied snippet').not.toContain('Replace')
   })
 
   it('does not say what to replace on a repository path', async () => {
     await mountCard('releases')
 
-    expect(wrapper.text()).not.toContain('Replace <repository>')
+    expect(wrapper!.text()).not.toContain('Replace <repository>')
   })
 })
 
 describe('SnippetsCard copy status region', () => {
   afterEach(() => {
-    delete navigator.clipboard
+    Reflect.deleteProperty(navigator, 'clipboard')
     wrapper?.unmount()
     wrapper = undefined
   })
@@ -314,7 +314,7 @@ describe('SnippetsCard copy status region', () => {
   it('is present and empty before anything is copied, so the first message is announced', async () => {
     await mountCard()
 
-    const status = wrapper.find('[role="status"]')
+    const status = wrapper!.find('[role="status"]')
     expect(status.exists(), 'the status region exists before the first copy').toBe(true)
     expect(status.text()).toBe('')
   })
@@ -322,25 +322,25 @@ describe('SnippetsCard copy status region', () => {
   it('is the same element after a copy, so the message changes inside the region', async () => {
     withClipboard({ writeText: vi.fn(() => Promise.resolve()) })
     await mountCard()
-    const before = wrapper.find('[role="status"]').element
+    const before = wrapper!.find('[role="status"]').element
 
     await copyButton().trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[role="status"]').element, 'the region is not replaced by the message').toBe(before)
+    expect(wrapper!.find('[role="status"]').element, 'the region is not replaced by the message').toBe(before)
     expect(before.textContent).toBe('Copied')
   })
 })
 
 describe('SnippetsCard snippet text', () => {
   afterEach(() => {
-    delete navigator.clipboard
+    Reflect.deleteProperty(navigator, 'clipboard')
     wrapper?.unmount()
     wrapper = undefined
   })
 
   it('copies the long url line whole, however the editor wraps it on screen', async () => {
-    const clipboard = { writeText: vi.fn(() => Promise.resolve()) }
+    const clipboard = { writeText: vi.fn<(text: string) => Promise<void>>(() => Promise.resolve()) }
     withClipboard(clipboard)
     await mountCard()
 
@@ -358,8 +358,8 @@ describe('SnippetsCard snippet text', () => {
     await copyButton().trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('.card-editor [role="status"]').exists(), 'no status line sits inside the editor').toBe(false)
-    expect(wrapper.find('[role="status"]').text()).toBe('Copied')
+    expect(wrapper!.find('.card-editor [role="status"]').exists(), 'no status line sits inside the editor').toBe(false)
+    expect(wrapper!.find('[role="status"]').text()).toBe('Copied')
   })
 })
 
@@ -372,14 +372,14 @@ describe('SnippetsCard snippet box height', () => {
   it('keeps the minimum height on the code block while the skeleton is shown', async () => {
     await mountCard('releases/com/example')
 
-    expect(wrapper.find('.card-editor .skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
-    expect(wrapper.find('.card-editor').classes(), 'the skeleton keeps its four bars inside the box').toContain('min-h-29')
+    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
+    expect(wrapper!.find('.card-editor').classes(), 'the skeleton keeps its four bars inside the box').toContain('min-h-29')
   })
 
   it('lets the code block hug the loaded snippet instead of keeping the skeleton height', async () => {
     await mountCard('')
 
-    expect(wrapper.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
-    expect(wrapper.find('.card-editor').classes(), 'a one-line snippet does not get an empty four-line box').not.toContain('min-h-29')
+    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
+    expect(wrapper!.find('.card-editor').classes(), 'a one-line snippet does not get an empty four-line box').not.toContain('min-h-29')
   })
 })

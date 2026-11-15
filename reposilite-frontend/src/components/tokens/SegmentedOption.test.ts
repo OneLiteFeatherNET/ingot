@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SegmentedOption from './SegmentedOption.vue'
 
-const mountOption = (props = {}) => mount(SegmentedOption, {
+const mountOption = (props: { on?: boolean } = {}) => mount(SegmentedOption, {
   props,
   slots: { default: 'Open' }
 })

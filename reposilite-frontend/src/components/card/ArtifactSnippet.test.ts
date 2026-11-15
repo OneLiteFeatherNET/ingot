@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ArtifactSnippet from './ArtifactSnippet.vue'
+import type { ArtifactSnippetData } from './snippetTypes'
 
-const data = {
+const data: ArtifactSnippetData = {
   type: 'artifact',
   groupId: 'net.onelitefeather',
   artifactId: 'mycelium-bom',
   version: '1.8.9'
 }
 
-const render = (lang) => mount(ArtifactSnippet, { props: { configuration: { name: 'Maven', lang }, data } })
+const render = (lang: string) => mount(ArtifactSnippet, { props: { configuration: { name: 'Maven', lang }, data } })
 
 describe('ArtifactSnippet', () => {
   it('writes the Maven dependency over several lines with two spaces of indentation', () => {

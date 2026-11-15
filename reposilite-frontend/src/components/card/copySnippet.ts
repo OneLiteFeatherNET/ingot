@@ -20,7 +20,7 @@
  * failure, so the caller can fall back instead of throwing. The clipboard is passed in so
  * the function has no hidden dependency on the global navigator.
  */
-const copyToClipboard = async (text, clipboard) => {
+const copyToClipboard = async (text: string, clipboard: Pick<Clipboard, 'writeText'> | undefined): Promise<boolean> => {
   if (typeof clipboard?.writeText !== 'function') {
     return false
   }
@@ -37,10 +37,10 @@ const copyToClipboard = async (text, clipboard) => {
  * Selects the whole text of an element, so that the user can finish the copy with the
  * keyboard when the clipboard is not available. Returns false when there is nothing to select.
  */
-const selectText = (element) => {
+const selectText = (element: HTMLElement | null | undefined): boolean => {
   const doc = element?.ownerDocument
   const selection = doc?.getSelection?.()
-  if (!selection) {
+  if (!doc || !selection) {
     return false
   }
 

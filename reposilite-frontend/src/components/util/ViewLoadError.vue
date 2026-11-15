@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import MdButton from '../md/MdButton.vue'
 
 // A failed chunk stays failed for the life of the page, so the only way to retry it is to

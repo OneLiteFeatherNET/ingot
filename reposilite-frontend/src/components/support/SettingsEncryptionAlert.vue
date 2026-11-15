@@ -14,9 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
+import type { components } from '../../types/api'
 
 /*
  * Warns on the System page while secret values of the shared settings are stored in clear. It names the count and the
@@ -24,7 +25,7 @@ import { useSession } from '../../store/session'
  * 403 and sees nothing here.
  */
 const { client } = useSession()
-const state = ref(null)
+const state = ref<components['schemas']['SettingsEncryptionState'] | null>(null)
 
 onMounted(async () => {
   try {
