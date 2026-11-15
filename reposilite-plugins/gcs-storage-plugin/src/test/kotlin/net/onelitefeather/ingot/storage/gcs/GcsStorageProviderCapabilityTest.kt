@@ -96,4 +96,16 @@ internal class GcsStorageProviderCapabilityTest {
         assertThat((outcome as ReadinessOutcome.Failed).reason).`as`("reason").contains("unreachable")
     }
 
+    @Test
+    fun `should report a bucket that the client finds missing as missing`() {
+        // given: the client reports the bucket as not found, as the SDK adapter does for a 404
+        client.bucketFailure = GcsNotFoundException("repositories")
+
+        // when: the probe runs
+        val outcome = provider.probe()
+
+        // then: the probe fails with the missing bucket as the reason, and not as unreachable
+        assertThat((outcome as ReadinessOutcome.Failed).reason).`as`("reason").contains("missing")
+    }
+
 }
