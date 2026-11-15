@@ -30,4 +30,10 @@ data class StartupRefusal(
 fun UnknownDeployTargetException.toStartupRefusal(): StartupRefusal =
     StartupRefusal(line = "Ingot did not start: $message", exitCode = STARTUP_FAILURE_EXIT_CODE)
 
+/**
+ * The refusal of an invalid background jobs setting as one console line, with the exit code of a failed start.
+ */
+fun BackgroundJobsSettingException.toStartupRefusal(): StartupRefusal =
+    StartupRefusal(line = "Ingot did not start: $message", exitCode = STARTUP_FAILURE_EXIT_CODE)
+
 private const val STARTUP_FAILURE_EXIT_CODE = 1
