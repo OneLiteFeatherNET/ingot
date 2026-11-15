@@ -22,6 +22,8 @@ import { createURL } from '../../store/client'
 import { useSession } from '../../store/session'
 import DetailedListEntry from './DetailedListEntry.vue'
 import DeleteEntryModal from './DeleteEntryModal.vue'
+import { canDeleteAt, widestActionCount } from './rowActions'
+import usePlaceholders from '../../store/placeholders'
 import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
@@ -111,7 +113,16 @@ const displayedEntries = computed(() =>
     : (props.files.list ?? [])
 )
 
-const { client, token } = useSession()
+const { client, token, hasPermissionTo } = useSession()
+const { javadocSuffixes } = usePlaceholders()
+
+// Every row reserves the action slot of the widest row, so the sizes line up. A listing without any
+// action, such as a signed-out view of jars, reserves nothing and keeps the full width for names.
+const widestActions = computed(() => widestActionCount(props.files.list ?? [], {
+  qualifier: props.qualifier,
+  canDelete: canDeleteAt(props.qualifier.path, hasPermissionTo),
+  javadocSuffixes
+}))
 
 // Only a signed-in request needs the page to fetch the file; anonymous links go straight to it.
 const signedIn = computed(() => Boolean(token.value.name && token.value.secret))
@@ -189,6 +200,7 @@ const entryUrl = (file) =>
           :url="entryUrl(entry)"
           :open-delete-entry-modal="openDeleteModal"
           :compact-mode="compactMode"
+          :action-slots="widestActions"
           :signed-in="signedIn"
           :busy="isDownloading(entry)"
           @download="downloadHandler"

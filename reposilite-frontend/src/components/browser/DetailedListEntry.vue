@@ -24,6 +24,7 @@ import MdIconButton from '../md/MdIconButton.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { describeEntry, describeSize } from './entryMeta'
+import { actionCountOf, actionSlotClass, canDeleteAt, rowActionsOf } from './rowActions'
 
 /*
  * One row of the listing. The row is a list item; its name is the link, stretched over the
@@ -39,7 +40,10 @@ const props = defineProps({
   openDeleteEntryModal: property(Function, true),
   compactMode: property(Boolean, true),
   signedIn: property(Boolean, false),
-  busy: property(Boolean, false)
+  busy: property(Boolean, false),
+  // The number of actions the widest row of the listing offers. The list passes it so that every row
+  // reserves the same slot; without it the row sizes its slot by its own actions.
+  actionSlots: property(Number, false)
 })
 
 const emit = defineEmits(['download'])
@@ -48,11 +52,17 @@ const { hasPermissionTo } = useSession()
 const { javadocSuffixes } = usePlaceholders()
 
 const isDirectory = computed(() => props.file.type === 'DIRECTORY')
-const isHumanReadable = computed(() =>
-  ['application/xml', 'text/plain', 'text/xml', 'text/markdown', 'application/json'].includes(props.file?.contentType)
-)
-const canViewContent = computed(() => Object.hasOwn(props.file, 'contentLength') && isHumanReadable.value)
-const canDelete = computed(() => props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write'))
+const canDelete = computed(() => canDeleteAt(props.qualifier.path, hasPermissionTo))
+const actions = computed(() => rowActionsOf({
+  file: props.file,
+  qualifier: props.qualifier,
+  canDelete: canDelete.value,
+  javadocSuffixes
+}))
+const canViewContent = computed(() => actions.value.view)
+const slotClass = computed(() => actionSlotClass(
+  props.actionSlots ?? actionCountOf({ file: props.file, qualifier: props.qualifier, canDelete: canDelete.value, javadocSuffixes })
+))
 const meta = computed(() => describeEntry(props.file))
 const size = computed(() => describeSize(props.file))
 
@@ -77,9 +87,7 @@ const getJavaDocsUrl = () => {
   return createURL(`/javadoc/${qualifier}`)
 }
 
-const canOpenJavadocs = computed(() =>
-  javadocSuffixes.some(suffix => props.file.name.endsWith(suffix)) && getJavaDocsUrl() != null
-)
+const canOpenJavadocs = computed(() => actions.value.javadoc)
 
 // Anonymous visitors follow the link and the browser saves the file. A signed-in request has
 // to carry the token, which a link cannot send, so the page fetches the file itself.
@@ -161,10 +169,13 @@ const onFileClick = (event) => {
     <!--
       Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
       user tabs into these buttons, and a touch screen has no hover to reveal them with.
+      The slot is as wide as the widest row of the listing needs, on every row, so the size text
+      right-aligns in one column. A listing without any action reserves no slot at all.
     -->
     <div
       data-row-actions
-      class="relative z-10 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+      class="relative z-10 flex shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+      :class="slotClass"
     >
       <MdIconButton
         v-if="canViewContent"
