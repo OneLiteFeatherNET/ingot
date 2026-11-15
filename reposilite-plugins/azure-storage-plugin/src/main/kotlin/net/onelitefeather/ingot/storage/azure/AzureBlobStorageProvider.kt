@@ -219,8 +219,42 @@ internal class AzureBlobStorageProvider(
             lastModifiedTime = lastModified,
         )
 
-    override fun removeFile(location: Location): Result<Unit, ErrorResponse> =
-        throw UnsupportedOperationException("removal is added by a later change")
+    /**
+     * Removes a blob and everything under its name as a directory (design D14). The root is refused before any call, so a bad location
+     * cannot empty the container. The removal is not atomic: a failure part way leaves some entries, and a repeated call removes the rest,
+     * because a blob that is already gone counts as removed.
+     */
+    override fun removeFile(location: Location): Result<Unit, ErrorResponse> {
+        val path = location.toString().replace('\\', '/')
+        if (path.isBlank() || path == ".") {
+            return badRequestError("Cannot remove repository root")
+        }
+        return try {
+            deleteIfPresent(blobName(location))
+            removeEntriesUnder(directoryPrefix(location))
+            ok(Unit)
+        } catch (exception: Exception) {
+            failed("remove $location", exception)
+        }
+    }
+
+    private fun removeEntriesUnder(prefix: String) {
+        client.listChildren(prefix, maxResults = null).forEach { child ->
+            if (child.isDirectory) {
+                removeEntriesUnder(child.name)
+            } else {
+                deleteIfPresent(child.name)
+            }
+        }
+    }
+
+    private fun deleteIfPresent(name: String) {
+        try {
+            client.delete(name)
+        } catch (_: AzureBlobNotFoundException) {
+            // Already removed, by an earlier call or another writer
+        }
+    }
 
     override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> =
         answer(location, "list") {

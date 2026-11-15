@@ -77,6 +77,10 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
         }
     }
 
+    override fun delete(name: String) {
+        translating(name) { container.getBlobClient(name).delete() }
+    }
+
     /** Maps the status codes that the provider answers to the exceptions of [AzureBlobClient], and rethrows every other failure. */
     private fun <T> translating(name: String, action: () -> T): T =
         try {
