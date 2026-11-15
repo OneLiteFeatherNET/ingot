@@ -158,9 +158,25 @@ internal class SqlScheduledJobClaims(
                 it[claimedAt] = now
                 it[leaseUntil] = ScheduledJobClaimTable.RELEASED
             }
-            if (!grantExpired(key, ttl, now)) return@transaction null
+            if (!grantExpired(key, ttl, now) && !extendOwnLive(key, ttl, now)) return@transaction null
             ScheduledJobClaims.Lease(key, epochOf(key))
         }
+    }
+
+    /**
+     * Moves the expiry of a live lease that this owner holds forward by [ttl], keeping its epoch. A restart of the same holder within
+     * the lease time is then the same holder, not a takeover, so its index keeps its epoch. Another owner's live lease is not touched.
+     */
+    private fun extendOwnLive(key: String, ttl: Duration, now: Long): Boolean {
+        val expiry = clock.instant().plus(ttl).toEpochMilli()
+        return ScheduledJobClaimTable.update({
+            (ScheduledJobClaimTable.jobKey eq key) and
+                ScheduledJobClaimTable.doneAt.isNull() and
+                (ScheduledJobClaimTable.leaseOwner eq owner) and
+                (ScheduledJobClaimTable.leaseUntil greater now)
+        }) {
+            it[leaseUntil] = expiry
+        } == 1
     }
 
     override fun acquireExpired(key: String, ttl: Duration): ScheduledJobClaims.Lease? {
