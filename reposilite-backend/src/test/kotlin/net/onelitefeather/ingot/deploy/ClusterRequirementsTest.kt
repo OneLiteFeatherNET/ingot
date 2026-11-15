@@ -16,6 +16,12 @@
 
 package net.onelitefeather.ingot.deploy
 
+import com.reposilite.maven.RepositoryType
+import com.reposilite.maven.application.MirroredRepositorySettings
+import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.storage.StorageProviderSettings
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
+import com.reposilite.storage.s3.S3StorageProviderSettings
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -154,6 +160,45 @@ internal class ClusterRequirementsTest {
     }
 
     @Test
+    fun `a declared group repository on the file system does not refuse the worker start`() {
+        // when: the worker starts with a declared group that proxies an object storage repository, and the group stores on the file system
+        val refusal = refusalForRepositories(
+            repository(id = "public", type = RepositoryType.GROUP, proxied = listOf("releases")),
+            repository(id = "releases", storage = S3StorageProviderSettings()),
+        )
+
+        // then: no refusal, because a declared group holds no files of its own
+        assertThat(refusal).describedAs("refusal").isNull()
+    }
+
+    @Test
+    fun `a declared proxy repository on the file system refuses the worker start`() {
+        // when: the worker starts with a declared proxy of an external URL that stores on the file system
+        val refusal = refusalForRepositories(
+            repository(id = "central", type = RepositoryType.PROXY, proxied = listOf("https://repo.example.org/maven")),
+        )
+
+        // then: the proxy is named, because it caches what it fetches on the file system of this replica
+        assertThat(refusal).describedAs("refusal").isNotNull()
+        assertThat(refusal!!.line).describedAs("refusal line")
+            .contains("repository 'central' is stored on the local file system")
+    }
+
+    @Test
+    fun `an untyped repository on the file system refuses even when it only proxies a local repository`() {
+        // when: the worker starts with an untyped repository that proxies a local repository and stores on the file system
+        val refusal = refusalForRepositories(
+            repository(id = "public", type = null, proxied = listOf("releases")),
+            repository(id = "releases", storage = S3StorageProviderSettings()),
+        )
+
+        // then: the untyped repository is named, because only a declared group is exempt
+        assertThat(refusal).describedAs("refusal").isNotNull()
+        assertThat(refusal!!.line).describedAs("refusal line")
+            .contains("repository 'public' is stored on the local file system")
+    }
+
+    @Test
     fun `a worker with shared state starts`() {
         // when: the worker starts on PostgreSQL with a bus and object storage
         val refusal = refusalOf(target = DeployTarget.WORKER, database = POSTGRES, repositories = OBJECT_STORAGE)
@@ -263,6 +308,23 @@ internal class ClusterRequirementsTest {
             repositoryStorageTypes = repositories,
             groupRepositories = groupRepositories,
             allowSharedFilesystem = allowSharedFilesystem,
+        )
+        private fun repository(
+            id: String,
+            type: RepositoryType? = null,
+            storage: StorageProviderSettings = FileSystemStorageProviderSettings(),
+            proxied: List<String> = emptyList(),
+        ): RepositorySettings = RepositorySettings(
+            id = id,
+            type = type,
+            storageProvider = storage,
+            proxied = proxied.map { MirroredRepositorySettings(reference = it) },
+        )
+
+        /** The refusal of a worker start with the given repositories, the group set derived from their declared types. */
+        private fun refusalForRepositories(vararg repositories: RepositorySettings): StartupRefusal? = refusalOf(
+            repositories = repositories.associate { it.id to it.storageProvider.type },
+            groupRepositories = ClusterRequirements.declaredGroupRepositories(repositories.toList()),
         )
     }
 }

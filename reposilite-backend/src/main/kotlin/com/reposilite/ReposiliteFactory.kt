@@ -24,7 +24,6 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.backend.PrintStreamLogger
-import com.reposilite.maven.EffectiveRepositoryType
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.PluginLoader
@@ -213,12 +212,8 @@ object ReposiliteFactory {
             .getDomainSettings<MavenSettings>()
             .get()
             .repositories
-        val localNames = repositories.map { it.id }.toSet()
         val repositoryStorageTypes = repositories.associate { it.id to it.storageProvider.type }
-        val groupRepositories = repositories
-            .filter { it.effectiveType(localNames) == EffectiveRepositoryType.GROUP }
-            .map { it.id }
-            .toSet()
+        val groupRepositories = ClusterRequirements.declaredGroupRepositories(repositories)
 
         val refusal = ClusterRequirements.refusalFor(
             target = target,

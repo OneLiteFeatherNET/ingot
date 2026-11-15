@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.deploy
 
+import com.reposilite.maven.RepositoryType
+import com.reposilite.maven.application.RepositorySettings
 import net.onelitefeather.ingot.backup.isSqliteDatabaseSetting
 
 /**
@@ -90,6 +92,16 @@ object ClusterRequirements {
             exitCode = STARTUP_FAILURE_EXIT_CODE,
         )
     }
+
+    /**
+     * The ids of the repositories declared with type GROUP, see [refusalFor]. Only the declared [RepositorySettings.type]
+     * counts: an untyped repository that proxies local repositories stores its cached files on its own file system.
+     */
+    fun declaredGroupRepositories(repositories: List<RepositorySettings>): Set<String> =
+        repositories
+            .filter { it.type == RepositoryType.GROUP }
+            .map { it.id }
+            .toSet()
 
     /** Joins the items as an English list: `a`, `a and b`, `a, b, and c`. */
     private fun andList(items: List<String>): String =
