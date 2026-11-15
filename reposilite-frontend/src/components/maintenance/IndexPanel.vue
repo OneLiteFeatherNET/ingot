@@ -15,7 +15,7 @@
   -->
 
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
@@ -34,6 +34,7 @@ import {
   runStatusLabel,
   runTriggerLabel
 } from './searchIndex'
+import type { IndexCounters, IndexStatus } from './searchIndex'
 
 // While a run is live, the panel asks for the status again this often.
 const POLL_INTERVAL_MS = 2000
@@ -60,7 +61,7 @@ const STATE_CLASS = {
  */
 const { client } = useSession()
 
-const index = ref(null)
+const index = ref<IndexStatus | null>(null)
 const loaded = ref(false)
 const loadError = ref('')
 const notAvailable = ref(false)
@@ -68,29 +69,34 @@ const notAllowed = ref(false)
 const starting = ref(false)
 const announcement = ref('')
 const rebuildOpen = ref(false)
-let pollTimer = null
+let pollTimer: ReturnType<typeof setTimeout> | undefined
 
 const live = computed(() => isRunLive(index.value?.activeRun))
 const busy = computed(() => live.value || starting.value)
-const stateLabel = computed(() => INDEX_STATE_LABELS[index.value?.state] ?? INDEX_STATE_LABELS.UNKNOWN)
+const stateLabel = computed(() => INDEX_STATE_LABELS[index.value?.state ?? 'UNKNOWN'])
 const runs = computed(() => [...(index.value?.runs ?? [])].sort((a, b) => b.id - a.id))
 const progress = computed(() => {
-  const run = index.value?.activeRun
-  return run && run.kind === 'REBUILD' ? repositoryProgress(run, index.value.repositories) : []
+  const status = index.value
+  const run = status?.activeRun
+  return status && run && run.kind === 'REBUILD' ? repositoryProgress(run, status.repositories) : []
 })
 
-const lagText = (seconds) => (seconds < 60
+const lagText = (seconds: number) => (seconds < 60
   ? countLabel(seconds, 'second')
   : countLabel(Math.floor(seconds / 60), 'minute'))
 
-const percent = (fraction) => `${Math.round(fraction * 100)}%`
+const percent = (fraction: number) => `${Math.round(fraction * 100)}%`
 
-const countersText = (counters) =>
+const countersText = (counters: IndexCounters) =>
   `Processed ${counters.processed}, upserted ${counters.upserted}, deleted ${counters.deleted}, errors ${counters.errors}`
+
+// The HTTP status of a failed request, when the error carries one.
+const statusOf = (error: unknown): number | undefined =>
+  (error as { response?: { status?: number } } | null)?.response?.status
 
 const stopPolling = () => {
   clearTimeout(pollTimer)
-  pollTimer = null
+  pollTimer = undefined
 }
 
 const schedulePoll = () => {
@@ -106,7 +112,7 @@ async function load() {
     notAvailable.value = false
     notAllowed.value = false
   } catch (error) {
-    const status = error?.response?.status
+    const status = statusOf(error)
     index.value = null
     notAvailable.value = status === 404
     notAllowed.value = status === 403
@@ -118,43 +124,50 @@ async function load() {
 }
 
 // A refused start says why in words. The server's own message is not shown, as it names internals.
-const refusalOf = (error) => {
-  const status = error?.response?.status
+const refusalOf = (error: unknown): string => {
+  const status = statusOf(error)
   if (status === 409) return 'A rebuild or verify run is already running. Wait for it to finish or cancel it.'
   if (status === 403) return 'Only managers can change the search index.'
   if (status === 404) return 'Search is turned off on this instance.'
   return `Could not start the run: ${errorMessage(error)}`
 }
 
-async function start(request, label) {
+async function start(request: () => Promise<{ data: { runId: number } }>, label: string) {
   starting.value = true
   try {
     const { data } = await request()
     announcement.value = `${label} run ${data.runId} started.`
     await load()
   } catch (error) {
-    if (error?.response?.status === 404) notAvailable.value = true
+    if (statusOf(error) === 404) notAvailable.value = true
     createErrorToast(refusalOf(error))
   } finally {
     starting.value = false
   }
 }
 
-const rebuild = async (body) => {
+const rebuild = async (body: { repositories?: string[] }) => {
   rebuildOpen.value = false
   await start(() => client.value.maven.startIndexRebuild(body), 'Rebuild')
 }
 
 const verify = () => start(() => client.value.maven.startIndexVerify(), 'Verify')
 
-async function cancel(runId) {
+async function cancel(runId: number) {
   try {
-    await client.value.maven.cancelIndexRun(runId)
+    // The client types the run id as a string, but the server sends it as a number (see searchIndex.ts).
+    await client.value.maven.cancelIndexRun(runId as unknown as string)
     announcement.value = `Run ${runId} cancelled.`
     await load()
   } catch (error) {
     createErrorToast(`Could not cancel the run: ${errorMessage(error)}`)
   }
+}
+
+// The Cancel button is shown only while a run is live, so the run is looked up when the button is pressed.
+const cancelActive = () => {
+  const run = index.value?.activeRun
+  if (run) cancel(run.id)
 }
 
 load()
@@ -315,7 +328,7 @@ onBeforeUnmount(stopPolling)
         </div>
 
         <div
-          v-if="live"
+          v-if="index.activeRun && live"
           class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
           data-live-run
         >
@@ -333,7 +346,7 @@ onBeforeUnmount(stopPolling)
             </div>
             <MdButton
               variant="outlined"
-              @click="cancel(index.activeRun.id)"
+              @click="cancelActive"
             >
               Cancel run
             </MdButton>

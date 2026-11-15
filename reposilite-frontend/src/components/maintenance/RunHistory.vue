@@ -14,33 +14,31 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import MdSelect from '../md/MdSelect.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { sortNewestFirst, statusLabel, triggerLabel } from './cleanup'
+import type { CleanupRun } from './cleanup'
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   /** The runs the server returned, in any order. They are shown newest first. */
-  runs: {
-    type: Array,
-    default: () => []
-  },
+  runs?: CleanupRun[]
   /** The policy ids the filter offers. */
-  policyIds: {
-    type: Array,
-    default: () => []
-  },
+  policyIds?: string[]
   /** The policy the list is filtered to, or an empty string for every policy. */
-  policy: {
-    type: String,
-    default: ''
-  }
+  policy?: string
+}>(), {
+  runs: () => [],
+  policyIds: () => [],
+  policy: ''
 })
 
-defineEmits(['update:policy'])
+defineEmits<{
+  'update:policy': [value: string]
+}>()
 
-const STATUS_CLASS = {
+const STATUS_CLASS: Partial<Record<CleanupRun['status'], string>> = {
   SUCCEEDED: 'text-success',
   PARTIAL: 'text-warning',
   FAILED: 'text-error'

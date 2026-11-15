@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
@@ -24,6 +24,7 @@ import MdLinearProgress from '../md/MdLinearProgress.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { hasQuota, normalizeStorage, quotaFraction, quotaNote, usageLine } from './storage'
+import type { StorageUsage, StorageUsageWire } from './storage'
 
 // While the server computes the figures, the panel asks again this often.
 const POLL_INTERVAL_MS = 2000
@@ -33,19 +34,18 @@ const POLL_INTERVAL_MS = 2000
  * whenever `revision` changes, which the parent bumps once a cleanup run has finished. A refresh
  * starts the computation on the server; the panel polls until it reports that it is done.
  */
-const props = defineProps({
-  revision: {
-    type: Number,
-    default: 0
-  }
+const props = withDefaults(defineProps<{
+  revision?: number
+}>(), {
+  revision: 0
 })
 
 const { client } = useSession()
 
-const storage = ref(null)
+const storage = ref<StorageUsage | null>(null)
 const loadError = ref('')
 const requesting = ref(false)
-let pollTimer = null
+let pollTimer: ReturnType<typeof setTimeout> | undefined
 
 const computing = computed(() => storage.value?.computing === true)
 const busy = computed(() => computing.value || requesting.value)
@@ -53,10 +53,10 @@ const rows = computed(() => storage.value?.repositories ?? [])
 
 const stopPolling = () => {
   clearTimeout(pollTimer)
-  pollTimer = null
+  pollTimer = undefined
 }
 
-const apply = (data) => {
+const apply = (data: StorageUsageWire | undefined) => {
   storage.value = normalizeStorage(data)
   loadError.value = ''
   stopPolling()
@@ -184,7 +184,7 @@ onBeforeUnmount(stopPolling)
           </p>
           <MdLinearProgress
             v-if="hasQuota(row) && quotaFraction(row.usedBytes, row.quotaBytes) !== null"
-            :value="quotaFraction(row.usedBytes, row.quotaBytes)"
+            :value="quotaFraction(row.usedBytes, row.quotaBytes) ?? undefined"
             :label="`Usage of ${row.id}`"
           />
           <div
