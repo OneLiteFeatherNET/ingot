@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 const touchTargetCss = readFileSync(fileURLToPath(new URL('./touch-target.css', import.meta.url)), 'utf8')
 
 // The body of the @utility block of the given name, which holds the ::after rule of the hit area.
-function utilityBody(css, name) {
+function utilityBody(css: string, name: string) {
   const start = css.indexOf(`@utility ${name} {`)
   if (start === -1) return ''
   return css.slice(start, css.indexOf('\n}', start) + 2)

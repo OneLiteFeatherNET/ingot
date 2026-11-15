@@ -22,11 +22,11 @@ const NOON_UTC_MILLIS = Date.UTC(2026, 9, 14, 12)
 
 describe('instantToDate', () => {
   it('reads a number of epoch seconds, with its fraction, as the instant it names', () => {
-    expect(instantToDate(NOON_UTC_MILLIS / 1000 + 0.123).getTime(), 'the fraction is milliseconds').toBe(NOON_UTC_MILLIS + 123)
+    expect(instantToDate(NOON_UTC_MILLIS / 1000 + 0.123)!.getTime(), 'the fraction is milliseconds').toBe(NOON_UTC_MILLIS + 123)
   })
 
   it('reads a whole number of epoch seconds as that second', () => {
-    expect(instantToDate(NOON_UTC_MILLIS / 1000).toISOString()).toBe('2026-10-14T12:00:00.000Z')
+    expect(instantToDate(NOON_UTC_MILLIS / 1000)!.toISOString()).toBe('2026-10-14T12:00:00.000Z')
   })
 
   it('returns null when the API sent no instant', () => {
@@ -45,7 +45,7 @@ describe('instantToDate', () => {
 
 describe('localDateToDate', () => {
   it('reads a year, month and day array as midnight UTC of that day', () => {
-    expect(localDateToDate([2026, 10, 4]).toISOString()).toBe('2026-10-04T00:00:00.000Z')
+    expect(localDateToDate([2026, 10, 4])!.toISOString()).toBe('2026-10-04T00:00:00.000Z')
   })
 
   it('returns null for anything but a year, month and day array', () => {

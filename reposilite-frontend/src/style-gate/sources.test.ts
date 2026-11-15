@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path'
 import { collectSources } from './sources'
 
 // The tree is built in a temporary directory of the test's own, so nothing is read from the repository sources.
-let src
+let src: string
 
 beforeEach(() => {
   src = join(mkdtempSync(join(tmpdir(), 'style-gate-sources-')), 'src')
@@ -32,7 +32,7 @@ afterEach(() => {
   rmSync(dirname(src), { recursive: true, force: true })
 })
 
-const write = (file, text) => {
+const write = (file: string, text: string) => {
   mkdirSync(dirname(join(src, file)), { recursive: true })
   writeFileSync(join(src, file), text)
 }

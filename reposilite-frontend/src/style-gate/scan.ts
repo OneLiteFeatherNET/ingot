@@ -14,30 +14,48 @@
  * limitations under the License.
  */
 
-// Pure text extraction for the style gate. Nothing here reads the disk, the clock or the network. The rules in rules.js
+// Pure text extraction for the style gate. Nothing here reads the disk, the clock or the network. The rules in rules.ts
 // compose these helpers, and the tests feed them strings.
 
-// The anchor attributes of the dashboard are read by the anchor checks and by plugins. They are never a style.
-export const stripExempt = (text) => text.replace(/data-ingot-[\w-]+\s*=\s*(?:"[^"]*"|'[^']*')/g, ' ')
+// What a rule can ask of the class resolver: whether the stylesheet defines a class token.
+export interface Resolver {
+  resolves(token: string): boolean
+}
 
-const withoutComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '')
+// The input of a rule for one file: its path, its text with the anchor attributes removed, and the resolver.
+export interface RuleInput {
+  file: string
+  text: string
+  ctx: Resolver
+}
+
+// The part of a rule that a scan uses. The rule table in rules.ts adds the id, number, scope, hint and allowlist.
+export interface ScanRule {
+  appliesTo(file: string): boolean
+  match(input: RuleInput): string[]
+}
+
+// The anchor attributes of the dashboard are read by the anchor checks and by plugins. They are never a style.
+export const stripExempt = (text: string): string => text.replace(/data-ingot-[\w-]+\s*=\s*(?:"[^"]*"|'[^']*')/g, ' ')
+
+const withoutComments = (text: string): string => text.replace(/\/\*[\s\S]*?\*\//g, '')
 
 // The string literals of one line of code, without their quotes. Template literals count as one literal.
-export const stringLiterals = (text) => [...text.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map((match) => match[1] ?? match[2] ?? match[3])
+export const stringLiterals = (text: string): string[] => [...text.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map((match) => match[1] ?? match[2] ?? match[3])
 
 // A class token is lower case outside brackets and parentheses, so prose such as "Use a colour" is not a class list.
 // Brackets and parentheses may hold anything, because arbitrary values and the v4 shorthand are written inside them.
-export const isClassToken = (token) => {
+export const isClassToken = (token: string): boolean => {
   const outside = token.replace(/\[[^\]]*\]|\([^)]*\)/g, '')
 
   return /^[\w!\-:/[\]().%#&>~*+,=@{}$]+$/.test(token) && /^[a-z0-9!\-:/.%#&>~*+,=@{}$]*$/.test(outside)
 }
 
-const splitClasses = (value) => value.split(/\s+/).filter((token) => token.length > 0)
+const splitClasses = (value: string): string[] => value.split(/\s+/).filter((token) => token.length > 0)
 
 // The class tokens of a component: a static class attribute is a list of names, and a bound one carries the names as
 // string literals inside its expression.
-export const vueClassTokens = (text) => {
+export const vueClassTokens = (text: string): string[] => {
   const staticLists = [...text.matchAll(/\sclass=(["'])(.*?)\1/gs)].map((match) => match[2])
   const boundLists = [...text.matchAll(/\s(?::|v-bind:)class=(["'])(.*?)\1/gs)].flatMap((match) => stringLiterals(match[2]))
 
@@ -47,7 +65,7 @@ export const vueClassTokens = (text) => {
 // Selector class names in a string: `.name` at the start of a selector or after a combinator, a comma or an opening
 // bracket. A decimal, a file extension and a name inside a word are not selectors.
 const SELECTOR_CLASS = /(?:^|[\s+~,([:])\.([a-zA-Z_][\w-]*)(?=[\s,+~:[)\]]|$)/g
-const selectorNames = (text) => [...text.matchAll(SELECTOR_CLASS)].map((match) => match[1])
+const selectorNames = (text: string): string[] => [...text.matchAll(SELECTOR_CLASS)].map((match) => match[1])
 
 // A string that is one class name is a selector only when the name has a hyphen, as the dashboard names its hooks
 // (settings-save-bar). A bare `.md5` or `.okta` is a value such as a file extension or a provider id, not a query.
@@ -56,11 +74,11 @@ const SELECTOR_CONTEXT = /[\s+~,([:]/
 
 // The code of a script, one line at a time. Lines that only hold a comment are skipped, so that prose in a comment is
 // not read as a class list.
-const scriptLines = (text) => text.split('\n').filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+const scriptLines = (text: string): string[] => text.split('\n').filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
 
 // The class lists of a script: string literals whose words are class names and at least one of which the stylesheet
 // defines. A literal that names no defined class is not a class list, so an ordinary string is never read as one.
-export const scriptClassLists = (text, resolves) =>
+export const scriptClassLists = (text: string, resolves: (token: string) => boolean): string[] =>
   scriptLines(text)
     .flatMap(stringLiterals)
     .map(splitClasses)
@@ -68,10 +86,10 @@ export const scriptClassLists = (text, resolves) =>
     .flat()
 
 // The class names that a script selects with a query, found in its string literals.
-export const scriptSelectorNames = (text) =>
+export const scriptSelectorNames = (text: string): string[] =>
   scriptLines(text)
     .flatMap(stringLiterals)
-    .flatMap((literal) => {
+    .flatMap((literal): string[] => {
       const single = literal.trim()
       if (SINGLE_HYPHENATED_CLASS.test(single)) return [single.slice(1)]
       return SELECTOR_CONTEXT.test(literal) ? selectorNames(literal) : []
@@ -79,14 +97,14 @@ export const scriptSelectorNames = (text) =>
 
 // The class names that a stylesheet selects, in its selector text. Comments are removed first, and a name inside a
 // word, a path or a decimal is not a selector.
-export const stylesheetSelectorNames = (text) =>
+export const stylesheetSelectorNames = (text: string): string[] =>
   [...withoutComments(text).matchAll(/(?<![\w.\-/"'\\])\.([a-zA-Z_][\w-]*)/g)].map((match) => match[1])
 
 // The text of every style element of a component.
-export const styleBlocks = (text) => [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n')
+export const styleBlocks = (text: string): string => [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n')
 
 // Every match of a pattern, as its text.
-const allMatches = (pattern, text) => [...text.matchAll(pattern)].map((match) => match[0])
+const allMatches = (pattern: RegExp, text: string): string[] => [...text.matchAll(pattern)].map((match) => match[0])
 
 // Colour literals: hex with 3, 4, 6 or 8 digits, rgb, rgba, hsl and hsla calls with one level of nesting, and a
 // color-mix call with a numeric percentage.
@@ -95,7 +113,7 @@ const COLOUR_FUNCTION = /\b(?:rgba?|hsla?)\((?:[^()]|\([^()]*\))*\)/g
 const COLOUR_MIX = /color-mix\((?:[^()]|\([^()]*\))*\)/g
 const NUMERIC_PERCENTAGE = /\d(?:\.\d+)?%/
 
-export const colourLiterals = (text) => [
+export const colourLiterals = (text: string): string[] => [
   ...allMatches(HEX_COLOUR, text),
   ...allMatches(COLOUR_FUNCTION, text),
   ...allMatches(COLOUR_MIX, text).filter((literal) => NUMERIC_PERCENTAGE.test(literal))
@@ -109,7 +127,7 @@ const TEMPLATE_LENGTH = /`[^`]*\}(?:%|px|rem|em|vh|vw)[^`]*`/g
 const Z_INDEX = /z-index\s*:\s*-?\d+/g
 const CUSTOM_DECLARATION = /['"]?--[\w-]+['"]?\s*:(?!\/)/g
 
-export const inlineStyleLiterals = (value) => [
+export const inlineStyleLiterals = (value: string): string[] => [
   ...allMatches(LITERAL_LENGTH, value),
   ...allMatches(TEMPLATE_LENGTH, value),
   ...allMatches(Z_INDEX, value),
@@ -118,15 +136,15 @@ export const inlineStyleLiterals = (value) => [
 ]
 
 // The values of the style attributes and bindings of a component, static or bound.
-export const styleValues = (text) => [
+export const styleValues = (text: string): string[] => [
   ...[...text.matchAll(/\sstyle=(["'])(.*?)\1/gs)].map((match) => match[2]),
   ...[...text.matchAll(/\s(?::|v-bind:)style=(["'])(.*?)\1/gs)].map((match) => match[2])
 ]
 
 // Splits a class token into its variants and its utility. The colons that separate variants are the top level ones,
 // so the colons inside an arbitrary value stay with the value. A leading `!` or `-` belongs to the utility.
-export const utilityOf = (token) => {
-  const parts = []
+export const utilityOf = (token: string): string => {
+  const parts: string[] = []
   let depth = 0
   let start = 0
 
@@ -146,23 +164,23 @@ export const utilityOf = (token) => {
 
 // Runs one rule over one file. A file outside the rule's scope yields nothing. The matches are the offending texts,
 // one entry per occurrence.
-export function scanFile(rule, file, text, ctx) {
+export function scanFile(rule: ScanRule, file: string, text: string, ctx: Resolver): string[] {
   if (!rule.appliesTo(file)) return []
 
   return rule.match({ file, text: stripExempt(text), ctx })
 }
 
 // Runs one rule over every source and returns one { file, match } entry per occurrence.
-export function scanSources(rule, sources, ctx) {
+export function scanSources(rule: ScanRule, sources: Array<{ file: string; text: string }>, ctx: Resolver): Array<{ file: string; match: string }> {
   return sources.flatMap(({ file, text }) => scanFile(rule, file, text, ctx).map((match) => ({ file, match })))
 }
 
 // The class tokens of a file, from its class attributes, from the class lists of its scripts and from the class names
 // that its scripts select. A token is kept as written, so a runtime-built name shows up with its template syntax.
-export const classTokensOf = ({ file, text, ctx }) => {
+export const classTokensOf = ({ file, text, ctx }: RuleInput): string[] => {
   if (file.endsWith('.vue')) return vueClassTokens(text)
   if (file.endsWith('.js') || file.endsWith('.ts')) {
-    return [...scriptClassLists(text, ctx.resolves), ...scriptSelectorNames(text)]
+    return [...scriptClassLists(text, (token) => ctx.resolves(token)), ...scriptSelectorNames(text)]
   }
   return []
 }

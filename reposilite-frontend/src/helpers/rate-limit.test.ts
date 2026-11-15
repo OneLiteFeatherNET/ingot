@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { rateLimitMessage, rateLimitedUntil, retryAfterSeconds } from './rate-limit'
 
-const rejection = (status, headers) => ({ response: { status, headers } })
+const rejection = (status: number, headers: unknown) => ({ response: { status, headers } })
 
 describe('retryAfterSeconds', () => {
   it('reads the seconds of a Retry-After header', () => {
@@ -29,7 +29,7 @@ describe('retryAfterSeconds', () => {
   })
 
   it('reads the header from a headers object with a get method', () => {
-    const headers = { get: (name) => (name.toLowerCase() === 'retry-after' ? '45' : null) }
+    const headers = { get: (name: string) => (name.toLowerCase() === 'retry-after' ? '45' : null) }
 
     expect(retryAfterSeconds(rejection(429, headers))).toBe(45)
   })
@@ -40,7 +40,7 @@ describe('retryAfterSeconds', () => {
     ['is not a number', { 'retry-after': 'soon' }],
     ['is negative', { 'retry-after': '-5' }],
     ['is a date', { 'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT' }],
-  ])('is null when the header %s', (_, headers) => {
+  ])('is null when the header %s', (_: string, headers: Record<string, string> | undefined) => {
     expect(retryAfterSeconds(rejection(429, headers))).toBeNull()
   })
 
@@ -74,7 +74,7 @@ describe('rateLimitMessage', () => {
     [61, 'Too many attempts, try again in 2 minutes'],
     [120, 'Too many attempts, try again in 2 minutes'],
     [300, 'Too many attempts, try again in 5 minutes'],
-  ])('words %s seconds as "%s"', (seconds, message) => {
+  ])('words %s seconds as "%s"', (seconds: number, message: string) => {
     expect(rateLimitMessage(seconds)).toBe(message)
   })
 

@@ -17,16 +17,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { compile } from '@tailwindcss/node'
+import type { Resolver } from './scan'
 
 // The class names the stylesheet can produce, read from the compiler and not from a list kept by hand. The compiler
 // output holds the utilities built from the theme, the @utility declarations and the plain rules of the sheet, so a
 // hook defined there resolves too.
 
-const escapeForPattern = (character) => character.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+const escapeForPattern = (character: string): string => character.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
 
 // The selector Tailwind writes for a candidate: each character that is not a plain identifier character may be
 // preceded by a backslash, which is how the compiler escapes ':', '/', '[' and the other punctuation.
-const selectorPattern = (token) => {
+const selectorPattern = (token: string): RegExp => {
   const body = [...token]
     .map((character) => (/[\w-]/.test(character) ? character : `\\\\?${escapeForPattern(character)}`))
     .join('')
@@ -36,22 +37,24 @@ const selectorPattern = (token) => {
 
 // Compiles the stylesheet of the dashboard once per resolver. The compiler is incremental: every build call returns the
 // css of all candidates seen so far, so each token is built once and its answer is kept.
-export async function createResolver(srcDir) {
+export async function createResolver(srcDir: string): Promise<Resolver> {
   const css = readFileSync(join(srcDir, 'style.css'), 'utf8')
   const compiler = await compile(css, { base: srcDir, onDependency() {} })
-  const answers = new Map()
+  const answers = new Map<string, boolean>()
 
   return {
-    resolves(token) {
-      if (!answers.has(token)) {
-        answers.set(token, buildsSelector(compiler, token))
+    resolves(token: string): boolean {
+      let answer = answers.get(token)
+      if (answer === undefined) {
+        answer = buildsSelector(compiler, token)
+        answers.set(token, answer)
       }
-      return answers.get(token)
+      return answer
     }
   }
 }
 
-const buildsSelector = (compiler, token) => {
+const buildsSelector = (compiler: Awaited<ReturnType<typeof compile>>, token: string): boolean => {
   try {
     return selectorPattern(token).test(compiler.build([token]))
   } catch {

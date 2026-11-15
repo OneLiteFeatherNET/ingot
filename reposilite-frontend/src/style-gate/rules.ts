@@ -22,17 +22,28 @@ import {
   stylesheetSelectorNames,
   styleBlocks,
   styleValues,
-  utilityOf
+  utilityOf,
+  type ScanRule
 } from './scan'
+
+// One rule of the style gate: its identity, the file extensions it reads, the allowlist file that holds its exceptions and
+// the hint that the test prints beside each finding, plus the scan that finds its occurrences.
+export interface Rule extends ScanRule {
+  id: string
+  number: number
+  scope: string[]
+  allowlist: string
+  hint: string
+}
 
 // The eight rules of the dashboard style gate, in the order of the design. Each rule has a scope (the file extensions it
 // reads), an allowlist file named after its id, and a hint that the test prints beside every finding.
 
-const matchesOf = (pattern, text) => [...text.matchAll(pattern)].map((match) => match[0])
+const matchesOf = (pattern: RegExp, text: string): string[] => [...text.matchAll(pattern)].map((match) => match[0])
 
-const inFolder = (file, folders) => folders.some((folder) => file.startsWith(folder))
+const inFolder = (file: string, folders: string[]): boolean => folders.some((folder) => file.startsWith(folder))
 
-const scopedTo = (extensions, exempt = () => false) => (file) =>
+const scopedTo = (extensions: string[], exempt: (file: string) => boolean = () => false) => (file: string): boolean =>
   extensions.some((extension) => file.endsWith(extension)) && !exempt(file)
 
 // Tailwind's default type, shape, elevation, motion, z-index and opacity names, and the palette colours. The MD3 names
@@ -62,7 +73,7 @@ const NON_MD3_DEFAULTS = [
   PALETTE_HUE
 ]
 
-const isNonMd3Default = (token) => {
+const isNonMd3Default = (token: string): boolean => {
   const utility = utilityOf(token)
   return NON_MD3_DEFAULTS.some((pattern) => pattern.test(utility))
 }
@@ -72,7 +83,7 @@ const isNonMd3Default = (token) => {
 const DOCUMENTED_HOOKS = ['dark', 'vfm']
 const DOCUMENTED_SHEETS = [/^src\/style\.css$/, /^src\/styles\/md3\/[^/]+\.css$/]
 
-const selectorFindings = ({ file, text }) => {
+const selectorFindings = ({ file, text }: { file: string; text: string }): string[] => {
   if (file.endsWith('.vue')) {
     return stylesheetSelectorNames(styleBlocks(text)).map((name) => `.${name}`)
   }
@@ -87,7 +98,7 @@ const selectorFindings = ({ file, text }) => {
     .map((name) => `.${name}`)
 }
 
-export const RULES = [
+export const RULES: Rule[] = [
   {
     id: 'style-block',
     number: 1,

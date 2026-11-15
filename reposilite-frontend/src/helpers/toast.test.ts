@@ -18,9 +18,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // The helpers write to the shared snackbar queue. Modules are reset before every test, so
 // each test starts with an empty queue and nothing leaks from one test into the next.
+// The shape of the queue that these tests read. The store is still JavaScript, so its own inferred types are not used.
+interface Notice {
+  id: number
+  message: string
+  tone: string
+  action: { label?: string; onClick?: () => void } | null
+}
+
+interface Queue {
+  entries: { value: Notice[] }
+  current: { value: Notice }
+  dismiss(id: number): void
+  runAction(id: number): void
+}
+
 describe('toast helpers', () => {
-  let toast
-  let snackbar
+  let toast: typeof import('./toast')
+  let snackbar: Queue
 
   beforeEach(async () => {
     vi.resetModules()
@@ -58,7 +73,7 @@ describe('toast helpers', () => {
 
     toast.createSuccessToast('Deleted', { action: { label: 'Undo', onClick } })
 
-    expect(snackbar.current.value.action.label, 'the action label must reach the queue').toBe('Undo')
+    expect(snackbar.current.value.action?.label, 'the action label must reach the queue').toBe('Undo')
     snackbar.runAction(snackbar.current.value.id)
     expect(onClick, 'running the action must call the caller callback').toHaveBeenCalledTimes(1)
   })

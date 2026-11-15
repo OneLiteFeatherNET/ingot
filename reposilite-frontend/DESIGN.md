@@ -151,7 +151,7 @@ operator gets from `seedColor: "#3A5F85"`, and they are the source of truth in `
 
 The neutrals come from the seed's own palette, so they carry a faint steel tint (chroma about 3 on the
 light `surface`, about 6 on the dark one). The earlier near-neutral override of the pink scheme is
-gone. The test in `src/styles/md3/color.test.js` allows that tint and rejects a stronger cast.
+gone. The test in `src/styles/md3/color.test.ts` allows that tint and rejects a stronger cast.
 
 ### High contrast
 
@@ -161,7 +161,7 @@ generator for the accent roles, the fixed roles, `on-surface`, `on-background`,
 colour and only the content gets stronger. The light set is scoped to `:root:not(.dark)` and
 the dark set to `.dark`, so a root that carries both classes takes the dark set. With the
 query on, every text pair in the table above reaches 7:1 in both themes; without it, 4.5:1.
-`src/styles/md3/color.test.js` checks both.
+`src/styles/md3/color.test.ts` checks both.
 
 Medium contrast (0.5) was generated with the same method and is not emitted. CSS has no
 middle step for `prefers-contrast` (only `no-preference`, `more` and `less`). If the
@@ -269,7 +269,7 @@ it is the last series on purpose, so a chart with fewer series never shows it fi
 Series are assigned in the order above, and every pair is checked, adjacent or not. A legend
 still needs its labels, because colour alone does not identify a series for everyone.
 
-The colour tests in `src/styles/md3/color.test.js` hold the rules above: 3:1 on the surfaces,
+The colour tests in `src/styles/md3/color.test.ts` hold the rules above: 3:1 on the surfaces,
 15 CIE76 units between any two series, and a steel blue first series. `src/store/palette.test.js`
 checks that the palette reads the eight tokens that `color.css` defines.
 
@@ -586,7 +586,7 @@ bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it 
 
 ### Administration tree
 
-From 1240px the tree is a column beside the page, 208px wide. It is sticky only while its full height fits between the top bar and the save bar; otherwise it scrolls with the page. It never has a scroll box of its own, in either state. The decision is `treeFits` in `src/helpers/treeFits.js` (a pure function), taken by `useTreeFits` when the tree or the window changes size and when the save bar appears. It is never taken on scroll, so the tree does not switch between sticky and static under the pointer.
+From 1240px the tree is a column beside the page, 208px wide. It is sticky only while its full height fits between the top bar and the save bar; otherwise it scrolls with the page. It never has a scroll box of its own, in either state. The decision is `treeFits` in `src/helpers/treeFits.ts` (a pure function), taken by `useTreeFits` when the tree or the window changes size and when the save bar appears. It is never taken on scroll, so the tree does not switch between sticky and static under the pointer.
 
 Below 1240px the tree is the index of a page. Each row shows the entry's description under its label, clamped to two lines with the full text in the DOM; a row without a description shows its label only. Beside the page the rows show labels only.
 
@@ -616,7 +616,7 @@ The notification of the dashboard. It shows one notice at a time from a shared q
 (`src/store/snackbar.js`), and it is mounted once, in `src/App.vue`. Do not mount a second
 one.
 
-Callers do not use the component directly. They use the helpers in `src/helpers/toast.js`:
+Callers do not use the component directly. They use the helpers in `src/helpers/toast.ts`:
 
 - `createSuccessToast(message)`, `createInfoToast(message)`: leave by themselves after 4
   seconds
@@ -805,7 +805,7 @@ Named sizes, each a theme key (see `shape-elevation-motion.css` and `color.css`)
 | `size-md-icon` | 18px (`1.125rem`) | icons of the primitives |
 | `top-md-top-bar`, `min-h-md-top-bar` | 4rem | the top bar |
 | `w-md-rail` | 6rem | the navigation rail |
-| `--spacing-md-bottom-bar` | 5rem | the bottom bar, read as `var(--spacing-md-bottom-bar)`; `BOTTOM_BAR_HEIGHT` in `src/helpers/bottom-bar.js` must equal it in pixels (80px) |
+| `--spacing-md-bottom-bar` | 5rem | the bottom bar, read as `var(--spacing-md-bottom-bar)`; `BOTTOM_BAR_HEIGHT` in `src/helpers/bottom-bar.ts` must equal it in pixels (80px) |
 | `max-w-md-reading` | 60rem (960px) | the reading measure of a page |
 | `--container-md-sheet` | 20rem (320px) | the side sheet, read as `var(--container-md-sheet)` in its width |
 | `max-w-md-snackbar` | 35rem (560px) | the snackbar |
