@@ -32,11 +32,14 @@ internal class PreparedCommand(
     /**
      * Runs the command in structured mode. A dangerous command is held, and nothing runs, unless [confirmed] is set.
      */
-    fun executeStructured(confirmed: Boolean): StructuredAnswer {
-        if (!confirmed && isDangerous()) {
-            return ConfirmationNeeded(command = command.trim().substringBefore(' '), reason = commandExecutor.reasonOf(command))
+    fun executeStructured(confirmed: Boolean): StructuredAnswer =
+        // The check and the run parse the same line, so both happen under the lock that keeps another call from parsing in between.
+        synchronized(commandExecutor.commandLock) {
+            if (!confirmed && isDangerous()) {
+                ConfirmationNeeded(command = command.trim().substringBefore(' '), reason = commandExecutor.reasonOf(command))
+            } else {
+                StructuredRun(commandExecutor.executeStructured(command))
+            }
         }
-        return StructuredRun(commandExecutor.executeStructured(command))
-    }
 
 }

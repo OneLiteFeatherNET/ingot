@@ -47,6 +47,13 @@ internal class CommandExecutor(
     private val consoleThread = ConsoleThread(this, source, failureFacade)
     private val commandLine = CommandLine(this)
 
+    /**
+     * The registered commands and [commandLine] keep the parsed arguments in their fields, so a parse and the check or
+     * run that follows it must not interleave with another call. Held by [isDangerous], [reasonOf], [prepare],
+     * [runCommand] and by [PreparedCommand] for a whole structured answer.
+     */
+    internal val commandLock = Any()
+
     fun execute(command: String): ExecutionResponse =
         execute(command) { logger.info(it) }
 
@@ -79,25 +86,29 @@ internal class CommandExecutor(
         if (processedCommand.isEmpty()) {
             return false
         }
-        return try {
-            val reposiliteCommand = parseCommand(processedCommand) ?: return false
-            reposiliteCommand.isDangerous(processedCommand.split(" ").drop(1))
-        } catch (_: PicocliException) {
-            false
+        return synchronized(commandLock) {
+            try {
+                val reposiliteCommand = parseCommand(processedCommand) ?: return false
+                reposiliteCommand.isDangerous(processedCommand.split(" ").drop(1))
+            } catch (_: PicocliException) {
+                false
+            }
         }
     }
 
     /** The reason a dangerous command line gives for asking, which is the description the command has in the help. */
     internal fun reasonOf(command: String): String =
-        try {
-            commandLine.parseArgs(*command.trim().split(" ").toTypedArray())
-                .subcommand()
-                .commandSpec()
-                .usageMessage()
-                .description()
-                .joinToString(" ")
-        } catch (_: PicocliException) {
-            ""
+        synchronized(commandLock) {
+            try {
+                commandLine.parseArgs(*command.trim().split(" ").toTypedArray())
+                    .subcommand()
+                    .commandSpec()
+                    .usageMessage()
+                    .description()
+                    .joinToString(" ")
+            } catch (_: PicocliException) {
+                ""
+            }
         }
 
     internal fun listCommands(): CommandListing =
@@ -110,16 +121,18 @@ internal class CommandExecutor(
             return PreparedCommand(processedCommand, command, this)
         }
 
-        val redactedCommand = try {
-            val reposiliteCommand = parseCommand(processedCommand)
+        val redactedCommand = synchronized(commandLock) {
+            try {
+                val reposiliteCommand = parseCommand(processedCommand)
 
-            when {
-                reposiliteCommand == null -> processedCommand.redacted()
-                reposiliteCommand.sensitiveInput -> processedCommand.redacted()
-                else -> processedCommand
+                when {
+                    reposiliteCommand == null -> processedCommand.redacted()
+                    reposiliteCommand.sensitiveInput -> processedCommand.redacted()
+                    else -> processedCommand
+                }
+            } catch (_: PicocliException) {
+                processedCommand.redacted()
             }
-        } catch (_: PicocliException) {
-            processedCommand.redacted()
         }
 
         return PreparedCommand(
@@ -144,7 +157,7 @@ internal class CommandExecutor(
 
     }
 
-    private fun runCommand(command: String): CommandOutcome {
+    private fun runCommand(command: String): CommandOutcome = synchronized(commandLock) {
         val processedCommand = command.trim()
 
         if (processedCommand.isEmpty()) {
