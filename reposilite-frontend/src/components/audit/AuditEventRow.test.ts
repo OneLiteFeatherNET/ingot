@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import AuditEventRow from './AuditEventRow.vue'
+import type { AuditEvent } from './auditQuery'
 
 const event = (overrides = {}) => ({
   id: 7,
@@ -17,7 +18,7 @@ const event = (overrides = {}) => ({
   ...overrides
 })
 
-const mountRow = async (props) => {
+const mountRow = async (props: { event: AuditEvent; expanded?: boolean }) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -35,14 +36,14 @@ describe('AuditEventRow actor', () => {
   it('links an actor to its user page when the kind is not recorded', async () => {
     const row = await mountRow({ event: event() })
 
-    const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
+    const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')!
     expect(link.attributes('href')).toBe('/access/users/ci-deployer')
   })
 
   it('links a machine account actor to its machine page', async () => {
     const row = await mountRow({ event: event({ actorKind: 'MACHINE' }) })
 
-    const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
+    const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')!
     expect(link.attributes('href')).toBe('/access/machines/ci-deployer')
   })
 
@@ -76,13 +77,13 @@ describe('AuditEventRow actor', () => {
     expect(addressElement.attributes('title'), 'full address on hover').toBe(address)
     expect(addressElement.classes(), 'long addresses are cut with an ellipsis').toContain('truncate')
     expect(addressElement.classes(), 'the address is monospaced').toContain('font-mono')
-    expect(addressElement.element.parentElement.classList.contains('flex'), 'the address line is its own block').toBe(true)
+    expect(addressElement.element.parentElement!.classList.contains('flex'), 'the address line is its own block').toBe(true)
   })
 
   it('keeps the actor name on one line and inside its column', async () => {
     const row = await mountRow({ event: event() })
 
-    const name = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
+    const name = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')!
     expect(name.classes()).toContain('truncate')
     expect(name.classes(), 'the name does not overflow into the action column').toContain('min-w-0')
   })
@@ -142,8 +143,8 @@ describe('AuditEventRow details', () => {
 })
 
 describe('AuditEventRow identity events', () => {
-  const identityEvent = (action, details) => event({ action, actor: 'admin', repository: null, path: null, details })
-  const hrefs = (row) => row.findAll('a').map(anchor => anchor.attributes('href'))
+  const identityEvent = (action: string, details: Record<string, unknown> | null) => event({ action, actor: 'admin', repository: null, path: null, details })
+  const hrefs = (row: Awaited<ReturnType<typeof mountRow>>) => row.findAll('a').map(anchor => anchor.attributes('href'))
 
   it('shows the label of an identity action', async () => {
     const row = await mountRow({ event: identityEvent('TEAM_MEMBERSHIP_CHANGED', { team: 'devs' }) })
@@ -180,7 +181,7 @@ describe('AuditEventRow identity events', () => {
   it('shows a private machine team as plain text', async () => {
     const row = await mountRow({ event: identityEvent('TEAM_GRANTS_CHANGED', { team: 'machine:ci-bot' }) })
 
-    expect(hrefs(row).some(href => href.startsWith('/access/teams')), 'no link to a team page').toBe(false)
+    expect(hrefs(row).some(href => href?.startsWith('/access/teams')), 'no link to a team page').toBe(false)
     expect(row.text()).toContain('machine:ci-bot')
   })
 })

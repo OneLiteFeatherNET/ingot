@@ -1,5 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { PropType } from 'vue'
+import type { AxiosResponse } from 'axios'
 import download from 'downloadjs'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
@@ -19,6 +21,7 @@ import {
   localInputToIso,
   readAuditFilters,
 } from './auditQuery'
+import type { ActionGroup, AuditEvent, AuditFilters, AuditPage, AuditQuery, AuditRouteQuery } from './auditQuery'
 
 /*
  * The audit log, newest first. The filters live in the route query: the view reads them from `query`
@@ -29,7 +32,7 @@ import {
  */
 const props = defineProps({
   query: {
-    type: Object,
+    type: Object as PropType<AuditQuery>,
     default: () => ({})
   },
   /** The reference time, in epoch milliseconds, for the presets. Tests pass a fixed value. */
@@ -39,10 +42,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:query'])
+const emit = defineEmits<{
+  'update:query': [query: AuditRouteQuery]
+}>()
 
 const session = useSession()
-const referenceTime = () => props.now ?? Date.now()
+const referenceTime = (): number => props.now ?? Date.now()
 
 const filters = computed(() => readAuditFilters(props.query))
 
@@ -57,22 +62,22 @@ watch(
   { immediate: true }
 )
 
-const events = ref([])
-const nextCursor = ref(null)
+const events = ref<AuditEvent[]>([])
+const nextCursor = ref<string | null>(null)
 const loaded = ref(false)
 const loading = ref(false)
-const loadError = ref(null)
+const loadError = ref<string | null>(null)
 const exporting = ref(false)
-const openRows = ref(new Set())
+const openRows = ref(new Set<AuditEvent['id']>())
 
 let latestRequest = 0
 
-const fetchPage = async (cursor = null) => {
+const fetchPage = async (cursor: string | null = null): Promise<void> => {
   const request = ++latestRequest
   loading.value = true
   loadError.value = null
   try {
-    const response = await session.client.value.audit.list(auditParams(filters.value, referenceTime(), cursor))
+    const response: AxiosResponse<AuditPage> = await session.client.value.audit.list(auditParams(filters.value, referenceTime(), cursor))
     if (request !== latestRequest) return
     events.value = cursor === null ? response.data.events : [...events.value, ...response.data.events]
     nextCursor.value = response.data.nextCursor ?? null
@@ -90,28 +95,28 @@ watch(() => props.query, () => {
   fetchPage(null)
 }, { deep: true, immediate: true })
 
-const loadMore = () => {
+const loadMore = (): void => {
   if (nextCursor.value && !loading.value) {
     fetchPage(nextCursor.value)
   }
 }
 
-const update = (changes) => emit('update:query', auditFiltersToQuery({ ...filters.value, ...changes }))
+const update = (changes: Partial<AuditFilters>): void => emit('update:query', auditFiltersToQuery({ ...filters.value, ...changes }))
 
-const chooseAction = (action) => update({ action })
-const groupValue = (group) => group.actions.join(',')
-const toggleGroup = (group) => update({ action: filters.value.action === groupValue(group) ? '' : groupValue(group) })
+const chooseAction = (action: string): void => update({ action })
+const groupValue = (group: ActionGroup): string => group.actions.join(',')
+const toggleGroup = (group: ActionGroup): void => update({ action: filters.value.action === groupValue(group) ? '' : groupValue(group) })
 // The picker names one action; a chip stands for several, so the picker is blank while a chip is on.
 const pickedAction = computed(() => (filters.value.action.includes(',') ? '' : filters.value.action))
-const chooseRange = (range) => update({ range })
-const applyText = () => update({
+const chooseRange = (range: string): void => update({ range })
+const applyText = (): void => update({
   text: draft.value.text.trim(),
   actor: draft.value.actor.trim(),
   repository: draft.value.repository.trim(),
 })
-const setCustomBound = (key, value) => update({ range: 'custom', [key]: localInputToIso(value) })
+const setCustomBound = (key: 'from' | 'to', value: string): void => update({ range: 'custom', [key]: localInputToIso(value) })
 
-const toggleRow = (id) => {
+const toggleRow = (id: AuditEvent['id']): void => {
   const next = new Set(openRows.value)
   if (next.has(id)) {
     next.delete(id)
@@ -121,10 +126,10 @@ const toggleRow = (id) => {
   openRows.value = next
 }
 
-const exportCsv = async () => {
+const exportCsv = async (): Promise<void> => {
   exporting.value = true
   try {
-    const response = await session.client.value.audit.exportCsv(auditParams(filters.value, referenceTime()))
+    const response: AxiosResponse<Blob> = await session.client.value.audit.exportCsv(auditParams(filters.value, referenceTime()))
     download(response.data, 'ingot-audit.csv', 'text/csv')
   } catch (error) {
     createErrorToast(`Could not export the audit log: ${errorMessage(error)}`)
