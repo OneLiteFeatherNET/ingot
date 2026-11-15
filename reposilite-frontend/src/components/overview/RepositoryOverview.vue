@@ -29,9 +29,11 @@ import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import { writePolicyLabelOf } from '../../store/maven/repositoryPolicy'
+import { readListDetails, writeListDetails } from './listDetails'
 
 type RepositoryListEntry = components['schemas']['RepositoryListEntry']
 type RepositoryListEntriesResponse = components['schemas']['RepositoryListEntriesResponse']
@@ -211,6 +213,13 @@ const toggleType = (type: string) => {
 }
 
 const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: undefined })
+
+// The Details switch shows the write policy and the visibility of each row. It is off by default, and the choice is kept per viewer.
+const showDetails = ref(readListDetails())
+const setShowDetails = (value: boolean) => {
+  showDetails.value = value
+  writeListDetails(value)
+}
 </script>
 
 <template>
@@ -330,6 +339,13 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
               </MdChip>
             </div>
           </div>
+          <MdSwitch
+            :model-value="showDetails"
+            class="flex-none self-center"
+            @update:model-value="setShowDetails"
+          >
+            Details
+          </MdSwitch>
         </div>
         <p
           id="overview-derived-type-help"
@@ -390,7 +406,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
 
       <!--
         The list is one surface-container-low block. Each row is a link over its whole width: a 40px tonal
-        avatar, the id and description, the tags as assist chips, and the visibility and a chevron at the end.
+        avatar, the id and description, the tags as assist chips, the type and a chevron at the end. The visibility and the write policy join them while the Details switch is on.
         The rows are divided by a line that starts at the text, 72px in, as MD3 insets list dividers.
       -->
       <ul
@@ -445,24 +461,16 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
               </span>
             </span>
             <!--
-              The type and the visibility sit on a line of their own under the text below 600px, so they are never
-              pushed out of the row. From 600px the wrapper takes no box of its own and they sit at the end of the row.
+              The marks sit on a line of their own under the text below 600px, so they are never pushed out of the row.
+              From 600px the wrapper takes no box of its own and they sit at the end of the row. The type comes last, before
+              the chevron, so the types line up on the right edge. The visibility and the write policy show only with the Details switch on.
             -->
             <span
               data-test="marks"
               class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 medium:contents"
             >
-              <RepositoryTypeBadge
-                :repository="repository"
-                class="self-center"
-              />
               <span
-                v-if="writePolicyLabelOf(repository)"
-                data-test="write-policy"
-                class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
-              >{{ writePolicyLabelOf(repository) }}</span>
-              <span
-                v-if="badgeOf(repository)"
+                v-if="showDetails && badgeOf(repository)"
                 data-test="visibility"
                 class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
               >
@@ -477,6 +485,15 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
                 </svg>
                 {{ badgeOf(repository)?.label }}
               </span>
+              <span
+                v-if="showDetails && writePolicyLabelOf(repository)"
+                data-test="write-policy"
+                class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
+              >{{ writePolicyLabelOf(repository) }}</span>
+              <RepositoryTypeBadge
+                :repository="repository"
+                class="self-center"
+              />
             </span>
             <svg
               class="size-6 shrink-0 self-center text-on-surface-variant"

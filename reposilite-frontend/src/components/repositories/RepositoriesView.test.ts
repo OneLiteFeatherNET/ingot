@@ -263,6 +263,14 @@ describe('the repositories table', () => {
     expect(rowOf('releases').text(), 'a repository that refuses redeploys is Allow once').toContain('Allow once')
   })
 
+  it('keeps every badge and the write policy visible on the admin list, with no details switch to hide them', async () => {
+    await mountPage({ schema: repositorySchema({ redeployment: true }) })
+
+    expect(wrapper.find('[role="switch"]').exists(), 'the admin list has no Details switch').toBe(false)
+    expect(rowOf('releases').find('[data-test="type-badge"]').exists(), 'the type badge is always shown').toBe(true)
+    expect(rowOf('releases').text(), 'the write policy is always shown').toContain('Allow once')
+  })
+
   it('marks a repository that is not saved yet as Unsaved', async () => {
     const { store } = await mountPage()
     store.addEntry('maven', 'repositories', { id: 'fresh', visibility: 'PUBLIC' })

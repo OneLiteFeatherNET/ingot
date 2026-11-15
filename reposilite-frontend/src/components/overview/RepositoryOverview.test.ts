@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, afterEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createMemoryHistory, type Router, type RouteRecordRaw } from 'vue-router'
 import type { Ref } from 'vue'
 import * as sessionModule from '../../store/session'
 import RepositoryOverview from './RepositoryOverview.vue'
+import { LIST_DETAILS_KEY } from './listDetails'
 
 // The client the page asks for the list, with the mock of its one call.
 interface TestClient {
@@ -129,8 +130,34 @@ const clearButton = () => wrapper.findAll('button').find(button => button.text()
 const addressQuery = () => router.currentRoute.value.query
 const loadCalls = () => sessionState.client.value!.maven.repositories.mock.calls
 
+// The store the Details choice is kept in. Each test gets a fresh one, so no choice leaks from one test to the next.
+const memoryStorage = () => {
+  const items = new Map<string, string>()
+  return {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      items.set(key, value)
+    },
+    items
+  }
+}
+let storage: ReturnType<typeof memoryStorage>
+
+// The Details switch of the list, and the switch's own label, which is the text of the label tied to it.
+const detailsSwitch = () => wrapper.get('[role="switch"]')
+const detailsLabel = () => wrapper.get(`label[for="${detailsSwitch().attributes('id')}"]`).text()
+const showDetails = async () => {
+  await detailsSwitch().trigger('click')
+}
+
+beforeEach(() => {
+  storage = memoryStorage()
+  vi.stubGlobal('localStorage', storage)
+})
+
 afterEach(() => {
   wrapper?.unmount()
+  vi.unstubAllGlobals()
 })
 
 describe('RepositoryOverview list', () => {
@@ -150,6 +177,7 @@ describe('RepositoryOverview list', () => {
 
   it('marks a private or hidden repository with its visibility and leaves a public one unmarked', async () => {
     await mountAt('/')
+    await showDetails()
 
     expect(rowFor('private').find('[data-test="visibility"]').text()).toBe('Private')
     expect(rowFor('archive').find('[data-test="visibility"]').text()).toBe('Hidden')
@@ -480,6 +508,7 @@ describe('RepositoryOverview Material 3 structure', () => {
 
   it('shows the visibility as a label with an icon and no coloured fill', async () => {
     await mountAt('/')
+    await showDetails()
 
     const label = rowFor('private').find('[data-test="visibility"]')
     expect(label.find('svg').exists()).toBe(true)
@@ -542,6 +571,7 @@ describe('RepositoryOverview width', () => {
 describe('RepositoryOverview row marks', () => {
   it('keeps the type badge and the visibility label in one wrapping element after the text', async () => {
     await mountAt('/')
+    await showDetails()
 
     const row = rowFor('private')
     const marks = row.find('[data-test="marks"]')
@@ -648,9 +678,108 @@ describe('RepositoryOverview write policy', () => {
         { id: 'central', visibility: 'PUBLIC', description: '', tags: [], type: 'proxy', typeExplicit: true, writePolicy: null }
       ])
     })
+    await showDetails()
 
     expect(rowFor('releases').find('[data-test="write-policy"]').text()).toBe('Allow redeploy')
     expect(rowFor('frozen').find('[data-test="write-policy"]').text()).toBe('Read-only')
     expect(rowFor('central').find('[data-test="write-policy"]').exists()).toBe(false)
+  })
+})
+
+// Repositories that show every kind of detail: a private one that takes uploads, a read-only one, and a proxy.
+const policyList: RepositoryFixture[] = [
+  { id: 'releases', visibility: 'PRIVATE', description: '', tags: [], type: 'hosted', typeExplicit: true, writePolicy: 'ALLOW' },
+  { id: 'frozen', visibility: 'PUBLIC', description: '', tags: [], type: 'hosted', typeExplicit: true, writePolicy: 'READ_ONLY' },
+  { id: 'central', visibility: 'PUBLIC', description: '', tags: [], type: 'proxy', typeExplicit: true, writePolicy: null }
+]
+
+describe('RepositoryOverview details switch', () => {
+  it('hides the visibility and the write policy of every row by default, and keeps the type badge', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+
+    expect(detailsSwitch().attributes('aria-checked'), 'the switch starts off').toBe('false')
+    expect(wrapper.findAll('[data-test="visibility"]')).toHaveLength(0)
+    expect(wrapper.findAll('[data-test="write-policy"]')).toHaveLength(0)
+    expect(wrapper.findAll('[data-test="type-badge"]')).toHaveLength(policyList.length)
+  })
+
+  it('labels the switch Details, and reports its state through aria-checked', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+
+    expect(detailsLabel()).toBe('Details')
+    await showDetails()
+    expect(detailsSwitch().attributes('aria-checked')).toBe('true')
+    expect(detailsSwitch().attributes('role')).toBe('switch')
+  })
+
+  it('shows the visibility and the write policy of every row once the switch is on', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+    await showDetails()
+
+    expect(rowFor('releases').find('[data-test="visibility"]').text()).toBe('Private')
+    expect(rowFor('releases').find('[data-test="write-policy"]').text()).toBe('Allow redeploy')
+    expect(rowFor('frozen').find('[data-test="write-policy"]').text()).toBe('Read-only')
+    expect(rowFor('central').find('[data-test="write-policy"]').exists()).toBe(false)
+  })
+
+  it('puts the type badge last among the marks, after the visibility and the write policy, and before the chevron', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+    await showDetails()
+
+    const row = rowFor('releases')
+    const marks = row.findAll('[data-test="visibility"], [data-test="write-policy"], [data-test="type-badge"]')
+    expect(marks.map(mark => mark.attributes('data-test'))).toEqual(['visibility', 'write-policy', 'type-badge'])
+
+    const marksBox = row.get('[data-test="marks"]')
+    expect(marksBox.element.lastElementChild?.getAttribute('data-test'), 'the type badge is the last mark').toBe('type-badge')
+    expect(marksBox.element.nextElementSibling?.tagName.toLowerCase(), 'the chevron comes straight after the marks').toBe('svg')
+  })
+
+  it('leaves the write policy and the visibility out of the text of a row while the details are hidden', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+
+    const row = rowFor('releases')
+    expect(row.text()).not.toContain('Private')
+    expect(row.text()).not.toContain('Allow redeploy')
+    expect(row.attributes('aria-describedby'), 'no description points at the hidden details').toBeUndefined()
+  })
+
+  it('remembers the choice for this viewer, so a page opened later starts with the details on', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+    await showDetails()
+    expect(storage.items.get(LIST_DETAILS_KEY)).toBe('true')
+
+    wrapper.unmount()
+    await mountAt('/', { answer: answerWith(policyList) })
+
+    expect(detailsSwitch().attributes('aria-checked')).toBe('true')
+    expect(rowFor('releases').find('[data-test="visibility"]').exists()).toBe(true)
+  })
+
+  it('forgets the choice when the switch is turned off again', async () => {
+    await mountAt('/', { answer: answerWith(policyList) })
+    await showDetails()
+    await showDetails()
+
+    expect(storage.items.get(LIST_DETAILS_KEY)).toBe('false')
+    expect(wrapper.findAll('[data-test="visibility"]')).toHaveLength(0)
+  })
+
+  it('still lists the repositories and switches the details when storage is blocked', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new DOMException('Access is denied for this document.', 'SecurityError')
+      },
+      setItem: () => {
+        throw new DOMException('Access is denied for this document.', 'SecurityError')
+      }
+    })
+    await mountAt('/', { answer: answerWith(policyList) })
+    expect(rowIds()).toEqual(['central', 'frozen', 'releases'])
+
+    await showDetails()
+
+    expect(detailsSwitch().attributes('aria-checked')).toBe('true')
+    expect(rowFor('releases').find('[data-test="visibility"]').exists()).toBe(true)
   })
 })
