@@ -111,7 +111,7 @@ internal class ConsoleEndpoint(
                                         status = answer.execution.status,
                                         exitCode = answer.execution.exitCode,
                                         output = answer.execution.output,
-                                        data = null,
+                                        data = answer.execution.data,
                                         node = nodeId,
                                     ).asSuccess()
                                 }

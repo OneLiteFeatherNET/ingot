@@ -27,6 +27,14 @@ internal class StatusCommand(private val statusFacade: StatusFacade) : Reposilit
 
     override fun execute(context: CommandContext) {
         statusFacade.fetchInstanceStatus().apply {
+            context.data = StatusData(
+                version = VERSION,
+                active = statusFacade.isAlive(),
+                uptimeMillis = statusFacade.getUptime(),
+                usedMemory = usedMemory,
+                usedThreads = usedThreads,
+                failures = failuresCount,
+            )
             context.append("Ingot $VERSION Status")
             context.append("  Active: ${context.effect { GREEN_BOLD }}${statusFacade.isAlive()}${context.effect { RESET }}")
             context.append("  Uptime: ${TimeUtils.getPrettyUptime(statusFacade.getUptime())}")
@@ -44,3 +52,12 @@ internal class StatusCommand(private val statusFacade: StatusFacade) : Reposilit
     }
 
 }
+
+internal data class StatusData(
+    val version: String,
+    val active: Boolean,
+    val uptimeMillis: Long,
+    val usedMemory: Double,
+    val usedThreads: Int,
+    val failures: Int,
+)

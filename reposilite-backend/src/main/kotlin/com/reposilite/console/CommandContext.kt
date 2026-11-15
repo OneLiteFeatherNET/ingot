@@ -26,6 +26,9 @@ enum class CommandStatus {
 class CommandContext(private val journalist: ReposiliteJournalist) {
 
     var status = CommandStatus.SUCCEEDED
+
+    /** Structured data of the result, for remote callers that ask for it. Null for commands that have none. */
+    var data: Any? = null
     private val output = mutableListOf<String>()
 
     fun effect(colors: ReposiliteJournalist.Colors.() -> String): String =

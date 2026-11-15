@@ -33,6 +33,7 @@ data class StructuredExecution(
     val status: CommandStatus,
     val exitCode: Int,
     val output: List<OutputLine>,
+    val data: Any? = null,
 )
 
 /** Answer of a structured execution: either the command ran, or it is held until the caller confirms it. */
