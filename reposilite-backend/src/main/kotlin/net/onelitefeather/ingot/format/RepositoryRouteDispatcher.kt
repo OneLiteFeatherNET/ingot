@@ -76,18 +76,22 @@ class RepositoryRouteDispatcher(
         }
     }
 
+    /**
+     * Writes are authorized on the canonical path and handled at the same repository and location, so the path that is judged
+     * is the path that is written.
+     */
     private val uploadRoute = ReposiliteRoute<Unit>("/{repository}/<gav>", POST, PUT) {
-        authorized {
-            locationOf { gav ->
-                response = dispatch(RepositoryRequest(ctx, this.identifier, requireParameter("repository"), gav, getSessionIdentifier()))
+        canonicalPathOf { path ->
+            authorized(path.authorizationPath) {
+                response = dispatch(RepositoryRequest(ctx, this.identifier, path.repository, path.location, getSessionIdentifier()))
             }
         }
     }
 
     private val deleteRoute = ReposiliteRoute<Unit>("/{repository}/<gav>", DELETE) {
-        authorized {
-            locationOf { gav ->
-                response = dispatch(RepositoryRequest(ctx, this.identifier, requireParameter("repository"), gav, getSessionIdentifier()))
+        canonicalPathOf { path ->
+            authorized(path.authorizationPath) {
+                response = dispatch(RepositoryRequest(ctx, this.identifier, path.repository, path.location, getSessionIdentifier()))
             }
         }
     }
@@ -97,6 +101,13 @@ class RepositoryRouteDispatcher(
     /** A path that is not a valid location is answered as a bad request, as the Maven routes answered it. */
     private fun ContextDsl<Unit>.locationOf(block: (Location) -> Unit) {
         Location.ofRequest(requireParameter("gav"))
+            .peek { block(it) }
+            .onError { response = it.asError() }
+    }
+
+    /** A write path that has no canonical form is answered as a bad request before any authorization. */
+    private fun ContextDsl<Unit>.canonicalPathOf(block: (RepositoryPath) -> Unit) {
+        RepositoryPath.canonicalize(ctx.path().removePrefix(ctx.contextPath()))
             .peek { block(it) }
             .onError { response = it.asError() }
     }
