@@ -43,11 +43,14 @@ internal class CommandExecutor(
     private val consoleThread = ConsoleThread(this, source, failureFacade)
     private val commandLine = CommandLine(this)
 
+    /** The registered commands and [commandLine] keep the parsed arguments in their fields, so a parse and its run must not interleave. */
+    private val commandLock = Any()
+
     fun execute(command: String): ExecutionResponse =
         execute(command) { logger.info(it) }
 
     fun execute(command: String, outputConsumer: Consumer<String>): ExecutionResponse =
-        executeCommand(command).also {
+        synchronized(commandLock) { executeCommand(command) }.also {
             it.response.forEach { message ->
                 message.replace(System.lineSeparator(), "\n").split("\n").toTypedArray().forEach { line ->
                     outputConsumer.accept(line)
@@ -62,16 +65,18 @@ internal class CommandExecutor(
             return PreparedCommand(processedCommand, command, this)
         }
 
-        val redactedCommand = try {
-            val reposiliteCommand = parseCommand(processedCommand)
+        val redactedCommand = synchronized(commandLock) {
+            try {
+                val reposiliteCommand = parseCommand(processedCommand)
 
-            when {
-                reposiliteCommand == null -> processedCommand.redacted()
-                reposiliteCommand.sensitiveInput -> processedCommand.redacted()
-                else -> processedCommand
+                when {
+                    reposiliteCommand == null -> processedCommand.redacted()
+                    reposiliteCommand.sensitiveInput -> processedCommand.redacted()
+                    else -> processedCommand
+                }
+            } catch (_: PicocliException) {
+                processedCommand.redacted()
             }
-        } catch (_: PicocliException) {
-            processedCommand.redacted()
         }
 
         return PreparedCommand(
