@@ -23,6 +23,7 @@ import com.reposilite.storage.api.Location
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.channels.Channels
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -44,6 +45,8 @@ internal class CacheStorageProvider(
     private val delegate: StorageProvider,
     private val directory: Path,
     private val maxFileSize: Long? = null,
+    private val cacheOnUpload: Boolean = false,
+    private val publishInvalidation: (Collection<String>) -> Unit = {},
     private val onFailure: (String) -> Unit = {},
 ) : StorageProvider {
 
@@ -52,6 +55,13 @@ internal class CacheStorageProvider(
 
     /** The fills in progress, by key. A request for a key that is being filled waits for that fill instead of asking the delegate. */
     private val inFlight = ConcurrentHashMap<String, CompletableFuture<Boolean>>()
+
+    /**
+     * Guards every commit and every drop of a local copy. A key's generation counts its invalidations: a copy is committed only when the
+     * generation it was started with is still current, so bytes that an overwrite or a removal overtook never reach the folder.
+     */
+    private val commitLock = Any()
+    private val generations = HashMap<String, Long>()
 
     init {
         Files.createDirectories(dataDirectory)
@@ -90,14 +100,35 @@ internal class CacheStorageProvider(
         }
     }
 
-    override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
-        delegate.putFile(location, inputStream)
+    /**
+     * Writes go to the delegate first. The local copy of the key is dropped in every case, because the write may replace a release.
+     * With [cacheOnUpload] the bytes are copied during the upload and committed only after the delegate accepted them.
+     */
+    override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> {
+        val key = location.toString()
+        val copy = if (cacheOnUpload && !isCacheMutableKey(key)) startUploadCopy(key) else null
+        val result = delegate.putFile(location, copy?.wrap(inputStream) ?: inputStream)
+        if (!result.isOk) {
+            copy?.discard()
+            dropLocal(key)
+            return result
+        }
+        val generation = dropLocal(key, publish = true)
+        copy?.commit(key, generation)
+        return result
+    }
 
     override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
         delegate.getFileDetails(location)
 
-    override fun removeFile(location: Location): Result<Unit, ErrorResponse> =
-        delegate.removeFile(location)
+    /** A removal goes to the delegate first. Only a removal the delegate accepted drops the copy and publishes the invalidation. */
+    override fun removeFile(location: Location): Result<Unit, ErrorResponse> {
+        val result = delegate.removeFile(location)
+        if (result.isOk) {
+            dropLocal(location.toString(), publish = true)
+        }
+        return result
+    }
 
     override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> =
         delegate.getFiles(location)
@@ -123,6 +154,86 @@ internal class CacheStorageProvider(
 
     private fun dataFile(key: String): Path =
         dataDirectory.resolve(key)
+
+    /** Must be called while holding [commitLock]. */
+    private fun generationOf(key: String): Long =
+        generations[key] ?: 0L
+
+    /**
+     * Drops the local copy of [key] and bumps its generation, which cancels every fill and upload commit started before. Publishes the
+     * invalidation when [publish] is set. Returns the generation after the drop.
+     */
+    private fun dropLocal(key: String, publish: Boolean = false): Long {
+        val generation = synchronized(commitLock) {
+            val next = generationOf(key) + 1
+            generations[key] = next
+            runCatching { Files.deleteIfExists(dataFile(key)) }
+                .onFailure { onFailure("Cannot drop the cached copy of $key: ${it.message}") }
+            next
+        }
+        if (publish) {
+            publishInvalidation(listOf(key))
+        }
+        return generation
+    }
+
+    /** Starts a copy of an upload. A cache that cannot create its copy reports the failure, and the upload goes to the delegate alone. */
+    private fun startUploadCopy(key: String): UploadCopy? =
+        try {
+            val temporary = Files.createTempFile(fillDirectory, "upload-", ".part")
+            try {
+                UploadCopy(temporary, Files.newOutputStream(temporary))
+            } catch (exception: IOException) {
+                Files.deleteIfExists(temporary)
+                throw exception
+            }
+        } catch (exception: IOException) {
+            onFailure("Cannot copy the upload of $key into the cache: ${exception.message}")
+            null
+        }
+
+    /** The temporary copy of one upload, committed only after the delegate accepted the upload. */
+    private inner class UploadCopy(private val temporary: Path, private val output: OutputStream) {
+
+        private var tee: UploadTee? = null
+
+        fun wrap(input: InputStream): InputStream =
+            UploadTee(input, output, onFailure).also { tee = it }
+
+        fun commit(key: String, generation: Long) {
+            val copy = tee
+            val complete = copy?.finish() == true
+            val withinLimit = maxFileSize == null || (copy?.copied ?: 0L) <= maxFileSize
+            var committed = false
+            if (complete && withinLimit) {
+                committed = synchronized(commitLock) {
+                    if (generationOf(key) != generation) {
+                        false
+                    } else {
+                        runCatching {
+                            Files.createDirectories(dataFile(key).parent)
+                            Files.move(temporary, dataFile(key), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                        }.onFailure { onFailure("Cannot cache the upload of $key: ${it.message}") }
+                        Files.notExists(temporary)
+                    }
+                }
+            }
+            if (!committed) {
+                discard()
+            }
+        }
+
+        fun discard() {
+            val copy = tee
+            if (copy != null) {
+                copy.finish()
+            } else {
+                runCatching { output.close() }
+            }
+            runCatching { Files.deleteIfExists(temporary) }
+        }
+
+    }
 
     private fun fitsFileSizeLimit(location: Location): Boolean {
         val limit = maxFileSize ?: return true
@@ -165,6 +276,7 @@ internal class CacheStorageProvider(
      * count differs from the size the delegate reports is discarded.
      */
     private fun fetchIntoCache(location: Location, key: String): Boolean {
+        val started = synchronized(commitLock) { generationOf(key) }
         val expected = delegate.getFileSize(location)
         val source = delegate.getFile(location)
         if (!expected.isOk || !source.isOk) {
@@ -177,10 +289,16 @@ internal class CacheStorageProvider(
                 onFailure("A copy of $key has $copied bytes, the delegate reports ${expected.get()}, so it is not cached")
                 return false
             }
-            val target = dataFile(key)
-            Files.createDirectories(target.parent)
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            return true
+            return synchronized(commitLock) {
+                if (generationOf(key) != started) {
+                    false
+                } else {
+                    val target = dataFile(key)
+                    Files.createDirectories(target.parent)
+                    Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    true
+                }
+            }
         } catch (exception: IOException) {
             onFailure("Cannot cache $key: ${exception.message}")
             return false
