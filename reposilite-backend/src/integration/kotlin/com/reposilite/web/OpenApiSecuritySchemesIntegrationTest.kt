@@ -102,11 +102,27 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
 
     @Test
     fun `every route that needs a login still lists the bearer access token`() {
-        val routesWithoutBearer = authenticatedRoutes(openApiDocument()).filterValues { "sessionBearer" !in it }.keys
+        val routesWithoutBearer = authenticatedRoutes(openApiDocument())
+            .filterKeys { it !in SESSION_ONLY_ROUTES }
+            .filterValues { "sessionBearer" !in it }.keys
 
         assertThat(routesWithoutBearer)
             .describedAs("routes that need a login but no longer list the sessionBearer scheme")
             .isEmpty()
+    }
+
+    @Test
+    fun `the session-only factor routes list the session cookie and no other scheme`() {
+        val routes = authenticatedRoutes(openApiDocument())
+
+        assertThat(routes.keys)
+            .describedAs("session-only factor routes in the served document")
+            .containsAll(SESSION_ONLY_ROUTES)
+        SESSION_ONLY_ROUTES.forEach { route ->
+            assertThat(routes[route])
+                .describedAs("security schemes listed for $route")
+                .containsExactly("sessionCookie")
+        }
     }
 
     /** Every operation that declares a security requirement, with the names of the schemes it lists. */
@@ -126,6 +142,20 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
 
     private companion object {
         val HTTP_METHODS = setOf("get", "put", "post", "delete", "patch", "head", "options")
+
+        /**
+         * The second-factor routes manage the caller's own factors and accept only the browser session, on purpose.
+         * The handler refuses an access token even of the same user, so these routes are exempt from the bearer check.
+         * SecondFactorIntegrationTest asserts that refusal. They must list the session cookie and nothing else, which
+         * the second test checks, so the exemption cannot hide a route that forgot its schemes.
+         */
+        val SESSION_ONLY_ROUTES = setOf(
+            "GET /api/identity/me/factors",
+            "POST /api/identity/me/factors/totp",
+            "POST /api/identity/me/factors/totp/confirm",
+            "DELETE /api/identity/me/factors/{id}",
+            "POST /api/identity/me/recovery-codes",
+        )
     }
 
 }

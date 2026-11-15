@@ -21,6 +21,7 @@ import com.reposilite.ReposiliteParameters
 import com.reposilite.ReposiliteSpecification
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.shared.ErrorResponse
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import java.time.Clock
@@ -28,6 +29,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Base64
 import kong.unirest.core.Unirest
+import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.OwnTokenOutcome
 import net.onelitefeather.ingot.identity.login.api.LoginResponse
@@ -82,6 +84,11 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
         val confirmed = loginFacade.confirmAuthenticatorEnrolment(principalId, username, now, ip = "127.0.0.1")
         assertThat(confirmed).`as`("enrolment with the current code").isInstanceOf(EnrolmentConfirmation.Confirmed::class.java)
         return principalId to started.seed
+    }
+
+    private fun issueToken(principalId: Int, name: String): CreatedTokenDto {
+        val issued = loginFacade.issueOwnToken(principalId, AuditActor.named(name, "127.0.0.1"), SelfTokenRequest(name = name))
+        return (issued as OwnTokenOutcome.Issued).dto
     }
 
     private fun currentStep() = serverClock.instant().epochSecond / TotpAlgorithm.STEP_SECONDS
@@ -158,6 +165,67 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
 
         // then: it is answered without any challenge
         assertThat(response.status).`as`("status with the token").isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `a basic token cannot list the second factors of its user`() {
+        val (principalId, _) = userWithAuthenticator("sara-mfa")
+        val token = issueToken(principalId, "sara-ci")
+
+        val response = http.get("$base/api/identity/me/factors").basicAuth(token.token.name, token.secret).asString()
+
+        assertThat(response.status).`as`("status of a token request").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a bearer access token gets 403 on a factor route`() {
+        val (principalId, _) = userWithAuthenticator("wade-mfa")
+        val token = issueToken(principalId, "wade-ci")
+
+        val response = http.get("$base/api/identity/me/factors")
+            .header("Authorization", "Bearer ${token.secret}")
+            .asString()
+
+        assertThat(response.status).`as`("status of a bearer token request").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot start an authenticator enrolment`() {
+        val (principalId, _) = userWithAuthenticator("tara-mfa")
+        val token = issueToken(principalId, "tara-ci")
+
+        val response = http.post("$base/api/identity/me/factors/totp").basicAuth(token.token.name, token.secret).asString()
+
+        assertThat(response.status).`as`("status of a token enrolment").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot remove a factor even with a code`() {
+        val (principalId, seed) = userWithAuthenticator("ursula-mfa")
+        val factorId = loginFacade.secondFactorsOf(principalId).single().id
+        val token = issueToken(principalId, "ursula-ci")
+
+        val response = http.delete("$base/api/identity/me/factors/$factorId")
+            .basicAuth(token.token.name, token.secret)
+            .header("Content-Type", "application/json")
+            .body("""{"code":"${TotpAlgorithm.code(seed, currentStep() + 1)}"}""")
+            .asString()
+
+        assertThat(response.status).`as`("status of a token removal").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a basic token cannot regenerate recovery codes`() {
+        val (principalId, seed) = userWithAuthenticator("vera-mfa")
+        val token = issueToken(principalId, "vera-ci")
+
+        val response = http.post("$base/api/identity/me/recovery-codes")
+            .basicAuth(token.token.name, token.secret)
+            .header("Content-Type", "application/json")
+            .body("""{"code":"${TotpAlgorithm.code(seed, currentStep() + 1)}"}""")
+            .asString()
+
+        assertThat(response.status).`as`("status of a token regeneration").isEqualTo(FORBIDDEN.code)
     }
 
     @Test

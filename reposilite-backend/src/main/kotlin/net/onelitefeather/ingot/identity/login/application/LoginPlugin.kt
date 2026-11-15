@@ -27,6 +27,7 @@ import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.ProviderAnnouncement
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.api.ProviderTestEndpoints
+import net.onelitefeather.ingot.identity.login.api.SecondFactorEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
@@ -199,6 +200,7 @@ class LoginPlugin : ReposilitePlugin() {
             if (loginService != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
+                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade))
                 event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {

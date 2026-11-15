@@ -252,6 +252,14 @@
         "required" : [ "items", "page", "size", "total", "totalCapped", "facets", "indexStatus" ],
         "type" : "object"
       },
+      "AuthenticatorEnrolmentDto" : {
+        "properties" : {
+          "otpauthUri" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CleanupPreviewResponse" : {
         "properties" : {
           "count" : {
@@ -432,6 +440,14 @@
         "required" : [ "bus", "instances" ],
         "type" : "object"
       },
+      "CodeRequest" : {
+        "properties" : {
+          "code" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "CommandStatus" : {
         "enum" : [ "SUCCEEDED", "FAILED" ],
         "type" : "string"
@@ -452,6 +468,17 @@
           }
         },
         "required" : [ "local", "shared" ],
+        "type" : "object"
+      },
+      "ConfirmedEnrolmentDto" : {
+        "properties" : {
+          "recoveryCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
         "type" : "object"
       },
       "CreateAccessTokenWithNoNameRequest" : {
@@ -1593,6 +1620,17 @@
               "type" : "string"
             },
             "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RecoveryCodesDto" : {
+        "properties" : {
+          "recoveryCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -3406,6 +3444,197 @@
         "tags" : [ "Identity" ]
       }
     },
+    "/api/identity/me/factors" : {
+      "get" : {
+        "description" : "The authenticator codes of the signed-in user, without secrets. Pending enrolments are not listed",
+        "responses" : {
+          "200" : {
+            "description" : "The factors of the signed-in user"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "List own second factors",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/factors/totp" : {
+      "post" : {
+        "description" : "Starts an enrolment for the signed-in user and returns the otpauth URI once. The enrolment counts as a factor after /totp/confirm accepts a code. Needs the settings key: without it the answer is 409 with the reason",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthenticatorEnrolmentDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Start an authenticator enrolment",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/factors/totp/confirm" : {
+      "post" : {
+        "description" : "Confirms the pending enrolment with a code of the authenticator app. The first factor issues ten recovery codes, returned once",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CodeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedEnrolmentDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Confirm an authenticator enrolment",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/factors/{id}" : {
+      "delete" : {
+        "description" : "Removes one authenticator of the signed-in user. Needs a current code of the user in the body. Removing the last factor removes the recovery codes too",
+        "parameters" : [ {
+          "description" : "Id of the factor",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CodeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Removed"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Remove an own second factor",
+        "tags" : [ "Identity" ]
+      }
+    },
     "/api/identity/me/password" : {
       "post" : {
         "description" : "Changes the password of the signed-in user after checking the current one. Every session of the user ends",
@@ -3418,6 +3647,77 @@
           "tokenBasic" : [ ]
         } ],
         "summary" : "Change own password",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/recovery-codes" : {
+      "post" : {
+        "description" : "Replaces the recovery codes of the signed-in user with a new set, returned once. The old codes stop working at once. Needs a current code of the user in the body",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CodeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecoveryCodesDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Regenerate recovery codes",
         "tags" : [ "Identity" ]
       }
     },
