@@ -243,3 +243,7 @@ The storage type `cache` is new. It keeps copies of immutable files on the disk 
 
 The `azure-blob` provider arrives as an optional plugin. No existing storage setting, default, environment variable, configuration file,
 volume or database table changes. A repository that uses `fs` or `s3` behaves as before, whether or not the Azure plugin is installed.
+
+### Google Cloud Storage is new and optional (unreleased)
+
+The Google Cloud Storage plugin `gcs-storage` is optional and is not part of the image. Nothing changes for existing installations: no configuration file, environment variable, volume, manifest or plugin has to be changed. The `fs` and `s3` providers keep their keys, defaults and error responses. See [Use Google Cloud Storage](../set-up/cluster/use-google-cloud-storage.md).

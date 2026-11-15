@@ -47,6 +47,7 @@
   * [Configure the cluster bus](set-up/cluster/configure-cluster-bus.md)
   * [Use S3 storage](set-up/cluster/use-s3-storage.md)
   * [Use Azure Blob storage](set-up/cluster/use-azure-blob-storage.md)
+  * [Use Google Cloud Storage](set-up/cluster/use-google-cloud-storage.md)
 * [Migrate](set-up/migrate/README.md)
   * [Move from Reposilite to Ingot](set-up/migrate/move-from-reposilite.md)
   * [Migrate from the upstream Helm chart](set-up/migrate/migrate-from-upstream-chart.md)

@@ -137,7 +137,7 @@ Set `INGOT_S3_BUFFER_TO_DISK=true` to write every upload to a temporary file fir
 
 Use it when the storage service does not accept multipart uploads, or when the heap is too small for one 8 MiB part per concurrent upload. The temporary directory then needs room for the largest upload again.
 
-Google Cloud Storage through its S3 interoperability API was not checked for multipart uploads. If uploads above 8 MiB fail there, set `INGOT_S3_BUFFER_TO_DISK=true`.
+Google Cloud Storage through its S3 interoperability API was not checked for multipart uploads. If uploads above 8 MiB fail there, set `INGOT_S3_BUFFER_TO_DISK=true`. For a provider that uses the native Google Cloud Storage API, see [Use Google Cloud Storage](use-google-cloud-storage.md).
 
 ## Ceph RGW and Rook
 
