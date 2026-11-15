@@ -18,6 +18,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     kotlin("jvm")
+    id("com.coditory.integration-test") version "2.2.5"
     id("com.gradleup.shadow") version "9.4.2"
 }
 
@@ -38,6 +39,15 @@ dependencies {
 
     testImplementation(project(":reposilite-backend"))
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.7")
+
+    // The container tests run against Azurite in the integration source set. They need the server classes at run time, and the
+    // container and assertion libraries that the unit tests already have.
+    "integrationImplementation"(project(":reposilite-backend"))
+    "integrationImplementation"("org.testcontainers:testcontainers:2.0.5")
+    "integrationImplementation"("org.junit.jupiter:junit-jupiter-api:6.1.0")
+    "integrationImplementation"("org.assertj:assertj-core:4.0.0-M1")
+    "integrationRuntimeOnly"("org.junit.jupiter:junit-jupiter-engine:6.1.0")
+    "integrationRuntimeOnly"("org.junit.platform:junit-platform-launcher:6.1.0")
 }
 
 // The Azure SDK declares Netty as its default HTTP client. The JDK client is used instead, so no second HTTP stack reaches the jar.
