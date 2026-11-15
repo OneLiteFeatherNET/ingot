@@ -27,6 +27,9 @@ internal class PreparedCommand(
     fun execute(): ExecutionResponse =
         commandExecutor.execute(command)
 
+    internal fun executePlain(): PlainExecution =
+        commandExecutor.executePlain(command)
+
     fun isDangerous(): Boolean =
         commandExecutor.isDangerous(command)
 

@@ -18,6 +18,9 @@ package com.reposilite.console.infrastructure
 import com.reposilite.ReposiliteJournalist
 import com.reposilite.auth.api.Credentials
 import com.reposilite.console.ConsoleFacade
+import com.reposilite.console.consoleCommandAudit
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extractFromString
 import com.reposilite.shared.unauthorizedError
@@ -43,8 +46,15 @@ private const val SESSION_PREFIX = "Session "
 
 private data class WsSession(
     val identifier: String,
+    val tokenName: String,
+    val address: String,
     val subscriberId: Int,
 )
+
+/** The identity of an authenticated connection: the token name, and the host it connected from. */
+private data class WsIdentity(val tokenName: String, val address: String) {
+    val identifier: String get() = "$tokenName@$address"
+}
 
 internal class ConsoleWebSocketHandler(
     private val journalist: ReposiliteJournalist,
@@ -52,6 +62,8 @@ internal class ConsoleWebSocketHandler(
     private val consoleFacade: ConsoleFacade,
     private val forwardedIp: Reference<String>,
     private val trustedProxies: TrustedProxies = TrustedProxies.NONE,
+    /** Emits an audit event for every command that reaches execution on this channel. */
+    private val audit: (AuditEvent) -> Unit,
 ) : Consumer<WsConfig> {
 
     /**
@@ -69,7 +81,8 @@ internal class ConsoleWebSocketHandler(
             when (val session = users[ctx]) {
                 null ->
                     authenticateContext(ctx)
-                        .peek { identifier ->
+                        .peek { identity ->
+                            val identifier = identity.identifier
                             journalist.logger.info("CLI | $identifier accessed remote console")
 
                             // Subscribers run on the thread that logs, which is often an unrelated request or job. A failure
@@ -85,7 +98,7 @@ internal class ConsoleWebSocketHandler(
                                 }
                             }
 
-                            users[ctx] = WsSession(identifier, subscriberId)
+                            users[ctx] = WsSession(identifier, identity.tokenName, identity.address, subscriberId)
 
                             journalist.cachedLogger.messages
                                 .filter { it.key.priority >= journalist.visibleThreshold.priority }
@@ -103,7 +116,17 @@ internal class ConsoleWebSocketHandler(
                         else ->
                             consoleFacade.prepareCommand(message).peek { command ->
                                 journalist.logger.info("CLI | ${session.identifier}> ${command.redactedCommand}")
-                                command.execute()
+                                val execution = command.executePlain()
+                                audit(
+                                    consoleCommandAudit(
+                                        actor = AuditActor.named(session.tokenName, session.address),
+                                        command = command.redactedCommand,
+                                        channel = "websocket",
+                                        client = null,
+                                        confirmed = false,
+                                        exitCode = execution.exitCode,
+                                    )
+                                )
                             }
 
                     }
@@ -116,7 +139,7 @@ internal class ConsoleWebSocketHandler(
         }
     }
 
-    private fun authenticateContext(connection: WsMessageContext): Result<String, ErrorResponse> {
+    private fun authenticateContext(connection: WsMessageContext): Result<WsIdentity, ErrorResponse> {
         val authMessage = connection.message()
 
         if (!authMessage.startsWith(AUTHORIZATION_PREFIX)) {
@@ -133,7 +156,7 @@ internal class ConsoleWebSocketHandler(
                     .map { (name, secret) -> Credentials(ip = host, name = name, secret = secret) }
                     .flatMap { consoleAuthenticator.authenticate(it) }
             }
-        return identity.map { "${it.name}@$host" }
+        return identity.map { WsIdentity(tokenName = it.name, address = host) }
     }
 
     private fun WsContext.getHost(): String {

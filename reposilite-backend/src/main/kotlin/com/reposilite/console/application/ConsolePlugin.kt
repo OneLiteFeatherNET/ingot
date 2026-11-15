@@ -86,7 +86,13 @@ internal class ConsolePlugin : ReposilitePlugin() {
         }
 
         event { event: RoutingSetupEvent ->
-            event.registerRoutes(ConsoleEndpoint(consoleFacade, nodeId = ClusterSettings.instanceIdOf(ClusterSources.system())))
+            event.registerRoutes(
+                ConsoleEndpoint(
+                    consoleFacade,
+                    nodeId = ClusterSettings.instanceIdOf(ClusterSources.system()),
+                    audit = { extensions().emitEvent(it) },
+                )
+            )
         }
 
         event { event: HttpServerInitializationEvent ->
@@ -97,7 +103,8 @@ internal class ConsolePlugin : ReposilitePlugin() {
                     consoleAuthenticator = consoleAuthenticator,
                     consoleFacade = consoleFacade,
                     forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
-                    trustedProxies = TrustedProxies.fromEnvironment()
+                    trustedProxies = TrustedProxies.fromEnvironment(),
+                    audit = { extensions().emitEvent(it) },
                 )
             )
             event.config.routes.sse(
