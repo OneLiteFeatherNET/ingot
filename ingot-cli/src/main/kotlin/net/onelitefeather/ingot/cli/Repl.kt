@@ -56,7 +56,7 @@ fun runRepl(
 ): Int {
     val names = commandNames(client)
     if (names.isEmpty()) {
-        err.println("The server gives no command listing. Completion is off and dangerous commands run at once.")
+        err.println("The server gives no command listing. Completion is off.")
     }
     val completer = Completer { _, line, candidates ->
         if (line.wordIndex() == 0) names.forEach { candidates.add(Candidate(it)) }
