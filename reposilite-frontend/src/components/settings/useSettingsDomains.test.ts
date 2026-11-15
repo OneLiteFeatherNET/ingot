@@ -16,18 +16,22 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
+import type { ShallowRef } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useSettingsDomains } from './useSettingsDomains'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 
 // The session is replaced per test through this holder, so each test builds its own client and visitor.
-const holder = vi.hoisted(() => ({ can: null, client: null }))
+const holder = vi.hoisted((): { can: ((node: string) => boolean) | null; client: unknown } => ({
+  can: null,
+  client: null
+}))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ can: holder.can, client: holder.client })
 }))
 
-const SCHEMAS = {
+const SCHEMAS: Record<string, { title: string }> = {
   web: { title: 'Web' },
   maven: { title: 'Maven' },
   authentication: { title: 'Authentication' }
@@ -36,12 +40,18 @@ const SCHEMAS = {
 const fakeClient = () => ({
   settings: {
     domains: vi.fn(async () => ({ data: ['web', 'maven', 'authentication'] })),
-    schema: vi.fn(async (domain) => ({ data: SCHEMAS[domain] }))
+    schema: vi.fn(async (domain: string) => ({ data: SCHEMAS[domain] }))
   }
 })
 
+/* What the probe hands over: the composable's domains and title lookup. */
+interface Probe {
+  domains: ShallowRef<string[]>
+  titleOf: (domain: string) => string
+}
+
 // A component that uses the composable and hands over what it returns, so a test reads the public result only.
-const probe = (result) => defineComponent({
+const probe = (result: Probe) => defineComponent({
   setup() {
     const { domains, titleOf } = useSettingsDomains()
     result.domains = domains
@@ -51,13 +61,13 @@ const probe = (result) => defineComponent({
 })
 
 const mountProbe = async () => {
-  const result = {}
+  const result = {} as Probe
   const wrapper = mount(probe(result))
   await flushPromises()
   return { result, wrapper }
 }
 
-let wrapper
+let wrapper: { unmount: () => void } | undefined
 afterEach(() => wrapper?.unmount())
 
 describe('useSettingsDomains', () => {

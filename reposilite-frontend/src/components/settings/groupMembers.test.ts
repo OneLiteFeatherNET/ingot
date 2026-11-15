@@ -16,8 +16,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, withCredentialField } from './groupMembers'
+import type { MirrorEntry } from './groupMembers'
 
-const member = (reference, extra = {}) => ({ reference, ...extra })
+const member = (reference: string, extra: Record<string, unknown> = {}): MirrorEntry => ({ reference, ...extra })
 
 describe('the reference of a mirrored entry', () => {
   it('reads the repository id of an entry, and nothing for an entry without one', () => {
@@ -103,7 +104,7 @@ describe('the credential of a member', () => {
     const next = withCredentialField(entry, 'login', 'reposilite-mirror')
 
     expect(next).toEqual(member('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: 'secret', extra: 'kept' } }))
-    expect(entry.authorization.login).toBe('old')
+    expect((entry.authorization as { login: string }).login).toBe('old')
   })
 
   it('gives a member without a credential a loopback one, the only method a group member takes', () => {

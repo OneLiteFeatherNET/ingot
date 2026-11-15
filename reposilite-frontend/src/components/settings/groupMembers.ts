@@ -22,8 +22,15 @@
  * its id. Nothing here touches Vue, so the picker and the editor share the rules.
  */
 
+/* A mirrored entry of a group: the repository it names, and the credential it is fetched with. Other keys are kept as they are. */
+export interface MirrorEntry {
+  reference?: string | number
+  authorization?: Record<string, unknown>
+  [field: string]: unknown
+}
+
 /* The repository id an entry names, or an empty string for an entry that names none. */
-export const referenceOf = (entry) => String(entry?.reference ?? '')
+export const referenceOf = (entry: MirrorEntry | null | undefined): string => String(entry?.reference ?? '')
 
 /* The only method a group member takes: a loopback link to a repository of this instance, with a login and a password. */
 export const LOOPBACK_METHOD = 'LOOPBACK_LINK'
@@ -32,7 +39,7 @@ export const LOOPBACK_METHOD = 'LOOPBACK_LINK'
  * The entry with one field of its credential set to `value`. A member without a credential gets a loopback one. Every other
  * key of the credential and of the entry is kept, and the entry it is given is not changed.
  */
-export const withCredentialField = (entry, field, value) => ({
+export const withCredentialField = (entry: MirrorEntry, field: string, value: unknown): MirrorEntry => ({
   ...entry,
   authorization: {
     method: LOOPBACK_METHOD,
@@ -42,15 +49,15 @@ export const withCredentialField = (entry, field, value) => ({
 })
 
 /* The entries with one more repository at the end, as a bare reference. An empty id, or one already listed, changes nothing. */
-export const addMember = (entries, id) => (id && !entries.some(entry => referenceOf(entry) === id)
+export const addMember = (entries: MirrorEntry[], id: string): MirrorEntry[] => (id && !entries.some(entry => referenceOf(entry) === id)
   ? [...entries, { reference: id }]
   : entries)
 
 /* The entries without the one at `index`. Another entry that names the same repository stays: only the place given is taken out. */
-export const removeMemberAt = (entries, index) => entries.filter((_, position) => position !== index)
+export const removeMemberAt = <T>(entries: T[], index: number): T[] => entries.filter((_, position) => position !== index)
 
 /* The entries with the one at `index` moved by `delta` places. A move past either end changes nothing. */
-export const moveMember = (entries, index, delta) => {
+export const moveMember = <T>(entries: T[], index: number, delta: number): T[] => {
   const target = index + delta
   if (index < 0 || index >= entries.length || target < 0 || target >= entries.length) return entries
   const next = [...entries]
@@ -59,4 +66,4 @@ export const moveMember = (entries, index, delta) => {
 }
 
 /* The repositories that can still be added, in the order they are given. */
-export const choosableMembers = (candidates, entries) => candidates.filter(candidate => !entries.some(entry => referenceOf(entry) === candidate))
+export const choosableMembers = (candidates: string[], entries: MirrorEntry[]): string[] => candidates.filter(candidate => !entries.some(entry => referenceOf(entry) === candidate))

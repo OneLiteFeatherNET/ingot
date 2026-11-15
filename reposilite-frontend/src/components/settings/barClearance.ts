@@ -17,4 +17,4 @@
 /* The space the page keeps free under its last card while the unsaved-changes bar is shown: the bar itself plus a 16px gutter. */
 export const BAR_GUTTER_PX = 16
 
-export const barClearance = (barHeight, visible) => (visible ? barHeight + BAR_GUTTER_PX : 0)
+export const barClearance = (barHeight: number, visible: boolean): number => (visible ? barHeight + BAR_GUTTER_PX : 0)

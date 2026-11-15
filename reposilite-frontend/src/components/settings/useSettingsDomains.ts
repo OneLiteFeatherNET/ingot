@@ -15,8 +15,8 @@ import { settingsTabDomains } from './accessDomains'
 
 const useSettingsDomains = (active = () => true) => {
   const { can, client } = useSession()
-  const domains = shallowRef([])
-  const titles = shallowRef({})
+  const domains = shallowRef<string[]>([])
+  const titles = shallowRef<Record<string, string>>({})
 
   const load = async () => {
     const current = client?.value
@@ -28,7 +28,7 @@ const useSettingsDomains = (active = () => true) => {
     try {
       const names = await settingsDomainNames(current)
       titles.value = await settingsDomainTitles(current)
-      domains.value = settingsTabDomains(names)
+      domains.value = [...settingsTabDomains(names)]
     } catch {
       domains.value = []
       titles.value = {}
@@ -39,7 +39,7 @@ const useSettingsDomains = (active = () => true) => {
 
   return {
     domains,
-    titleOf: (domain) => titles.value[domain] ?? domain
+    titleOf: (domain: string): string => titles.value[domain] ?? domain
   }
 }
 

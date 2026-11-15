@@ -23,17 +23,17 @@ export const settingsClockKey = Symbol('settings-clock')
 
 export const systemClock = () => new Date()
 
-const pad = (value) => String(value).padStart(2, '0')
+const pad = (value: number): string => String(value).padStart(2, '0')
 
 /* ingot-settings-<yyyy-mm-dd>.json, for the local calendar day of `date`. */
-export const settingsFileName = (date) => {
+export const settingsFileName = (date: Date): string => {
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
   return `ingot-settings-${day}.json`
 }
 
 /* The values of the listed domains, copied, in the order they are listed. Anything else in `source` is left out. */
-export const settingsByDomain = (domains, source) => Object.fromEntries(
+export const settingsByDomain = (domains: string[], source: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(
   domains.map(domain => [domain, JSON.parse(JSON.stringify(source[domain] ?? {}))])
 )
 
-export const serializeSettings = (settings) => `${JSON.stringify(settings, null, 2)}\n`
+export const serializeSettings = (settings: unknown): string => `${JSON.stringify(settings, null, 2)}\n`

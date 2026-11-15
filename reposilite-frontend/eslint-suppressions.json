@@ -570,5 +570,31 @@
     "vue/max-attributes-per-line": {
       "count": 2
     }
+  },
+  "src/components/settings/repositoryAccessPorts.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 9
+    }
+  },
+  "src/components/settings/repositoryWizard.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 8
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 7
+    }
+  },
+  "src/components/settings/settingsDiff.test.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/components/settings/useSettingsDomains.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 2
+    }
   }
 }

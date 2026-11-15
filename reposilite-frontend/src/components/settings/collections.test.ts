@@ -16,6 +16,17 @@
 
 import { describe, it, expect } from 'vitest'
 import { collectionsOf, singularOf, entryLayout, summaryOf, filterEntries, validateNewId } from './collections'
+import type { VerticalLayout } from '@jsonforms/core'
+
+/* A node of an entry layout as these tests read it: a group has children, a control has a scope. */
+interface LayoutNode {
+  type: string
+  label?: string
+  scope?: string
+  elements: LayoutNode[]
+}
+
+const nodesOf = (layout: VerticalLayout): LayoutNode[] => layout.elements as unknown as LayoutNode[]
 
 const repositoryItem = {
   type: 'object',
@@ -112,7 +123,7 @@ describe('entryLayout', () => {
   })
 
   it('puts the scalar properties in one General group first', () => {
-    const [general] = entryLayout(repositoryItem).elements
+    const [general] = nodesOf(entryLayout(repositoryItem))
 
     expect(general.type).toBe('Group')
     expect(general.label).toBe('General')
@@ -123,7 +134,7 @@ describe('entryLayout', () => {
   })
 
   it('gives every nested object and array its own control after the General group', () => {
-    const scopes = entryLayout(repositoryItem).elements.slice(1).map(element => element.scope)
+    const scopes = nodesOf(entryLayout(repositoryItem)).slice(1).map(element => element.scope)
 
     expect(scopes).toEqual(['#/properties/storageProvider', '#/properties/limits'])
   })
@@ -139,7 +150,7 @@ describe('entryLayout', () => {
       }
     }
 
-    const [general] = entryLayout(schema).elements
+    const [general] = nodesOf(entryLayout(schema))
 
     expect(general.elements.map(control => control.scope)).toEqual([
       '#/properties/visibility',
@@ -153,13 +164,13 @@ describe('entryLayout', () => {
 
     const layout = entryLayout(schema)
 
-    expect(layout.elements.map(element => element.type)).toEqual(['Control'])
+    expect(nodesOf(layout).map(element => element.type)).toEqual(['Control'])
   })
 
   it('keeps the id when the caller excludes nothing, as a domain form does', () => {
     const layout = entryLayout({ type: 'object', properties: { id: { type: 'string' } } }, { exclude: [] })
 
-    expect(layout.elements[0].elements.map(control => control.scope)).toEqual(['#/properties/id'])
+    expect(nodesOf(layout)[0].elements.map(control => control.scope)).toEqual(['#/properties/id'])
   })
 })
 
@@ -213,7 +224,7 @@ describe('filterEntries', () => {
       { id: 'snapshots', description: 'Nightly builds', tags: ['team-core', 'ci'] },
       { id: 'private', description: 'Internal libraries', tags: ['internal'] }
     ]
-    const ids = (query) => filterEntries(repositories, query).map(item => item.id)
+    const ids = (query: string) => filterEntries(repositories, query).map(item => item.id)
 
     it('matches the description, ignoring case', () => {
       expect(ids('NIGHTLY')).toEqual(['snapshots'])

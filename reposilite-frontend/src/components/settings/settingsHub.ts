@@ -15,6 +15,14 @@
  */
 
 import { collectionsOf } from './collections'
+import type { SettingsSchema } from './collections'
+
+/* One entry of the settings links of the Administration tree: its key, its label and the router location it opens. */
+export interface SettingsLink {
+  key: string
+  label: string
+  to: { name?: string | symbol | null; params?: Record<string, unknown> }
+}
 
 /*
  * The data behind the Overview page of /settings. Both lists read the saved configuration, never the draft: At a glance
@@ -22,20 +30,24 @@ import { collectionsOf } from './collections'
  */
 
 // The settings domain a settings link of the Administration tree edits. The Repositories page edits the maven domain.
-const domainOfLink = (link) => {
-  if (link.to.name === 'settings') return link.to.params?.domain
+const domainOfLink = (link: SettingsLink): string | undefined => {
+  if (link.to.name === 'settings') return link.to.params?.domain as string | undefined
   return link.to.name === 'settings-repositories' ? 'maven' : undefined
 }
 
 // Needs attention: the tree links whose key is in `unsavedKeys` (see unsavedTreeKeys), in the order of the tree, each with
 // the router location it opens.
-const attentionRows = (links, unsavedKeys) => links
+const attentionRows = (links: SettingsLink[], unsavedKeys: string[]) => links
   .filter(link => unsavedKeys.includes(link.key))
   .map(({ key, label, to }) => ({ key, label, to }))
 
 // At a glance: one row per collection of the settings links, with the number of entries the saved settings hold. A domain
 // with one collection is named by its tree entry; with several, each row names the collection after the entry.
-const glanceRows = ({ links, schemas, saved }) => links.flatMap(link => {
+const glanceRows = ({ links, schemas, saved }: {
+  links: SettingsLink[]
+  schemas: Record<string, SettingsSchema | undefined>
+  saved: Record<string, Record<string, unknown> | undefined> | null | undefined
+}) => links.flatMap(link => {
   const domain = domainOfLink(link)
   if (domain === undefined) return []
   const collections = collectionsOf(schemas[domain])
@@ -43,12 +55,12 @@ const glanceRows = ({ links, schemas, saved }) => links.flatMap(link => {
   return collections.map(collection => ({
     key: several ? `${link.key}:${collection.key}` : link.key,
     label: several ? `${link.label}, ${collection.title}` : link.label,
-    count: saved?.[domain]?.[collection.key]?.length ?? 0,
+    count: (saved?.[domain]?.[collection.key] as { length?: number } | undefined)?.length ?? 0,
   }))
 })
 
 // The keys of the tree entries that a domain with an unsaved draft marks. The Repositories page edits the maven domain, so its
 // draft marks that page, and the other domains mark their own settings entry.
-const unsavedTreeKeys = (domains) => domains.map(domain => (domain === 'maven' ? 'page:repositories' : `settings:${domain}`))
+const unsavedTreeKeys = (domains: string[]): string[] => domains.map(domain => (domain === 'maven' ? 'page:repositories' : `settings:${domain}`))
 
 export { attentionRows, glanceRows, unsavedTreeKeys }

@@ -16,17 +16,19 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import { useConfiguration } from '../../store/configuration'
 import { entryLayout } from './collections'
+import type { SettingsSchema } from './collections'
 
 // The configuration store reads the session at import time, which needs no server here.
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 
 /* The repository item of the maven settings, with the storage provider variants as the server describes them. */
-const repositoryItem = {
+const repositoryItem: SettingsSchema = {
   type: 'object',
   title: 'Repository',
   properties: {
@@ -72,7 +74,7 @@ const repositoryItem = {
   }
 }
 
-const mountEntry = (entry) => {
+const mountEntry = (entry: Record<string, unknown>) => {
   const { renderers } = useConfiguration()
   return mount(JsonForms, {
     props: {
@@ -91,7 +93,7 @@ const s3Entry = () => ({
   storageProvider: { type: 's3', bucketName: 'releases', endpoint: 'https://s3.example', accessKey: 'AKIA', secretKey: 'fff', region: 'eu' }
 })
 
-const inputLabelled = (wrapper, title) => wrapper.findAll('input').find((input) => input.element.labels?.[0]?.textContent.trim().startsWith(title))
+const inputLabelled = (wrapper: VueWrapper, title: string) => wrapper.findAll('input').find((input) => input.element.labels?.[0]?.textContent?.trim().startsWith(title)) as DOMWrapper<HTMLInputElement>
 
 describe('secret fields inside the S3 storage provider variant', () => {
   it('masks the Secret Key input with type password', () => {
@@ -122,7 +124,7 @@ describe('secret fields inside the S3 storage provider variant', () => {
   it('masks a secret typed after switching the provider from file system to S3', async () => {
     const wrapper = mountEntry({ id: 'releases', storageProvider: { type: 'fs' } })
 
-    const variantSelect = wrapper.findAll('[id]').find((element) => element.attributes('id').endsWith('-variant'))
+    const variantSelect = wrapper.findAll('[id]').find((element) => element.attributes('id')?.endsWith('-variant')) as DOMWrapper<HTMLSelectElement>
     await variantSelect.setValue('1')
     await inputLabelled(wrapper, 'Secret Key').setValue('fff')
 

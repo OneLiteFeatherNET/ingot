@@ -16,8 +16,14 @@
 
 import { describe, it, expect } from 'vitest'
 import { diffSettings, revertChange } from './settingsDiff'
+import type { SettingsSchema } from './collections'
 
-const SCHEMAS = {
+/* The maven values the revert tests read back, typed for the entries they inspect. */
+type MavenValues = {
+  repositories: { id: string; visibility: string; storageProvider?: unknown }[]
+}
+
+const SCHEMAS: Record<string, SettingsSchema> = {
   maven: {
     type: 'object',
     title: 'Maven',
@@ -75,12 +81,12 @@ const SCHEMAS = {
   }
 }
 
-const fs = (quota) => ({ type: 'fs', quota })
-const s3 = (secretKey, endpoint = 'https://s3.example') => ({ type: 's3', secretKey, endpoint })
+const fs = (quota: string) => ({ type: 'fs', quota })
+const s3 = (secretKey: string, endpoint = 'https://s3.example') => ({ type: 's3', secretKey, endpoint })
 
-const repo = (id, visibility, storageProvider = fs('10GB')) => ({ id, visibility, redeployment: false, storageProvider })
+const repo = (id: string, visibility: string, storageProvider: unknown = fs('10GB')) => ({ id, visibility, redeployment: false, storageProvider })
 
-const savedMaven = (repositories) => ({ maven: { repositories } })
+const savedMaven = (repositories: MavenValues['repositories']) => ({ maven: { repositories } })
 
 describe('diffSettings', () => {
   it('reports nothing when the draft equals the saved state', () => {
@@ -213,10 +219,10 @@ describe('revertChange', () => {
     const draft = savedMaven([repo('releases', 'PRIVATE'), repo('snapshots', 'PUBLIC')])
     const [change] = diffSettings(saved, draft, SCHEMAS)
 
-    const next = revertChange(draft.maven, saved.maven, change)
+    const next = revertChange(draft.maven, saved.maven, change) as MavenValues
 
-    expect(next.repositories.find(entry => entry.id === 'releases').visibility).toBe('PUBLIC')
-    expect(next.repositories.find(entry => entry.id === 'snapshots').visibility, 'the other entry keeps its edit').toBe('PUBLIC')
+    expect(next.repositories.find(entry => entry.id === 'releases')?.visibility).toBe('PUBLIC')
+    expect(next.repositories.find(entry => entry.id === 'snapshots')?.visibility, 'the other entry keeps its edit').toBe('PUBLIC')
   })
 
   it('removes an added entry', () => {
@@ -224,7 +230,7 @@ describe('revertChange', () => {
     const draft = savedMaven([repo('releases', 'PUBLIC'), repo('staging', 'PRIVATE')])
     const [change] = diffSettings(saved, draft, SCHEMAS)
 
-    const next = revertChange(draft.maven, saved.maven, change)
+    const next = revertChange(draft.maven, saved.maven, change) as MavenValues
 
     expect(next.repositories.map(entry => entry.id)).toEqual(['releases'])
   })
@@ -234,7 +240,7 @@ describe('revertChange', () => {
     const draft = savedMaven([repo('releases', 'PUBLIC'), repo('plugins', 'PUBLIC')])
     const [change] = diffSettings(saved, draft, SCHEMAS)
 
-    const next = revertChange(draft.maven, saved.maven, change)
+    const next = revertChange(draft.maven, saved.maven, change) as MavenValues
 
     expect(next.repositories.map(entry => entry.id)).toEqual(['releases', 'snapshots', 'plugins'])
   })
@@ -244,9 +250,9 @@ describe('revertChange', () => {
     const draft = savedMaven([repo('releases', 'PUBLIC', s3('abc'))])
     const [change] = diffSettings(saved, draft, SCHEMAS)
 
-    const next = revertChange(draft.maven, saved.maven, change)
+    const next = revertChange(draft.maven, saved.maven, change) as MavenValues
 
-    expect(next.repositories[0].storageProvider).toEqual(fs('10GB'))
+    expect(next.repositories[0]?.storageProvider).toEqual(fs('10GB'))
   })
 
   it('does not change the draft it is given', () => {
@@ -260,23 +266,23 @@ describe('revertChange', () => {
   })
 
   it('reverts every change one at a time until nothing differs', () => {
-    const saved = {
+    const saved: Record<string, Record<string, unknown>> = {
       maven: { repositories: [repo('releases', 'PUBLIC', fs('10GB')), repo('snapshots', 'PRIVATE')] },
       frontend: { title: 'Ingot', appearance: { primaryColour: '#6750a4' } }
     }
-    const draft = {
+    const draft: Record<string, Record<string, unknown>> = {
       maven: {
         repositories: [repo('releases', 'PRIVATE', s3('abc')), repo('staging', 'PUBLIC')]
       },
       frontend: { title: 'Ingot 2', appearance: { primaryColour: '#ff0000' } }
     }
-    let current = JSON.parse(JSON.stringify(draft))
+    let current: Record<string, Record<string, unknown>> = JSON.parse(JSON.stringify(draft))
 
     for (let guard = 0; guard < 20; guard++) {
       const changes = diffSettings(saved, current, SCHEMAS)
       if (changes.length === 0) break
       const change = changes[0]
-      current = { ...current, [change.domain]: revertChange(current[change.domain], saved[change.domain], change) }
+      current = { ...current, [change.domain]: revertChange(current[change.domain], saved[change.domain], change) ?? {} }
     }
 
     expect(diffSettings(saved, current, SCHEMAS), 'every change was reverted').toEqual([])

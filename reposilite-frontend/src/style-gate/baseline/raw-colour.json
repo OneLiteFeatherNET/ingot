@@ -40,7 +40,7 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/dialog.js",
+    "file": "src/components/settings/dialog.ts",
     "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
     "count": 1
   },
