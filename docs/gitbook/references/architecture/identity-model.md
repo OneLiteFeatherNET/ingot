@@ -75,6 +75,10 @@ The API refuses a change that would leave the instance without a usable administ
 
 Requests, the access check and artifact search all ask the same evaluator for a decision. The evaluator is a pure function of the principal, its teams and its tokens. Keeping one evaluator means one answer to the question "may this identity do this?", whichever part of Ingot asks it.
 
+## Downgrades
+
+The identity database records every policy feature it has been written with, and a build refuses to start when it meets a feature it does not know. A rollback below the release that added this check is not supported once a newer build has written a feature: builds from before that release do not read the feature table, so they cannot refuse the database and would ignore its policy rows. A build from that release or later stops at startup, names each unknown feature in the error log and does not start. Either start a build that knows the feature or restore a database backup taken before the feature was written. Ingot offers no setting that overrides the refusal.
+
 ## Related pages
 
 * [How permissions are evaluated](permission-evaluation.md) explains the order of the decision.
