@@ -5,6 +5,7 @@ package com.reposilite.storage.s3
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Ticker
+import com.reposilite.storage.isMutableStorageKey
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.DelegatingS3Client
 import software.amazon.awssdk.services.s3.S3Client
@@ -21,15 +22,6 @@ import java.time.Duration
 
 /** The longest a cached HEAD answer may be used once a cluster bus is configured, counted from when it was stored. */
 internal const val CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS = 300L
-
-/**
- * Whether an object key names metadata that another instance may overwrite at any time: a `maven-metadata` file with its checksums,
- * or any file inside a `-SNAPSHOT` directory. Such answers are never cached.
- */
-internal fun isMutableS3Key(key: String): Boolean {
-    val segments = key.split('/')
-    return segments.last().startsWith("maven-metadata") || segments.dropLast(1).any { it.endsWith("-SNAPSHOT") }
-}
 
 /**
  * The keys that a write makes stale in the head cache, besides the written key. Every returned key is a prefix: each cached entry
@@ -93,7 +85,7 @@ class CachableS3Client : DelegatingS3Client {
 
     override fun headObject(headObjectRequest: HeadObjectRequest): HeadObjectResponse {
         val key = headObjectRequest.key()
-        if (isMutableS3Key(key)) {
+        if (isMutableStorageKey(key)) {
             return delegate.headObject(headObjectRequest)
         }
         return cache.get(key, { _ -> delegate.headObject(headObjectRequest) })
