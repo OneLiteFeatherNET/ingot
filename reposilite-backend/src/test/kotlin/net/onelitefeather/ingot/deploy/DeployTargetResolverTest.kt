@@ -61,6 +61,29 @@ internal class DeployTargetResolverTest {
     }
 
     @Test
+    fun `the command line accepts worker`() {
+        assertThat(resolve(commandLine = "worker").target).isEqualTo(DeployTarget.WORKER)
+    }
+
+    @Test
+    fun `the system property accepts worker`() {
+        assertThat(resolve(properties = mapOf("ingot.target" to "worker")).target).isEqualTo(DeployTarget.WORKER)
+    }
+
+    @Test
+    fun `the environment variable accepts worker`() {
+        assertThat(resolve(environment = mapOf("INGOT_TARGET" to "worker")).target).isEqualTo(DeployTarget.WORKER)
+    }
+
+    @Test
+    fun `the unknown value message lists all, server and worker as valid values`() {
+        // when / then: the refusal text is unchanged apart from the extended list of valid values
+        assertThatIllegalArgumentException()
+            .isThrownBy { resolve(environment = mapOf("INGOT_TARGET" to "reader")) }
+            .withMessage("Unknown deploy target 'reader' from INGOT_TARGET. Valid values: all, server, worker.")
+    }
+
+    @Test
     fun `the command line beats the system property and the environment variable`() {
         // when: all three sources are set and they disagree
         val resolution = resolve(
