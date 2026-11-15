@@ -17,25 +17,25 @@
 const parser = new DOMParser()
 
 export default function useMetadata() {
-  const groupId = (metadata) =>
+  const groupId = (metadata?: Document): string | null | undefined =>
     metadata
       ?.getElementsByTagName('groupId')[0]
       ?.firstChild
       ?.nodeValue
-  
-  const artifactId = (metadata) =>
+
+  const artifactId = (metadata?: Document): string | null | undefined =>
     metadata
       ?.getElementsByTagName('artifactId')[0]
       ?.firstChild
       ?.nodeValue
-  
-  const versions = (metadata) => {
-    return [...metadata.querySelector('versioning versions').children]
-      ?.map(node => node.firstChild.nodeValue)
+
+  const versions = (metadata: Document): string[] => {
+    return [...(metadata.querySelector('versioning versions') as Element).children]
+      ?.map(node => (node.firstChild as ChildNode).nodeValue as string)
       ?? ['{unknown}']
   }
 
-  const parseMetadata = (source) => {
+  const parseMetadata = (source: string) => {
     const metadata = parser.parseFromString(source, 'text/xml')
     const availableVersions = versions(metadata)
 

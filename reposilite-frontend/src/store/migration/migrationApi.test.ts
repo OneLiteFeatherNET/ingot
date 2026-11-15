@@ -15,19 +15,22 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
+import type { AxiosRequestConfig } from 'axios'
 import { createMigrationApi, reportHref, ApiProblem, MIGRATION_BASE } from './migrationApi'
 
 // A transport that records each call and answers with the given reply. A reply that is an Error is thrown,
 // as an axios error carries its response on `response`.
-const recordingHttp = (reply = { status: 200, data: {} }) => {
-  const request = vi.fn(async () => {
-    if (reply instanceof Error) throw reply
-    return reply
+type Reply = { status: number; data: unknown }
+
+const recordingHttp = (reply: Reply | Error = { status: 200, data: {} }) => {
+  const request = vi.fn<(config: AxiosRequestConfig) => Promise<Reply>>(() => {
+    if (reply instanceof Error) return Promise.reject(reply)
+    return Promise.resolve(reply)
   })
   return { request, calls: () => request.mock.calls.map(([call]) => call) }
 }
 
-const refusal = (status, data) => Object.assign(new Error(`status ${status}`), { response: { status, data } })
+const refusal = (status: number, data: unknown) => Object.assign(new Error(`status ${status}`), { response: { status, data } })
 
 const connection = { url: 'https://nexus.example.test', user: 'importer', password: 'literal-secret' }
 
@@ -113,7 +116,7 @@ describe('the migration API module', () => {
     }))
     const api = createMigrationApi(http)
 
-    const error = await api.createJob({ kind: 'DRY_RUN' }).catch(reason => reason)
+    const error = await api.createJob({ kind: 'DRY_RUN' }).catch((reason: unknown) => reason) as ApiProblem
 
     expect(error).toBeInstanceOf(ApiProblem)
     expect(error.status).toBe(400)
@@ -125,7 +128,7 @@ describe('the migration API module', () => {
     const http = recordingHttp(refusal(403, { status: 403, message: 'The caller is not an instance admin' }))
     const api = createMigrationApi(http)
 
-    const error = await api.listJobs().catch(reason => reason)
+    const error = await api.listJobs().catch((reason: unknown) => reason) as ApiProblem
 
     expect(error.status).toBe(403)
     expect(error.detail).toBe('The caller is not an instance admin')
@@ -135,7 +138,7 @@ describe('the migration API module', () => {
     const http = recordingHttp(new Error('socket hang up'))
     const api = createMigrationApi(http)
 
-    const error = await api.getJob(1).catch(reason => reason)
+    const error = await api.getJob(1).catch((reason: unknown) => reason) as ApiProblem
 
     expect(error.status).toBe(0)
     expect(error.title).toBe('Network error')
@@ -146,7 +149,7 @@ describe('the migration API module', () => {
     const http = recordingHttp(refusal(401, { status: 401, title: 'Unauthorized' }))
     const api = createMigrationApi(http, { onUnauthorized })
 
-    const error = await api.getJob(2).catch(reason => reason)
+    const error = await api.getJob(2).catch((reason: unknown) => reason) as ApiProblem
 
     expect(onUnauthorized, 'the sign in flow is started once').toHaveBeenCalledTimes(1)
     expect(error.status).toBe(401)

@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { createAnnouncer, ANNOUNCE_INTERVAL_MS } from './announcer'
 
 // Times are given by the test, never read from the system clock.
-const at = (seconds) => seconds * 1000
+const at = (seconds: number) => seconds * 1000
 
 describe('the progress announcer', () => {
   it('announces the first state it is offered', () => {

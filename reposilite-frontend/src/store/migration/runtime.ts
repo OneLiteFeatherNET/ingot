@@ -28,12 +28,12 @@ const MIGRATION_RUNTIME = Symbol('migration-runtime')
 const browserRuntime = () => ({
   now: () => Date.now(),
   timers: {
-    setTimeout: (callback, ms) => window.setTimeout(callback, ms),
-    clearTimeout: (handle) => window.clearTimeout(handle),
+    setTimeout: (callback: () => void, ms: number): number => window.setTimeout(callback, ms),
+    clearTimeout: (handle: unknown): void => window.clearTimeout(handle as number),
   },
   visibility: {
     isHidden: () => document.visibilityState === 'hidden',
-    subscribe: (listener) => {
+    subscribe: (listener: () => void) => {
       document.addEventListener('visibilitychange', listener)
       return () => document.removeEventListener('visibilitychange', listener)
     },

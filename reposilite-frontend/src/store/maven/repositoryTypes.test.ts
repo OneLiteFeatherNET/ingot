@@ -345,7 +345,7 @@ describe('the editor of a repository type', () => {
 })
 
 describe('blank entries of a repository', () => {
-  const withBlanks = (type, proxied) => ({ id: 'all', visibility: 'PUBLIC', type, proxied })
+  const withBlanks = (type: string | undefined, proxied: Array<{ reference: string }> | undefined) => ({ id: 'all', visibility: 'PUBLIC', type, proxied })
 
   it('removes the blank entries of a repository that gets a typed group, and keeps the order of the others', () => {
     const entry = withBlanks(undefined, [{ reference: 'releases' }, { reference: '' }, { reference: '   ' }, { reference: 'snapshots' }])

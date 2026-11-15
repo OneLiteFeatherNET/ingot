@@ -26,13 +26,15 @@
  * one read happens at once when it is shown again.
  */
 
+import type { PollerOptions, PollFailure } from './types'
+
 const FIRST_INTERVAL_MS = 2000
 const MAX_INTERVAL_MS = 15000
 const GROWTH = 1.5
 
-const sameAnswer = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+const sameAnswer = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 
-const isRefusal = (status) => status >= 400 && status < 500
+const isRefusal = (status: number): boolean => status >= 400 && status < 500
 
 /*
  * options:
@@ -43,7 +45,7 @@ const isRefusal = (status) => status >= 400 && status < 500
  * - isFinished(answer) true when the job will not change any more
  * - onUpdate, onFinished, onError, onUnauthorized, onStopped: the outcome of each read
  */
-const createPoller = ({
+const createPoller = <T>({
   fetch,
   timers,
   visibility,
@@ -54,13 +56,13 @@ const createPoller = ({
   onError = () => {},
   onUnauthorized = () => {},
   onStopped = () => {},
-}) => {
+}: PollerOptions<T>): { start: () => void; stop: () => void } => {
   let running = false
   let inFlight = false
   let interval = FIRST_INTERVAL_MS
-  let previous
-  let handle = null
-  let unsubscribe = null
+  let previous: T | undefined
+  let handle: unknown = null
+  let unsubscribe: (() => void) | null = null
 
   const cancelWait = () => {
     if (handle !== null) {
@@ -79,20 +81,20 @@ const createPoller = ({
   const waitThenRead = () => {
     cancelWait()
     if (!running || visibility.isHidden()) return
-    handle = timers.setTimeout(read, interval)
+    handle = timers.setTimeout(() => void read(), interval)
   }
 
   async function read() {
     handle = null
     if (!running || inFlight) return
     inFlight = true
-    let answer
+    let answer: T
     try {
       answer = await fetch()
     } catch (error) {
       inFlight = false
       if (!running) return
-      const status = error?.status ?? 0
+      const status = (error as PollFailure | null | undefined)?.status ?? 0
       if (status === 401) {
         finish()
         onUnauthorized(error)
@@ -133,10 +135,10 @@ const createPoller = ({
         if (visibility.isHidden()) {
           cancelWait()
         } else if (!inFlight) {
-          read()
+          void read()
         }
       })
-      read()
+      void read()
     },
     stop() {
       finish()

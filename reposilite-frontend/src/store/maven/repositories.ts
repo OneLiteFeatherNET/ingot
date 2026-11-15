@@ -27,10 +27,26 @@
 export const TAG_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/
 export const MAX_TAGS = 10
 
+export interface SearchCriteria {
+  text?: string
+  tags?: string[]
+}
+
+export interface ParsedSearch {
+  text: string
+  tags: string[]
+}
+
+export interface Searchable {
+  id?: string | null
+  description?: string | null
+  tags?: unknown
+}
+
 const TAG_HELP = 'Use lower case letters, digits and hyphens, starting with a letter or digit, up to 32 characters.'
 
 /* The message for a tag that may be added to `existing`, or an empty string when it may. */
-export const validateTag = (tag, existing = []) => {
+export const validateTag = (tag: string, existing: readonly string[] = []): string => {
   if (tag === '') return 'Enter a tag.'
   if (!TAG_PATTERN.test(tag)) return TAG_HELP
   if (existing.length >= MAX_TAGS) return `A repository takes at most ${MAX_TAGS} tags.`
@@ -42,10 +58,10 @@ export const validateTag = (tag, existing = []) => {
  * A search box reads `tag:name` tokens as tags, and every other word as text. Tags are compared
  * in lower case, as they are stored. A `tag:` without a name is ignored rather than matching nothing.
  */
-export const parseSearch = (query = '') => {
+export const parseSearch = (query = ''): ParsedSearch => {
   const words = String(query).trim().split(/\s+/).filter(word => word !== '')
-  const tags = []
-  const text = []
+  const tags: string[] = []
+  const text: string[] = []
   for (const word of words) {
     const tag = /^tag:(.*)$/i.exec(word)
     if (!tag) {
@@ -58,7 +74,7 @@ export const parseSearch = (query = '') => {
 }
 
 /* Whether one repository (or entry) matches the criteria: the text in id, description or tags, and every tag. */
-export const matchesSearch = (item, { text = '', tags = [] } = {}) => {
+export const matchesSearch = (item: Searchable | null | undefined, { text = '', tags = [] }: SearchCriteria = {}): boolean => {
   const needle = text.trim().toLowerCase()
   const itemTags = Array.isArray(item?.tags) ? item.tags.map(tag => String(tag).toLowerCase()) : []
   const fields = [item?.id, item?.description, ...itemTags]
@@ -68,17 +84,17 @@ export const matchesSearch = (item, { text = '', tags = [] } = {}) => {
   return textMatches && tagsMatch
 }
 
-const byId = (left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+const byId = (left: { id: string }, right: { id: string }): number => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
 
 /* The repositories that match, sorted by id. The list it is given is left as it is. */
-export const filterRepositories = (repositories, criteria = {}) =>
+export const filterRepositories = <T extends { id: string }>(repositories: T[], criteria: SearchCriteria = {}): T[] =>
   repositories
     .filter(repository => matchesSearch(repository, criteria))
     .sort(byId)
 
 /* Every tag with the number of repositories that carry it, the most used first and then by name. */
-export const tagUsage = (repositories) => {
-  const counts = new Map()
+export const tagUsage = (repositories: { tags?: readonly string[] | null; [field: string]: unknown }[]): { tag: string; count: number }[] => {
+  const counts = new Map<string, number>()
   for (const repository of repositories) {
     for (const tag of new Set(repository.tags ?? [])) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1)
@@ -90,5 +106,5 @@ export const tagUsage = (repositories) => {
 }
 
 /* Every tag used by at least one of the repositories, sorted by name. */
-export const tagsInUse = (repositories) =>
+export const tagsInUse = (repositories: { tags?: string[]; [field: string]: unknown }[]): string[] =>
   [...new Set(repositories.flatMap(repository => repository.tags ?? []))].sort()

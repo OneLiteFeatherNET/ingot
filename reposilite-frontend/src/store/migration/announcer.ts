@@ -26,18 +26,18 @@
 const ANNOUNCE_INTERVAL_MS = 10000
 const ANNOUNCE_STEP_POINTS = 10
 
-const wordsOf = (state) => String(state ?? 'unknown').toLowerCase()
+const wordsOf = (state: string | null | undefined): string => String(state ?? 'unknown').toLowerCase()
 
-const textOf = (state, percent) => (percent === null
+const textOf = (state: string | null | undefined, percent: number | null): string => (percent === null
   ? `Import ${wordsOf(state)}.`
   : `Import ${wordsOf(state)}, ${percent} percent.`)
 
-const createAnnouncer = ({ intervalMs = ANNOUNCE_INTERVAL_MS, stepPoints = ANNOUNCE_STEP_POINTS } = {}) => {
+const createAnnouncer = ({ intervalMs = ANNOUNCE_INTERVAL_MS, stepPoints = ANNOUNCE_STEP_POINTS }: { intervalMs?: number; stepPoints?: number } = {}) => {
   // The last text that was spoken. Offers that are held back leave it as it was.
-  let spoken = null
+  let spoken: { state: string | null | undefined; percent: number | null; at: number } | null = null
 
   return {
-    offer({ state, percent = null, now }) {
+    offer({ state, percent = null, now }: { state: string | null | undefined; percent?: number | null; now: number }): string | null {
       if (spoken === null) {
         spoken = { state, percent, at: now }
         return textOf(state, percent)

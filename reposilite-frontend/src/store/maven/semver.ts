@@ -1,7 +1,7 @@
-const createSemverComparator = (reversed, filter, toSemver) => {
+const createSemverComparator = <T>(reversed: boolean, filter: (a: T, b: T) => boolean, toSemver: (item: T) => string) => {
   // Semver sorting
   // ~ https://github.com/substack/semver-compare/issues/1#issuecomment-594765531
-  const compare = (rawA, rawB) => {
+  const compare = (rawA: string, rawB: string): number => {
     const a = rawA.split('-')
     const b = rawB.split('-')
     const pa = a[0].split('.')
@@ -21,7 +21,7 @@ const createSemverComparator = (reversed, filter, toSemver) => {
     return !a[1] && b[1] ? 1 : (a[1] && !b[1] ? -1 : 0)
   }
 
-  return (a, b) => {
+  return (a: T, b: T): number => {
     if (!filter(a, b)) return 0
     const result = compare(toSemver(a), toSemver(b))
     return reversed ? -result : result

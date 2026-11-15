@@ -20,7 +20,7 @@ import { derivedTypeOf, effectiveTypeOf } from './repositoryTypes'
 // The same table as RepositoryTypeTest in the backend: local references, external references, derived type.
 const LOCAL = 'releases'
 const EXTERNAL = 'https://repo.example.net/maven'
-const withReferences = (references) => ({ id: 'all', proxied: references.map(reference => ({ reference })) })
+const withReferences = (references: string[]) => ({ id: 'all', proxied: references.map((reference: string) => ({ reference })) })
 
 describe('derived type of an untyped repository, as the server derives it', () => {
   it.each([

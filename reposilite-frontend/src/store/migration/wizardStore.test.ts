@@ -59,7 +59,7 @@ describe('the wizard store', () => {
     store.setConnection({ url: 'https://nexus.example.test', user: 'importer', passwordMode: 'literal', version: '3.70.1' })
 
     expect(JSON.stringify(store.state), 'the reactive state holds no password').not.toContain(PASSWORD)
-    expect(store.state.connection.url).toBe('https://nexus.example.test')
+    expect(store.state.connection?.url).toBe('https://nexus.example.test')
   })
 
   it('keeps a secret reference as text, because it is not a secret', () => {
@@ -67,7 +67,7 @@ describe('the wizard store', () => {
 
     store.setConnection({ url: 'https://nexus.example.test', user: 'importer', passwordMode: 'reference', reference: '${env:NEXUS_PASSWORD}' })
 
-    expect(store.state.connection.reference).toBe('${env:NEXUS_PASSWORD}')
+    expect(store.state.connection?.reference).toBe('${env:NEXUS_PASSWORD}')
   })
 
   it('drops the remembered password when the wizard is reset', () => {
@@ -109,7 +109,7 @@ describe('the wizard store', () => {
     store.upsertJob({ id: 3, kind: 'VERIFY', status: 'QUEUED' })
 
     expect(store.state.jobs.map(job => job.id)).toEqual([1, 2, 3])
-    expect(store.state.jobs.find(job => job.id === 2).status).toBe('COMPLETED')
+    expect(store.state.jobs.find(job => job.id === 2)?.status).toBe('COMPLETED')
   })
 
   it('starts with every page value empty', () => {
