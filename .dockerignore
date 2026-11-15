@@ -43,6 +43,7 @@ reposilite-test
 reposilite-plugins/*
 !reposilite-plugins/build.gradle.kts
 !reposilite-plugins/elasticsearch-plugin
+!reposilite-plugins/lucene-plugin
 !reposilite-plugins/meilisearch-plugin
 !reposilite-plugins/nexus-import-plugin
 !reposilite-plugins/opensearch-plugin
