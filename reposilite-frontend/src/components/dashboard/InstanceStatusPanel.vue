@@ -14,17 +14,24 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { AxiosResponse } from 'axios'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import type { STATUS } from '../../store/palette'
+import type { components } from '../../types/api'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
 import FailuresSheet from './FailuresSheet.vue'
 import InstanceHealthRow from './InstanceHealthRow.vue'
 import StatTile from './StatTile.vue'
+
+type InstanceStatus = components['schemas']['InstanceStatusResponse']
+// The reserved state names of the palette, as the tiles and rows show them.
+type Tone = keyof typeof STATUS
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
 // carry a second's worth of news, and the dashboard is open on an operator's screen for
@@ -35,16 +42,21 @@ const POLL_INTERVAL_MS = 5000
 // Maintenance page, so the banner links there for them only.
 const MAINTENANCE_NODE = 'ingot.admin.maintenance'
 
-const emit = defineEmits(['cluster'])
+const emit = defineEmits<{
+  cluster: [cluster: components['schemas']['ClusterStatusResponse'] | null]
+}>()
 const { client, can } = useSession()
 const canMaintain = computed(() => can(MAINTENANCE_NODE))
-const instanceStatus = ref(null)
+const instanceStatus = ref<InstanceStatus | null>(null)
 const failed = ref(false)
-let timer = null
+let timer: ReturnType<typeof setInterval> | undefined
+
+// The readers below run only once the status has arrived: the template draws them under v-else, after that check.
+const loaded = (): InstanceStatus => instanceStatus.value as InstanceStatus
 
 const requestStatus = () =>
   client.value.status.instance()
-    .then(response => {
+    .then((response: AxiosResponse<InstanceStatus>) => {
       instanceStatus.value = response.data
       failed.value = false
       // The trends below draw one series per instance from the same answer, so they get the
@@ -80,7 +92,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
-const prettyUptime = (millis) => {
+const prettyUptime = (millis: number): string => {
   const seconds = Math.floor(millis / 1000)
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
@@ -92,13 +104,13 @@ const prettyUptime = (millis) => {
   return `${seconds}s`
 }
 
-const ratio = (used, max) => {
+const ratio = (used: number, max: number): number | null => {
   const limit = Number(max)
   return Number.isFinite(limit) && limit > 0 ? Number(used) / limit : null
 }
 
 // The heap meter says what it divides by: the heap in use of the largest heap the JVM may use.
-const heapMeterText = (used, max) => {
+const heapMeterText = (used: number, max: number): string => {
   const share = ratio(used, max)
   const percent = share === null ? '' : `, ${Math.round(share * 100)} percent`
   return `${Number(used).toFixed(1)} of ${Number(max)} MB maximum heap in use${percent}`
@@ -107,7 +119,7 @@ const heapMeterText = (used, max) => {
 // Heap in use is the memory of this JVM that is not free, including garbage not yet collected. The
 // limit is the maximum heap, not free memory, so the card says "maximum heap" and not "available".
 const memory = computed(() => {
-  const status = instanceStatus.value
+  const status = loaded()
   return {
     value: `${Number(status.usedMemory).toFixed(1)} MB`,
     detail: `of ${Number(status.maxMemory)} MB maximum heap`,
@@ -119,15 +131,15 @@ const memory = computed(() => {
 // Live threads are counted by the JVM. No limit in the API counts the same threads as the pool sizes,
 // so the card shows the count with no bar and no "of N".
 const threads = computed(() => ({
-  value: `${instanceStatus.value.usedThreads}`,
+  value: `${loaded().usedThreads}`,
   detail: 'Threads in this JVM'
 }))
 
 // The backend reports the newest published release next to the running one. `<unknown>` is what it
 // sends when the check could not run, so there is no comparison to make. Equal versions say the running
 // build is the same as the latest release; they do not say it is up to date, which the comparison cannot show.
-const versionState = computed(() => {
-  const { version, latestVersion } = instanceStatus.value
+const versionState = computed<{ status: Tone | null, label: string }>(() => {
+  const { version, latestVersion } = loaded()
 
   if (!latestVersion || latestVersion === '<unknown>') {
     return { status: null, label: '' }
@@ -138,14 +150,14 @@ const versionState = computed(() => {
 })
 
 // The subline says what the count covers. It names the number only where it is the answer.
-const failureState = (count, scope = '') => count === 0
+const failureState = (count: number, scope = ''): { status: Tone, label: string } => count === 0
   ? { status: 'good', label: `None since the last restart${scope}` }
   : { status: 'critical', label: `${count} distinct since the last restart${scope}` }
 
-const failures = computed(() => failureState(instanceStatus.value.failuresCount))
+const failures = computed(() => failureState(loaded().failuresCount))
 
 // Health of each instance, as the row words it. The cluster summary words the worst one as a statement.
-const ROW_HEALTH = { up: 'Up', down: 'Down' }
+const ROW_HEALTH: Record<string, string> = { up: 'Up', down: 'Down' }
 
 // The cluster view exists only when the status carries instances. An empty list has nothing to
 // summarise, so it shows nothing, and the single-instance tiles stay as they are.
@@ -170,7 +182,7 @@ const clusterView = computed(() => {
       detail: 'Live threads on all instances'
     },
     failures: { value: `${summary.failuresCount}`, ...failuresState },
-    uptime: prettyUptime(summary.uptime),
+    uptime: prettyUptime(summary.uptime ?? 0),
     version: summary.version.mixed
       ? { value: 'mixed', detail: `Versions: ${summary.version.versions.join(', ')}` }
       : { value: summary.version.label, detail: 'Same on every instance' },
@@ -193,7 +205,7 @@ const clusterView = computed(() => {
 // The tile opens the list only when there is something in it. An empty tile has no action, so it
 // is not announced as a button either.
 const failuresOpen = ref(false)
-const hasFailures = computed(() => instanceStatus.value?.failuresCount > 0)
+const hasFailures = computed(() => (instanceStatus.value?.failuresCount ?? 0) > 0)
 const openFailures = () => {
   if (hasFailures.value) failuresOpen.value = true
 }
@@ -202,7 +214,7 @@ const openFailures = () => {
 // environment forces it, and a stored state covers every instance of a cluster. Who changed it and when
 // are not in the status; the audit log holds them.
 const readOnlyNote = computed(() => {
-  const status = instanceStatus.value
+  const status = loaded()
   if (status.readOnlySource === 'environment') {
     return 'Set by INGOT_READ_ONLY on this instance. Only this instance refuses writes.'
   }

@@ -15,10 +15,10 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import StatTile from './StatTile.vue'
 
-const meterOf = (wrapper) => wrapper.find('[role="meter"]')
+const meterOf = (wrapper: VueWrapper) => wrapper.find('[role="meter"]')
 
 describe('StatTile meter', () => {
   it('reports a value above the limit as the full meter', () => {

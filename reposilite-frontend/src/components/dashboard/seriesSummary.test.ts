@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { summariseSeries } from './seriesSummary'
 
-const format = (value) => `${value} MB`
+const format = (value: number) => `${value} MB`
 
 describe('summariseSeries', () => {
   it('states the latest and the highest value of a series', () => {
@@ -34,7 +34,7 @@ describe('summariseSeries', () => {
   it('takes the latest value by time, not by position in the array', () => {
     const [summary] = summariseSeries(
       [{ name: 'Used threads', data: [[3000, 7], [1000, 4]] }],
-      (value) => `${value}`
+      (value: number) => `${value}`
     )
 
     expect(summary, 'the last reading in time is the latest, whatever order the data came in').toBe(

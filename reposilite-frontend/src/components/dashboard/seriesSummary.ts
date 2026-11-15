@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
+/** A line of the chart: a name and its `[x, y]` points. */
+export interface Series {
+  name: string
+  data: [number, number][]
+}
+
 /**
  * One sentence per series, for readers who cannot see the canvas: the newest reading and the
  * highest one. Points are `[x, y]` pairs, and `x` is time, so "latest" is the point with the
  * largest `x` rather than the last one in the array.
  *
- * @param {{ name: string, data: [number, number][] }[]} series
- * @param {(value: number) => string} format
- * @returns {string[]}
  */
-export const summariseSeries = (series, format) =>
+export const summariseSeries = (series: Series[], format: (value: number) => string): string[] =>
   series.map(({ name, data }) => {
     if (data.length === 0) return `${name}: no data`
 

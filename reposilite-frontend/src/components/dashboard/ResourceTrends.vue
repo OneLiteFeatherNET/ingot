@@ -14,11 +14,15 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
 import { createErrorToast } from '../../helpers/toast'
+import type { components } from '../../types/api'
+import type { Series } from './seriesSummary'
 import ChartCard from './ChartCard.vue'
+
+type StatusSnapshot = components['schemas']['StatusSnapshot']
 
 const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue'))
 
@@ -26,17 +30,16 @@ const POLL_INTERVAL_MS = 30000
 
 // Set when a message bus is configured: the instances of the cluster, each with its own samples.
 // Without one the charts keep drawing the local history.
-const props = defineProps({
-  cluster: {
-    type: Object,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  cluster?: components['schemas']['ClusterStatusResponse'] | null
+}>(), {
+  cluster: null
 })
 
 const { client } = useSession()
-const snapshots = ref(null)
+const snapshots = ref<StatusSnapshot[] | null>(null)
 const failed = ref(false)
-let timer = null
+let timer: ReturnType<typeof setInterval> | undefined
 
 const requestSnapshots = () =>
   client.value.status.snapshots()
@@ -75,23 +78,23 @@ onBeforeUnmount(() => clearInterval(timer))
  */
 const instances = computed(() => props.cluster?.instances ?? null)
 
-const seriesPerInstance = (key) => instances.value.map(instance => ({
+const seriesPerInstance = (key: 'memory' | 'threads'): Series[] => (instances.value ?? []).map(instance => ({
   name: instance.id,
-  data: instance.samples.map(sample => [sample.at, sample[key]])
+  data: instance.samples.map((sample): [number, number] => [sample.at, sample[key]])
 }))
 
-const memorySeries = computed(() => instances.value
+const memorySeries = computed<Series[]>(() => instances.value
   ? seriesPerInstance('memory')
   : [{
     name: 'Used memory',
-    data: (snapshots.value ?? []).map(record => [record.at, record.memory])
+    data: (snapshots.value ?? []).map((record): [number, number] => [record.at, record.memory])
   }])
 
-const threadsSeries = computed(() => instances.value
+const threadsSeries = computed<Series[]>(() => instances.value
   ? seriesPerInstance('threads')
   : [{
     name: 'Live threads',
-    data: (snapshots.value ?? []).map(record => [record.at, record.threads])
+    data: (snapshots.value ?? []).map((record): [number, number] => [record.at, record.threads])
   }])
 
 // A failed first request ends the placeholders and shows the error. A failure after data has

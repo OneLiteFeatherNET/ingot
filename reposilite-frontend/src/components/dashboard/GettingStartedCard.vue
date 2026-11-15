@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
@@ -23,6 +23,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
+import type { ChecklistItem, FrontendSettings, MavenRepository } from './gettingStarted'
 import {
   checklistItems,
   checklistProgress,
@@ -57,11 +58,13 @@ const acknowledgedPublic = ref(readAcknowledgedPublicIds())
 const reviewOpen = ref(false)
 
 // Null until the data it stands for has arrived. The checklist waits for all three before it draws.
-const repositories = computed(() => {
-  const saved = configuration.savedConfiguration('maven')
+// The saved domains are untyped records in the configuration store; the fields read here are named by the types above.
+const repositories = computed<MavenRepository[] | null>(() => {
+  const saved = configuration.savedConfiguration('maven') as { repositories?: MavenRepository[] } | undefined
   return saved ? (saved.repositories ?? []) : null
 })
-const frontend = computed(() => configuration.savedConfiguration('frontend') ?? null)
+const frontend = computed<FrontendSettings | null>(() =>
+  (configuration.savedConfiguration('frontend') as FrontendSettings | undefined) ?? null)
 const tokens = computed(() => (tokenStore.loaded.value ? tokenStore.tokens.value : null))
 
 const items = computed(() => checklistItems({
@@ -78,15 +81,15 @@ const statusText = computed(() => (progress.value.done === progress.value.total
   ? 'All steps are done.'
   : `${progress.value.done} of ${progress.value.total} steps done.`))
 
-const hrefOf = (item) => (item.action.to ? router.resolve(item.action.to).href : undefined)
+const hrefOf = (item: ChecklistItem) => (item.action.to ? router.resolve(item.action.to).href : undefined)
 
 // A step either opens its dialog or goes to the place that completes it.
-const activate = (item) => {
+const activate = (item: ChecklistItem) => {
   if (item.action.dialog === 'public-repositories') {
     reviewOpen.value = true
     return
   }
-  router.push(item.action.to)
+  if (item.action.to) router.push(item.action.to)
 }
 
 // The confirmed set is the public ids as they are at this moment, so a later change brings the step back.

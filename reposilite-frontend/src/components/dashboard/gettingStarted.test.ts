@@ -30,8 +30,15 @@ import {
   readAcknowledgedPublicIds,
   saveAcknowledgedPublicIds
 } from './gettingStarted'
+import type { ChecklistInput, ChecklistItem, MavenRepository } from './gettingStarted'
+import type { Token } from '../../store/tokens'
 
-const DEFAULT_REPOS = [
+// The saved repositories carry a description besides the fields the checklist reads.
+interface RepositoryFixture extends MavenRepository {
+  description?: string
+}
+
+const DEFAULT_REPOS: RepositoryFixture[] = [
   { id: 'releases', visibility: 'PUBLIC' },
   { id: 'snapshots', visibility: 'PUBLIC' },
   { id: 'private', visibility: 'PRIVATE' }
@@ -40,19 +47,23 @@ const DEFAULT_REPOS = [
 const CUSTOMISED = { title: 'Example Network', organizationLogo: 'https://example.net/logo.png' }
 const STOCK = { title: DEFAULT_TITLE, organizationLogo: DEFAULT_LOGO }
 
-const token = (name, identifiers) => ({
+const token = (name: string, identifiers: string[]): Token => ({
   name,
   routes: identifiers.map(identifier => ({ path: '/releases', permission: { identifier } }))
 })
 
-const itemsFor = (overrides = {}) => checklistItems({
+const itemsFor = (overrides: Partial<ChecklistInput> = {}): ChecklistItem[] => checklistItems({
   repositories: DEFAULT_REPOS,
   tokens: [],
   frontend: STOCK,
   ...overrides
 })
 
-const doneOf = (items, key) => items.find(item => item.key === key).done
+const doneOf = (items: ChecklistItem[], key: string): boolean => {
+  const item = items.find(entry => entry.key === key)
+  if (!item) throw new Error(`no checklist step named ${key}`)
+  return item.done
+}
 
 describe('getting started checklist', () => {
   it('lists the four steps of a first setup in order', () => {
@@ -65,7 +76,7 @@ describe('getting started checklist', () => {
   })
 
   it('marks the repository step done once a repository outside the defaults exists', () => {
-    const repositories = [...DEFAULT_REPOS, { id: 'team', visibility: 'PRIVATE' }]
+    const repositories: RepositoryFixture[] = [...DEFAULT_REPOS, { id: 'team', visibility: 'PRIVATE' }]
     expect(doneOf(itemsFor({ repositories }), 'repository')).toBe(true)
   })
 
@@ -102,13 +113,13 @@ describe('getting started checklist', () => {
   })
 
   it('marks the public review step done when no repository is public', () => {
-    const repositories = [{ id: 'team', visibility: 'PRIVATE' }]
+    const repositories: RepositoryFixture[] = [{ id: 'team', visibility: 'PRIVATE' }]
     expect(doneOf(itemsFor({ repositories }), 'public-review')).toBe(true)
   })
 
   it('opens the review dialog from the public review step instead of a route', () => {
     const step = itemsFor().find(item => item.key === 'public-review')
-    expect(step.action).toEqual({ label: 'Review', dialog: 'public-repositories' })
+    expect(step?.action).toEqual({ label: 'Review', dialog: 'public-repositories' })
   })
 
   it('reports nothing as done while the settings and tokens have not loaded', () => {
@@ -130,9 +141,9 @@ describe('getting started checklist', () => {
 })
 
 describe('public repository review', () => {
-  const PUBLIC_A = { id: 'mirror', visibility: 'PUBLIC', description: 'Mirror of upstream' }
-  const PUBLIC_B = { id: 'alpha', visibility: 'PUBLIC', description: '' }
-  const PRIVATE = { id: 'private', visibility: 'PRIVATE' }
+  const PUBLIC_A: RepositoryFixture = { id: 'mirror', visibility: 'PUBLIC', description: 'Mirror of upstream' }
+  const PUBLIC_B: RepositoryFixture = { id: 'alpha', visibility: 'PUBLIC', description: '' }
+  const PRIVATE: RepositoryFixture = { id: 'private', visibility: 'PRIVATE' }
 
   it('lists the public repositories sorted by id, whatever order the server sends them in', () => {
     expect(publicRepositories([PRIVATE, PUBLIC_A, PUBLIC_B]).map(repository => repository.id)).toEqual(['alpha', 'mirror'])
@@ -165,7 +176,7 @@ describe('public repository review', () => {
   })
 
   it('returns to to do when a repository becomes public after the acknowledgement', () => {
-    const becamePublic = [PUBLIC_A, { id: 'private', visibility: 'PUBLIC' }]
+    const becamePublic: RepositoryFixture[] = [PUBLIC_A, { id: 'private', visibility: 'PUBLIC' }]
     expect(isPublicReviewDone(becamePublic, ['mirror'])).toBe(false)
   })
 
@@ -211,13 +222,14 @@ describe('public repository acknowledgement storage', () => {
 })
 
 // A storage that behaves like localStorage, with a switch to make every access throw, as a locked-down browser does.
-const memoryStorage = ({ broken = false } = {}) => {
-  const values = new Map()
-  const guard = () => { if (broken) throw new Error('storage is disabled') }
+const memoryStorage = ({ broken = false }: { broken?: boolean } = {}): Storage => {
+  const values = new Map<string, string>()
+  const guard = (): void => { if (broken) throw new Error('storage is disabled') }
+  // Only the two methods the checklist calls are implemented, so the fake is cast to the browser type.
   return {
-    getItem: (key) => { guard(); return values.has(key) ? values.get(key) : null },
-    setItem: (key, value) => { guard(); values.set(key, String(value)) }
-  }
+    getItem: (key: string) => { guard(); return values.get(key) ?? null },
+    setItem: (key: string, value: string) => { guard(); values.set(key, String(value)) }
+  } as Storage
 }
 
 describe('checklist dismissal', () => {

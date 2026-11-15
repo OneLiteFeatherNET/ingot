@@ -24,7 +24,7 @@ const RELATIVE_FORMAT = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
 // Anything closer than this reads as "now" rather than as a count of seconds.
 const JUST_NOW_SECONDS = 5
 
-const UNITS = [
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['day', 86400],
   ['hour', 3600],
   ['minute', 60],
@@ -32,7 +32,7 @@ const UNITS = [
 ]
 
 /** "3 minutes ago", counted in the largest unit that fits. */
-export const relativeTime = (iso, now) => {
+export const relativeTime = (iso: string, now: number): string => {
   const seconds = Math.round((Date.parse(iso) - now) / 1000)
   if (Math.abs(seconds) < JUST_NOW_SECONDS) {
     return 'just now'
@@ -40,10 +40,10 @@ export const relativeTime = (iso, now) => {
 
   const [unit, size] = UNITS.find(([, unitSize], index) =>
     Math.abs(seconds) >= unitSize || index === UNITS.length - 1
-  )
+  ) ?? UNITS[UNITS.length - 1]
   return RELATIVE_FORMAT.format(Math.round(seconds / size), unit)
 }
 
 /** "2026-10-15 11:59:30 UTC", the tooltip that gives the exact moment. */
-export const absoluteTime = (iso) =>
+export const absoluteTime = (iso: string): string =>
   iso.replace('T', ' ').replace(/(\.\d+)?Z$/, ' UTC')

@@ -16,10 +16,21 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { DOMWrapper } from '@vue/test-utils'
 import ResourceTrends from './ResourceTrends.vue'
+import type { Series } from './seriesSummary'
+import type { components } from '../../types/api'
 
-const session = vi.hoisted(() => ({ client: null }))
+type StatusSnapshot = components['schemas']['StatusSnapshot']
+type ClusterStatus = components['schemas']['ClusterStatusResponse']
+type ClusterInstance = components['schemas']['ClusterInstanceResponse']
+// The snapshot request answers with the samples in its data field.
+type Snapshots = () => Promise<{ data: StatusSnapshot[] }>
+type StatusClient = { status: { instance: () => void; snapshots: Snapshots } }
+
+const session: { client: Ref<StatusClient> | null } = vi.hoisted(() => ({ client: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 vi.mock('../../helpers/toast', () => ({ createErrorToast: vi.fn() }))
 // The chart draws on a canvas, which jsdom does not have. The card around it is what is tested.
@@ -41,13 +52,23 @@ vi.mock('./TimeSeriesChart.vue', async () => {
   }
 })
 
-const clientWith = (snapshots) => ({
+const clientWith = (snapshots: Snapshots): StatusClient => ({
   status: { instance: vi.fn(), snapshots }
 })
 
-const seriesOf = (chart) => JSON.parse(chart.attributes('data-series'))
+const seriesOf = (chart: DOMWrapper<Element>): unknown => JSON.parse(chart.attributes('data-series') ?? '')
 
-const clusterMember = (id, samples) => ({
+// The bus is not read by these tests, so it carries neutral values.
+const bus: ClusterStatus['bus'] = {
+  applied: 0,
+  ignored: 0,
+  published: 0,
+  state: 'idle',
+  transport: 'none',
+  url: ''
+}
+
+const clusterMember = (id: string, samples: StatusSnapshot[]): ClusterInstance => ({
   id,
   version: '1.3.0',
   uptimeStart: 0,
@@ -96,7 +117,7 @@ describe('ResourceTrends', () => {
   })
 
   it('reloads the snapshots from a chart card retry', async () => {
-    const snapshots = vi.fn()
+    const snapshots = vi.fn<Snapshots>()
       .mockRejectedValueOnce(new Error('unreachable'))
       .mockResolvedValueOnce({ data: [] })
     session.client = ref(clientWith(snapshots))
@@ -126,7 +147,8 @@ describe('ResourceTrends', () => {
 
   it('draws one memory series per instance from the cluster, never a sum', async () => {
     session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
-    const cluster = {
+    const cluster: ClusterStatus = {
+      bus,
       instances: [
         clusterMember('ingot-0', [{ at: 1, memory: 100, threads: 3 }]),
         clusterMember('ingot-1', [{ at: 2, memory: 50, threads: 5 }])
@@ -145,7 +167,8 @@ describe('ResourceTrends', () => {
 
   it('draws one thread series per instance from the cluster, never a sum', async () => {
     session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
-    const cluster = {
+    const cluster: ClusterStatus = {
+      bus,
       instances: [
         clusterMember('ingot-0', [{ at: 1, memory: 100, threads: 3 }]),
         clusterMember('ingot-1', [{ at: 2, memory: 50, threads: 5 }])
@@ -164,7 +187,7 @@ describe('ResourceTrends', () => {
 
   it('shows the empty message when the cluster has no samples yet', async () => {
     session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
-    const cluster = { instances: [clusterMember('ingot-0', [])] }
+    const cluster: ClusterStatus = { bus, instances: [clusterMember('ingot-0', [])] }
     const wrapper = mount(ResourceTrends, { props: { cluster } })
     await flushPromises()
 

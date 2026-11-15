@@ -14,12 +14,18 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue'
+import type { AxiosResponse } from 'axios'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import type { components } from '../../types/api'
+import type { Series } from './seriesSummary'
 import ChartCard from './ChartCard.vue'
 import { statisticsState } from './statisticsState'
+
+type RepositoryStatistics = components['schemas']['RepositoryStatistics']
+type AllResolvedResponse = components['schemas']['AllResolvedResponse']
 
 const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue'))
 
@@ -29,11 +35,11 @@ const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue
 const SERIES_LIMIT = 7
 
 const { client } = useSession()
-const statisticsEnabled = ref(null)
+const statisticsEnabled = ref<boolean | null>(null)
 const failed = ref(false)
-const series = ref(null)
+const series = ref<Series[] | null>(null)
 
-const foldTail = (repositories) => {
+const foldTail = (repositories: RepositoryStatistics[]): RepositoryStatistics[] => {
   if (repositories.length <= SERIES_LIMIT + 1) {
     return repositories
   }
@@ -65,13 +71,13 @@ const foldTail = (repositories) => {
 
 const load = () =>
   client.value.statistics.allResolved()
-    .then(response => response.data)
+    .then((response: AxiosResponse<AllResolvedResponse>) => response.data)
     .then(allResolved => {
       statisticsEnabled.value = allResolved.statisticsEnabled
-      series.value = foldTail(allResolved.repositories).map(repository => ({
+      series.value = foldTail(allResolved.repositories).map((repository): Series => ({
         name: repository.name,
         // [epoch millis, count] is what the time axis expects
-        data: repository.data.map(record => [record.date, record.count])
+        data: repository.data.map((record): [number, number] => [record.date, record.count])
       }))
       failed.value = false
     })
@@ -127,7 +133,7 @@ const emptyMessage = computed(() => {
     @retry="load"
   >
     <TimeSeriesChart
-      :series="series"
+      :series="series ?? []"
       height="260px"
     />
   </ChartCard>

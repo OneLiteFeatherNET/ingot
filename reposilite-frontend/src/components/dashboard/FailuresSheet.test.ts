@@ -16,19 +16,33 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
+import type { components } from '../../types/api'
 import FailuresSheet from './FailuresSheet.vue'
+
+type Failure = components['schemas']['FailureResponse']
+type FailuresResponse = components['schemas']['FailuresResponse']
+
+type FailuresClient = {
+  status: {
+    failures: () => Promise<{ data: FailuresResponse }>
+    clearFailures: () => Promise<unknown>
+  }
+}
 
 // The sheet reads the session for its client and raises a toast when an action fails. Both are
 // replaced, so the test never reaches the network, the real token or the toast container.
-const session = vi.hoisted(() => ({ client: null }))
+type FailuresSession = { client: Ref<FailuresClient> | null }
+const session = vi.hoisted((): FailuresSession => ({ client: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 vi.mock('../../helpers/toast', () => ({ createErrorToast: vi.fn() }))
 
 // The clock is frozen, so "2 minutes ago" is the same on every machine and at every hour.
 const NOW = '2026-10-15T12:00:00Z'
 
-const NEWER = {
+const NEWER: Failure = {
   id: 2,
   timestamp: '2026-10-15T11:58:00Z',
   source: '/api/maven/details',
@@ -38,7 +52,7 @@ const NEWER = {
   count: 1
 }
 
-const OLDER = {
+const OLDER: Failure = {
   id: 1,
   timestamp: '2026-10-15T09:00:00Z',
   source: '/com/reposilite/private',
@@ -48,14 +62,14 @@ const OLDER = {
   count: 4
 }
 
-const clientWith = ({ failures, clearFailures = vi.fn(() => Promise.resolve({})) }) => ({
+const clientWith = ({ failures, clearFailures = vi.fn(() => Promise.resolve({})) }: Partial<FailuresClient['status']> = {}): FailuresClient => ({
   status: {
     failures: failures ?? vi.fn(() => Promise.resolve({ data: { failures: [NEWER, OLDER] } })),
     clearFailures
   }
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountSheet = () => {
   wrapper = mount(FailuresSheet, {
@@ -67,7 +81,7 @@ const mountSheet = () => {
 // The sheet is teleported to the body, so the tests look for it there.
 const dialog = () => document.querySelector('[role="dialog"]')
 const dialogText = () => dialog()?.textContent.replace(/\s+/g, ' ').trim() ?? ''
-const buttonNamed = (text) =>
+const buttonNamed = (text: string) =>
   [...(dialog()?.querySelectorAll('button') ?? [])].find(button => button.textContent.trim() === text)
 
 describe('FailuresSheet', () => {
@@ -89,7 +103,7 @@ describe('FailuresSheet', () => {
     mountSheet()
     await flushPromises()
 
-    const sources = [...dialog().querySelectorAll('li')].map(item => item.textContent)
+    const sources = [...(dialog()?.querySelectorAll('li') ?? [])].map(item => item.textContent)
     expect(sources[0], 'the newest failure must be the first entry').toContain('/api/maven/details')
     expect(sources[1], 'the older failure must follow it').toContain('/com/reposilite/private')
   })
@@ -99,9 +113,9 @@ describe('FailuresSheet', () => {
     mountSheet()
     await flushPromises()
 
-    const time = dialog().querySelector('time[datetime="2026-10-15T11:58:00Z"]')
-    expect(time.textContent.trim(), 'the relative time reads the way people talk').toBe('2 minutes ago')
-    expect(time.getAttribute('title'), 'the exact moment is the tooltip').toBe('2026-10-15 11:58:00 UTC')
+    const time = dialog()?.querySelector('time[datetime="2026-10-15T11:58:00Z"]')
+    expect(time?.textContent.trim(), 'the relative time reads the way people talk').toBe('2 minutes ago')
+    expect(time?.getAttribute('title'), 'the exact moment is the tooltip').toBe('2026-10-15 11:58:00 UTC')
   })
 
   it('shows how often an aggregated failure happened', async () => {
@@ -117,24 +131,24 @@ describe('FailuresSheet', () => {
     mountSheet()
     await flushPromises()
 
-    expect(dialog().querySelector('pre'), 'no stack trace is rendered before the toggle').toBeNull()
+    expect(dialog()?.querySelector('pre'), 'no stack trace is rendered before the toggle').toBeNull()
 
-    buttonNamed('Show stack trace').click()
+    buttonNamed('Show stack trace')?.click()
     await flushPromises()
 
-    expect(dialog().querySelector('pre').textContent).toContain('at com.reposilite.Maven.details(Maven.kt:42)')
+    expect(dialog()?.querySelector('pre')?.textContent).toContain('at com.reposilite.Maven.details(Maven.kt:42)')
   })
 
   it('copies the report of a failure to the clipboard', async () => {
-    const writeText = vi.fn(() => Promise.resolve())
+    const writeText = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     session.client = ref(clientWith({}))
     mountSheet()
     await flushPromises()
-    buttonNamed('Show stack trace').click()
+    buttonNamed('Show stack trace')?.click()
     await flushPromises()
 
-    buttonNamed('Copy').click()
+    buttonNamed('Copy')?.click()
     await flushPromises()
 
     expect(writeText).toHaveBeenCalledTimes(1)
@@ -150,12 +164,12 @@ describe('FailuresSheet', () => {
     mountSheet()
     await flushPromises()
 
-    buttonNamed('Clear all').click()
+    buttonNamed('Clear all')?.click()
     await flushPromises()
 
     expect(clearFailures, 'the clear request is sent once').toHaveBeenCalledTimes(1)
     expect(dialogText(), 'an empty list says so').toContain('No failures recorded')
-    expect(wrapper.emitted('cleared'), 'the owner learns that the count has changed').toHaveLength(1)
+    expect(wrapper?.emitted('cleared'), 'the owner learns that the count has changed').toHaveLength(1)
   })
 
   it('offers a retry when the failures cannot be loaded', async () => {
@@ -168,7 +182,7 @@ describe('FailuresSheet', () => {
 
     expect(dialogText(), 'the sheet names what went wrong').toContain('Cannot load failures')
 
-    buttonNamed('Retry').click()
+    buttonNamed('Retry')?.click()
     await flushPromises()
 
     expect(failures, 'retry sends a second request').toHaveBeenCalledTimes(2)

@@ -15,13 +15,44 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { h, ref } from 'vue'
+import { defineComponent, h, ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { components } from '../../types/api'
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
+
+type InstanceStatus = components['schemas']['InstanceStatusResponse']
+type ClusterStatus = components['schemas']['ClusterStatusResponse']
+type ClusterInstance = components['schemas']['ClusterInstanceResponse']
+type Failure = components['schemas']['FailureResponse']
+
+// Fixtures name only the fields a test cares about, so every field is optional. A cluster fixture
+// may leave out its bus, which the panel does not read.
+type InstanceFixture = Partial<Omit<InstanceStatus, 'cluster'>> & { cluster?: Partial<ClusterStatus> | null }
+
+type StatusClient = {
+  status: {
+    instance: () => Promise<{ data: InstanceFixture }>
+    snapshots: () => unknown
+    health: () => Promise<{ status: number; data: { status: string } }>
+    probe: () => Promise<{ status: number; contentType: string; body: string }>
+    url: (endpoint: string) => string
+    failures: () => Promise<{ data: { failures: Failure[] } }>
+    clearFailures: () => Promise<unknown>
+  }
+  readOnly: {
+    get: () => Promise<{ status: number; data: { enabled: boolean; source: string } }>
+  }
+}
 
 // The panel reads the session for its client, the permission check and raises a toast on failure. All
 // are replaced, so the test never touches the network, the real token or the toast container.
-const session = vi.hoisted(() => ({ client: null, isManager: null, can: null }))
+type PanelSession = {
+  client: Ref<StatusClient> | null
+  isManager: Ref<boolean> | null
+  can: ((node: string) => boolean) | null
+}
+const session = vi.hoisted((): PanelSession => ({ client: null, isManager: null, can: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 // The health row under the tiles reads the manager flag, so the panel's session carries one.
 session.isManager = ref(true)
@@ -31,12 +62,12 @@ vi.mock('../../helpers/toast', () => ({ createErrorToast: vi.fn() }))
 const MAINTENANCE_NODE = 'ingot.admin.maintenance'
 
 // The Maintenance link is a router link. The tests render it as a plain anchor with the same address.
-const RouterLinkStub = {
-  props: ['to'],
+const RouterLinkStub = defineComponent({
+  props: { to: { type: String, required: true } },
   setup: (props, { slots }) => () => h('a', { href: props.to }, slots.default?.())
-}
+})
 
-const INSTANCE = {
+const INSTANCE: InstanceFixture = {
   usedMemory: 100,
   maxMemory: 512,
   usedThreads: 3,
@@ -49,13 +80,13 @@ const INSTANCE = {
 
 // The health row and the failures sheet are part of the panel, so their requests are answered
 // here too. Nothing in these tests depends on what they say.
-const clientWith = (instance) => ({
+const clientWith = (instance: StatusClient['status']['instance']): StatusClient => ({
   status: {
     instance,
     snapshots: vi.fn(),
     health: vi.fn(() => Promise.resolve({ status: 200, data: { status: 'UP' } })),
     probe: vi.fn(() => Promise.resolve({ status: 404, contentType: '', body: '' })),
-    url: (endpoint) => endpoint,
+    url: (endpoint: string) => endpoint,
     failures: vi.fn(() => Promise.resolve({ data: { failures: [] } })),
     clearFailures: vi.fn(() => Promise.resolve({}))
   },
@@ -107,7 +138,7 @@ describe('InstanceStatusPanel', () => {
   })
 
   it('opens the failures sheet from the failures tile when failures are recorded', async () => {
-    const failure = {
+    const failure: Failure = {
       id: 1,
       timestamp: '2026-10-15T11:58:00Z',
       source: '/api/maven/details',
@@ -162,7 +193,7 @@ describe('InstanceStatusPanel single-instance figures', () => {
     vi.restoreAllMocks()
   })
 
-  const mountWithStatus = async (status) => {
+  const mountWithStatus = async (status: InstanceFixture) => {
     session.client = ref(clientWith(() => Promise.resolve({ data: status })))
     const wrapper = mount(InstanceStatusPanel)
     await flushPromises()
@@ -249,7 +280,7 @@ describe('InstanceStatusPanel cluster view', () => {
     vi.restoreAllMocks()
   })
 
-  const member = (overrides = {}) => ({
+  const member = (overrides: Partial<ClusterInstance> = {}): ClusterInstance => ({
     id: 'ingot-0',
     version: '1.3.0',
     uptimeStart: NOW - 2 * HOUR,
@@ -265,7 +296,7 @@ describe('InstanceStatusPanel cluster view', () => {
     ...overrides
   })
 
-  const mountWithStatus = async (status) => {
+  const mountWithStatus = async (status: InstanceFixture) => {
     session.client = ref(clientWith(() => Promise.resolve({ data: status })))
     const wrapper = mount(InstanceStatusPanel)
     await flushPromises()
@@ -446,14 +477,14 @@ describe('InstanceStatusPanel cluster view', () => {
     const instances = [member()]
     const wrapper = await mountWithStatus({ ...INSTANCE, cluster: { instances } })
 
-    expect(wrapper.emitted('cluster').at(-1), 'the parent receives the instances of the status').toEqual([{ instances }])
+    expect(wrapper.emitted('cluster')?.at(-1), 'the parent receives the instances of the status').toEqual([{ instances }])
     wrapper.unmount()
   })
 
   it('hands null to its parent when there is no cluster, so the trends stay on the local history', async () => {
     const wrapper = await mountWithStatus({ ...INSTANCE })
 
-    expect(wrapper.emitted('cluster').at(-1), 'no bus means no cluster for the trends').toEqual([null])
+    expect(wrapper.emitted('cluster')?.at(-1), 'no bus means no cluster for the trends').toEqual([null])
     wrapper.unmount()
   })
 })
@@ -470,7 +501,7 @@ describe('InstanceStatusPanel read-only banner', () => {
     session.can = () => false
   })
 
-  const mountWithStatus = async (status, { maintainer = false } = {}) => {
+  const mountWithStatus = async (status: InstanceFixture, { maintainer = false }: { maintainer?: boolean } = {}) => {
     session.client = ref(clientWith(() => Promise.resolve({ data: status })))
     session.can = (node) => maintainer && node === MAINTENANCE_NODE
     const wrapper = mount(InstanceStatusPanel, { global: { stubs: { RouterLink: RouterLinkStub } } })

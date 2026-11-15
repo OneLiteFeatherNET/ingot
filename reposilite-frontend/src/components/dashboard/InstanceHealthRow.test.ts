@@ -15,32 +15,50 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import InstanceHealthRow from './InstanceHealthRow.vue'
+import type { ProbeAnswer } from './instanceHealth'
+
+// The part of the session client that the row touches: the health request and the integration probes.
+interface ClientFixture {
+  status: {
+    health: () => Promise<unknown>
+    probe: (endpoint: string) => Promise<ProbeAnswer>
+    url: (endpoint: string) => string
+  }
+}
+
+interface SessionFixture {
+  client: Ref<ClientFixture> | null
+  isManager: Ref<boolean> | null
+}
 
 // The row reads the session for its client. The client is replaced, so the test never reaches
 // the network or the real token.
-const session = vi.hoisted(() => ({ client: null, isManager: null }))
+const session = vi.hoisted((): SessionFixture => ({ client: null, isManager: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 
 const SWAGGER_PAGE = '<!doctype html><html><body><div id="swagger-ui"></div></body></html>'
 
 // Answers for the probes: API docs is there, metrics is not, unless a test says otherwise.
-const probeAnswers = (answers = {}) => (endpoint) =>
+const probeAnswers = (answers: Partial<Record<string, ProbeAnswer>> = {}) => (endpoint: string) =>
   Promise.resolve(answers[endpoint] ?? { status: 404, contentType: 'application/json', body: '{}' })
 
-const clientWith = ({ health, probe }) => ({
+const clientWith = ({ health, probe }: {
+  health?: ClientFixture['status']['health']
+  probe?: ClientFixture['status']['probe']
+}): ClientFixture => ({
   status: {
     health: health ?? (() => Promise.resolve({ status: 200, data: { status: 'UP' } })),
     probe: probe ?? probeAnswers({
       '/swagger': { status: 200, contentType: 'text/html', body: SWAGGER_PAGE }
     }),
-    url: (endpoint) => `http://test${endpoint}`
+    url: (endpoint: string) => `http://test${endpoint}`
   }
 })
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountRow = () => {
   wrapper = mount(InstanceHealthRow, { attachTo: document.body })
@@ -57,7 +75,6 @@ describe('InstanceHealthRow', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     vi.useRealTimers()
     vi.restoreAllMocks()
   })
@@ -144,7 +161,6 @@ describe('InstanceHealthRow', () => {
     mountRow()
     await flushPromises()
     wrapper.unmount()
-    wrapper = undefined
 
     mountRow()
     await flushPromises()

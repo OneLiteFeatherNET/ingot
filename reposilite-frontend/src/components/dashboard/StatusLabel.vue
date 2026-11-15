@@ -14,15 +14,12 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // A status dot in front of its label. Every status on the dashboard uses this one pair, so the
 // dot sits on the same centre line everywhere. The colour is a token string, passed in by the caller.
-defineProps({
-  color: {
-    type: String,
-    required: true
-  }
-})
+defineProps<{
+  color: string
+}>()
 </script>
 
 <template>

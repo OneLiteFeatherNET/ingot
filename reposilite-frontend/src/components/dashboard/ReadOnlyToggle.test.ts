@@ -16,19 +16,30 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import ReadOnlyToggle from './ReadOnlyToggle.vue'
+
+// The shape of the read-only state the probe answers with. The component keeps its own copy, which is not exported.
+type ReadOnlyState = { enabled: boolean; source: string }
+type ReadOnlyReply = { status: number; data: ReadOnlyState }
+type ReadOnlyApi = {
+  get: () => Promise<ReadOnlyReply>
+  enable: () => Promise<ReadOnlyReply>
+  disable: () => Promise<ReadOnlyReply>
+}
 
 // The toggle reads the session for its client. The client is replaced, so the test never
 // reaches the network or the real token.
-const session = vi.hoisted(() => ({ client: null }))
+const session: { client: Ref<{ readOnly: ReadOnlyApi }> | null } = vi.hoisted(() => ({ client: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 
 const forbidden = () => Promise.reject(Object.assign(new Error('Request failed'), {
   response: { status: 403, data: {} }
 }))
 
-const clientWith = (overrides = {}) => ({
+const clientWith = (overrides: Partial<ReadOnlyApi> = {}): { readOnly: ReadOnlyApi } => ({
   readOnly: {
     get: vi.fn(forbidden),
     enable: vi.fn(() => Promise.resolve({ status: 200, data: { enabled: true, source: 'stored' } })),
@@ -37,11 +48,11 @@ const clientWith = (overrides = {}) => ({
   }
 })
 
-const answeringWith = (data) => vi.fn(() => Promise.resolve({ status: 200, data }))
+const answeringWith = (data: ReadOnlyState) => vi.fn(() => Promise.resolve({ status: 200, data }))
 
 const CONSEQUENCE = 'Every upload, deploy and delete is refused with 503 on every instance until read-only mode is turned off. Reads continue, and scheduled cleanup and index runs wait.'
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountToggle = () => {
   wrapper = mount(ReadOnlyToggle, { attachTo: document.body })
@@ -57,7 +68,6 @@ describe('ReadOnlyToggle', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
     vi.restoreAllMocks()
   })
@@ -82,7 +92,7 @@ describe('ReadOnlyToggle', () => {
   })
 
   it('does not show the toggle while the probe is still pending', async () => {
-    session.client = ref(clientWith({ get: vi.fn(() => new Promise(() => {})) }))
+    session.client = ref(clientWith({ get: vi.fn(() => new Promise<ReadOnlyReply>(() => {})) }))
     mountToggle()
     await flushPromises()
 
@@ -110,7 +120,7 @@ describe('ReadOnlyToggle', () => {
     await switchOf().trigger('click')
     await flushPromises()
 
-    document.getElementById('read-only-confirm').click()
+    document.getElementById('read-only-confirm')?.click()
     await flushPromises()
 
     expect(client.readOnly.enable, 'the confirm button sends the one request').toHaveBeenCalledTimes(1)
@@ -125,7 +135,7 @@ describe('ReadOnlyToggle', () => {
     await switchOf().trigger('click')
     await flushPromises()
 
-    document.getElementById('read-only-cancel').click()
+    document.getElementById('read-only-cancel')?.click()
     await flushPromises()
 
     expect(client.readOnly.enable, 'cancel sends nothing').not.toHaveBeenCalled()
@@ -165,9 +175,9 @@ describe('ReadOnlyToggle', () => {
     mountToggle()
     await flushPromises()
 
-    const describedBy = switchOf().attributes('aria-describedby')
+    const describedBy = switchOf().attributes('aria-describedby') ?? ''
     expect(describedBy, 'the switch names the element that describes it').toBeTruthy()
-    expect(document.getElementById(describedBy)?.textContent.trim(), 'the description states the refusal and the continuing reads').toBe(CONSEQUENCE)
+    expect(document.getElementById(describedBy)?.textContent?.trim(), 'the description states the refusal and the continuing reads').toBe(CONSEQUENCE)
   })
 
   it('states in the dialog the same consequence the switch describes', async () => {
@@ -177,7 +187,7 @@ describe('ReadOnlyToggle', () => {
     await switchOf().trigger('click')
     await flushPromises()
 
-    expect(dialog().textContent, 'the dialog opens with the sentence the switch describes').toContain(CONSEQUENCE)
+    expect(dialog()?.textContent, 'the dialog opens with the sentence the switch describes').toContain(CONSEQUENCE)
   })
 
   it('disables the switch and names INGOT_READ_ONLY when the environment forces the state', async () => {

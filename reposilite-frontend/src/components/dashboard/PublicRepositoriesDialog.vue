@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
@@ -25,19 +25,25 @@ import MdButton from '../md/MdButton.vue'
  * the admin to confirm them. Each row leads to that repository's visibility setting. The confirmation
  * itself is stored by the card, which owns the acknowledged set.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
+// A public repository as the review lists it: its id and an optional description.
+interface PublicRepository {
+  id: string
+  description?: string
+}
+
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   // The public repositories, already sorted: each has an id and an optional description.
-  repositories: {
-    type: Array,
-    default: () => []
-  }
+  repositories?: PublicRepository[]
+}>(), {
+  modelValue: false,
+  repositories: () => []
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  confirm: []
+}>()
 
 const router = useRouter()
 const titleId = useId()
@@ -48,11 +54,11 @@ const open = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-const hrefOf = (repository) => router.resolve(visibilityRoute(repository)).href
+const hrefOf = (repository: PublicRepository) => router.resolve(visibilityRoute(repository)).href
 
-const visibilityRoute = (repository) => `/settings/repositories/${encodeURIComponent(repository.id)}`
+const visibilityRoute = (repository: PublicRepository) => `/settings/repositories/${encodeURIComponent(repository.id)}`
 
-const follow = (repository) => {
+const follow = (repository: PublicRepository) => {
   open.value = false
   router.push(visibilityRoute(repository))
 }

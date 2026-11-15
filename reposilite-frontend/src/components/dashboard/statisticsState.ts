@@ -21,11 +21,15 @@
  * is false may be shown as "disabled": reporting a network failure as a switched-off feature
  * sends the reader to the settings page to fix something that is not broken.
  *
- * @param {{ enabled: boolean | null, failed: boolean, series: unknown[] | null }} input
- *   `enabled` is null until the server has answered.
- * @returns {'error' | 'loading' | 'disabled' | 'empty' | 'ready'}
+ * `enabled` is null until the server has answered.
  */
-export const statisticsState = ({ enabled, failed, series }) => {
+export type StatisticsState = 'error' | 'loading' | 'disabled' | 'empty' | 'ready'
+
+export const statisticsState = ({ enabled, failed, series }: {
+  enabled: boolean | null | undefined
+  failed: boolean
+  series: unknown[] | null
+}): StatisticsState => {
   if (failed) return 'error'
   if (enabled === null || enabled === undefined) return 'loading'
   if (!enabled) return 'disabled'
