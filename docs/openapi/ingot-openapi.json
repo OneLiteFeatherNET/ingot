@@ -3962,6 +3962,8 @@
           }
         },
         "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
           "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
@@ -3996,6 +3998,8 @@
           }
         },
         "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
           "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
@@ -4047,6 +4051,8 @@
           }
         },
         "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
           "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]

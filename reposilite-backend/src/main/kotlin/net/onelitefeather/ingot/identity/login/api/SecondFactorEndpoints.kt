@@ -26,6 +26,7 @@ import com.reposilite.token.AccessTokenType
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
@@ -237,7 +238,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors",
         methods = [HttpMethod.GET],
         summary = "List a user's second factors",
@@ -259,7 +260,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors",
         methods = [HttpMethod.DELETE],
         summary = "Reset a user's second factors",
@@ -281,7 +282,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors/{id}",
         methods = [HttpMethod.DELETE],
         summary = "Reset one second factor of a user",
