@@ -55,7 +55,7 @@ interface StorageProviderContext {
     /**
      * The value of an environment setting of this storage provider, for example `AZURE_ACCOUNT` for the variable `INGOT_AZURE_ACCOUNT`.
      * The INGOT variable is read first, and the REPOSILITE variable is the fallback when the INGOT one is unset or blank. Null when
-     * neither is set.
+     * neither holds a non-blank value.
      *
      * A provider reads only its own namespace: the upper case type followed by an underscore, so the provider `azure` reads `AZURE_*`
      * names and nothing else. The core settings under `SETTINGS_`, `LOCAL_` and `CLUSTER_` are refused for every provider, even for one
@@ -134,7 +134,8 @@ private class DefaultStorageProviderContext(
         require(name.startsWith(namespace)) {
             "'$name' is outside the '$namespace' namespace of storage provider '$providerType'"
         }
-        return variables("INGOT_$name") ?: variables("REPOSILITE_$name")
+        return variables("INGOT_$name")?.takeIf { it.isNotBlank() }
+            ?: variables("REPOSILITE_$name")?.takeIf { it.isNotBlank() }
     }
 
 }

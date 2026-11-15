@@ -64,6 +64,15 @@ class StorageProviderEnvironmentTest {
     }
 
     @Test
+    fun `environment falls back to the REPOSILITE name when the INGOT name is blank`() {
+        val context = contextWith(mapOf("INGOT_AZURE_ACCOUNT" to "", "REPOSILITE_AZURE_ACCOUNT" to "reposilite"))
+
+        assertThat(context.environment("AZURE_ACCOUNT"))
+            .describedAs("an empty INGOT variable must not hide the REPOSILITE variable, as in the settings references")
+            .isEqualTo("reposilite")
+    }
+
+    @Test
     fun `environment gives null when neither name is set`() {
         assertThat(contextWith(emptyMap()).environment("AZURE_ACCOUNT"))
             .describedAs("an unset variable has no value")
