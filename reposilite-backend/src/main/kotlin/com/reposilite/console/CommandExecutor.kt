@@ -29,7 +29,9 @@ import picocli.CommandLine.MissingParameterException
 import picocli.CommandLine.PicocliException
 import picocli.CommandLine.UnmatchedArgumentException
 import java.io.InputStream
+import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
+import kotlin.concurrent.withLock
 
 internal const val REDACTED_COMMAND_ARGUMENTS = "<redacted>"
 
@@ -43,14 +45,17 @@ internal class CommandExecutor(
     private val consoleThread = ConsoleThread(this, source, failureFacade)
     private val commandLine = CommandLine(this)
 
-    /** The registered commands and [commandLine] keep the parsed arguments in their fields, so a parse and its run must not interleave. */
-    private val commandLock = Any()
+    /**
+     * The registered commands and [commandLine] keep the parsed arguments in their fields, so a parse and its run must not
+     * interleave. Internal, so that a test can observe whether a call is inside the critical section.
+     */
+    internal val commandLock = ReentrantLock()
 
     fun execute(command: String): ExecutionResponse =
         execute(command) { logger.info(it) }
 
     fun execute(command: String, outputConsumer: Consumer<String>): ExecutionResponse =
-        synchronized(commandLock) { executeCommand(command) }.also {
+        commandLock.withLock { executeCommand(command) }.also {
             it.response.forEach { message ->
                 message.replace(System.lineSeparator(), "\n").split("\n").toTypedArray().forEach { line ->
                     outputConsumer.accept(line)
@@ -65,7 +70,7 @@ internal class CommandExecutor(
             return PreparedCommand(processedCommand, command, this)
         }
 
-        val redactedCommand = synchronized(commandLock) {
+        val redactedCommand = commandLock.withLock {
             try {
                 val reposiliteCommand = parseCommand(processedCommand)
 
