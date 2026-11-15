@@ -8,6 +8,11 @@ plugins {
 
 dependencies {
     compileOnly(project(":reposilite-backend"))
+
+    // The Cloud Storage client comes from the BOM, so every Google Cloud artifact moves together. The BOM is the newest release at the
+    // time of writing. The client is used over HTTP only, see the storage options of the plugin.
+    implementation(platform("com.google.cloud:libraries-bom:26.93.0"))
+    implementation("com.google.cloud:google-cloud-storage")
     // The server's Jackson: compile against the version the server ships, the plugin loader resolves it to the server copy at run time.
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.7")
 
