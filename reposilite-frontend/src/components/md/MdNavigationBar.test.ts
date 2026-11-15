@@ -55,7 +55,7 @@ describe('MdNavigationBar', () => {
 
     await wrapper.findAll('button')[3].trigger('click')
 
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['Console'])
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['Console'])
   })
 
   it('renders a link for a destination that has an href', () => {
@@ -73,7 +73,7 @@ describe('MdNavigationBar links', () => {
     { key: 'tokens', label: 'Tokens', href: '#/org/repo?tab=tokens' }
   ]
 
-  const clickWith = (element, init) => {
+  const clickWith = (element: Element, init: MouseEventInit) => {
     const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init })
     element.dispatchEvent(event)
     return event
@@ -85,7 +85,7 @@ describe('MdNavigationBar links', () => {
     const event = clickWith(wrapper.findAll('a')[1].element, { button: 0 })
 
     expect(event.defaultPrevented).toBe(true)
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['tokens'])
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['tokens'])
   })
 
   it('leaves a modified click to the browser, so the link can open in a new tab', () => {

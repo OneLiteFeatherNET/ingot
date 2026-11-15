@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
 
 /*
@@ -49,36 +49,31 @@ import { computed, useAttrs, useId } from 'vue'
  */
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps({
-  modelValue: {
-    type: [String, Number, Boolean, Object],
-    default: undefined
-  },
-  value: {
-    type: [String, Number, Boolean, Object],
-    required: true
-  },
+type RadioValue = string | number | boolean | object
+
+const props = withDefaults(defineProps<{
+  modelValue?: RadioValue
+  value: RadioValue
   // Required, because the radios of one choice must share it to form a group.
-  name: {
-    type: String,
-    required: true
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
+  name: string
+  disabled?: boolean
   // The whole area is the clickable target and the slot is the card content.
-  card: {
-    type: Boolean,
-    default: false
-  },
-  id: {
-    type: String,
-    default: ''
-  }
+  card?: boolean
+  id?: string
+}>(), {
+  modelValue: undefined,
+  disabled: false,
+  card: false,
+  id: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+defineSlots<{
+  default?(): unknown
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: RadioValue]
+}>()
 
 const attrs = useAttrs()
 const generatedId = useId()
@@ -94,22 +89,22 @@ const onChange = () => emit('update:modelValue', props.value)
 
 // detail is above 0 for a pointer click. Only then does the focus leave the radio, so the ring
 // is not left behind; a keyboard activation keeps it.
-const onClick = (event) => {
+const onClick = (event: MouseEvent) => {
   if (event.detail > 0) {
-    event.currentTarget.blur()
+    (event.currentTarget as HTMLElement).blur()
   }
 }
 
-const ARROW_STEP = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+const ARROW_STEP: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
 
 // Moves the selection to the next enabled radio of the same group, in the scope of its fieldset
 // or form. The next radio is focused and clicked, so it is chosen and emits like a pointer click.
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   const step = ARROW_STEP[event.key]
   if (step === undefined || props.disabled) return
-  const input = event.currentTarget
-  const scope = input.closest('fieldset') ?? input.form ?? document
-  const group = Array.from(scope.querySelectorAll('input[type="radio"]'))
+  const input = event.currentTarget as HTMLInputElement
+  const scope: Document | Element = input.closest('fieldset') ?? input.form ?? document
+  const group = Array.from(scope.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
     .filter(radio => radio.name === props.name && !radio.disabled)
   const at = group.indexOf(input)
   if (at < 0 || group.length < 2) return

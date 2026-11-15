@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useAttrs } from 'vue'
 
 /*
@@ -23,33 +23,22 @@ import { computed, useAttrs } from 'vue'
  * would announce the button as unnamed. With `toggle` the button reports its state through
  * aria-pressed, and `selected` sets that state.
  */
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'standard',
-    validator: (value) => ['standard', 'filled', 'tonal', 'outlined', 'error'].includes(value)
-  },
-  href: {
-    type: String,
-    default: undefined
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  toggle: {
-    type: Boolean,
-    default: false
-  },
-  selected: {
-    type: Boolean,
-    default: false
-  },
-  type: {
-    type: String,
-    default: 'button'
-  }
+const props = withDefaults(defineProps<{
+  variant?: 'standard' | 'filled' | 'tonal' | 'outlined' | 'error'
+  href?: string
+  disabled?: boolean
+  toggle?: boolean
+  selected?: boolean
+  type?: string
+}>(), {
+  variant: 'standard',
+  href: undefined,
+  type: 'button'
 })
+
+defineSlots<{
+  default?(): unknown
+}>()
 
 if (!useAttrs()['aria-label']) {
   console.warn('MdIconButton: missing aria-label. An icon-only button needs an accessible name.')

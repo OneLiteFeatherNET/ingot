@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
 
 /*
@@ -32,22 +32,23 @@ import { computed, useAttrs, useId } from 'vue'
  */
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  id: {
-    type: String,
-    default: ''
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  disabled?: boolean
+  id?: string
+}>(), {
+  modelValue: false,
+  disabled: false,
+  id: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+defineSlots<{
+  default?(): unknown
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+}>()
 
 const attrs = useAttrs()
 const generatedId = useId()

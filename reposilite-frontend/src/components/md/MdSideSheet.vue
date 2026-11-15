@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { nextTick, ref, useId, watch } from 'vue'
 import MdIcon from './MdIcon.vue'
 import MdIconButton from './MdIconButton.vue'
@@ -38,16 +38,24 @@ import MdIconButton from './MdIconButton.vue'
  *
  * Motion: the fade is off for a visitor who asks for reduced motion (prefers-reduced-motion).
  */
-const props = defineProps({
-  open: { type: Boolean, default: false },
-  title: { type: String, required: true }
+const props = withDefaults(defineProps<{
+  open?: boolean
+  title: string
+}>(), {
+  open: false
 })
 
-const emit = defineEmits(['update:open'])
+defineSlots<{
+  default?(): unknown
+}>()
 
-const sheet = ref(null)
+const emit = defineEmits<{
+  'update:open': [open: boolean]
+}>()
+
+const sheet = ref<HTMLElement | null>(null)
 const titleId = useId()
-let opener = null
+let opener: HTMLElement | null = null
 
 const FOCUSABLE = [
   'a[href]',
@@ -57,11 +65,11 @@ const FOCUSABLE = [
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])'
 ].join(', ')
-const focusables = () => [...(sheet.value?.querySelectorAll(FOCUSABLE) ?? [])]
+const focusables = (): HTMLElement[] => [...(sheet.value?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
 
 watch(() => props.open, async (open) => {
   if (!open) return
-  opener = document.activeElement
+  opener = document.activeElement as HTMLElement | null
   await nextTick()
   focusables()[0]?.focus()
 }, { immediate: true })
@@ -74,13 +82,13 @@ const dismiss = async () => {
 
 // Tab leaves the sheet from its last element to the first, and Shift Tab from the first to the last. A focus that is
 // outside the sheet is brought in, from the start.
-const trapFocus = (event) => {
+const trapFocus = (event: KeyboardEvent) => {
   const items = focusables()
   if (items.length === 0) return
   const first = items[0]
   const last = items[items.length - 1]
   const active = document.activeElement
-  const outside = !sheet.value.contains(active)
+  const outside = !sheet.value?.contains(active)
   if (event.shiftKey && (outside || active === first)) {
     event.preventDefault()
     last.focus()
@@ -91,7 +99,7 @@ const trapFocus = (event) => {
 }
 
 // An Escape that a field inside the sheet has already used (it cleared its text) is not a reason to close the sheet.
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && !event.defaultPrevented) {
     event.preventDefault()
     dismiss()

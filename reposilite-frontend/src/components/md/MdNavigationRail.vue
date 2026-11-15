@@ -14,9 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
+import type { NavIconSlot, NavItem } from './types'
 
 /*
  * Material Design 3 navigation rail: the vertical counterpart of MdNavigationBar, for the
@@ -35,29 +36,35 @@ import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
  * element labelled with the group name, with a divider between groups. Items without a group form one
  * unnamed list, as before.
  */
-const props = defineProps({
-  items: {
-    type: Array,
-    required: true
-  },
-  modelValue: {
-    type: String,
-    default: undefined
-  },
-  label: {
-    type: String,
-    default: 'Primary'
-  }
+interface Block {
+  group?: string
+  items: NavItem[]
+}
+
+const props = withDefaults(defineProps<{
+  items: NavItem[]
+  modelValue?: string
+  label?: string
+}>(), {
+  modelValue: undefined,
+  label: 'Primary'
 })
 
-const emit = defineEmits(['update:modelValue'])
+defineSlots<{
+  top?(): unknown
+  icon?: NavIconSlot
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [key: string]
+}>()
 
 // The rail publishes its width for overlays such as the snackbar, and withdraws it when it leaves.
 onMounted(() => publishRailWidth())
 onBeforeUnmount(() => clearRailWidth())
 
 // Neighbouring items with the same `group` form one block, in the order the items were given.
-const blocks = computed(() => props.items.reduce((all, item) => {
+const blocks = computed(() => props.items.reduce<Block[]>((all, item) => {
   const last = all[all.length - 1]
   if (last && last.group === item.group) {
     last.items.push(item)
@@ -67,19 +74,19 @@ const blocks = computed(() => props.items.reduce((all, item) => {
   return all
 }, []))
 
-const isActive = (item) => item.key === props.modelValue
+const isActive = (item: NavItem) => item.key === props.modelValue
 
 // The label elements by entry key, and the keys of the labels that are cut at the rail's width.
-const labels = new Map()
-const cut = ref(new Set())
-const setLabel = (key, element) => {
-  if (element) labels.set(key, element)
+const labels = new Map<string, HTMLElement>()
+const cut = ref<Set<string>>(new Set())
+const setLabel = (key: string, element: Element | ComponentPublicInstance | null) => {
+  if (element instanceof HTMLElement) labels.set(key, element)
   else labels.delete(key)
 }
 const measureLabels = () => {
   cut.value = new Set([...labels].filter(([, element]) => element.scrollWidth > element.clientWidth).map(([key]) => key))
 }
-const titleOf = (item) => (cut.value.has(item.key) ? item.label : undefined)
+const titleOf = (item: NavItem) => (cut.value.has(item.key) ? item.label : undefined)
 
 onMounted(() => {
   measureLabels()
@@ -88,13 +95,13 @@ onMounted(() => {
 onBeforeUnmount(() => window.removeEventListener('resize', measureLabels))
 watch(() => props.items, () => nextTick(measureLabels), { deep: true })
 
-const isPlainLeftClick = (event) =>
+const isPlainLeftClick = (event: MouseEvent) =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
 
 // The focus ring is for keyboard focus. A pointer click (detail above 0) leaves the destination
 // it selected without focus, so no ring is left behind in any browser. A keyboard activation
 // has detail 0 and keeps the focus where the keyboard put it.
-const select = (item, event) => {
+const select = (item: NavItem, event: MouseEvent) => {
   if (item.href) {
     if (!isPlainLeftClick(event)) {
       return
@@ -102,7 +109,7 @@ const select = (item, event) => {
     event.preventDefault()
   }
   if (event.detail > 0) {
-    event.currentTarget.blur()
+    (event.currentTarget as HTMLElement).blur()
   }
   emit('update:modelValue', item.key)
 }

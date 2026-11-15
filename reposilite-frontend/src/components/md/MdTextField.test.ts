@@ -61,7 +61,7 @@ describe('MdTextField', () => {
 
     await wrapper.find('input').setValue('deploy')
 
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['deploy'])
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['deploy'])
   })
 
   it('shows supporting text when there is no error', () => {
@@ -186,7 +186,7 @@ describe('MdTextField', () => {
         slots: { 'leading-icon': () => h('svg', { 'data-test': 'lead' }) }
       })
 
-      const iconWrapper = wrapper.find('[data-test="lead"]').element.parentElement
+      const iconWrapper = wrapper.find('[data-test="lead"]').element.parentElement!
       expect(iconWrapper.className).toContain('left-3')
       expect(iconWrapper.className).not.toContain('left-4')
     })
@@ -197,7 +197,7 @@ describe('MdTextField', () => {
         slots: { 'trailing-icon': () => h('svg', { 'data-test': 'trail' }) }
       })
 
-      const iconWrapper = wrapper.find('[data-test="trail"]').element.parentElement
+      const iconWrapper = wrapper.find('[data-test="trail"]').element.parentElement!
       expect(iconWrapper.className).toContain('right-3')
       expect(iconWrapper.className).not.toContain('right-4')
     })
@@ -249,8 +249,8 @@ describe('MdTextField', () => {
         }
       })
 
-      expect(wrapper.find('[data-test="lead"]').element.parentElement.className).toContain('text-on-surface/38')
-      expect(wrapper.find('[data-test="trail"]').element.parentElement.className).toContain('text-on-surface/38')
+      expect(wrapper.find('[data-test="lead"]').element.parentElement!.className).toContain('text-on-surface/38')
+      expect(wrapper.find('[data-test="trail"]').element.parentElement!.className).toContain('text-on-surface/38')
     })
 
     it('disables the input element', () => {

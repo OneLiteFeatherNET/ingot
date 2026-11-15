@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
 /*
@@ -25,29 +25,22 @@ import { computed } from 'vue'
  * Destructive actions set `error` (the one documented way). It recolours any variant with
  * the error roles. `variant="error"` is a compatibility alias for a filled error button.
  */
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'filled',
-    validator: (value) => ['filled', 'tonal', 'outlined', 'text', 'elevated', 'error'].includes(value)
-  },
-  href: {
-    type: String,
-    default: undefined
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  type: {
-    type: String,
-    default: 'button'
-  },
-  error: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  variant?: 'filled' | 'tonal' | 'outlined' | 'text' | 'elevated' | 'error'
+  href?: string
+  disabled?: boolean
+  type?: string
+  error?: boolean
+}>(), {
+  variant: 'filled',
+  href: undefined,
+  type: 'button'
 })
+
+defineSlots<{
+  icon?(): unknown
+  default?(): unknown
+}>()
 
 const VARIANTS = {
   filled: {

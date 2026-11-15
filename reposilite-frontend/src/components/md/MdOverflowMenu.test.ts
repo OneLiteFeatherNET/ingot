@@ -16,12 +16,13 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { computeAccessibleName } from 'dom-accessibility-api'
 import MdOverflowMenu from './MdOverflowMenu.vue'
 
-// The menu is teleported to the body, so it is read from the document and not from the wrapper.
-const menu = () => document.querySelector('[role="menu"]')
-const menuItems = () => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
+// The menu is teleported to the body, so it is read from the document and not from the wrapper!.
+const menu = () => document.querySelector<HTMLElement>('[role="menu"]')!
+const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
 
 const ITEMS = [
   { value: 'edit', label: 'Edit', ariaLabel: 'Edit releases' },
@@ -29,7 +30,7 @@ const ITEMS = [
   { value: 'delete', label: 'Delete', ariaLabel: 'Delete releases', error: true }
 ]
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -46,7 +47,7 @@ const mountMenu = async (props = {}) => {
   return wrapper
 }
 
-const trigger = () => wrapper.find('button')
+const trigger = () => wrapper!.find('button')
 
 describe('MdOverflowMenu', () => {
   it('names the trigger with its label and marks it as a closed menu button', async () => {
@@ -125,7 +126,7 @@ describe('MdOverflowMenu', () => {
     menuItems()[1].click()
     await flushPromises()
 
-    expect(wrapper.emitted('select'), 'one selection is reported').toEqual([['copy']])
+    expect(wrapper!.emitted('select'), 'one selection is reported').toEqual([['copy']])
     expect(menu(), 'the menu closes after a choice').toBeNull()
   })
 
@@ -168,7 +169,7 @@ describe('MdOverflowMenu', () => {
       await flushPromises()
 
       expect(event.defaultPrevented, 'the router handles the navigation').toBe(true)
-      expect(wrapper.emitted('select'), 'the chosen value is reported').toEqual([['edit']])
+      expect(wrapper!.emitted('select'), 'the chosen value is reported').toEqual([['edit']])
     })
 
     it('leaves a click with a modifier key to the browser, which opens a new tab', async () => {
@@ -181,7 +182,7 @@ describe('MdOverflowMenu', () => {
       await flushPromises()
 
       expect(event.defaultPrevented, 'the browser follows the link in a new tab').toBe(false)
-      expect(wrapper.emitted('select'), 'nothing is reported for the same page').toBeUndefined()
+      expect(wrapper!.emitted('select'), 'nothing is reported for the same page').toBeUndefined()
     })
   })
 
@@ -248,7 +249,7 @@ describe('MdOverflowMenu', () => {
       await trigger().trigger('click')
       await flushPromises()
 
-      const heading = document.querySelector('[data-test="menu-heading"]')
+      const heading = document.querySelector<HTMLElement>('[data-test="menu-heading"]')!
       expect(heading, 'the header is drawn while the menu is open').not.toBeNull()
       expect(heading.closest('[role="menuitem"]'), 'the heading is not a menu item').toBeNull()
       expect(menuItems()).toHaveLength(ITEMS.length)
@@ -279,7 +280,7 @@ describe('MdOverflowMenu', () => {
       await trigger().trigger('click')
       await flushPromises()
 
-      const separator = document.querySelector('[role="menu"] [role="separator"]')
+      const separator = document.querySelector<HTMLElement>('[role="menu"] [role="separator"]')!
       expect(separator, 'a separator is drawn between the groups').not.toBeNull()
       expect(separator.hasAttribute('tabindex'), 'the separator takes no focus').toBe(false)
     })
@@ -289,24 +290,24 @@ describe('MdOverflowMenu', () => {
       await trigger().trigger('click')
       await flushPromises()
 
-      const light = document.querySelector('[role="menuitemradio"]')
+      const light = document.querySelector<HTMLElement>('[role="menuitemradio"]')!
       expect(document.activeElement, 'the first item has the focus').toBe(light)
 
       light.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await flushPromises()
-      expect(document.activeElement.textContent.trim(), 'the arrow key moves to the next radio').toBe('Dark')
+      expect((document.activeElement as HTMLElement).textContent.trim(), 'the arrow key moves to the next radio').toBe('Dark')
 
-      document.activeElement.click()
+      ;(document.activeElement as HTMLElement).click()
       await flushPromises()
-      expect(wrapper.emitted('select'), 'the value of the chosen radio is reported').toEqual([['theme:dark']])
+      expect(wrapper!.emitted('select'), 'the value of the chosen radio is reported').toEqual([['theme:dark']])
     })
   })
 
   describe('scrolling', () => {
     // The button's rect is a fixed box, so a test can move it the way a scroll does.
-    const moveButton = (top) => {
+    const moveButton = (top: number) => {
       const rect = { top, bottom: top + 40, left: 0, right: 100, width: 100, height: 40 }
-      trigger().element.getBoundingClientRect = () => rect
+      trigger().element.getBoundingClientRect = () => rect as DOMRect
     }
 
     it('stays open when a scroll event arrives just after it opened', async () => {

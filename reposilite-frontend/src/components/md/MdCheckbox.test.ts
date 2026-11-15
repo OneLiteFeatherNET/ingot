@@ -20,10 +20,11 @@ import MdCheckbox from './MdCheckbox.vue'
 
 const mountCheckbox = (props = {}, slot = 'Generate checksums') =>
   mount(MdCheckbox, { props, slots: { default: slot } })
+type Wrapper = ReturnType<typeof mountCheckbox>
 
-const input = (wrapper) => wrapper.find('input[type="checkbox"]')
-const box = (wrapper) => wrapper.find('[data-part="box"]')
-const stateLayer = (wrapper) => wrapper.find('[data-part="state-layer"]')
+const input = (wrapper: Wrapper) => wrapper.find('input[type="checkbox"]')
+const box = (wrapper: Wrapper) => wrapper.find('[data-part="box"]')
+const stateLayer = (wrapper: Wrapper) => wrapper.find('[data-part="state-layer"]')
 
 describe('MdCheckbox', () => {
   it('renders a real checkbox input for the semantics', () => {
@@ -35,7 +36,7 @@ describe('MdCheckbox', () => {
   it('reflects the model value in the checked state of the input', () => {
     const wrapper = mountCheckbox({ modelValue: true })
 
-    expect(input(wrapper).element.checked).toBe(true)
+    expect((input(wrapper).element as HTMLInputElement).checked).toBe(true)
   })
 
   it('emits true when an unchecked box is checked', async () => {
@@ -89,7 +90,7 @@ describe('MdCheckbox', () => {
   it('sizes the state layer at 40px, the size of its container', () => {
     const wrapper = mountCheckbox()
 
-    expect(stateLayer(wrapper).element.parentElement.className).toContain('size-10')
+    expect(stateLayer(wrapper).element.parentElement!.className).toContain('size-10')
     expect(stateLayer(wrapper).classes()).toContain('inset-0')
   })
 
@@ -116,7 +117,7 @@ describe('MdCheckbox', () => {
 
     expect(box(wrapper).attributes('data-state')).toBe('indeterminate')
     expect(box(wrapper).find('svg').exists()).toBe(false)
-    expect(input(wrapper).element.indeterminate).toBe(true)
+    expect((input(wrapper).element as HTMLInputElement).indeterminate).toBe(true)
   })
 
   it('draws the outline in the error role when error is set', () => {

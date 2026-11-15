@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
 
 /*
@@ -36,59 +36,36 @@ const attrs = useAttrs()
 const forwardedAttrs = () =>
   Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style'))
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  label: {
-    type: String,
-    required: true
-  },
-  variant: {
-    type: String,
-    default: 'filled',
-    validator: (value) => ['filled', 'outlined'].includes(value)
-  },
-  supportingText: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: Boolean,
-    default: false
-  },
-  errorText: {
-    type: String,
-    default: ''
-  },
-  id: {
-    type: String,
-    default: ''
-  },
-  type: {
-    type: String,
-    default: 'text'
-  },
-  name: {
-    type: String,
-    default: undefined
-  },
-  autocomplete: {
-    type: String,
-    default: undefined
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  required: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: string
+  label: string
+  variant?: 'filled' | 'outlined'
+  supportingText?: string
+  error?: boolean
+  errorText?: string
+  id?: string
+  type?: string
+  name?: string
+  autocomplete?: string
+  disabled?: boolean
+  required?: boolean
+}>(), {
+  modelValue: '',
+  variant: 'filled',
+  supportingText: '',
+  errorText: '',
+  id: '',
+  type: 'text',
+  name: undefined,
+  autocomplete: undefined
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
+
+const onInput = (event: Event) =>
+  emit('update:modelValue', (event.target as HTMLInputElement).value)
 
 const generatedId = useId()
 const inputId = computed(() => props.id || `md-text-field-${generatedId}`)
@@ -200,7 +177,7 @@ const helperClass = computed(() => {
         placeholder=" "
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
-        @input="emit('update:modelValue', $event.target.value)"
+        @input="onInput"
       >
       <label
         :for="inputId"

@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { GLYPHS } from './icons'
 
@@ -28,20 +28,21 @@ import { GLYPHS } from './icons'
  *   size   sm (16px), md (20px) or lg (24px, the default)
  *   label  the accessible name; without one the icon is hidden from assistive technology
  */
-const props = defineProps({
-  path: { type: String, default: undefined },
-  name: { type: String, default: undefined },
-  size: {
-    type: String,
-    default: 'lg',
-    validator: (value) => ['sm', 'md', 'lg'].includes(value)
-  },
-  label: { type: String, default: undefined }
+const props = withDefaults(defineProps<{
+  path?: string
+  name?: string
+  size?: 'sm' | 'md' | 'lg'
+  label?: string
+}>(), {
+  path: undefined,
+  name: undefined,
+  size: 'lg',
+  label: undefined
 })
 
 const SIZES = Object.freeze({ sm: 'size-4', md: 'size-5', lg: 'size-6' })
 
-const drawing = computed(() => props.path ?? GLYPHS[props.name])
+const drawing = computed(() => props.path ?? (props.name === undefined ? undefined : GLYPHS[props.name]))
 </script>
 
 <template>

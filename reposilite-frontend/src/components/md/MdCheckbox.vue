@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
 
 /*
@@ -32,30 +32,27 @@ import { computed, useAttrs, useId } from 'vue'
  */
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  indeterminate: {
-    type: Boolean,
-    default: false
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  error: {
-    type: Boolean,
-    default: false
-  },
-  id: {
-    type: String,
-    default: ''
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  indeterminate?: boolean
+  disabled?: boolean
+  error?: boolean
+  id?: string
+}>(), {
+  modelValue: false,
+  indeterminate: false,
+  disabled: false,
+  error: false,
+  id: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+defineSlots<{
+  default?(): unknown
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+}>()
 
 const attrs = useAttrs()
 const generatedId = useId()
@@ -65,7 +62,7 @@ const inputId = computed(() => props.id || `md-checkbox-${generatedId}`)
 const forwardedAttrs = () =>
   Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style'))
 
-const onChange = (event) => emit('update:modelValue', event.target.checked)
+const onChange = (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).checked)
 
 const state = computed(() => {
   if (props.indeterminate) return 'indeterminate'

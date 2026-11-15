@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MdButton from './MdButton.vue'
 
@@ -43,32 +43,42 @@ import MdButton from './MdButton.vue'
  * first item then has the focus. Arrow keys move between the items and wrap at the ends. Escape closes the menu
  * and returns the focus to the button. A focus that leaves the menu closes it, so Tab leaves the menu as well.
  */
-defineProps({
-  label: {
-    type: String,
-    required: true
-  },
-  items: {
-    type: Array,
-    required: true
-  },
+interface MenuItem {
+  value?: string
+  label?: string
+  ariaLabel?: string
+  error?: boolean
+  href?: string
+  type?: 'separator' | 'radio'
+  checked?: boolean
+}
+
+withDefaults(defineProps<{
+  label: string
+  items: MenuItem[]
   // Classes for the trigger button, such as the width of an account button.
-  triggerClass: {
-    type: String,
-    default: ''
-  }
+  triggerClass?: string
+}>(), {
+  triggerClass: ''
 })
 
-const emit = defineEmits(['select'])
+defineSlots<{
+  trigger?(): unknown
+  header?(): unknown
+}>()
+
+const emit = defineEmits<{
+  select: [value: string | undefined]
+}>()
 
 const menuOpen = ref(false)
-const root = ref(null)
-const menuElement = ref(null)
-const placement = ref({})
+const root = ref<HTMLElement | null>(null)
+const menuElement = ref<HTMLElement | null>(null)
+const placement = ref<Record<string, string>>({})
 
 const GAP = 4
 const triggerElement = () => root.value?.querySelector('button')
-const menuItems = () => [...(menuElement.value?.querySelectorAll('[role="menuitem"], [role="menuitemradio"]') ?? [])]
+const menuItems = (): HTMLElement[] => [...(menuElement.value?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ?? [])]
 
 const place = async () => {
   const trigger = triggerElement()
@@ -87,9 +97,9 @@ const closeMenu = () => {
   menuOpen.value = false
 }
 
-const insideMenu = (node) => root.value?.contains(node) || menuElement.value?.contains(node)
+const insideMenu = (node: EventTarget | null) => root.value?.contains(node as Node | null) || menuElement.value?.contains(node as Node | null)
 
-const onPointerdown = (event) => {
+const onPointerdown = (event: Event) => {
   if (!insideMenu(event.target)) closeMenu()
 }
 
@@ -102,7 +112,7 @@ const onScroll = () => {
   else place()
 }
 
-const listen = (on) => {
+const listen = (on: boolean) => {
   const toggle = on ? 'addEventListener' : 'removeEventListener'
   document[toggle]('pointerdown', onPointerdown)
   window[toggle]('scroll', onScroll, true)
@@ -122,12 +132,12 @@ const toggle = () => {
   menuOpen.value = !menuOpen.value
 }
 
-const openFromKeyboard = (event) => {
+const openFromKeyboard = (event: KeyboardEvent) => {
   event.preventDefault()
   menuOpen.value = true
 }
 
-const choose = (value) => {
+const choose = (value?: string) => {
   menuOpen.value = false
   emit('select', value)
   triggerElement()?.focus({ preventScroll: true })
@@ -135,7 +145,7 @@ const choose = (value) => {
 
 // A link item is followed by the router on a plain click. With a modifier key, or a button other than the primary
 // one, the browser opens the address itself, so the menu only closes.
-const chooseLink = (event, value) => {
+const chooseLink = (event: MouseEvent, value?: string) => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
     closeMenu()
     return
@@ -144,10 +154,10 @@ const chooseLink = (event, value) => {
   choose(value)
 }
 
-const onMenuKeydown = (event) => {
+const onMenuKeydown = (event: KeyboardEvent) => {
   const items = menuItems()
-  const index = items.indexOf(document.activeElement)
-  const move = (step) => {
+  const index = items.indexOf(document.activeElement as HTMLElement)
+  const move = (step: number) => {
     event.preventDefault()
     items[(index + step + items.length) % items.length]?.focus()
   }
@@ -169,7 +179,7 @@ const onMenuKeydown = (event) => {
 }
 
 // Closes the menu when the focus leaves both the button and the menu, so a click elsewhere does not leave it open.
-const onFocusout = (event) => {
+const onFocusout = (event: FocusEvent) => {
   if (!insideMenu(event.relatedTarget)) closeMenu()
 }
 

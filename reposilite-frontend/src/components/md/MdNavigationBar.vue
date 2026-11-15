@@ -14,7 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
+import type { NavIconSlot, NavItem } from './types'
 /*
  * Material Design 3 navigation bar: three to five destinations with an icon and a label.
  * Spec: 80px container on surface-container, 64 by 32 active indicator on secondary-container,
@@ -29,29 +30,29 @@
  *
  * The icon slot receives { item, active } for each destination.
  */
-const props = defineProps({
-  items: {
-    type: Array,
-    required: true
-  },
-  modelValue: {
-    type: String,
-    default: undefined
-  },
-  label: {
-    type: String,
-    default: 'Primary'
-  }
+const props = withDefaults(defineProps<{
+  items: NavItem[]
+  modelValue?: string
+  label?: string
+}>(), {
+  modelValue: undefined,
+  label: 'Primary'
 })
 
-const emit = defineEmits(['update:modelValue'])
+defineSlots<{
+  icon?: NavIconSlot
+}>()
 
-const isActive = (item) => item.key === props.modelValue
+const emit = defineEmits<{
+  'update:modelValue': [key: string]
+}>()
 
-const isPlainLeftClick = (event) =>
+const isActive = (item: NavItem) => item.key === props.modelValue
+
+const isPlainLeftClick = (event: MouseEvent) =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
 
-const select = (item, event) => {
+const select = (item: NavItem, event: MouseEvent) => {
   if (item.href) {
     if (!isPlainLeftClick(event)) {
       return

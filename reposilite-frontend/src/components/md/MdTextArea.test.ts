@@ -16,9 +16,10 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import MdTextArea from './MdTextArea.vue'
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountArea = (props = {}) => {
   wrapper = mount(MdTextArea, {
@@ -27,8 +28,8 @@ const mountArea = (props = {}) => {
   return wrapper
 }
 
-const area = () => wrapper.find('textarea')
-const counter = () => wrapper.find('[data-test="counter"]')
+const area = () => wrapper!.find('textarea')
+const counter = () => wrapper!.find('[data-test="counter"]')
 
 afterEach(() => {
   wrapper?.unmount()
@@ -40,7 +41,7 @@ describe('MdTextArea', () => {
     mountArea({ modelValue: 'Nightly builds' })
 
     expect(area().element.value).toBe('Nightly builds')
-    expect(wrapper.find('label').attributes('for')).toBe(area().attributes('id'))
+    expect(wrapper!.find('label').attributes('for')).toBe(area().attributes('id'))
   })
 
   it('emits the text as it is typed', async () => {
@@ -48,7 +49,7 @@ describe('MdTextArea', () => {
 
     await area().setValue('Released artifacts')
 
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Released artifacts'])
+    expect(wrapper!.emitted('update:modelValue')?.at(-1)).toEqual(['Released artifacts'])
   })
 
   it('counts the characters against the limit', () => {
@@ -72,14 +73,14 @@ describe('MdTextArea', () => {
   it('shows the error text and marks the field invalid when the form reports a problem', () => {
     mountArea({ error: true, errorText: 'Use at most 280 characters.' })
 
-    expect(wrapper.text()).toContain('Use at most 280 characters.')
+    expect(wrapper!.text()).toContain('Use at most 280 characters.')
     expect(area().attributes('aria-invalid')).toBe('true')
   })
 
   it('shows the supporting text when there is no error', () => {
     mountArea({ supportingText: 'Shown in the overview.' })
 
-    expect(wrapper.text()).toContain('Shown in the overview.')
+    expect(wrapper!.text()).toContain('Shown in the overview.')
     expect(area().attributes('aria-invalid')).toBeUndefined()
   })
 
@@ -100,10 +101,10 @@ describe('MdTextArea outlined field', () => {
   it('draws the label after the textarea, so the peer pattern floats it into the notch', () => {
     mountArea()
 
-    const children = [...area().element.parentElement.children].map(element => element.tagName)
+    const children = [...area().element.parentElement!.children].map(element => element.tagName)
     expect(children).toEqual(['TEXTAREA', 'LABEL'])
     expect(area().classes()).toContain('peer')
-    expect(wrapper.find('label').classes()).toContain('peer-focus:top-0')
+    expect(wrapper!.find('label').classes()).toContain('peer-focus:top-0')
   })
 
   it('has no resize handle, because the field grows with its text', () => {
@@ -116,7 +117,7 @@ describe('MdTextArea outlined field', () => {
   it('takes the full width of its form, not a fixed maximum', () => {
     mountArea()
 
-    expect(wrapper.classes()).not.toContain('max-w-xl')
-    expect(wrapper.classes()).toContain('w-full')
+    expect(wrapper!.classes()).not.toContain('max-w-xl')
+    expect(wrapper!.classes()).toContain('w-full')
   })
 })

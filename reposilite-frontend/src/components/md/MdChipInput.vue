@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, useId } from 'vue'
+import type { TextValidator } from './types'
 
 /*
  * An input chip field: a list of values, each shown as a chip with a close button, and a text
@@ -28,51 +29,31 @@ import { computed, ref, useId } from 'vue'
  * and that contain the text typed after the last comma. Pressing one adds it. The field knows
  * nothing about tags; the renderer that uses it supplies the rules and the suggestions.
  */
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  label: {
-    type: String,
-    required: true
-  },
-  id: {
-    type: String,
-    default: ''
-  },
-  supportingText: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: Boolean,
-    default: false
-  },
-  errorText: {
-    type: String,
-    default: ''
-  },
-  suggestions: {
-    type: Array,
-    default: () => []
-  },
-  validate: {
-    type: Function,
-    default: () => ''
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: string[]
+  label: string
+  id?: string
+  supportingText?: string
+  error?: boolean
+  errorText?: string
+  suggestions?: string[]
+  validate?: TextValidator
   // The limit shown in the counter. Zero shows no counter.
-  maxItems: {
-    type: Number,
-    default: 0
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  }
+  maxItems?: number
+  disabled?: boolean
+}>(), {
+  modelValue: () => [],
+  id: '',
+  supportingText: '',
+  errorText: '',
+  suggestions: () => [],
+  validate: () => '',
+  maxItems: 0
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string[]]
+}>()
 
 const SUGGESTION_LIMIT = 8
 
@@ -80,7 +61,7 @@ const generatedId = useId()
 const inputId = computed(() => props.id || `md-chip-input-${generatedId}`)
 const helperId = computed(() => `${inputId.value}-helper`)
 
-const input = ref(null)
+const input = ref<HTMLInputElement | null>(null)
 const draft = ref('')
 const draftError = ref('')
 const focused = ref(false)
@@ -90,7 +71,7 @@ const helperText = computed(() => problem.value || props.supportingText)
 const invalid = computed(() => problem.value !== '')
 
 /* The text typed after the last comma, which is the one the suggestions match. */
-const needle = computed(() => draft.value.split(',').pop().trim().toLowerCase())
+const needle = computed(() => (draft.value.split(',').pop() ?? '').trim().toLowerCase())
 
 const visibleSuggestions = computed(() => {
   if (!focused.value) return []
@@ -104,8 +85,8 @@ const visibleSuggestions = computed(() => {
  * problem: the accepted pieces are kept, and the failing piece and everything after it are returned
  * as the rest.
  */
-const addPieces = (pieces) => {
-  const accepted = []
+const addPieces = (pieces: string[]) => {
+  const accepted: string[] = []
   for (let index = 0; index < pieces.length; index++) {
     const text = pieces[index].trim()
     if (text === '') continue
@@ -117,7 +98,7 @@ const addPieces = (pieces) => {
 }
 
 /* Adds what can be added, and leaves the rest in the field with its problem, or clears the field. */
-const commit = (pieces, tail = null) => {
+const commit = (pieces: string[], tail: string | null = null) => {
   const result = addPieces(pieces)
   if (result.accepted.length > 0) {
     emit('update:modelValue', [...props.modelValue, ...result.accepted])
@@ -134,11 +115,11 @@ const commit = (pieces, tail = null) => {
 const onInput = () => {
   if (!draft.value.includes(',')) return
   const pieces = draft.value.split(',')
-  const tail = pieces.pop()
+  const tail = pieces.pop() as string
   commit(pieces, tail)
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter') {
     event.preventDefault()
     commit(draft.value.split(','))
@@ -147,12 +128,12 @@ const onKeydown = (event) => {
   }
 }
 
-const remove = (index) => {
+const remove = (index: number) => {
   emit('update:modelValue', props.modelValue.filter((_, position) => position !== index))
   input.value?.focus()
 }
 
-const addSuggestion = (suggestion) => {
+const addSuggestion = (suggestion: string) => {
   const message = props.validate(suggestion, props.modelValue)
   if (message) {
     draftError.value = message
