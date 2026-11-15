@@ -74,6 +74,29 @@ internal class FakeAzureBlobClient : AzureBlobClient {
         return content.copyOfRange(offset.toInt(), end.toInt()).inputStream()
     }
 
+    /** Every listing request, as prefix and maximum number of results. */
+    val listCalls = mutableListOf<Pair<String, Int?>>()
+
+    /**
+     * A listing by hierarchy with the delimiter `/`: a name under the prefix that has a further `/` is a directory, the prefix itself
+     * is a blob (a folder marker when it ends with `/`), and any other name is a blob.
+     */
+    override fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild> {
+        listCalls += prefix to maxResults
+        val children = linkedMapOf<String, AzureBlobChild>()
+        committed.keys.filter { it.startsWith(prefix) }.sorted().forEach { key ->
+            val rest = key.removePrefix(prefix)
+            val child = if (rest.contains('/') && rest.isNotEmpty()) {
+                AzureBlobChild(prefix + rest.substringBefore('/') + "/", null)
+            } else {
+                AzureBlobChild(key, properties(key))
+            }
+            children.putIfAbsent(child.name, child)
+        }
+        val entries = children.values.toList()
+        return maxResults?.let { entries.take(it) } ?: entries
+    }
+
     private companion object {
         val modifiedAt: Instant = Instant.parse("2026-01-02T03:04:05Z")
     }
