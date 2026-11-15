@@ -38,6 +38,7 @@ internal class ClusterEnvelopeCodecGoldenTest {
 
     private val goldens = listOf(
         Golden("resolution.invalidated", ClusterEventType.RESOLUTION_INVALIDATED, """{"repository":"releases","path":"com/example/demo/1.0.0"}"""),
+        Golden("storage.invalidated", ClusterEventType.STORAGE_INVALIDATED, """{"repository":"releases","path":"org/example/app/1.0/app-1.0.jar"}"""),
         Golden("token.changed", ClusterEventType.TOKEN_CHANGED, """{"name":"ci-bot"}"""),
         Golden("session.revoked", ClusterEventType.SESSION_REVOKED, """{"family":"6f1c2a9e-0d3b-4c57-9a8e-2b4d6e8f1a20"}"""),
         Golden("config.changed", ClusterEventType.CONFIG_CHANGED, """{"domain":"maven"}"""),
