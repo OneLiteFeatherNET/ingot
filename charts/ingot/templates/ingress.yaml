@@ -42,7 +42,7 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- if eq $.Values.mode "split" }}
+          {{- if or (eq $.Values.mode "split") (eq $.Values.mode "scalable") }}
           {{- include "ingot.ingressPath" (dict "path" "/" "pathType" "Exact" "service" $dashboardName "port" $dashboardPort) | nindent 10 }}
           {{- include "ingot.ingressPath" (dict "path" "/assets" "pathType" "Prefix" "service" $dashboardName "port" $dashboardPort) | nindent 10 }}
           {{- include "ingot.ingressPath" (dict "path" "/favicon.png" "pathType" "Exact" "service" $dashboardName "port" $dashboardPort) | nindent 10 }}

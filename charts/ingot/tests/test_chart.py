@@ -893,5 +893,117 @@ class ScalableServiceTest(unittest.TestCase):
                          "the combined Service must not select the dashboard pods")
 
 
+WRITE_VERBS = ("POST", "PUT", "DELETE", "PATCH")
+WRITE_PATH = "/releases/a/b/1.0/b-1.0.jar"
+
+
+def scalable_routing_values(pathtype="ingress"):
+    values = scalable_values()
+    if pathtype == "ingress":
+        values["ingress"] = {"enabled": True, "hosts": [{"host": "ingot.example.org", "paths": []}]}
+    else:
+        values["httpRoute"] = {"enabled": True, "parentRefs": [{"name": "gateway"}]}
+    return values
+
+
+def path_matches(path_type, value, path):
+    """Gateway API: Exact matches the whole path, PathPrefix matches whole path segments."""
+    if path_type == "Exact":
+        return path == value
+    return value == "/" or path == value or path.startswith(value + "/")
+
+
+def first_backend_for(manifests, method, path):
+    """The backend of the first rule, in list order, with a match for the method and the path. None when no rule matches."""
+    for rule in http_route_rules(manifests):
+        for match in rule["matches"]:
+            wanted = match.get("method")
+            if (wanted is None or wanted == method) and path_matches(match["path"]["type"], match["path"]["value"], path):
+                return rule["backendRefs"][0]["name"]
+    return None
+
+
+class ScalableHttpRouteTest(unittest.TestCase):
+
+    def test_scalable_http_route_orders_dashboard_then_read_then_write(self):
+        rules = http_route_rules(render(scalable_routing_values("httpRoute")))
+        backends = [rule["backendRefs"][0]["name"] for rule in rules]
+        self.assertEqual([DASHBOARD, READ, WRITE], backends,
+                         "the rules must be the dashboard, then the read Service, then the write Service")
+
+    def test_scalable_http_route_dashboard_rule_matches_the_split_dashboard_paths(self):
+        scalable = http_route_rules(render(scalable_routing_values("httpRoute")))[0]
+        split = http_route_rules(render(split_routing_values("httpRoute")))[0]
+        self.assertEqual(split["matches"], scalable["matches"],
+                         "the dashboard paths must be the list that split mode uses, unchanged")
+
+    def test_scalable_http_route_sends_the_overview_to_the_dashboard(self):
+        manifests = render(scalable_routing_values("httpRoute"))
+        self.assertEqual(DASHBOARD, first_backend_for(manifests, "GET", "/"),
+                         "GET / must reach the dashboard before any read rule")
+
+    def test_scalable_http_route_sends_get_to_read(self):
+        manifests = render(scalable_routing_values("httpRoute"))
+        self.assertEqual(READ, first_backend_for(manifests, "GET", WRITE_PATH),
+                         "GET on the root prefix must reach the read Service")
+
+    def test_scalable_http_route_sends_head_to_read(self):
+        manifests = render(scalable_routing_values("httpRoute"))
+        self.assertEqual(READ, first_backend_for(manifests, "HEAD", WRITE_PATH),
+                         "HEAD on the root prefix must reach the read Service")
+
+    def test_scalable_http_route_sends_every_write_verb_to_write(self):
+        manifests = render(scalable_routing_values("httpRoute"))
+        for method in WRITE_VERBS:
+            with self.subTest(method=method):
+                self.assertEqual(WRITE, first_backend_for(manifests, method, WRITE_PATH),
+                                 f"{method} must reach the write Service")
+
+    def test_scalable_http_route_read_rule_matches_no_write_verb(self):
+        read = [rule for rule in http_route_rules(render(scalable_routing_values("httpRoute")))
+                if rule["backendRefs"][0]["name"] == READ][0]
+        methods = [match.get("method") for match in read["matches"]]
+        self.assertNotIn(None, methods, "a read rule without a method would also match writes")
+        self.assertEqual([], [m for m in methods if m in WRITE_VERBS], "no read rule may match a write verb")
+
+    def test_scalable_http_route_last_rule_is_the_write_rule_without_a_method(self):
+        rules = http_route_rules(render(scalable_routing_values("httpRoute")))
+        last = rules[-1]
+        self.assertEqual([{"path": {"type": "PathPrefix", "value": "/"}}], last["matches"],
+                         "the last rule must match the root prefix with no method")
+        self.assertEqual(WRITE, last["backendRefs"][0]["name"], "the last rule must send to the write Service")
+
+
+class ScalableIngressRouteTest(unittest.TestCase):
+
+    def test_scalable_ingress_sends_the_dashboard_paths_to_the_dashboard(self):
+        def dashboard_paths(values):
+            return [entry for entry in ingress_paths(render(values)) if entry[2] == DASHBOARD]
+
+        self.assertEqual(dashboard_paths(split_routing_values("ingress")), dashboard_paths(scalable_routing_values("ingress")),
+                         "the dashboard paths of the ingress must be the list that split mode uses, unchanged")
+
+    def test_scalable_ingress_sends_every_other_path_to_the_combined_service(self):
+        paths = ingress_paths(render(scalable_routing_values("ingress")))
+        others = [entry for entry in paths if entry[2] != DASHBOARD]
+        self.assertEqual([("/", "Prefix", SERVER)], others,
+                         "every non-dashboard path must go to the combined Service, which selects read and write pods")
+
+
+class ScalableNotesTest(unittest.TestCase):
+
+    def test_scalable_ingress_notes_name_the_method_limitation(self):
+        text = " ".join(notes(scalable_routing_values("ingress")).split())
+        self.assertIn("plain Ingress cannot match an HTTP method", text,
+                      "the notes must say that a plain Ingress cannot match a method")
+        self.assertIn("read and write traffic share the pods", text,
+                      "the notes must say that read and write traffic share the pods")
+        self.assertIn("httpRoute routes by method", text, "the notes must name httpRoute as the way to route by method")
+
+    def test_scalable_http_route_notes_omit_the_ingress_limitation(self):
+        text = " ".join(notes(scalable_routing_values("httpRoute")).split())
+        self.assertNotIn("cannot match an HTTP method", text, "the limitation applies to ingress.enabled only")
+
+
 if __name__ == "__main__":
     unittest.main()

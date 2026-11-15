@@ -84,3 +84,10 @@ NOTE: this release keeps the names of the upstream reposilite chart, taken from 
 The claim, the Deployment and the Service are named {{ include "ingot.fullname" . }}, and the server selector stays
 app.kubernetes.io/name: reposilite. This note does not stop the install.
 {{- end }}
+{{- if and (eq .Values.mode "scalable") .Values.ingress.enabled }}
+
+NOTE: scalable mode with ingress.enabled sends all non-dashboard traffic to the Service {{ include "ingot.fullname" . }}, which selects
+the read and the write pods. A plain Ingress cannot match an HTTP method, so read and write traffic share the pods and the split
+gives sizing but no isolation. httpRoute routes by method (GET and HEAD to the read pods, every other method to the write pods)
+and needs a Gateway API controller. This note does not stop the install.
+{{- end }}
