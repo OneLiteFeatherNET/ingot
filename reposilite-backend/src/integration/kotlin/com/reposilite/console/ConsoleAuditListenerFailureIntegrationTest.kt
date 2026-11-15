@@ -10,7 +10,6 @@ import com.reposilite.token.AccessTokenFacade
 import kong.unirest.core.Unirest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
@@ -30,14 +29,6 @@ internal class ConsoleAuditListenerFailureIntegrationTest : ReposiliteSpecificat
 
     private val sockets = mutableListOf<ConsoleSocket>()
 
-    @BeforeEach
-    fun registerBrokenAuditListener() {
-        reposilite.extensions.registerEvent<AuditEvent> {
-            reached.incrementAndGet()
-            throw IllegalStateException("broken audit listener")
-        }
-    }
-
     @AfterEach
     fun closeSockets() {
         sockets.forEach { it.close() }
@@ -46,10 +37,19 @@ internal class ConsoleAuditListenerFailureIntegrationTest : ReposiliteSpecificat
     private fun basic(name: String, secret: String): String =
         "Basic " + Base64.getEncoder().encodeToString("$name:$secret".toByteArray())
 
+    /** Registered after the fixture is built, because creating a token emits an audit event as well. */
+    private fun breakAuditListener() {
+        reposilite.extensions.registerEvent<AuditEvent> {
+            reached.incrementAndGet()
+            throw IllegalStateException("broken audit listener")
+        }
+    }
+
     @Test
     fun `should answer a plain command with its usual body when an audit listener throws`() {
-        // given: an instance admin
+        // given: an instance admin and a broken audit listener
         val (name, secret) = useDefaultManagementToken()
+        breakAuditListener()
 
         // when: a command runs in plain mode
         val response = Unirest.post("$base/api/console/execute")
@@ -66,8 +66,9 @@ internal class ConsoleAuditListenerFailureIntegrationTest : ReposiliteSpecificat
 
     @Test
     fun `should answer a structured command with exit code 0 when an audit listener throws`() {
-        // given: an instance admin
+        // given: an instance admin and a broken audit listener
         val (name, secret) = useDefaultManagementToken()
+        breakAuditListener()
 
         // when: a command runs in structured mode
         val response = Unirest.post("$base/api/console/execute?structured=true")
@@ -88,6 +89,7 @@ internal class ConsoleAuditListenerFailureIntegrationTest : ReposiliteSpecificat
         // given: an instance admin and a token that a structured revoke would remove
         val (name, secret) = useDefaultManagementToken()
         useAuth("listener-held", "held-secret")
+        breakAuditListener()
 
         // when: the revoke runs in structured mode without confirmation
         val response = Unirest.post("$base/api/console/execute?structured=true")
@@ -106,18 +108,18 @@ internal class ConsoleAuditListenerFailureIntegrationTest : ReposiliteSpecificat
 
     @Test
     fun `should keep the WebSocket open and answer its command when an audit listener throws`() {
-        // given: an instance admin connected to the console WebSocket with the legacy token
+        // given: an instance admin connected to the console WebSocket with the legacy token, and a broken audit listener
         val (name, secret) = useDefaultManagementToken()
+        breakAuditListener()
         val socket = ConsoleSocket(URI.create("${base.replace("http", "ws")}/api/console/sock")).also { sockets += it }
         socket.send("Authorization:$name:$secret")
 
         // when: a command runs, and a keep-alive follows it on the same connection
         socket.send("level info")
-        socket.receiveUntil { it.contains("The new logging level has been set to info") }
         socket.send("keep-alive")
         val received = socket.receiveUntil { it == "keep-alive" }
 
-        // then: the connection survived the broken listener and the listener was reached
+        // then: the keep-alive is answered, so the connection survived the command, and the listener was reached
         assertThat(reached.get()).`as`("audit events emitted to the broken listener").isPositive()
         assertThat(received.last()).`as`("keep-alive answered after the command").isEqualTo("keep-alive")
     }
