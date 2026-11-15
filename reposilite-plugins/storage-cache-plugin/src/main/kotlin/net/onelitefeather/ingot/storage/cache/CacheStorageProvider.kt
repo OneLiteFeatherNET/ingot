@@ -19,11 +19,13 @@
 package net.onelitefeather.ingot.storage.cache
 
 import com.reposilite.shared.ErrorResponse
-import com.reposilite.storage.s3.RelatedKeyRule
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import com.reposilite.storage.s3.RelatedKeyRule
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.ClusterBus
+import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
 import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
 import java.io.FilterInputStream
 import java.io.IOException
@@ -38,6 +40,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.FileTime
 import java.time.Clock
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import panda.std.Result
@@ -58,9 +61,23 @@ internal class CacheStorageProvider(
     private val maxSize: Long = Long.MAX_VALUE,
     private val cacheOnUpload: Boolean = false,
     private val clock: Clock = Clock.systemUTC(),
-    private val publishInvalidation: (Collection<String>) -> Unit = {},
+    private val repositoryName: String = "",
+    @Volatile private var publishInvalidation: (Collection<String>) -> Unit = {},
     private val onFailure: (String) -> Unit = {},
-) : StorageProvider, RelatedKeyAware {
+) : StorageProvider, ClusterCacheAware, RelatedKeyAware {
+
+    /**
+     * Called once the cluster bus is open. From then on every removal and overwrite is published under the repository name, so that the
+     * other replicas drop their copies. The bound lifetime of the head caches does not apply to copies, which have no time limit.
+     */
+    override fun bind(clusterBus: ClusterBus, maxAge: Duration) {
+        publishInvalidation = { keys -> clusterBus.publishInvalidation(repositoryName, keys) }
+    }
+
+    /** A removal or an overwrite made on another replica: the local copies go, and nothing is published again. */
+    override fun invalidate(keys: Collection<String>) {
+        keys.forEach { dropLocal(it) }
+    }
 
     /** A copy in the index. [pins] counts the open streams of it, and an entry with a pin is never evicted. */
     private class Entry(val size: Long, var lastAccess: Long) {

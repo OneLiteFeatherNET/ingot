@@ -26,9 +26,17 @@ import java.time.Duration
  * not implement a capability keeps the default behaviour of that capability.
  */
 
-/** The cluster bus of this instance, as far as a storage needs it. The cluster plugin implements it; it has no members yet. */
+/** The cluster bus of this instance, as far as a storage needs it. The cluster plugin implements it. */
 @ExperimentalIngotStorageApi
-interface ClusterBus
+interface ClusterBus {
+
+    /**
+     * Publishes that the files of [keys] in [repository] changed on this instance, so that the other instances drop their copies of them
+     * through [ClusterCacheAware.invalidate]. Only a storage that keeps local copies calls it. The default publishes nothing.
+     */
+    fun publishInvalidation(repository: String, keys: Collection<String>) {}
+
+}
 
 /**
  * A storage whose head cache is bounded by the cluster bus. Core calls [bind] once the bus is open, and [invalidate] for writes that

@@ -37,4 +37,7 @@ interface RepositoryCacheCoordinator : Facade {
     /** Keeps the usage figures another instance computed, see the storage usage service. */
     fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean
 
+    /** Drops the local copy of [path] in [repository] in a storage cache, as a remote instance announced. Nothing happens by default. */
+    fun invalidateStorage(repository: String, path: String) {}
+
 }

@@ -40,6 +40,11 @@ internal object ClusterCacheEvents {
             val path = envelope.payload.text("path") ?: return@onReceived
             hooks.resolutionInvalidated(repository, path)
         }
+        plugin.onReceived(ClusterEventType.STORAGE_INVALIDATED) { envelope ->
+            val repository = envelope.payload.text("repository") ?: return@onReceived
+            val path = envelope.payload.text("path") ?: return@onReceived
+            hooks.storageInvalidated(repository, path)
+        }
         plugin.onReceived(ClusterEventType.CONFIG_CHANGED) { envelope ->
             val domain = envelope.payload.text("domain") ?: return@onReceived
             hooks.sharedConfigurationChanged(domain)
@@ -66,7 +71,7 @@ internal object ClusterCacheEvents {
             publish(ClusterEventType.READ_ONLY_CHANGED, mapOf("enabled" to event.enabled.toString()))
         }
         plugin.event { _: HttpServerStartedEvent ->
-            hooks.clusterBusOpened()
+            hooks.clusterBusOpened(PublishingClusterBus(publish))
         }
     }
 

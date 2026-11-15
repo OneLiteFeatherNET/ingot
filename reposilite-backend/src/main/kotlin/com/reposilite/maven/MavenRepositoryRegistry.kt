@@ -21,6 +21,7 @@ import com.reposilite.storage.api.toLocation
 import net.onelitefeather.ingot.repository.RegisteredRepository
 import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
 import net.onelitefeather.ingot.storage.capability.ClusterBus
+import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 
 /**
@@ -47,5 +48,9 @@ internal class MavenRepositoryRegistry(
 
     override fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean =
         storageUsageService.applyReceived(event)
+
+    override fun invalidateStorage(repository: String, path: String) {
+        (repositoryProvider.getRepository(repository)?.storageProvider as? ClusterCacheAware)?.invalidate(listOf(path))
+    }
 
 }
