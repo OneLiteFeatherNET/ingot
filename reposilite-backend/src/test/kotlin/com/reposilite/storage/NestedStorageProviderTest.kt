@@ -18,12 +18,15 @@
 
 package com.reposilite.storage
 
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.reposilite.ReposiliteObjectMapper
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.journalist.backend.PrintStreamLogger
 import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
 import net.onelitefeather.ingot.storage.IngotStorageProviderFactory
+import net.onelitefeather.ingot.storage.NestedStorageProviderSettings
 import net.onelitefeather.ingot.storage.STORAGE_PROVIDER_API_VERSION
 import net.onelitefeather.ingot.storage.StorageProviderContext
 import net.onelitefeather.ingot.storage.StorageProviderNotInstalledException
@@ -99,6 +102,36 @@ class NestedStorageProviderTest {
     }
 
     @Test
+    fun `bind reads the delegate of a nested block as its typed settings`() {
+        val storage = facade(LeafFactory(leaf), WrapperFactory())
+        val block = UnresolvedStorageProviderSettings(type = "wrapper", raw = objectNode("""{"type":"wrapper","delegate":{"type":"leaf"}}"""))
+
+        val bound = storage.bind(block)
+
+        assertThat(bound)
+            .describedAs("the outer block and its delegate must both be bound to the settings classes of their factories")
+            .isEqualTo(WrapperSettings(delegate = LeafSettings()))
+    }
+
+    @Test
+    fun `a delegate of a type that no built-in factory knows arrives unresolved`() {
+        val bound = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+            .treeToValue(objectNode("""{"type":"wrapper","delegate":{"type":"leaf"}}"""), WrapperSettings::class.java)
+
+        assertThat(bound.delegate)
+            .describedAs("the delegate of a plugin type is only bound by the server, so a check on it sees an unresolved block")
+            .isInstanceOf(UnresolvedStorageProviderSettings::class.java)
+    }
+
+    @Test
+    fun `bind leaves a block of a type that is not installed as it is`() {
+        val storage = facade(LeafFactory(leaf))
+        val block = UnresolvedStorageProviderSettings(type = "minio", raw = objectNode("""{"type":"minio"}"""))
+
+        assertThat(storage.bind(block)).isSameAs(block)
+    }
+
+    @Test
     fun `an outer type that is not registered still gives no provider`() {
         val storage = facade(LeafFactory(leaf))
 
@@ -113,8 +146,14 @@ private data class LeafSettings(override val type: String = "leaf") : StoragePro
 
 private data class WrapperSettings(
     override val type: String = "wrapper",
-    val delegate: StorageProviderSettings,
-) : StorageProviderSettings
+    override val delegate: StorageProviderSettings,
+) : NestedStorageProviderSettings {
+
+    override fun withDelegate(delegate: StorageProviderSettings): StorageProviderSettings = copy(delegate = delegate)
+
+}
+
+private fun objectNode(json: String): ObjectNode = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(json) as ObjectNode
 
 private class LeafFactory(private val provider: StorageProvider) : IngotStorageProviderFactory<StorageProvider, LeafSettings> {
 
