@@ -23,16 +23,17 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 
 /**
- * Runs an identity write in its own transaction and advances the policy revision in that same transaction. A write that
- * fails is rolled back together with the revision, so the revision moves exactly when identity changed. Usage records
+ * Runs an identity write in its own transaction. The policy revision is advanced first, in that same transaction. The update
+ * takes the write lock of the revision row until the transaction ends, so a write of another replica cannot commit between
+ * the decision of this write and its own changes: it waits for the commit, or fails on a database that refuses it. A write
+ * that fails is rolled back together with the revision, so the revision moves exactly when identity changed. Usage records
  * (last seen times, spent recovery codes) do not go through here: they change no right and must not invalidate the caches of
  * every replica.
  */
 internal fun <T> identityWrite(database: Database, block: JdbcTransaction.() -> T): T =
     transaction(database) {
-        val result = block()
         PolicyRevisionTable.update(where = { PolicyRevisionTable.id eq POLICY_REVISION_ROW }, body = {
             it[PolicyRevisionTable.revision] = PolicyRevisionTable.revision + 1L
         })
-        result
+        block()
     }
