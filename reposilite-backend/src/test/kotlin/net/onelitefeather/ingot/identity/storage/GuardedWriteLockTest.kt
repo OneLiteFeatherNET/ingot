@@ -40,6 +40,21 @@ internal class GuardedWriteLockTest {
     lateinit var workingDirectory: Path
 
     @Test
+    fun `a store write inside a guarded write advances the revision once`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            // given: a store and the revision before the guarded write
+            val store = IdentityStore(connection.database, clock)
+            val before = store.policyRevision()
+
+            // when: a guarded write performs a store write inside its transaction
+            store.guardedWrite { store.createTeam("maintainers", "", externalRef = null) }
+
+            // then: the one change advanced the revision once, not once per layer
+            assertThat(store.policyRevision()).describedAs("one guarded change advances the revision once").isEqualTo(before + 1)
+        }
+    }
+
+    @Test
     fun `a write of another replica is refused while a guarded write holds the revision`() {
         val url = "jdbc:sqlite:${workingDirectory.resolve("identity.db").toAbsolutePath()}?busy_timeout=0"
         DatabaseConnectionFactory.createConnection(workingDirectory, url, 1).use { connectionA ->
