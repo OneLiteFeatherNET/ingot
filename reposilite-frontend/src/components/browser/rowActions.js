@@ -19,8 +19,10 @@
 
 const HUMAN_READABLE = ['application/xml', 'text/plain', 'text/xml', 'text/markdown', 'application/json']
 
-// Index is the number of actions: three 40px buttons and two 4px gaps is the widest slot.
-const ACTION_SLOT_CLASSES = ['w-0', 'w-10', 'w-21', 'w-32']
+// Index is the number of actions: three 40px buttons and two 4px gaps is the widest slot. From the medium window
+// (600 px) up every row reserves that width, so the sizes line up. Below it a row is only as wide as its own
+// buttons, so a phone keeps the room for the names that the row had before the slot existed.
+const ACTION_SLOT_CLASSES = ['w-0', 'w-auto medium:w-10', 'w-auto medium:w-21', 'w-auto medium:w-32']
 
 export const actionSlotClass = (count) =>
   ACTION_SLOT_CLASSES[Math.min(Math.max(count, 0), ACTION_SLOT_CLASSES.length - 1)]

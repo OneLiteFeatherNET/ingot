@@ -252,15 +252,21 @@ describe('DetailedListEntry actions slot', () => {
     const slots = [0, 1, 2, 3].map(count => actionsOf(mountRow(jar, count)).classes())
 
     expect(slots.map(classes => classes.includes('w-0')), 'no action in the listing reserves no room').toEqual([true, false, false, false])
-    expect(slots.map(classes => classes.includes('w-10')), 'one action reserves one button').toEqual([false, true, false, false])
-    expect(slots.map(classes => classes.includes('w-21')), 'two actions reserve two buttons and a gap').toEqual([false, false, true, false])
-    expect(slots.map(classes => classes.includes('w-32')), 'three actions reserve three buttons and two gaps').toEqual([false, false, false, true])
+    expect(slots.map(classes => classes.includes('medium:w-10')), 'one action reserves one button from 600 px').toEqual([false, true, false, false])
+    expect(slots.map(classes => classes.includes('medium:w-21')), 'two actions reserve two buttons and a gap from 600 px').toEqual([false, false, true, false])
+    expect(slots.map(classes => classes.includes('medium:w-32')), 'three actions reserve three buttons and two gaps from 600 px').toEqual([false, false, false, true])
+  })
+
+  it('leaves the slot to the row own buttons below the medium window', () => {
+    const slots = [1, 2, 3].map(count => actionsOf(mountRow(jar, count)).classes())
+
+    expect(slots.map(classes => classes.includes('w-auto')), 'below 600 px the slot is only as wide as its buttons').toEqual([true, true, true])
   })
 
   it('keeps the slot of a listing on a row whose own actions are fewer', () => {
     const wrapper = mountRow(jar, 3)
 
-    expect(actionsOf(wrapper).classes(), 'the slot is the listing width, three buttons wide').toContain('w-32')
+    expect(actionsOf(wrapper).classes(), 'the slot is the listing width, three buttons wide from 600 px').toContain('medium:w-32')
     expect(wrapper.find('[aria-label="View example-1.0.jar in a new tab"]').exists(), 'a missing view action is not rendered').toBe(false)
     expect(wrapper.find('[aria-label="Open javadoc for example-1.0.jar in a new tab"]').exists(), 'a missing javadoc action is not rendered').toBe(false)
   })

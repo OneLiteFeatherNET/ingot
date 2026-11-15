@@ -53,6 +53,17 @@ const fieldBox = (page) => page.getByRole('searchbox', { name: /filter/i }).loca
 const detailsToggle = (page) => page.locator('[data-ingot-component="snippets-card"] button[aria-expanded]')
 const detailsCard = (page) => page.locator('[data-ingot-component="snippets-card"]')
 
+// The action slot of a row, against the width its own buttons take: from the first button to the last one, and
+// nothing when the row renders no button. Below the medium window a slot reserves nothing beyond its buttons.
+const slotAgainstOwnButtons = (rows) => rows.evaluateAll(elements => elements.map((row) => {
+  const slot = row.querySelector('[data-row-actions]')
+  const buttons = [...slot.querySelectorAll('button, a')].map(button => button.getBoundingClientRect())
+  const ownWidth = buttons.length === 0
+    ? 0
+    : Math.max(...buttons.map(box => box.right)) - Math.min(...buttons.map(box => box.left))
+  return { name: row.querySelector('a').textContent.trim(), slotWidth: slot.getBoundingClientRect().width, ownWidth }
+}))
+
 const expectWithin = (box, container, what) => {
   expect(box.left, `${what}: left edge against the gutter, in px`).toBeGreaterThanOrEqual(container.left - 1)
   expect(box.right, `${what}: right edge against the gutter, in px`).toBeLessThanOrEqual(container.right + 1)
@@ -186,31 +197,34 @@ test.describe('browse layout', () => {
     expect(Math.abs(memberListBox.left - listingBox.left), 'left edge of the member list against the listing, in px').toBeLessThanOrEqual(0.5)
   })
 
-  test('right-aligns the file sizes of a version directory in one column at 1440 px', async ({ page, seed }) => {
-    await page.setViewportSize({ width: 1440, height: 900 })
-    const repository = await seed.repository('size-column')
-    const directory = 'com/example/demo/1.0'
-    // Rows with no action, one action (delete only) and two actions (view or javadoc, and delete) side by side.
-    await seed.upload(repository, `${directory}/demo-1.0.jar`, 'jar bytes\n')
-    await seed.upload(repository, `${directory}/demo-1.0.pom`, '<project/>\n')
-    await seed.upload(repository, `${directory}/maven-metadata.xml`, '<metadata/>\n')
-    await seed.upload(repository, `${directory}/demo-1.0-javadoc.jar`, 'javadoc bytes, a bit longer\n')
-    await seed.upload(repository, `${directory}/demo-1.0-sources.jar`, 'sources\n')
-    await page.goto(siteUrl(`/browse/${repository}/${directory}`))
-    // The size sits on the name line only in the compact list, which the toggle switches on.
-    await page.getByRole('button', { name: 'Compact list' }).click()
+  // The action slot is shared by the rows from the medium window (600 px) up, so the sizes line up there.
+  for (const width of [600, 1440]) {
+    test(`right-aligns the file sizes of a version directory in one column at ${width} px`, async ({ page, seed }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const repository = await seed.repository('size-column')
+      const directory = 'com/example/demo/1.0'
+      // Rows with no action, one action (delete only) and two actions (view or javadoc, and delete) side by side.
+      await seed.upload(repository, `${directory}/demo-1.0.jar`, 'jar bytes\n')
+      await seed.upload(repository, `${directory}/demo-1.0.pom`, '<project/>\n')
+      await seed.upload(repository, `${directory}/maven-metadata.xml`, '<metadata/>\n')
+      await seed.upload(repository, `${directory}/demo-1.0-javadoc.jar`, 'javadoc bytes, a bit longer\n')
+      await seed.upload(repository, `${directory}/demo-1.0-sources.jar`, 'sources\n')
+      await page.goto(siteUrl(`/browse/${repository}/${directory}`))
+      // The size sits on the name line only in the compact list, which the toggle switches on.
+      await page.getByRole('button', { name: 'Compact list' }).click()
 
-    const rows = page.locator('[data-ingot-component="detailed-list-entry"]')
-    await expect(rows, 'one row per uploaded file').toHaveCount(5)
-    const sizeRights = await rows.evaluateAll(elements => elements.map((row) => {
-      const size = row.querySelector('.md-label-small')
-      return { name: row.querySelector('a').textContent.trim(), right: size.getBoundingClientRect().right }
-    }))
-    const reference = sizeRights[0].right
-    for (const { name, right } of sizeRights) {
-      expect(Math.abs(right - reference), `right edge of the size of ${name} against the first row, in px`).toBeLessThanOrEqual(0.5)
-    }
-  })
+      const rows = page.locator('[data-ingot-component="detailed-list-entry"]')
+      await expect(rows, 'one row per uploaded file').toHaveCount(5)
+      const sizeRights = await rows.evaluateAll(elements => elements.map((row) => {
+        const size = row.querySelector('.md-label-small')
+        return { name: row.querySelector('a').textContent.trim(), right: size.getBoundingClientRect().right }
+      }))
+      const reference = sizeRights[0].right
+      for (const { name, right } of sizeRights) {
+        expect(Math.abs(right - reference), `right edge of the size of ${name} against the first row, in px`).toBeLessThanOrEqual(0.5)
+      }
+    })
+  }
 
   test('shows the file names of a signed-out listing in full at 320 px', async ({ page, seed }) => {
     await page.setViewportSize({ width: 320, height: 900 })
@@ -231,6 +245,28 @@ test.describe('browse layout', () => {
       expect(shownInFull, `${name} is shown in full at 320 px`).toBe(true)
     }
     await expect(page.getByRole('link', { name: /^demo-1\.0\.pom\b/ }), 'the pom name is shown in full').toBeVisible()
+    // A signed-out row reserves only its own buttons, so each name has the room it has on main.
+    for (const { name, slotWidth, ownWidth } of await slotAgainstOwnButtons(page.locator('[data-ingot-component="detailed-list-entry"]'))) {
+      expect(Math.abs(slotWidth - ownWidth), `the action slot of ${name} against its own buttons, in px`).toBeLessThanOrEqual(0.5)
+    }
+  })
+
+  test('shows the file names of a signed-in listing at 320 px with no more room reserved than its buttons', async ({ adminPage, seed }) => {
+    await adminPage.setViewportSize({ width: 320, height: 900 })
+    const repository = await seed.repository('names-320-signed-in')
+    const directory = 'com/example/demo/1.0'
+    await seed.upload(repository, `${directory}/demo-1.0.jar`, 'jar bytes\n')
+    await seed.upload(repository, `${directory}/demo-1.0.pom`, '<project/>\n')
+    await seed.upload(repository, `${directory}/maven-metadata.xml`, '<metadata/>\n')
+    await seed.upload(repository, `${directory}/demo-1.0-javadoc.jar`, 'javadoc bytes, a bit longer\n')
+    await adminPage.goto(siteUrl(`/browse/${repository}/${directory}`))
+    await adminPage.getByRole('button', { name: 'Compact list' }).click()
+
+    const rows = adminPage.locator('[data-ingot-component="detailed-list-entry"]')
+    await expect(rows, 'one row per uploaded file').toHaveCount(4)
+    for (const { name, slotWidth, ownWidth } of await slotAgainstOwnButtons(rows)) {
+      expect(Math.abs(slotWidth - ownWidth), `the action slot of ${name} against its own buttons, in px`).toBeLessThanOrEqual(0.5)
+    }
   })
 
   test('reserves no action room in a signed-out listing without actions at 320 px', async ({ page, seed }) => {

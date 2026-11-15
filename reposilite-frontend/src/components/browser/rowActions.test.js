@@ -32,16 +32,16 @@ describe('actionSlotClass', () => {
     expect(actionSlotClass(0), 'zero actions take no room').toBe('w-0')
   })
 
-  it('reserves the width of one button for a listing with one action at most', () => {
-    expect(actionSlotClass(1), 'one 40px button').toBe('w-10')
+  it('reserves the width of one button from the medium window up for one action at most', () => {
+    expect(actionSlotClass(1), 'one 40px button from 600 px, the own buttons of the row below').toBe('w-auto medium:w-10')
   })
 
-  it('reserves the width of two buttons and a gap for two actions', () => {
-    expect(actionSlotClass(2), 'two 40px buttons and one 4px gap').toBe('w-21')
+  it('reserves the width of two buttons and a gap from the medium window up for two actions', () => {
+    expect(actionSlotClass(2), 'two 40px buttons and one 4px gap from 600 px').toBe('w-auto medium:w-21')
   })
 
-  it('reserves the width of three buttons and two gaps for three actions', () => {
-    expect(actionSlotClass(3), 'three 40px buttons and two 4px gaps').toBe('w-32')
+  it('reserves the width of three buttons and two gaps from the medium window up for three actions', () => {
+    expect(actionSlotClass(3), 'three 40px buttons and two 4px gaps from 600 px').toBe('w-auto medium:w-32')
   })
 })
 
