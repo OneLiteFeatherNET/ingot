@@ -3398,7 +3398,7 @@
                 }
               }
             },
-            "description" : "Status of the executed command (plain), or the structured answer when 'structured=true'"
+            "description" : "Status of the executed command (plain), or the structured answer when 'structured=true': exit code, node, and the output lines with their stream (stdout or stderr)"
           },
           "400" : {
             "content" : {

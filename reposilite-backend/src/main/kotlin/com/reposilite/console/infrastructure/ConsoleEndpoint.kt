@@ -64,7 +64,7 @@ internal class ConsoleEndpoint(
         responses = [
             OpenApiResponse(
                 status = "200",
-                description = "Status of the executed command (plain), or the structured answer when 'structured=true'",
+                description = "Status of the executed command (plain), or the structured answer when 'structured=true': exit code, node, and the output lines with their stream (stdout or stderr)",
                 content = [OpenApiContent(from = ExecutionResponse::class)]
             ),
             OpenApiResponse(
