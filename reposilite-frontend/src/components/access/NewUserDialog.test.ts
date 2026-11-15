@@ -14,54 +14,58 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NewUserDialog from './NewUserDialog.vue'
+import type { PrincipalsApi } from './accessPrincipals'
 import { createErrorToast } from '../../helpers/toast'
+
+type ErrorLike = { response?: { data?: { message?: string } }, message?: string } | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
-const dialog = () => document.querySelector('[role="dialog"]')
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
 
-const type = (id, value) => {
-  const input = document.getElementById(id)
+const type = (id: string, value: string) => {
+  const input = document.getElementById(id) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
 const submit = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+  dialog().querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
-const fill = ({ name = 'carol', displayName = 'Carol Example', password = 'a-long-password' } = {}) => {
+const fill = ({ name = 'carol', displayName = 'Carol Example', password = 'a-long-password' }: { name?: string, displayName?: string, password?: string } = {}) => {
   type('new-user-name', name)
   type('new-user-display-name', displayName)
   type('new-user-password', password)
 }
 
 describe('NewUserDialog', () => {
-  let wrapper
-  let api
-  let calls
+  let wrapper: VueWrapper | undefined
+  let api: { create: Mock, setPassword: Mock }
+  let calls: string[]
 
   beforeEach(async () => {
     calls = []
     api = {
-      create: vi.fn(async () => { calls.push('create'); return { data: { name: 'carol' } } }),
-      setPassword: vi.fn(async () => { calls.push('setPassword'); return { status: 204 } })
+      create: vi.fn(() => { calls.push('create'); return Promise.resolve({ data: { name: 'carol' } }) }),
+      setPassword: vi.fn(() => { calls.push('setPassword'); return Promise.resolve({ status: 204 }) })
     }
     vi.mocked(createErrorToast).mockClear()
-    wrapper = mount(NewUserDialog, { props: { modelValue: true, api }, attachTo: document.body })
+    // The fakes answer with the shape the dialog reads, not with the full API responses.
+    wrapper = mount(NewUserDialog, { props: { modelValue: true, api: api as unknown as Pick<PrincipalsApi, 'create' | 'setPassword'> }, attachTo: document.body })
     await flushPromises()
   })
 
   afterEach(() => {
-    wrapper.unmount()
+    wrapper!.unmount()
     document.body.innerHTML = ''
   })
 
@@ -97,8 +101,8 @@ describe('NewUserDialog', () => {
     fill()
     await submit()
 
-    expect(wrapper.emitted('created')[0]).toEqual(['carol'])
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper!.emitted('created')![0]).toEqual(['carol'])
+    expect(wrapper!.emitted('update:modelValue')![0]).toEqual([false])
   })
 
   it('sends nothing for an initial password under 12 characters', async () => {
@@ -124,7 +128,7 @@ describe('NewUserDialog', () => {
     fill()
     await submit()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('The name carol is taken')
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The name carol is taken')
     expect(api.setPassword, 'no password for a user that was not created').not.toHaveBeenCalled()
   })
 
@@ -136,6 +140,6 @@ describe('NewUserDialog', () => {
     await submit()
 
     expect(createErrorToast).toHaveBeenCalledWith(expect.stringContaining('Password is too common'))
-    expect(wrapper.emitted('created'), 'the list must show the user that now exists').toHaveLength(1)
+    expect(wrapper!.emitted('created'), 'the list must show the user that now exists').toHaveLength(1)
   })
 })

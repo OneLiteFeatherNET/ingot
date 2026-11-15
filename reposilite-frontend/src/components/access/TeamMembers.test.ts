@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import {
   TEAM,
   confirm,
@@ -27,39 +27,39 @@ import {
   typeInto
 } from './teamTestKit'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted((): { session: unknown } => ({ session: null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }, message?: string } | undefined) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 describe('TeamDetail members', () => {
-  let wrapper
-  let teams
+  let wrapper: VueWrapper | undefined
+  let teams: ReturnType<typeof makeTeamsApi>
 
-  const row = (name) => wrapper.findAll('[data-test="member"]')
-    .find(member => member.find('[data-test="member-name"]').text() === name)
+  const row = (name: string) => wrapper!.findAll('[data-test="member"]')
+    .find(member => member.find('[data-test="member-name"]').text() === name)!
 
-  const candidates = () => [...document.querySelectorAll('[data-test="candidate"]')]
-  const candidateNames = () => candidates().map(candidate => candidate.querySelector('.md-body-small').textContent.trim())
+  const candidates = () => [...document.querySelectorAll<HTMLElement>('[data-test="candidate"]')]
+  const candidateNames = () => candidates().map(candidate => candidate.querySelector('.md-body-small')!.textContent.trim())
 
   const openPicker = async () => {
-    await wrapper.find('[data-test="add-member"]').trigger('click')
+    await wrapper!.find('[data-test="add-member"]').trigger('click')
     await flushPromises()
   }
 
-  const pick = async (name) => {
-    const label = candidates().find(candidate => candidate.querySelector('.md-body-small').textContent.trim() === name)
-    label.querySelector('input').click()
+  const pick = async (name: string) => {
+    const label = candidates().find(candidate => candidate.querySelector('.md-body-small')!.textContent.trim() === name)!
+    label.querySelector<HTMLInputElement>('input')!.click()
     await flushPromises()
   }
 
   const addPicked = async () => {
-    document.querySelector('[data-test="add-members"]').click()
+    document.querySelector<HTMLElement>('[data-test="add-members"]')!.click()
     await flushPromises()
   }
 
@@ -77,7 +77,7 @@ describe('TeamDetail members', () => {
 
   describe('rows', () => {
     it('shows every member with the kind of its principal', async () => {
-      expect(wrapper.findAll('[data-test="member"]').map(member => member.find('[data-test="member-name"]').text()))
+      expect(wrapper!.findAll('[data-test="member"]').map(member => member.find('[data-test="member-name"]').text()))
         .toEqual(['alice', 'bob', 'ci-bot'])
       expect(row('ci-bot').find('[data-test="kind-chip"]').text()).toBe('Machine')
       expect(row('alice').find('[data-test="kind-chip"]').text()).toBe('User')
@@ -104,7 +104,7 @@ describe('TeamDetail members', () => {
   })
 
   describe('removing a member', () => {
-    const askRemove = async (name) => {
+    const askRemove = async (name: string) => {
       await row(name).find('[data-test="remove-member"]').trigger('click')
       await flushPromises()
     }
@@ -112,7 +112,7 @@ describe('TeamDetail members', () => {
     it('asks before it sends anything', async () => {
       await askRemove('alice')
 
-      expect(confirmDialog().textContent).toContain('alice')
+      expect(confirmDialog()!.textContent).toContain('alice')
       expect(teams.setMembers).not.toHaveBeenCalled()
     })
 
@@ -128,7 +128,7 @@ describe('TeamDetail members', () => {
       await askRemove('alice')
       await confirm()
 
-      expect(confirmDialog().querySelector('[data-test="confirm-failure"]').textContent)
+      expect(confirmDialog()!.querySelector<HTMLElement>('[data-test="confirm-failure"]')!.textContent)
         .toBe('The last instance admin cannot be removed')
       expect(row('alice'), 'the member is still listed').toBeDefined()
     })
@@ -138,7 +138,7 @@ describe('TeamDetail members', () => {
       await askRemove('alice')
       await confirm()
 
-      expect(document.querySelector('[role="alertdialog"]').textContent).toContain('Team changed elsewhere')
+      expect(document.querySelector<HTMLElement>('[role="alertdialog"]')!.textContent).toContain('Team changed elsewhere')
     })
 
     it('sends the same change with the fresh entity tag when the conflict is overwritten', async () => {
@@ -147,12 +147,12 @@ describe('TeamDetail members', () => {
       await askRemove('alice')
       await confirm()
 
-      const overwrite = [...document.querySelectorAll('[role="alertdialog"] button')]
-        .find(button => button.textContent.trim() === 'Overwrite')
+      const overwrite = [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
+        .find(button => button.textContent.trim() === 'Overwrite')!
       overwrite.click()
       await flushPromises()
-      const confirmOverwrite = [...document.querySelectorAll('[role="alertdialog"] button')]
-        .find(button => button.textContent.trim() === 'Confirm overwrite')
+      const confirmOverwrite = [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
+        .find(button => button.textContent.trim() === 'Confirm overwrite')!
       confirmOverwrite.click()
       await flushPromises()
 
@@ -180,10 +180,10 @@ describe('TeamDetail members', () => {
     it('lists a disabled principal with a chip and allows it', async () => {
       await openPicker()
 
-      const carol = candidates().find(candidate => candidate.textContent.includes('carol'))
+      const carol = candidates().find(candidate => candidate.textContent.includes('carol'))!
 
       expect(carol.textContent).toContain('Disabled')
-      expect(carol.querySelector('input').disabled).toBe(false)
+      expect(carol.querySelector<HTMLInputElement>('input')!.disabled).toBe(false)
     })
 
     it('filters by name and display name', async () => {
@@ -207,7 +207,7 @@ describe('TeamDetail members', () => {
     it('adds nothing until somebody is picked', async () => {
       await openPicker()
 
-      expect(document.querySelector('[data-test="add-members"]').disabled).toBe(true)
+      expect(document.querySelector<HTMLButtonElement>('[data-test="add-members"]')!.disabled).toBe(true)
     })
 
     it('shows the new member in the list after the add', async () => {
@@ -224,7 +224,7 @@ describe('TeamDetail members', () => {
       await pick('dave')
       await addPicked()
 
-      expect(document.querySelector('[data-test="add-failure"]').textContent).toBe('Unknown principal dave')
+      expect(document.querySelector<HTMLElement>('[data-test="add-failure"]')!.textContent).toBe('Unknown principal dave')
     })
   })
 })

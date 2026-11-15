@@ -14,41 +14,44 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NewMachineDialog from './NewMachineDialog.vue'
+import type { PrincipalsApi } from './accessPrincipals'
+
+type ErrorLike = { response?: { data?: { message?: string } }, message?: string } | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
-const dialog = () => document.querySelector('[role="dialog"]')
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
 
-const type = (id, value) => {
-  const input = document.getElementById(id)
+const type = (id: string, value: string) => {
+  const input = document.getElementById(id) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
 const submit = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+  dialog().querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
 describe('NewMachineDialog', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper | undefined
+  let api: { create: Mock }
 
   beforeEach(async () => {
     api = { create: vi.fn().mockResolvedValue({ data: { name: 'ci-bot' } }) }
-    wrapper = mount(NewMachineDialog, { props: { modelValue: true, api }, attachTo: document.body })
+    wrapper = mount(NewMachineDialog, { props: { modelValue: true, api: api as unknown as Pick<PrincipalsApi, 'create'> }, attachTo: document.body })
     await flushPromises()
   })
 
   afterEach(() => {
-    wrapper.unmount()
+    wrapper!.unmount()
     document.body.innerHTML = ''
   })
 
@@ -62,7 +65,7 @@ describe('NewMachineDialog', () => {
 
   it('creates the account disabled when asked', async () => {
     type('new-machine-name', 'ci-bot')
-    document.getElementById('new-machine-disabled').click()
+    document.getElementById('new-machine-disabled')!.click()
     await submit()
 
     expect(api.create).toHaveBeenCalledWith({ kind: 'MACHINE', name: 'ci-bot', disabled: true })
@@ -86,8 +89,8 @@ describe('NewMachineDialog', () => {
     type('new-machine-name', 'ci-bot')
     await submit()
 
-    expect(wrapper.emitted('created')[0]).toEqual(['ci-bot'])
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper!.emitted('created')![0]).toEqual(['ci-bot'])
+    expect(wrapper!.emitted('update:modelValue')![0]).toEqual([false])
   })
 
   it('shows a name that is taken inside the dialog', async () => {
@@ -97,7 +100,7 @@ describe('NewMachineDialog', () => {
     type('new-machine-name', 'ci-bot')
     await submit()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('The name ci-bot is taken')
-    expect(wrapper.emitted('created')).toBeUndefined()
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The name ci-bot is taken')
+    expect(wrapper!.emitted('created')).toBeUndefined()
   })
 })

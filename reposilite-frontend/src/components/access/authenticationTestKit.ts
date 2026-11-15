@@ -41,16 +41,17 @@ const authenticationServer = () => ({
 })
 
 // A settings client that serves the authentication domain only. `update` is the write, replaceable by a spy.
-const authenticationClient = ({ server = authenticationServer(), update = async () => ({ data: {} }) } = {}) => ({
+const authenticationClient = ({ server = authenticationServer(), update = () => Promise.resolve({ data: {} }) } = {}) => ({
   settings: {
-    domains: async () => ({ data: ['authentication'] }),
-    schema: async () => ({ data: JSON.parse(JSON.stringify(authenticationSchema)) }),
-    fetch: async () => ({ data: JSON.parse(JSON.stringify(server)), headers: { etag: '"v1"' } }),
+    domains: () => Promise.resolve({ data: ['authentication'] }),
+    schema: () => Promise.resolve({ data: JSON.parse(JSON.stringify(authenticationSchema)) as typeof authenticationSchema }),
+    fetch: () => Promise.resolve({ data: JSON.parse(JSON.stringify(server)) as ReturnType<typeof authenticationServer>, headers: { etag: '"v1"' } }),
     update
   }
 })
 
 // A configuration store of its own, to be provided to the views under test.
-const authenticationStore = (client = authenticationClient()) => createConfigurationStore(ref(client))
+const authenticationStore = (client = authenticationClient()) =>
+  createConfigurationStore(ref(client) as unknown as Parameters<typeof createConfigurationStore>[0])
 
 export { authenticationClient, authenticationServer, authenticationStore }

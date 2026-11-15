@@ -14,15 +14,16 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import type { AxiosResponse } from 'axios'
 import { useSession } from '../../store/session'
 import { errorMessage, createSuccessToast } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdChipInput from '../md/MdChipInput.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { validateLdap } from './loginSettings'
+import { LDAP_DEFAULTS, validateLdap, type LdapSettings } from './loginSettings'
 import { useLoginSettings } from './useLoginSettings'
 import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
 
@@ -45,19 +46,28 @@ const {
   save
 } = useLoginSettings(() => client.value.settings)
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+/** The answer of the LDAP test: whether the bind and the optional user lookup worked. */
+interface LdapTestResult {
+  ok: boolean
+  error?: string
+  userDn?: string
+  groups?: string[]
+}
 
-const form = ref(null)
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+// Set from the saved directory before the first render (the watch below is immediate), so it is never empty when drawn.
+const form = ref<LdapSettings>(clone(LDAP_DEFAULTS))
 const submitted = ref(false)
 const testUsername = ref('')
 const testPassword = ref('')
 const testing = ref(false)
-const testResult = ref(null)
+const testResult = ref<LdapTestResult | null>(null)
 
 const saved = computed(() => settings.value.ldap)
 const dirty = computed(() => form.value !== null && JSON.stringify(form.value) !== JSON.stringify(saved.value))
 const problems = computed(() => (form.value ? validateLdap(form.value) : {}))
-const errorOf = (field) => (submitted.value ? problems.value[field] ?? '' : '')
+const errorOf = (field: string) => (submitted.value ? problems.value[field] ?? '' : '')
 
 // Once the server has answered, and again after each save, the form starts from what is stored.
 watch(saved, (value) => {
@@ -77,11 +87,11 @@ const submit = async () => {
 // The test answers for the saved directory. An empty test name only checks the connection and the bind.
 const test = async () => {
   testing.value = true
-  const body = {}
+  const body: { username?: string; password?: string } = {}
   if (testUsername.value) body.username = testUsername.value
   if (testPassword.value) body.password = testPassword.value
   try {
-    const response = await client.value.auth.testLdapProvider(body)
+    const response: AxiosResponse<LdapTestResult> = await client.value.auth.testLdapProvider(body)
     testResult.value = { ...response.data, ok: response.data?.ok === true }
   } catch (error) {
     testResult.value = { ok: false, error: errorMessage(error) }
@@ -90,7 +100,7 @@ const test = async () => {
   }
 }
 
-const groupsOf = (groups) => (Array.isArray(groups) ? groups.join(', ') : '')
+const groupsOf = (groups: unknown) => (Array.isArray(groups) ? groups.join(', ') : '')
 
 onMounted(load)
 </script>

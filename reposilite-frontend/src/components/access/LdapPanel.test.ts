@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import LdapPanel from './LdapPanel.vue'
 import { SECRET_PLACEHOLDER } from './loginSettings'
 import { authenticationClient, authenticationStore } from './authenticationTestKit'
 import { configurationStoreKey } from '../../store/configuration'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<{ settings: Record<string, Mock>; auth: Record<string, Mock> }> } }))
 
 // The configuration store reads the session when it is imported, before the test sets the holder.
 vi.mock('../../store/session', () => ({ useSession: () => holder.session ?? { client: { value: null } } }))
@@ -55,22 +55,22 @@ const LDAP = {
   adminGroups: ['ingot-admins']
 }
 
-const answer = (data, etag = '"v1"') => ({ data, headers: { etag } })
-const rejection = (status) =>
+const answer = (data: unknown, etag = '"v1"') => ({ data, headers: { etag } })
+const rejection = (status: number) =>
   Object.assign(new Error(`Request failed with status code ${status}`), { response: { status, data: {} } })
 
-const field = (id) => document.getElementById(id)
-const type = (id, value) => {
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
+const type = (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
 }
-const buttonNamed = (wrapper, label) => wrapper.findAll('button').find(button => button.text() === label)
+const buttonNamed = (wrapper: VueWrapper, label: string) => wrapper.findAll('button').find(button => button.text() === label)!
 
 describe('LdapPanel', () => {
-  let wrapper
-  let settings
-  let auth
-  let authUpdate
+  let wrapper: VueWrapper
+  let settings: Record<string, Mock>
+  let auth: Record<string, Mock>
+  let authUpdate: Mock
 
   const mountPanel = async () => {
     const store = authenticationStore(authenticationClient({ update: authUpdate }))
@@ -100,7 +100,7 @@ describe('LdapPanel', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
+    wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
   })
 
@@ -260,10 +260,10 @@ describe('LdapPanel', () => {
 
     it('saves the Maven and Gradle LDAP through the authentication domain, and leaves the dashboard directory alone', async () => {
       await mountPanel()
-      const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')
+      const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')!
       await hostname.setValue('ldap2.domain.com')
 
-      wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP').trigger('click')
+      wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP')!.trigger('click')
       await flushPromises()
 
       expect(authUpdate).toHaveBeenCalledTimes(1)

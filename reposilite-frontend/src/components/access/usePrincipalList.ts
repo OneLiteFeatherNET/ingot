@@ -16,6 +16,7 @@
 
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
+import type { PrincipalKind, PrincipalsApi, PrincipalSummary } from './accessPrincipals'
 
 /*
  * The principals of one kind for a list page. One request answers for every row: the list items
@@ -26,8 +27,8 @@ import { errorMessage } from '../../helpers/toast'
  * `getApi` returns { list(kind) } of the identity client. A load that is overtaken by a newer one
  * is dropped, so the page always shows the answer to the last question.
  */
-export function usePrincipalList(kind, getApi) {
-  const principals = ref([])
+export function usePrincipalList(kind: PrincipalKind, getApi: () => Pick<PrincipalsApi, 'list'>) {
+  const principals = ref<PrincipalSummary[]>([])
   const loaded = ref(false)
   const loading = ref(false)
   const loadError = ref('')

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import TeamDetail from './TeamDetail.vue'
 
@@ -55,28 +55,28 @@ const PRINCIPALS = [
   { name: 'builder', kind: 'MACHINE', displayName: 'Builder', disabled: false }
 ]
 
-const answer = (data, etag = '"6"') => ({ data, headers: { etag } })
+const answer = (data: unknown, etag = '"6"') => ({ data, headers: { etag } })
 
-const failure = (status, message) => Object.assign(new Error(message), { response: { status, data: { message } } })
+const failure = (status: number, message: string) => Object.assign(new Error(message), { response: { status, data: { message } } })
 
 /** A fake teams client. Every write answers with the team as it would be after the write. */
-const makeTeamsApi = (team = TEAM) => ({
-  get: vi.fn(async () => answer(team, '"5"')),
-  list: vi.fn(async () => ({ data: [] })),
+const makeTeamsApi = (team = TEAM): Record<string, Mock> => ({
+  get: vi.fn(() => Promise.resolve(answer(team, '"5"'))),
+  list: vi.fn(() => Promise.resolve({ data: [] })),
   create: vi.fn(),
-  update: vi.fn(async (name, body) => answer({ ...team, ...body })),
-  remove: vi.fn(async () => ({ status: 204 })),
-  setMembers: vi.fn(async (name, members) => answer({
+  update: vi.fn((name: string, body: Record<string, unknown>) => Promise.resolve(answer({ ...team, ...body }))),
+  remove: vi.fn(() => Promise.resolve({ status: 204 })),
+  setMembers: vi.fn((name: string, members: string[]) => Promise.resolve(answer({
     ...team,
     members: [
       ...team.members.filter(member => member.source === 'SYNC'),
       ...members.map(principal => ({ principal, kind: 'USER', source: 'MANUAL' }))
     ]
-  })),
-  grantInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: true })),
-  revokeInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: false })),
-  parents: vi.fn(async () => answer({ parents: [...(team.parents ?? [])] }, '"p1"')),
-  setParents: vi.fn(async (name, parents) => answer({ parents }, '"p2"'))
+  }))),
+  grantInstanceAdmin: vi.fn(() => Promise.resolve(answer({ ...team, instanceRole: true }))),
+  revokeInstanceAdmin: vi.fn(() => Promise.resolve(answer({ ...team, instanceRole: false }))),
+  parents: vi.fn(() => Promise.resolve(answer({ parents: [...(team.parents ?? [])] }, '"p1"'))),
+  setParents: vi.fn((name: string, parents: string[]) => Promise.resolve(answer({ parents }, '"p2"')))
 })
 
 const NODES = [
@@ -86,19 +86,19 @@ const NODES = [
 
 /** A fake nodes client: it answers every subject with a copy of `nodes` and a fresh entity tag. */
 const makeNodesApi = (nodes = NODES) => ({
-  get: vi.fn(async () => answer({ nodes: nodes.map(entry => ({ ...entry })) }, '"n1"')),
-  set: vi.fn(async (kind, name, written) => answer({ nodes: written }, '"n2"')),
-  catalog: vi.fn(async () => ({ data: { nodes: [] } })),
-  templates: vi.fn(async () => ({ data: { templates: [] } }))
+  get: vi.fn(() => Promise.resolve(answer({ nodes: nodes.map(entry => ({ ...entry })) }, '"n1"'))),
+  set: vi.fn((kind: string, name: string, written: unknown) => Promise.resolve(answer({ nodes: written }, '"n2"'))),
+  catalog: vi.fn(() => Promise.resolve({ data: { nodes: [] } })),
+  templates: vi.fn(() => Promise.resolve({ data: { templates: [] } }))
 })
 
 /** Puts a fake client into the session holder the test file mocked. */
-const installClient = (holder, teams, nodes = makeNodesApi()) => {
+const installClient = (holder: { session: unknown }, teams: unknown, nodes: unknown = makeNodesApi()) => {
   holder.session = {
     client: ref({
       identity: {
         teams,
-        principals: { list: vi.fn(async () => ({ data: PRINCIPALS })) },
+        principals: { list: vi.fn(() => Promise.resolve({ data: PRINCIPALS })) },
         nodes
       }
     })
@@ -110,7 +110,7 @@ const shell = { render: () => null }
 const mountTeamDetail = async (name = 'developers') => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
   })
   await router.push('/access/teams')
   await router.isReady()
@@ -119,17 +119,17 @@ const mountTeamDetail = async (name = 'developers') => {
   return wrapper
 }
 
-const typeInto = (selector, value) => {
-  const input = document.querySelector(selector)
+const typeInto = (selector: string, value: string) => {
+  const input = document.querySelector<HTMLInputElement>(selector)!
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
-const confirmDialog = () => document.querySelector('[role="dialog"]')
+const confirmDialog = () => document.querySelector<HTMLElement>('[role="dialog"]')
 
 /** Presses the confirming button of the open confirmation dialog. */
 const confirm = async () => {
-  confirmDialog().querySelector('[data-test="confirm-button"]').click()
+  confirmDialog()!.querySelector<HTMLElement>('[data-test="confirm-button"]')!.click()
   await flushPromises()
 }
 

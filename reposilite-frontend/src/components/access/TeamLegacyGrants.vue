@@ -14,10 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, useId } from 'vue'
+<script setup lang="ts">
+import { computed, useId, type PropType } from 'vue'
 import TokenTag from '../tokens/TokenTag.vue'
-import { ROLES, grantScopeLabel, pathPrefixLabel, roleExplanation } from './accessTeams'
+import { ROLES, grantScopeLabel, pathPrefixLabel, roleExplanation, type TeamGrant } from './accessTeams'
 
 /*
  * The role grants a team still has from before permission nodes, shown for reading only in a
@@ -29,7 +29,7 @@ import { ROLES, grantScopeLabel, pathPrefixLabel, roleExplanation } from './acce
  */
 const props = defineProps({
   grants: {
-    type: Array,
+    type: Array as PropType<TeamGrant[]>,
     required: true
   }
 })

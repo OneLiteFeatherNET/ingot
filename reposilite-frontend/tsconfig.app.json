@@ -3,7 +3,7 @@
   "include": ["src/**/*", "src/**/*.vue"],
   // Test helpers that import vitest are left out: a composite project cannot name vitest's types in its declarations.
   // Their tests move to tsconfig.tests.json with the test conversion.
-  "exclude": ["src/**/*.test.*", "src/style-gate/**/*", "src/components/access/teamTestKit.js", "src/components/migration/testing.js"],
+  "exclude": ["src/**/*.test.*", "src/style-gate/**/*", "src/components/access/teamTestKit.ts", "src/components/migration/testing.js"],
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",

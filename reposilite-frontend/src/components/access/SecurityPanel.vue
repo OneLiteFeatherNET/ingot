@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
 </script>
 

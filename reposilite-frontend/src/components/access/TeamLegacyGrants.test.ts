@@ -17,22 +17,23 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import TeamLegacyGrants from './TeamLegacyGrants.vue'
+import type { TeamGrant } from './accessTeams'
 
-const GRANTS = () => [
+const GRANTS = (): TeamGrant[] => [
   { repository: null, pathPrefix: null, role: 'READ' },
   { repository: 'releases', pathPrefix: '/com/example/', role: 'DEPLOY' }
 ]
 
 describe('TeamLegacyGrants', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
-  const mountGrants = (grants = GRANTS()) => {
+  const mountGrants = (grants: TeamGrant[] = GRANTS()) => {
     wrapper = mount(TeamLegacyGrants, { props: { grants } })
   }
 
-  const rows = () => wrapper.findAll('[data-test="legacy-team-grant"]')
+  const rows = () => wrapper!.findAll('[data-test="legacy-team-grant"]')
 
   afterEach(() => {
     wrapper?.unmount()
@@ -42,13 +43,13 @@ describe('TeamLegacyGrants', () => {
   it('starts collapsed so the grants do not crowd the page', () => {
     mountGrants()
 
-    expect(wrapper.find('details').attributes('open')).toBeUndefined()
+    expect(wrapper!.find('details').attributes('open')).toBeUndefined()
   })
 
   it('names the section Legacy grants with the number of grants', () => {
     mountGrants()
 
-    expect(wrapper.find('summary').text()).toBe('Legacy grants (2)')
+    expect(wrapper!.find('summary').text()).toBe('Legacy grants (2)')
   })
 
   it('names a grant without a repository Every repository and without a prefix Whole repository', () => {
@@ -75,12 +76,12 @@ describe('TeamLegacyGrants', () => {
   it('is read only: it holds no input, no button and no editor', () => {
     mountGrants()
 
-    expect(wrapper.findAll('input, button, textarea, select')).toHaveLength(0)
+    expect(wrapper!.findAll('input, button, textarea, select')).toHaveLength(0)
   })
 
   it('shows nothing for a team without grants', () => {
     mountGrants([])
 
-    expect(wrapper.find('[data-test="legacy-team-grants"]').exists()).toBe(false)
+    expect(wrapper!.find('[data-test="legacy-team-grants"]').exists()).toBe(false)
   })
 })

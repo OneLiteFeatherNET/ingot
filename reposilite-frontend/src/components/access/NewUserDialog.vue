@@ -14,13 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
-import { MIN_PASSWORD_LENGTH, buildCreateBody, validatePrincipalName } from './accessPrincipals'
+import { MIN_PASSWORD_LENGTH, buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
 
 /*
  * Creates a user: the principal first, then its initial password. The user has to change that
@@ -38,7 +38,7 @@ const props = defineProps({
     default: false
   },
   api: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalsApi, 'create' | 'setPassword'>>,
     required: true
   }
 })

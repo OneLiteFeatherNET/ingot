@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+import type { AxiosResponse } from 'axios'
 import { instantToDate } from '../../helpers/apiTime'
 import { formatDateTime, formatRelative } from '../identity/identityTokens'
+import type { components } from '../../types/api'
 
 /*
  * The rules of the Access pages that need no component: the search filter, the relative time
@@ -23,12 +25,106 @@ import { formatDateTime, formatRelative } from '../identity/identityTokens'
  * Nothing here reads the system time; the labels count from the injected clock.
  */
 
+/** One permission node as the identity api lists it. */
+export type NodeEntry = components['schemas']['NodeDto']
+
+export type PrincipalKind = 'USER' | 'MACHINE'
+
+/*
+ * The shapes below are what the identity endpoints send for principals. The OpenAPI document declares
+ * no response body for them (see the contract gaps of the pull request), so they are written here from
+ * the server's answers.
+ */
+
+/** One row of the principal list: the facts a row shows, so that no detail is read per row. */
+export interface PrincipalSummary {
+  id?: number
+  kind: string
+  name: string
+  displayName?: string | null
+  disabled?: boolean
+  createdAt?: number | null
+  lastSeenAt?: number | null
+  instanceAdmin?: boolean
+  instanceRole?: boolean
+  isAdmin?: boolean
+  tokenCount?: number
+  providers?: string[]
+  nodeCount?: number
+}
+
+/** One token of a principal. The secret is never sent. */
+export interface TokenSummary {
+  name: string
+  description?: string | null
+  createdAt?: unknown
+  expiresAt?: number | null
+  scopes?: string[] | null
+  lastUsedAt?: number | null
+  lastUsedIp?: string | null
+  nodes?: NodeEntry[] | null
+}
+
+/** A route that a migrated access token still carries, as the token list sends it. */
+export interface LegacyRoute {
+  path: string
+  permission?: { identifier?: string } | null
+}
+
+/** A migrated access token: its routes, when it has any. */
+export interface LegacyToken {
+  routes?: LegacyRoute[] | null
+}
+
+/** The rights of one path of a migrated access token. */
+export interface LegacyGrant {
+  path: string
+  read: boolean
+  write: boolean
+}
+
+/** The detail of a principal as the views read it: flat, with the lists always present. */
+export interface PrincipalDetail extends PrincipalSummary {
+  teams: string[]
+  tokens: TokenSummary[]
+  nodes?: NodeEntry[]
+}
+
+/** The detail answer of the server: the principal flat, or nested under `principal`. */
+export type PrincipalDetailAnswer = Partial<PrincipalDetail> & { principal?: Partial<PrincipalSummary> }
+
+/** The body of a create request for a user or a machine account. */
+export interface CreatePrincipalBody {
+  kind: string
+  name: string
+  displayName?: string
+  disabled?: boolean
+}
+
+/** The identity client's principal endpoints, as the views call them. */
+export interface PrincipalsApi {
+  list(kind?: string): Promise<AxiosResponse<PrincipalSummary[]>>
+  get(name: string): Promise<AxiosResponse<PrincipalDetailAnswer>>
+  create(body: unknown): Promise<AxiosResponse>
+  update(name: string, body: unknown, etag?: string | null): Promise<AxiosResponse<PrincipalDetailAnswer>>
+  remove(name: string): Promise<AxiosResponse>
+  setPassword(name: string, password: string): Promise<AxiosResponse>
+  grantInstanceAdmin(name: string): Promise<AxiosResponse<PrincipalDetailAnswer>>
+  revokeInstanceAdmin(name: string): Promise<AxiosResponse<PrincipalDetailAnswer>>
+}
+
+/** A relative time text, and the absolute time as the tooltip when there is one. */
+export interface ActivityLabel {
+  text: string
+  title?: string
+}
+
 const MIN_PASSWORD_LENGTH = 12
 
-const normalize = (text) => String(text ?? '').trim().toLowerCase()
+const normalize = (text: string | null | undefined): string => String(text ?? '').trim().toLowerCase()
 
 /** The principals whose username or display name contains the query, ignoring case and outer spaces. */
-const filterPrincipals = (principals, query) => {
+const filterPrincipals = <T extends Pick<PrincipalSummary, 'name' | 'displayName'>>(principals: T[], query: string): T[] => {
   const needle = normalize(query)
   if (needle === '') return principals
   return principals.filter(principal =>
@@ -36,34 +132,34 @@ const filterPrincipals = (principals, query) => {
 }
 
 // The values are the Instants the API sends (epoch seconds); a missing one has no date.
-const labelOf = (value, never) => {
+const labelOf = (value: unknown, never: string): ActivityLabel => {
   const date = instantToDate(value)
   return date ? { text: formatRelative(date), title: formatDateTime(date) } : { text: never, title: undefined }
 }
 
 /** The last sign-in of a principal: a relative text, and the absolute time as the tooltip. */
-const seenLabel = (lastSeenAt) => labelOf(lastSeenAt, 'Never signed in')
+const seenLabel = (lastSeenAt: unknown): ActivityLabel => labelOf(lastSeenAt, 'Never signed in')
 
 /** The last use of a machine account: a relative text, and the absolute time as the tooltip. */
-const usedLabel = (lastUsedAt) => labelOf(lastUsedAt, 'Never used')
+const usedLabel = (lastUsedAt: unknown): ActivityLabel => labelOf(lastUsedAt, 'Never used')
 
-const time = (value) => instantToDate(value)?.getTime() ?? -Infinity
+const time = (value: unknown): number => instantToDate(value)?.getTime() ?? -Infinity
 
 /** The most recent lastUsedAt among the tokens, or null when none was ever used. */
-const newestLastUsed = (tokens) =>
+const newestLastUsed = (tokens: TokenSummary[] | null | undefined): number | null =>
   (tokens ?? [])
     .map(token => token.lastUsedAt)
-    .filter(Boolean)
-    .reduce((newest, value) => (newest === null || time(value) > time(newest) ? value : newest), null)
+    .filter((value): value is number => Boolean(value))
+    .reduce<number | null>((newest, value) => (newest === null || time(value) > time(newest) ? value : newest), null)
 
 /** The message for each password field, or an empty string where the field is fine. */
-const validateNewPassword = (password, confirm) => ({
+const validateNewPassword = (password: string | null | undefined, confirm: string | null | undefined): { password: string; confirm: string } => ({
   password: String(password ?? '').length < MIN_PASSWORD_LENGTH ? `Use at least ${MIN_PASSWORD_LENGTH} characters` : '',
   confirm: confirm !== password ? 'Passwords do not match' : ''
 })
 
 /** The message for a name that cannot be used, or an empty string. */
-const validatePrincipalName = (name) => {
+const validatePrincipalName = (name: string | null | undefined): string => {
   const value = String(name ?? '').trim()
   if (value === '') return 'A name is required'
   if (/[:/]/.test(value)) return "A name must not contain ':' or '/'"
@@ -71,8 +167,13 @@ const validatePrincipalName = (name) => {
 }
 
 /** The body of a create request. A blank display name and a false disabled flag are left out. */
-const buildCreateBody = ({ kind, name, displayName = '', disabled = false }) => {
-  const body = { kind, name: String(name).trim() }
+const buildCreateBody = ({ kind, name, displayName = '', disabled = false }: {
+  kind: string
+  name: string | null | undefined
+  displayName?: string | null
+  disabled?: boolean
+}): CreatePrincipalBody => {
+  const body: CreatePrincipalBody = { kind, name: String(name).trim() }
   const text = String(displayName ?? '').trim()
   if (text !== '') body.displayName = text
   if (disabled) body.disabled = true
@@ -83,21 +184,22 @@ const buildCreateBody = ({ kind, name, displayName = '', disabled = false }) => 
  * The detail of a principal as the views read it: flat, with the lists present. The contract is
  * flat; an answer that nests the principal is flattened, so either shape reads the same.
  */
-const detailOf = (data) => {
+const detailOf = (data: PrincipalDetailAnswer | null | undefined): PrincipalDetail => {
   const { principal, ...rest } = data ?? {}
   return {
     ...(principal ?? {}),
     ...rest,
     teams: rest.teams ?? [],
     tokens: rest.tokens ?? []
-  }
+  } as PrincipalDetail
 }
 
-const isInstanceAdmin = (detail) => detail?.instanceRole === true || detail?.instanceAdmin === true
+const isInstanceAdmin = (detail: { instanceRole?: boolean; instanceAdmin?: boolean } | null | undefined): boolean =>
+  detail?.instanceRole === true || detail?.instanceAdmin === true
 
 /** The routes of a migrated token, one entry per path with the read and write rights it had. */
-const legacyGrants = (token) => {
-  const byPath = new Map()
+const legacyGrants = (token: LegacyToken | null | undefined): LegacyGrant[] => {
+  const byPath = new Map<string, LegacyGrant>()
   for (const route of token?.routes ?? []) {
     const entry = byPath.get(route.path) ?? { path: route.path, read: false, write: false }
     if (route.permission?.identifier === 'route:read') entry.read = true

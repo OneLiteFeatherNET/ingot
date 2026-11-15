@@ -14,13 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
-import { validateNewPassword } from './accessPrincipals'
+import { validateNewPassword, type PrincipalSummary, type PrincipalsApi } from './accessPrincipals'
 
 /*
  * Sets a new password for a user. The user has to change it at the next sign-in, so the admin
@@ -40,11 +40,11 @@ const props = defineProps({
     default: false
   },
   principal: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalSummary, 'name'> | null>,
     default: null
   },
   api: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalsApi, 'setPassword'>>,
     required: true
   }
 })
@@ -73,8 +73,8 @@ const submit = async () => {
   if (problems.value.password || problems.value.confirm) return
   busy.value = true
   try {
-    await props.api.setPassword(props.principal.name, password.value)
-    createSuccessToast(`Password reset. ${props.principal.name} must choose a new one at the next sign-in.`)
+    await props.api.setPassword(props.principal!.name, password.value)
+    createSuccessToast(`Password reset. ${props.principal!.name} must choose a new one at the next sign-in.`)
     emit('done', props.principal)
     emit('update:modelValue', false)
   } catch (error) {

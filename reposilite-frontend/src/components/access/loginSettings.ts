@@ -19,6 +19,71 @@
  * directory. Nothing here talks to the server; the pages read and write through useLoginSettings.
  */
 
+/** The icon enum of the backend: the mark of a provider kind. */
+export type ProviderIcon =
+  | 'GITHUB' | 'GITLAB' | 'GOOGLE' | 'MICROSOFT' | 'KEYCLOAK' | 'AUTHENTIK' | 'OKTA' | 'AUTH0' | 'GITEA' | 'GENERIC'
+
+/** A kind the provider picker offers, with the texts that explain how to register it. */
+export interface ProviderType {
+  id: string
+  icon: ProviderIcon
+  label: string
+  issuerHint: string
+  scopes: string
+  issuerNote?: string
+  register: string
+}
+
+/** One single sign on provider as the login domain stores it. The secret is the placeholder when one is stored. */
+export interface OidcProvider {
+  id: string
+  enabled: boolean
+  label: string
+  icon: string
+  issuerUrl: string
+  clientId: string
+  clientSecret: string
+  scopes: string
+  usernameClaim: string
+  displayNameClaim: string
+  emailClaim: string
+  groupsClaim: string
+  allowedEmailDomains: string[]
+  autoCreateUsers: boolean
+  adminGroups: string[]
+}
+
+/** The LDAP directory as the login domain stores it. */
+export interface LdapSettings {
+  enabled: boolean
+  label: string
+  url: string
+  startTls: boolean
+  bindDn: string
+  bindPassword: string
+  userBaseDn: string
+  userFilter: string
+  usernameAttribute: string
+  displayNameAttribute: string
+  emailAttribute: string
+  groupBaseDn: string
+  groupFilter: string
+  groupNameAttribute: string
+  autoCreateUsers: boolean
+  adminGroups: string[]
+}
+
+/** The `login` domain as the pages use it: both parts always present. Other fields the server sends are kept. */
+export interface LoginSettings {
+  publicUrl: string
+  oidcProviders: OidcProvider[]
+  ldap: LdapSettings
+  [key: string]: unknown
+}
+
+/** The problems of one form, keyed by field. An empty object means the form can be saved. */
+export type Problems = Record<string, string>
+
 // What the server sends in place of a stored secret. Sent back unchanged, it keeps the stored value.
 const SECRET_PLACEHOLDER = '********'
 
@@ -31,7 +96,7 @@ const GITHUB_ISSUER = 'https://github.com'
 // The kinds the picker offers. `icon` is the icon enum of the backend, so a kind and its mark stay
 // one value. The scopes are the ones the kind needs to return an identity; the registration text
 // says where the admin creates the client at the provider.
-const PROVIDER_TYPES = [
+const PROVIDER_TYPES: ProviderType[] = [
   {
     id: 'github',
     icon: 'GITHUB',
@@ -116,10 +181,10 @@ const PROVIDER_TYPES = [
   }
 ]
 
-const providerTypeOf = (icon) => PROVIDER_TYPES.find(type => type.icon === icon) ?? PROVIDER_TYPES[PROVIDER_TYPES.length - 1]
+const providerTypeOf = (icon: string): ProviderType => PROVIDER_TYPES.find(type => type.icon === icon) ?? PROVIDER_TYPES[PROVIDER_TYPES.length - 1]
 
 // A new provider, prefilled from its kind. The secret is left empty: the admin types it.
-const emptyProvider = (type) => ({
+const emptyProvider = (type: ProviderType): OidcProvider => ({
   id: type.id,
   // Disabled by default, as the backend has it: the admin switches it on once the test has passed.
   enabled: false,
@@ -138,7 +203,7 @@ const emptyProvider = (type) => ({
   adminGroups: []
 })
 
-const LDAP_DEFAULTS = {
+const LDAP_DEFAULTS: LdapSettings = {
   enabled: false,
   label: 'LDAP',
   url: '',
@@ -159,7 +224,7 @@ const LDAP_DEFAULTS = {
 
 // The backend takes https issuers, and http only for a loopback address.
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]']
-const isIssuerUrl = (value) => {
+const isIssuerUrl = (value: string): boolean => {
   try {
     const url = new URL(value)
     return url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK_HOSTS.includes(url.hostname))
@@ -169,13 +234,13 @@ const isIssuerUrl = (value) => {
 }
 
 // The scopes of a provider are one text, separated by spaces, as the backend stores them.
-const scopeList = (text) => (text ?? '').split(/\s+/).filter(Boolean)
+const scopeList = (text: string | null | undefined): string[] => (text ?? '').split(/\s+/).filter(Boolean)
 
 // The backend uses GitHub's own OAuth endpoints for a GITHUB provider without an issuer, or with GitHub's.
-const usesGitHub = (provider) =>
+const usesGitHub = (provider: Pick<OidcProvider, 'icon' | 'issuerUrl'>): boolean =>
   provider.icon === 'GITHUB' && (provider.issuerUrl.trim() === '' || provider.issuerUrl.trim().replace(/\/$/, '') === GITHUB_ISSUER)
 
-const isLdapUrl = (value) => /^ldaps?:\/\/\S+$/.test(value)
+const isLdapUrl = (value: string): boolean => /^ldaps?:\/\/\S+$/.test(value)
 
 /*
  * The problems of one provider, keyed by field. An empty object means the provider can be saved.
@@ -183,8 +248,8 @@ const isLdapUrl = (value) => /^ldaps?:\/\/\S+$/.test(value)
  * The rules are the ones the backend applies: GitHub's own endpoints need a client id and a secret,
  * any other provider needs an issuer and a client id. The secret is optional for a public client.
  */
-const validateProvider = (provider, { takenIds = [] } = {}) => {
-  const problems = {}
+const validateProvider = (provider: OidcProvider, { takenIds = [] }: { takenIds?: string[] } = {}): Problems => {
+  const problems: Problems = {}
   if (!PROVIDER_ID_PATTERN.test(provider.id)) {
     problems.id = 'Use 1 to 64 lowercase letters, digits or dashes'
   } else if (takenIds.includes(provider.id)) {
@@ -205,9 +270,9 @@ const validateProvider = (provider, { takenIds = [] } = {}) => {
   return problems
 }
 
-const validateLdap = (ldap) => {
+const validateLdap = (ldap: LdapSettings): Problems => {
   if (!ldap.enabled) return {}
-  const problems = {}
+  const problems: Problems = {}
   if (!ldap.label.trim()) problems.label = 'Enter a label, as users read it on the sign in button'
   if (!isLdapUrl(ldap.url)) problems.url = 'Enter the address, starting with ldap:// or ldaps://'
   if (!ldap.userBaseDn.trim()) problems.userBaseDn = 'Enter the base DN where users are found'
@@ -226,7 +291,7 @@ const validateLdap = (ldap) => {
 }
 
 // The address an admin registers at the provider. The base path is the one the dashboard is served under.
-const callbackUrlFor = (id, productionUrl) => {
+const callbackUrlFor = (id: string, productionUrl: string): string => {
   const base = productionUrl.endsWith('/') ? productionUrl : `${productionUrl}/`
   return new URL(`api/auth/oidc/${id}/callback`, base).href
 }
@@ -234,10 +299,10 @@ const callbackUrlFor = (id, productionUrl) => {
 // The public address of the dashboard (`login.publicUrl`), with the rules of the backend: an absolute https address, or
 // http for a loopback host, and no query, fragment or user name. Blank is valid and means "not set".
 const PUBLIC_URL_RULE = 'Enter an absolute https:// address, or http:// for localhost, without a query, a fragment or a user name'
-const validatePublicUrl = (value) => {
+const validatePublicUrl = (value: string): string => {
   const text = value.trim()
   if (text === '') return ''
-  let url
+  let url: URL
   try {
     url = new URL(text)
   } catch {
@@ -250,16 +315,16 @@ const validatePublicUrl = (value) => {
 }
 
 // The base the callback addresses are built from: the public address when it is set and valid, else the dashboard's own.
-const registeredBase = (publicUrl, productionUrl) => {
+const registeredBase = (publicUrl: string | null | undefined, productionUrl: string): string => {
   const configured = (publicUrl ?? '').trim()
   return configured !== '' && validatePublicUrl(configured) === '' ? configured : productionUrl
 }
 
 // The callback address with the id still to come, for a preview. The id is a placeholder, never part of a URL.
-const callbackPatternFor = (base) => `${base.endsWith('/') ? base : `${base}/`}api/auth/oidc/<id>/callback`
+const callbackPatternFor = (base: string): string => `${base.endsWith('/') ? base : `${base}/`}api/auth/oidc/<id>/callback`
 
 // The `login` domain as the pages use it: both parts always present, so that a fresh server reads the same.
-const normalizeLoginSettings = (data = {}) => ({
+const normalizeLoginSettings = (data: Partial<LoginSettings> = {}): LoginSettings => ({
   ...data,
   publicUrl: data.publicUrl ?? '',
   oidcProviders: Array.isArray(data.oidcProviders) ? data.oidcProviders : [],
@@ -267,13 +332,13 @@ const normalizeLoginSettings = (data = {}) => ({
 })
 
 // Puts a provider into the list: in the place of the one with `previousId`, or at the end.
-const replaceProvider = (list, provider, previousId) => {
+const replaceProvider = (list: OidcProvider[], provider: OidcProvider, previousId?: string): OidcProvider[] => {
   const index = previousId === undefined ? -1 : list.findIndex(item => item.id === previousId)
   if (index === -1) return [...list, provider]
   return list.map((item, position) => (position === index ? provider : item))
 }
 
-const removeProvider = (list, id) => list.filter(provider => provider.id !== id)
+const removeProvider = (list: OidcProvider[], id: string): OidcProvider[] => list.filter(provider => provider.id !== id)
 
 export {
   LDAP_DEFAULTS,

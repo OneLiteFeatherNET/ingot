@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, useId, watch } from 'vue'
+import type { AxiosError } from 'axios'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -56,14 +57,14 @@ const api = () => teamParentsApi(client.value)
 const titleId = useId()
 const inputId = `parent-add-${useId()}`
 const listboxId = `${inputId}-listbox`
-const optionId = (index) => `${inputId}-option-${index}`
+const optionId = (index: number) => `${inputId}-option-${index}`
 
-const status = ref('loading')
+const status = ref<'loading' | 'ready' | 'error'>('loading')
 const failure = ref('')
-const saved = ref([])
-const draft = ref([])
-const etag = ref(null)
-const teamNames = ref([])
+const saved = ref<string[]>([])
+const draft = ref<string[]>([])
+const etag = ref<string | null>(null)
+const teamNames = ref<string[]>([])
 const saving = ref(false)
 const serverError = ref('')
 const stale = ref(false)
@@ -75,8 +76,8 @@ const entryError = ref('')
 
 let latest = 0
 
-const same = (left, right) => String(left).toLowerCase() === String(right).toLowerCase()
-const has = (list, team) => list.some(entry => same(entry, team))
+const same = (left: unknown, right: unknown) => String(left).toLowerCase() === String(right).toLowerCase()
+const has = (list: string[], team: string) => list.some(entry => same(entry, team))
 
 const load = async () => {
   const request = ++latest
@@ -136,7 +137,7 @@ const activeDescendant = computed(() => (showList.value && active.value >= 0 ? o
 
 // The message for a name that cannot become a parent, or an empty string. `team` is the name as
 // the list knows it when it is known.
-const problemWith = (value) => {
+const problemWith = (value: string) => {
   if (value === '') return ''
   if (same(value, props.name)) return 'A team cannot inherit from itself'
   if (has(draft.value, value)) return `${value} is already a parent`
@@ -151,7 +152,7 @@ const resetField = () => {
   entryError.value = ''
 }
 
-const add = (value) => {
+const add = (value: string) => {
   const wanted = value.trim()
   const message = problemWith(wanted)
   if (wanted === '') return
@@ -165,19 +166,19 @@ const add = (value) => {
   resetField()
 }
 
-const remove = (team) => {
+const remove = (team: string) => {
   draft.value = draft.value.filter(entry => entry !== team)
   serverError.value = ''
 }
 
-const onInput = (value) => {
+const onInput = (value: string) => {
   text.value = value
   open.value = true
   active.value = -1
   entryError.value = ''
 }
 
-const move = (step) => {
+const move = (step: number) => {
   const count = suggestions.value.length
   if (count === 0) return
   if (!open.value || active.value < 0) {
@@ -188,7 +189,7 @@ const move = (step) => {
   active.value = (active.value + step + count) % count
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     move(1)
@@ -224,7 +225,7 @@ const save = async () => {
     emit('saved')
   } catch (error) {
     serverError.value = errorMessage(error)
-    stale.value = error?.response?.status === 412
+    stale.value = (error as AxiosError | undefined)?.response?.status === 412
   } finally {
     saving.value = false
   }

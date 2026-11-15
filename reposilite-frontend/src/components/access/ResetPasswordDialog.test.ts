@@ -14,45 +14,48 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import ResetPasswordDialog from './ResetPasswordDialog.vue'
+import type { PrincipalsApi } from './accessPrincipals'
+
+type ErrorLike = { response?: { data?: { message?: string } }, message?: string } | undefined
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const field = (id) => document.getElementById(id)
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
 
-const type = (id, value) => {
+const type = (id: string, value: string) => {
   const input = field(id)
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
 const submit = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+  dialog().querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
 describe('ResetPasswordDialog', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper | undefined
+  let api: { setPassword: Mock }
 
   beforeEach(async () => {
     api = { setPassword: vi.fn().mockResolvedValue({ status: 204 }) }
     wrapper = mount(ResetPasswordDialog, {
-      props: { modelValue: true, principal: { name: 'alice' }, api },
+      props: { modelValue: true, principal: { name: 'alice' }, api: api as unknown as Pick<PrincipalsApi, 'setPassword'> },
       attachTo: document.body
     })
     await flushPromises()
   })
 
   afterEach(() => {
-    wrapper.unmount()
+    wrapper!.unmount()
     document.body.innerHTML = ''
   })
 
@@ -93,8 +96,8 @@ describe('ResetPasswordDialog', () => {
     type('reset-password-confirm', 'a-long-password')
     await submit()
 
-    expect(wrapper.emitted('done')[0]).toEqual([{ name: 'alice' }])
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper!.emitted('done')![0]).toEqual([{ name: 'alice' }])
+    expect(wrapper!.emitted('update:modelValue')![0]).toEqual([false])
   })
 
   it('shows a failed request inside the dialog and stays open', async () => {
@@ -105,7 +108,7 @@ describe('ResetPasswordDialog', () => {
     type('reset-password-confirm', 'a-long-password')
     await submit()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('Password is too common')
-    expect(wrapper.emitted('done')).toBeUndefined()
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('Password is too common')
+    expect(wrapper!.emitted('done')).toBeUndefined()
   })
 })

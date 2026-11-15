@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch, type PropType } from 'vue'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -27,7 +28,19 @@ import TokenTag from '../tokens/TokenTag.vue'
 import LegacyGrantsPanel from './LegacyGrantsPanel.vue'
 import PermissionNodesCard from './PermissionNodesCard.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
-import { detailOf, isInstanceAdmin, legacyGrants, newestLastUsed, seenLabel, usedLabel } from './accessPrincipals'
+import {
+  detailOf,
+  isInstanceAdmin,
+  legacyGrants,
+  newestLastUsed,
+  seenLabel,
+  usedLabel,
+  type LegacyGrant,
+  type LegacyToken,
+  type PrincipalDetail,
+  type PrincipalDetailAnswer,
+  type PrincipalKind
+} from './accessPrincipals'
 
 /*
  * The detail of one user or machine account: the facts, the teams as chips that open the team,
@@ -46,9 +59,9 @@ const props = defineProps({
     required: true
   },
   kind: {
-    type: String,
+    type: String as PropType<PrincipalKind>,
     required: true,
-    validator: (value) => ['USER', 'MACHINE'].includes(value)
+    validator: (value) => ['USER', 'MACHINE'].includes(value as string)
   }
 })
 
@@ -60,19 +73,19 @@ const tokensApi = computed(() => client.value.identity.principalTokens(props.nam
 
 const isMachine = computed(() => props.kind === 'MACHINE')
 
-const detail = ref(null)
-const status = ref('loading')
+const detail = ref<PrincipalDetail | null>(null)
+const status = ref<'loading' | 'ready' | 'missing' | 'error'>('loading')
 const failure = ref('')
 // The rights of a migrated access token. undefined while they are being read, null when the
 // machine has no migrated token.
-const legacy = ref(undefined)
+const legacy = ref<LegacyGrant[] | null | undefined>(undefined)
 
 let latest = 0
 
-const loadLegacy = async (request) => {
+const loadLegacy = async (request: number) => {
   if (!isMachine.value) return
   try {
-    const response = await client.value.tokens.get(props.name)
+    const response: AxiosResponse<LegacyToken> = await client.value.tokens.get(props.name)
     if (request === latest) legacy.value = legacyGrants(response.data)
   } catch {
     // No migrated token of that name: its rights come from its teams.
@@ -85,14 +98,14 @@ const load = async () => {
   status.value = detail.value ? status.value : 'loading'
   failure.value = ''
   try {
-    const response = await api.value.get(props.name)
+    const response: AxiosResponse<PrincipalDetailAnswer> = await api.value.get(props.name)
     if (request !== latest) return
     detail.value = detailOf(response.data)
     status.value = 'ready'
   } catch (error) {
     if (request !== latest) return
     detail.value = null
-    status.value = error?.response?.status === 404 ? 'missing' : 'error'
+    status.value = (error as AxiosError | undefined)?.response?.status === 404 ? 'missing' : 'error'
     failure.value = errorMessage(error)
     return
   }

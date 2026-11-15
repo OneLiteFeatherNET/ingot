@@ -16,6 +16,7 @@
 
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
+import type { TeamSummary, TeamsApi } from './accessTeams'
 
 /*
  * The teams for the list page. One request answers for every row: the list items carry the facts
@@ -26,8 +27,8 @@ import { errorMessage } from '../../helpers/toast'
  * `getApi` returns { list() } of the teams client. A load that is overtaken by a newer one is
  * dropped, so the page always shows the answer to the last question.
  */
-export function useTeamList(getApi) {
-  const teams = ref([])
+export function useTeamList(getApi: () => Pick<TeamsApi, 'list'>) {
+  const teams = ref<TeamSummary[]>([])
   const loaded = ref(false)
   const loadError = ref('')
 
@@ -48,7 +49,7 @@ export function useTeamList(getApi) {
   }
 
   /** Whether the team holds the instance admin role. A list item without the field counts as not holding it. */
-  const isInstanceAdmin = (team) => team?.instanceAdmin === true || team?.instanceRole === true
+  const isInstanceAdmin = (team: TeamSummary | null | undefined): boolean => team?.instanceAdmin === true || team?.instanceRole === true
 
   return { teams, loaded, loadError, load, isInstanceAdmin }
 }

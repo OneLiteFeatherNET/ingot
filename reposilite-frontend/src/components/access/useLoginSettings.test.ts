@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { useLoginSettings } from './useLoginSettings'
-import { LDAP_DEFAULTS } from './loginSettings'
+import { LDAP_DEFAULTS, type OidcProvider } from './loginSettings'
 
-const serverAnswer = (data, etag = '"v1"') => ({ data, headers: { etag } })
+const serverAnswer = (data: unknown, etag = '"v1"') => ({ data, headers: { etag } })
 
-const rejection = (status) =>
+const rejection = (status: number) =>
   Object.assign(new Error(`Request failed with status code ${status}`), { response: { status, data: {} } })
 
 describe('useLoginSettings', () => {
-  let settings
-  let state
+  let settings: { fetch: Mock; update: Mock }
+  let state: ReturnType<typeof useLoginSettings>
 
   beforeEach(() => {
     settings = {
@@ -55,7 +55,7 @@ describe('useLoginSettings', () => {
 
   it('writes the domain with the tag it was read with', async () => {
     await state.load()
-    const next = { ...state.settings.value, oidcProviders: [{ id: 'sso' }] }
+    const next = { ...state.settings.value, oidcProviders: [{ id: 'sso' } as OidcProvider] }
 
     await state.save(next)
 
@@ -64,9 +64,9 @@ describe('useLoginSettings', () => {
 
   it('reads the domain again after a write, so the next write carries the new tag', async () => {
     await state.load()
-    settings.fetch.mockResolvedValue(serverAnswer({ oidcProviders: [{ id: 'sso' }] }, '"v2"'))
+    settings.fetch.mockResolvedValue(serverAnswer({ oidcProviders: [{ id: 'sso' } as OidcProvider] }, '"v2"'))
 
-    const saved = await state.save({ ...state.settings.value, oidcProviders: [{ id: 'sso' }] })
+    const saved = await state.save({ ...state.settings.value, oidcProviders: [{ id: 'sso' } as OidcProvider] })
     await state.save(state.settings.value)
 
     expect(saved).toBe(true)
@@ -89,7 +89,7 @@ describe('useLoginSettings', () => {
     const before = state.settings.value
     settings.update.mockRejectedValue(rejection(400))
 
-    const saved = await state.save({ ...before, oidcProviders: [{ id: 'x' }] })
+    const saved = await state.save({ ...before, oidcProviders: [{ id: 'x' } as OidcProvider] })
 
     expect(saved).toBe(false)
     expect(state.conflict.value).toBe(false)
@@ -99,13 +99,13 @@ describe('useLoginSettings', () => {
 
   it('is busy while a write runs', async () => {
     await state.load()
-    let finish
+    let finish: ((value: unknown) => void) | undefined
     settings.update.mockReturnValue(new Promise(resolve => { finish = resolve }))
 
     const pending = state.save(state.settings.value)
     expect(state.saving.value).toBe(true)
 
-    finish({})
+    finish!({})
     await pending
     expect(state.saving.value).toBe(false)
   })

@@ -26,11 +26,12 @@ import {
   seenLabel,
   usedLabel,
   validateNewPassword,
-  validatePrincipalName
+  validatePrincipalName,
+  type TokenSummary
 } from './accessPrincipals'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
-const wireInstant = (iso) => Date.parse(iso) / 1000
+const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 const ALICE = { name: 'alice', displayName: 'Alice Example' }
 const BOB = { name: 'bob', displayName: 'Robert Builder' }
@@ -96,13 +97,13 @@ describe('newestLastUsed', () => {
       { lastUsedAt: wireInstant('2026-10-01T00:00:00Z') },
       { lastUsedAt: wireInstant('2026-10-14T00:00:00Z') },
       { lastUsedAt: null }
-    ]
+    ] as TokenSummary[]
 
     expect(newestLastUsed(tokens)).toBe(wireInstant('2026-10-14T00:00:00Z'))
   })
 
   it('is null when no token was ever used', () => {
-    expect(newestLastUsed([{ lastUsedAt: null }, {}])).toBeNull()
+    expect(newestLastUsed([{ lastUsedAt: null }, {}] as TokenSummary[])).toBeNull()
   })
 
   it('is null without tokens', () => {

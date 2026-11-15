@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, ref, watch, type PropType } from 'vue'
 import DialogShell from '../identity/DialogShell.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChipInput from '../md/MdChipInput.vue'
@@ -33,8 +33,18 @@ import {
   providerTypeOf,
   scopeList,
   usesGitHub,
-  validateProvider
+  validateProvider,
+  type OidcProvider,
+  type ProviderType
 } from './loginSettings'
+
+/** The last test of this provider: whether the issuer answered, with its endpoints or the reason it did not. */
+interface TestResult {
+  ok: boolean
+  error?: string
+  issuer?: string
+  endpoints?: unknown
+}
 
 /*
  * Adds or edits one single sign on provider. A new provider starts with the kind picker, which
@@ -55,10 +65,10 @@ import {
  */
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  provider: { type: Object, default: null },
-  takenIds: { type: Array, default: () => [] },
+  provider: { type: Object as PropType<OidcProvider | null>, default: null },
+  takenIds: { type: Array as PropType<string[]>, default: () => [] },
   productionUrl: { type: String, required: true },
-  testResult: { type: Object, default: null },
+  testResult: { type: Object as PropType<TestResult | null>, default: null },
   testing: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   failure: { type: String, default: '' }
@@ -66,16 +76,16 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save', 'delete', 'test'])
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
-const form = ref(null)
+const form = ref<OidcProvider | null>(null)
 const submitted = ref(false)
-const root = ref(null)
+const root = ref<HTMLElement | null>(null)
 
 const isEditing = computed(() => props.provider !== null)
 const kind = computed(() => (form.value ? providerTypeOf(form.value.icon) : null))
 const problems = computed(() => (form.value ? validateProvider(form.value, { takenIds: props.takenIds }) : {}))
-const errorOf = (field) => (submitted.value ? problems.value[field] ?? '' : '')
+const errorOf = (field: string) => (submitted.value ? problems.value[field] ?? '' : '')
 
 // A test runs on the saved provider, so it needs a saved one and a form that still matches it.
 const testable = computed(() =>
@@ -91,8 +101,8 @@ const githubEndpoints = computed(() => form.value !== null && usesGitHub(form.va
 // The scopes are stored as one text; the chips show and edit its words.
 const scopeChips = computed({
   get: () => scopeList(form.value?.scopes),
-  set: (chips) => {
-    form.value.scopes = chips.join(' ')
+  set: (chips: string[]) => {
+    form.value!.scopes = chips.join(' ')
   }
 })
 
@@ -113,7 +123,7 @@ watch(() => props.modelValue, (open) => {
   if (open) reset()
 }, { immediate: true })
 
-const chooseKind = (type) => {
+const chooseKind = (type: ProviderType) => {
   form.value = emptyProvider(type)
 }
 
@@ -127,20 +137,20 @@ const copyCallback = () => {
 const save = () => {
   submitted.value = true
   if (Object.keys(problems.value).length > 0) {
-    nextTick(() => root.value?.querySelector('[aria-invalid="true"]')?.focus())
+    nextTick(() => root.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
     return
   }
-  emit('save', { provider: clone(form.value), previousId: props.provider?.id })
+  emit('save', { provider: clone(form.value!), previousId: props.provider?.id })
 }
 
-const validateScope = (text, existing) => {
+const validateScope = (text: string, existing: string[]) => {
   if (/\s/.test(text)) return 'A scope has no spaces'
   return existing.includes(text) ? 'Already added' : ''
 }
 
-const validateTextItem = (text, existing) => (existing.includes(text) ? 'Already added' : '')
+const validateTextItem = (text: string, existing: string[]) => (existing.includes(text) ? 'Already added' : '')
 
-const validateDomain = (text, existing) => {
+const validateDomain = (text: string, existing: string[]) => {
   if (existing.includes(text)) return 'Already added'
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(text) ? '' : 'Enter a domain such as example.org'
 }
@@ -167,7 +177,7 @@ const validateDomain = (text, existing) => {
           id="sso-dialog-title"
           class="md-headline-small"
         >
-          {{ isEditing ? `Edit ${provider.label}` : (form ? 'Add a provider' : 'Add an SSO provider') }}
+          {{ isEditing ? `Edit ${provider?.label}` : (form ? 'Add a provider' : 'Add an SSO provider') }}
         </h2>
       </div>
 
@@ -222,7 +232,7 @@ const validateDomain = (text, existing) => {
             Register Ingot at the provider
           </h3>
           <p class="md-body-medium text-on-surface-variant">
-            {{ kind.register }}
+            {{ kind?.register }}
           </p>
           <div
             role="group"
@@ -274,8 +284,8 @@ const validateDomain = (text, existing) => {
           label="Issuer URL"
           type="url"
           autocomplete="off"
-          :placeholder="kind.issuerHint"
-          :supporting-text="kind.issuerNote ?? (kind.issuerHint ? `For example ${kind.issuerHint}` : '')"
+          :placeholder="kind?.issuerHint"
+          :supporting-text="kind?.issuerNote ?? (kind?.issuerHint ? `For example ${kind?.issuerHint}` : '')"
           :error="errorOf('issuerUrl') !== ''"
           :error-text="errorOf('issuerUrl')"
           :required="!githubEndpoints"

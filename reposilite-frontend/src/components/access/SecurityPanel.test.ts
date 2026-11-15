@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SecurityPanel from './SecurityPanel.vue'
 import { authenticationClient, authenticationStore } from './authenticationTestKit'
 import { configurationStoreKey } from '../../store/configuration'
@@ -23,15 +23,15 @@ import { configurationStoreKey } from '../../store/configuration'
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 
 vi.mock('../../helpers/toast', async (importOriginal) => ({
-  ...(await importOriginal()),
+  ...(await importOriginal<typeof import('../../helpers/toast')>()),
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn()
 }))
 
 describe('SecurityPanel', () => {
-  let wrapper
-  let update
+  let wrapper: VueWrapper | undefined
+  let update: Mock
 
   const mountPanel = async () => {
     const store = authenticationStore(authenticationClient({ update }))
@@ -42,10 +42,10 @@ describe('SecurityPanel', () => {
     await flushPromises()
   }
 
-  const inputWithValue = (value) => wrapper.findAll('input').find(input => input.element.value === value)
+  const inputWithValue = (value: string) => wrapper!.findAll('input').find(input => input.element.value === value)
 
   beforeEach(() => {
-    update = vi.fn(async () => ({ data: {} }))
+    update = vi.fn(() => Promise.resolve({ data: {} }))
   })
 
   afterEach(() => {
@@ -57,7 +57,7 @@ describe('SecurityPanel', () => {
   it('renders the brute force protection fields of the authentication domain', async () => {
     await mountPanel()
 
-    const text = wrapper.text()
+    const text = wrapper!.text()
     for (const label of ['Enabled', 'Max Attempts', 'Ban Duration Seconds']) {
       expect(text, `the field "${label}"`).toContain(label)
     }
@@ -68,18 +68,18 @@ describe('SecurityPanel', () => {
   it('does not render the LDAP fields, which belong to the Maven and Gradle clients', async () => {
     await mountPanel()
 
-    expect(wrapper.text()).not.toContain('Search-User DN')
+    expect(wrapper!.text()).not.toContain('Search-User DN')
   })
 
   it('saves the edited value through the authentication domain, with the rest of the domain unchanged', async () => {
     await mountPanel()
-    await inputWithValue('10').setValue('25')
+    await inputWithValue('10')!.setValue('25')
 
-    wrapper.findAll('button').find(button => button.text() === 'Save security settings').trigger('click')
+    await wrapper!.findAll('button').find(button => button.text() === 'Save security settings')!.trigger('click')
     await flushPromises()
 
     expect(update).toHaveBeenCalledTimes(1)
-    const [domain, body, etag] = update.mock.calls[0]
+    const [domain, body, etag] = update.mock.calls[0] as [string, { bruteForceProtection: unknown, ldap: { hostname: string } }, string]
     expect(domain, 'the write goes to the authentication domain').toBe('authentication')
     expect(body.bruteForceProtection).toEqual({ enabled: false, maxAttempts: 25, banDurationSeconds: 300 })
     expect(body.ldap.hostname, 'the LDAP group is sent back as it was read').toBe('ldap.domain.com')
@@ -88,10 +88,10 @@ describe('SecurityPanel', () => {
 
   it('says that the form holds changes that are not saved yet', async () => {
     await mountPanel()
-    expect(wrapper.text()).not.toContain('You have unsaved changes.')
+    expect(wrapper!.text()).not.toContain('You have unsaved changes.')
 
-    await inputWithValue('10').setValue('25')
+    await inputWithValue('10')!.setValue('25')
 
-    expect(wrapper.text()).toContain('You have unsaved changes.')
+    expect(wrapper!.text()).toContain('You have unsaved changes.')
   })
 })

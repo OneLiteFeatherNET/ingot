@@ -15,9 +15,25 @@
  */
 
 import { ref } from 'vue'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { errorMessage } from '../../helpers/toast'
 import { etagOf, isPreconditionFailed } from '../../store/client'
-import { teamDetailOf } from './accessTeams'
+import { teamDetailOf, type TeamDetail, type TeamDetailAnswer, type TeamsApi } from './accessTeams'
+
+/** A write of the team: it takes the entity tag and answers with the team as the server has it after the write. */
+export type TeamWrite = (etag: string | null) => Promise<AxiosResponse<TeamDetailAnswer>>
+
+/** The outcome of a write or a delete: ok, or the refusal with the server's message. A 412 is a conflict. */
+export type WriteResult =
+  | { ok: true }
+  | { ok: false; conflict?: boolean; status?: number; message: string }
+
+/** The status of the page: the loading state, the team as read, a team that does not exist, or a failed read. */
+export type DetailStatus = 'loading' | 'ready' | 'missing' | 'error'
+
+// The status of a failed request, when the failure carries one.
+const statusOf = (error: unknown): number | undefined =>
+  (error as { response?: { status?: number } } | undefined)?.response?.status
 
 /*
  * One team for the detail page: the detail, the entity tag that came with it, and the writes that
@@ -33,15 +49,15 @@ import { teamDetailOf } from './accessTeams'
  *
  * A load that is overtaken by a newer one is dropped.
  */
-export function useTeamDetail(getName, getApi) {
-  const detail = ref(null)
-  const etag = ref(null)
-  const status = ref('loading')
+export function useTeamDetail(getName: () => string, getApi: () => TeamsApi) {
+  const detail = ref<TeamDetail | null>(null)
+  const etag = ref<string | null>(null)
+  const status = ref<DetailStatus>('loading')
   const failure = ref('')
-  const conflict = ref(null)
+  const conflict = ref<{ kind: 'team'; name: string } | null>(null)
 
   let latest = 0
-  let pending = null
+  let pending: TeamWrite | null = null
 
   const load = async () => {
     const request = ++latest
@@ -57,7 +73,7 @@ export function useTeamDetail(getName, getApi) {
       if (request !== latest) return
       detail.value = null
       etag.value = null
-      status.value = error?.response?.status === 404 ? 'missing' : 'error'
+      status.value = statusOf(error) === 404 ? 'missing' : 'error'
       failure.value = errorMessage(error)
     }
   }
@@ -71,7 +87,7 @@ export function useTeamDetail(getName, getApi) {
     status.value = 'loading'
   }
 
-  const write = async (run) => {
+  const write = async (run: TeamWrite): Promise<WriteResult> => {
     try {
       const response = await run(etag.value)
       if (response?.data) detail.value = teamDetailOf(response.data)
@@ -84,22 +100,22 @@ export function useTeamDetail(getName, getApi) {
       }
       return { ok: true }
     } catch (error) {
-      if (isPreconditionFailed(error)) {
+      if (isPreconditionFailed(error as AxiosError)) {
         pending = run
         conflict.value = { kind: 'team', name: getName() }
         return { ok: false, conflict: true, status: 412, message: errorMessage(error) }
       }
-      return { ok: false, status: error?.response?.status, message: errorMessage(error) }
+      return { ok: false, status: statusOf(error), message: errorMessage(error) }
     }
   }
 
   /** Deletes the team. Like write, it returns { ok } or { ok: false, message }. */
-  const remove = async () => {
+  const remove = async (): Promise<WriteResult> => {
     try {
       await getApi().remove(getName())
       return { ok: true }
     } catch (error) {
-      return { ok: false, status: error?.response?.status, message: errorMessage(error) }
+      return { ok: false, status: statusOf(error), message: errorMessage(error) }
     }
   }
 
@@ -113,7 +129,7 @@ export function useTeamDetail(getName, getApi) {
     await load()
   }
 
-  const overwriteConflict = async () => {
+  const overwriteConflict = async (): Promise<WriteResult> => {
     const run = pending
     dismissConflict()
     await load()

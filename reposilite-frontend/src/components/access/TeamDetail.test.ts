@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
   NODES,
@@ -31,31 +31,39 @@ import {
   typeInto
 } from './teamTestKit'
 
-const holder = vi.hoisted(() => ({ session: null }))
+type Fake = Mock<(...args: string[]) => Promise<unknown>>
+type TeamsFake = Record<'get' | 'update' | 'remove' | 'setMembers' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'parents' | 'setParents', Fake>
+type NodesFake = Record<'get' | 'set', Fake>
+type TreeFixture = Record<string, { parents: string[]; nodes: { node: string; allowed: boolean }[] }>
+
+const holder = vi.hoisted(() => ({ session: null as { client: { value: { maven?: unknown } } } | null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: unknown) => {
+    const failure = error as { response?: { data?: { message?: string } }; message?: string } | null | undefined
+    return failure?.response?.data?.message ?? failure?.message ?? String(error)
+  }
 }))
 
 describe('TeamDetail', () => {
-  let wrapper
-  let teams
-  let nodes
+  let wrapper: VueWrapper | undefined
+  let teams: TeamsFake
+  let nodes: NodesFake
 
-  const mountDetail = async (name) => {
+  const mountDetail = async (name?: string) => {
     wrapper = await mountTeamDetail(name)
   }
 
-  const conflictDialog = () => document.querySelector('[role="alertdialog"]')
+  const conflictDialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
 
   beforeEach(() => {
     vi.mocked(createSuccessToast).mockClear()
     vi.mocked(createErrorToast).mockClear()
-    teams = makeTeamsApi()
+    teams = makeTeamsApi() as unknown as TeamsFake
     nodes = makeNodesApi()
     installClient(holder, teams, nodes)
   })
@@ -71,20 +79,20 @@ describe('TeamDetail', () => {
       await mountDetail('developers')
 
       expect(teams.get).toHaveBeenCalledWith('developers')
-      expect(wrapper.find('[data-test="description"]').text()).toBe('Everyone who writes code')
+      expect(wrapper!.find('[data-test="description"]').text()).toBe('Everyone who writes code')
     })
 
     it('does not repeat the name of the team as a heading, the page heading names it', async () => {
       await mountDetail('developers')
 
-      const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
+      const headings = wrapper!.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
       expect(headings, 'no heading of the detail is the team name').not.toContain('developers')
     })
 
     it('starts the headings of the detail at the second level, under the page heading', async () => {
       await mountDetail('developers')
 
-      const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => Number(heading.element.tagName.slice(1)))
+      const levels = wrapper!.findAll('h1, h2, h3, h4, h5, h6').map(heading => Number(heading.element.tagName.slice(1)))
       expect(levels.length, 'the detail has section headings').toBeGreaterThan(0)
       expect(Math.min(...levels), 'no level one heading in the detail').toBeGreaterThanOrEqual(2)
       expect(levels[0], 'the first heading is the second level').toBe(2)
@@ -93,28 +101,28 @@ describe('TeamDetail', () => {
     it('draws no back button of its own, the page frame carries the way back', async () => {
       await mountDetail('developers')
 
-      expect(wrapper.find('[data-test="back"]').exists()).toBe(false)
-      expect(wrapper.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
+      expect(wrapper!.find('[data-test="back"]').exists()).toBe(false)
+      expect(wrapper!.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
     })
 
     it('says so when the team does not exist', async () => {
       teams.get.mockRejectedValue(failure(404, 'No such team'))
       await mountDetail('ghosts')
 
-      expect(wrapper.find('[data-test="missing"]').text()).toContain('ghosts does not exist')
+      expect(wrapper!.find('[data-test="missing"]').text()).toContain('ghosts does not exist')
     })
 
     it('shows no instance admin chip for a team without the role', async () => {
       await mountDetail()
 
-      expect(wrapper.find('[data-test="admin-badge"]').exists()).toBe(false)
+      expect(wrapper!.find('[data-test="admin-badge"]').exists()).toBe(false)
     })
 
     it('shows the instance admin chip for a team with the role', async () => {
       teams.get.mockResolvedValue({ data: { ...TEAM, instanceRole: true }, headers: { etag: '"5"' } })
       await mountDetail()
 
-      expect(wrapper.find('[data-test="admin-badge"]').text()).toBe('Instance admin')
+      expect(wrapper!.find('[data-test="admin-badge"]').text()).toBe('Instance admin')
     })
   })
 
@@ -122,7 +130,7 @@ describe('TeamDetail', () => {
     it('shows a Permission nodes card with the node editor', async () => {
       await mountDetail()
 
-      const card = wrapper.find('[data-test="permission-nodes"]')
+      const card = wrapper!.find('[data-test="permission-nodes"]')
 
       expect(card.find('h2').text()).toBe('Permission nodes')
       expect(card.find('[data-test="node-editor"]').exists()).toBe(true)
@@ -132,14 +140,14 @@ describe('TeamDetail', () => {
       await mountDetail()
 
       expect(nodes.get).toHaveBeenCalledWith('teams', 'developers')
-      expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(NODES.length)
+      expect(wrapper!.findAll('[data-test="node-row"]')).toHaveLength(NODES.length)
     })
 
     it('saves the nodes with their own entity tag, not the one of the team', async () => {
       await mountDetail()
 
-      await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-      await wrapper.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await wrapper!.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+      await wrapper!.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save')!.trigger('click')
       await flushPromises()
 
       expect(nodes.set).toHaveBeenCalledWith(
@@ -155,25 +163,25 @@ describe('TeamDetail', () => {
       await mountDetail()
       teams.get.mockClear()
 
-      await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-      await wrapper.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await wrapper!.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+      await wrapper!.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save')!.trigger('click')
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
-      expect(wrapper.emitted('changed')).toHaveLength(1)
+      expect(wrapper!.emitted('changed')).toHaveLength(1)
     })
 
     it('keeps the members card', async () => {
       await mountDetail()
 
-      expect(wrapper.find('[data-test="add-member"]').exists()).toBe(true)
+      expect(wrapper!.find('[data-test="add-member"]').exists()).toBe(true)
     })
 
     it('has no grant editor any more', async () => {
       await mountDetail()
 
       for (const selector of ['grants', 'add-grant', 'edit-grant', 'remove-grant', 'save-grants', 'discard-grants']) {
-        expect(wrapper.find(`[data-test="${selector}"]`).exists(), selector).toBe(false)
+        expect(wrapper!.find(`[data-test="${selector}"]`).exists(), selector).toBe(false)
       }
       expect(document.querySelector('[data-test="save-grant"]')).toBeNull()
     })
@@ -181,19 +189,19 @@ describe('TeamDetail', () => {
     it('does not read the repositories any more', async () => {
       await mountDetail()
 
-      expect(holder.session.client.value.maven).toBeUndefined()
+      expect(holder.session!.client.value.maven).toBeUndefined()
     })
 
     it('keeps the details save tonal so the node editor save is the filled button', async () => {
       await mountDetail()
-      await wrapper.find('[data-test="edit-details"]').trigger('click')
+      await wrapper!.find('[data-test="edit-details"]').trigger('click')
 
-      expect(wrapper.find('[data-test="save-details"]').attributes('data-variant')).toBe('tonal')
+      expect(wrapper!.find('[data-test="save-details"]').attributes('data-variant')).toBe('tonal')
     })
   })
 
   describe('inheritance', () => {
-    const TREE = {
+    const TREE: TreeFixture = {
       ops: { parents: ['developers'], nodes: [{ node: 'ingot.admin.maintenance', allowed: true }] },
       developers: { parents: ['staff'], nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] },
       staff: { parents: [], nodes: [{ node: 'ingot.admin.dashboard', allowed: false }] }
@@ -204,8 +212,8 @@ describe('TeamDetail', () => {
         data: { ...TEAM, name: 'ops', parents: tree.ops.parents },
         headers: { etag: '"5"' }
       })
-      teams.parents.mockImplementation(async (name) => answer({ parents: [...tree[name].parents] }, '"p1"'))
-      nodes.get.mockImplementation(async (kind, name) => answer({ nodes: tree[name].nodes.map(entry => ({ ...entry })) }, '"n1"'))
+      teams.parents.mockImplementation((name) => Promise.resolve(answer({ parents: [...tree[name].parents] }, '"p1"')))
+      nodes.get.mockImplementation((kind, name) => Promise.resolve(answer({ nodes: tree[name].nodes.map(entry => ({ ...entry })) }, '"n1"')))
     }
 
     const openOps = async () => {
@@ -213,7 +221,7 @@ describe('TeamDetail', () => {
       await mountDetail('ops')
     }
 
-    const inheritedRows = () => wrapper.findAll('[data-test="inherited-row"]').map(row => ({
+    const inheritedRows = () => wrapper!.findAll('[data-test="inherited-row"]').map(row => ({
       node: row.attributes('data-node'),
       source: row.find('[data-test="inherited-source"]').text()
     }))
@@ -231,24 +239,24 @@ describe('TeamDetail', () => {
       await openOps()
 
       expect(inheritedRows().map(row => row.node)).not.toContain('ingot.admin.maintenance')
-      expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(1)
+      expect(wrapper!.findAll('[data-test="node-row"]')).toHaveLength(1)
     })
 
     it('shows no inherited section for a team without parents', async () => {
       await mountDetail()
 
-      expect(wrapper.find('[data-test="inherited-section"]').exists()).toBe(false)
+      expect(wrapper!.find('[data-test="inherited-section"]').exists()).toBe(false)
     })
 
     it('warns about an ancestor that cannot be read and still shows the page', async () => {
       arrangeOps()
-      nodes.get.mockImplementation(async (kind, name) => {
-        if (name === 'staff') throw failure(500, 'Store unavailable')
-        return answer({ nodes: TREE[name].nodes }, '"n1"')
+      nodes.get.mockImplementation((kind, name) => {
+        if (name === 'staff') return Promise.reject(failure(500, 'Store unavailable'))
+        return Promise.resolve(answer({ nodes: TREE[name].nodes }, '"n1"'))
       })
       await mountDetail('ops')
 
-      expect(wrapper.find('[data-test="inherited-warning"]').text())
+      expect(wrapper!.find('[data-test="inherited-warning"]').text())
         .toBe('Could not read the nodes of team staff: Store unavailable')
       expect(inheritedRows().map(row => row.source)).toEqual(['from team developers, 1 level up'])
     })
@@ -256,7 +264,7 @@ describe('TeamDetail', () => {
     it('shows the parents card with the parents of the team', async () => {
       await openOps()
 
-      const card = wrapper.find('[data-test="team-parents"]')
+      const card = wrapper!.find('[data-test="team-parents"]')
 
       expect(card.find('h2').text()).toBe('Inherits from')
       expect(card.findAll('[data-test="parent"]').map(chip => chip.text())).toEqual(['developers'])
@@ -266,19 +274,19 @@ describe('TeamDetail', () => {
       await openOps()
       teams.get.mockClear()
 
-      await wrapper.find('button[aria-label="Remove developers"]').trigger('click')
-      await wrapper.find('[data-test="save-parents"]').trigger('click')
+      await wrapper!.find('button[aria-label="Remove developers"]').trigger('click')
+      await wrapper!.find('[data-test="save-parents"]').trigger('click')
       await flushPromises()
 
       expect(teams.setParents).toHaveBeenCalledWith('ops', [], '"p1"')
       expect(teams.get).toHaveBeenCalledTimes(1)
-      expect(wrapper.emitted('changed')).toHaveLength(1)
+      expect(wrapper!.emitted('changed')).toHaveLength(1)
     })
 
     it('keeps the parents save tonal so the node editor save is the filled button', async () => {
       await mountDetail()
 
-      expect(wrapper.find('[data-test="save-parents"]').attributes('data-variant')).toBe('tonal')
+      expect(wrapper!.find('[data-test="save-parents"]').attributes('data-variant')).toBe('tonal')
     })
   })
 
@@ -286,7 +294,7 @@ describe('TeamDetail', () => {
     it('lists the old role grants in a collapsed section', async () => {
       await mountDetail()
 
-      const section = wrapper.find('[data-test="legacy-team-grants"]')
+      const section = wrapper!.find('[data-test="legacy-team-grants"]')
 
       expect(section.find('summary').text()).toBe('Legacy grants (2)')
       expect(section.attributes('open')).toBeUndefined()
@@ -296,32 +304,32 @@ describe('TeamDetail', () => {
     it('has no control to edit or remove a legacy grant', async () => {
       await mountDetail()
 
-      expect(wrapper.find('[data-test="legacy-team-grants"]').findAll('input, button, textarea, select')).toHaveLength(0)
+      expect(wrapper!.find('[data-test="legacy-team-grants"]').findAll('input, button, textarea, select')).toHaveLength(0)
     })
 
     it('shows no section for a team without legacy grants', async () => {
       teams.get.mockResolvedValue({ data: { ...TEAM, grants: [] }, headers: { etag: '"5"' } })
       await mountDetail()
 
-      expect(wrapper.find('[data-test="legacy-team-grants"]').exists()).toBe(false)
+      expect(wrapper!.find('[data-test="legacy-team-grants"]').exists()).toBe(false)
     })
   })
 
   describe('description and external reference', () => {
-    const edit = async (description, externalRef) => {
-      await wrapper.find('[data-test="edit-details"]').trigger('click')
-      await wrapper.find('#team-description').setValue(description)
-      await wrapper.find('#team-external-ref').setValue(externalRef)
-      await wrapper.find('[data-test="edit-form"]').trigger('submit')
+    const edit = async (description: string, externalRef: string) => {
+      await wrapper!.find('[data-test="edit-details"]').trigger('click')
+      await wrapper!.find('#team-description').setValue(description)
+      await wrapper!.find('#team-external-ref').setValue(externalRef)
+      await wrapper!.find('[data-test="edit-form"]').trigger('submit')
       await flushPromises()
     }
 
     it('explains the external reference for the OIDC and the LDAP sync while it is edited', async () => {
       await mountDetail()
-      await wrapper.find('[data-test="edit-details"]').trigger('click')
+      await wrapper!.find('[data-test="edit-details"]').trigger('click')
 
-      const describedBy = wrapper.find('#team-external-ref').attributes('aria-describedby')
-      const helper = wrapper.find(`[id="${describedBy}"]`).text()
+      const describedBy = wrapper!.find('#team-external-ref').attributes('aria-describedby')
+      const helper = wrapper!.find(`[id="${describedBy}"]`).text()
 
       expect(helper, 'the field names both formats the sync reads').toContain('oidc:<provider id>:<group>')
       expect(helper).toContain('ldap:<group>')
@@ -352,7 +360,7 @@ describe('TeamDetail', () => {
 
       await edit('Writes code', '')
 
-      expect(wrapper.find('[data-test="description"]').text()).toBe('Writes code')
+      expect(wrapper!.find('[data-test="description"]').text()).toBe('Writes code')
     })
 
     it('uses the entity tag of the last answer for the next write', async () => {
@@ -370,8 +378,8 @@ describe('TeamDetail', () => {
 
       await edit('Writes code', '')
 
-      expect(conflictDialog().textContent).toContain('Team changed elsewhere')
-      expect(conflictDialog().textContent).toContain('developers')
+      expect(conflictDialog()!.textContent).toContain('Team changed elsewhere')
+      expect(conflictDialog()!.textContent).toContain('developers')
     })
 
     it('reads the team again when the conflict is reloaded', async () => {
@@ -380,9 +388,9 @@ describe('TeamDetail', () => {
       await edit('Writes code', '')
       teams.get.mockClear()
 
-      const reload = [...conflictDialog().querySelectorAll('button')]
+      const reload = [...conflictDialog()!.querySelectorAll('button')]
         .find(button => button.textContent.trim() === 'Reload and discard my changes')
-      reload.click()
+      reload!.click()
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
@@ -392,7 +400,7 @@ describe('TeamDetail', () => {
 
   describe('instance admin', () => {
     const toggle = async () => {
-      await wrapper.find('[data-test="instance-admin"]').trigger('click')
+      await wrapper!.find('[data-test="instance-admin"]').trigger('click')
       await flushPromises()
     }
 
@@ -401,7 +409,7 @@ describe('TeamDetail', () => {
 
       await toggle()
 
-      expect(confirmDialog().textContent).toContain('every action on every repository')
+      expect(confirmDialog()!.textContent).toContain('every action on every repository')
       expect(teams.grantInstanceAdmin, 'nothing is sent before the confirmation').not.toHaveBeenCalled()
     })
 
@@ -412,15 +420,15 @@ describe('TeamDetail', () => {
       await confirm()
 
       expect(teams.grantInstanceAdmin).toHaveBeenCalledWith('developers', '"5"')
-      expect(wrapper.find('[data-test="admin-badge"]').exists()).toBe(true)
+      expect(wrapper!.find('[data-test="admin-badge"]').exists()).toBe(true)
     })
 
     it('does not grant when the dialog is cancelled', async () => {
       await mountDetail()
 
       await toggle()
-      const cancel = [...confirmDialog().querySelectorAll('button')].find(button => button.textContent.trim() === 'Cancel')
-      cancel.click()
+      const cancel = [...confirmDialog()!.querySelectorAll('button')].find(button => button.textContent.trim() === 'Cancel')
+      cancel!.click()
       await flushPromises()
 
       expect(teams.grantInstanceAdmin).not.toHaveBeenCalled()
@@ -434,7 +442,7 @@ describe('TeamDetail', () => {
       await confirm()
 
       expect(teams.revokeInstanceAdmin).toHaveBeenCalledWith('developers', '"5"')
-      expect(wrapper.find('[data-test="admin-badge"]').exists()).toBe(false)
+      expect(wrapper!.find('[data-test="admin-badge"]').exists()).toBe(false)
     })
 
     it('shows the server message in the dialog when the last instance admin is revoked', async () => {
@@ -445,9 +453,9 @@ describe('TeamDetail', () => {
       await toggle()
       await confirm()
 
-      expect(confirmDialog().querySelector('[data-test="confirm-failure"]').textContent)
+      expect(confirmDialog()!.querySelector<HTMLElement>('[data-test="confirm-failure"]')!.textContent)
         .toBe('The last instance admin cannot be removed')
-      expect(wrapper.find('[data-test="admin-badge"]').exists(), 'the role is still shown').toBe(true)
+      expect(wrapper!.find('[data-test="admin-badge"]').exists(), 'the role is still shown').toBe(true)
     })
 
     it('opens the conflict dialog on a 412 and closes the confirmation', async () => {
@@ -464,7 +472,7 @@ describe('TeamDetail', () => {
 
   describe('deleting', () => {
     const askDelete = async () => {
-      await wrapper.find('[data-test="delete-team"]').trigger('click')
+      await wrapper!.find('[data-test="delete-team"]').trigger('click')
       await flushPromises()
     }
 
@@ -475,7 +483,7 @@ describe('TeamDetail', () => {
       typeInto('[data-test="confirm-typed"]', 'develop')
       await flushPromises()
 
-      expect(confirmDialog().querySelector('[data-test="confirm-button"]').disabled).toBe(true)
+      expect(confirmDialog()!.querySelector<HTMLButtonElement>('[data-test="confirm-button"]')!.disabled).toBe(true)
     })
 
     it('deletes the team once the exact name is typed', async () => {
@@ -497,7 +505,7 @@ describe('TeamDetail', () => {
       await flushPromises()
       await confirm()
 
-      expect(wrapper.emitted('deleted')).toEqual([['developers']])
+      expect(wrapper!.emitted('deleted')).toEqual([['developers']])
       expect(createSuccessToast).toHaveBeenCalledWith('Team developers deleted')
     })
 
@@ -510,9 +518,9 @@ describe('TeamDetail', () => {
       await flushPromises()
       await confirm()
 
-      expect(confirmDialog().querySelector('[data-test="confirm-failure"]').textContent)
+      expect(confirmDialog()!.querySelector<HTMLElement>('[data-test="confirm-failure"]')!.textContent)
         .toBe('The last instance admin cannot be removed')
-      expect(wrapper.emitted('deleted')).toBeUndefined()
+      expect(wrapper!.emitted('deleted')).toBeUndefined()
     })
   })
 })

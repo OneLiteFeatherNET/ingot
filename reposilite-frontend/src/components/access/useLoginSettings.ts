@@ -15,9 +15,16 @@
  */
 
 import { ref } from 'vue'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { etagOf, isPreconditionFailed } from '../../store/client'
 import { errorMessage } from '../../helpers/toast'
-import { normalizeLoginSettings } from './loginSettings'
+import { normalizeLoginSettings, type LoginSettings } from './loginSettings'
+
+/** The settings client: the domain reads and writes that this composable makes. */
+export interface SettingsApi {
+  fetch(domain: string): Promise<AxiosResponse<Partial<LoginSettings>>>
+  update(domain: string, content: unknown, etag?: string | null): Promise<AxiosResponse>
+}
 
 /*
  * The `login` settings domain for the Access pages. The server state is read with the settings
@@ -28,18 +35,18 @@ import { normalizeLoginSettings } from './loginSettings'
  * `api` returns the settings client (settings.fetch and settings.update), so it is read at the
  * time of each call and never captured.
  */
-const cloneJson = (value) => JSON.parse(JSON.stringify(value))
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
-const useLoginSettings = (api) => {
-  const settings = ref(normalizeLoginSettings())
-  const etag = ref(null)
+const useLoginSettings = (api: () => SettingsApi) => {
+  const settings = ref<LoginSettings>(normalizeLoginSettings())
+  const etag = ref<string | null>(null)
   const loaded = ref(false)
   const loadError = ref('')
   const saving = ref(false)
   const saveError = ref('')
   const conflict = ref(false)
 
-  const adopt = (response) => {
+  const adopt = (response: AxiosResponse<Partial<LoginSettings>>) => {
     settings.value = normalizeLoginSettings(cloneJson(response.data ?? {}))
     etag.value = etagOf(response)
     conflict.value = false
@@ -57,13 +64,13 @@ const useLoginSettings = (api) => {
   }
 
   // Writes the whole domain. Resolves to true when the server took it and the saved state was read again.
-  const save = async (next) => {
+  const save = async (next: LoginSettings) => {
     saving.value = true
     saveError.value = ''
     try {
       await api().update('login', cloneJson(next), etag.value)
     } catch (error) {
-      if (isPreconditionFailed(error)) {
+      if (isPreconditionFailed(error as AxiosError)) {
         conflict.value = true
         saveError.value = 'The login settings changed elsewhere. Reload them, then make the change again.'
       } else {

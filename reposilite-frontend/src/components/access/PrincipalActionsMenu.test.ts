@@ -14,53 +14,57 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
+import type { PrincipalSummary } from './accessPrincipals'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
+
+type Principal = Pick<PrincipalSummary, 'name' | 'kind' | 'displayName' | 'disabled'>
+type ErrorLike = { message?: string; response?: { data?: { message?: string } } }
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike | undefined) => error?.response?.data?.message ?? error?.message ?? `${error}`
 }))
 
-const ALICE = { name: 'alice', kind: 'USER', displayName: 'Alice Example', disabled: false }
+const ALICE: Principal = { name: 'alice', kind: 'USER', displayName: 'Alice Example', disabled: false }
 
-const rejection = (status, message) =>
+const rejection = (status: number, message: string | undefined) =>
   Object.assign(new Error('failed'), { response: { status, data: { message } } })
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper.
-const menu = () => document.querySelector('[role="menu"]')
-const item = (test) => document.querySelector(`[role="menu"] [data-test="${test}"]`)
-const clickItem = async (test) => {
+const menu = (): HTMLElement => document.querySelector<HTMLElement>('[role="menu"]')!
+const item = (test: string): HTMLElement => document.querySelector<HTMLElement>(`[role="menu"] [data-test="${test}"]`)!
+const clickItem = async (test: string) => {
   item(test).click()
   await flushPromises()
 }
 
-const texts = () => [...document.querySelectorAll('[role="menuitem"]')].map(node => node.textContent.trim())
+const texts = () => [...document.querySelectorAll('[role="menuitem"]')].map(node => node.textContent?.trim())
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const dialogButton = (label) =>
-  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === label)
+const dialog = (): HTMLElement => document.querySelector<HTMLElement>('[role="dialog"]')!
+const dialogButton = (label: string) =>
+  [...dialog().querySelectorAll('button')].find(node => node.textContent?.trim() === label)!
 
-const typeInDialog = async (value) => {
-  const input = dialog().querySelector('input')
+const typeInDialog = async (value: string) => {
+  const input = dialog().querySelector<HTMLInputElement>('input')!
   input.value = value
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
 
 describe('PrincipalActionsMenu', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: Record<'get' | 'update' | 'setPassword' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'remove', Mock>
 
-  const mountMenu = async (props = {}) => {
+  const mountMenu = async (props: { principal?: Principal; instanceAdmin?: boolean } = {}) => {
     wrapper = mount(PrincipalActionsMenu, { props: { principal: ALICE, api, ...props }, attachTo: document.body })
     await flushPromises()
   }
 
-  const chooseItem = async (test) => {
+  const chooseItem = async (test: string) => {
     await wrapper.find('[data-test="actions"]').trigger('click')
     await flushPromises()
     await clickItem(test)
@@ -82,7 +86,6 @@ describe('PrincipalActionsMenu', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
@@ -139,7 +142,7 @@ describe('PrincipalActionsMenu', () => {
     it('positions the menu from the trigger with fixed positioning', async () => {
       await mountMenu()
       const trigger = wrapper.find('[data-test="actions"]').element
-      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 140, left: 260, right: 300, width: 40, height: 40 })
+      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 140, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
 
       await openMenu()
 
@@ -151,12 +154,12 @@ describe('PrincipalActionsMenu', () => {
     it('opens upwards when there is no room below the trigger', async () => {
       await mountMenu()
       const trigger = wrapper.find('[data-test="actions"]').element
-      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 })
+      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
       vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(768)
       const original = Element.prototype.getBoundingClientRect
-      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
         return this.getAttribute?.('role') === 'menu'
-          ? { top: 0, bottom: 200, left: 0, right: 224, width: 224, height: 200 }
+          ? { top: 0, bottom: 200, left: 0, right: 224, width: 224, height: 200 } as DOMRect
           : original.call(this)
       })
 
@@ -239,7 +242,7 @@ describe('PrincipalActionsMenu', () => {
 
       await flushPromises()
 
-      expect(item('toggle-disabled').textContent.trim()).toBe('Enable')
+      expect(item('toggle-disabled').textContent?.trim()).toBe('Enable')
     })
 
     it('offers Remove instance admin for an instance admin', async () => {
@@ -248,7 +251,7 @@ describe('PrincipalActionsMenu', () => {
 
       await flushPromises()
 
-      expect(item('toggle-admin').textContent.trim()).toBe('Remove instance admin')
+      expect(item('toggle-admin').textContent?.trim()).toBe('Remove instance admin')
     })
 
     it('offers a machine account neither a password nor the admin role', async () => {
@@ -287,7 +290,7 @@ describe('PrincipalActionsMenu', () => {
 
       await chooseItem('toggle-disabled')
 
-      expect(wrapper.emitted('changed')[0][0]).toMatchObject({ name: 'alice', disabled: true })
+      expect(wrapper.emitted('changed')![0][0]).toMatchObject({ name: 'alice', disabled: true })
     })
 
     it('shows the server message of a refused change in a snackbar', async () => {
@@ -307,7 +310,7 @@ describe('PrincipalActionsMenu', () => {
       await chooseItem('toggle-disabled')
 
       expect(createErrorToast).toHaveBeenCalledWith(expect.stringContaining('changed in the meantime'))
-      expect(wrapper.emitted('changed')[0], 'the caller reads the principal again').toEqual([])
+      expect(wrapper.emitted('changed')![0], 'the caller reads the principal again').toEqual([])
     })
   })
 
@@ -363,13 +366,13 @@ describe('PrincipalActionsMenu', () => {
       dialogButton('Remove instance admin').click()
       await flushPromises()
 
-      expect(dialog().querySelector('[role="alert"]').textContent).toBe('The last instance admin cannot be demoted.')
+      expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toBe('The last instance admin cannot be demoted.')
     })
   })
 
   describe('delete', () => {
     // The username and the display name are swapped on purpose: the dialog must name what has to be typed.
-    const SWAPPED = { name: 'sdsdfsdf', kind: 'USER', displayName: 'sdfsdfsdf', disabled: true }
+    const SWAPPED: Principal = { name: 'sdsdfsdf', kind: 'USER', displayName: 'sdfsdfsdf', disabled: true }
 
     it('names the username in the dialog text, not the display name', async () => {
       await mountMenu({ principal: SWAPPED })
@@ -421,7 +424,7 @@ describe('PrincipalActionsMenu', () => {
       dialogButton('Delete').click()
       await flushPromises()
 
-      expect(dialog().querySelector('[role="alert"]').textContent).toBe('The last instance admin cannot be deleted.')
+      expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toBe('The last instance admin cannot be deleted.')
       expect(wrapper.emitted('deleted')).toBeUndefined()
     })
   })

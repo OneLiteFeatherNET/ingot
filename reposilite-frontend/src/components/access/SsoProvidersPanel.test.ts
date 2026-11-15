@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { siGithub, siKeycloak } from 'simple-icons'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
-import { SECRET_PLACEHOLDER } from './loginSettings'
+import { SECRET_PLACEHOLDER, type LdapSettings, type OidcProvider } from './loginSettings'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<unknown> } }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
@@ -32,7 +32,7 @@ vi.mock('../../helpers/toast', async (importOriginal) => ({
   createInfoToast: vi.fn()
 }))
 
-const KEYCLOAK = {
+const KEYCLOAK: OidcProvider = {
   id: 'keycloak',
   enabled: true,
   label: 'Keycloak',
@@ -50,32 +50,33 @@ const KEYCLOAK = {
   adminGroups: ['ingot-admins']
 }
 
-const GITHUB = { ...KEYCLOAK, id: 'github', label: 'GitHub', icon: 'GITHUB', issuerUrl: 'https://github.example.org', adminGroups: [] }
+const GITHUB: OidcProvider = { ...KEYCLOAK, id: 'github', label: 'GitHub', icon: 'GITHUB', issuerUrl: 'https://github.example.org', adminGroups: [] }
 
-const LDAP = {
+const LDAP: LdapSettings = {
   enabled: false, label: 'LDAP', url: '', startTls: false, bindDn: '', bindPassword: '', userBaseDn: '',
   userFilter: '(uid={0})', usernameAttribute: 'uid', displayNameAttribute: 'cn', emailAttribute: 'mail',
   groupBaseDn: '', groupFilter: '(objectClass=groupOfNames)', groupNameAttribute: 'cn', autoCreateUsers: true, adminGroups: []
 }
 
-const answer = (data, etag = '"v1"') => ({ data, headers: { etag } })
-const rejection = (status) =>
+const answer = (data: unknown, etag = '"v1"') => ({ data, headers: { etag } })
+const rejection = (status: number) =>
   Object.assign(new Error(`Request failed with status code ${status}`), { response: { status, data: {} } })
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const field = (id) => document.getElementById(id)
-const buttonIn = (root, label) => [...root.querySelectorAll('button')].find(button => button.textContent.trim() === label)
-const dialogButton = (label) => buttonIn(dialog(), label)
+const dialog = (): HTMLElement => document.querySelector<HTMLElement>('[role="dialog"]')!
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
+const buttonIn = (root: ParentNode, label: string) =>
+  [...root.querySelectorAll('button')].find(button => button.textContent?.trim() === label)!
+const dialogButton = (label: string) => buttonIn(dialog(), label)
 
-const type = (id, value) => {
+const type = (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
 }
 
 describe('SsoProvidersPanel', () => {
-  let wrapper
-  let settings
-  let auth
+  let wrapper: VueWrapper
+  let settings: { fetch: Mock; update: Mock }
+  let auth: { testOidcProvider: Mock }
 
   const mountPanel = async () => {
     wrapper = mount(SsoProvidersPanel, { attachTo: document.body })
@@ -83,10 +84,10 @@ describe('SsoProvidersPanel', () => {
   }
 
   const rows = () => wrapper.findAll('[data-test="sso-row"]')
-  const rowOf = (label) => rows().find(row => row.text().includes(label))
+  const rowOf = (label: string) => rows().find(row => row.text().includes(label))!
 
   // Opens the add dialog and picks a kind, which is what the admin does first.
-  const pickKind = async (label) => {
+  const pickKind = async (label: string) => {
     wrapper.find('[data-test="add-provider"]').trigger('click')
     await flushPromises()
     dialogButton(label).click()
@@ -112,7 +113,6 @@ describe('SsoProvidersPanel', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
@@ -153,7 +153,7 @@ describe('SsoProvidersPanel', () => {
       await mountPanel()
 
       expect(wrapper.find('[role="alert"]').text()).toContain('Could not load the providers')
-      await wrapper.findAll('button').find(button => button.text() === 'Retry').trigger('click')
+      await wrapper.findAll('button').find(button => button.text() === 'Retry')!.trigger('click')
       await flushPromises()
 
       expect(settings.fetch).toHaveBeenCalledTimes(2)
@@ -182,7 +182,7 @@ describe('SsoProvidersPanel', () => {
       wrapper.find('[data-test="add-provider"]').trigger('click')
       await flushPromises()
 
-      const kinds = [...dialog().querySelectorAll('button')].map(button => button.textContent.trim())
+      const kinds = [...dialog().querySelectorAll('button')].map(button => button.textContent?.trim())
       expect(kinds).toEqual(expect.arrayContaining(['GitHub', 'GitLab', 'Google', 'Microsoft', 'Keycloak', 'Authentik', 'Okta', 'Auth0', 'Gitea', 'Generic OIDC']))
     })
 
@@ -204,7 +204,7 @@ describe('SsoProvidersPanel', () => {
     it('shows the callback URL for the id it will have, under the dashboard origin', async () => {
       await pickKind('GitLab')
 
-      expect(dialog().querySelector('[data-test="callback-url"]').textContent)
+      expect(dialog().querySelector<HTMLElement>('[data-test="callback-url"]')!.textContent)
         .toBe('http://localhost:3000/api/auth/oidc/gitlab/callback')
     })
 
@@ -215,11 +215,11 @@ describe('SsoProvidersPanel', () => {
     })
 
     it('copies the callback URL with a button that names it', async () => {
-      const writeText = vi.fn().mockResolvedValue()
+      const writeText = vi.fn().mockResolvedValue(undefined)
       vi.stubGlobal('navigator', { clipboard: { writeText } })
       await pickKind('GitLab')
 
-      dialog().querySelector('[aria-label="Copy callback URL"]').click()
+      dialog().querySelector<HTMLElement>('[aria-label="Copy callback URL"]')!.click()
       await flushPromises()
 
       expect(writeText).toHaveBeenCalledWith('http://localhost:3000/api/auth/oidc/gitlab/callback')
@@ -306,7 +306,7 @@ describe('SsoProvidersPanel', () => {
       await flushPromises()
 
       expect(dialog(), 'the form stays open so it can be corrected').not.toBeNull()
-      expect(dialog().querySelector('[role="alert"]').textContent).toBe('Not saved: Request failed with status 400')
+      expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toBe('Not saved: Request failed with status 400')
     })
 
     it('says the domain changed elsewhere when the server answers with a precondition failure', async () => {
@@ -317,7 +317,7 @@ describe('SsoProvidersPanel', () => {
       dialogButton('Save').click()
       await flushPromises()
 
-      expect(dialog().querySelector('[role="alert"]').textContent).toContain('changed elsewhere')
+      expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('changed elsewhere')
     })
   })
 
@@ -355,10 +355,10 @@ describe('SsoProvidersPanel', () => {
     })
 
     it('keeps the claims behind an Advanced disclosure that starts closed', async () => {
-      const disclosure = dialog().querySelector('details')
+      const disclosure = dialog().querySelector<HTMLDetailsElement>('details')!
 
       expect(disclosure.open).toBe(false)
-      expect(disclosure.querySelector('summary').textContent).toContain('Advanced')
+      expect(disclosure.querySelector<HTMLElement>('summary')!.textContent).toContain('Advanced')
     })
 
     it('shows the admin groups of the provider as chips', async () => {
@@ -368,11 +368,11 @@ describe('SsoProvidersPanel', () => {
     it('deletes after the id is typed, and removes only that provider', async () => {
       dialogButton('Delete provider').click()
       await flushPromises()
-      const confirm = document.querySelector('[data-test="confirm-button"]')
+      const confirm = document.querySelector<HTMLButtonElement>('[data-test="confirm-button"]')!
       expect(confirm.disabled, 'a delete needs the id typed first').toBe(true)
 
-      document.querySelector('[data-test="confirm-typed"]').value = 'keycloak'
-      document.querySelector('[data-test="confirm-typed"]').dispatchEvent(new Event('input'))
+      document.querySelector<HTMLInputElement>('[data-test="confirm-typed"]')!.value = 'keycloak'
+      document.querySelector<HTMLInputElement>('[data-test="confirm-typed"]')!.dispatchEvent(new Event('input'))
       await flushPromises()
       confirm.click()
       await flushPromises()
@@ -402,7 +402,7 @@ describe('SsoProvidersPanel', () => {
       await flushPromises()
 
       expect(auth.testOidcProvider).toHaveBeenCalledWith('keycloak')
-      expect(dialog().querySelector('[data-test="test-result"]').textContent)
+      expect(dialog().querySelector<HTMLElement>('[data-test="test-result"]')!.textContent)
         .toContain('Connected. Issuer https://sso.example.org/realms/ingot')
     })
 
@@ -431,9 +431,9 @@ describe('SsoProvidersPanel', () => {
       testButton().click()
       await flushPromises()
 
-      expect(dialog().querySelector('[data-test="test-result"]').textContent)
+      expect(dialog().querySelector<HTMLElement>('[data-test="test-result"]')!.textContent)
         .toContain('The test failed: Discovery document not found')
-      expect(dialog().querySelector('[data-test="test-result"]').classList).toContain('text-error')
+      expect(dialog().querySelector<HTMLElement>('[data-test="test-result"]')!.classList).toContain('text-error')
     })
 
     it('shows the failure of the request itself as a failed test', async () => {
@@ -443,7 +443,7 @@ describe('SsoProvidersPanel', () => {
       testButton().click()
       await flushPromises()
 
-      expect(dialog().querySelector('[data-test="test-result"]').textContent)
+      expect(dialog().querySelector<HTMLElement>('[data-test="test-result"]')!.textContent)
         .toContain('The test failed: Request failed with status 503')
     })
 
@@ -479,7 +479,7 @@ describe('SsoProvidersPanel', () => {
       dialogButton('GitLab').click()
       await flushPromises()
 
-      expect(dialog().querySelector('[data-test="callback-url"]').textContent)
+      expect(dialog().querySelector<HTMLElement>('[data-test="callback-url"]')!.textContent)
         .toBe('https://repo.example.org/api/auth/oidc/gitlab/callback')
     })
 

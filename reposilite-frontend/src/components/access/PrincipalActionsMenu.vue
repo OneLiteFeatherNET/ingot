@@ -14,15 +14,16 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, watch, type PropType } from 'vue'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { etagOf, isPreconditionFailed } from '../../store/client'
 import MoreIcon from '../icons/MoreIcon.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 import ResetPasswordDialog from './ResetPasswordDialog.vue'
-import { detailOf } from './accessPrincipals'
+import { detailOf, type PrincipalDetailAnswer, type PrincipalSummary, type PrincipalsApi } from './accessPrincipals'
 
 /*
  * The actions on one principal, in a menu: reset the password (users only), disable or enable,
@@ -54,7 +55,7 @@ import { detailOf } from './accessPrincipals'
  */
 const props = defineProps({
   principal: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalSummary, 'name' | 'kind' | 'displayName' | 'disabled'>>,
     required: true
   },
   instanceAdmin: {
@@ -62,7 +63,7 @@ const props = defineProps({
     default: false
   },
   api: {
-    type: Object,
+    type: Object as PropType<Pick<PrincipalsApi, 'get' | 'update' | 'setPassword' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'remove'>>,
     required: true
   }
 })
@@ -70,12 +71,12 @@ const props = defineProps({
 const emit = defineEmits(['changed', 'deleted', 'toggle'])
 
 const menuOpen = ref(false)
-const root = ref(null)
-const menuElement = ref(null)
-const placement = ref({})
+const root = ref<HTMLElement | null>(null)
+const menuElement = ref<HTMLElement | null>(null)
+const placement = ref<Record<string, string>>({})
 
 const GAP = 4
-const triggerElement = () => root.value?.querySelector('[data-test="actions"]')
+const triggerElement = (): HTMLElement | null | undefined => root.value?.querySelector<HTMLElement>('[data-test="actions"]')
 
 const place = async () => {
   const trigger = triggerElement()
@@ -94,13 +95,13 @@ const closeMenu = () => {
   menuOpen.value = false
 }
 
-const insideMenu = (node) => root.value?.contains(node) || menuElement.value?.contains(node)
+const insideMenu = (node: EventTarget | null) => root.value?.contains(node as Node | null) || menuElement.value?.contains(node as Node | null)
 
-const onPointerdown = (event) => {
+const onPointerdown = (event: Event) => {
   if (!insideMenu(event.target)) closeMenu()
 }
 
-const listen = (on) => {
+const listen = (on: boolean) => {
   const toggle = on ? 'addEventListener' : 'removeEventListener'
   document[toggle]('pointerdown', onPointerdown)
   window[toggle]('scroll', closeMenu, true)
@@ -112,7 +113,7 @@ watch(menuOpen, async (open) => {
   listen(open)
   if (!open) return
   await place()
-  menuElement.value?.querySelector('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true })
+  menuElement.value?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true })
 })
 
 onBeforeUnmount(() => listen(false))
@@ -126,20 +127,20 @@ const isUser = computed(() => props.principal.kind === 'USER')
 const noun = computed(() => (isUser.value ? 'user' : 'machine account'))
 const label = computed(() => props.principal.displayName || props.principal.name)
 
-const choose = (action) => {
+const choose = (action: () => void) => {
   menuOpen.value = false
   failure.value = ''
   action()
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key !== 'Escape' || !menuOpen.value) return
   menuOpen.value = false
   triggerElement()?.focus()
 }
 
 // Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
-const onFocusout = (event) => {
+const onFocusout = (event: FocusEvent) => {
   if (!insideMenu(event.relatedTarget)) menuOpen.value = false
 }
 
@@ -147,12 +148,12 @@ const toggleDisabled = async () => {
   const disabling = !props.principal.disabled
   busy.value = true
   try {
-    const fresh = await props.api.get(props.principal.name)
+    const fresh: AxiosResponse = await props.api.get(props.principal.name)
     const response = await props.api.update(props.principal.name, { disabled: disabling }, etagOf(fresh))
     createSuccessToast(`${props.principal.name} ${disabling ? 'disabled' : 'enabled'}`)
     emit('changed', detailOf(response?.data))
   } catch (error) {
-    if (isPreconditionFailed(error)) {
+    if (isPreconditionFailed(error as AxiosError)) {
       createErrorToast(`${props.principal.name} was changed in the meantime. The list is up to date again, please retry.`)
       emit('changed')
     } else {
@@ -168,7 +169,7 @@ const changeAdmin = async () => {
   failure.value = ''
   const granting = !props.instanceAdmin
   try {
-    const response = granting
+    const response: AxiosResponse<PrincipalDetailAnswer> = granting
       ? await props.api.grantInstanceAdmin(props.principal.name)
       : await props.api.revokeInstanceAdmin(props.principal.name)
     createSuccessToast(granting
