@@ -33,6 +33,12 @@ const props = defineProps({
   qualifier: {
     type: Object as PropType<{ path: string }>,
     required: true
+  },
+  // The names of the files the browser lists for the path. Null while that listing is still loading, so the card
+  // waits for it. Left out, the card asks the remote for the metadata of both levels, as it did before the listing.
+  listing: {
+    type: Array as PropType<string[] | null>,
+    default: undefined
   }
 })
 
@@ -82,9 +88,22 @@ const displayArtifact = (metadataSource: string, version?: string) => {
   title.value = 'Artifact details'
   label.value = 'Artifact details'
   subtitle.value = ''
-  const { groupId, artifactId, versions } = parseMetadata(metadataSource)
-  const latestVersion = versions[version ? versions.indexOf(version) : versions.length - 1]
+  const { metadata, groupId, artifactId, versions } = parseMetadata(metadataSource)
+  // Version-level metadata (a snapshot's own directory) names its single version at the top and lists no versions.
+  const ownVersion = [...metadata.documentElement.children].find(node => node.tagName === 'version')?.textContent?.trim()
+  const latestVersion = ownVersion || versions[version ? versions.indexOf(version) : versions.length - 1]
   data.value = { type: 'artifact', groupId, artifactId, version: latestVersion }
+}
+
+// Maven writes a version directory's files with the version in their name: the .pom and .module are the ones to look for.
+const isVersionFile = (name: string) => name.endsWith('.pom') || name.endsWith('.module')
+
+// A probe answering one of these means the file is not there, which is expected on a remote and is not logged.
+const EXPECTED_ABSENT = [403, 404, 406]
+const logUnlessExpected = (error: { response?: { status?: number } }) => {
+  if (!EXPECTED_ABSENT.includes(error.response?.status ?? 0)) {
+    console.log(error)
+  }
 }
 
 watchEffect(() => {
@@ -103,30 +122,67 @@ watchEffect(() => {
     return
   }
 
+  const listing = props.listing
+
+  // The listing is not in yet: the card waits for it instead of asking the remote.
+  if (listing === null) {
+    loading.value = true
+    return
+  }
+
   loading.value = true
 
-  client.value.maven.content(`${qualifier}/maven-metadata.xml`)
-    .then(response => {
-      if (isStale()) return
-      displayArtifact(response.data)
-      loading.value = false
-    })
-    .catch(() => {
-      client.value.maven.content(`${qualifier.substring(0, qualifier.indexOf(elements[elements.length-1])-1)}/maven-metadata.xml`)
-        .then(response => {
-          if (isStale()) return
-          displayArtifact(response.data, elements[elements.length-1])
-          loading.value = false
-        })
-        .catch(error => {
-          if (isStale()) return
-          if (error.response?.status !== 404 && error.response?.status !== 403) {
-            console.log(error)
-          }
-          displayRepository()
-          loading.value = false
-        })
-    })
+  const finishWithRepository = () => {
+    displayRepository()
+    loading.value = false
+  }
+
+  // The metadata of the parent directory, which names the versions of the artifact the version directory belongs to.
+  const probeParent = () => {
+    const last = elements[elements.length - 1]
+    client.value.maven.content(`${qualifier.substring(0, qualifier.indexOf(last) - 1)}/maven-metadata.xml`)
+      .then(response => {
+        if (isStale()) return
+        displayArtifact(response.data, last)
+        loading.value = false
+      })
+      .catch(error => {
+        if (isStale()) return
+        logUnlessExpected(error)
+        finishWithRepository()
+      })
+  }
+
+  // The metadata of the directory itself, which an artifact directory has. onMissing decides what a miss means.
+  const probeOwn = (onMissing: () => void) => {
+    client.value.maven.content(`${qualifier}/maven-metadata.xml`)
+      .then(response => {
+        if (isStale()) return
+        displayArtifact(response.data)
+        loading.value = false
+      })
+      .catch(() => {
+        if (isStale()) return
+        onMissing()
+      })
+  }
+
+  // Without a listing the card asks both levels, as it always did.
+  if (listing === undefined) {
+    probeOwn(probeParent)
+    return
+  }
+
+  const listsOwnMetadata = listing.includes('maven-metadata.xml')
+  const listsVersionFiles = listing.some(isVersionFile)
+
+  if (listsOwnMetadata) {
+    probeOwn(() => listsVersionFiles ? probeParent() : finishWithRepository())
+  } else if (listsVersionFiles) {
+    probeParent()
+  } else {
+    finishWithRepository()
+  }
 })
 
 const selectedTab = ref<string>()

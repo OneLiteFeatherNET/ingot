@@ -33,9 +33,10 @@ vi.mock('../../store/session', async () => {
 
 let wrapper: VueWrapper | undefined
 
-const mountCard = async (path = '') => {
+// listing is the names of the files the browser lists for the path. Left out, the card runs without a listing.
+const mountCard = async (path = '', listing?: string[] | null) => {
   wrapper = mount(SnippetsCard, {
-    props: { qualifier: { path } },
+    props: { qualifier: { path }, listing },
     attachTo: document.body
   })
   await flushPromises()
@@ -381,5 +382,156 @@ describe('SnippetsCard snippet box height', () => {
 
     expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
     expect(wrapper!.find('.card-editor').classes(), 'a one-line snippet does not get an empty four-line box').not.toContain('min-h-29')
+  })
+})
+
+describe('SnippetsCard metadata probes', () => {
+  const GROUP = 'releases/eu/cloudnetservice'
+  const ARTIFACT = `${GROUP}/cloudnet`
+  const VERSION = `${ARTIFACT}/3.0.0`
+  const SNAPSHOT = 'onelitefeather-proxy/eu/cloudnetservice/cloudnet/wrapper-jvm-api/4.0.0-RC16-SNAPSHOT'
+
+  // The artifact level lists its versions.
+  const ARTIFACT_LEVEL = `<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>eu.cloudnetservice.cloudnet</groupId>
+  <artifactId>cloudnet</artifactId>
+  <versioning>
+    <versions>
+      <version>2.9.0</version>
+      <version>3.0.0</version>
+    </versions>
+  </versioning>
+</metadata>`
+
+  // The version level of a snapshot names its one version and has no list of versions.
+  const SNAPSHOT_VERSION_LEVEL = `<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>eu.cloudnetservice.cloudnet</groupId>
+  <artifactId>wrapper-jvm-api</artifactId>
+  <version>4.0.0-RC16-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <localCopy>true</localCopy>
+    </snapshot>
+    <lastUpdated>20260101000000</lastUpdated>
+  </versioning>
+</metadata>`
+
+  const answer = (xml: string) => Promise.resolve({ data: xml })
+  const refuse = (status: number) => Promise.reject(Object.assign(new Error(`HTTP ${status}`), { response: { status } }))
+  const requestedPaths = () => content.mock.calls.map(([path]) => path)
+  const heading = () => wrapper!.find('h1 button').text()
+
+  beforeEach(() => {
+    content.mockClear()
+    content.mockImplementation(() => new Promise(() => {}))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    content.mockImplementation(() => new Promise(() => {}))
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('sends no metadata request for a group directory whose listing has no metadata and no version files', async () => {
+    await mountCard(GROUP, ['cloudnet', 'readme.txt'])
+
+    expect(requestedPaths(), 'a plain directory is not probed').toEqual([])
+    expect(heading(), 'the repository snippet is shown straight away').toBe('Repository details')
+    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the card does not wait for a request').toBe(false)
+  })
+
+  it('requests the directory metadata exactly once when the listing contains maven-metadata.xml', async () => {
+    content.mockImplementation(() => answer(ARTIFACT_LEVEL))
+
+    await mountCard(ARTIFACT, ['maven-metadata.xml', 'cloudnet-3.0.0.jar'])
+
+    expect(requestedPaths(), 'only the directory own metadata is asked for').toEqual([`${ARTIFACT}/maven-metadata.xml`])
+    expect(heading(), 'the directory is an artifact').toBe('Artifact details')
+  })
+
+  it('requests the parent metadata once for a version directory listing', async () => {
+    content.mockImplementation((path: string) => path === `${ARTIFACT}/maven-metadata.xml` ? answer(ARTIFACT_LEVEL) : refuse(404))
+
+    await mountCard(VERSION, ['cloudnet-3.0.0.pom', 'cloudnet-3.0.0.jar'])
+
+    expect(requestedPaths(), 'the version directory itself is not probed, only its parent').toEqual([`${ARTIFACT}/maven-metadata.xml`])
+    expect(heading()).toBe('Artifact details')
+    expect(wrapper!.text(), 'the snippet names the version of the directory').toContain('3.0.0')
+  })
+
+  it('treats a .module file as the marker of a version directory', async () => {
+    content.mockImplementation(() => answer(ARTIFACT_LEVEL))
+
+    await mountCard(VERSION, ['cloudnet-3.0.0.module'])
+
+    expect(requestedPaths()).toEqual([`${ARTIFACT}/maven-metadata.xml`])
+  })
+
+  it('shows the artifact snippet for a snapshot version directory whose metadata is version-level', async () => {
+    content.mockImplementation(() => answer(SNAPSHOT_VERSION_LEVEL))
+
+    await mountCard(SNAPSHOT, [
+      'maven-metadata.xml',
+      'wrapper-jvm-api-4.0.0-RC16-SNAPSHOT.pom',
+      'wrapper-jvm-api-4.0.0-RC16-SNAPSHOT.module',
+      'wrapper-jvm-api-4.0.0-RC16-SNAPSHOT.jar',
+      'wrapper-jvm-api-4.0.0-RC16-SNAPSHOT-sources.jar',
+      'wrapper-jvm-api-4.0.0-RC16-SNAPSHOT-javadoc.jar'
+    ])
+
+    expect(requestedPaths(), 'the own version-level metadata answers, so no parent is asked').toEqual([`${SNAPSHOT}/maven-metadata.xml`])
+    expect(heading(), 'the snapshot directory is shown as an artifact').toBe('Artifact details')
+    expect(wrapper!.text(), 'the group of the snapshot is in the snippet').toContain('eu.cloudnetservice.cloudnet')
+    expect(wrapper!.text(), 'the artifact of the snapshot is in the snippet').toContain('wrapper-jvm-api')
+    expect(wrapper!.text(), 'the version of the snapshot is in the snippet').toContain('4.0.0-RC16-SNAPSHOT')
+  })
+
+  it('sends no request while the listing is still loading', async () => {
+    await mountCard(VERSION, null)
+
+    expect(requestedPaths(), 'nothing is probed before the listing is known').toEqual([])
+    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the card shows its loading state').toBe(true)
+  })
+
+  it('shows the repository snippet for a version directory whose parent has no metadata, logging nothing on 406', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    content.mockImplementation(() => refuse(406))
+
+    await mountCard(VERSION, ['cloudnet-3.0.0.pom'])
+
+    expect(heading(), 'the card falls back to the repository snippet').toBe('Repository details')
+    expect(log, 'a 406 is an expected not-there and is not logged').not.toHaveBeenCalled()
+  })
+
+  it('logs nothing when the probes without a listing answer 406', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    content.mockImplementation(() => refuse(406))
+
+    await mountCard(VERSION)
+
+    expect(log, 'the probe without a listing does not log a 406 either').not.toHaveBeenCalled()
+  })
+
+  it('still logs an unexpected error from the parent probe without a listing', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    content.mockImplementation(() => refuse(500))
+
+    await mountCard(VERSION)
+
+    expect(log, 'a server error stays visible in the console').toHaveBeenCalledTimes(1)
+  })
+
+  it('probes its own metadata first, then the parent, when no listing is given', async () => {
+    content.mockImplementation(() => refuse(404))
+
+    await mountCard(VERSION)
+
+    expect(requestedPaths(), 'without a listing the card keeps asking both levels').toEqual([
+      `${VERSION}/maven-metadata.xml`,
+      `${ARTIFACT}/maven-metadata.xml`
+    ])
   })
 })

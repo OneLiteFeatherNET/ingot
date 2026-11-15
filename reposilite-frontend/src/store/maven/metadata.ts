@@ -29,10 +29,12 @@ export default function useMetadata() {
       ?.firstChild
       ?.nodeValue
 
+  // Version-level metadata, such as the one of a snapshot, has no list of versions: that reads as none.
   const versions = (metadata: Document): string[] => {
-    return [...(metadata.querySelector('versioning versions') as Element).children]
-      ?.map(node => (node.firstChild as ChildNode).nodeValue as string)
-      ?? ['{unknown}']
+    const list = metadata.querySelector('versioning versions')
+    return list
+      ? [...list.children].map(node => (node.firstChild as ChildNode).nodeValue as string)
+      : []
   }
 
   const parseMetadata = (source: string) => {
