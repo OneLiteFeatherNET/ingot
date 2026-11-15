@@ -85,7 +85,7 @@ describe('the Discover step', () => {
 
     const table = wrapper.find('table[data-test="repositories"]')
     expect(table.find('caption').exists(), 'the table has a caption').toBe(true)
-    const row = table.findAll('tbody tr').find(entry => entry.text().includes('releases'))
+    const row = table.findAll('tbody tr').find(entry => entry.text().includes('releases'))!
     expect(row.text()).toContain('maven2')
     expect(row.text()).toContain('hosted')
     expect(row.text()).toContain('120')
@@ -98,7 +98,7 @@ describe('the Discover step', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    const row = wrapper.find('table[data-test="repositories"]').findAll('tbody tr').find(entry => entry.text().includes('npm-proxy'))
+    const row = wrapper.find('table[data-test="repositories"]').findAll('tbody tr').find(entry => entry.text().includes('npm-proxy'))!
     expect(row.text()).toMatch(/excluded/i)
   })
 

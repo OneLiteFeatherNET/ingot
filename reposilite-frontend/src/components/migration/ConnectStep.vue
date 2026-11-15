@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -26,22 +26,23 @@ import ProblemAlert from './ProblemAlert.vue'
 import { migrationApi } from '../../store/migration/migrationApi'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import type { ConnectionReport, Problem } from './types'
 
 const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
 
 const url = ref('')
 const user = ref('')
-const mode = ref('literal')
+const mode = ref<'literal' | 'reference'>('literal')
 const password = ref('')
 const reference = ref('')
 const errors = reactive({ url: '', user: '', password: '', reference: '' })
-const report = ref(null)
-const problem = ref(null)
+const report = ref<ConnectionReport | null>(null)
+const problem = ref<Problem | null>(null)
 const pending = ref(false)
 
 const connected = computed(() => wizard.state.connection !== null)
-const summary = ref(null)
+const summary = ref<HTMLElement | null>(null)
 const forgotten = ref(false)
 const passwordHeld = computed(() => wizard.passwords.recall() !== null)
 
@@ -59,7 +60,7 @@ const errorItems = computed(() => [
   { id: 'migration-connect-reference', text: errors.reference },
 ].filter(item => item.text !== ''))
 
-const focusField = (id) => {
+const focusField = (id: string) => {
   document.getElementById(id)?.focus()
 }
 
@@ -91,7 +92,7 @@ const submit = async () => {
     password: mode.value === 'reference' ? reference.value.trim() : password.value,
   }
   try {
-    const result = await api.testConnection(body)
+    const result = await api.testConnection(body) as ConnectionReport
     report.value = result
     if (result.reachable && result.credentialAccepted !== false && !result.problem) {
       wizard.setConnection({
@@ -108,7 +109,7 @@ const submit = async () => {
       password.value = ''
     }
   } catch (error) {
-    problem.value = error
+    problem.value = error as Problem
   } finally {
     pending.value = false
   }

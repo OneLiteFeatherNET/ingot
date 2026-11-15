@@ -148,8 +148,8 @@ describe('the Dry run step', () => {
     await wrapper.find('#migration-take-proposal-releases').trigger('click')
     await flushPromises()
 
-    const releases = wizard.state.mapping.repositories.find(repository => repository.nexusName === 'releases')
-    expect(releases.targetName).toBe('releases-nexus')
+    const releases = wizard.state.mapping!.repositories.find(repository => repository.nexusName === 'releases')
+    expect(releases!.targetName).toBe('releases-nexus')
     expect(wrapper.text(), 'the sync gate names the change').toMatch(/changed after the loss report was accepted/i)
   })
 
@@ -178,7 +178,7 @@ describe('the Dry run step', () => {
 
     expect(wrapper.text()).toContain('nx-admin cannot be imported')
 
-    wrapper.find('#migration-blocker-show-0').element.click()
+    ;(wrapper.find('#migration-blocker-show-0').element as HTMLElement).click()
     await flushPromises()
 
     expect(document.activeElement?.id).toBe('migration-report-row-nx-admin')
@@ -205,7 +205,7 @@ describe('the Dry run step', () => {
     await wrapper.find('#migration-accept-check').setValue(true)
     await wrapper.find('#migration-accept-report').trigger('click')
 
-    expect(wizard.state.acceptance).toEqual({ dryRunJobId: 7, fingerprint: planFingerprint(wizard.state.mapping) })
+    expect(wizard.state.acceptance).toEqual({ dryRunJobId: 7, fingerprint: planFingerprint(wizard.state.mapping!) })
     expect(window.localStorage.length).toBe(0)
   })
 

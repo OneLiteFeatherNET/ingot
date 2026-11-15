@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -18,15 +18,16 @@
 // The progress of a job: its state in words, the bar, and the reason of a pause in words. The bar is indeterminate
 // while the job reports no repositories, so no percentage is shown for an unknown total. A polite live region tells
 // a screen reader about a change, at most once in ten seconds (see store/migration/announcer.js).
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, ref, watch, type PropType } from 'vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import { SETTLED_RESULTS, statusText, pauseText } from './jobText'
 import { createAnnouncer } from '../../store/migration/announcer'
 import { browserRuntime, MIGRATION_RUNTIME } from '../../store/migration/runtime'
+import type { JobView } from './types'
 
 const props = defineProps({
   job: {
-    type: Object,
+    type: Object as PropType<JobView>,
     required: true
   },
   label: {
@@ -52,7 +53,7 @@ const reason = computed(() => (props.job.status === 'PAUSED' ? pauseText(props.j
 const announcer = createAnnouncer()
 const announced = ref('')
 
-watch(() => [props.job.status, percent.value], ([state, value]) => {
+watch(() => [props.job.status, percent.value] as const, ([state, value]) => {
   const text = announcer.offer({ state, percent: value, now: runtime.now() })
   if (text) announced.value = text
 }, { immediate: true })

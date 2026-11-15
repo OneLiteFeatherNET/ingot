@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -34,17 +34,19 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+}>()
 
-const panel = ref(null)
-let opener = null
+const panel = ref<HTMLElement | null>(null)
+let opener: HTMLElement | null = null
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-const focusables = () => (panel.value ? [...panel.value.querySelectorAll(FOCUSABLE)] : [])
+const focusables = (): HTMLElement[] => (panel.value ? [...panel.value.querySelectorAll<HTMLElement>(FOCUSABLE)] : [])
 
 watch(() => props.modelValue, async (open) => {
   if (open) {
-    opener = document.activeElement
+    opener = document.activeElement as HTMLElement | null
     await nextTick()
     const first = focusables()[0]
     ;(first ?? panel.value)?.focus()
@@ -54,7 +56,7 @@ watch(() => props.modelValue, async (open) => {
   opener = null
 })
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     event.stopPropagation()
     emit('update:modelValue', false)

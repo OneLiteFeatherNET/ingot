@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import ConnectStep from './ConnectStep.vue'
 import { ApiProblem } from '../../store/migration/migrationApi'
 import { fakeApi, mountWith, cleanup, okConnection } from './testing'
@@ -26,13 +26,13 @@ const PASSWORD = 'literal-pw-7731'
 
 afterEach(cleanup)
 
-const fill = async (wrapper, { url = URL_VALUE, user = USER, password = PASSWORD } = {}) => {
+const fill = async (wrapper: VueWrapper, { url = URL_VALUE, user = USER, password = PASSWORD }: { url?: string; user?: string; password?: string | null } = {}) => {
   await wrapper.find('#migration-connect-url').setValue(url)
   await wrapper.find('#migration-connect-user').setValue(user)
   if (password !== null) await wrapper.find('#migration-connect-password').setValue(password)
 }
 
-const submit = async (wrapper) => {
+const submit = async (wrapper: VueWrapper) => {
   await wrapper.find('form').trigger('submit')
   await flushPromises()
 }
@@ -65,7 +65,7 @@ describe('the Connect step', () => {
 
     await submit(wrapper)
 
-    expect(wrapper.find('#migration-connect-password').element.value, 'the password field is empty').toBe('')
+    expect((wrapper.find('#migration-connect-password').element as HTMLInputElement).value, 'the password field is empty').toBe('')
     expect(wrapper.text()).toContain('3.70.1')
     expect(wrapper.text(), 'the readable areas are named').toMatch(/list repositories/i)
   })
@@ -84,7 +84,7 @@ describe('the Connect step', () => {
   it('accepts a secret reference as text and sends it as the password', async () => {
     const { wrapper, api } = await mountWith(ConnectStep)
     const referenceChoice = wrapper.findAll('label').find(entry => entry.text().includes('Use a secret reference'))
-    await referenceChoice.find('input').setValue(true)
+    await referenceChoice!.find('input').setValue(true)
     await fill(wrapper, { password: null })
     await wrapper.find('#migration-connect-reference').setValue('${env:NEXUS_PASSWORD}')
 
@@ -126,7 +126,7 @@ describe('the Connect step', () => {
 
     expect(wrapper.text()).toContain('Bad Request')
     expect(wrapper.text()).toContain('The URL carries user information')
-    expect(wrapper.find('#migration-connect-url').element.value, 'the URL is kept').toBe(URL_VALUE)
+    expect((wrapper.find('#migration-connect-url').element as HTMLInputElement).value, 'the URL is kept').toBe(URL_VALUE)
   })
 
   it('forgets the remembered password on request, and says so', async () => {

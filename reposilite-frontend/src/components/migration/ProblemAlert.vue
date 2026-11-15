@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
  * Copyright (c) 2026 OneLiteFeather
  *
@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
+import type { PropType } from 'vue'
+import type { Problem } from './types'
+
 // A failed call, in words: the title and the detail of the problem the server answered. It never shows a secret,
 // because the server does not echo one.
 defineProps({
   problem: {
-    type: Object,
+    type: Object as PropType<Problem | null>,
     default: null
   },
   id: {

@@ -19,13 +19,25 @@
  * test's answers, timers or stored state. Nothing here is imported by the application.
  */
 
-import { vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { vi, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import type { Component } from 'vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { MIGRATION_API, MIGRATION_WIZARD, MIGRATION_RUNTIME } from '../../store/migration/runtime'
+import type { createMigrationApi } from '../../store/migration/migrationApi'
+import type { MigrationJob, PollerVisibility } from '../../store/migration/types'
+import type { ConnectionReport, DiscoveredNexus, JobRequest } from './types'
 
-const okConnection = (overrides = {}) => ({
+type MigrationApi = ReturnType<typeof createMigrationApi>
+type WizardStore = ReturnType<typeof createWizardStore>
+
+// Each method of the API as a mock, so a test can ask what it was called with.
+type FakeApi = { [K in keyof MigrationApi]: Mock<MigrationApi[K]> }
+// A test replaces a method with its own answer, as a plain function or a mock.
+type FakeApiOverrides = Partial<{ [K in keyof MigrationApi]: (...args: Parameters<MigrationApi[K]>) => unknown }>
+
+const okConnection = (overrides: Partial<ConnectionReport> = {}): ConnectionReport => ({
   reachable: true,
   statusCode: 200,
   version: '3.70.1',
@@ -38,7 +50,7 @@ const okConnection = (overrides = {}) => ({
   ...overrides,
 })
 
-const discovery = (overrides = {}) => ({
+const discovery = (overrides: Partial<DiscoveredNexus> = {}): DiscoveredNexus => ({
   repositories: [
     { name: 'releases', format: 'maven2', type: 'hosted', supported: true, components: 120, bytes: 2048, settingsReadable: true },
     { name: 'snapshots', format: 'maven2', type: 'hosted', supported: true, components: 4, bytes: 512, settingsReadable: true },
@@ -52,52 +64,52 @@ const discovery = (overrides = {}) => ({
 })
 
 // Every API call is a fake that answers with the value of the test, or the default above.
-const fakeApi = (overrides = {}) => ({
-  testConnection: vi.fn(async () => okConnection()),
-  discover: vi.fn(async () => discovery()),
-  createJob: vi.fn(async (job) => ({ id: 1, kind: job.kind, status: 'QUEUED' })),
-  listJobs: vi.fn(async () => []),
-  getJob: vi.fn(async () => { throw new Error('no job in this test') }),
-  pauseJob: vi.fn(async () => undefined),
-  resumeJob: vi.fn(async () => undefined),
-  cancelJob: vi.fn(async () => undefined),
-  supplyCredentials: vi.fn(async () => undefined),
-  report: vi.fn(async () => ({ rows: [], summary: null })),
-  conflicts: vi.fn(async () => []),
-  deleteJob: vi.fn(async () => undefined),
+const fakeApi = (overrides: FakeApiOverrides = {}): FakeApi => ({
+  testConnection: vi.fn(() => Promise.resolve(okConnection())),
+  discover: vi.fn(() => Promise.resolve(discovery())),
+  createJob: vi.fn((job: JobRequest) => Promise.resolve({ id: 1, kind: String(job.kind), status: 'QUEUED' })),
+  listJobs: vi.fn(() => Promise.resolve([])),
+  getJob: vi.fn((): Promise<MigrationJob> => Promise.reject(new Error('no job in this test'))),
+  pauseJob: vi.fn(() => Promise.resolve(undefined)),
+  resumeJob: vi.fn(() => Promise.resolve(undefined)),
+  cancelJob: vi.fn(() => Promise.resolve(undefined)),
+  supplyCredentials: vi.fn(() => Promise.resolve(undefined)),
+  report: vi.fn(() => Promise.resolve({ rows: [], summary: null })),
+  conflicts: vi.fn(() => Promise.resolve([])),
+  deleteJob: vi.fn(() => Promise.resolve(undefined)),
   ...overrides,
-})
+} as FakeApi)
 
 // Timers that run only when the test advances them, and a tab the test can hide.
 const manualRuntime = () => {
   let now = 0
   let nextId = 1
-  const pending = new Map()
+  const pending = new Map<number, { at: number; callback: () => void }>()
   let hidden = false
-  const listeners = new Set()
+  const listeners = new Set<() => void>()
   return {
     now: () => now,
     timers: {
-      setTimeout: (callback, ms) => {
+      setTimeout: (callback: () => void, ms: number): number => {
         const id = nextId++
         pending.set(id, { at: now + ms, callback })
         return id
       },
-      clearTimeout: (id) => pending.delete(id),
+      clearTimeout: (id: unknown) => pending.delete(id as number),
     },
     visibility: {
       isHidden: () => hidden,
-      subscribe: (listener) => {
+      subscribe: (listener: () => void) => {
         listeners.add(listener)
         return () => listeners.delete(listener)
       },
-    },
-    setHidden(value) {
+    } satisfies PollerVisibility,
+    setHidden(value: boolean) {
       hidden = value
       listeners.forEach(listener => listener())
     },
     pendingCount: () => pending.size,
-    async advance(ms) {
+    async advance(ms: number) {
       const target = now + ms
       for (;;) {
         const due = [...pending.entries()].filter(([, entry]) => entry.at <= target).sort(([, a], [, b]) => a.at - b.at)[0]
@@ -113,18 +125,27 @@ const manualRuntime = () => {
   }
 }
 
-const mounted = []
+const mounted: VueWrapper[] = []
 
 // Mounts a component with the migration routes, the fakes injected, and the address given. Call `cleanup`
 // after each test so no mounted page outlives its test.
-const mountWith = async (component, {
+interface MountOptions {
+  props?: Record<string, unknown>
+  api?: FakeApi
+  wizard?: WizardStore
+  runtime?: ReturnType<typeof manualRuntime>
+  at?: string
+  attachTo?: string | HTMLElement
+}
+
+const mountWith = async (component: Component, {
   props = {},
   api = fakeApi(),
   wizard = createWizardStore(),
   runtime = manualRuntime(),
   at = '/settings/migration/connect',
   attachTo = undefined,
-} = {}) => {
+}: MountOptions = {}): Promise<{ wrapper: VueWrapper; api: FakeApi; wizard: WizardStore; runtime: ReturnType<typeof manualRuntime>; router: Router }> => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -145,7 +166,7 @@ const mountWith = async (component, {
         [MIGRATION_RUNTIME]: runtime,
       },
     },
-  })
+  }) as VueWrapper
   mounted.push(wrapper)
   await flushPromises()
   return { wrapper, api, wizard, runtime, router }

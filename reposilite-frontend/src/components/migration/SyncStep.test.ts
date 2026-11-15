@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import type { MigrationJob } from '../../store/migration/types'
 import SyncStep from './SyncStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { planFingerprint } from '../../store/migration/gating'
@@ -25,7 +26,7 @@ afterEach(cleanup)
 
 const PASSWORD = 'literal-pw-7731'
 
-const importJob = (id, status, extra = {}) => ({
+const importJob = (id: number, status: string, extra: Record<string, unknown> = {}) => ({
   id,
   kind: 'IMPORT',
   status,
@@ -57,7 +58,7 @@ const mapping = { repositories: [
 ], conflictPolicy: 'refuse' }
 
 // A wizard whose dry run was accepted for the mapping it holds, with a literal password held in memory.
-const acceptedWizard = ({ jobs = [dryRunJob()], accepted = true, literal = true } = {}) => {
+const acceptedWizard = ({ jobs = [dryRunJob()], accepted = true, literal = true }: { jobs?: MigrationJob[]; accepted?: boolean; literal?: boolean } = {}) => {
   const wizard = createWizardStore()
   wizard.setConnection({ url: 'https://nexus.example.test', user: 'importer', passwordMode: literal ? 'literal' : 'reference', reference: literal ? undefined : '${env:NEXUS_PASSWORD}' })
   wizard.setDiscovery({ repositories: [], formats: {} })
@@ -143,7 +144,7 @@ describe('the Sync step', () => {
     expect(document.body.textContent).toMatch(/cancel the import/i)
     expect(api.cancelJob, 'no request before the confirmation').not.toHaveBeenCalled()
 
-    document.getElementById('migration-sync-cancel-confirm').click()
+    document.getElementById('migration-sync-cancel-confirm')!.click()
     await flushPromises()
 
     expect(api.cancelJob).toHaveBeenCalledWith(9)

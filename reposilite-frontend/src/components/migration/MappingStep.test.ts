@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import MappingStep from './MappingStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { mountWith, cleanup, discovery } from './testing'
@@ -30,10 +30,10 @@ const discoveredWizard = () => {
   return wizard
 }
 
-const rowOf = (wrapper, name) => wrapper.findAll('tbody tr').find(entry => entry.text().includes(name))
-const targetInput = (wrapper, name) => wrapper.find(`#migration-target-${name}`)
-const includeBox = (wrapper, name) => wrapper.find(`#migration-include-${name}`)
-const policyChoice = (wrapper, policy) => wrapper.find(`input[name="migration-conflict-policy"][data-policy="${policy}"]`)
+const rowOf = (wrapper: VueWrapper, name: string) => wrapper.findAll('tbody tr').find(entry => entry.text().includes(name))
+const targetInput = (wrapper: VueWrapper, name: string) => wrapper.find(`#migration-target-${name}`)
+const includeBox = (wrapper: VueWrapper, name: string) => wrapper.find(`#migration-include-${name}`)
+const policyChoice = (wrapper: VueWrapper, policy: string) => wrapper.find(`input[name="migration-conflict-policy"][data-policy="${policy}"]`)
 
 describe('the Mapping step', () => {
   it('asks for a discovery first when the page holds none', async () => {
@@ -47,7 +47,7 @@ describe('the Mapping step', () => {
 
     expect(targetInput(wrapper, 'releases').exists(), 'the target name is a labelled input').toBe(true)
     expect(includeBox(wrapper, 'releases').exists(), 'the include control is a labelled checkbox').toBe(true)
-    expect(rowOf(wrapper, 'npm-proxy').text()).toMatch(/excluded/i)
+    expect(rowOf(wrapper, 'npm-proxy')!.text()).toMatch(/excluded/i)
     expect(includeBox(wrapper, 'npm-proxy').exists(), 'an excluded repository has no control').toBe(false)
   })
 
@@ -55,8 +55,8 @@ describe('the Mapping step', () => {
     const wizard = discoveredWizard()
     const { wrapper } = await mountWith(MappingStep, { wizard, at: '/settings/migration/mapping' })
 
-    expect(policyChoice(wrapper, 'refuse').element.checked).toBe(true)
-    expect(wizard.state.mapping.conflictPolicy).toBe('refuse')
+    expect((policyChoice(wrapper, 'refuse').element as HTMLInputElement).checked).toBe(true)
+    expect(wizard.state.mapping!.conflictPolicy).toBe('refuse')
     expect(window.localStorage.length).toBe(0)
   })
 
@@ -66,7 +66,7 @@ describe('the Mapping step', () => {
 
     await targetInput(wrapper, 'releases').setValue('')
 
-    expect(rowOf(wrapper, 'releases').text()).toMatch(/enter a target name/i)
+    expect(rowOf(wrapper, 'releases')!.text()).toMatch(/enter a target name/i)
   })
 
   it('warns about every included row that shares a target name', async () => {
@@ -76,8 +76,8 @@ describe('the Mapping step', () => {
     await targetInput(wrapper, 'snapshots').setValue('releases')
     await flushPromises()
 
-    expect(rowOf(wrapper, 'releases').text()).toMatch(/shares this name/i)
-    expect(rowOf(wrapper, 'snapshots').text()).toMatch(/shares this name/i)
+    expect(rowOf(wrapper, 'releases')!.text()).toMatch(/shares this name/i)
+    expect(rowOf(wrapper, 'snapshots')!.text()).toMatch(/shares this name/i)
   })
 
   it('writes a changed target name and selection into the page mapping', async () => {
@@ -87,10 +87,10 @@ describe('the Mapping step', () => {
     await targetInput(wrapper, 'releases').setValue('releases-ingot')
     await includeBox(wrapper, 'snapshots').setValue(false)
 
-    const releases = wizard.state.mapping.repositories.find(repository => repository.nexusName === 'releases')
-    const snapshots = wizard.state.mapping.repositories.find(repository => repository.nexusName === 'snapshots')
-    expect(releases.targetName).toBe('releases-ingot')
-    expect(snapshots.included).toBe(false)
+    const releases = wizard.state.mapping!.repositories.find(repository => repository.nexusName === 'releases')
+    const snapshots = wizard.state.mapping!.repositories.find(repository => repository.nexusName === 'snapshots')
+    expect(releases!.targetName).toBe('releases-ingot')
+    expect(snapshots!.included).toBe(false)
   })
 
   it('asks for confirmation before the overwrite policy applies, and keeps refuse when the dialog is cancelled', async () => {
@@ -101,13 +101,13 @@ describe('the Mapping step', () => {
     await flushPromises()
 
     expect(document.body.textContent, 'the dialog says files are replaced').toMatch(/existing files will be replaced/i)
-    expect(wizard.state.mapping.conflictPolicy, 'the choice waits for the confirmation').toBe('refuse')
+    expect(wizard.state.mapping!.conflictPolicy, 'the choice waits for the confirmation').toBe('refuse')
 
-    document.getElementById('migration-overwrite-cancel').click()
+    document.getElementById('migration-overwrite-cancel')!.click()
     await flushPromises()
 
-    expect(wizard.state.mapping.conflictPolicy).toBe('refuse')
-    expect(policyChoice(wrapper, 'refuse').element.checked).toBe(true)
+    expect(wizard.state.mapping!.conflictPolicy).toBe('refuse')
+    expect((policyChoice(wrapper, 'refuse').element as HTMLInputElement).checked).toBe(true)
   })
 
   it('applies the overwrite policy once the operator confirms it', async () => {
@@ -116,9 +116,9 @@ describe('the Mapping step', () => {
 
     await policyChoice(wrapper, 'overwrite').setValue(true)
     await flushPromises()
-    document.getElementById('migration-overwrite-confirm').click()
+    document.getElementById('migration-overwrite-confirm')!.click()
     await flushPromises()
 
-    expect(wizard.state.mapping.conflictPolicy).toBe('overwrite')
+    expect(wizard.state.mapping!.conflictPolicy).toBe('overwrite')
   })
 })

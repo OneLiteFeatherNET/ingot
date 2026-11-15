@@ -43,7 +43,7 @@ const lossRows = [
   { objectType: 'repository', nexusId: 'releases', target: 'releases', status: 'MAPPED', reason: 'Maven', consequence: 'Copied', action: 'None' },
 ]
 
-const progressJob = (settled, total) => ({
+const progressJob = (settled: number, total: number) => ({
   id: 9,
   kind: 'IMPORT',
   status: 'RUNNING',
@@ -79,7 +79,7 @@ describe('the structure of the migration page', () => {
   it('marks a closed step as unavailable, with the reason in the text of the step', async () => {
     const { wrapper } = await mountWith(MigrationView, { props: { step: 'connect' }, at: '/settings/migration/connect' })
 
-    const sync = wrapper.findAll('nav a').find(link => link.text().includes('Sync'))
+    const sync = wrapper.findAll('nav a').find(link => link.text().includes('Sync'))!
     expect(sync.attributes('aria-disabled')).toBe('true')
     expect(sync.text()).toMatch(/finish a dry run first/i)
   })
@@ -106,7 +106,7 @@ describe('the forms', () => {
     const input = wrapper.find('#migration-connect-url')
     const describedBy = input.attributes('aria-describedby')
     expect(describedBy, 'the field names its message').toBeTruthy()
-    expect(document.getElementById(describedBy) ?? wrapper.find(`#${describedBy}`).element.textContent).toMatch(/Enter the Nexus URL/)
+    expect(document.getElementById(describedBy!) ?? wrapper.find(`#${describedBy}`).element.textContent).toMatch(/Enter the Nexus URL/)
     expect(input.attributes('aria-invalid')).toBe('true')
   })
 })
@@ -123,12 +123,12 @@ describe('the tables', () => {
     await wrapper.find('#migration-dry-run-start').trigger('click')
     await flushPromises()
 
-    const header = wrapper.find('#migration-sort-nexus-id').element.closest('th')
+    const header = (wrapper.find('#migration-sort-nexus-id').element as HTMLElement).closest('th')!
     expect(header.getAttribute('aria-sort')).toBe('none')
 
     await wrapper.find('#migration-sort-nexus-id').trigger('click')
 
-    expect(wrapper.find('#migration-sort-nexus-id').element.closest('th').getAttribute('aria-sort')).toBe('ascending')
+    expect((wrapper.find('#migration-sort-nexus-id').element as HTMLElement).closest('th')!.getAttribute('aria-sort')).toBe('ascending')
     const firstRow = wrapper.findAll('table[data-test="report"] tbody tr')[0]
     expect(firstRow.text(), 'ascending puts releases first').toContain('releases')
   })
