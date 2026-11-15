@@ -42,6 +42,7 @@ import com.reposilite.token.AccessTokenFacade
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.api.AccessTokenDto
+import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
@@ -51,6 +52,12 @@ import java.time.Duration
 import java.util.SortedSet
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit.NANOSECONDS
+
+/** A successful authentication and the policy revision the replica had seen when it was verified. */
+private data class CachedAuthentication(
+    val accessToken: AccessTokenDto,
+    val revision: Long,
+)
 
 private data class FailedAttempt(
     val count: Int,
@@ -68,6 +75,8 @@ class AuthenticationFacade(
     private val extensions: Extensions = Extensions(journalist),
     private val clock: Clock = Clock.systemUTC(),
     private val ticker: Ticker = Ticker.systemTicker(),
+    /** The policy revision of this replica. A cached credential is dropped once the revision it was cached under has moved. */
+    private val authorizationRevision: AuthorizationRevision? = null,
 ) : Journalist, Facade {
 
     companion object {
@@ -84,10 +93,11 @@ class AuthenticationFacade(
     /**
      * Successful authentications, keyed by the presented credentials. An entry is only a shortcut: every change of its token
      * made on this instance drops the entries of that token at once (see [forgetCachedCredentials]), and every hit is checked
-     * against the expiry of the token. Other instances of a cluster are not told about a change, so their entries can keep
-     * working for up to one minute after the change was made elsewhere.
+     * against the expiry of the token. Other instances are not told about a change directly: an entry is also dropped once the
+     * policy revision it was cached under has moved, so a change made elsewhere is refused within one refresh interval. Without
+     * a revision source, their entries can keep working for up to one minute after the change was made elsewhere.
      */
-    private val authenticationCache: Cache<Credentials, AccessTokenDto> =
+    private val authenticationCache: Cache<Credentials, CachedAuthentication> =
         CacheBuilder
             .newBuilder()
             .maximumSize(16)
@@ -155,6 +165,7 @@ class AuthenticationFacade(
         }
 
         val generation = tokenGeneration.get()
+        val revisionAtStart = currentRevision()
         val result =
             cachedAuthentication(credentials)
                 ?.asSuccess()
@@ -167,7 +178,7 @@ class AuthenticationFacade(
                             .onError { logger.debug("${credentials.name}@${credentials.ip} failed to authenticate with ${authenticator.realm()} realm due to $it") }
                     }
                     .firstOrNull { it.isOk }
-                    ?.peek { cacheAuthentication(credentials, it, generation) }
+                    ?.peek { cacheAuthentication(credentials, it, generation, revisionAtStart) }
                 ?: unauthorizedError("Invalid authorization credentials")
 
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
@@ -181,17 +192,24 @@ class AuthenticationFacade(
 
     private fun cachedAuthentication(credentials: Credentials): AccessTokenDto? {
         val cached = authenticationCache.getIfPresent(credentials) ?: return null
-        if (cached.isExpired(clock)) {
+        if (cached.revision != currentRevision() || cached.accessToken.isExpired(clock)) {
             authenticationCache.invalidate(credentials)
             return null
         }
-        return cached
+        return cached.accessToken
     }
 
-    private fun cacheAuthentication(credentials: Credentials, accessToken: AccessTokenDto, generation: Long) {
+    /**
+     * The revision this replica has seen, or zero without a revision source. It is read before the authentication runs, so a
+     * revocation that commits during the check cannot be cached as valid under a newer revision than the check saw.
+     */
+    private fun currentRevision(): Long =
+        authorizationRevision?.lastSeen ?: 0L
+
+    private fun cacheAuthentication(credentials: Credentials, accessToken: AccessTokenDto, generation: Long, revision: Long) {
         synchronized(cacheLock) {
             if (tokenGeneration.get() == generation) {
-                authenticationCache.put(credentials, accessToken)
+                authenticationCache.put(credentials, CachedAuthentication(accessToken, revision))
             }
         }
     }

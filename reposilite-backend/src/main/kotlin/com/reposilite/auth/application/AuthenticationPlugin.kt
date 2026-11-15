@@ -20,17 +20,26 @@ import com.reposilite.auth.infrastructure.AuthenticationEndpoint
 import com.reposilite.auth.infrastructure.PostAuthHandler
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.ReposiliteDisposeEvent
+import com.reposilite.plugin.api.ReposiliteStartedEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
+import net.onelitefeather.ingot.identity.storage.IdentityStore
 
 @Plugin(name = "authentication", dependencies = ["failure", "shared-configuration", "access-token"], settings = AuthenticationSettings::class)
 class AuthenticationPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade {
         val sharedConfigurationFacade = facade<SharedConfigurationFacade>()
+        // The policy revision lives in the identity tables, so it exists wherever the database does. The interval is read here,
+        // so an invalid value stops the start instead of the refresh.
+        val refreshInterval = AuthorizationRevision.refreshInterval()
+        val authorizationRevision = reposilite().database?.let { AuthorizationRevision(IdentityStore(it)) }
 
         val authenticationFacade =
             AuthenticationComponents(
@@ -39,7 +48,12 @@ class AuthenticationPlugin : ReposilitePlugin() {
                 failureFacade = facade(),
                 authenticationSettings = sharedConfigurationFacade.getDomainSettings(),
                 disableUserPasswordAuthentication = System.getProperty("reposilite.ldap.disable-user-password-authentication", "false") == "true"
-            ).authenticationFacade(extensions = extensions())
+            ).authenticationFacade(extensions = extensions(), authorizationRevision = authorizationRevision)
+
+        authorizationRevision?.let { revision ->
+            event { _: ReposiliteStartedEvent -> revision.start(refreshInterval) }
+            event { _: ReposiliteDisposeEvent -> revision.close() }
+        }
 
         event { event: RoutingSetupEvent ->
             event.registerRoutes(AuthenticationEndpoint(authenticationFacade))
