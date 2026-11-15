@@ -34,6 +34,27 @@ test.describe('browse overview', () => {
     expect(pageSideways, 'horizontal overflow of the page in px').toBeLessThanOrEqual(0)
   })
 
+  test('shows the snippet copy button inside the code field only while the field is hovered or focused', async ({ page, seed }) => {
+    const repository = await seed.repository('copy-hover-snippet')
+    await page.goto(siteUrl(`/browse/${repository}`))
+
+    // The code field is the box that holds the scrolling code region; the button is its child.
+    const field = page.getByRole('region', { name: /snippet, scrolls sideways/ }).first().locator('..')
+    const copy = field.getByRole('button', { name: 'Copy snippet' })
+    await expect(copy, 'the copy button inside the code field').toBeVisible()
+    // The button reveals itself through its wrapper, so the wrapper carries the opacity.
+    const reveal = copy.locator('..')
+
+    await expect(reveal, 'hidden while the pointer is elsewhere').toHaveCSS('opacity', '0')
+    await field.hover()
+    await expect(reveal, 'shown while the code field is hovered').toHaveCSS('opacity', '1')
+
+    await page.mouse.move(0, 0)
+    await expect(reveal, 'hidden again once the pointer leaves').toHaveCSS('opacity', '0')
+    await copy.focus()
+    await expect(reveal, 'shown while the button has keyboard focus').toHaveCSS('opacity', '1')
+  })
+
   test('labels the repository filter as a filter of the list', async ({ page }) => {
     await page.goto(siteUrl('/'))
     await expect(page.getByRole('searchbox', { name: /filter/i }), 'the repository filter field').toBeVisible()
@@ -49,5 +70,19 @@ test.describe('browse overview', () => {
     await expect(destination, 'the destination of the upload heading').toContainText(repository)
     const beyond = await destination.evaluate(element => element.getBoundingClientRect().right - document.documentElement.clientWidth)
     expect(beyond, 'the destination path ends inside the window, in px past the edge').toBeLessThanOrEqual(0)
+  })
+})
+
+test.describe('browse overview on a touch screen', () => {
+  test.use({ hasTouch: true, isMobile: true })
+
+  test('keeps the snippet copy button shown without a pointer hover', async ({ page, seed }) => {
+    const repository = await seed.repository('copy-touch-snippet')
+    await page.goto(siteUrl(`/browse/${repository}`))
+
+    // Without hover, the button is not faded out: the wrapper that carries the opacity is fully shown.
+    const copy = page.getByRole('region', { name: /snippet, scrolls sideways/ }).first().locator('..').getByRole('button', { name: 'Copy snippet' })
+    await expect(copy, 'the copy button inside the code field').toBeVisible()
+    await expect(copy.locator('..'), 'shown on a device without hover').toHaveCSS('opacity', '1')
   })
 })

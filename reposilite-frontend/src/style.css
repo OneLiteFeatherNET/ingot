@@ -92,6 +92,8 @@
 @custom-variant xlarge (@media (width >= 1600px));
 @custom-variant max-medium (@media (width < 600px));
 @custom-variant max-expanded (@media (width < 840px));
+/* Devices without hover, such as touch screens. A control that is shown only on hover keeps its state there. */
+@custom-variant no-hover (@media (hover: none));
 
 @layer base {
   /*
