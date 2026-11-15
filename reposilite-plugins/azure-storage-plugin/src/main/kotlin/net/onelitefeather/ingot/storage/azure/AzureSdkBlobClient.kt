@@ -77,6 +77,10 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
         }
     }
 
+    override fun checkContainer() {
+        translating(container.blobContainerName) { container.getProperties() }
+    }
+
     override fun delete(name: String) {
         translating(name) { container.getBlobClient(name).delete() }
     }

@@ -49,6 +49,9 @@ internal interface AzureBlobClient : AutoCloseable {
      */
     fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild>
 
+    /** Reads the properties of the container. Throws [AzureBlobNotFoundException] when the container is absent. */
+    fun checkContainer()
+
     /** Deletes the blob [name], with its snapshots. Throws [AzureBlobNotFoundException] when it is absent. */
     fun delete(name: String)
 

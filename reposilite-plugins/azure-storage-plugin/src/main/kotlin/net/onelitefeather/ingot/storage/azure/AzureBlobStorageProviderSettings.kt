@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.storage.azure
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.storage.StorageProviderSettings
 import io.javalin.openapi.Custom
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
+import net.onelitefeather.ingot.storage.capability.SupportDetails
 
 /** The storage type that this plugin registers. It is written as this value and is not configurable. */
 internal const val AZURE_BLOB_TYPE = "azure-blob"
@@ -55,10 +60,43 @@ data class AzureBlobStorageProviderSettings(
     @get:Sensitive
     @get:Doc(title = "Connection String", description = "The connection string of the account, for the connection-string mode")
     val connectionString: String = "",
-) : StorageProviderSettings {
+) : StorageProviderSettings, SharedNamespaceAware, SupportDetails {
 
     @get:Custom(name = "const", value = AZURE_BLOB_TYPE)
     override val type: String = AZURE_BLOB_TYPE
+
+    /**
+     * The namespace of this repository: the account, the container and the prefix, with the prefix normalised to one trailing slash.
+     * A blank container has no namespace, so it never collides.
+     */
+    override fun namespaceKey(repositoryName: String): String? {
+        if (container.isBlank()) {
+            return null
+        }
+        return "azure:${accountName.trim()}/${container.trim()}/${normalisedPrefix()}"
+    }
+
+    /** Two namespaces collide when they are in the same container of the same account, and one prefix equals or nests under the other. */
+    override fun overlaps(key: String, otherKey: String): Boolean {
+        val (account, container, prefix) = key.split('/', limit = 3)
+        val (otherAccount, otherContainer, otherPrefix) = otherKey.split('/', limit = 3)
+        return account == otherAccount && container == otherContainer && (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix))
+    }
+
+    override fun overlapMessage(): String =
+        "Its Azure Blob namespace overlaps another repository in the same container. Give each repository a distinct 'prefix'."
+
+    /** The account, the container and the authentication mode. The secrets are never part of the description. */
+    override fun describe(): Map<String, String> =
+        mapOf(
+            "accountName" to accountName,
+            "container" to container,
+            "prefix" to prefix,
+            "authentication" to authentication,
+        )
+
+    private fun normalisedPrefix(): String =
+        prefix.trim().trim('/').let { if (it.isEmpty()) "" else "$it/" }
 
     /** The endpoint of the account: the configured one when set, otherwise the public Blob endpoint of [accountName]. */
     fun resolvedEndpoint(): String =
