@@ -49,12 +49,17 @@ internal class FakeGcsObjectClient : GcsObjectClient {
 
     override fun read(name: String, offset: Long, length: Long?): InputStream {
         reads += Triple(name, offset, length)
+        forcedFailure?.let { throw it }
         val content = objects[name] ?: throw GcsNotFoundException(name)
         val end = length?.let { minOf(content.size.toLong(), offset + it) } ?: content.size.toLong()
         return content.copyOfRange(offset.toInt(), end.toInt()).inputStream()
     }
 
+    /** When set, every read and listing fails with this exception, as a service failure does. */
+    var forcedFailure: RuntimeException? = null
+
     override fun metadata(name: String): GcsObjectInfo {
+        forcedFailure?.let { throw it }
         val content = objects[name] ?: throw GcsNotFoundException(name)
         return GcsObjectInfo(name = name, size = content.size.toLong(), updated = modifiedAt)
     }
@@ -65,6 +70,7 @@ internal class FakeGcsObjectClient : GcsObjectClient {
     /** Objects under [prefix] whose names are at or after [startOffset], in name order. */
     override fun list(prefix: String, startOffset: String?, limit: Int): List<GcsObjectInfo> {
         listings += Triple(prefix, startOffset, limit)
+        forcedFailure?.let { throw it }
         return objects.keys.filter { it.startsWith(prefix) && (startOffset == null || it >= startOffset) }
             .sorted()
             .take(limit)
@@ -73,6 +79,7 @@ internal class FakeGcsObjectClient : GcsObjectClient {
 
     /** A delimited listing: objects directly under [prefix], and one directory entry per deeper name. */
     override fun listDelimited(prefix: String): List<GcsEntry> {
+        forcedFailure?.let { throw it }
         val entries = linkedMapOf<String, GcsEntry>()
         objects.keys.filter { it.startsWith(prefix) }.sorted().forEach { name ->
             val rest = name.removePrefix(prefix)
