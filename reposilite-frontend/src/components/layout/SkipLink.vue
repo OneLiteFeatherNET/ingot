@@ -14,10 +14,10 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // The first stop of a keyboard user, which skips the top bar and the navigation. The click is handled here: the
 // default fragment navigation would add a history entry that the router does not own, so the address stays as it is.
-const focusMain = (event) => {
+const focusMain = (event: MouseEvent) => {
   event.preventDefault()
   document.getElementById('main')?.focus()
 }

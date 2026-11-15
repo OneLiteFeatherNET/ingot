@@ -14,12 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
+import type { MenuItem } from '../md/types'
 import LoginModal from './LoginModal.vue'
 import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
@@ -36,24 +37,26 @@ const { theme, changeTheme } = useTheme()
 const { token, isLogged, logout, principal } = useSession()
 
 // A cookie session has no token name; the principal's display name stands in for it.
-const signedInName = computed(() => principal?.value?.displayName || principal?.value?.name || token.value.name)
-const initial = computed(() => (signedInName.value || '?').charAt(0).toUpperCase())
+const signedInName = computed<string>(() => principal?.value?.displayName || principal?.value?.name || token.value.name)
+const initial = computed<string>(() => (signedInName.value || '?').charAt(0).toUpperCase())
 
-const NEXT_MODE = { light: 'dark', dark: 'auto', auto: 'light' }
+// The theme modes are plain strings in the theme store, so the lookups are keyed by string.
+const NEXT_MODE: Record<string, string> = { light: 'dark', dark: 'auto', auto: 'light' }
 
 const toggleTheme = () => changeTheme(NEXT_MODE[theme.mode])
 
 // The control cycles through three modes and used to say which one it was in only by
 // swapping an unlabelled glyph, so it never announced itself to a screen reader and never
 // told anyone what pressing it would do.
-const themeLabel = computed(() => ({
+const THEME_LABELS: Record<string, string> = {
   light: 'Theme: light. Switch to dark.',
   dark: 'Theme: dark. Switch to follow the system.',
   auto: 'Theme: follows the system. Switch to light.'
-}[theme.mode]))
+}
+const themeLabel = computed<string>(() => THEME_LABELS[theme.mode])
 
 // The account menu: the name, the account page, the three themes (the one in use checked) and logout.
-const accountItems = computed(() => [
+const accountItems = computed<MenuItem[]>(() => [
   { value: 'account', label: 'My account', href: router.resolve({ name: 'account' }).href },
   { type: 'separator' },
   { value: 'theme:light', label: 'Light', type: 'radio', checked: theme.mode === 'light' },
@@ -63,7 +66,7 @@ const accountItems = computed(() => [
   { value: 'logout', label: 'Logout' }
 ])
 
-const onAccountSelect = (value) => {
+const onAccountSelect = (value: string): void => {
   if (value === 'account') {
     router.push({ name: 'account' })
   } else if (value === 'logout') {

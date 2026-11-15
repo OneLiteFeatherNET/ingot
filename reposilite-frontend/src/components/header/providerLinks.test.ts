@@ -28,7 +28,7 @@ describe('providerLoginHref', () => {
   })
 
   it('resolves the login path against the API base when the base is another origin', () => {
-    const resolve = (path) => `https://ingot.example.org/mount${path}`
+    const resolve = (path: string) => `https://ingot.example.org/mount${path}`
 
     const href = providerLoginHref('/api/auth/oidc/github/login', '/', resolve)
 

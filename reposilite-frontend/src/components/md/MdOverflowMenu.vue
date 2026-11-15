@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MdButton from './MdButton.vue'
+import type { MenuItem } from './types'
 
 /*
  * A button that opens a menu of actions on what it names, such as the actions of one row of a table. The menu
@@ -43,24 +44,6 @@ import MdButton from './MdButton.vue'
  * first item then has the focus. Arrow keys move between the items and wrap at the ends. Escape closes the menu
  * and returns the focus to the button. A focus that leaves the menu closes it, so Tab leaves the menu as well.
  */
-// A divider between groups of items. It has no value and takes no focus.
-interface MenuSeparator {
-  type: 'separator'
-}
-
-// A chooseable entry. `type: 'radio'` draws it as the choice in use.
-interface MenuEntry {
-  type?: 'radio'
-  value: string
-  label?: string
-  ariaLabel?: string
-  error?: boolean
-  href?: string
-  checked?: boolean
-}
-
-type MenuItem = MenuSeparator | MenuEntry
-
 withDefaults(defineProps<{
   label: string
   items: MenuItem[]

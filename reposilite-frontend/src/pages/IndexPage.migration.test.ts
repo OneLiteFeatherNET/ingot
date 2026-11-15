@@ -16,16 +16,28 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '../router/create'
+import type { AppRouterOptions } from '../router/create'
 import { canUse } from '../store/nodeAccess'
 import { setContributions } from '../navigation/registry'
+import type { PluginManifest } from '../navigation/registry'
 import IndexPage from './IndexPage.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
 
+// The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
+interface SessionFlags {
+  isManager: Ref<boolean> | null
+  isLogged: Ref<boolean> | null
+  mustChange: Ref<boolean> | null
+  can: ((node: string) => boolean) | null
+}
+
 // The session is replaced by plain flags, so each test decides who is signed in and what they may do.
-const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null, can: null }))
+const session = vi.hoisted((): SessionFlags => ({ isManager: null, isLogged: null, mustChange: null, can: null }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 const migrationMounts = vi.hoisted(() => vi.fn())
 
@@ -86,10 +98,10 @@ vi.mock('../components/settings/SettingsView.vue', async () => {
 const QUALIFIER = { path: '', watchable: 0 }
 
 // Every page a test mounts is taken down after it, so a late async view of one test cannot reach the next.
-let mounted = []
+let mounted: VueWrapper[] = []
 
 // The page as the application builds it: the router on memory history, the session answered at once.
-const mountAt = async (url, { nodes, logged = true }) => {
+const mountAt = async (url: string, { nodes, logged = true }: { nodes?: string[]; logged?: boolean }) => {
   session.isManager = ref(canUse(nodes ?? [], 'ingot.admin.*'))
   session.can = (node) => canUse(nodes ?? [], node)
   session.isLogged = ref(logged)
@@ -98,10 +110,10 @@ const mountAt = async (url, { nodes, logged = true }) => {
     history: createMemoryHistory(),
     component: IndexPage,
     whenSessionKnown: () => Promise.resolve(),
-    isManager: () => session.isManager.value,
-    can: (node) => session.can(node),
+    isManager: () => session.isManager!.value,
+    can: (node) => session.can!(node),
     openLogin: login.openLogin,
-  })
+  } as AppRouterOptions)
   await router.push(url)
   await router.isReady()
   const wrapper = mount(IndexPage, { props: { qualifier: QUALIFIER }, global: { plugins: [router] } })
@@ -110,7 +122,7 @@ const mountAt = async (url, { nodes, logged = true }) => {
   return { wrapper, router }
 }
 
-const manifest = (enabledPlugins) => ({ pages: [], sections: [], enabledPlugins })
+const manifest = (enabledPlugins: string[]): PluginManifest => ({ pages: [], sections: [], enabledPlugins })
 
 beforeEach(() => {
   migrationMounts.mockClear()

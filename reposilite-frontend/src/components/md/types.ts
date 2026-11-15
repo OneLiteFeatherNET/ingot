@@ -33,3 +33,21 @@ export type NavIconSlot = (slot: { item: NavItem; active: boolean }) => unknown
 // Checks one value of an input chip field against the values already there. Returns the problem to show,
 // or an empty string when the value is accepted.
 export type TextValidator = (text: string, existing: string[]) => string
+
+// A divider between groups of items in a menu. It has no value and takes no focus.
+export interface MenuSeparator {
+  type: 'separator'
+}
+
+// A chooseable entry of a menu. `type: 'radio'` draws it as the choice in use.
+export interface MenuEntry {
+  type?: 'radio'
+  value: string
+  label?: string
+  ariaLabel?: string
+  error?: boolean
+  href?: string
+  checked?: boolean
+}
+
+export type MenuItem = MenuSeparator | MenuEntry

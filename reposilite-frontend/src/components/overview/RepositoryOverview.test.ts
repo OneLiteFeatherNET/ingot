@@ -14,11 +14,37 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createRouter, createMemoryHistory } from 'vue-router'
-import { sessionState } from '../../store/session'
+import { describe, it, expect, vi, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { createRouter, createMemoryHistory, type Router, type RouteRecordRaw } from 'vue-router'
+import type { Ref } from 'vue'
+import * as sessionModule from '../../store/session'
 import RepositoryOverview from './RepositoryOverview.vue'
+
+// The client the page asks for the list, with the mock of its one call.
+interface TestClient {
+  maven: { repositories: Mock<() => Promise<unknown>> }
+}
+
+// The session state the mock below provides. The real module does not export it.
+interface SessionState {
+  client: Ref<TestClient | null>
+  sessionReady: Ref<boolean>
+  details: Ref<unknown>
+}
+
+const { sessionState } = sessionModule as unknown as { sessionState: SessionState }
+
+// A repository as a test lists it. A case leaves out the fields it does not use.
+interface RepositoryFixture {
+  id: string
+  visibility: string
+  description?: string
+  tags?: string[]
+  type?: string
+  typeExplicit?: boolean
+  writePolicy?: string | null
+}
 
 // The session is replaced per file; each test sets the client and the readiness it needs.
 vi.mock('../../store/session', async () => {
@@ -51,30 +77,31 @@ vi.mock('../browser/FileBrowserView.vue', async () => {
   }
 })
 
-const repositoryList = [
+const repositoryList: RepositoryFixture[] = [
   { id: 'releases', visibility: 'PUBLIC', description: 'Released artifacts for the public.', tags: ['team-core', 'public'] },
   { id: 'snapshots', visibility: 'PUBLIC', description: 'Nightly builds, pruned after 30 days.', tags: ['team-core', 'ci'] },
   { id: 'private', visibility: 'PRIVATE', description: 'Internal libraries.', tags: ['internal'] },
   { id: 'archive', visibility: 'HIDDEN', description: '', tags: [] }
 ]
 
+// Name and path only: the routes are never rendered, so they carry no component.
 const routes = [
   { name: 'overview', path: '/' },
   { name: 'browse', path: '/browse/:qualifier(.*)*' },
   { name: 'search', path: '/search' }
-]
+] as unknown as RouteRecordRaw[]
 
-const clientAnswering = (answer) => ({
+const clientAnswering = (answer: () => Promise<unknown>): TestClient => ({
   maven: { repositories: vi.fn(answer) }
 })
 
-const answerWith = (repositories = repositoryList) => () => Promise.resolve({ data: { repositories } })
+const answerWith = (repositories: RepositoryFixture[] = repositoryList) => () => Promise.resolve({ data: { repositories } })
 
-let wrapper
-let router
+let wrapper: VueWrapper
+let router: Router
 
 // Each test mounts its own memory router at the address it needs, so no address leaks between tests.
-const mountAt = async (url, { answer = answerWith() } = {}) => {
+const mountAt = async (url: string, { answer = answerWith() }: { answer?: () => Promise<unknown> } = {}) => {
   sessionState.client.value = clientAnswering(answer)
   sessionState.sessionReady.value = true
   router = createRouter({ history: createMemoryHistory(), routes })
@@ -89,20 +116,21 @@ const mountAt = async (url, { answer = answerWith() } = {}) => {
   return wrapper
 }
 
-const search = () => wrapper.find('input')
+const search = () => wrapper.find<HTMLInputElement>('input')
 const rows = () => wrapper.findAll('[data-test="repository-row"]')
 const rowIds = () => rows().map(row => row.find('[data-test="repository-id"]').text())
-const rowFor = (id) => rows().find(row => row.find('[data-test="repository-id"]').text() === id)
+// The row of a repository the case has already seen in the list, so it is always there.
+const rowFor = (id: string): DOMWrapper<Element> => rows().find(row => row.find('[data-test="repository-id"]').text() === id)!
 const filterChips = () => wrapper.findAll('[data-test="filter-tag"]')
 const chipLabels = () => filterChips().map(chip => chip.text())
-const chipNamed = (tag) => filterChips().find(chip => chip.text() === tag)
+// The chip of a tag the case has already seen in the chips, so it is always there.
+const chipNamed = (tag: string): DOMWrapper<Element> => filterChips().find(chip => chip.text() === tag)!
 const clearButton = () => wrapper.findAll('button').find(button => button.text() === 'Clear filters')
 const addressQuery = () => router.currentRoute.value.query
-const loadCalls = () => sessionState.client.value.maven.repositories.mock.calls
+const loadCalls = () => sessionState.client.value!.maven.repositories.mock.calls
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('RepositoryOverview list', () => {
@@ -283,7 +311,7 @@ describe('RepositoryOverview no match', () => {
 
     const link = wrapper.findAll('a').find(anchor => anchor.text() === 'Search artifacts for guava')
     expect(link, 'the empty state links to the artifact search').toBeDefined()
-    expect(link.attributes('href')).toBe('/search?q=guava')
+    expect(link!.attributes('href')).toBe('/search?q=guava')
   })
 
   it('keeps Clear filters next to the artifact search link', async () => {
@@ -363,7 +391,7 @@ describe('RepositoryOverview empty and failing states', () => {
   it('clears the search and the tags from the address with Clear filters', async () => {
     await mountAt('/?q=zzz&tag=ci')
 
-    await clearButton().trigger('click')
+    await clearButton()!.trigger('click')
     await flushPromises()
 
     expect(addressQuery()).toEqual({})
@@ -384,7 +412,7 @@ describe('RepositoryOverview empty and failing states', () => {
     await mountAt('/', { answer })
 
     expect(wrapper.text()).toContain('Cannot load repositories')
-    await wrapper.findAll('button').find(button => button.text() === 'Retry').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Retry')!.trigger('click')
     await flushPromises()
 
     expect(rowIds()).toEqual(['archive', 'private', 'releases', 'snapshots'])
@@ -523,7 +551,7 @@ describe('RepositoryOverview row marks', () => {
 
     const children = [...row.element.children]
     const text = children.find(child => child.classList.contains('flex-1'))
-    expect(children.indexOf(marks.element), 'the marks come after the text column').toBeGreaterThan(children.indexOf(text))
+    expect(children.indexOf(marks.element), 'the marks come after the text column').toBeGreaterThan(children.indexOf(text!))
   })
 })
 
@@ -580,7 +608,7 @@ describe('RepositoryOverview repository types', () => {
     await mountAt('/', { answer: answerWith(typedList) })
 
     const proxyChip = wrapper.findAll('[data-test="filter-type"]').find(chip => chip.text() === 'Proxy')
-    await proxyChip.trigger('click')
+    await proxyChip!.trigger('click')
     await flushPromises()
 
     expect(rowIds()).toEqual(['central'])
@@ -603,7 +631,7 @@ describe('RepositoryOverview repository types', () => {
 
   it('clears the type filter together with the search and the tags', async () => {
     await mountAt('/?type=hosted&q=nothing-matches', { answer: answerWith(typedList) })
-    await clearButton().trigger('click')
+    await clearButton()!.trigger('click')
     await flushPromises()
 
     expect(addressQuery().type).toBeUndefined()

@@ -15,34 +15,73 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 // Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
 // view's whole module graph on first use, which under load can outlast the test timeout. Each
 // test still loads its own copy in mountView(), after vi.resetModules().
 import './ConsoleView.vue'
 
+// The credentials the session hands the view, and the client it calls for the session check
+// and for commands.
+interface Credentials {
+  name: string
+  secret: string
+}
+
+interface TestClient {
+  auth: { me: () => Promise<unknown> }
+  console: { execute: (command: string) => unknown }
+}
+
 // The view reads the session for its token and client, and streams through EventSource. The
 // stream is a fake the test drives event by event: nothing here opens a socket or waits.
-const session = vi.hoisted(() => ({ client: null, token: null }))
+const session = vi.hoisted(() => ({
+  client: null as Ref<TestClient> | null,
+  token: null as Ref<Credentials> | null
+}))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 vi.mock('../../store/login', () => ({ openLogin: login.openLogin }))
 vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error.message
+  errorMessage: (error: Error) => error.message
 }))
 
+type Listener = (event: { data: string }) => void
+
+// The part of the fake stream the tests use: the listeners the view registers, and the
+// handlers it assigns to the stream as properties.
+interface FakeStream {
+  url: string
+  options: unknown
+  listeners: Map<string, Listener>
+  closed?: boolean
+  onopen: () => void
+  onerror: (error: unknown) => void
+  addEventListener: (type: string, handler: Listener) => void
+  close: () => void
+}
+
 const { FakeEventSource } = vi.hoisted(() => {
-  class FakeEventSource {
-    constructor(url, options) {
+  class FakeEventSource implements FakeStream {
+    static instances: FakeEventSource[] = []
+
+    url: string
+    options: unknown
+    listeners: Map<string, Listener>
+    closed?: boolean
+    onopen!: () => void
+    onerror!: (error: unknown) => void
+
+    constructor(url: string, options: unknown) {
       this.url = url
       this.options = options
       this.listeners = new Map()
       FakeEventSource.instances.push(this)
     }
 
-    addEventListener(type, handler) {
+    addEventListener(type: string, handler: Listener) {
       this.listeners.set(type, handler)
     }
 
@@ -55,13 +94,17 @@ const { FakeEventSource } = vi.hoisted(() => {
 })
 vi.mock('extended-eventsource', () => ({ EventSource: FakeEventSource }))
 
-const emitLine = (stream, text) => stream.listeners.get('log')({ data: text })
+const emitLine = (stream: FakeStream, text: string) => {
+  const handler = stream.listeners.get('log')
+  if (!handler) throw new Error('the view did not listen for log lines')
+  handler({ data: text })
+}
 
-const buttonLabelled = (wrapper, label) =>
+const buttonLabelled = (wrapper: VueWrapper, label: string) =>
   wrapper.findAll('button').find(button => button.text() === label)
 
 describe('ConsoleView', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   beforeEach(() => {
     // The log is module state that outlives a mount, so each test loads a fresh copy of the
@@ -75,7 +118,6 @@ describe('ConsoleView', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     vi.restoreAllMocks()
   })
 
@@ -94,7 +136,7 @@ describe('ConsoleView', () => {
     first.onerror(new Event('error'))
     await flushPromises()
 
-    buttonLabelled(wrapper, 'Reconnect').trigger('click')
+    buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
     await flushPromises()
     FakeEventSource.instances[1].onopen()
     await flushPromises()
@@ -158,7 +200,7 @@ describe('ConsoleView', () => {
   describe('following the output', () => {
     // jsdom has no layout, so the panel's geometry is set by hand and its scroll position is
     // a plain value the view can read and write.
-    const measurePanel = (panel, { top, height = 1000, view = 200 }) => {
+    const measurePanel = (panel: HTMLElement, { top, height = 1000, view = 200 }: { top: number; height?: number; view?: number }) => {
       let position = top
       Object.defineProperty(panel, 'scrollTop', {
         configurable: true,
@@ -175,7 +217,7 @@ describe('ConsoleView', () => {
       const stream = FakeEventSource.instances[0]
       stream.onopen()
       await flushPromises()
-      const panel = wrapper.find('#console').element
+      const panel = wrapper.find<HTMLElement>('#console').element
       measurePanel(panel, { top: 100 })
 
       emitLine(stream, 'hello')
@@ -189,7 +231,7 @@ describe('ConsoleView', () => {
       const stream = FakeEventSource.instances[0]
       stream.onopen()
       await flushPromises()
-      const panel = wrapper.find('#console').element
+      const panel = wrapper.find<HTMLElement>('#console').element
       measurePanel(panel, { top: 800 })
 
       emitLine(stream, 'hello')
@@ -200,7 +242,7 @@ describe('ConsoleView', () => {
 
     it('offers a jump to the latest output once the reader has scrolled away from the end', async () => {
       await mountView()
-      const panel = wrapper.find('#console').element
+      const panel = wrapper.find<HTMLElement>('#console').element
       expect(buttonLabelled(wrapper, 'Jump to latest'), 'the jump should not be offered while at the end').toBeUndefined()
 
       measurePanel(panel, { top: 100 })
@@ -258,7 +300,7 @@ describe('ConsoleView', () => {
     it('opens the sign in dialog when the sign in button is pressed', async () => {
       await expireSession()
 
-      buttonLabelled(wrapper, 'Sign in').trigger('click')
+      buttonLabelled(wrapper, 'Sign in')!.trigger('click')
 
       expect(login.openLogin, 'pressing sign in should ask the header for the sign in dialog').toHaveBeenCalledTimes(1)
     })
@@ -274,16 +316,16 @@ describe('ConsoleView', () => {
   })
 
   describe('address', () => {
-    const mountWith = async (props = {}) => {
+    const mountWith = async (props: { level?: string; search?: string } = {}) => {
       const { default: ConsoleView } = await import('./ConsoleView.vue')
       wrapper = mount(ConsoleView, { props, attachTo: document.body })
       return wrapper
     }
 
     // The level chips are the only checkable buttons on the view, and each names its level.
-    const levelChips = (view) =>
+    const levelChips = (view: VueWrapper) =>
       view.findAll('button').filter(button => button.attributes('aria-checked') !== undefined)
-    const shownLevelNames = (view) =>
+    const shownLevelNames = (view: VueWrapper) =>
       levelChips(view)
         .filter(chip => chip.attributes('aria-checked') === 'true')
         .map(chip => chip.text().replace(/\d+/g, '').trim())
@@ -309,13 +351,13 @@ describe('ConsoleView', () => {
     it('filters the output by the text the address holds', async () => {
       await mountWith({ search: 'boom' })
 
-      expect(wrapper.find('input').element.value).toBe('boom')
+      expect(wrapper.find<HTMLInputElement>('input').element.value).toBe('boom')
     })
 
     it('reports a switched level so the address can hold it', async () => {
       await mountWith({})
 
-      await levelChips(wrapper).find(chip => chip.text().startsWith('Info')).trigger('click')
+      await levelChips(wrapper).find(chip => chip.text().startsWith('Info'))!.trigger('click')
 
       expect(wrapper.emitted('update:level')?.at(-1)).toEqual(['other,trace,debug,warn,error'])
     })

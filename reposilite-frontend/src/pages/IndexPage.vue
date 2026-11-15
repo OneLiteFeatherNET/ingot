@@ -14,9 +14,11 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch, watchEffect, onBeforeUnmount, onMounted } from 'vue'
+import type { Component, ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { LocationQueryRaw } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../store/session'
 import { openLogin } from '../store/login'
@@ -43,12 +45,12 @@ import SettingsIcon from '../components/icons/SettingsIcon.vue'
 import HistoryIcon from '../components/icons/HistoryIcon.vue'
 import MoreIcon from '../components/icons/MoreIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
-import { property } from '../helpers/vue-extensions'
 import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
 import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import type { ContributedPage, Page, RouteMeta } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
@@ -57,7 +59,7 @@ import { textFromParam, textParam, optionalParam } from '../router/url-state'
 
 // Each section is its own bundle. While it downloads the page shows a progress bar, and if
 // the download fails it says so and offers a reload instead of an empty panel.
-const lazyView = (loader) => defineAsyncComponent({
+const lazyView = <T extends Component>(loader: () => Promise<{ default: T }>): T => defineAsyncComponent({
   loader,
   loadingComponent: ViewLoading,
   errorComponent: ViewLoadError,
@@ -68,6 +70,8 @@ const MaintenanceView = lazyView(() => import('../components/maintenance/Mainten
 const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
 const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsView.vue'))
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
+// The tab names AccessView takes, read from its own props so the two cannot drift apart.
+type AccessTab = NonNullable<InstanceType<typeof import('../components/access/AccessView.vue').default>['$props']['tab']>
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const MigrationView = lazyView(() => import('../components/migration/MigrationView.vue'))
 const SystemInfoView = lazyView(() => import('../components/support/SystemInfoView.vue'))
@@ -77,7 +81,7 @@ const AccountView = lazyView(() => import('../components/account/AccountView.vue
 const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
 
 // The icon of each section. The active one is drawn filled, the others outlined.
-const SECTION_ICONS = {
+const SECTION_ICONS: Record<string, Component> = {
   overview: OverviewIcon,
   search: SearchIcon,
   dashboard: DashboardIcon,
@@ -90,21 +94,25 @@ const SECTION_ICONS = {
   [MORE_KEY]: MoreIcon,
 }
 
-defineProps({
-  qualifier: property(Object, true)
-})
+defineProps<{
+  qualifier: { path: string; watchable: number }
+}>()
 
 // The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
 // Migration is the System page of the tree; it exists only while the nexus-import plugin is enabled (see migrationMissing).
-const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics', 'migration']
+const ADMIN_SIDE_PAGES: readonly string[] = ['audit', 'console', 'maintenance', 'analytics', 'migration']
 // The support pages are children of Settings: they share its section, and draw the same tree as the ADMIN_SIDE_PAGES.
-const SUPPORT_ROUTES = ['system-info', 'support']
+const SUPPORT_ROUTES: readonly string[] = ['system-info', 'support']
 // The pages that the Administration entry of the rail and the bar stands for.
-const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
+const ADMINISTRATION_SECTIONS: readonly string[] = ['settings', 'access', ...ADMIN_SIDE_PAGES]
+// Whether a name is one of the listed names. A route without a name, or a page without a section, is none of them.
+const isListed = (names: readonly string[], name: unknown): boolean => typeof name === 'string' && names.includes(name)
 
 const route = useRoute()
 const router = useRouter()
 const { isManager, can, isLogged, mustChangePassword, credentials } = useSession()
+// The meta of the current route, as the navigation registry writes it.
+const currentMeta = (): RouteMeta => route.meta as RouteMeta
 // A single sign on provider that failed sends the visitor back here with the reason in the address.
 useLoginErrorNotice()
 
@@ -113,20 +121,23 @@ useLoginErrorNotice()
  * the repository path from its params, and the state of each view from its query or params.
  * The views report changes back through the router, so the address always says what is shown.
  */
-const section = computed(() => route.meta.section ?? null)
+const section = computed((): string | null => currentMeta().section ?? null)
 // The entry of the rail and the bar that is current: every Administration page is under Administration.
-const navigationSection = computed(() => (ADMINISTRATION_SECTIONS.includes(section.value) ? 'settings' : section.value))
+// The route params are text, or a list of text when a param repeats. The pages take them as text, so the value passes through unchanged.
+const routeText = (value: unknown): string => value as string
+
+const navigationSection = computed((): string | null => (isListed(ADMINISTRATION_SECTIONS, section.value) ? 'settings' : section.value))
 // The reading pages of the administration frame (text and forms) keep a 960 pixel measure. The other pages are wide
 // (lists, tables and the charts) and take the full width after the side navigation.
-const readingPage = computed(() => ['maintenance', 'migration'].includes(section.value) || SUPPORT_ROUTES.includes(route.name))
+const readingPage = computed((): boolean => isListed(['maintenance', 'migration'], section.value) || isListed(SUPPORT_ROUTES, route.name))
 // A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
 // does not name has no node, so it is not allowed and the page below shows it as not found.
-const pluginPageNode = computed(() => (route.name === 'settings-plugin'
-  ? contributedPageNode(route.params.plugin, route.params.page)
+const pluginPageNode = computed((): string | undefined => (route.name === 'settings-plugin'
+  ? contributedPageNode(route.params.plugin as string, route.params.page as string)
   : undefined))
-const sectionAllowed = computed(() => {
+const sectionAllowed = computed((): boolean => {
   if (route.name === 'settings-plugin') return pluginPageNode.value !== undefined && can(pluginPageNode.value)
-  return routeAllowed(route.meta, can, isManager.value) && (!route.meta.signedIn || isLogged.value)
+  return routeAllowed(currentMeta(), can, isManager.value) && (!currentMeta().signedIn || isLogged.value)
 })
 // The migration page exists only while the nexus-import plugin is enabled. Until the manifest is read, the page waits.
 const migrationPending = computed(() => route.name === 'settings-migration' && isLogged.value && !pluginUiReady.value)
@@ -138,19 +149,19 @@ const migrationMissing = computed(() => route.name === 'settings-migration'
 const pluginPageMissing = computed(() => route.name === 'settings-plugin'
   && isLogged.value
   && pluginUiReady.value
-  && !pluginPageRedirect(route.params.plugin, route.params.page)
-  && !contributedPageByRoute(route.params.plugin, route.params.page))
+  && !pluginPageRedirect(route.params.plugin as string, route.params.page as string | undefined)
+  && !contributedPageByRoute(route.params.plugin as string, route.params.page as string))
 // An address without a page id opens the first page of its plugin, once the manifest says which that is.
 watch([pluginUiReady, () => route.fullPath], () => {
   if (route.name !== 'settings-plugin' || !pluginUiReady.value) return
-  const target = pluginPageRedirect(route.params.plugin, route.params.page)
+  const target = pluginPageRedirect(route.params.plugin as string, route.params.page as string | undefined)
   if (target) router.replace(target)
 }, { immediate: true })
 watch(isLogged, (logged) => (logged ? loadPluginUi(credentials.value) : clearPluginUi()), { immediate: true })
 watch(isLogged, (logged) => (logged ? loadSupportBundle(credentials.value) : clearSupportBundle()), { immediate: true })
 
 // The support pages are not found while the instance does not offer them (an opt-out instance), and wait for the answer.
-const supportPageOpen = computed(() => SUPPORT_ROUTES.includes(route.name) && isLogged.value && sectionAllowed.value)
+const supportPageOpen = computed((): boolean => isListed(SUPPORT_ROUTES, route.name) && isLogged.value && sectionAllowed.value)
 const supportPageWaiting = computed(() => supportPageOpen.value && !supportBundleReady.value)
 const supportPageAbsent = computed(() => supportPageOpen.value && supportBundleReady.value && !supportBundleOffered.value)
 
@@ -174,7 +185,7 @@ onMounted(askForSignIn)
 watch([sectionAllowed, isLogged], ([allowed, logged]) => {
   if (!allowed && !logged) openLogin()
 })
-const browsedPath = computed(() => qualifierOf(route.params))
+const browsedPath = computed((): string => qualifierOf(route.params))
 
 // One section on its own needs no navigation: the bar and the rail are left out, and the
 // page keeps its full width.
@@ -194,15 +205,23 @@ onBeforeUnmount(() => {
 // Overview keeps the repository path being browsed, so moving between sections and back does
 // not lose the place in the browser.
 // Administration opens the hub, or the one Administration page a visitor may open (see administrationLocation).
-const locationOf = (key) => {
+const locationOf = (key: string) => {
   if (key === 'overview') return browseLocation(browsedPath.value)
   if (key === 'settings') return administrationLocation(can)
-  return { name: pageByKey(key).route }
+  return { name: pageByKey(key)!.route }
+}
+
+// One destination of the bar or the rail: its key, its labels and the link it opens.
+interface Destination {
+  key: string
+  label: string
+  shortLabel?: string
+  href: string
 }
 
 // The bar and the rail share these destinations. Each one is a real link, so it can be
 // opened in a new tab and the browser's history works.
-const destinationOf = (entry) => ({
+const destinationOf = (entry: Page): Destination => ({
   key: entry.key,
   label: entry.label,
   shortLabel: entry.shortLabel,
@@ -211,7 +230,7 @@ const destinationOf = (entry) => ({
 
 // The rail draws the destinations in their groups; `group` is the name the rail labels a block with.
 // The contributed pages follow the built-in ones, in the group each names. They are never in the bottom bar.
-const contributedLocationOf = (page) => ({ name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } })
+const contributedLocationOf = (page: ContributedPage) => ({ name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } })
 const railItems = computed(() => [
   ...railGroups(can).flatMap(group =>
     group.pages.map(entry => ({ ...destinationOf(entry), group: group.heading }))),
@@ -223,7 +242,7 @@ const railItems = computed(() => [
   }))),
 ])
 
-const selectSection = (key) => {
+const selectSection = (key: string): void => {
   const page = contributedRailGroups(can).flatMap(group => group.pages).find(entry => entry.key === key)
   router.push(page ? contributedLocationOf(page) : locationOf(key))
 }
@@ -232,19 +251,23 @@ const selectSection = (key) => {
 // item, which opens a small panel above the bar under the group headings, and it stays active while one of
 // its sections is on screen.
 const layout = computed(() => barLayout(can))
-const moreGroups = computed(() => layout.value.more.map(group => ({
+interface MoreGroup {
+  heading: string | undefined
+  items: Destination[]
+}
+const moreGroups = computed((): MoreGroup[] => layout.value.more.map(group => ({
   heading: group.heading,
   items: group.pages.map(destinationOf),
 })))
-const moreKeys = computed(() => moreGroups.value.flatMap(group => group.items.map(item => item.key)))
+const moreKeys = computed((): string[] => moreGroups.value.flatMap(group => group.items.map(item => item.key)))
 const barItems = computed(() => [
   ...layout.value.bar.map(destinationOf),
   ...(moreKeys.value.length > 0 ? [{ key: MORE_KEY, label: 'More' }] : []),
 ])
-const barSection = computed(() => (moreKeys.value.includes(navigationSection.value) ? MORE_KEY : navigationSection.value))
-const moreOpen = ref(false)
+const barSection = computed(() => (isListed(moreKeys.value, navigationSection.value) ? MORE_KEY : navigationSection.value))
+const moreOpen = ref<boolean>(false)
 
-const selectBarItem = (key) => {
+const selectBarItem = (key: string): void => {
   if (key === MORE_KEY) {
     moreOpen.value = !moreOpen.value
     return
@@ -255,7 +278,7 @@ const selectBarItem = (key) => {
 
 // A plain left click goes through the router and closes the panel. A modified click is left to the
 // browser, so the section can still open in a new tab.
-const openOverflowItem = (event, key) => {
+const openOverflowItem = (event: MouseEvent, key: string): void => {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
   event.preventDefault()
   selectBarItem(key)
@@ -267,20 +290,20 @@ watch(section, () => {
 
 // Audit: the filters live in the address, so the view reports every change through the router and
 // the page keeps no copy of them.
-const setAuditQuery = (query) =>
-  router.replace({ name: route.name, params: route.params, query })
+const setAuditQuery = (query: LocationQueryRaw) =>
+  router.replace({ name: route.name!, params: route.params, query })
 
 // Replaces the current entry with the same route and one query value, so a search or a
 // switch does not add a history entry for every keystroke. An undefined value removes the
 // parameter, which is how the views say that they are at their default.
-const replaceQuery = (key, value) => {
+const replaceQuery = (key: string, value: string | undefined) => {
   const next = { ...route.query }
   if (value === undefined) {
     delete next[key]
   } else {
     next[key] = value
   }
-  return router.replace({ name: route.name, params: route.params, query: next })
+  return router.replace({ name: route.name!, params: route.params, query: next })
 }
 
 // The Administration pages other than Access and Settings draw the Administration tree beside the page. Below 1240px
@@ -288,10 +311,12 @@ const replaceQuery = (key, value) => {
 // so the tree here lists the static pages.
 const narrow = useMediaQuery('(max-width: 1239px)')
 // A plugin page is drawn in the same frame, so the tree is the same there too (see PluginPageView).
+// The tree of the frame. The plugin page branch of the template is drawn with the settings tree, which is never null there.
+type AdminSideNav = ReturnType<typeof sideNavOf>
 const adminSideNav = computed(() => {
-  if (ADMIN_SIDE_PAGES.includes(section.value)) return sideNavOf(section.value)
-  return SUPPORT_ROUTES.includes(route.name) || route.name === 'settings-plugin' ? sideNavOf('settings') : null
-})
+  if (isListed(ADMIN_SIDE_PAGES, section.value)) return sideNavOf(section.value as string)
+  return isListed(SUPPORT_ROUTES, route.name) || route.name === 'settings-plugin' ? sideNavOf('settings') : null
+}) as ComputedRef<AdminSideNav>
 // The main landmark is named by the heading of the Administration frame, on the pages that draw one.
 const framedMain = computed(() => (adminSideNav.value !== null || section.value === 'access' || section.value === 'settings')
   && sectionAllowed.value)
@@ -299,26 +324,26 @@ const framedMain = computed(() => (adminSideNav.value !== null || section.value 
 const settings = useSettingsDomains(() => adminSideNav.value !== null)
 const adminTree = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
 // The entry of the tree on screen, from the route: the one page of the tree the address names, or the plugin page.
-const adminCurrent = computed(() => (route.name === 'settings-plugin'
-  ? pluginTreeKey(route.params.plugin, route.params.page)
+const adminCurrent = computed((): string | undefined => (route.name === 'settings-plugin'
+  ? pluginTreeKey(route.params.plugin as string, route.params.page as string)
   : currentTreeKey(route.name)))
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
 // is open. The view moves between them through the router itself. The registry maps each route to its tab.
-const accessTab = computed(() => accessTabOf(route.name))
-const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
+const accessTab = computed((): AccessTab | undefined => accessTabOf(route.name as string) as AccessTab | undefined)
+const accessName = computed((): string | undefined => (section.value === 'access' ? (route.params.name as string | undefined) : undefined))
 
 // Console: the level switches and the text filter, as the views read and write them.
-const consoleLevel = computed(() => optionalParam(route.query.level))
-const consoleSearch = computed(() => textFromParam(route.query.q))
-const setConsoleLevel = (value) => replaceQuery('level', value)
-const setConsoleSearch = (text) => replaceQuery('q', textParam(text))
+const consoleLevel = computed((): string | undefined => optionalParam(route.query.level))
+const consoleSearch = computed((): string => textFromParam(route.query.q))
+const setConsoleLevel = (value: string | undefined) => replaceQuery('level', value)
+const setConsoleSearch = (text: string) => replaceQuery('q', textParam(text))
 
 // Settings: the domain on screen. Changing it drops any entry that was open in the old one.
-const setDomain = (domain) =>
+const setDomain = (domain: string) =>
   router.replace({ name: 'settings', params: { domain }, query: route.query })
 
-const activeLabel = computed(() => pageLabel(section.value))
+const activeLabel = computed((): string => pageLabel(section.value as string))
 </script>
 
 <template>
@@ -446,12 +471,12 @@ const activeLabel = computed(() => pageLabel(section.value))
           :groups="adminTree"
           :current="adminCurrent"
           :index-to="adminSideNav.indexTo"
-          :shortcuts="shortcutsOf(adminCurrent, can)"
+          :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
           :narrow="narrow"
         >
           <PluginPageView
-            :plugin="route.params.plugin"
-            :page-id="route.params.page"
+            :plugin="routeText(route.params.plugin)"
+            :page-id="routeText(route.params.page)"
           />
         </AdministrationFrame>
         <SearchView v-else-if="section === 'search'" />
@@ -470,7 +495,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           :groups="adminTree"
           :current="adminCurrent"
           :index-to="adminSideNav.indexTo"
-          :shortcuts="shortcutsOf(adminCurrent, can)"
+          :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
           :narrow="narrow"
         >
           <AnalyticsView v-if="section === 'analytics'" />
@@ -484,7 +509,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           <MaintenanceView v-else-if="section === 'maintenance'" />
           <MigrationView
             v-else-if="section === 'migration'"
-            :step="route.params.step"
+            :step="routeText(route.params.step)"
           />
           <AuditView
             v-else-if="section === 'audit'"
@@ -497,9 +522,9 @@ const activeLabel = computed(() => pageLabel(section.value))
         <SettingsView
           v-else-if="section === 'settings'"
           :selected-tab="activeLabel"
-          :domain="route.params.domain"
-          :collection="route.params.collection"
-          :entry="route.params.entry"
+          :domain="routeText(route.params.domain)"
+          :collection="routeText(route.params.collection)"
+          :entry="routeText(route.params.entry)"
           @update:domain="setDomain"
         />
       </main>
@@ -560,7 +585,7 @@ const activeLabel = computed(() => pageLabel(section.value))
       <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden">
         <MdNavigationBar
           :items="barItems"
-          :model-value="barSection"
+          :model-value="barSection ?? undefined"
           @update:model-value="selectBarItem"
         >
           <template #icon="{ item, active }">
@@ -575,7 +600,7 @@ const activeLabel = computed(() => pageLabel(section.value))
         <MdNavigationRail
           class="h-full"
           :items="railItems"
-          :model-value="navigationSection"
+          :model-value="navigationSection ?? undefined"
           @update:model-value="selectSection"
         >
           <template #top>

@@ -14,12 +14,36 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import SideNavTree from './SideNavTree.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
+
+interface NavLink {
+  key: string | undefined
+  label: string
+  description?: string
+  to: RouteLocationRaw
+}
+
+interface NavGroup {
+  id?: string
+  heading?: string
+  label?: string
+  links: NavLink[]
+}
+
+interface Shortcut {
+  label: string
+  to: RouteLocationRaw
+}
+
+interface Crumb {
+  label: string
+  to?: RouteLocationRaw
+}
 
 /*
  * The frame of every Administration page. The header draws, in this order: the trail (Administration, the group of the
@@ -54,14 +78,14 @@ const props = defineProps({
   detail: { type: Boolean, default: false },
   label: { type: String, required: true },
   sectionLabel: { type: String, required: true },
-  groups: { type: Array, required: true },
+  groups: { type: Array as PropType<NavGroup[]>, required: true },
   current: { type: String, default: undefined },
-  indexTo: { type: Object, required: true },
-  shortcuts: { type: Array, default: () => [] },
+  indexTo: { type: Object as PropType<RouteLocationRaw>, required: true },
+  shortcuts: { type: Array as PropType<Shortcut[]>, default: () => [] },
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
   reading: { type: Boolean, default: false },
-  unsaved: { type: Array, default: () => [] },
+  unsaved: { type: Array as PropType<string[]>, default: () => [] },
   overview: { type: Boolean, default: false }
 })
 
@@ -75,16 +99,16 @@ const currentGroup = computed(() => props.groups
 // The trail: the section, the group of the current entry, and on a detail page the list page. Empty when no entry is
 // on screen, as on the settings hub, whose heading already is the section.
 // Overview has no group, and its crumb would link to the page itself, so its trail is the section alone, as plain text.
-const crumbs = computed(() => {
+const crumbs = computed<Crumb[]>(() => {
   if (props.overview) return [{ label: props.sectionLabel }]
   if (!currentLink.value || !currentGroup.value || currentGroup.value.heading === undefined) return []
-  const trail = [{ label: props.sectionLabel, to: props.indexTo }, { label: currentGroup.value.heading }]
+  const trail: Crumb[] = [{ label: props.sectionLabel, to: props.indexTo }, { label: currentGroup.value.heading }]
   if (props.detail) trail.push({ label: currentLink.value.label, to: currentLink.value.to })
   return trail
 })
 
 // Below 1240 pixels the trail is its last crumb on one line, as plain text: the back arrow beside it is the one link.
-const visibleCrumbs = computed(() => (props.narrow ? crumbs.value.slice(-1).map(crumb => ({ label: crumb.label })) : crumbs.value))
+const visibleCrumbs = computed((): Crumb[] => (props.narrow ? crumbs.value.slice(-1).map(crumb => ({ label: crumb.label })) : crumbs.value))
 const fullTrail = computed(() => crumbs.value.map(crumb => crumb.label).join(' / '))
 const heading = computed(() => props.title || currentLink.value?.label || props.sectionLabel)
 // The list description belongs to the list; a detail page shows the description of its item only, when one is given.

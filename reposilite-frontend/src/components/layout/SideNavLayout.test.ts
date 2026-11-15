@@ -15,10 +15,12 @@
  */
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import { treeObserverKey } from '../../helpers/useTreeFits'
+
+type LayoutProps = Partial<InstanceType<typeof SideNavLayout>['$props']>
 
 const shell = { render: () => null }
 
@@ -54,7 +56,7 @@ const SIDE_NAV = '[aria-label="Access sections"]'
 
 describe('SideNavLayout', () => {
   // A fresh router per test, on memory history, opened at the address of the page under test.
-  const mountLayout = async (props = {}, url = '/access/users') => {
+  const mountLayout = async (props: LayoutProps = {}, url = '/access/users') => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push(url)
     await router.isReady()
@@ -159,14 +161,14 @@ describe('SideNavLayout', () => {
     expect(wrapper.find(SIDE_NAV).exists(), 'the index is drawn').toBe(true)
     expect(wrapper.get(`${SIDE_NAV} a`).text(), 'Overview is the first link of the index').toBe('Overview')
     expect(wrapper.get(`${SIDE_NAV} a`).attributes('aria-current'), 'and it is marked current').toBe('page')
-    expect(wrapper.get('ul[aria-label="Overview"]').exists(), 'its list is named Overview, as it has no heading').toBe(true)
+    expect((wrapper.get('ul[aria-label="Overview"]') as DOMWrapper<Element>).exists(), 'its list is named Overview, as it has no heading').toBe(true)
   })
 
   it('draws the group of Overview without a heading paragraph', async () => {
     const groups = [{ id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] }, ...fixtureGroups()]
     const wrapper = await mountLayout({ groups, current: 'overview', overview: true, narrow: true })
 
-    const overviewGroup = wrapper.get('ul[aria-label="Overview"]').element.parentElement
+    const overviewGroup = wrapper.get('ul[aria-label="Overview"]').element.parentElement as HTMLElement
     expect(overviewGroup.querySelector('p'), 'no visible heading above Overview').toBeNull()
   })
 })
@@ -176,18 +178,18 @@ describe('SideNavLayout', () => {
 // navigation through the offsetHeight of its element, the window through window.innerHeight and the save bar through
 // its own element; each is restored after the test. The window is 1000 pixels high, so the room is 1000 - 80 - 16 = 904.
 describe('SideNavLayout sticky rule', () => {
-  const mounted = []
+  const mounted: { wrapper: VueWrapper; bar: HTMLElement | null }[] = []
   let navHeight = 0
   let barHeight = 0
-  let savedInnerHeight
-  let heightSpy
+  let savedInnerHeight: number
+  let heightSpy: { mockRestore: () => void }
 
   beforeEach(() => {
     navHeight = 0
     barHeight = 0
     savedInnerHeight = window.innerHeight
     window.innerHeight = 1000
-    heightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function () {
+    heightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
       if (this.getAttribute('data-ingot-component') === 'side-nav-tree') return navHeight
       if (this.classList.contains('settings-save-bar')) return barHeight
       return 0
@@ -205,8 +207,8 @@ describe('SideNavLayout sticky rule', () => {
 
   // A fake of the size observer: it keeps the callbacks it is given, and `report` calls them as a size change would.
   const fakeObserver = () => {
-    const observed = []
-    const observe = (element, onChange) => {
+    const observed: { element: HTMLElement; onChange: () => void }[] = []
+    const observe = (element: HTMLElement, onChange: () => void) => {
       const entry = { element, onChange }
       observed.push(entry)
       return () => observed.splice(observed.indexOf(entry), 1)
@@ -215,7 +217,7 @@ describe('SideNavLayout sticky rule', () => {
     return { observe, report }
   }
 
-  const mountSticky = async (props = {}) => {
+  const mountSticky = async (props: LayoutProps = {}) => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/access/users')
     await router.isReady()
@@ -226,13 +228,13 @@ describe('SideNavLayout sticky rule', () => {
       global: { plugins: [router], provide: { [treeObserverKey]: observer.observe } },
       attachTo: document.body
     })
-    const entry = { wrapper, bar: null }
+    const entry: { wrapper: VueWrapper; bar: HTMLElement | null } = { wrapper, bar: null }
     mounted.push(entry)
     await flushPromises()
     return { wrapper, observer, entry }
   }
 
-  const isSticky = (wrapper) => wrapper.find(SIDE_NAV).classes().includes('sticky')
+  const isSticky = (wrapper: VueWrapper) => wrapper.find(SIDE_NAV).classes().includes('sticky')
 
   it('has no scroll box of its own while the tree fits', async () => {
     navHeight = 800
@@ -300,7 +302,7 @@ describe('SideNavLayout sticky rule', () => {
 
 describe('SideNavLayout index rows', () => {
   // The rows of the filter tree carry a description; the index shows it below 1240 pixels, and the side column does not.
-  const mountRows = async (props) => {
+  const mountRows = async (props: LayoutProps) => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/access/users')
     await router.isReady()
@@ -311,7 +313,7 @@ describe('SideNavLayout index rows', () => {
     })
   }
 
-  const row = (wrapper, label) => wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().startsWith(label))
+  const row = (wrapper: VueWrapper, label: string) => wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().startsWith(label)) as DOMWrapper<Element>
 
   it('shows the description under the label of a row on narrow widths', async () => {
     const wrapper = await mountRows({ current: undefined, narrow: true })
@@ -362,10 +364,10 @@ const filterGroups = () => [
 
 describe('SideNavLayout find field', () => {
   // Mounted into the document, so focus can be checked. Each test unmounts what it mounted.
-  const mounted = []
+  const mounted: VueWrapper[] = []
   afterEach(() => mounted.splice(0).forEach(wrapper => wrapper.unmount()))
 
-  const mountFilter = async (props = {}) => {
+  const mountFilter = async (props: LayoutProps = {}) => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/access/users')
     await router.isReady()
@@ -379,8 +381,8 @@ describe('SideNavLayout find field', () => {
     return { wrapper, router }
   }
 
-  const field = (wrapper) => wrapper.get('input[type="search"]')
-  const announcement = (wrapper) => wrapper.get('[aria-live="polite"]').text()
+  const field = (wrapper: VueWrapper) => wrapper.get<HTMLInputElement>('input[type="search"]')
+  const announcement = (wrapper: VueWrapper) => wrapper.get('[aria-live="polite"]').text()
 
   it('labels the search field Find an administration page', async () => {
     const { wrapper } = await mountFilter({ current: 'users' })
@@ -448,7 +450,7 @@ describe('SideNavLayout unsaved marks', () => {
     }
   ]
 
-  const mountMarked = async (props) => {
+  const mountMarked = async (props: LayoutProps) => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/access/users')
     await router.isReady()
@@ -462,21 +464,21 @@ describe('SideNavLayout unsaved marks', () => {
   it('marks a link whose domain has an unsaved draft with the text Unsaved', async () => {
     const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
 
-    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc'))
+    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc')) as DOMWrapper<Element>
     expect(javadoc.text(), 'the mark is drawn in the link').toContain('Unsaved')
   })
 
   it('names a marked link Javadoc, unsaved changes for a screen reader', async () => {
     const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
 
-    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc'))
+    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc')) as DOMWrapper<Element>
     expect(javadoc.attributes('aria-label'), 'the accessible name ends with unsaved changes').toBe('Javadoc, unsaved changes')
   })
 
   it('draws no mark and no changed name on a link without a draft', async () => {
     const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
 
-    const teams = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Teams'))
+    const teams = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Teams')) as DOMWrapper<Element>
     expect(teams.text(), 'no mark on Teams').not.toContain('Unsaved')
     expect(teams.attributes('aria-label'), 'the name is not changed').toBeUndefined()
   })
@@ -490,7 +492,7 @@ describe('SideNavLayout lead', () => {
     ...fixtureGroups()
   ]
 
-  const mountLead = async (props = {}) => {
+  const mountLead = async (props: LayoutProps = {}) => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/access')
     await router.isReady()
@@ -504,7 +506,7 @@ describe('SideNavLayout lead', () => {
     })
   }
 
-  const follows = (first, second) => first.element.compareDocumentPosition(second.element) & Node.DOCUMENT_POSITION_FOLLOWING
+  const follows = (first: Pick<DOMWrapper<Element>, 'element'>, second: Pick<DOMWrapper<Element>, 'element'>) => first.element.compareDocumentPosition(second.element) & Node.DOCUMENT_POSITION_FOLLOWING
 
   it('draws the lead above the index on Overview below 1240 pixels', async () => {
     const wrapper = await mountLead({ narrow: true })

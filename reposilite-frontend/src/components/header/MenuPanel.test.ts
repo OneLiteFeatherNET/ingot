@@ -16,16 +16,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref, reactive } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { computeAccessibleName } from 'dom-accessibility-api'
 import MenuPanel from './MenuPanel.vue'
 
+// A spy that records its arguments and returns nothing in particular.
+type Spy = (...args: unknown[]) => unknown
+
 // The session and the theme are replaced, so each test states who is signed in and which theme is on.
 const state = vi.hoisted(() => ({
   isLogged: true,
-  logout: null,
-  changeTheme: null,
+  logout: vi.fn<Spy>(),
+  changeTheme: vi.fn<Spy>(),
   mode: 'dark'
 }))
 
@@ -34,16 +37,16 @@ vi.mock('../../store/session', () => ({
     token: ref({ name: 'alice', secret: 'secret' }),
     principal: ref({ name: 'alice', displayName: 'Alice Example' }),
     isLogged: ref(state.isLogged),
-    logout: (...args) => state.logout(...args),
+    logout: (...args: unknown[]) => state.logout(...args),
     login: vi.fn(),
-    loginFailureMessage: (error) => String(error)
+    loginFailureMessage: (error: unknown) => String(error)
   })
 }))
 
 vi.mock('../../store/theme', () => ({
   default: () => ({
     theme: reactive({ mode: state.mode, isDark: state.mode === 'dark' }),
-    changeTheme: (...args) => state.changeTheme(...args)
+    changeTheme: (...args: unknown[]) => state.changeTheme(...args)
   })
 }))
 
@@ -59,19 +62,21 @@ const mountPanel = () => {
   return { wrapper, router }
 }
 
+type MountedPanel = ReturnType<typeof mountPanel>
+
 // The account menu is teleported to the body, so its items are read from the document.
-const menuItem = (name) => [...document.querySelectorAll('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemradio"]')]
-  .find(item => item.textContent.trim() === name)
-const accountTrigger = (wrapper) => wrapper.find('button[aria-haspopup="menu"]')
+const menuItem = (name: string): HTMLElement => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemradio"]')]
+  .find(item => item.textContent!.trim() === name) as HTMLElement
+const accountTrigger = (wrapper: VueWrapper) => wrapper.find('button[aria-haspopup="menu"]')
 
 describe('MenuPanel, signed in', () => {
-  let mounted
+  let mounted: MountedPanel | undefined
 
   beforeEach(() => {
     state.isLogged = true
     state.mode = 'dark'
-    state.logout = vi.fn()
-    state.changeTheme = vi.fn()
+    state.logout = vi.fn<Spy>()
+    state.changeTheme = vi.fn<Spy>()
     mounted?.wrapper.unmount()
     mounted = undefined
   })
@@ -135,9 +140,9 @@ describe('MenuPanel, signed in', () => {
     const { wrapper } = await open()
 
     expect(accountTrigger(wrapper).attributes('aria-expanded')).toBe('true')
-    const heading = document.querySelector('[role="menu"] [data-test="menu-heading"]')
+    const heading = document.querySelector<HTMLElement>('[role="menu"] [data-test="menu-heading"]')
     expect(heading, 'the heading names the user').not.toBeNull()
-    expect(heading.textContent.trim()).toBe('Alice Example')
+    expect(heading!.textContent!.trim()).toBe('Alice Example')
   })
 
   it('offers My account as a link to the account page', async () => {
@@ -160,8 +165,8 @@ describe('MenuPanel, signed in', () => {
   it('offers the three themes as radio items and checks the one in use', async () => {
     await open()
 
-    const radios = [...document.querySelectorAll('[role="menuitemradio"]')]
-    expect(radios.map(radio => radio.textContent.trim())).toEqual(['Light', 'Dark', 'Follow system'])
+    const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    expect(radios.map(radio => radio.textContent!.trim())).toEqual(['Light', 'Dark', 'Follow system'])
     expect(menuItem('Dark').getAttribute('aria-checked'), 'the theme in use is checked').toBe('true')
     expect(menuItem('Light').getAttribute('aria-checked')).toBe('false')
   })
@@ -192,8 +197,8 @@ describe('MenuPanel, signed out', () => {
   beforeEach(() => {
     state.isLogged = false
     state.mode = 'auto'
-    state.logout = vi.fn()
-    state.changeTheme = vi.fn()
+    state.logout = vi.fn<Spy>()
+    state.changeTheme = vi.fn<Spy>()
   })
 
   it('keeps a visible Sign in button', () => {

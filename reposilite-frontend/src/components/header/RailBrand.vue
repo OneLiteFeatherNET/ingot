@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import usePlaceholders from '../../store/placeholders'
 import useTheme from '../../store/theme'

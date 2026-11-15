@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
 import { siGithub } from 'simple-icons'
 import LoginModal from './LoginModal.vue'
@@ -24,25 +24,28 @@ import { openLogin } from '../../store/login'
 import { useSession } from '../../store/session'
 import { resetClock, setClock } from '../../helpers/clock'
 
+// The shape of the session actions the dialog calls. Each one is a spy that the tests replace the answer of.
+type ActionFn = (...args: unknown[]) => Promise<void>
+
 // The actions that reach the server are replaced; the state refs and the failure wording are the
 // real ones, so the dialog is tested with the mapping the app actually uses.
 const actions = vi.hoisted(() => ({
-  signInWithPassword: null,
-  signInWithToken: null,
-  completeSetup: null,
-  loadProviders: null
+  signInWithPassword: vi.fn<ActionFn>(),
+  signInWithToken: vi.fn<ActionFn>(),
+  completeSetup: vi.fn<ActionFn>(),
+  loadProviders: vi.fn<ActionFn>()
 }))
 
 vi.mock('../../store/session', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal<typeof import('../../store/session')>()
   return {
     ...actual,
     useSession: () => ({
       ...actual.useSession(),
-      signInWithPassword: (...args) => actions.signInWithPassword(...args),
-      signInWithToken: (...args) => actions.signInWithToken(...args),
-      completeSetup: (...args) => actions.completeSetup(...args),
-      loadProviders: (...args) => actions.loadProviders(...args)
+      signInWithPassword: (...args: unknown[]) => actions.signInWithPassword(...args),
+      signInWithToken: (...args: unknown[]) => actions.signInWithToken(...args),
+      completeSetup: (...args: unknown[]) => actions.completeSetup(...args),
+      loadProviders: (...args: unknown[]) => actions.loadProviders(...args)
     })
   }
 })
@@ -50,48 +53,49 @@ vi.mock('../../store/session', async (importOriginal) => {
 const LOCAL = { id: 'local', type: 'LOCAL', label: 'Password' }
 
 // The answer of POST /api/auth/setup: the backend names the cause in the body message.
-const answer = (status, message) =>
+const answer = (status: number, message: string) =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: { status, message }, headers: {} }
   })
 
-const rejection = (status, headers = {}) =>
+const rejection = (status: number, headers: Record<string, string> = {}) =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {}, headers }
   })
 
 // The dialog is teleported to the end of the body, so it is queried from the document.
-const dialog = () => document.querySelector('[role="dialog"]')
-const field = (id) => document.getElementById(id)
-const buttonLabels = () => [...dialog().querySelectorAll('button, a')].map(node => node.textContent.trim())
-const buttonByLabel = (label) =>
-  [...dialog().querySelectorAll('button, a')].find(node => node.textContent.trim() === label)
+const dialog = (): HTMLElement => document.querySelector('[role="dialog"]') as HTMLElement
+const field = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement
+const buttonLabels = (): string[] => [...dialog().querySelectorAll<HTMLElement>('button, a')].map(node => node.textContent!.trim())
+const buttonByLabel = (label: string): HTMLElement =>
+  [...dialog().querySelectorAll<HTMLElement>('button, a')].find(node => node.textContent!.trim() === label) as HTMLElement
 
-const type = (id, value) => {
+const type = (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
 }
 
 const submit = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit'))
+  dialog().querySelector('form')!.dispatchEvent(new Event('submit'))
   await flushPromises()
 }
 
-const helperOf = (id) => document.getElementById(field(id).getAttribute('aria-describedby'))
+const helperOf = (id: string): HTMLElement =>
+  document.getElementById(field(id).getAttribute('aria-describedby')!) as HTMLElement
 
 // A link's address, read against the test origin whether it is relative or absolute.
-const urlOf = (link) => new URL(link.getAttribute('href'), 'http://ingot.test')
+const urlOf = (link: Element) => new URL(link.getAttribute('href')!, 'http://ingot.test')
 
 const LDAP = { id: 'ldap', type: 'LDAP', label: 'Corporate LDAP', icon: 'GENERIC' }
 const KEYCLOAK = { id: 'keycloak', type: 'OIDC', label: 'Keycloak', icon: 'KEYCLOAK', loginUrl: '/api/auth/oidc/keycloak/login' }
 const GITHUB = { id: 'github', type: 'OIDC', label: 'GitHub', icon: 'GITHUB', loginUrl: '/api/auth/oidc/github/login' }
-const dividerOf = () => dialog().querySelector('[data-test="divider"]')
-const segment = (label) => buttonByLabel(label)
+const dividerOf = (): HTMLElement => dialog().querySelector('[data-test="divider"]') as HTMLElement
+const segment = (label: string) => buttonByLabel(label)
 
 describe('LoginModal', () => {
-  let wrapper
-  let store
-  let router
+  let wrapper: VueWrapper
+  let store: ReturnType<typeof useSession>
+  let router: Router
 
   const openDialog = async () => {
     await wrapper.find('button').trigger('click')
@@ -99,16 +103,16 @@ describe('LoginModal', () => {
   }
 
   // A memory router: the dialog reads the current path to send a provider back to it.
-  const makeRouter = () => createRouter({
+  const makeRouter = (): Router => createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
   })
 
   beforeEach(async () => {
-    actions.signInWithPassword = vi.fn().mockResolvedValue()
-    actions.signInWithToken = vi.fn().mockResolvedValue()
-    actions.completeSetup = vi.fn().mockResolvedValue()
-    actions.loadProviders = vi.fn().mockResolvedValue()
+    actions.signInWithPassword = vi.fn<ActionFn>().mockResolvedValue()
+    actions.signInWithToken = vi.fn<ActionFn>().mockResolvedValue()
+    actions.completeSetup = vi.fn<ActionFn>().mockResolvedValue()
+    actions.loadProviders = vi.fn<ActionFn>().mockResolvedValue()
     store = useSession()
     store.providers.value = [LOCAL]
     store.setupRequired.value = false
@@ -153,8 +157,8 @@ describe('LoginModal', () => {
     it('names the dialog after its heading', async () => {
       await openDialog()
 
-      const heading = dialog().querySelector('h2')
-      expect(heading.textContent.trim()).toBe('Sign in')
+      const heading = dialog().querySelector('h2')!
+      expect(heading.textContent!.trim()).toBe('Sign in')
       expect(dialog().getAttribute('aria-labelledby'), 'screen readers announce the dialog by its heading')
         .toBe(heading.id)
     })
@@ -228,7 +232,7 @@ describe('LoginModal', () => {
       expect(dialog()?.querySelector('h2'), 'a signed in user does not need the dialog').toBeFalsy()
     })
 
-    const submitRejected = async (status) => {
+    const submitRejected = async (status: number) => {
       actions.signInWithPassword.mockRejectedValue(rejection(status))
       await openDialog()
       type('login-username', 'alice')
@@ -239,7 +243,7 @@ describe('LoginModal', () => {
     it('shows one inline message when the server rejects the password', async () => {
       await submitRejected(401)
 
-      expect(helperOf('login-password')?.textContent.trim(),
+      expect(helperOf('login-password')?.textContent!.trim(),
         'the failure is explained in words and linked to the field')
         .toBe('Username or password is incorrect')
     })
@@ -247,7 +251,7 @@ describe('LoginModal', () => {
     it('shows the same message for a disabled account, so it does not reveal that the user exists', async () => {
       await submitRejected(403)
 
-      expect(helperOf('login-password')?.textContent.trim()).toBe('Username or password is incorrect')
+      expect(helperOf('login-password')?.textContent!.trim()).toBe('Username or password is incorrect')
     })
 
     it('moves focus to the password field after a rejection so the message is read out', async () => {
@@ -276,13 +280,13 @@ describe('LoginModal', () => {
 
   describe('rate-limited password sign in', () => {
     const START = Date.parse('2026-10-15T12:00:00Z')
-    let current
+    let current: number
 
-    const tickTo = (offsetSeconds) => {
+    const tickTo = (offsetSeconds: number) => {
       current = START + offsetSeconds * 1000
     }
 
-    const submitLimited = async (headers) => {
+    const submitLimited = async (headers: Record<string, string>) => {
       current = START
       setClock(() => new Date(current))
       actions.signInWithPassword.mockRejectedValue(rejection(429, headers))
@@ -292,18 +296,18 @@ describe('LoginModal', () => {
       await submit()
     }
 
-    const submitButton = () => buttonByLabel('Sign in')
+    const submitButton = (): HTMLButtonElement => buttonByLabel('Sign in') as HTMLButtonElement
 
     it('says how many minutes to wait, rounded up', async () => {
       await submitLimited({ 'retry-after': '121' })
 
-      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 3 minutes')
+      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 3 minutes')
     })
 
     it('uses the singular for one minute', async () => {
       await submitLimited({ 'retry-after': '30' })
 
-      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 1 minute')
+      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 1 minute')
     })
 
     it('disables the submit button while the wait lasts', async () => {
@@ -336,7 +340,7 @@ describe('LoginModal', () => {
       type('login-username', 'alice2')
       await flushPromises()
 
-      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 2 minutes')
+      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 2 minutes')
       expect(submitButton().disabled).toBe(true)
     })
 
@@ -375,7 +379,7 @@ describe('LoginModal', () => {
     it('asks to try again later when the server gives no Retry-After', async () => {
       await submitLimited({})
 
-      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again later')
+      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again later')
       expect(submitButton().disabled, 'without a deadline the button cannot be locked').toBe(false)
     })
   })
@@ -411,14 +415,14 @@ describe('LoginModal', () => {
   })
 
   describe('sign in with several providers', () => {
-    const submitNode = () => buttonByLabel('Sign in')
+    const submitNode = (): HTMLButtonElement => buttonByLabel('Sign in') as HTMLButtonElement
 
     it('shows a switch between the Ingot account and the LDAP provider when both are enabled', async () => {
       store.providers.value = [LOCAL, LDAP]
 
       await openDialog()
 
-      expect(dialog().querySelector('[role="radiogroup"]').getAttribute('aria-label')).toBe('Sign in method')
+      expect(dialog().querySelector('[role="radiogroup"]')!.getAttribute('aria-label')).toBe('Sign in method')
       expect(segment('Ingot account'), 'the Ingot account is named by its own label').toBeDefined()
       expect(segment('Corporate LDAP'), 'the LDAP provider is named by its label').toBeDefined()
     })
@@ -493,7 +497,7 @@ describe('LoginModal', () => {
       await openDialog()
 
       expect(dividerOf().getAttribute('aria-hidden')).toBe('true')
-      expect(dividerOf().textContent.trim()).toBe('or')
+      expect(dividerOf().textContent!.trim()).toBe('or')
       expect(
         dividerOf().compareDocumentPosition(buttonByLabel('Continue with Keycloak')) & Node.DOCUMENT_POSITION_FOLLOWING,
         'the divider sits between the form and the SSO buttons'
@@ -535,8 +539,8 @@ describe('LoginModal', () => {
 
       await openDialog()
 
-      const svg = buttonByLabel('Continue with GitHub').querySelector('svg')
-      expect(svg.querySelector('path').getAttribute('d')).toBe(siGithub.path)
+      const svg = buttonByLabel('Continue with GitHub').querySelector('svg')!
+      expect(svg.querySelector('path')!.getAttribute('d')).toBe(siGithub.path)
       expect(svg.getAttribute('fill')).toBe('currentColor')
       expect(svg.getAttribute('aria-hidden')).toBe('true')
     })
@@ -589,7 +593,7 @@ describe('LoginModal', () => {
     it('switches to a name and secret form', async () => {
       await switchToToken()
 
-      expect(dialog().querySelector('h2').textContent.trim()).toBe('Sign in with access token')
+      expect(dialog().querySelector('h2')!.textContent!.trim()).toBe('Sign in with access token')
       expect(field('login-name').required).toBe(true)
       expect(field('login-secret').type).toBe('password')
       expect(field('login-secret').autocomplete).toBe('current-password')
@@ -614,7 +618,7 @@ describe('LoginModal', () => {
 
       await submit()
 
-      expect(helperOf('login-secret')?.textContent.trim()).toBe('Name or secret is incorrect')
+      expect(helperOf('login-secret')?.textContent!.trim()).toBe('Name or secret is incorrect')
       expect(document.activeElement).toBe(field('login-secret'))
     })
 
@@ -635,7 +639,13 @@ describe('LoginModal', () => {
       store.setupRequired.value = true
     })
 
-    const fillSetup = ({ code = 'abc123', username = 'root', display = '', password = PASSWORD, confirm = PASSWORD } = {}) => {
+    const fillSetup = ({ code = 'abc123', username = 'root', display = '', password = PASSWORD, confirm = PASSWORD }: {
+      code?: string
+      username?: string
+      display?: string
+      password?: string
+      confirm?: string
+    } = {}) => {
       type('setup-code', code)
       type('setup-username', username)
       type('setup-display-name', display)
@@ -646,7 +656,7 @@ describe('LoginModal', () => {
     it('shows Set up Ingot instead of the sign in form', async () => {
       await openDialog()
 
-      expect(dialog().querySelector('h2').textContent.trim()).toBe('Set up Ingot')
+      expect(dialog().querySelector('h2')!.textContent!.trim()).toBe('Set up Ingot')
       expect(field('login-username'), 'the sign in form is not offered during setup').toBeNull()
     })
 
@@ -678,7 +688,7 @@ describe('LoginModal', () => {
       await submit()
 
       expect(actions.completeSetup, 'a mistyped password must not become the admin password').not.toHaveBeenCalled()
-      expect(helperOf('setup-confirm').textContent.trim()).toBe('Passwords do not match')
+      expect(helperOf('setup-confirm').textContent!.trim()).toBe('Passwords do not match')
     })
 
     it('does not submit a password under 12 characters', async () => {
@@ -736,7 +746,7 @@ describe('LoginModal', () => {
 
       await submit()
 
-      expect(dialog().querySelector('[role="alert"]').textContent.trim()).toBe('Setup code is incorrect')
+      expect(dialog().querySelector('[role="alert"]')!.textContent!.trim()).toBe('Setup code is incorrect')
     })
   })
 })

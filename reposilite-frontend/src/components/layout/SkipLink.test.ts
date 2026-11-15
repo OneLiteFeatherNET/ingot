@@ -35,7 +35,7 @@ vi.mock('../../store/placeholders', async () => {
   const { ref: reactiveRef } = await import('vue')
   return { default: () => ({ description: reactiveRef('') }) }
 })
-vi.mock('../../helpers/toast', () => ({ createErrorToast: () => {}, errorMessage: (error) => String(error) }))
+vi.mock('../../helpers/toast', () => ({ createErrorToast: () => {}, errorMessage: (error: unknown) => String(error) }))
 
 // A page with the main element that IndexPage renders. The document is cleared after each test.
 const addMain = () => {

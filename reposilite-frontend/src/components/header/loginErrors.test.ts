@@ -31,7 +31,7 @@ const Page = defineComponent({
   }
 })
 
-const openAt = async (address) => {
+const openAt = async (address: string) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/:pathMatch(.*)*', component: Page }]
@@ -49,7 +49,7 @@ describe('loginErrorMessage', () => {
     'setup_required', 'provider_unavailable', 'no_database'
   ])(
     'says in words what happened for %s, without the code',
-    (code) => {
+    (code: string) => {
       const message = loginErrorMessage(code)
 
       expect(message, 'a visitor reads a sentence, not a code').not.toContain(code)
@@ -83,7 +83,7 @@ describe('loginErrorOf', () => {
 
 describe('useLoginErrorNotice', () => {
   beforeEach(() => {
-    createErrorToast.mockClear()
+    vi.mocked(createErrorToast).mockClear()
   })
 
   it('shows the readable message of the provider failure once', async () => {

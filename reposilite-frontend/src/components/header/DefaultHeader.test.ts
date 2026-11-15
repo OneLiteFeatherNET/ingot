@@ -27,7 +27,7 @@ vi.mock('../../store/session', () => ({
     isLogged: ref(false),
     logout: vi.fn(),
     login: vi.fn(),
-    loginFailureMessage: (error) => String(error)
+    loginFailureMessage: (error: unknown) => String(error)
   })
 }))
 

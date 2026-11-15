@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSession } from '../../store/session'
 import useLog, { levelNames } from '../../store/console/log'
@@ -27,24 +27,24 @@ import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   /**
    * The levels the address shows, as a comma list. Absent means every level is shown.
    */
-  level: {
-    type: String,
-    default: undefined
-  },
+  level?: string
   /**
    * The text the output is filtered by.
    */
-  search: {
-    type: String,
-    default: ''
-  }
+  search?: string
+}>(), {
+  level: undefined,
+  search: ''
 })
 
-const emit = defineEmits(['update:level', 'update:search'])
+const emit = defineEmits<{
+  'update:level': [level: string | undefined]
+  'update:search': [search: string]
+}>()
 
 const { levels, log, hasLines, logMessage, filter, addSeparator } = useLog()
 
@@ -92,8 +92,8 @@ const scrollToEnd = () => {
 // they are, so somebody reading earlier output is not dragged down by every line that arrives.
 const atBottom = ref(true)
 
-const updateFollowing = (event) => {
-  atBottom.value = isNearBottom(event.currentTarget)
+const updateFollowing = (event: Event) => {
+  atBottom.value = isNearBottom(event.currentTarget as HTMLElement)
 }
 
 const jumpToLatest = () => {
@@ -162,8 +162,8 @@ const announcement = computed(() => {
 const BOTTOM_GUTTER_PX = 48
 const MIN_HEIGHT_PX = 320
 
-const panel = ref(null)
-const panelHeight = ref(`${MIN_HEIGHT_PX}px`)
+const panel = ref<HTMLElement | null>(null)
+const panelHeight = ref<string>(`${MIN_HEIGHT_PX}px`)
 
 const measurePanel = () => {
   if (!panel.value) return

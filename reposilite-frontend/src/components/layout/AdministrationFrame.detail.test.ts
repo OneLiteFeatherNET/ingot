@@ -15,9 +15,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdministrationFrame from './AdministrationFrame.vue'
+
+type FrameProps = Partial<InstanceType<typeof AdministrationFrame>['$props']>
 
 const shell = { render: () => null }
 
@@ -42,13 +44,13 @@ const usersGroups = () => [
 ]
 
 // The label of a crumb: its text without the separator after it, which is decorative and aria-hidden.
-const crumbLabel = (crumb) => {
-  const copy = crumb.element.cloneNode(true)
+const crumbLabel = (crumb: { element: Element }) => {
+  const copy = crumb.element.cloneNode(true) as HTMLElement
   copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove())
-  return copy.textContent.trim()
+  return (copy.textContent as string).trim()
 }
 
-const mountDetail = async (props = {}) => {
+const mountDetail = async (props: FrameProps = {}) => {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push('/access/users/alice')
   await router.isReady()
@@ -69,7 +71,7 @@ const mountDetail = async (props = {}) => {
   })
 }
 
-const headerLinksTo = (wrapper, path) => wrapper.findAll('header a').filter(link => link.attributes('href') === path)
+const headerLinksTo = (wrapper: VueWrapper, path: string) => wrapper.findAll('header a').filter(link => link.attributes('href') === path)
 
 // A detail page names its item in the one heading. Its list is its way back: the back arrow below 1240 pixels, the list
 // crumb beside the page from 1240 pixels. The header never offers a second way back, and no list description is reused.

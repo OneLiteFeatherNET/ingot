@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
-import { useSession } from '../../store/session'
+import type { AxiosError } from 'axios'
+import { useSession, type LoginProvider } from '../../store/session'
 import { createURL } from '../../store/client'
 import { loginRequests } from '../../store/login'
 import { now } from '../../helpers/clock'
@@ -59,11 +60,11 @@ watch(loginRequests, () => {
   showLogin.value = true
 })
 
-const view = ref('password')
+const view = ref<'password' | 'token'>('password')
 const busy = ref(false)
-const failure = ref(null)
+const failure = ref<string | null>(null)
 const providersFailed = ref(false)
-const root = ref(null)
+const root = ref<HTMLDivElement | null>(null)
 
 const username = ref('')
 const password = ref('')
@@ -88,24 +89,24 @@ const ssoProviders = computed(() => providers.value.filter(provider => provider.
 const hasPasswordForm = computed(() => passwordProviders.value.length > 0)
 
 // The provider the form signs in with. The switch changes it; the Ingot account is the default.
-const selectedProviderId = ref(null)
-const activeProvider = computed(() =>
+const selectedProviderId = ref<string | null | undefined>(null)
+const activeProvider = computed<LoginProvider>(() =>
   passwordProviders.value.find(provider => provider.id === selectedProviderId.value)
     ?? localProvider.value
     ?? passwordProviders.value[0])
-const providerTitle = (provider) => (provider.type === 'LOCAL' ? 'Ingot account' : provider.label)
-const selectProvider = (id) => {
+const providerTitle = (provider: LoginProvider): string | undefined => (provider.type === 'LOCAL' ? 'Ingot account' : provider.label)
+const selectProvider = (id: string | undefined): void => {
   selectedProviderId.value = id
   failure.value = null
 }
 
 // Where a provider sends the visitor back: the page they are on, with its query.
-const ssoHref = (provider) => (provider.loginUrl
+const ssoHref = (provider: LoginProvider): string | undefined => (provider.loginUrl
   ? providerLoginHref(provider.loginUrl, route?.fullPath ?? '/', createURL)
   : undefined)
 
-const mode = computed(() => (setupRequired.value ? 'setup' : view.value))
-const title = computed(() => ({
+const mode = computed<'setup' | 'password' | 'token'>(() => (setupRequired.value ? 'setup' : view.value))
+const title = computed<string>(() => ({
   setup: 'Set up Ingot',
   password: 'Sign in',
   token: 'Sign in with access token'
@@ -121,21 +122,21 @@ const confirmError = computed(() =>
 // is kept as an instant, so the rest of the wait is always computed from the clock when the
 // dialog renders. A single timer renders it again when the shown minute changes or the wait ends;
 // it is cleared with the dialog. The wait outlives closing the dialog: it is the server's limit.
-const lockedUntil = ref(null)
+const lockedUntil = ref<number | null>(null)
 const tick = ref(0)
-let timer = null
+let timer: ReturnType<typeof setTimeout> | undefined
 
-const remainingSeconds = () => {
+const remainingSeconds = (): number => {
   tick.value // a dependency, so that the timer can render this again
   if (lockedUntil.value === null) return 0
   return Math.max(0, Math.ceil((lockedUntil.value - now().getTime()) / 1000))
 }
 const isLocked = () => remainingSeconds() > 0
-const lockMessage = () => (isLocked() ? rateLimitMessage(remainingSeconds()) : '')
+const lockMessage = (): string => (isLocked() ? rateLimitMessage(remainingSeconds()) : '')
 
 const scheduleTick = () => {
   clearTimeout(timer)
-  timer = null
+  timer = undefined
   if (lockedUntil.value === null) return
   const left = lockedUntil.value - now().getTime()
   if (left <= 0) return
@@ -145,7 +146,7 @@ const scheduleTick = () => {
   }, (left % 60000 || 60000) + 50)
 }
 
-const lockFrom = (error) => {
+const lockFrom = (error: unknown) => {
   lockedUntil.value = rateLimitedUntil(error, now().getTime())
   scheduleTick()
 }
@@ -187,7 +188,7 @@ const focusOnOpen = () => {
   if (root.value?.contains(document.activeElement)) return
   focusFirst()
 }
-const focusField = (id) => nextTick().then(() => document.getElementById(id)?.focus())
+const focusField = (id: string): Promise<void> => nextTick().then(() => document.getElementById(id)?.focus())
 
 watch(showLogin, open => {
   if (!open) return
@@ -197,7 +198,7 @@ watch(showLogin, open => {
   })
 })
 
-const switchView = (next) => {
+const switchView = (next: 'password' | 'token') => {
   view.value = next
   failure.value = null
   nextTick().then(focusFirst)
@@ -206,12 +207,19 @@ const switchView = (next) => {
 // The failure belongs in the dialog, not in a toast: the form that has to be corrected is
 // right here, and a toast about it appears somewhere else entirely and then leaves. Focus
 // moves to the field that carries the message, so that it is read out.
-const attempt = (action, failureMessage, fieldId) => {
+// The message for a rejected request. The session store reads the failure from the HTTP answer.
+type FailureMessage = typeof setupFailureMessage
+
+const attempt = (
+  action: () => Promise<unknown>,
+  failureMessage: FailureMessage,
+  fieldId: string
+): Promise<void> => {
   busy.value = true
   failure.value = null
   return action()
     .then(() => close())
-    .catch(error => {
+    .catch((error: AxiosError<{ message?: string }>) => {
       failure.value = failureMessage(error)
       return focusField(fieldId)
     })
@@ -220,7 +228,7 @@ const attempt = (action, failureMessage, fieldId) => {
     })
 }
 
-const signinWithPassword = () => {
+const signinWithPassword = (): Promise<void> => {
   if (isLocked()) return Promise.resolve()
   const provider = activeProvider.value.id
   return attempt(
@@ -233,15 +241,15 @@ const signinWithPassword = () => {
   )
 }
 
-const signinWithToken = () =>
+const signinWithToken = (): Promise<void> =>
   attempt(() => signInWithToken(name.value, secret.value), loginFailureMessage, 'login-secret')
 
-const setup = () => {
+const setup = (): Promise<void> => {
   submitted.value = true
   if (passwordError.value || confirmError.value) {
     return Promise.resolve()
   }
-  const request = {
+  const request: { setupCode: string; username: string; password: string; displayName?: string } = {
     setupCode: setupCode.value,
     username: setupUsername.value,
     password: setupPassword.value
@@ -249,10 +257,11 @@ const setup = () => {
   if (setupDisplayName.value) {
     request.displayName = setupDisplayName.value
   }
-  return attempt(() => completeSetup(request), setupFailureMessage, 'setup-code')
+  // The session store declares displayName as required, but the dialog leaves it out when it is empty.
+  return attempt(() => completeSetup(request as Parameters<typeof completeSetup>[0]), setupFailureMessage, 'setup-code')
 }
 
-const submit = () => {
+const submit = (): Promise<void> => {
   if (mode.value === 'setup') return setup()
   if (mode.value === 'token') return signinWithToken()
   return signinWithPassword()
@@ -466,7 +475,7 @@ const overlayStyle = {
               >
                 <template #icon>
                   <ProviderIcon
-                    :icon="provider.icon"
+                    :icon="provider.icon ?? undefined"
                     class="size-6!"
                   />
                 </template>

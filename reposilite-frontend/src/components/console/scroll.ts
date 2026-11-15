@@ -19,13 +19,20 @@
 // is still treated as following the tail.
 export const NEAR_BOTTOM_PX = 32
 
+/** The scroll geometry of a panel, in pixels. */
+export interface ScrollMetrics {
+  scrollTop: number
+  clientHeight: number
+  scrollHeight: number
+}
+
 /**
  * Whether a scrollable panel is showing its end, within a small tolerance.
  *
- * @param {{ scrollTop: number, clientHeight: number, scrollHeight: number }} metrics
- * @param {number} threshold how far from the end still counts as the end, in pixels
+ * @param metrics the scroll position and sizes of the panel
+ * @param threshold how far from the end still counts as the end, in pixels
  */
 export const isNearBottom = (
-  { scrollTop, clientHeight, scrollHeight },
-  threshold = NEAR_BOTTOM_PX
-) => scrollHeight - (scrollTop + clientHeight) <= threshold
+  { scrollTop, clientHeight, scrollHeight }: ScrollMetrics,
+  threshold: number = NEAR_BOTTOM_PX
+): boolean => scrollHeight - (scrollTop + clientHeight) <= threshold
