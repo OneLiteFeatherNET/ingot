@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, type PropType } from 'vue'
 import MdTextField from '../../md/MdTextField.vue'
 import ConflictDialog from '../../settings/ConflictDialog.vue'
 import UnsavedChangesBar from '../../settings/UnsavedChangesBar.vue'
@@ -28,6 +28,8 @@ import NodeTemplateMenu from './NodeTemplateMenu.vue'
 import NodeTreeView from './NodeTreeView.vue'
 import { diffNodes, filterRows } from './nodeList'
 import { buildTree } from './nodeTree'
+import type { InheritedEntry } from './inheritedNodes'
+import type { CatalogItem, NodeEntry, NodeTemplate } from './permissionNodesApi'
 
 /*
  * The editor of the permission nodes of one subject. It does no requests: the host (the principal
@@ -44,26 +46,26 @@ import { buildTree } from './nodeTree'
  */
 const props = defineProps({
   nodes: {
-    type: Array,
+    type: Array as PropType<NodeEntry[]>,
     default: () => []
   },
   savedNodes: {
-    type: Array,
+    type: Array as PropType<NodeEntry[] | null>,
     default: null
   },
   /** Read only nodes from teams: [{ node, allowed, source, subject, depth }] */
   inherited: {
-    type: Array,
+    type: Array as PropType<InheritedEntry[]>,
     default: () => []
   },
   /** One line for each team whose nodes could not be read. */
   inheritedWarnings: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   },
   /** Messages the server gave for rows, by node text. */
   rowErrors: {
-    type: Object,
+    type: Object as PropType<Record<string, string>>,
     default: () => ({})
   },
   /** A message that belongs to no row. */
@@ -85,16 +87,16 @@ const props = defineProps({
   },
   /** [{ node, description, kind }] for the suggestions. */
   catalog: {
-    type: Array,
+    type: Array as PropType<CatalogItem[]>,
     default: () => []
   },
   /** [{ id, label, nodes }] */
   templates: {
-    type: Array,
+    type: Array as PropType<NodeTemplate[]>,
     default: () => []
   },
   conflict: {
-    type: Object,
+    type: Object as PropType<{ kind: 'nodes'; name: string } | null>,
     default: null
   }
 })
@@ -108,7 +110,7 @@ const emit = defineEmits([
   'conflict-dismiss'
 ])
 
-const view = ref('list')
+const view = ref<'list' | 'tree'>('list')
 const query = ref('')
 const reviewing = ref(false)
 
@@ -117,12 +119,12 @@ const tree = computed(() => buildTree(rows.value))
 const changes = computed(() => diffNodes(props.savedNodes ?? props.nodes, props.nodes))
 const showBar = computed(() => !props.readonly && (changes.value.count > 0 || props.saving))
 
-const update = (next) => emit('update:nodes', next)
+const update = (next: NodeEntry[]) => emit('update:nodes', next)
 
-const add = (node) => update([...props.nodes, { node, allowed: true }])
-const addMany = (added) => update([...props.nodes, ...added])
-const remove = (node) => update(props.nodes.filter(row => row.node !== node))
-const toggle = (node, allowed) =>
+const add = (node: string) => update([...props.nodes, { node, allowed: true }])
+const addMany = (added: NodeEntry[]) => update([...props.nodes, ...added])
+const remove = (node: string) => update(props.nodes.filter(row => row.node !== node))
+const toggle = (node: string, allowed: boolean) =>
   update(props.nodes.map(row => (row.node === node ? { ...row, allowed } : row)))
 
 const discard = () => {
@@ -130,7 +132,7 @@ const discard = () => {
   emit('discard')
 }
 
-const stateWord = (allowed) => (allowed ? 'Allow' : 'Deny')
+const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
 </script>
 
 <template>
@@ -304,7 +306,7 @@ const stateWord = (allowed) => (allowed ? 'Allow' : 'Deny')
     </div>
 
     <ConflictDialog
-      :conflict="conflict"
+      :conflict="conflict ?? undefined"
       @reload="emit('conflict-reload')"
       @overwrite="emit('conflict-overwrite')"
       @dismiss="emit('conflict-dismiss')"

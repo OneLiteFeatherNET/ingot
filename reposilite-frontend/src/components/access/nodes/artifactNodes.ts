@@ -24,7 +24,7 @@
 const NAME_PART = /^[A-Za-z0-9_-]+$/
 
 /** The problem with the dot separated names of a groupId or artifactId, or an empty string. */
-const namesProblem = (label, value) => {
+const namesProblem = (label: string, value: string): string => {
   const parts = value.split('.')
   if (parts.some(part => part === '')) return `A ${label} cannot start, end or repeat a '.'`
   if (parts.some(part => !NAME_PART.test(part))) {
@@ -34,7 +34,7 @@ const namesProblem = (label, value) => {
 }
 
 /** The message for a groupId that cannot be used, or an empty string. */
-const groupIdProblem = (groupId) => {
+const groupIdProblem = (groupId: string | null | undefined): string => {
   const text = String(groupId ?? '')
   if (text === '') return 'Enter a groupId, for example net.onelitefeather'
   if (text === '*') return ''
@@ -44,7 +44,7 @@ const groupIdProblem = (groupId) => {
 }
 
 /** The message for an artifactId that cannot be used, or an empty string. An empty artifactId is fine. */
-const artifactIdProblem = (artifactId, groupId) => {
+const artifactIdProblem = (artifactId: string | null | undefined, groupId: string | null | undefined): string => {
   const text = String(artifactId ?? '')
   if (text === '') return ''
   if (text.includes(':')) return "An artifactId cannot contain ':'"

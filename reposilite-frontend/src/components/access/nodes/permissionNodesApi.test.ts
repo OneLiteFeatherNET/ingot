@@ -15,26 +15,26 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { permissionNodesApi } from './permissionNodesApi'
+import { permissionNodesApi, type NodesClient } from './permissionNodesApi'
 
 /*
  * The api hands the client the collection name, the body and the entity tag, and turns the
  * answers into { nodes, etag }. The client is a fake with the shape of client.identity.nodes.
  */
 
-const answer = (data, etag = '"1"') => ({ data, headers: etag ? { etag } : {} })
+const answer = (data: unknown, etag: string | null = '"1"') => ({ data, headers: etag ? { etag } : {} })
 
 const makeClient = (overrides = {}) => ({
   identity: {
     nodes: {
       get: vi.fn(async () => answer({ nodes: [{ node: 'ingot.admin.users', allowed: true }] }, '"4"')),
-      set: vi.fn(async (kind, name, nodes) => answer({ nodes }, '"5"')),
+      set: vi.fn(async (kind: string, name: string, nodes: unknown) => answer({ nodes }, '"5"')),
       catalog: vi.fn(async () => answer({ nodes: [{ node: '*', description: 'Everything', kind: 'WILDCARD' }] })),
       templates: vi.fn(async () => answer({ templates: [{ id: 'read', label: 'Read', nodes: ['x'] }] })),
       ...overrides
     }
   }
-})
+}) as unknown as NodesClient
 
 describe('permissionNodesApi', () => {
   it('loads the nodes of a principal with the entity tag of the answer', async () => {

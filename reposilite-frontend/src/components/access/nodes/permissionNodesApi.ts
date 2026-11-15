@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import { etagOf } from '../../../store/client'
+import type { AxiosResponse } from 'axios'
+import { etagOf, type createClient } from '../../../store/client'
+import type { components } from '../../../types/api'
 
 /*
  * Thin functions over the identity client for permission nodes. `client` is what createClient
@@ -28,36 +30,76 @@ import { etagOf } from '../../../store/client'
  * An answer without an entity tag gives etag null, and the next write is then unconditional.
  */
 
-const COLLECTION = { principal: 'principals', team: 'teams' }
+/** One listed node: the schema of the identity api. */
+export type NodeEntry = components['schemas']['NodeDto']
 
-const collectionOf = (kind) => {
+/** One suggestion of the node catalog. */
+export interface CatalogItem {
+  node: string
+  description?: string
+  kind: string
+}
+
+/** One template: lists of nodes with placeholders. */
+export interface NodeTemplate {
+  id: string
+  label: string
+  nodes: string[]
+}
+
+type Client = ReturnType<typeof createClient>
+
+// The bodies of the identity answers this module reads.
+interface NodesBody {
+  nodes?: NodeEntry[] | null
+}
+
+interface CatalogBody {
+  nodes?: CatalogItem[] | null
+}
+
+interface TemplatesBody {
+  templates?: NodeTemplate[] | null
+}
+
+// Types the answer of a request. The client hands back axios responses with untyped data.
+export const bodyAs = <T>(request: Promise<AxiosResponse>): Promise<AxiosResponse<T>> => request as Promise<AxiosResponse<T>>
+
+// The identity endpoints this module calls. A test hands in a fake with the same shape.
+export interface NodesClient {
+  identity: Pick<Client['identity'], 'nodes'>
+}
+
+const COLLECTION: Record<string, string> = { principal: 'principals', team: 'teams' }
+
+const collectionOf = (kind: string): string => {
   const collection = COLLECTION[kind]
   if (!collection) throw new Error(`Unknown subject kind: ${kind}`)
   return collection
 }
 
-const entriesOf = (data) =>
+const entriesOf = (data: NodesBody | null | undefined): NodeEntry[] =>
   (data?.nodes ?? []).map(entry => ({ node: entry.node, allowed: entry.allowed === true }))
 
-const permissionNodesApi = (client) => {
+const permissionNodesApi = (client: NodesClient) => {
   const nodes = () => client.identity.nodes
 
   return {
-    async load(kind, name) {
-      const response = await nodes().get(collectionOf(kind), name)
+    async load(kind: string, name: string): Promise<{ nodes: NodeEntry[]; etag: string | null }> {
+      const response = await bodyAs<NodesBody>(nodes().get(collectionOf(kind), name))
       return { nodes: entriesOf(response.data), etag: etagOf(response) }
     },
-    async save(kind, name, entries, etag) {
+    async save(kind: string, name: string, entries: NodeEntry[], etag: string | null): Promise<{ nodes: NodeEntry[]; etag: string | null }> {
       const body = entries.map(entry => ({ node: entry.node, allowed: entry.allowed }))
-      const response = await nodes().set(collectionOf(kind), name, body, etag)
+      const response = await bodyAs<NodesBody>(nodes().set(collectionOf(kind), name, body, etag))
       return { nodes: response?.data?.nodes ? entriesOf(response.data) : body, etag: etagOf(response) }
     },
-    async catalog(prefix = '') {
-      const response = await nodes().catalog(prefix)
+    async catalog(prefix = ''): Promise<CatalogItem[]> {
+      const response = await bodyAs<CatalogBody>(nodes().catalog(prefix))
       return response.data?.nodes ?? []
     },
-    async templates() {
-      const response = await nodes().templates()
+    async templates(): Promise<NodeTemplate[]> {
+      const response = await bodyAs<TemplatesBody>(nodes().templates())
       return response.data?.templates ?? []
     }
   }

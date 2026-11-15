@@ -32,38 +32,60 @@
 
 const MAX_TEAM_DEPTH = 5
 
-const keyOf = (name) => String(name).toLowerCase()
+/** What fetchTeam resolves with: the nodes of one team and the names of its parents. */
+export interface TeamNodes {
+  nodes?: { node: string; allowed?: boolean }[] | null
+  parents?: string[] | null
+}
 
-const messageOf = (error) => error?.message ?? String(error)
+/** One node a subject inherits, with the team it came from and how far up that team sits. */
+export interface InheritedEntry {
+  node: string
+  allowed: boolean
+  source: 'TEAM' | 'INHERITED_TEAM'
+  subject: string
+  depth: number
+}
 
-const collectInheritedNodes = async ({ start, startDepth = 1, fetchTeam, maxDepth = MAX_TEAM_DEPTH }) => {
-  const entries = []
-  const errors = []
-  const visited = new Set()
+export interface CollectInput {
+  start?: string[] | null
+  startDepth?: number
+  fetchTeam: (name: string) => Promise<TeamNodes>
+  maxDepth?: number
+}
+
+const keyOf = (name: string): string => String(name).toLowerCase()
+
+const messageOf = (error: unknown): string => (error as { message?: string } | null | undefined)?.message ?? String(error)
+
+const collectInheritedNodes = async ({ start, startDepth = 1, fetchTeam, maxDepth = MAX_TEAM_DEPTH }: CollectInput): Promise<{ entries: InheritedEntry[]; errors: { team: string; message: string }[] }> => {
+  const entries: InheritedEntry[] = []
+  const errors: { team: string; message: string }[] = []
+  const visited = new Set<string>()
   let level = start ?? []
   let depth = startDepth
 
   while (level.length > 0 && depth <= maxDepth) {
-    const fresh = []
+    const fresh: string[] = []
     for (const name of level) {
       if (visited.has(keyOf(name))) continue
       visited.add(keyOf(name))
       fresh.push(name)
     }
-    const results = await Promise.all(fresh.map(async (name) => {
+    const results = await Promise.all(fresh.map(async (name): Promise<{ name: string; team?: TeamNodes; error?: unknown }> => {
       try {
         return { name, team: await fetchTeam(name) }
       } catch (error) {
         return { name, error }
       }
     }))
-    const next = []
+    const next: string[] = []
     for (const { name, team, error } of results) {
       if (error) {
         errors.push({ team: name, message: messageOf(error) })
         continue
       }
-      for (const entry of team.nodes ?? []) {
+      for (const entry of team?.nodes ?? []) {
         entries.push({
           node: entry.node,
           allowed: entry.allowed === true,
@@ -72,7 +94,7 @@ const collectInheritedNodes = async ({ start, startDepth = 1, fetchTeam, maxDept
           depth
         })
       }
-      next.push(...(team.parents ?? []))
+      next.push(...(team?.parents ?? []))
     }
     level = next
     depth++

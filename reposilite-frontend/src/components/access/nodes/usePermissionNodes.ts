@@ -15,9 +15,11 @@
  */
 
 import { computed, ref } from 'vue'
+import type { AxiosError } from 'axios'
 import { errorMessage } from '../../../helpers/toast'
 import { isPreconditionFailed } from '../../../store/client'
-import { diffNodes } from './nodeList'
+import { diffNodes, type NodeChanges } from './nodeList'
+import type { CatalogItem, NodeEntry, NodeTemplate, permissionNodesApi } from './permissionNodesApi'
 
 /*
  * The permission nodes of one subject for the editor: the saved list, the entity tag that came with
@@ -34,25 +36,58 @@ import { diffNodes } from './nodeList'
  *
  * A load that is overtaken by a newer one is dropped. Nothing here waits on a timer.
  */
-const copy = (rows) => rows.map(row => ({ node: row.node, allowed: row.allowed }))
+/** The subject the list belongs to: a principal or a team, by name. */
+export interface NodeSubject {
+  kind: string
+  name: string
+}
 
-export function usePermissionNodes(getSubject, getApi) {
-  const saved = ref([])
-  const draft = ref([])
-  const etag = ref(null)
-  const status = ref('loading')
+/** A problem of a 400 answer: the node it names (when it names one) and the message. */
+export interface NodeProblem {
+  node: string | null
+  message: string
+}
+
+export type NodesApi = ReturnType<typeof permissionNodesApi>
+
+export type NodesStatus = 'loading' | 'ready' | 'missing' | 'error'
+
+export interface SaveResult {
+  ok: boolean
+  conflict?: boolean
+  status?: number
+  message?: string
+}
+
+/** The error shape of a failed request, as axios reports it. */
+interface HttpError {
+  response?: {
+    status?: number
+    data?: { problems?: NodeProblem[]; message?: string }
+  }
+}
+
+const httpOf = (error: unknown): HttpError | undefined => error as HttpError | undefined
+
+const copy = (rows: NodeEntry[]): NodeEntry[] => rows.map(row => ({ node: row.node, allowed: row.allowed }))
+
+export function usePermissionNodes(getSubject: () => NodeSubject, getApi: () => NodesApi) {
+  const saved = ref<NodeEntry[]>([])
+  const draft = ref<NodeEntry[]>([])
+  const etag = ref<string | null>(null)
+  const status = ref<NodesStatus>('loading')
   const failure = ref('')
   const saving = ref(false)
-  const rowErrors = ref({})
+  const rowErrors = ref<Record<string, string>>({})
   const formError = ref('')
-  const conflict = ref(null)
-  const catalog = ref([])
-  const templates = ref([])
+  const conflict = ref<{ kind: 'nodes'; name: string } | null>(null)
+  const catalog = ref<CatalogItem[]>([])
+  const templates = ref<NodeTemplate[]>([])
 
   let latest = 0
   let catalogLoaded = false
 
-  const changes = computed(() => diffNodes(saved.value, draft.value))
+  const changes = computed<NodeChanges>(() => diffNodes(saved.value, draft.value))
   const changeCount = computed(() => changes.value.count)
   const dirty = computed(() => changeCount.value > 0)
 
@@ -61,7 +96,7 @@ export function usePermissionNodes(getSubject, getApi) {
     formError.value = ''
   }
 
-  const adopt = (result) => {
+  const adopt = (result: { nodes: NodeEntry[]; etag: string | null }) => {
     saved.value = copy(result.nodes)
     draft.value = copy(result.nodes)
     etag.value = result.etag
@@ -83,7 +118,7 @@ export function usePermissionNodes(getSubject, getApi) {
       saved.value = []
       draft.value = []
       etag.value = null
-      status.value = error?.response?.status === 404 ? 'missing' : 'error'
+      status.value = httpOf(error)?.response?.status === 404 ? 'missing' : 'error'
       failure.value = errorMessage(error)
     }
   }
@@ -110,7 +145,7 @@ export function usePermissionNodes(getSubject, getApi) {
   }
 
   /** Replaces the draft. An error that belonged to a node no longer listed goes away. */
-  const setDraft = (rows) => {
+  const setDraft = (rows: NodeEntry[]) => {
     draft.value = copy(rows)
     const listed = new Set(draft.value.map(row => row.node))
     rowErrors.value = Object.fromEntries(Object.entries(rowErrors.value).filter(([node]) => listed.has(node)))
@@ -121,12 +156,12 @@ export function usePermissionNodes(getSubject, getApi) {
     clearErrors()
   }
 
-  const mapProblems = (problems) => {
+  const mapProblems = (problems: NodeProblem[]) => {
     const listed = new Set(draft.value.map(row => row.node))
-    const errors = {}
-    const others = []
+    const errors: Record<string, string> = {}
+    const others: string[] = []
     for (const problem of problems) {
-      if (listed.has(problem.node)) {
+      if (problem.node !== null && listed.has(problem.node)) {
         if (!(problem.node in errors)) errors[problem.node] = problem.message
       } else {
         others.push(problem.message)
@@ -136,7 +171,7 @@ export function usePermissionNodes(getSubject, getApi) {
     formError.value = others.join('\n')
   }
 
-  const save = async () => {
+  const save = async (): Promise<SaveResult> => {
     const { kind, name } = getSubject()
     saving.value = true
     clearErrors()
@@ -151,13 +186,14 @@ export function usePermissionNodes(getSubject, getApi) {
       adopt(result)
       return { ok: true }
     } catch (error) {
-      const code = error?.response?.status
-      if (isPreconditionFailed(error)) {
+      const code = httpOf(error)?.response?.status
+      if (isPreconditionFailed(error as AxiosError)) {
         conflict.value = { kind: 'nodes', name }
         return { ok: false, conflict: true, status: code, message: errorMessage(error) }
       }
-      if (code === 400 && Array.isArray(error.response?.data?.problems)) {
-        mapProblems(error.response.data.problems)
+      const problems = httpOf(error)?.response?.data?.problems
+      if (code === 400 && Array.isArray(problems)) {
+        mapProblems(problems)
       }
       return { ok: false, status: code, message: errorMessage(error) }
     } finally {
@@ -174,7 +210,7 @@ export function usePermissionNodes(getSubject, getApi) {
     await load()
   }
 
-  const overwriteConflict = async () => {
+  const overwriteConflict = async (): Promise<SaveResult> => {
     dismissConflict()
     const { kind, name } = getSubject()
     try {
@@ -183,7 +219,7 @@ export function usePermissionNodes(getSubject, getApi) {
       saved.value = copy(fresh.nodes)
       etag.value = fresh.etag
     } catch (error) {
-      return { ok: false, status: error?.response?.status, message: errorMessage(error) }
+      return { ok: false, status: httpOf(error)?.response?.status, message: errorMessage(error) }
     }
     return save()
   }

@@ -22,8 +22,22 @@
  * here and null for a group, and `children` is ordered by segment. Pure.
  */
 
-const buildTree = (entries) => {
-  const roots = []
+/** One listed node as the tree receives it. */
+export interface TreeEntry {
+  node: string
+  allowed: boolean
+}
+
+/** One item of the tree: a group or a listed node, with its children ordered by segment. */
+export interface TreeItem<E extends TreeEntry = TreeEntry> {
+  key: string
+  segment: string
+  entry: E | null
+  children: TreeItem<E>[]
+}
+
+const buildTree = <E extends TreeEntry>(entries?: E[] | null): TreeItem<E>[] => {
+  const roots: TreeItem<E>[] = []
   for (const entry of entries ?? []) {
     let level = roots
     const segments = entry.node.split('.')
@@ -37,7 +51,7 @@ const buildTree = (entries) => {
       level = item.children
     })
   }
-  const sort = (items) => {
+  const sort = (items: TreeItem<E>[]): TreeItem<E>[] => {
     items.sort((left, right) => left.segment.localeCompare(right.segment))
     items.forEach(item => sort(item.children))
     return items
@@ -46,7 +60,7 @@ const buildTree = (entries) => {
 }
 
 /** How many listed nodes sit at or below a tree item. */
-const leafCount = (item) =>
+const leafCount = (item: TreeItem<TreeEntry>): number =>
   (item.entry ? 1 : 0) + item.children.reduce((sum, child) => sum + leafCount(child), 0)
 
 export { buildTree, leafCount }

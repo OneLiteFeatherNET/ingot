@@ -20,22 +20,31 @@
  * where an inherited node comes from. Pure.
  */
 
-import { ARTIFACT_ACTIONS, parseNode } from './nodeGrammar'
+import { ARTIFACT_ACTIONS, parseNode, type NodeKind } from './nodeGrammar'
+import type { CatalogItem, NodeEntry } from './permissionNodesApi'
 
-const normalize = (text) => String(text ?? '').trim().toLowerCase()
+/** One node suggestion: a catalog item, or an artifact completion (a continuation fills the field only). */
+export interface Suggestion {
+  node: string
+  description?: string
+  kind: string
+  continuation?: boolean
+}
+
+const normalize = (text: string | null | undefined): string => (text ?? '').trim().toLowerCase()
 
 /** The entries whose node contains the query, ignoring case and outer spaces. */
-const filterRows = (rows, query) => {
+const filterRows = <T extends { node: string }>(rows: T[], query: string | null | undefined): T[] => {
   const needle = normalize(query)
   if (needle === '') return rows
   return rows.filter(row => normalize(row.node).includes(needle))
 }
 
 /** True when the node is already in the list. */
-const hasNode = (rows, node) => (rows ?? []).some(row => row.node === node)
+const hasNode = <T extends { node: string }>(rows: T[] | null | undefined, node: string): boolean => (rows ?? []).some(row => row.node === node)
 
-const KIND_ORDER = ['STATIC', 'REPOSITORY', 'ARTIFACT', 'WILDCARD']
-const KIND_LABEL = { STATIC: 'Static', REPOSITORY: 'Repository', ARTIFACT: 'Artifact', WILDCARD: 'Wildcard' }
+const KIND_ORDER: string[] = ['STATIC', 'REPOSITORY', 'ARTIFACT', 'WILDCARD']
+const KIND_LABEL: Record<NodeKind, string> = { STATIC: 'Static', REPOSITORY: 'Repository', ARTIFACT: 'Artifact', WILDCARD: 'Wildcard' }
 
 /**
  * The catalog entries to suggest for a text: not yet listed and containing the text (ignoring
@@ -43,10 +52,15 @@ const KIND_LABEL = { STATIC: 'Static', REPOSITORY: 'Repository', ARTIFACT: 'Arti
  * start with the text come first. At most `limit` are returned. A blank text suggests everything
  * that is left.
  */
-const suggestNodes = (catalog, text, listed = [], limit = 12) => {
+const suggestNodes = (
+  catalog: CatalogItem[] | null | undefined,
+  text: string | null | undefined,
+  listed: { node: string }[] = [],
+  limit = 12
+): CatalogItem[] => {
   const needle = normalize(text)
   const taken = new Set(listed.map(row => row.node))
-  const kindIndex = (item) => {
+  const kindIndex = (item: { kind: string }): number => {
     const index = KIND_ORDER.indexOf(item.kind)
     return index === -1 ? KIND_ORDER.length : index
   }
@@ -59,7 +73,7 @@ const suggestNodes = (catalog, text, listed = [], limit = 12) => {
     .map(({ item }) => item)
 }
 
-const ACTION_DESCRIPTION = {
+const ACTION_DESCRIPTION: Record<string, string> = {
   read: 'Read the artifacts of this group or artifact',
   deploy: 'Deploy into this group or artifact',
   delete: 'Delete from this group or artifact',
@@ -68,10 +82,10 @@ const ACTION_DESCRIPTION = {
 
 const ARTIFACT_PREFIX = 'ingot.artifact.'
 const QUALIFIED_PREFIX = /^ingot\.repository\.[A-Za-z0-9_-]+\.artifact\./
-const ACTION_WORDS = [...ARTIFACT_ACTIONS, '*']
+const ACTION_WORDS: string[] = [...ARTIFACT_ACTIONS, '*']
 
 /** The valid nodes made of a base (a text ending in '.') and one of the words, not listed yet. */
-const completionsFrom = (base, words, listed) => {
+const completionsFrom = (base: string, words: string[], listed: { node: string }[]): Suggestion[] => {
   const taken = new Set(listed.map(row => row.node))
   return words
     .map(word => `${base}${word}`)
@@ -84,7 +98,7 @@ const completionsFrom = (base, words, listed) => {
  * node (continue with '.artifact.'), and the actions after a groupId or artifactId. A continuation is marked
  * `continuation`, because choosing it fills the field and adds no node.
  */
-const artifactSuggestions = (text, catalog, listed = []) => {
+const artifactSuggestions = (text: string | null | undefined, catalog: CatalogItem[] | null | undefined, listed: { node: string }[] = []): Suggestion[] => {
   const typed = String(text ?? '').trim()
   const repositoryPart = typed.match(/^ingot\.repository\.([A-Za-z0-9_-]*)\.?$/)
   if (repositoryPart) {
@@ -118,12 +132,17 @@ const artifactSuggestions = (text, catalog, listed = []) => {
  * The suggestions for the node field: the artifact completions first, then the catalog matches, in kind order
  * (Static, Repository, Artifact, Wildcard), at most `limit`.
  */
-const suggestWithArtifacts = (catalog, text, listed = [], limit = 12) => {
+const suggestWithArtifacts = (
+  catalog: CatalogItem[] | null | undefined,
+  text: string | null | undefined,
+  listed: { node: string }[] = [],
+  limit = 12
+): Suggestion[] => {
   const completions = artifactSuggestions(text, catalog, listed)
   const seen = new Set(completions.map(item => item.node))
   const rest = suggestNodes(catalog, text, listed, limit).filter(item => !seen.has(item.node))
   const merged = [...completions, ...rest]
-  const kindIndex = (item) => {
+  const kindIndex = (item: Suggestion): number => {
     const index = KIND_ORDER.indexOf(item.kind)
     return index === -1 ? KIND_ORDER.length : index
   }
@@ -135,14 +154,14 @@ const suggestWithArtifacts = (catalog, text, listed = [], limit = 12) => {
 }
 
 /** Splits suggestions into the headed groups Static, Repository, Artifact and Wildcard, in that order. */
-const groupSuggestions = (suggestions) =>
+const groupSuggestions = (suggestions: Suggestion[]): { kind: string; label: string; options: Suggestion[] }[] =>
   KIND_ORDER
-    .map(kind => ({ kind, label: KIND_LABEL[kind], options: suggestions.filter(item => item.kind === kind) }))
+    .map(kind => ({ kind, label: KIND_LABEL[kind as NodeKind], options: suggestions.filter(item => item.kind === kind) }))
     .filter(group => group.options.length > 0)
 
 /** The repository names found in the catalog, from the REPOSITORY nodes, without duplicates. */
-const repositoryNames = (catalog) => {
-  const names = []
+const repositoryNames = (catalog: CatalogItem[] | null | undefined): string[] => {
+  const names: string[] = []
   for (const item of catalog ?? []) {
     if (item.kind !== 'REPOSITORY') continue
     const name = item.node.split('.')[2]
@@ -155,21 +174,29 @@ const repositoryNames = (catalog) => {
  * What changed between the saved and the draft list: { added, removed, changed, count }.
  * `added` and `removed` are entries, `changed` holds { node, from, to } for a flipped allowed value.
  */
-const diffNodes = (saved, draft) => {
+export interface NodeChanges {
+  added: NodeEntry[]
+  removed: NodeEntry[]
+  changed: { node: string; from: boolean; to: boolean }[]
+  count: number
+}
+
+const diffNodes = (saved: NodeEntry[] | null | undefined, draft: NodeEntry[] | null | undefined): NodeChanges => {
   const before = new Map((saved ?? []).map(row => [row.node, row]))
   const after = new Map((draft ?? []).map(row => [row.node, row]))
   const added = (draft ?? []).filter(row => !before.has(row.node))
   const removed = (saved ?? []).filter(row => !after.has(row.node))
-  const changed = (draft ?? [])
-    .filter(row => before.has(row.node) && before.get(row.node).allowed !== row.allowed)
-    .map(row => ({ node: row.node, from: before.get(row.node).allowed, to: row.allowed }))
+  const changed = (draft ?? []).flatMap((row) => {
+    const previous = before.get(row.node)
+    return previous && previous.allowed !== row.allowed ? [{ node: row.node, from: previous.allowed, to: row.allowed }] : []
+  })
   return { added, removed, changed, count: added.length + removed.length + changed.length }
 }
 
-const levels = (depth) => `${depth} ${depth === 1 ? 'level' : 'levels'} up`
+const levels = (depth: number): string => `${depth} ${depth === 1 ? 'level' : 'levels'} up`
 
 /** Where an inherited node comes from, for example "from team developers, 1 level up". */
-const inheritedSourceLabel = ({ source, subject, depth }) => {
+const inheritedSourceLabel = ({ source, subject, depth }: { source?: string | null; subject?: string | null; depth?: number | null }): string => {
   if (source === 'INHERITED_TEAM') return `from team ${subject}, ${levels(depth ?? 1)}`
   if (source === 'TEAM') return `from team ${subject}`
   if (source === 'LEGACY') return `from the legacy instance admin grant of ${subject}`
@@ -178,7 +205,7 @@ const inheritedSourceLabel = ({ source, subject, depth }) => {
 }
 
 /** True when a node held directly has the same node text as the inherited one. */
-const isOverridden = (inheritedEntry, direct) => hasNode(direct, inheritedEntry.node)
+const isOverridden = <T extends { node: string }>(inheritedEntry: { node: string }, direct: T[]): boolean => hasNode(direct, inheritedEntry.node)
 
 export {
   diffNodes,

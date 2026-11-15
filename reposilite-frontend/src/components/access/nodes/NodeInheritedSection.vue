@@ -14,9 +14,11 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { ref, useId } from 'vue'
+<script setup lang="ts">
+import { ref, useId, type PropType } from 'vue'
+import type { InheritedEntry } from './inheritedNodes'
 import { inheritedSourceLabel, isOverridden } from './nodeList'
+import type { NodeEntry } from './permissionNodesApi'
 
 /*
  * The nodes a subject gets from teams, read only. The section is open to start with and a button
@@ -26,17 +28,17 @@ import { inheritedSourceLabel, isOverridden } from './nodeList'
 defineProps({
   /** [{ node, allowed, source, subject, depth }] */
   inherited: {
-    type: Array,
+    type: Array as PropType<InheritedEntry[]>,
     required: true
   },
   /** The nodes held directly: the draft list of the editor. */
   direct: {
-    type: Array,
+    type: Array as PropType<NodeEntry[]>,
     default: () => []
   },
   /** One line for each team whose nodes could not be read. */
   warnings: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   }
 })

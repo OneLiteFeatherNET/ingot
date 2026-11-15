@@ -16,22 +16,22 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../../router/routes'
 import { createErrorToast } from '../../../helpers/toast'
 import CheckPermissionView from './CheckPermissionView.vue'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder: { session: unknown } = vi.hoisted(() => ({ session: null }))
 
 vi.mock('../../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? `${error}`
 }))
 
 const shell = { render: () => null }
@@ -65,18 +65,25 @@ const DENIED = {
   ]
 }
 
-const failure = (status, message, problems) =>
+const failure = (status: number, message: string, problems?: unknown[]) =>
   Object.assign(new Error(message), { response: { status, data: { message, problems } } })
 
+// The identity endpoints the view calls, as fakes.
+interface IdentityFake {
+  check: Mock
+  principals: { list: Mock; get: Mock }
+  nodes: { catalog: Mock }
+}
+
 describe('CheckPermissionView', () => {
-  let wrapper
-  let router
-  let identity
+  let wrapper: VueWrapper
+  let router: Router
+  let identity: IdentityFake
 
   const mountView = async (url = '/access/check') => {
     router = createRouter({
       history: createMemoryHistory(),
-      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+      routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
     })
     await router.push(url)
     await router.isReady()
@@ -84,7 +91,7 @@ describe('CheckPermissionView', () => {
     await flushPromises()
   }
 
-  const type = async (field, value) => {
+  const type = async (field: string, value: string) => {
     await wrapper.find(`[data-test="${field}"] input`).setValue(value)
   }
 
@@ -93,7 +100,7 @@ describe('CheckPermissionView', () => {
     await flushPromises()
   }
 
-  const text = (selector) => wrapper.find(`[data-test="${selector}"]`).text()
+  const text = (selector: string) => wrapper.find(`[data-test="${selector}"]`).text()
 
   beforeEach(() => {
     identity = {
@@ -110,7 +117,6 @@ describe('CheckPermissionView', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
@@ -130,7 +136,7 @@ describe('CheckPermissionView', () => {
     it('fills the principal from the address and waits for a node', async () => {
       await mountView('/access/check?principal=alice')
 
-      expect(wrapper.find('[data-test="principal-field"] input').element.value).toBe('alice')
+      expect((wrapper.find('[data-test="principal-field"] input').element as HTMLInputElement).value).toBe('alice')
       expect(identity.check).not.toHaveBeenCalled()
     })
 
@@ -159,8 +165,8 @@ describe('CheckPermissionView', () => {
     it('fills the form from the address', async () => {
       await mountView(`/access/check?principal=alice&node=${NODE}&token=deploy`)
 
-      expect(wrapper.find('[data-test="node-field"] input').element.value).toBe(NODE)
-      expect(wrapper.find('select[data-test="token-select"]').element.value).toBe('deploy')
+      expect((wrapper.find('[data-test="node-field"] input').element as HTMLInputElement).value).toBe(NODE)
+      expect((wrapper.find('select[data-test="token-select"]').element as HTMLInputElement).value).toBe('deploy')
     })
 
     it('asks again when the address changes to another question', async () => {
@@ -384,7 +390,7 @@ describe('CheckPermissionView', () => {
       await input.trigger('keydown', { key: 'ArrowDown' })
       await input.trigger('keydown', { key: 'Enter' })
 
-      expect(input.element.value).toBe('ci-bot')
+      expect((input.element as HTMLInputElement).value).toBe('ci-bot')
     })
 
     it('suggests nodes of the catalog', async () => {
@@ -403,7 +409,7 @@ describe('CheckPermissionView', () => {
 
       await wrapper.find('[data-test="node-field"] [data-test="option"]').trigger('click')
 
-      expect(wrapper.find('[data-test="node-field"] input').element.value).toBe('ingot.repository.releases.read')
+      expect((wrapper.find('[data-test="node-field"] input').element as HTMLInputElement).value).toBe('ingot.repository.releases.read')
     })
 
     it('accepts a node that is not in the catalog', async () => {
@@ -498,7 +504,7 @@ describe('CheckPermissionView', () => {
 
   describe('while the check runs', () => {
     it('shows a loading state until the answer arrives', async () => {
-      let answer
+      let answer: (value: unknown) => void = () => {}
       identity.check.mockReturnValue(new Promise(resolve => { answer = resolve }))
 
       await mountView(`/access/check?principal=alice&node=${NODE}`)
@@ -567,7 +573,7 @@ describe('CheckPermissionView', () => {
       await flushPromises()
     }
 
-    const chooseAction = async (action) => {
+    const chooseAction = async (action: string) => {
       await wrapper.find('[data-test="artifact-action"] select').setValue(action)
       await flushPromises()
     }

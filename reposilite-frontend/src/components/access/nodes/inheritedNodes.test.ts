@@ -15,22 +15,22 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { MAX_TEAM_DEPTH, collectInheritedNodes } from './inheritedNodes'
+import { MAX_TEAM_DEPTH, collectInheritedNodes, type TeamNodes } from './inheritedNodes'
 
 /*
  * The walk is driven by a fake fetchTeam over a plain object that stands for the team tree, so
  * nothing here reads a network or waits on a timer.
  */
 
-const allow = (node) => ({ node, allowed: true })
+const allow = (node: string) => ({ node, allowed: true })
 
-const tree = (teams) => vi.fn(async (name) => {
+const tree = (teams: Record<string, TeamNodes>) => vi.fn(async (name: string) => {
   if (!(name in teams)) throw new Error(`No team ${name}`)
   return teams[name]
 })
 
-const chain = (length) => Object.fromEntries(
-  Array.from({ length }, (_, index) => [
+const chain = (length: number): Record<string, TeamNodes> => Object.fromEntries(
+  Array.from({ length }, (_: unknown, index: number): [string, TeamNodes] => [
     `t${index}`,
     { nodes: [allow(`ingot.admin.t${index}`)], parents: index < length - 1 ? [`t${index + 1}`] : [] }
   ])

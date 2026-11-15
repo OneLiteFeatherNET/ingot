@@ -14,8 +14,11 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
+import type { PropType } from 'vue'
 import NodeRow from './NodeRow.vue'
+import type { TreeItem } from './nodeTree'
+import type { NodeEntry } from './permissionNodesApi'
 
 /*
  * The nodes as a tree grouped by dot segment (see nodeTree.js). A group shows its segment; a leaf
@@ -24,7 +27,7 @@ import NodeRow from './NodeRow.vue'
  */
 defineProps({
   items: {
-    type: Array,
+    type: Array as PropType<TreeItem<NodeEntry>[]>,
     required: true
   },
   readonly: {
@@ -32,7 +35,7 @@ defineProps({
     default: false
   },
   rowErrors: {
-    type: Object,
+    type: Object as PropType<Record<string, string>>,
     default: () => ({})
   }
 })
@@ -57,8 +60,8 @@ const emit = defineEmits(['toggle', 'remove'])
         :label="item.segment"
         :readonly="readonly"
         :error="rowErrors[item.entry.node] ?? ''"
-        @toggle="(allowed) => emit('toggle', item.entry.node, allowed)"
-        @remove="emit('remove', item.entry.node)"
+        @toggle="(allowed) => emit('toggle', item.entry?.node, allowed)"
+        @remove="emit('remove', item.entry?.node)"
       />
       <p
         v-else

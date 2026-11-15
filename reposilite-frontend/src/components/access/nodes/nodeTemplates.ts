@@ -19,15 +19,17 @@
  * the client fills the placeholder. Pure.
  */
 
+import type { NodeTemplate } from './permissionNodesApi'
+
 const PLACEHOLDER = '{repository}'
 const GROUP_PLACEHOLDER = '{groupId}'
 const ARTIFACT_PLACEHOLDER = '{artifactId}'
 
 /** True when the template has a {repository} placeholder and so needs a repository. */
-const needsRepository = (template) => (template?.nodes ?? []).some(node => node.includes(PLACEHOLDER))
+const needsRepository = (template?: Pick<NodeTemplate, 'nodes'> | null): boolean => (template?.nodes ?? []).some(node => node.includes(PLACEHOLDER))
 
 /** True when the template has a {groupId} or {artifactId} placeholder and so needs an artifact. */
-const needsArtifact = (template) =>
+const needsArtifact = (template?: Pick<NodeTemplate, 'nodes'> | null): boolean =>
   (template?.nodes ?? []).some(node => node.includes(GROUP_PLACEHOLDER) || node.includes(ARTIFACT_PLACEHOLDER))
 
 /**
@@ -35,7 +37,12 @@ const needsArtifact = (template) =>
  * by the groupId and {artifactId} by the artifactId. An empty artifactId takes its colon with it, so
  * `ingot.artifact.{groupId}:{artifactId}.read` becomes `ingot.artifact.net.read`.
  */
-const fillTemplate = (template, repository, artifact = {}) => {
+export interface ArtifactCoordinates {
+  groupId?: string
+  artifactId?: string
+}
+
+const fillTemplate = (template: Pick<NodeTemplate, 'nodes'> | null | undefined, repository: string | null | undefined, artifact: ArtifactCoordinates = {}): string[] => {
   const groupId = artifact.groupId ?? ''
   const artifactId = artifact.artifactId ?? ''
   return (template?.nodes ?? []).map(node => node
@@ -50,10 +57,15 @@ const fillTemplate = (template, repository, artifact = {}) => {
  * new (allowed), `skipped` the node texts that were already listed. A node already listed keeps
  * its own allowed value.
  */
-const applyTemplate = (template, repository, existing, artifact = {}) => {
+const applyTemplate = (
+  template: Pick<NodeTemplate, 'nodes'> | null | undefined,
+  repository: string | null | undefined,
+  existing: { node: string }[] | null | undefined,
+  artifact: ArtifactCoordinates = {}
+): { added: { node: string; allowed: boolean }[]; skipped: string[] } => {
   const listed = new Set((existing ?? []).map(entry => entry.node))
-  const added = []
-  const skipped = []
+  const added: { node: string; allowed: boolean }[] = []
+  const skipped: string[] = []
   for (const node of fillTemplate(template, repository, artifact)) {
     if (listed.has(node)) {
       skipped.push(node)
@@ -66,7 +78,7 @@ const applyTemplate = (template, repository, existing, artifact = {}) => {
 }
 
 // The actions a repository role grants, as the server's migration and its node templates write them.
-const ROLE_ACTIONS = {
+const ROLE_ACTIONS: Record<string, string[]> = {
   READ: ['read'],
   DEPLOY: ['read', 'deploy'],
   MAINTAIN: ['read', 'deploy', 'delete'],
@@ -74,7 +86,7 @@ const ROLE_ACTIONS = {
 }
 
 /** The nodes a repository role grants on one repository. The server refuses a repository-wide grant, so this is the write. */
-const repositoryRoleNodes = (role, repository) =>
+const repositoryRoleNodes = (role: string, repository: string): string[] =>
   (ROLE_ACTIONS[role] ?? []).map(action => `ingot.repository.${repository}.${action}`)
 
 export { PLACEHOLDER, ROLE_ACTIONS, applyTemplate, fillTemplate, needsArtifact, needsRepository, repositoryRoleNodes }

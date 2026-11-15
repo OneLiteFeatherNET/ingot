@@ -16,7 +16,7 @@
 
 import { ref } from 'vue'
 import { errorMessage } from '../../../helpers/toast'
-import { collectInheritedNodes } from './inheritedNodes'
+import { collectInheritedNodes, type InheritedEntry, type TeamNodes } from './inheritedNodes'
 
 /*
  * The nodes a subject inherits from teams, read for the editor's inherited section.
@@ -31,10 +31,23 @@ import { collectInheritedNodes } from './inheritedNodes'
  *
  * Nothing throws. A load that a newer load overtook is dropped.
  */
-export function useInheritedNodes(getSource, getApi) {
-  const entries = ref([])
-  const warnings = ref([])
-  const status = ref('idle')
+/** The first level of teams to read, and their depth. */
+export interface InheritedSource {
+  teams?: string[] | null
+  depth: number
+}
+
+export type InheritedStatus = 'idle' | 'loading' | 'ready'
+
+/** The part of teamParentsApi this composable reads. */
+export interface TeamReader {
+  team: (name: string) => Promise<TeamNodes>
+}
+
+export function useInheritedNodes(getSource: () => InheritedSource, getApi: () => TeamReader) {
+  const entries = ref<InheritedEntry[]>([])
+  const warnings = ref<string[]>([])
+  const status = ref<InheritedStatus>('idle')
 
   let latest = 0
 
@@ -50,7 +63,7 @@ export function useInheritedNodes(getSource, getApi) {
     status.value = 'loading'
     try {
       const api = getApi()
-      const fetchTeam = async (name) => {
+      const fetchTeam = async (name: string) => {
         try {
           return await api.team(name)
         } catch (error) {

@@ -14,10 +14,12 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
+import type { PropType } from 'vue'
 import MdIconButton from '../../md/MdIconButton.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
 import SegmentedOption from '../../tokens/SegmentedOption.vue'
+import type { NodeEntry } from './permissionNodesApi'
 
 /*
  * One permission node: the node in monospace, an Allow/Deny choice and a remove button. `label`
@@ -27,7 +29,7 @@ import SegmentedOption from '../../tokens/SegmentedOption.vue'
  */
 defineProps({
   entry: {
-    type: Object,
+    type: Object as PropType<NodeEntry>,
     required: true
   },
   label: {

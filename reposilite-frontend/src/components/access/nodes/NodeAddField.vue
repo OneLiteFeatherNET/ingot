@@ -14,12 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, useId } from 'vue'
+<script setup lang="ts">
+import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../../md/MdButton.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import { parseNode } from './nodeGrammar'
-import { groupSuggestions, hasNode, suggestWithArtifacts } from './nodeList'
+import { groupSuggestions, hasNode, suggestWithArtifacts, type Suggestion } from './nodeList'
+import type { CatalogItem, NodeEntry } from './permissionNodesApi'
 
 /*
  * The field that adds a node. It is a combobox: as the text changes, the catalog nodes that contain
@@ -37,12 +38,12 @@ import { groupSuggestions, hasNode, suggestWithArtifacts } from './nodeList'
 const props = defineProps({
   /** The nodes already listed (the draft). */
   nodes: {
-    type: Array,
+    type: Array as PropType<NodeEntry[]>,
     default: () => []
   },
   /** [{ node, description, kind }] */
   catalog: {
-    type: Array,
+    type: Array as PropType<CatalogItem[]>,
     default: () => []
   }
 })
@@ -51,7 +52,7 @@ const emit = defineEmits(['add'])
 
 const inputId = `node-add-${useId()}`
 const listboxId = `${inputId}-listbox`
-const optionId = (index) => `${inputId}-option-${index}`
+const optionId = (index: number): string => `${inputId}-option-${index}`
 
 const text = ref('')
 const open = ref(false)
@@ -78,13 +79,13 @@ const reset = () => {
   open.value = false
 }
 
-const add = (node) => {
+const add = (node: string) => {
   emit('add', node)
   reset()
 }
 
 // A continuation is not a node yet: it fills the field and keeps the list open for the next part.
-const pick = (item) => {
+const pick = (item: Suggestion) => {
   if (item.continuation) {
     text.value = item.node
     active.value = -1
@@ -98,13 +99,13 @@ const submit = () => {
   if (canAdd.value) add(trimmed.value)
 }
 
-const onInput = (value) => {
+const onInput = (value: string) => {
   text.value = value
   open.value = true
   active.value = -1
 }
 
-const move = (step) => {
+const move = (step: number) => {
   const count = suggestions.value.length
   if (count === 0) return
   if (!open.value) {
@@ -115,7 +116,7 @@ const move = (step) => {
   active.value = (active.value + step + count) % count
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     move(1)
