@@ -199,7 +199,43 @@ class GcsStorageProvider internal constructor(
             lastModifiedTime = updated,
         )
 
-    override fun removeFile(location: Location): Result<Unit, ErrorResponse> = TODO("removal lands in a later change of the series")
+    /**
+     * Removes the object of [location] and every object below it as a directory (design D7). The root is refused before any request, so a
+     * bad location cannot empty the bucket. The removal is not atomic: a failure part way leaves some objects, and a repeated call removes
+     * the rest, because an object that is already gone counts as removed.
+     */
+    override fun removeFile(location: Location): Result<Unit, ErrorResponse> {
+        val path = location.toString().replace('\\', '/')
+        if (path.isBlank() || path == ".") {
+            return badRequestError("Cannot remove repository root")
+        }
+        return try {
+            deleteIfPresent(objectName(location))
+            removeObjectsUnder(directoryPrefix(location))
+            ok(Unit)
+        } catch (exception: Exception) {
+            failed("remove $location", exception)
+        }
+    }
+
+    /** Deletes the objects under [prefix] in pages. Each page is listed again after its deletes, so no cursor is needed. */
+    private fun removeObjectsUnder(prefix: String) {
+        while (true) {
+            val page = client.list(prefix, null, MAX_DELETE_PAGE)
+            if (page.isEmpty()) {
+                return
+            }
+            page.forEach { deleteIfPresent(it.name) }
+        }
+    }
+
+    private fun deleteIfPresent(name: String) {
+        try {
+            client.delete(name)
+        } catch (_: GcsNotFoundException) {
+            // Already removed, by an earlier call or another writer
+        }
+    }
 
     /** The entries directly below [location]: its objects, and one entry for each deeper directory. An empty directory is not found. */
     override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> =
@@ -250,5 +286,10 @@ class GcsStorageProvider internal constructor(
     override fun usage(): Result<Long, ErrorResponse> = TODO("capabilities land in a later change of the series")
 
     override fun canHold(contentLength: Long): Result<Long, ErrorResponse> = TODO("capabilities land in a later change of the series")
+
+    private companion object {
+        /** The most objects that one listing of a removal asks for. */
+        const val MAX_DELETE_PAGE = 1000
+    }
 
 }
