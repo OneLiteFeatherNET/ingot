@@ -52,6 +52,15 @@ interface StorageProviderContext {
     fun createProvider(settings: StorageProviderSettings): StorageProvider =
         throw UnsupportedOperationException("This server does not build nested storage providers for '${settings.type}'")
 
+    /**
+     * The value of an environment setting of a storage provider, given without its prefix, for example `AZURE_ACCOUNT`. The variable
+     * `INGOT_AZURE_ACCOUNT` is read first, and `REPOSILITE_AZURE_ACCOUNT` is the fallback when it is not set. Null when neither is set.
+     *
+     * @throws IllegalArgumentException when [name] is not made of upper case letters, digits and underscores
+     */
+    fun environment(name: String): String? =
+        throw UnsupportedOperationException("This server does not read environment settings for '$name'")
+
     companion object {
 
         internal fun of(
@@ -59,8 +68,10 @@ interface StorageProviderContext {
             failureFacade: FailureFacade,
             workingDirectory: Path,
             repositoryName: String,
+            environment: (String) -> String? = { System.getenv(it) },
             nested: (StorageProviderSettings) -> StorageProvider = { throw StorageProviderNotInstalledException(it.type) },
-        ): StorageProviderContext = DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName, nested)
+        ): StorageProviderContext =
+            DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName, environment, nested)
 
     }
 
@@ -93,10 +104,20 @@ private class DefaultStorageProviderContext(
     override val failureFacade: FailureFacade,
     override val workingDirectory: Path,
     override val repositoryName: String,
+    private val variables: (String) -> String?,
     private val nested: (StorageProviderSettings) -> StorageProvider,
 ) : StorageProviderContext {
 
     override fun createProvider(settings: StorageProviderSettings): StorageProvider =
         nested(settings)
 
+    override fun environment(name: String): String? {
+        require(ENVIRONMENT_NAME.matches(name)) {
+            "'$name' is not an environment setting name, use upper case letters, digits and underscores"
+        }
+        return variables("INGOT_$name") ?: variables("REPOSILITE_$name")
+    }
+
 }
+
+private val ENVIRONMENT_NAME = Regex("[A-Z][A-Z0-9_]*")
