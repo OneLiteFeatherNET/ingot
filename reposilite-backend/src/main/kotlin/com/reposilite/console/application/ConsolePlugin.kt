@@ -20,6 +20,7 @@ import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.console.HelpCommand
 import com.reposilite.console.LevelCommand
 import com.reposilite.console.StopCommand
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.console.api.CommandsSetupEvent
 import com.reposilite.console.infrastructure.ConsoleAuthenticator
 import com.reposilite.console.infrastructure.ConsoleWebSocketHandler
@@ -90,7 +91,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
                 ConsoleEndpoint(
                     consoleFacade,
                     nodeId = ClusterSettings.instanceIdOf(ClusterSources.system()),
-                    audit = { extensions().emitEvent(it) },
+                    audit = this::emitConsoleAudit,
                 )
             )
         }
@@ -104,7 +105,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
                     consoleFacade = consoleFacade,
                     forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
                     trustedProxies = TrustedProxies.fromEnvironment(),
-                    audit = { extensions().emitEvent(it) },
+                    audit = this::emitConsoleAudit,
                 )
             )
             event.config.routes.sse(
@@ -131,6 +132,18 @@ internal class ConsolePlugin : ReposilitePlugin() {
         }
 
         return consoleFacade
+    }
+
+    /**
+     * Emits the audit event of a console command, which has already run when the event is emitted. A listener of the
+     * event is third-party code, so a failure is logged here and never changes the answer of the command.
+     */
+    private fun emitConsoleAudit(event: AuditEvent) {
+        try {
+            extensions().emitEvent(event)
+        } catch (failure: Exception) {
+            logger.error("Console | audit listener failed for ${event.action} (${failure::class.simpleName}: ${failure.message})")
+        }
     }
 
 }
