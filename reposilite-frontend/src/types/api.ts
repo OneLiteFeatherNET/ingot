@@ -1174,20 +1174,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/console/execute": {
+    "/api/console/commands": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Remote command execution
-         * @description Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command.
+         * Console command listing
+         * @description The registered console commands with their aliases, options, parameters, and the 'dangerous' and 'sensitive' flags. Used for help and completion.
          */
-        post: {
+        get: {
             parameters: {
                 query?: never;
                 header: {
@@ -1199,7 +1197,74 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Status of the executed command */
+                /** @description Command listing of the given version */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommandListing"];
+                    };
+                };
+                /** @description Error message related to the unauthorized access */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Error message when the token has no console area (ingot.admin.console) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remote command execution
+         * @description Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command or '/api/console/commands'. With 'structured=true' the answer carries an exit code and the output with its streams, and a dangerous command waits for 'confirm=true' (409 until then).
+         */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Answer with exit code, output streams and node instead of the plain status and response lines */
+                    structured?: string;
+                    /** @description Confirms a dangerous command in structured mode */
+                    confirm?: string;
+                };
+                header: {
+                    /** @description Name and secret provided as basic auth credentials */
+                    Authorization: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Status of the executed command (plain), or the structured answer when 'structured=true': exit code, node, and the output lines with their stream (stdout or stderr) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1233,6 +1298,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Structured call of a dangerous command without 'confirm=true'. Nothing ran. Body: error 'confirmationRequired', command, reason */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConfirmationRequiredResponse"];
                     };
                 };
             };
@@ -5068,6 +5142,21 @@ export interface components {
         CodeRequest: {
             code?: string | null;
         };
+        CommandDescriptor: {
+            aliases: string[];
+            dangerous: boolean;
+            description: string;
+            name: string;
+            options: components["schemas"]["OptionDescriptor"][];
+            parameters: components["schemas"]["ParameterDescriptor"][];
+            sensitive: boolean;
+            subcommands: string[];
+        };
+        CommandListing: {
+            commands: components["schemas"]["CommandDescriptor"][];
+            /** Format: int32 */
+            version: number;
+        };
         /** @enum {string} */
         CommandStatus: "SUCCEEDED" | "FAILED";
         ConfigurationInformation: {
@@ -5077,6 +5166,11 @@ export interface components {
             shared: {
                 [key: string]: components["schemas"]["JsonNode"];
             };
+        };
+        ConfirmationRequiredResponse: {
+            command: string;
+            error: string;
+            reason: string;
         };
         ConfirmedEnrolmentDto: {
             recoveryCodes?: string[] | null;
@@ -5382,6 +5476,11 @@ export interface components {
             name: string;
             version: string;
         };
+        OptionDescriptor: {
+            arity: string;
+            description: string;
+            names: string[];
+        };
         /** @enum {string} */
         Origin: "HOSTED" | "MIRROR";
         OutboxCounts: {
@@ -5421,6 +5520,12 @@ export interface components {
         OwnTeamDto: {
             name: string;
             parents: string[];
+        };
+        ParameterDescriptor: {
+            description: string;
+            index: string;
+            label: string;
+            required: boolean;
         };
         PlannedDeletion: {
             path: string;
