@@ -149,11 +149,11 @@ describe('identityTokens', () => {
     })
 
     it('formats the day of a year, month and day array the API sends for a LocalDate', () => {
-      expect(formatDate(localDateToDate([2026, 1, 9]))).toBe('2026-01-09')
+      expect(formatDate(localDateToDate([2026, 1, 9]) as Date)).toBe('2026-01-09')
     })
 
     it('formats an instant the API sends as epoch seconds', () => {
-      expect(formatDate(instantToDate(Date.parse('2026-10-15T23:30:00Z') / 1000))).toBe('2026-10-15')
+      expect(formatDate(instantToDate(Date.parse('2026-10-15T23:30:00Z') / 1000) as Date)).toBe('2026-10-15')
     })
 
     it('formats a timestamp with the time of day in UTC', () => {

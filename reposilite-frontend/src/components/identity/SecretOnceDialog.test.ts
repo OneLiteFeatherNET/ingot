@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SecretOnceDialog from './SecretOnceDialog.vue'
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
@@ -23,7 +23,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: toast.success,
   createErrorToast: toast.error,
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: { message?: string } | undefined) => error?.message ?? String(error)
 }))
 
 const SECRET = 'ingot_a1b2c3_0123456789abcdef'
@@ -31,12 +31,12 @@ const ORIGIN = window.location.origin
 const BEARER = `curl -H 'Authorization: Bearer ${SECRET}' ${ORIGIN}/api/auth/me`
 const BASIC = `curl -u 'laptop:${SECRET}' ${ORIGIN}/api/auth/me`
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const buttonByLabel = (label) =>
-  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === label)
+const dialog = () => document.querySelector('[role="dialog"]') as HTMLElement
+const buttonByLabel = (label: string) =>
+  [...dialog().querySelectorAll('button')].find(node => node.textContent?.trim() === label) as HTMLButtonElement
 
 describe('SecretOnceDialog', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   beforeEach(async () => {
     toast.success.mockClear()
@@ -46,7 +46,7 @@ describe('SecretOnceDialog', () => {
     wrapper = mount(SecretOnceDialog, {
       props: { modelValue: true, secret: SECRET, tokenName: 'laptop' },
       attachTo: document.body
-    })
+    }) as VueWrapper
     await flushPromises()
   })
 
@@ -56,7 +56,7 @@ describe('SecretOnceDialog', () => {
   })
 
   it('shows the secret in a monospace field', () => {
-    const input = dialog().querySelector('input[readonly]')
+    const input = dialog().querySelector('input[readonly]') as HTMLInputElement
 
     expect(input.value).toBe(SECRET)
     expect(input.className, 'a secret is easier to compare in a monospace face').toContain('font-mono')
@@ -71,7 +71,7 @@ describe('SecretOnceDialog', () => {
   })
 
   it('copies the secret and reports it in a snackbar', async () => {
-    const writeText = vi.fn().mockResolvedValue()
+    const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 
     buttonByLabel('Copy').click()
@@ -108,15 +108,15 @@ describe('SecretOnceDialog', () => {
     buttonByLabel('Close').click()
     await flushPromises()
 
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
   })
 
   describe('usage snippets', () => {
-    const snippet = (title) =>
-      dialog().querySelector(`[data-snippet="${title}"]`)
+    const snippet = (title: string) =>
+      dialog().querySelector(`[data-snippet="${title}"]`) as HTMLElement
 
     const allowClipboard = () => {
-      const writeText = vi.fn().mockResolvedValue()
+      const writeText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
       return writeText
     }

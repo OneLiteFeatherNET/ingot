@@ -14,11 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import type { PasswordApi } from './passwordApi'
+
 
 /*
  * The change password card.
@@ -31,22 +33,18 @@ import MdTextField from '../md/MdTextField.vue'
  *
  * The three passwords live in refs and are cleared after a success. Nothing is stored.
  */
-const props = defineProps({
-  api: {
-    type: Object,
-    required: true
-  },
-  available: {
-    type: Boolean,
-    default: true
-  },
-  focus: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  api: PasswordApi
+  available?: boolean
+  focus?: boolean
+}>(), {
+  available: true,
+  focus: false
 })
 
-const emit = defineEmits(['changed'])
+const emit = defineEmits<{
+  changed: []
+}>()
 
 const MIN_PASSWORD_LENGTH = 12
 
@@ -55,7 +53,7 @@ const next = ref('')
 const confirm = ref('')
 const submitted = ref(false)
 const busy = ref(false)
-const failure = ref(null)
+const failure = ref<string | null>(null)
 
 const currentError = computed(() => submitted.value && current.value === '')
 const nextError = computed(() => submitted.value && next.value.length < MIN_PASSWORD_LENGTH)

@@ -14,31 +14,32 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import RevokeTokenDialog from './RevokeTokenDialog.vue'
+import type { IdentityToken, IdentityTokenApi } from './identityTokens'
 
-const dialog = () => document.querySelector('[role="dialog"]')
+const dialog = () => document.querySelector('[role="dialog"]') as HTMLElement
 const revokeButton = () =>
-  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === 'Revoke')
+  [...dialog().querySelectorAll('button')].find(node => node.textContent?.trim() === 'Revoke') as HTMLButtonElement
 
-const type = (value) => {
-  const input = dialog().querySelector('input')
+const type = (value: string) => {
+  const input = dialog().querySelector('input') as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
   return flushPromises()
 }
 
 describe('RevokeTokenDialog', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: { revoke: Mock }
 
   beforeEach(async () => {
     api = { revoke: vi.fn().mockResolvedValue({ status: 204 }) }
     wrapper = mount(RevokeTokenDialog, {
-      props: { modelValue: true, token: { name: 'laptop' }, api },
+      props: { modelValue: true, token: { name: 'laptop' } as IdentityToken, api: api as unknown as IdentityTokenApi },
       attachTo: document.body
-    })
+    }) as VueWrapper
     await flushPromises()
   })
 
@@ -79,8 +80,8 @@ describe('RevokeTokenDialog', () => {
     await flushPromises()
 
     expect(api.revoke).toHaveBeenCalledWith('laptop')
-    expect(wrapper.emitted('revoked')[0]).toEqual([{ name: 'laptop' }])
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper.emitted('revoked')?.[0]).toEqual([{ name: 'laptop' }])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
   })
 
   it('shows a failed revoke inside the dialog', async () => {
@@ -91,7 +92,7 @@ describe('RevokeTokenDialog', () => {
     revokeButton().click()
     await flushPromises()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('Token not found')
+    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain('Token not found')
     expect(wrapper.emitted('revoked')).toBeUndefined()
   })
 })

@@ -14,27 +14,28 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PasswordCard from './PasswordCard.vue'
 
 const toast = vi.hoisted(() => ({ success: vi.fn() }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: toast.success,
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string } | undefined) =>
+    error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 describe('PasswordCard', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: { changePassword: Mock }
 
-  const mountCard = (props = {}) => {
-    wrapper = mount(PasswordCard, { props: { api, available: true, ...props }, attachTo: document.body })
+  const mountCard = (props: { available?: boolean } = {}) => {
+    wrapper = mount(PasswordCard, { props: { api, available: true, ...props }, attachTo: document.body }) as VueWrapper
     return wrapper
   }
 
-  const fill = async (current, next, confirm = next) => {
+  const fill = async (current: string, next: string, confirm = next) => {
     await wrapper.find('#account-current-password').setValue(current)
     await wrapper.find('#account-new-password').setValue(next)
     await wrapper.find('#account-confirm-password').setValue(confirm)
@@ -52,7 +53,6 @@ describe('PasswordCard', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
@@ -74,9 +74,9 @@ describe('PasswordCard', () => {
     await fill('old-password-12', 'new-password-123')
     await submit()
 
-    expect(wrapper.find('#account-current-password').element.value, 'a password must not linger in the form').toBe('')
-    expect(wrapper.find('#account-new-password').element.value).toBe('')
-    expect(wrapper.find('#account-confirm-password').element.value).toBe('')
+    expect(wrapper.find<HTMLInputElement>('#account-current-password').element.value, 'a password must not linger in the form').toBe('')
+    expect(wrapper.find<HTMLInputElement>('#account-new-password').element.value).toBe('')
+    expect(wrapper.find<HTMLInputElement>('#account-confirm-password').element.value).toBe('')
     expect(toast.success).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted('changed')).toHaveLength(1)
   })
@@ -128,7 +128,7 @@ describe('PasswordCard', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toContain('The current password is wrong')
     expect(toast.success).not.toHaveBeenCalled()
-    expect(wrapper.find('#account-new-password').element.value, 'the new password stays for another try').toBe('new-password-123')
+    expect(wrapper.find<HTMLInputElement>('#account-new-password').element.value, 'the new password stays for another try').toBe('new-password-123')
   })
 
   it('hides the form in token mode and says why', () => {

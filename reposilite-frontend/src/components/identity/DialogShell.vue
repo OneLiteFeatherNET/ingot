@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { VueFinalModal } from 'vue-final-modal'
 
 /*
@@ -28,22 +28,20 @@ import { VueFinalModal } from 'vue-final-modal'
  *               its own buttons close it
  * Emits update:modelValue, opened and closed.
  */
-defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  labelledby: {
-    type: String,
-    required: true
-  },
-  dismissable: {
-    type: Boolean,
-    default: true
-  }
+withDefaults(defineProps<{
+  modelValue?: boolean
+  labelledby: string
+  dismissable?: boolean
+}>(), {
+  modelValue: false,
+  dismissable: true
 })
 
-defineEmits(['update:modelValue', 'opened', 'closed'])
+defineEmits<{
+  'update:modelValue': [value: boolean]
+  opened: []
+  closed: []
+}>()
 
 // A scrim in the role colour. The modal's own stylesheet paints the overlay in a fixed black
 // and is not layered, so the colour goes in as an inline style that wins over it.

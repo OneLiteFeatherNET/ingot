@@ -14,9 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import TokenTag from '../tokens/TokenTag.vue'
+import type { Principal } from '../../store/session'
 
 /*
  * The read-only profile of the signed in principal. The server offers no self service profile
@@ -27,22 +28,16 @@ import TokenTag from '../tokens/TokenTag.vue'
  *   teams          the names of the principal's teams
  *   instanceAdmin  whether the principal administers the instance (shows a badge)
  */
-const props = defineProps({
-  principal: {
-    type: Object,
-    required: true
-  },
-  teams: {
-    type: Array,
-    default: () => []
-  },
-  instanceAdmin: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  principal: Principal
+  teams?: string[]
+  instanceAdmin?: boolean
+}>(), {
+  teams: () => [],
+  instanceAdmin: false
 })
 
-const KINDS = { USER: 'User', MACHINE: 'Machine' }
+const KINDS: Readonly<Record<string, string | undefined>> = { USER: 'User', MACHINE: 'Machine' }
 
 const kind = computed(() => KINDS[props.principal.kind] ?? props.principal.kind)
 const displayName = computed(() => props.principal.displayName || props.principal.name)

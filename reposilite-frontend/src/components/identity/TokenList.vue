@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
@@ -25,6 +25,7 @@ import RotateTokenDialog from './RotateTokenDialog.vue'
 import SecretOnceDialog from './SecretOnceDialog.vue'
 import { instantToDate, localDateToDate } from '../../helpers/apiTime'
 import { formatDate, formatDateTime, formatRelative } from './identityTokens'
+import type { IdentityToken, IdentityTokenApi, TokenSecret } from './identityTokens'
 
 /*
  * A card with the tokens of one principal and everything that changes them: the list, the
@@ -42,33 +43,25 @@ import { formatDate, formatDateTime, formatRelative } from './identityTokens'
  * The secret of a new or rotated token is kept in this component's memory only, and is
  * dropped when its dialog closes.
  */
-const props = defineProps({
-  api: {
-    type: Object,
-    required: true
-  },
-  title: {
-    type: String,
-    default: 'My tokens'
-  },
-  description: {
-    type: String,
-    default: 'Tokens sign in tools and scripts as you.'
-  },
-  emptyText: {
-    type: String,
-    default: 'You have no tokens yet. Create one to sign in a build tool or a script.'
-  }
+const props = withDefaults(defineProps<{
+  api: IdentityTokenApi
+  title?: string
+  description?: string
+  emptyText?: string
+}>(), {
+  title: 'My tokens',
+  description: 'Tokens sign in tools and scripts as you.',
+  emptyText: 'You have no tokens yet. Create one to sign in a build tool or a script.'
 })
 
-const tokens = ref([])
+const tokens = ref<IdentityToken[]>([])
 const loaded = ref(false)
 const loading = ref(false)
-const loadError = ref(null)
+const loadError = ref<string | null>(null)
 
 const createOpen = ref(false)
-const rotating = ref(null)
-const revoking = ref(null)
+const rotating = ref<IdentityToken | null>(null)
+const revoking = ref<IdentityToken | null>(null)
 const rotateOpen = ref(false)
 const revokeOpen = ref(false)
 
@@ -95,52 +88,52 @@ const load = async () => {
 
 onMounted(load)
 
-const showSecret = ({ token, secret }) => {
+const showSecret = ({ token, secret }: TokenSecret) => {
   shownSecret.value = { name: token?.name ?? '', value: secret }
   secretOpen.value = true
   load()
 }
 
-const closeSecret = (open) => {
+const closeSecret = (open: boolean) => {
   secretOpen.value = open
   if (!open) {
     shownSecret.value = { name: '', value: '' }
   }
 }
 
-const askRotate = (token) => {
+const askRotate = (token: IdentityToken) => {
   rotating.value = token
   rotateOpen.value = true
 }
 
-const askRevoke = (token) => {
+const askRevoke = (token: IdentityToken) => {
   revoking.value = token
   revokeOpen.value = true
 }
 
-const revoked = (token) => {
+const revoked = (token: IdentityToken) => {
   createSuccessToast(`Token ${token.name} revoked`)
   load()
 }
 
-const scopeText = (token) =>
+const scopeText = (token: IdentityToken): string[] | null =>
   token.scopes === null || token.scopes === undefined ? null : token.scopes
 
 defineExpose({ reload: load })
 // The wire values of a token: createdAt is a LocalDate, expiresAt and lastUsedAt are Instants.
-const createdDay = (token) => {
+const createdDay = (token: IdentityToken) => {
   const date = localDateToDate(token.createdAt)
   return date ? formatDate(date) : ''
 }
-const expiryDay = (token) => {
+const expiryDay = (token: IdentityToken) => {
   const date = instantToDate(token.expiresAt)
   return date ? formatDate(date) : ''
 }
-const lastUsedTitle = (token) => {
+const lastUsedTitle = (token: IdentityToken) => {
   const date = instantToDate(token.lastUsedAt)
   return date ? formatDateTime(date) : undefined
 }
-const lastUsedText = (token) => {
+const lastUsedText = (token: IdentityToken) => {
   const date = instantToDate(token.lastUsedAt)
   return date ? formatRelative(date) : 'Never used'
 }

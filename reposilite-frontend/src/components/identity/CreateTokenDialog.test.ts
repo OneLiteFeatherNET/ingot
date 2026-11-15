@@ -14,52 +14,56 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import CreateTokenDialog from './CreateTokenDialog.vue'
+import type { IdentityTokenApi } from './identityTokens'
+import type { components } from '../../types/api'
 import { setClock, resetClock } from '../../helpers/clock'
+
+type CreateTokenRequest = components['schemas']['CreateTokenRequest']
 
 // 2026-06-15 12:00:00 UTC: the expiry is counted from the injected clock, never the system time.
 const FIXED = new Date(Date.UTC(2026, 5, 15, 12))
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const field = (id) => document.getElementById(id)
-const segment = (label) =>
-  [...dialog().querySelectorAll('[role="radio"]')].find(node => node.textContent.trim() === label)
+const dialog = () => document.querySelector('[role="dialog"]') as HTMLElement
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
+const segment = (label: string) =>
+  [...dialog().querySelectorAll('[role="radio"]')].find(node => node.textContent?.trim() === label) as HTMLElement
 const createButton = () =>
-  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === 'Create')
+  [...dialog().querySelectorAll('button')].find(node => node.textContent?.trim() === 'Create') as HTMLButtonElement
 const NEVER_WARNING = 'Tokens without expiry stay valid until revoked. Prefer an expiry and rotate the token.'
 
-const type = (id, value) => {
+const type = (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
 }
 
 const submit = async () => {
-  dialog().querySelector('form').dispatchEvent(new Event('submit'))
+  (dialog().querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'))
   await flushPromises()
 }
 
-const pick = async (label) => {
+const pick = async (label: string) => {
   segment(label).click()
   await flushPromises()
 }
 
-const choose = async (id) => {
+const choose = async (id: string) => {
   field(id).click()
   await flushPromises()
 }
 
 describe('CreateTokenDialog', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: { create: Mock<(body: CreateTokenRequest) => unknown> }
 
   beforeEach(async () => {
     setClock(() => FIXED)
     api = {
       create: vi.fn().mockResolvedValue({ data: { token: { name: 'laptop' }, secret: 's3cr3t' } })
     }
-    wrapper = mount(CreateTokenDialog, { props: { modelValue: true, api, locale: 'en-GB' }, attachTo: document.body })
+    wrapper = mount(CreateTokenDialog, { props: { modelValue: true, api: api as unknown as IdentityTokenApi, locale: 'en-GB' }, attachTo: document.body }) as VueWrapper
     await flushPromises()
   })
 
@@ -70,9 +74,9 @@ describe('CreateTokenDialog', () => {
   })
 
   it('names the dialog after its heading', () => {
-    const heading = dialog().querySelector('h2')
+    const heading = dialog().querySelector('h2') as HTMLHeadingElement
 
-    expect(heading.textContent.trim()).toBe('Create token')
+    expect(heading.textContent?.trim()).toBe('Create token')
     expect(dialog().getAttribute('aria-labelledby'), 'screen readers announce the dialog by its heading')
       .toBe(heading.id)
   })
@@ -141,16 +145,16 @@ describe('CreateTokenDialog', () => {
   })
 
   it('shows what each access choice allows, beside its radio', () => {
-    expect(dialog().querySelector('#create-token-access-all-help').textContent.trim()).toBe('Everything your teams allow')
-    expect(dialog().querySelector('#create-token-access-read-help').textContent.trim()).toBe('Download artifacts, no deploy')
+    expect(dialog().querySelector('#create-token-access-all-help')?.textContent?.trim()).toBe('Everything your teams allow')
+    expect(dialog().querySelector('#create-token-access-read-help')?.textContent?.trim()).toBe('Download artifacts, no deploy')
   })
 
   it('hands the new token and its secret to the parent and closes', async () => {
     type('create-token-name', 'laptop')
     await submit()
 
-    expect(wrapper.emitted('created')[0][0]).toEqual({ token: { name: 'laptop' }, secret: 's3cr3t' })
-    expect(wrapper.emitted('update:modelValue')[0], 'the dialog asks to be closed').toEqual([false])
+    expect(wrapper.emitted('created')?.[0]?.[0]).toEqual({ token: { name: 'laptop' }, secret: 's3cr3t' })
+    expect(wrapper.emitted('update:modelValue')?.[0], 'the dialog asks to be closed').toEqual([false])
   })
 
   it('shows the failure inside the dialog and keeps it open', async () => {
@@ -160,7 +164,7 @@ describe('CreateTokenDialog', () => {
     type('create-token-name', 'laptop')
     await submit()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain("Token 'laptop' already exists")
+    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain("Token 'laptop' already exists")
     expect(wrapper.emitted('created'), 'a failed create hands nothing on').toBeUndefined()
   })
 
@@ -176,20 +180,20 @@ describe('CreateTokenDialog', () => {
   it('shows the resulting date under the control, in the dialog locale', async () => {
     await pick('30 days')
 
-    expect(dialog().querySelector('#create-token-expiry-note').textContent.trim()).toBe('Expires on 15 Jul 2026')
+    expect(dialog().querySelector('#create-token-expiry-note')?.textContent?.trim()).toBe('Expires on 15 Jul 2026')
   })
 
   it('warns in error tone when the token never expires', async () => {
     await pick('No expiry')
 
-    const note = dialog().querySelector('#create-token-expiry-note')
+    const note = dialog().querySelector('#create-token-expiry-note') as HTMLElement
 
-    expect(note.textContent.trim()).toBe(NEVER_WARNING)
+    expect(note.textContent?.trim()).toBe(NEVER_WARNING)
     expect(note.classList.contains('text-error'), 'the warning is in the error tone').toBe(true)
   })
 
   it('does not warn about an expiry the token has', () => {
-    const note = dialog().querySelector('#create-token-expiry-note')
+    const note = dialog().querySelector('#create-token-expiry-note') as HTMLElement
 
     expect(note.classList.contains('text-error')).toBe(false)
   })
@@ -236,7 +240,7 @@ describe('CreateTokenDialog', () => {
 
   describe('advanced: limit to artifacts', () => {
     const limit = () => field('create-token-limit')
-    const actionBox = (word) => field(`create-token-action-${word}`)
+    const actionBox = (word: string) => field(`create-token-action-${word}`)
     const groupField = () => field('create-token-artifact-group')
     const artifactField = () => field('create-token-artifact-id')
     const repositoryField = () => field('create-token-artifact-repository')
@@ -244,7 +248,7 @@ describe('CreateTokenDialog', () => {
       limit().click()
       await flushPromises()
     }
-    const tick = async (word) => {
+    const tick = async (word: string) => {
       actionBox(word).click()
       await flushPromises()
     }
