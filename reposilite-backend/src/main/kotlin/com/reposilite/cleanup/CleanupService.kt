@@ -75,9 +75,14 @@ class CleanupService internal constructor(
     private val runs: CleanupRunRepository,
     private val extensions: Extensions = Extensions(journalist),
     private val claims: ScheduledJobClaims = ScheduledJobClaims.Unshared,
+    /** The schedule tick that the timer runs, see [runScheduledTick]. */
+    private val scheduledTick: () -> Unit = {},
 ) : Facade {
 
     private val running = ConcurrentHashMap.newKeySet<String>()
+
+    /** Runs one tick of the cleanup schedule, the same tick the timer runs. The timer does not depend on this call. */
+    internal fun runScheduledTick() = scheduledTick()
 
     /** Lists what a run would delete, and deletes nothing. */
     fun preview(policyId: String): Result<CleanupPreview, ErrorResponse> {

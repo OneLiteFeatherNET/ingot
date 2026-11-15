@@ -58,6 +58,8 @@ internal class CleanupPlugin : ReposilitePlugin() {
         val repositoryRegistry = facade<RepositoryRegistry>()
         // One claim store for the service and the scheduler, so that the day lease and the run lease have the same owner.
         val claims = SqlScheduledJobClaims(reposilite().database, clock)
+        // The service exposes the scheduler tick and the scheduler starts runs through the service, so one is late-bound.
+        lateinit var scheduler: CleanupScheduler
 
         val service = CleanupService(
             journalist = this,
@@ -78,10 +80,11 @@ internal class CleanupPlugin : ReposilitePlugin() {
             runs = SqlCleanupRunRepository(reposilite().database),
             extensions = extensions(),
             claims = claims,
+            scheduledTick = { scheduler.runTick() },
         )
 
         val readOnlyFacade = facade<ReadOnlyFacade>()
-        val scheduler = CleanupScheduler(
+        scheduler = CleanupScheduler(
             clock = clock,
             policies = { cleanupSettings.get().policies },
             // The run is synchronous, so the scheduler can mark the day done once it has ended. The tick runs on the
