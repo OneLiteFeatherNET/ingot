@@ -14,33 +14,31 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, useId } from 'vue'
 import MdRadio from '../md/MdRadio.vue'
-import { WRITE_CHOICES } from './writePolicy'
+import { WRITE_CHOICES, type WriteChoice } from './writePolicy'
 
 /*
  * The write policy of a hosted repository as one radio group. Each choice has its help text under it, linked to its
  * radio, so the explanation is read with the choice. Read only is offered only when the schema has the readOnly field.
  * The value is the choice, and the page turns it into the stored keys (writePolicyChange).
  */
-const props = defineProps({
-  modelValue: {
-    type: String,
-    required: true
-  },
-  offerReadOnly: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  modelValue: WriteChoice
+  offerReadOnly?: boolean
+}>(), {
+  offerReadOnly: false
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: WriteChoice]
+}>()
 
 const name = `write-policy-${useId()}`
 
 // The help line of each choice names the status code the choice answers.
-const HELP = {
+const HELP: Record<WriteChoice, string> = {
   allow: 'Deploys are accepted.',
   allowOnce: 'The first deploy of each file is accepted; a later deploy of the same file is refused with 409.',
   readOnly: 'Deploys and deletes are refused with 405 Method Not Allowed. Reads are not affected. If the instance is in read-only mode, every repository answers 503 first.'

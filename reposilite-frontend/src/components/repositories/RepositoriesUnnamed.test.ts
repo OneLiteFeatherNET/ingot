@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import RepositoriesView from './RepositoriesView.vue'
@@ -32,7 +32,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? String(error)
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -43,11 +43,10 @@ vi.mock('../../store/placeholders', () => ({
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 // The first entry has no id; the other two are ordinary repositories.
@@ -83,14 +82,14 @@ const mountList = async ({ address = '/settings/repositories' } = {}) => {
 
 const rowHeaders = () => wrapper.findAll('tbody th[scope="row"]').map(cell => cell.text())
 const unnamedRow = () => wrapper.findAll('tbody tr').find(row => row.text().includes('Unnamed repository'))
-const buttonLabelled = (label) => wrapper.find(`[aria-label="${label}"]`)
+const buttonLabelled = (label: string) => wrapper.find(`[aria-label="${label}"]`)
 // The Actions menu is teleported to the body: its items are read from the document, after the row's button opened it.
-const menuItemLabelled = (label) => document.querySelector(`[role="menu"] [aria-label="${label}"]`)
-const openActionsOf = async (name) => {
+const menuItemLabelled = (label: string) => document.querySelector<HTMLElement>(`[role="menu"] [aria-label="${label}"]`)!
+const openActionsOf = async (name: string) => {
   buttonLabelled(`Actions for ${name}`).trigger('click')
   await flushPromises()
 }
-const sortButton = (label) => wrapper.findAll('thead th').find(header => header.text().startsWith(label)).find('button')
+const sortButton = (label: string) => wrapper.findAll('thead th').find(header => header.text().startsWith(label))!.find('button')
 const deleteDialog = () => document.querySelector('#delete-entry-form')
 
 describe('the repositories page with an entry that has no id', () => {
@@ -116,7 +115,7 @@ describe('the repositories page with an entry that has no id', () => {
   it('filters the other repositories and keeps the unnamed entry out of an id match', async () => {
     await mountList()
 
-    const input = wrapper.find('input[type="search"], input[type="text"]')
+    const input = wrapper.find<HTMLInputElement>('input[type="search"], input[type="text"]')
     input.element.value = 'snap'
     input.trigger('input')
     await flushPromises()
@@ -150,14 +149,14 @@ describe('the repositories page with an entry that has no id', () => {
     await openActionsOf('Unnamed repository')
     menuItemLabelled('Delete Unnamed repository').click()
     await flushPromises()
-    const input = document.querySelector('#delete-entry-confirm-input')
+    const input = document.querySelector<HTMLInputElement>('#delete-entry-confirm-input')!
     input.value = 'unnamed'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
-    deleteDialog().dispatchEvent(new Event('submit', { cancelable: true }))
+    deleteDialog()!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(store.configurations.value.maven.repositories.map(entry => entry.id), 'only the named repositories remain')
+    expect((store.configurations.value.maven.repositories as { id: string }[]).map(entry => entry.id), 'only the named repositories remain')
       .toEqual(['releases', 'snapshots'])
     expect(wrapper.find('[data-test="status-message"]').text(), 'the status says the entry is deleted and not saved yet')
       .toContain('Unnamed repository deleted, not saved yet')

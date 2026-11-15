@@ -15,11 +15,11 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import RepositoriesView from './RepositoriesView.vue'
-import { loadedStore, repositorySchema, schemaFieldsOf } from './fixtures/repositories'
+import { loadedStore, repositorySchema, schemaFieldsOf, type RepositorySchema } from './fixtures/repositories'
 
 // The session and the toasts are replaced, so the page touches neither the network nor the DOM outside the table.
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null }, isManager: { value: false } }) }))
@@ -27,22 +27,21 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? String(error)
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
   frontendSecretsHidden: () => false
 }))
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 // A fresh router and store per test. The page is given the schema fields the served schema declares.
-const mountPage = async ({ schema, fields } = {}) => {
+const mountPage = async ({ schema, fields }: { schema?: RepositorySchema; fields?: string[] } = {}) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -65,17 +64,17 @@ const mountPage = async ({ schema, fields } = {}) => {
 }
 
 // A row is found by the text of its name link, since an unsaved row carries the Unsaved marker in the same cell.
-const rowOf = (id) => wrapper.findAll('tbody tr').find(row => row.find('th[scope="row"] a').text() === id)
-const headerOf = (label) => wrapper.findAll('th').find(header => header.text().startsWith(label))
-const sortButton = (label) => headerOf(label).find('button')
+const rowOf = (id: string) => wrapper.findAll('tbody tr').find(row => row.find('th[scope="row"] a').text() === id)!
+const headerOf = (label: string) => wrapper.findAll('th').find(header => header.text().startsWith(label))!
+const sortButton = (label: string) => headerOf(label).find('button')
 // The Actions menu is teleported to the body, so its items are read from the document.
-const menuItems = () => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
-const openActions = async (name) => {
+const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+const openActions = async (name: string) => {
   wrapper.find(`button[aria-label="Actions for ${name}"]`).trigger('click')
   await flushPromises()
 }
 const statusText = () => wrapper.findAll('[role="status"]').map(region => region.text()).join(' | ')
-const filterInput = () => wrapper.find('input[type="search"], input[type="text"]')
+const filterInput = () => wrapper.find<HTMLInputElement>('input[type="search"], input[type="text"]')
 
 describe('the repositories table', () => {
   it('captions the table with the shown and the total count', async () => {
@@ -180,7 +179,7 @@ describe('the repositories table', () => {
 
     await openActions('releases')
 
-    const edit = menuItems().find(item => item.getAttribute('aria-label') === 'Edit releases')
+    const edit = menuItems().find(item => item.getAttribute('aria-label') === 'Edit releases')!
     expect(edit.tagName, 'the Edit item is a link').toBe('A')
     expect(edit.getAttribute('href'), 'the link is the address of the repository detail').toBe('/settings/repositories/releases')
   })
@@ -201,14 +200,14 @@ describe('the repositories table', () => {
       const trigger = wrapper.find('button[aria-label="Actions for releases"]')
       await openActions('releases')
 
-      menuItems().find(item => item.getAttribute('aria-label') === 'Copy address of releases').click()
+      menuItems().find(item => item.getAttribute('aria-label') === 'Copy address of releases')!.click()
       await flushPromises()
 
       expect(writeText, 'the address is written to the clipboard').toHaveBeenCalledWith('https://repo.example.net/releases')
       expect(statusText(), 'the copy is reported').toContain('Copied')
       expect(document.activeElement, 'the focus returns to the Actions button').toBe(trigger.element)
     } finally {
-      delete navigator.clipboard
+      delete (navigator as { clipboard?: unknown }).clipboard
     }
   })
 
@@ -235,7 +234,7 @@ describe('the repositories table', () => {
   it('hides the low-priority columns below their breakpoint, Name, Type and Actions never', async () => {
     await mountPage()
 
-    const hidden = (label) => headerOf(label).classes()
+    const hidden = (label: string) => headerOf(label).classes()
     expect(hidden('Storage'), 'Storage is the first to go, shown from 2560 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[2560px]:table-cell']))
     expect(hidden('Version policy'), 'Version policy is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
     expect(hidden('Visibility'), 'Visibility is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))

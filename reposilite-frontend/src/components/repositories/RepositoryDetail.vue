@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, nextTick, onMounted, provide, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
@@ -27,12 +27,13 @@ import {
   blankEntriesRemovedBy,
   blankEntriesNotice,
   effectiveTypeOf,
-  isBlankEntry
+  isBlankEntry,
+  type Entry
 } from '../../store/maven/repositoryTypes'
 import TypeBadge from './TypeBadge.vue'
 import WritePolicyField from './WritePolicyField.vue'
 import DeclareTypeDialog from './DeclareTypeDialog.vue'
-import { writePolicyChange, writePolicyOf } from './writePolicy'
+import { writePolicyChange, writePolicyOf, type WriteChoice } from './writePolicy'
 import { MIXED_WARNING, groupsReferencing } from './repositoryReferences'
 import { rowsOf } from './repositoryRows'
 
@@ -46,13 +47,10 @@ import { rowsOf } from './repositoryRows'
  * leave guard see it. The address follows the id once the id is usable, as the collection editor does.
  */
 
-const props = defineProps({
+const props = defineProps<{
   // The id of the repository, from the address.
-  id: {
-    type: String,
-    required: true
-  }
-})
+  id: string
+}>()
 
 const store = inject(configurationStoreKey, null) ?? useConfiguration().store
 const { renderers, configurationStyles } = useConfiguration()
@@ -60,11 +58,12 @@ provide('styles', configurationStyles)
 
 const router = useRouter()
 // The first heading of the content: the page heading is the frame's, so the focus goes to the type section.
-const heading = ref(null)
+const heading = ref<HTMLElement | null>(null)
 const declareOpen = ref(false)
 
 const collection = computed(() => collectionsOf(store.schemas.value.maven).find(list => list.key === 'repositories') ?? null)
-const entries = computed(() => store.configurations.value.maven?.repositories ?? [])
+// The served repositories are a list of entries; the store types the domain data loosely.
+const entries = computed(() => (store.configurations.value.maven?.repositories ?? []) as Entry[])
 // The address of each entry, as the list links to it: the id, or a key for an entry without a usable id.
 const addresses = computed(() => entryAddresses(entries.value, store.entryKeysOf('maven', 'repositories')))
 // The position of the entry in the draft. It is found from the address, and kept while the id is being typed, so a
@@ -73,7 +72,7 @@ const index = ref(-1)
 watch(() => [props.id, entries.value.length], () => {
   index.value = addresses.value.indexOf(props.id)
 }, { immediate: true })
-const entry = computed(() => (index.value >= 0 ? entries.value[index.value] : null))
+const entry = computed<Entry | null>(() => (index.value >= 0 ? entries.value[index.value] : null))
 // The name of the entry, as the list and the page heading name it; an entry without an id is named as the list names it.
 const title = computed(() => idText(entry.value) || 'Unnamed repository')
 const others = computed(() => entries.value.filter((_, position) => position !== index.value))
@@ -81,29 +80,30 @@ const otherIds = computed(() => others.value.map(idText))
 const otherTags = computed(() => tagsInUse(others.value))
 const serverError = computed(() => store.saveError.value ?? '')
 
-const badge = computed(() => (entry.value ? rowsOf([entry.value])[0].type : null))
+// The badge is read only in the branch where the entry exists, so the row is built from that entry.
+const badge = computed(() => rowsOf([entry.value as Entry])[0].type)
 const effective = computed(() => (entry.value ? effectiveTypeOf(entry.value) : null))
 const isHosted = computed(() => effective.value?.type === 'HOSTED')
 const isMixed = computed(() => effective.value?.type === 'MIXED')
 // A derived type can be declared, except Mixed: no declared type reproduces it.
-const canDeclare = computed(() => entry.value !== null && !effective.value.declared && !isMixed.value)
+const canDeclare = computed(() => effective.value !== null && !effective.value.declared && !isMixed.value)
 const declaredLabel = computed(() => TYPE_LABELS[(effective.value?.type ?? '').toLowerCase()] ?? '')
-const blankCount = computed(() => (entry.value && canDeclare.value ? blankEntriesRemovedBy(entry.value, effective.value.type) : 0))
+const blankCount = computed(() => (entry.value && effective.value && canDeclare.value ? blankEntriesRemovedBy(entry.value, effective.value.type) : 0))
 const blankNotice = computed(() => blankEntriesNotice(blankCount.value))
 const writeChoice = computed(() => writePolicyOf(entry.value ?? {}))
 const offerReadOnly = computed(() => Boolean(collection.value?.itemSchema?.properties?.readOnly))
 const groupsListingIt = computed(() => groupsReferencing(entries.value, idText(entry.value)))
 
 // The draft entry at this position is replaced; the page never writes a key of its own besides the ones named here.
-const write = (next) => store.setEntry('maven', 'repositories', index.value, next)
+const write = (next: Entry) => store.setEntry('maven', 'repositories', index.value, next)
 
 
-const onWritePolicy = (choice) => {
+const onWritePolicy = (choice: WriteChoice) => {
   if (entry.value) write(writePolicyChange(entry.value, choice))
 }
 
 // The form reports the whole entry. An id that is usable moves the address, as the collection editor does.
-const onChange = (next) => {
+const onChange = (next: Entry) => {
   const id = idText(next)
   // The id is checked against the other repositories before the write, while this entry is still left out of them.
   const problem = validateNewId(id, otherIds.value, collection.value?.noun ?? 'repository')
@@ -113,7 +113,7 @@ const onChange = (next) => {
 }
 
 const applyDeclare = async () => {
-  const type = effective.value.type
+  const type = effective.value?.type
   // Declaring writes the type and nothing else; empty mirrored entries are the one thing a typed repository drops.
   const next = { ...entry.value, type }
   if (Array.isArray(next.proxied)) next.proxied = next.proxied.filter(item => !isBlankEntry(item))

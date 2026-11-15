@@ -15,9 +15,9 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { WRITE_CHOICES, writePolicyChange, writePolicyOf } from './writePolicy'
+import { WRITE_CHOICES, writePolicyChange, writePolicyOf, type PolicyEntry } from './writePolicy'
 
-const hosted = (extra = {}) => ({ id: 'releases', type: 'HOSTED', visibility: 'PUBLIC', redeployment: true, ...extra })
+const hosted = (extra: PolicyEntry = {}): PolicyEntry => ({ id: 'releases', type: 'HOSTED', visibility: 'PUBLIC', redeployment: true, ...extra })
 
 describe('write policy of a hosted repository, derived from its stored keys', () => {
   it('is Allow when redeployment is true and read only is not set', () => {

@@ -31,14 +31,14 @@ const css = readFileSync(fileURLToPath(new URL('../../styles/md3/color.css', imp
   .replace(/\/\*[\s\S]*?\*\//g, '')
 
 // The declarations of a top level rule, such as `:root` or `.dark`. The first rule with that selector is the default theme.
-const ruleOf = (selector) => {
+const ruleOf = (selector: string): string => {
   const start = css.indexOf(`${selector} {`)
   if (start === -1) throw new Error(`no rule ${selector} in color.css`)
   return css.slice(start, css.indexOf('}', start))
 }
 
 // The rule of a selector that declares the given name. The extension tokens sit in a second :root and .dark rule.
-const ruleWith = (selector, name) => {
+const ruleWith = (selector: string, name: string): string => {
   for (let start = css.indexOf(`${selector} {`); start !== -1; start = css.indexOf(`${selector} {`, start + 1)) {
     const rule = css.slice(start, css.indexOf('}', start))
     if (rule.includes(name)) return rule
@@ -46,32 +46,32 @@ const ruleWith = (selector, name) => {
   throw new Error(`no rule ${selector} declares ${name}`)
 }
 
-const valueOf = (rule, name) => {
+const valueOf = (rule: string, name: string): string => {
   const match = new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`).exec(rule)
   if (!match) throw new Error(`no value for ${name}`)
   return match[1]
 }
 
-const channel = (hex, offset) => {
+const channel = (hex: string, offset: number): number => {
   const value = parseInt(hex.slice(offset, offset + 2), 16) / 255
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
 }
 
-const luminance = (hex) => 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5)
+const luminance = (hex: string): number => 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5)
 
-const contrast = (foreground, background) => {
+const contrast = (foreground: string, background: string): number => {
   const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a)
   return (lighter + 0.05) / (darker + 0.05)
 }
 
 // The badge tones of TypeBadge.vue: the background and the text (and icon) colour of each type.
-const BADGE_TONES = {
+const BADGE_TONES: Record<string, string[]> = {
   HOSTED: ['tertiary-container', 'on-tertiary-container'],
   PROXY: ['secondary-container', 'on-secondary-container'],
   GROUP: ['primary-container', 'on-primary-container']
 }
 
-const THEMES = {
+const THEMES: Record<string, string> = {
   light: ':root',
   dark: '.dark'
 }
@@ -79,7 +79,7 @@ const THEMES = {
 for (const [theme, selector] of Object.entries(THEMES)) {
   describe(`repository type badges in the ${theme} theme`, () => {
     const rule = ruleOf(selector)
-    const colour = (name) => valueOf(rule, `--md-sys-color-${name}`)
+    const colour = (name: string) => valueOf(rule, `--md-sys-color-${name}`)
     const surface = colour('surface')
 
     for (const [type, [background, text]] of Object.entries(BADGE_TONES)) {

@@ -14,28 +14,27 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 /*
  * The type of a repository in words: the label, with an icon that repeats it for sighted users. The icon is
  * decoration only, so a screen reader reads the label. A repository without a declared type also gets the word
  * "derived", in text, so the difference is not carried by colour alone.
  */
-defineProps({
-  // The type as rowsOf builds it: { key, label, derived }.
-  type: {
-    type: Object,
-    required: true
-  }
-})
+import type { RepositoryRow } from './repositoryRows'
 
-const TONES = {
+defineProps<{
+  // The type as rowsOf builds it: { key, label, derived }.
+  type: RepositoryRow['type']
+}>()
+
+const TONES: Record<string, string> = {
   HOSTED: 'bg-tertiary-container text-on-tertiary-container',
   PROXY: 'bg-secondary-container text-on-secondary-container',
   GROUP: 'bg-primary-container text-on-primary-container',
   MIXED: 'border border-outline text-on-surface-variant'
 }
 
-const ICONS = {
+const ICONS: Record<string, string> = {
   HOSTED: 'M4 4h16v4H4zm0 6h16v4H4zm0 6h16v4H4z',
   PROXY: 'M12 4l-8 8h5v8h6v-8h5z',
   GROUP: 'M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z',

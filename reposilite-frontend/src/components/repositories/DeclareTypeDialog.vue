@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
@@ -25,32 +25,29 @@ import { SCRIM_STYLE } from '../settings/dialog'
  * repository as it is. Initial focus is on Cancel, and when the dialog closes without a confirmation the focus goes
  * back to the button that opened it.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   // The name of the type that is declared, such as Proxy.
-  typeLabel: {
-    type: String,
-    required: true
-  },
+  typeLabel: string
   // The line that says how many empty entries go, or nothing.
-  notice: {
-    type: String,
-    default: ''
-  }
+  notice?: string
+}>(), {
+  modelValue: false,
+  notice: ''
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [open: boolean]
+  confirm: []
+}>()
 
-const cancel = ref(null)
-let opener = null
+const cancel = ref<{ $el: HTMLElement } | null>(null)
+let opener: HTMLElement | null = null
 let confirmed = false
 
 watch(() => props.modelValue, (open) => {
   if (open) {
-    opener = document.activeElement
+    opener = document.activeElement as HTMLElement | null
     confirmed = false
     return
   }

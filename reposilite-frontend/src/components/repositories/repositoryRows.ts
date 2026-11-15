@@ -19,38 +19,67 @@
  * router or the network. The filter reuses the rules of the repository search (parseSearch, matchesSearch).
  */
 
-import { effectiveTypeOf, TYPE_LABELS } from '../../store/maven/repositoryTypes'
-import { matchesSearch, parseSearch } from '../../store/maven/repositories'
-import { writePolicyOf } from './writePolicy'
+import { effectiveTypeOf, TYPE_LABELS, type Entry } from '../../store/maven/repositoryTypes'
+import { matchesSearch, parseSearch, type Searchable } from '../../store/maven/repositories'
+import { writePolicyOf, type WriteChoice } from './writePolicy'
 
-export const SORT_KEYS = ['name', 'type', 'visibility', 'storage']
+export type SortKey = 'name' | 'type' | 'visibility' | 'storage'
+export type SortDirection = 'ascending' | 'descending'
 
-const VISIBILITY_LABELS = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
-const STORAGE_LABELS = { fs: 'File system', s3: 'S3' }
+export const SORT_KEYS: readonly SortKey[] = ['name', 'type', 'visibility', 'storage']
+
+// The table row of one repository. `route` is the address segment of its detail page.
+export interface RepositoryRow {
+  index: number
+  id: string
+  name: string
+  unnamed: boolean
+  route: string
+  description: unknown
+  tags: unknown[]
+  type: { key: string; label: string; derived: boolean }
+  visibility: string
+  storage: string
+  writePolicy: WriteChoice | null
+  versionPolicy: unknown
+  address: string
+  unsaved: boolean
+}
+
+export interface RowsOptions {
+  origin?: string
+  basePath?: string
+  savedIds?: unknown[]
+  addresses?: string[]
+}
+
+const VISIBILITY_LABELS: Record<string, string> = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
+const STORAGE_LABELS: Record<string, string> = { fs: 'File system', s3: 'S3' }
 const NO_VALUE = '-'
 // The name of an entry without an id, as the generic editor showed it. The row keeps its id empty.
 export const UNNAMED = 'Unnamed repository'
 
 // An id that is missing or not text is the empty id, which the search and the sort read as no value.
-const idOf = (entry) => (typeof entry?.id === 'string' ? entry.id : '')
+const idOf = (entry: Entry | null | undefined): string => (typeof entry?.id === 'string' ? entry.id : '')
 
-const visibilityLabel = (visibility) => VISIBILITY_LABELS[visibility] ?? String(visibility ?? NO_VALUE)
+// The key is the text of the value, as a property lookup reads it.
+const visibilityLabel = (visibility: unknown): string => VISIBILITY_LABELS[String(visibility)] ?? String(visibility ?? NO_VALUE)
 
 // A group has no storage of its own, and an entry without one shows the same hyphen.
-const storageLabel = (entry, type) => {
+const storageLabel = (entry: Entry, type: string): string => {
   if (type === 'GROUP') return NO_VALUE
-  const kind = entry.storageProvider?.type
-  return STORAGE_LABELS[kind] ?? (kind ? String(kind) : NO_VALUE)
+  const kind = (entry.storageProvider as { type?: unknown } | null | undefined)?.type
+  return STORAGE_LABELS[String(kind)] ?? (kind ? String(kind) : NO_VALUE)
 }
 
 /* The address a build tool uses for a repository: the origin, the base path and the id. */
-export const addressOf = (origin, basePath, id) => {
+export const addressOf = (origin: string, basePath: string, id: string): string => {
   const base = basePath.endsWith('/') ? basePath : `${basePath}/`
   return `${origin}${base}${id}`
 }
 
 /* The caption of the table, with the shown and the total count. */
-export const captionOf = (shown, total) => `Repositories, ${shown} of ${total} shown`
+export const captionOf = (shown: number, total: number): string => `Repositories, ${shown} of ${total} shown`
 
 /*
  * One row per entry of the draft. `savedIds`, when given, are the repositories the server holds, and every other
@@ -58,7 +87,7 @@ export const captionOf = (shown, total) => `Repositories, ${shown} of ${total} s
  * addresses of the detail pages, one per entry (an entry without a usable id has a key address, see collections.js).
  * An entry without an id keeps its place in `index`, has no address of its own and is named UNNAMED.
  */
-export const rowsOf = (entries, { origin = '', basePath = '/', savedIds, addresses } = {}) => entries.map((entry, index) => {
+export const rowsOf = (entries: Entry[], { origin = '', basePath = '/', savedIds, addresses }: RowsOptions = {}): RepositoryRow[] => entries.map((entry, index) => {
   const { type, declared } = effectiveTypeOf(entry)
   const id = idOf(entry)
   const unnamed = id === ''
@@ -81,12 +110,13 @@ export const rowsOf = (entries, { origin = '', basePath = '/', savedIds, address
 })
 
 /* The rows the search text and the tag tokens keep, in their order. */
-export const filterRows = (rows, query = '') => {
+export const filterRows = (rows: RepositoryRow[], query = ''): RepositoryRow[] => {
   const criteria = parseSearch(query)
-  return rows.filter(row => matchesSearch(row, criteria))
+  // The row carries the fields the search reads. A description that is not text is read as the search reads it, as text.
+  return rows.filter(row => matchesSearch(row as Searchable, criteria))
 }
 
-const SORT_VALUE = {
+const SORT_VALUE: Record<SortKey, (row: RepositoryRow) => string> = {
   name: (row) => row.name,
   type: (row) => row.type.label,
   visibility: (row) => row.visibility,
@@ -94,7 +124,7 @@ const SORT_VALUE = {
 }
 
 /* The rows in the order of one column, ascending or descending. Equal values keep the order the rows came in. */
-export const sortRows = (rows, key, direction = 'ascending') => {
+export const sortRows = (rows: RepositoryRow[], key: SortKey, direction: SortDirection = 'ascending'): RepositoryRow[] => {
   const value = SORT_VALUE[key] ?? SORT_VALUE.name
   const sign = direction === 'descending' ? -1 : 1
   return rows

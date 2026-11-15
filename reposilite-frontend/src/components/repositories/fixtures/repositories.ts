@@ -22,9 +22,33 @@
 import { ref } from 'vue'
 import { createConfigurationStore } from '../../../store/configuration'
 
+// A repository as the server serves it. The fixtures build it field by field, so only the keys are named here.
+export type RepositoryRecord = Record<string, unknown>
+
+// The served maven schema, reduced to the repositories collection the page reads.
+export interface RepositorySchema {
+  type: string
+  title: string
+  properties: {
+    repositories: {
+      title: string
+      description: string
+      type: string
+      items: { type: string; title: string; properties: Record<string, unknown> }
+    }
+    [domainField: string]: unknown
+  }
+}
+
+// The client the configuration store reads, as its own signature names it.
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
+// The server state of the fixtures, keyed by domain.
+export type ServerState = Record<string, { repositories: RepositoryRecord[] }>
+
 /* The item schema of a maven repository. The policy fields are added only when a test asks for them. */
-export const repositorySchema = ({ versionPolicy = false, readOnly = false, redeployment = true } = {}) => {
-  const properties = {
+export const repositorySchema = ({ versionPolicy = false, readOnly = false, redeployment = true }: { versionPolicy?: boolean; readOnly?: boolean; redeployment?: boolean } = {}): RepositorySchema => {
+  const properties: Record<string, unknown> = {
     id: { type: 'string', title: 'Id' },
     type: { type: 'string', enum: ['HOSTED', 'PROXY', 'GROUP'], title: 'Type' },
     visibility: { type: 'string', enum: ['PUBLIC', 'HIDDEN', 'PRIVATE'], title: 'Visibility' },
@@ -73,7 +97,7 @@ export const repositorySchema = ({ versionPolicy = false, readOnly = false, rede
  * One declared hosted, one untyped hosted, one untyped proxy, one untyped mixed and one declared group. The untyped
  * entries are what the page derives; `all` names `releases` as a member, which the delete dialog must list.
  */
-export const repositoriesServer = () => ({
+export const repositoriesServer = (): { maven: { repositories: RepositoryRecord[] } } => ({
   maven: {
     repositories: [
       {
@@ -99,22 +123,23 @@ export const repositoriesServer = () => ({
   }
 })
 
-const fakeClient = (server, schema) => ({
+const fakeClient = (server: ServerState, schema: RepositorySchema) => ({
   settings: {
-    domains: async () => ({ data: Object.keys(server) }),
-    schema: async () => ({ data: schema }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: Object.keys(server) }),
+    schema: () => Promise.resolve({ data: schema }),
+    fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(server[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
 /* A configuration store with the server state loaded, as the settings page has it after its first fetch. */
-export const loadedStore = async ({ server = repositoriesServer(), schema = repositorySchema({ versionPolicy: true, readOnly: true }) } = {}) => {
-  const store = createConfigurationStore(ref(fakeClient(server, schema)))
+export const loadedStore = async ({ server = repositoriesServer(), schema = repositorySchema({ versionPolicy: true, readOnly: true }) }: { server?: ServerState; schema?: RepositorySchema } = {}) => {
+  // The fake answers the four settings calls the store makes. The rest of the client is never reached from these tests.
+  const store = createConfigurationStore(ref(fakeClient(server, schema)) as unknown as ClientRef)
   const loaded = await store.fetchConfiguration()
   if (!loaded) throw new Error('the fixture configuration should load')
   return store
 }
 
 /* The schema fields the page is given, as SettingsView derives them from the served schema. */
-export const schemaFieldsOf = (schema) => Object.keys(schema.properties.repositories.items.properties)
+export const schemaFieldsOf = (schema: RepositorySchema): string[] => Object.keys(schema.properties.repositories.items.properties)

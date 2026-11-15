@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
@@ -27,8 +27,9 @@ import usePlaceholders from '../../store/placeholders'
 import { copyToClipboard } from '../card/copySnippet'
 import RepositoriesTable from './RepositoriesTable.vue'
 import MavenOptionsPanel from './MavenOptionsPanel.vue'
-import { captionOf, filterRows, rowsOf, sortRows } from './repositoryRows'
+import { captionOf, filterRows, rowsOf, sortRows, type RepositoryRow, type SortDirection, type SortKey } from './repositoryRows'
 import { groupsReferencing } from './repositoryReferences'
+import type { Entry } from '../../store/maven/repositoryTypes'
 
 /*
  * The Repositories page: one table of the repositories of the draft, with a filter, sorting, the row actions and the
@@ -39,11 +40,10 @@ import { groupsReferencing } from './repositoryReferences'
  * `schemaFields` are the field names the served maven schema declares for a repository. The Version policy column
  * shows only with versionPolicy; the Write policy column shows when redeployment or readOnly is declared.
  */
-const props = defineProps({
-  schemaFields: {
-    type: Array,
-    default: () => []
-  }
+const props = withDefaults(defineProps<{
+  schemaFields?: string[]
+}>(), {
+  schemaFields: () => []
 })
 
 const store = inject(configurationStoreKey, null) ?? useConfiguration().store
@@ -51,16 +51,16 @@ const route = useRoute()
 const router = useRouter()
 const { basePath, productionUrl } = usePlaceholders()
 
-const heading = ref(null)
-const newButton = ref(null)
+const heading = ref<HTMLElement | null>(null)
+const newButton = ref<{ $el: HTMLElement } | null>(null)
 const query = ref('')
-const sortKey = ref(null)
-const sortDirection = ref('ascending')
+const sortKey = ref<SortKey | null>(null)
+const sortDirection = ref<SortDirection>('ascending')
 const message = ref('')
 const wizardOpen = ref(false)
 // The row whose delete is asked for; null while no delete dialog is open. The row carries the position in the draft,
 // so an entry without an id is removed by its position.
-const deleteRow = ref(null)
+const deleteRow = ref<RepositoryRow | null>(null)
 const deleteOpen = computed({
   get: () => deleteRow.value !== null,
   set: (open) => {
@@ -68,10 +68,11 @@ const deleteOpen = computed({
   }
 })
 
-const SORT_LABELS = { name: 'Name', type: 'Type', visibility: 'Visibility', storage: 'Storage' }
+const SORT_LABELS: Record<SortKey, string> = { name: 'Name', type: 'Type', visibility: 'Visibility', storage: 'Storage' }
 
 const loaded = computed(() => store.configurations.value.maven !== undefined)
-const entries = computed(() => store.configurations.value.maven?.repositories ?? [])
+// The served repositories are a list of entries; the store types the domain data loosely.
+const entries = computed(() => (store.configurations.value.maven?.repositories ?? []) as Entry[])
 const savedIds = computed(() => {
   const saved = store.savedSettings.value.maven?.repositories
   return Array.isArray(saved) ? saved.map(idText) : undefined
@@ -96,7 +97,7 @@ const emptyText = computed(() => (rows.value.length === 0 ? 'No repositories yet
 const hasVersionPolicy = computed(() => props.schemaFields.includes('versionPolicy'))
 const hasWritePolicy = computed(() => props.schemaFields.includes('redeployment') || props.schemaFields.includes('readOnly'))
 
-const sortBy = (key) => {
+const sortBy = (key: SortKey) => {
   if (sortKey.value === key) sortDirection.value = sortDirection.value === 'ascending' ? 'descending' : 'ascending'
   else {
     sortKey.value = key
@@ -105,13 +106,13 @@ const sortBy = (key) => {
   message.value = `Sorted by ${SORT_LABELS[key]}, ${sortDirection.value}`
 }
 
-const copyAddress = async (row) => {
+const copyAddress = async (row: RepositoryRow) => {
   const copied = await copyToClipboard(row.address, typeof navigator === 'undefined' ? undefined : navigator.clipboard)
   message.value = copied ? `Copied address of ${row.name}` : `Could not copy the address of ${row.name}`
 }
 
 // A query the page acts on once is removed from the address, so a reload or a second visit does not repeat it.
-const takeQuery = (key) => {
+const takeQuery = (key: string) => {
   const next = { ...route.query }
   delete next[key]
   router.replace({ name: route.name, params: route.params, query: next })
@@ -140,7 +141,7 @@ watch(wizardOpen, (open, wasOpen) => {
 // The dialog asks for the id typed; an entry without one is asked for as "unnamed", the way the generic editor does.
 const deleteName = computed(() => deleteRow.value?.id || 'unnamed')
 const deleteReferences = computed(() => groupsReferencing(entries.value, deleteRow.value?.id ?? ''))
-const askDelete = (row) => {
+const askDelete = (row: RepositoryRow) => {
   deleteRow.value = row
 }
 
