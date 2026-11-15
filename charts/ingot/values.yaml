@@ -6,7 +6,41 @@
 ## Deploy mode.
 ## allInOne: one workload of the all-in-one image, which serves the dashboard and the API.
 ## split: a server workload with INGOT_TARGET=server, and a dashboard workload of the dashboard image in front of it.
+## scalable: read and write workloads of the server with INGOT_BACKGROUND_JOBS=false, a worker workload with
+## INGOT_TARGET=worker, and the dashboard. Needs shared state, see the scalable block below.
 mode: allInOne
+
+## Scalable mode, see mode. Each workload takes its replicas, resources and podDisruptionBudget here. Empty resources fall
+## back to the top-level resources. Everything else (image, env, probes, jvm) comes from the top-level keys. The read
+## workload alone takes autoscaling. The top-level podDisruptionBudget covers the dashboard in this mode.
+scalable:
+  read:
+    replicas: 2
+    resources: {}
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 60
+      behavior: {}
+    podDisruptionBudget:
+      enabled: false
+  write:
+    replicas: 2
+    resources: {}
+    podDisruptionBudget:
+      enabled: false
+  worker:
+    replicas: 1
+    resources: {}
+    podDisruptionBudget:
+      enabled: false
 
 image:
   name: ghcr.io/onelitefeathernet/ingot

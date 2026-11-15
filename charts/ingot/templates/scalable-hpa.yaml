@@ -1,0 +1,33 @@
+{{- if and (eq .Values.mode "scalable") .Values.scalable.read.autoscaling.enabled }}
+{{- if .Capabilities.APIVersions.Has "autoscaling/v2" }}
+apiVersion: autoscaling/v2
+{{- else if .Capabilities.APIVersions.Has "autoscaling/v2beta2" }}
+apiVersion: autoscaling/v2beta2
+{{- else if .Capabilities.APIVersions.Has "autoscaling/v2beta1" }}
+apiVersion: autoscaling/v2beta1
+{{- else }}
+  {{- fail "ERROR: You must have at least autoscaling/v2beta1 to use HorizontalPodAutoscaler" }}
+{{- end }}
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ingot.workloadFullname" (dict "root" . "role" "read") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: read
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ingot.workloadFullname" (dict "root" . "role" "read") }}
+  minReplicas: {{ .Values.scalable.read.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.scalable.read.autoscaling.maxReplicas }}
+{{- if .Values.scalable.read.autoscaling.metrics }}
+  metrics:
+{{ toYaml .Values.scalable.read.autoscaling.metrics | indent 4 }}
+{{- end }}
+{{- if .Values.scalable.read.autoscaling.behavior }}
+  behavior:
+{{ toYaml .Values.scalable.read.autoscaling.behavior | indent 4 }}
+{{- end }}
+{{- end }}

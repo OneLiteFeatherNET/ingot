@@ -8,6 +8,7 @@ Run from the repository root:
     python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
 """
 
+import itertools
 import json
 import os
 import subprocess
@@ -686,6 +687,210 @@ class ShutdownBudgetTest(unittest.TestCase):
             operator_hook, container(deployment).get("lifecycle"),
             "a deployment.lifecycle set by the operator must be kept, and no sleep of the chart must replace it",
         )
+
+
+READ = "ingot-read"
+WRITE = "ingot-write"
+WORKER = "ingot-worker"
+
+
+def scalable_values(**overrides):
+    """Scalable values with the typed requirements set. The refusals of missing values come in a later change, so the
+    tests pass them here and leave persistence off, which scalable mode requires."""
+    values = {
+        "mode": "scalable",
+        "database": {"existingSecret": "ingot-database"},
+        "objectStorage": {"existingSecret": "ingot-object-storage"},
+        "clusterBus": {"url": "nats://ingot-nats:4222"},
+        "persistence": {"enabled": False},
+    }
+    values.update(overrides)
+    return values
+
+
+def pod_labels(deployment):
+    return deployment["spec"]["template"]["metadata"]["labels"]
+
+
+def pod_selector(deployment):
+    return deployment["spec"]["selector"]["matchLabels"]
+
+
+def selects(selector, labels):
+    """True when every pair of an equality selector is found in the labels, as Kubernetes matches a selector."""
+    return all(labels.get(key) == value for key, value in selector.items())
+
+
+def disjoint(first, second):
+    """Two equality selectors select no common pod when they name one key with two different values."""
+    return any(key in second and second[key] != value for key, value in first.items())
+
+
+def mount_names(deployment):
+    return [mount["name"] for mount in container(deployment).get("volumeMounts", [])]
+
+
+class ScalableValuesTest(unittest.TestCase):
+
+    def test_schema_lists_scalable_as_a_mode(self):
+        with open(os.path.join(CHART_DIR, "values.schema.json"), encoding="utf-8") as handle:
+            schema = json.load(handle)
+        self.assertIn("scalable", schema["properties"]["mode"]["enum"], "the mode enum must accept scalable")
+
+    def test_schema_accepts_scalable_with_the_typed_values(self):
+        manifests = render(scalable_values())
+        self.assertTrue(manifests, "mode scalable with the typed values must render")
+
+
+class ScalableWorkloadTest(unittest.TestCase):
+
+    def test_scalable_renders_read_write_worker_and_dashboard_deployments(self):
+        names = sorted(doc["metadata"]["name"] for doc in of_kind(render(scalable_values()), "Deployment"))
+        self.assertEqual(
+            sorted([READ, WRITE, WORKER, DASHBOARD]), names,
+            "scalable mode must render the read, write and worker Deployments and the dashboard",
+        )
+
+    def test_read_and_write_set_ingot_target_server(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE):
+            self.assertEqual(
+                "server", env_value(named(manifests, "Deployment", name), "INGOT_TARGET"),
+                f"{name} must set INGOT_TARGET=server",
+            )
+
+    def test_worker_sets_ingot_target_worker(self):
+        worker = named(render(scalable_values()), "Deployment", WORKER)
+        self.assertEqual("worker", env_value(worker, "INGOT_TARGET"), "the worker must set INGOT_TARGET=worker")
+
+    def test_read_and_write_switch_background_jobs_off(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE):
+            self.assertEqual(
+                "false", env_value(named(manifests, "Deployment", name), "INGOT_BACKGROUND_JOBS"),
+                f"{name} must set INGOT_BACKGROUND_JOBS=false",
+            )
+
+    def test_worker_leaves_background_jobs_on(self):
+        worker = named(render(scalable_values()), "Deployment", WORKER)
+        self.assertIsNone(env_value(worker, "INGOT_BACKGROUND_JOBS"), "the worker must keep the default of the jobs")
+
+    def test_replicas_default_to_two_read_two_write_and_one_worker(self):
+        manifests = render(scalable_values())
+        self.assertEqual(2, named(manifests, "Deployment", READ)["spec"]["replicas"], "read defaults to 2 replicas")
+        self.assertEqual(2, named(manifests, "Deployment", WRITE)["spec"]["replicas"], "write defaults to 2 replicas")
+        self.assertEqual(1, named(manifests, "Deployment", WORKER)["spec"]["replicas"], "the worker runs one replica")
+
+    def test_read_replicas_follow_scalable_read_replicas(self):
+        read = named(render(scalable_values(scalable={"read": {"replicas": 3}})), "Deployment", READ)
+        self.assertEqual(3, read["spec"]["replicas"], "scalable.read.replicas must set the read replicas")
+
+    def test_read_hpa_targets_the_read_deployment(self):
+        values = scalable_values(scalable={"read": {"autoscaling": {"enabled": True, "minReplicas": 2, "maxReplicas": 4}}})
+        manifests = render(values)
+        targets = [(hpa["metadata"]["name"], hpa["spec"]["scaleTargetRef"]["name"])
+                   for hpa in of_kind(manifests, "HorizontalPodAutoscaler")]
+        self.assertEqual([(READ, READ)], targets, "only the read workload may have an HPA, and it must target read")
+        self.assertNotIn("replicas", named(manifests, "Deployment", READ)["spec"], "the HPA owns the read replicas")
+
+    def test_worker_has_no_hpa_even_when_read_autoscales(self):
+        values = scalable_values(scalable={"read": {"autoscaling": {"enabled": True}}})
+        targets = [hpa["spec"]["scaleTargetRef"]["name"] for hpa in of_kind(render(values), "HorizontalPodAutoscaler")]
+        self.assertNotIn(WORKER, targets, "the worker must never be autoscaled")
+
+    def test_server_workloads_use_the_split_health_endpoints(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE, WORKER):
+            deployment = named(manifests, "Deployment", name)
+            self.assertEqual(
+                "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+                f"{name} must use the readiness endpoint",
+            )
+            self.assertEqual(
+                "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+                f"{name} must use the health endpoint for liveness",
+            )
+            self.assertIn("startupProbe", container(deployment), f"{name} must render the split startup probe")
+
+    def test_pod_disruption_budget_is_rendered_for_an_enabled_workload_only(self):
+        values = scalable_values(scalable={"write": {"podDisruptionBudget": {"enabled": True}}})
+        budgets = of_kind(render(values), "PodDisruptionBudget")
+        self.assertEqual([WRITE], [budget["metadata"]["name"] for budget in budgets],
+                         "only the workload with podDisruptionBudget.enabled gets a budget")
+        self.assertTrue(selects(budgets[0]["spec"]["selector"]["matchLabels"], pod_labels(
+            named(render(values), "Deployment", WRITE))), "the budget must select the write pods")
+
+    def test_no_pod_disruption_budget_by_default(self):
+        self.assertEqual([], of_kind(render(scalable_values()), "PodDisruptionBudget"),
+                         "scalable mode renders no budget unless one is enabled")
+
+    def test_top_level_pod_disruption_budget_covers_only_the_dashboard(self):
+        values = scalable_values(podDisruptionBudget={"enabled": True})
+        names = sorted(budget["metadata"]["name"] for budget in of_kind(render(values), "PodDisruptionBudget"))
+        self.assertEqual([DASHBOARD], names, "the top-level budget must not select the server pods in scalable mode")
+
+    def test_every_scalable_workload_reaches_the_cluster_bus(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE, WORKER):
+            env_names = [entry["name"] for entry in container(named(manifests, "Deployment", name))["env"]]
+            self.assertIn("INGOT_CLUSTER_URL", env_names, f"{name} must reach the cluster bus")
+
+    def test_data_volume_is_not_mounted_in_scalable_mode(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE, WORKER):
+            self.assertNotIn("data", mount_names(named(manifests, "Deployment", name)),
+                             f"{name} must not mount the data volume, which a PVC cannot share")
+
+
+class ScalableServiceTest(unittest.TestCase):
+
+    def test_scalable_renders_read_write_and_combined_services(self):
+        names = sorted(doc["metadata"]["name"] for doc in of_kind(render(scalable_values()), "Service"))
+        self.assertEqual(
+            sorted([READ, WRITE, SERVER, DASHBOARD]), names,
+            "scalable mode must render the read and write Services, the combined Service and the dashboard Service",
+        )
+
+    def test_read_and_write_services_select_only_their_pods(self):
+        manifests = render(scalable_values())
+        read_labels = pod_labels(named(manifests, "Deployment", READ))
+        write_labels = pod_labels(named(manifests, "Deployment", WRITE))
+        self.assertTrue(selects(named(manifests, "Service", READ)["spec"]["selector"], read_labels),
+                        "the read Service must select the read pods")
+        self.assertFalse(selects(named(manifests, "Service", READ)["spec"]["selector"], write_labels),
+                         "the read Service must not select the write pods")
+        self.assertTrue(selects(named(manifests, "Service", WRITE)["spec"]["selector"], write_labels),
+                        "the write Service must select the write pods")
+        self.assertFalse(selects(named(manifests, "Service", WRITE)["spec"]["selector"], read_labels),
+                         "the write Service must not select the read pods")
+
+    def test_combined_service_selects_read_and_write_pods_together(self):
+        manifests = render(scalable_values())
+        selector = named(manifests, "Service", SERVER)["spec"]["selector"]
+        for name in (READ, WRITE):
+            self.assertTrue(selects(selector, pod_labels(named(manifests, "Deployment", name))),
+                            f"the combined Service must select the {name} pods")
+
+    def test_no_service_selects_the_worker_pods(self):
+        manifests = render(scalable_values())
+        worker_labels = pod_labels(named(manifests, "Deployment", WORKER))
+        for service in of_kind(manifests, "Service"):
+            self.assertFalse(selects(service["spec"]["selector"], worker_labels),
+                             f"Service {service['metadata']['name']} must not route to the worker")
+
+    def test_pod_selectors_of_all_deployments_are_pairwise_disjoint(self):
+        manifests = render(scalable_values())
+        selectors = {name: pod_selector(named(manifests, "Deployment", name))
+                     for name in (READ, WRITE, WORKER, DASHBOARD)}
+        for first, second in itertools.combinations(selectors, 2):
+            self.assertTrue(disjoint(selectors[first], selectors[second]),
+                            f"the pod selectors of {first} and {second} must not select the same pods")
+
+    def test_combined_service_selects_no_dashboard_pods(self):
+        manifests = render(scalable_values())
+        selector = named(manifests, "Service", SERVER)["spec"]["selector"]
+        self.assertFalse(selects(selector, pod_labels(named(manifests, "Deployment", DASHBOARD))),
+                         "the combined Service must not select the dashboard pods")
 
 
 if __name__ == "__main__":
