@@ -423,6 +423,7 @@ jobs:
         run: |
           helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
           helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/ci/scalable-values.yaml
 
       - name: "Check the alert rules with promtool"
         run: |
@@ -462,6 +463,14 @@ jobs:
 
       - name: "Load the images into kind"
         run: kind load docker-image ingot:ci ingot-dashboard:ci --name ingot
+
+      # The scalable values name a database, an object storage Secret and a NATS broker. The dependencies are the
+      # throwaway CI manifests of the HA smoke test, applied into the default namespace, where chart-testing installs.
+      - name: "Apply the dependencies of the scalable values"
+        run: |
+          sed 's/ingot-ha/default/g' charts/ingot/tests/ha/dependencies.yaml | kubectl apply --namespace default --filename -
+          kubectl --namespace default wait --for=condition=available deployment/mariadb deployment/floci deployment/nats --timeout=300s
+          kubectl --namespace default wait --for=condition=complete job/ingot-smoke-bucket --timeout=300s
 
       # Installs each ci/*-values.yaml of the chart in turn, with the readiness and liveness probes
       # of both workloads, and waits until the pods are ready.
