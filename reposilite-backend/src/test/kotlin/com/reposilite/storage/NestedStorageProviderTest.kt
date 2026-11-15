@@ -85,6 +85,20 @@ class NestedStorageProviderTest {
     }
 
     @Test
+    fun `a nested provider is shut down when the outer factory fails after building it`() {
+        val delegate = RecordingProvider()
+        val storage = facade(RecordingLeafFactory(delegate.provider), FailingWrapperFactory())
+
+        assertThatThrownBy { build(storage, WrapperSettings(delegate = LeafSettings())) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("outer factory failed")
+
+        assertThat(delegate.shutdowns)
+            .describedAs("the delegate built before the failure must not leak")
+            .isEqualTo(1)
+    }
+
+    @Test
     fun `an outer type that is not registered still gives no provider`() {
         val storage = facade(LeafFactory(leaf))
 
@@ -120,5 +134,46 @@ private class WrapperFactory : IngotStorageProviderFactory<StorageProvider, Wrap
 
     override fun create(context: StorageProviderContext, settings: WrapperSettings): StorageProvider =
         context.createProvider(settings.delegate)
+
+}
+
+/** A leaf that hands out [provider] and counts the calls of [StorageProvider.shutdown] on it. */
+private class RecordingLeafFactory(private val provider: StorageProvider) : IngotStorageProviderFactory<StorageProvider, LeafSettings> {
+
+    override val type: String = "leaf"
+    override val settingsType: Class<LeafSettings> = LeafSettings::class.java
+    override val apiVersion: Int = STORAGE_PROVIDER_API_VERSION
+
+    override fun create(context: StorageProviderContext, settings: LeafSettings): StorageProvider = provider
+
+}
+
+/** Builds its delegate and then fails, as a plugin does when a later check of its settings rejects them. */
+private class FailingWrapperFactory : IngotStorageProviderFactory<StorageProvider, WrapperSettings> {
+
+    override val type: String = "wrapper"
+    override val settingsType: Class<WrapperSettings> = WrapperSettings::class.java
+    override val apiVersion: Int = STORAGE_PROVIDER_API_VERSION
+
+    override fun create(context: StorageProviderContext, settings: WrapperSettings): StorageProvider {
+        context.createProvider(settings.delegate)
+        throw IllegalStateException("outer factory failed")
+    }
+
+}
+
+/** A provider whose only observable behaviour is the number of [shutdown] calls. */
+private class RecordingProvider {
+
+    var shutdowns = 0
+        private set
+
+    val provider: StorageProvider = java.lang.reflect.Proxy.newProxyInstance(
+        javaClass.classLoader,
+        arrayOf(StorageProvider::class.java),
+    ) { _, method, _ ->
+        if (method.name == "shutdown") shutdowns++
+        null
+    } as StorageProvider
 
 }
