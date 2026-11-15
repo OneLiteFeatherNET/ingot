@@ -47,6 +47,9 @@ internal interface GcsObjectClient {
      */
     fun list(prefix: String, startOffset: String?, limit: Int): List<GcsObjectInfo>
 
+    /** Reads the metadata of the bucket. Throws [GcsServiceException] with 404 when the bucket is missing, or with 401 or 403 when refused. */
+    fun checkBucket()
+
     /** Deletes one object, or throws [GcsNotFoundException] when the object does not exist. */
     fun delete(name: String)
 

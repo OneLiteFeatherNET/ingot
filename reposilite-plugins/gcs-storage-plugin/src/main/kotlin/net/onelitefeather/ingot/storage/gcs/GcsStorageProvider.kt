@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.storage.gcs
 
 import com.reposilite.shared.ErrorResponse
@@ -33,14 +35,18 @@ import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.SimpleDirectoryInfo
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
-import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.NOT_FOUND
-import panda.std.Result
-import panda.std.Result.ok
 import java.io.InputStream
 import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
+import net.onelitefeather.ingot.storage.capability.ReadinessProbe
+import net.onelitefeather.ingot.storage.capability.UsageCapability
+import panda.std.Result
+import panda.std.Result.ok
 
 /**
  * The storage provider of one `gcs` repository. The objects of the repository live under [objectPrefix] in one bucket, which [client]
@@ -54,7 +60,27 @@ class GcsStorageProvider internal constructor(
     private val chunkSize: Int,
     /** The bucket of the repository. It is named in the message of a refused request, so the operator knows where to grant the role. */
     private val bucket: String = "",
-) : StorageProvider, StorageEntrySource {
+) : StorageProvider, StorageEntrySource, ReadinessProbe, UsageCapability {
+
+    /** Google Cloud Storage reports no usage of a bucket to the plugin, so the dashboard shows the repository as unlimited. */
+    override val reportsUsage: Boolean = false
+
+    override val supportsQuota: Boolean = false
+
+    /** A bucket that answers its metadata is ready, empty or not. A refused, missing or silent bucket names its reason. */
+    override fun probe(): ReadinessOutcome =
+        try {
+            client.checkBucket()
+            ReadinessOutcome.Ok
+        } catch (exception: GcsServiceException) {
+            when (exception.statusCode) {
+                in REFUSED_STATUSES -> ReadinessOutcome.Failed("no permission on the bucket '$bucket'")
+                NOT_FOUND.code -> ReadinessOutcome.Failed("bucket '$bucket' is missing")
+                else -> ReadinessOutcome.Failed("the service answered HTTP ${exception.statusCode}")
+            }
+        } catch (_: Exception) {
+            ReadinessOutcome.Failed("bucket '$bucket' is unreachable")
+        }
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
@@ -294,9 +320,9 @@ class GcsStorageProvider internal constructor(
             false
         }
 
-    override fun usage(): Result<Long, ErrorResponse> = TODO("capabilities land in a later change of the series")
+    override fun usage(): Result<Long, ErrorResponse> = ok(-1)
 
-    override fun canHold(contentLength: Long): Result<Long, ErrorResponse> = TODO("capabilities land in a later change of the series")
+    override fun canHold(contentLength: Long): Result<Long, ErrorResponse> = ok(Long.MAX_VALUE)
 
     private companion object {
         /** The most objects that one listing of a removal asks for. */
