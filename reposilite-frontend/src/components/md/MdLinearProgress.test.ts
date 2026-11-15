@@ -29,7 +29,7 @@ describe('MdLinearProgress', () => {
   it('sets the bar width from the value', () => {
     const wrapper = mount(MdLinearProgress, { props: { value: 0.25 } })
 
-    expect(wrapper.element.firstElementChild.style.width).toBe('25%')
+    expect(((wrapper.element as HTMLElement).firstElementChild as HTMLElement).style.width).toBe('25%')
   })
 
   it('clamps a value above 1 to 100 percent', () => {

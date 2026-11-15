@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { snackbar as sharedQueue } from '../../store/snackbar'
 
@@ -28,11 +28,10 @@ import { snackbar as sharedQueue } from '../../store/snackbar'
  * The `queue` prop exists for tests, which pass a queue of their own. The application uses
  * the shared queue.
  */
-const props = defineProps({
-  queue: {
-    type: Object,
-    default: () => sharedQueue
-  }
+const props = withDefaults(defineProps<{
+  queue?: typeof sharedQueue
+}>(), {
+  queue: () => sharedQueue
 })
 
 const current = computed(() => props.queue.current.value)

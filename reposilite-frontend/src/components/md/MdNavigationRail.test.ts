@@ -75,7 +75,7 @@ describe('MdNavigationRail', () => {
 
     await wrapper.findAll('button')[3].trigger('click')
 
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['console'])
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['console'])
   })
 
   it('draws the focus ring inside each destination so the window edge cannot clip it', () => {
@@ -91,7 +91,7 @@ describe('MdNavigationRail', () => {
       props: { items: SECTIONS, modelValue: 'overview' },
       attachTo: document.body
     })
-    const destination = wrapper.findAll('a, button')[1].element
+    const destination = wrapper.findAll('a, button')[1].element as HTMLElement
     destination.focus()
 
     destination.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
@@ -106,7 +106,7 @@ describe('MdNavigationRail', () => {
       props: { items: SECTIONS, modelValue: 'overview' },
       attachTo: document.body
     })
-    const destination = wrapper.findAll('a, button')[1].element
+    const destination = wrapper.findAll('a, button')[1].element as HTMLElement
     destination.focus()
 
     destination.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }))
@@ -133,7 +133,7 @@ describe('MdNavigationRail', () => {
       props: { items: [{ key: 'settings', label: 'Administration' }], modelValue: 'settings' }
     })
 
-    const label = wrapper.find('a, button').findAll('span').at(-1)
+    const label = wrapper.find('a, button').findAll('span').at(-1)!
     expect(label.text(), 'the label text').toBe('Administration')
     expect(label.classes(), 'a label is one line and is cut with an ellipsis').toEqual(
       expect.arrayContaining(['whitespace-nowrap', 'truncate'])
@@ -148,7 +148,7 @@ describe('MdNavigationRail', () => {
     })
     await flushPromises()
 
-    const [long, short] = wrapper.findAll('a, button').map(entry => entry.findAll('span').at(-1).element)
+    const [long, short] = wrapper.findAll('a, button').map(entry => entry.findAll('span').at(-1)!.element)
     expect(long.getAttribute('title'), 'the cut label names itself in full').toBe('Administration')
     expect(short.getAttribute('title'), 'a label that fits has no title').toBeNull()
     widths.restore()
@@ -188,11 +188,11 @@ describe('MdNavigationRail', () => {
 
 // jsdom lays nothing out, so the width of each label is stated for the test: text wider than the stated
 // width is cut, as the browser would cut it.
-function stubTextWidths(widths) {
+function stubTextWidths(widths: Record<string, number>) {
   const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth')
   Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
     configurable: true,
-    get() { return widths[this.textContent] ?? 0 }
+    get(this: HTMLElement) { return widths[this.textContent ?? ''] ?? 0 }
   })
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     configurable: true,
@@ -201,8 +201,8 @@ function stubTextWidths(widths) {
   return {
     restore() {
       if (original) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', original)
-      else delete HTMLElement.prototype.scrollWidth
-      delete HTMLElement.prototype.clientWidth
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth')
+      Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth')
     }
   }
 }

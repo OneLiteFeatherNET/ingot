@@ -34,7 +34,7 @@ import {
   toRequestQuery,
   toRouteQuery
 } from './searchQuery'
-import type { SearchQuery } from './searchQuery'
+import type { Order, SearchQuery, Sort } from './searchQuery'
 import { announcement, indexNotice, normalizeFiles, normalizePage, rowKey } from './searchResult'
 import type { Facets, FilesState, SearchItem, SearchPage } from './searchResult'
 
@@ -52,14 +52,14 @@ const router = useRouter()
 const { client, sessionReady, details, isLogged, can } = useSession()
 
 const FILES_PAGE_SIZE = 50
-const SORT_OPTIONS = [
+const SORT_OPTIONS: { value: Sort; label: string }[] = [
   { value: 'groupId', label: 'Group id' },
   { value: 'artifactId', label: 'Artifact id' },
   { value: 'version', label: 'Version' },
   { value: 'modified', label: 'Last modified' },
   { value: 'size', label: 'Size' }
 ]
-const ORDER_OPTIONS = [
+const ORDER_OPTIONS: { value: Order; label: string }[] = [
   { value: 'asc', label: 'Ascending' },
   { value: 'desc', label: 'Descending' }
 ]

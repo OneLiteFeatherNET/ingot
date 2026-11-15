@@ -16,7 +16,7 @@
 
 // The glyphs that MdIcon draws by name. Each entry is the `d` string of a 24 by 24 viewBox, drawn as a stroke. A glyph is
 // named by the surface it serves until its icon family is decided (proposal question 3), and one path has one name.
-export const GLYPHS = Object.freeze({
+export const GLYPHS: Readonly<Record<string, string>> = Object.freeze({
   // The close glyph of the side sheet, the path of components/icons/CloseIcon.vue.
   'sheet-close': 'M6 18L18 6M6 6l12 12'
 })

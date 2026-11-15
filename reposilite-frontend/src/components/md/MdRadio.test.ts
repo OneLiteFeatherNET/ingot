@@ -21,11 +21,11 @@ import MdRadio from './MdRadio.vue'
 
 // Mounts one radio with the v-model of a parent that owns the group value, as a form would.
 const mountRadio = ({ value = 'read', initial = 'all', disabled = false, attrs = {} } = {}) => {
-  const group = ref(initial)
+  const group = ref<string>(initial)
   const wrapper = mount({
     setup: () => () => h(MdRadio, {
       modelValue: group.value,
-      'onUpdate:modelValue': (next) => { group.value = next },
+      'onUpdate:modelValue': (next: unknown) => { group.value = next as string },
       value,
       name: 'access',
       disabled,
@@ -35,11 +35,11 @@ const mountRadio = ({ value = 'read', initial = 'all', disabled = false, attrs =
   return { wrapper, group }
 }
 
-const input = () => document.querySelector('input[type="radio"]')
-const label = () => document.querySelector('label')
+const input = () => document.querySelector<HTMLInputElement>('input[type="radio"]')!
+const label = () => document.querySelector<HTMLLabelElement>('label')!
 
 describe('MdRadio', () => {
-  let mounted
+  let mounted: ReturnType<typeof mountRadio> | undefined
 
   afterEach(() => {
     mounted?.wrapper.unmount()
@@ -72,7 +72,7 @@ describe('MdRadio', () => {
 
     mounted.group.value = 'all'
     return mounted.wrapper.vm.$nextTick().then(() => {
-      expect(mounted.wrapper.find('[data-part="dot"]').exists(), 'an unselected radio shows no dot').toBe(false)
+      expect(mounted!.wrapper.find('[data-part="dot"]').exists(), 'an unselected radio shows no dot').toBe(false)
     })
   })
 
@@ -97,7 +97,7 @@ describe('MdRadio', () => {
   it('is labelled by its label text, so a screen reader announces the choice', () => {
     mounted = mountRadio()
 
-    expect(input().labels[0].textContent.trim()).toBe('Read only')
+    expect(input().labels![0].textContent.trim()).toBe('Read only')
   })
 
   it('forwards aria-describedby to the input', () => {
@@ -150,16 +150,16 @@ describe('MdRadio', () => {
   })
 
   describe('as a card', () => {
-    const cardContent = () => document.querySelector('[data-part="card-content"]')
+    const cardContent = () => document.querySelector<HTMLElement>('[data-part="card-content"]')!
 
     // Mounts a card radio in a fieldset, the way the wizard groups its options.
     const mountCard = ({ initial = 'all', disabled = false } = {}) => {
-      const group = ref(initial)
+      const group = ref<string>(initial)
       const wrapper = mount({
         setup: () => () => h('fieldset', [
           h(MdRadio, {
             modelValue: group.value,
-            'onUpdate:modelValue': (next) => { group.value = next },
+            'onUpdate:modelValue': (next: unknown) => { group.value = next as string },
             value: 'read',
             name: 'access',
             card: true,
@@ -167,7 +167,7 @@ describe('MdRadio', () => {
           }, () => 'Read only'),
           h(MdRadio, {
             modelValue: group.value,
-            'onUpdate:modelValue': (next) => { group.value = next },
+            'onUpdate:modelValue': (next: unknown) => { group.value = next as string },
             value: 'all',
             name: 'access',
             card: true,
@@ -177,8 +177,8 @@ describe('MdRadio', () => {
       }, { attachTo: document.body })
       return { wrapper, group }
     }
-    const inputs = () => Array.from(document.querySelectorAll('input[type="radio"]'))
-    const press = (element, key) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    const inputs = () => Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+    const press = (element: HTMLElement, key: string) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
 
     it('makes the card itself the label of its radio', () => {
       mounted = mountRadio({ attrs: { card: true, class: 'border p-3' } })
@@ -199,7 +199,7 @@ describe('MdRadio', () => {
     it('selects the radio when the empty card area is clicked', async () => {
       mounted = mountCard()
 
-      document.querySelector('label').click()
+      document.querySelector<HTMLLabelElement>('label')!.click()
       await mounted.wrapper.vm.$nextTick()
 
       expect(mounted.group.value, 'a click on the card root chooses the card').toBe('read')

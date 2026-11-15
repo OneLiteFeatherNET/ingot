@@ -21,10 +21,11 @@ import MdSwitch from './MdSwitch.vue'
 
 const mountSwitch = (props = {}, slot = 'Sort newest first') =>
   mount(MdSwitch, { props, slots: { default: slot } })
+type Wrapper = ReturnType<typeof mountSwitch>
 
-const track = (wrapper) => wrapper.find('[role="switch"]')
-const handle = (wrapper) => track(wrapper).find('[data-part="handle"]')
-const stateLayer = (wrapper) => track(wrapper).find('[data-part="state-layer"]')
+const track = (wrapper: Wrapper) => wrapper.find('[role="switch"]')
+const handle = (wrapper: Wrapper) => track(wrapper).find('[data-part="handle"]')
+const stateLayer = (wrapper: Wrapper) => track(wrapper).find('[data-part="state-layer"]')
 
 describe('MdSwitch', () => {
   it('renders role switch on a button element', () => {

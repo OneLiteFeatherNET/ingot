@@ -14,19 +14,21 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 /*
  * Material Design 3 card. A plain container: the content and its actions belong to the
  * slot. Pick the variant by how much the card must stand out from the page: elevated for
  * a card that floats, filled for grouped content, outlined for a quiet container.
  */
-defineProps({
-  variant: {
-    type: String,
-    default: 'filled',
-    validator: (value) => ['elevated', 'filled', 'outlined'].includes(value)
-  }
+withDefaults(defineProps<{
+  variant?: 'elevated' | 'filled' | 'outlined'
+}>(), {
+  variant: 'filled'
 })
+
+defineSlots<{
+  default?(): unknown
+}>()
 
 const VARIANTS = {
   elevated: 'bg-surface-container-low shadow-elevation-1',

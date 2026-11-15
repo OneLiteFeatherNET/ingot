@@ -16,20 +16,21 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, reactive } from 'vue'
 import MdSideSheet from './MdSideSheet.vue'
 
 // The sheet is attached to the document, so that focus can move into it and be read back. Each test unmounts what it
 // mounted and removes the opener it made, so no test reads another test's focus.
-const mounted = []
-const openers = []
+const mounted: VueWrapper[] = []
+const openers: HTMLElement[] = []
 afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())
   openers.splice(0).forEach(element => element.remove())
 })
 
-const dialog = () => document.querySelector('[role="dialog"]')
-const closeButton = () => dialog().querySelector('[aria-label="Close"]')
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
+const closeButton = () => dialog().querySelector<HTMLElement>('[aria-label="Close"]')!
 
 // A page that owns the open state, as the Administration frame does. The test reads `state` to close the sheet from the
 // page side, as a choice of an entry does.
@@ -46,7 +47,7 @@ const mountSheet = async ({ open = true } = {}) => {
       return () => h(MdSideSheet, {
         open: state.open,
         title: 'Administration pages',
-        'onUpdate:open': (value) => { state.open = value }
+        'onUpdate:open': (value: boolean) => { state.open = value }
       }, () => [
         h('a', { href: '/access/users' }, 'Users'),
         h('a', { href: '/access/teams' }, 'Teams')
@@ -65,7 +66,7 @@ describe('MdSideSheet', () => {
 
     expect(dialog(), 'the sheet is a dialog').not.toBeNull()
     expect(dialog().getAttribute('aria-modal'), 'the dialog is modal').toBe('true')
-    const name = document.getElementById(dialog().getAttribute('aria-labelledby'))
+    const name = document.getElementById(dialog().getAttribute('aria-labelledby')!)
     expect(name?.textContent.trim(), 'the accessible name is the title').toBe('Administration pages')
   })
 
@@ -131,7 +132,7 @@ describe('MdSideSheet', () => {
 
   it('does not take focus back when the page closes it after a choice', async () => {
     const { state, opener } = await mountSheet()
-    const link = dialog().querySelector('a')
+    const link = dialog().querySelector<HTMLAnchorElement>('a')!
     link.focus()
 
     // The page closes the sheet because an entry was chosen: the page moves the focus to its main content, so the opener
@@ -145,8 +146,8 @@ describe('MdSideSheet', () => {
   it('draws the close glyph through MdIcon', async () => {
     await mountSheet()
 
-    expect(closeButton().querySelector('svg').getAttribute('data-ingot-component'), 'the glyph is the shared MdIcon').toBe('md-icon')
-    expect(closeButton().querySelector('path').getAttribute('d'), 'the glyph is the close path of CloseIcon').toBe('M6 18L18 6M6 6l12 12')
+    expect(closeButton().querySelector('svg')!.getAttribute('data-ingot-component'), 'the glyph is the shared MdIcon').toBe('md-icon')
+    expect(closeButton().querySelector('path')!.getAttribute('d'), 'the glyph is the close path of CloseIcon').toBe('M6 18L18 6M6 6l12 12')
   })
 
   it('switches off its transition for a visitor who asks for less motion', async () => {

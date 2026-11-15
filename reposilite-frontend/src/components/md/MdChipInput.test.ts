@@ -16,10 +16,11 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import MdChipInput from './MdChipInput.vue'
 import { validateTag } from '../../store/maven/repositories'
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountInput = (props = {}) => {
   wrapper = mount(MdChipInput, {
@@ -29,14 +30,14 @@ const mountInput = (props = {}) => {
   return wrapper
 }
 
-const field = () => wrapper.find('input')
-const chips = () => wrapper.findAll('[data-test="chip"]')
+const field = () => wrapper!.find('input')
+const chips = () => wrapper!.findAll('[data-test="chip"]')
 const chipTexts = () => chips().map(chip => chip.text())
-const suggestionTexts = () => wrapper.findAll('[data-test="suggestion"]').map(button => button.text())
-const emitted = () => wrapper.emitted('update:modelValue') ?? []
+const suggestionTexts = () => wrapper!.findAll('[data-test="suggestion"]').map(button => button.text())
+const emitted = () => wrapper!.emitted('update:modelValue') ?? []
 const lastEmitted = () => emitted().at(-1)?.[0]
-const press = (key) => field().trigger('keydown', { key })
-const typeText = (text) => field().setValue(text)
+const press = (key: string) => field().trigger('keydown', { key })
+const typeText = (text: string) => field().setValue(text)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -97,7 +98,7 @@ describe('MdChipInput chips', () => {
   it('removes the chip whose close button is pressed', async () => {
     mountInput({ modelValue: ['team-core', 'ci'] })
 
-    await wrapper.find('[aria-label="Remove ci"]').trigger('click')
+    await wrapper!.find('[aria-label="Remove ci"]').trigger('click')
 
     expect(lastEmitted()).toEqual(['team-core'])
   })
@@ -122,7 +123,7 @@ describe('MdChipInput chips', () => {
   it('shows the count of chips against the limit', () => {
     mountInput({ modelValue: ['team-core', 'ci'] })
 
-    expect(wrapper.text()).toContain('2 / 10')
+    expect(wrapper!.text()).toContain('2 / 10')
   })
 })
 
@@ -135,7 +136,7 @@ describe('MdChipInput validation', () => {
 
     expect(emitted(), 'nothing is added').toEqual([])
     expect(field().element.value, 'the text stays so it can be fixed').toBe('Team Core')
-    expect(wrapper.text()).toContain('Use lower case letters, digits and hyphens')
+    expect(wrapper!.text()).toContain('Use lower case letters, digits and hyphens')
     expect(field().attributes('aria-invalid')).toBe('true')
   })
 
@@ -146,7 +147,7 @@ describe('MdChipInput validation', () => {
     await press('Enter')
 
     expect(emitted(), 'a duplicate is not stored twice').toEqual([])
-    expect(wrapper.text()).toContain('This tag is already added.')
+    expect(wrapper!.text()).toContain('This tag is already added.')
   })
 
   it('refuses a tag beyond the limit', async () => {
@@ -157,7 +158,7 @@ describe('MdChipInput validation', () => {
     await press('Enter')
 
     expect(emitted()).toEqual([])
-    expect(wrapper.text()).toContain('A repository takes at most 10 tags.')
+    expect(wrapper!.text()).toContain('A repository takes at most 10 tags.')
   })
 
   it('adds the valid entries of a comma list and keeps the first invalid one in the field', async () => {
@@ -167,13 +168,13 @@ describe('MdChipInput validation', () => {
 
     expect(lastEmitted()).toEqual(['team-core', 'ci'])
     expect(field().element.value).toBe('Bad Tag,ops,')
-    expect(wrapper.text()).toContain('Use lower case letters, digits and hyphens')
+    expect(wrapper!.text()).toContain('Use lower case letters, digits and hyphens')
   })
 
   it('shows the error the form reports, when the text itself is fine', () => {
     mountInput({ error: true, errorText: 'Use at most 10 tags.' })
 
-    expect(wrapper.text()).toContain('Use at most 10 tags.')
+    expect(wrapper!.text()).toContain('Use at most 10 tags.')
     expect(field().attributes('aria-invalid')).toBe('true')
   })
 })
@@ -208,7 +209,7 @@ describe('MdChipInput suggestions', () => {
     mountInput({ modelValue: [], suggestions })
 
     await field().trigger('focus')
-    await wrapper.findAll('[data-test="suggestion"]')[2].trigger('click')
+    await wrapper!.findAll('[data-test="suggestion"]')[2].trigger('click')
 
     expect(lastEmitted()).toEqual(['internal'])
   })
@@ -227,8 +228,8 @@ describe('MdChipInput label', () => {
   it('ties the label to the input', () => {
     mountInput()
 
-    expect(wrapper.find('label').text()).toBe('Tags')
-    expect(wrapper.find('label').attributes('for')).toBe(field().attributes('id'))
+    expect(wrapper!.find('label').text()).toBe('Tags')
+    expect(wrapper!.find('label').attributes('for')).toBe(field().attributes('id'))
   })
 })
 
@@ -236,14 +237,14 @@ describe('MdChipInput outlined field', () => {
   it('floats the label into the notch once the field holds a value', () => {
     mountInput({ modelValue: ['team-core'] })
 
-    expect(wrapper.find('label').classes()).toContain('top-0')
-    expect(wrapper.find('label').classes()).toContain('bg-md-field-container')
+    expect(wrapper!.find('label').classes()).toContain('top-0')
+    expect(wrapper!.find('label').classes()).toContain('bg-md-field-container')
   })
 
   it('rests the label in the middle of an empty field that is not focused', () => {
     mountInput({ modelValue: [] })
 
-    expect(wrapper.find('label').classes()).toContain('top-1/2')
+    expect(wrapper!.find('label').classes()).toContain('top-1/2')
   })
 
   it('draws the text input with the shared embedded-input reset, inside the outlined box', () => {
@@ -255,7 +256,7 @@ describe('MdChipInput outlined field', () => {
   it('takes the full width of its form, not a fixed maximum', () => {
     mountInput()
 
-    expect(wrapper.classes()).not.toContain('max-w-xl')
-    expect(wrapper.classes()).toContain('w-full')
+    expect(wrapper!.classes()).not.toContain('max-w-xl')
+    expect(wrapper!.classes()).toContain('w-full')
   })
 })

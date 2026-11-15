@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
 /*
@@ -22,19 +22,13 @@ import { computed } from 'vue'
  * clamped into that range. With `indeterminate` the bar slides and aria-valuenow is left
  * out, because the duration is unknown. The motion is pure CSS, so it needs no timer.
  */
-const props = defineProps({
-  value: {
-    type: Number,
-    default: 0
-  },
-  indeterminate: {
-    type: Boolean,
-    default: false
-  },
-  label: {
-    type: String,
-    default: 'Progress'
-  }
+const props = withDefaults(defineProps<{
+  value?: number
+  indeterminate?: boolean
+  label?: string
+}>(), {
+  value: 0,
+  label: 'Progress'
 })
 
 const percent = computed(() => {

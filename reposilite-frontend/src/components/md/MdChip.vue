@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
 /*
@@ -23,32 +23,24 @@ import { computed } from 'vue'
  *   filter: a toggle that narrows a set. It is a checkbox to assistive technology, so it
  *           reports `selected` through aria-checked, and a selected chip shows a check mark.
  */
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'assist',
-    validator: (value) => ['assist', 'filter'].includes(value)
-  },
-  selected: {
-    type: Boolean,
-    default: false
-  },
-  href: {
-    type: String,
-    default: undefined
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  // How a filter chip tells assistive technology its state: as a checkbox (aria-checked), or as a
-  // toggle button (aria-pressed), which suits a chip that is one of several choices.
-  toggle: {
-    type: String,
-    default: 'checkbox',
-    validator: (value) => ['checkbox', 'button'].includes(value)
-  }
+// How a filter chip tells assistive technology its state: as a checkbox (aria-checked), or as a
+// toggle button (aria-pressed), which suits a chip that is one of several choices.
+const props = withDefaults(defineProps<{
+  variant?: 'assist' | 'filter'
+  selected?: boolean
+  href?: string
+  disabled?: boolean
+  toggle?: 'checkbox' | 'button'
+}>(), {
+  variant: 'assist',
+  href: undefined,
+  toggle: 'checkbox'
 })
+
+defineSlots<{
+  icon?(): unknown
+  default?(): unknown
+}>()
 
 const isFilter = computed(() => props.variant === 'filter')
 const isCheckbox = computed(() => isFilter.value && props.toggle === 'checkbox')

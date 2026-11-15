@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts" generic="T extends string">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useId, watch } from 'vue'
 
 /*
@@ -44,54 +44,41 @@ const attrs = useAttrs()
 const forwardedAttrs = () =>
   Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style'))
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  label: {
-    type: String,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: T | ''
+  label: string
   /* Each option is { value, label }. The value is what modelValue holds. */
-  options: {
-    type: Array,
-    required: true
-  },
-  supportingText: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: Boolean,
-    default: false
-  },
-  errorText: {
-    type: String,
-    default: ''
-  },
-  id: {
-    type: String,
-    default: ''
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  required: {
-    type: Boolean,
-    default: false
-  }
+  options: { value: T; label: string }[]
+  supportingText?: string
+  error?: boolean
+  errorText?: string
+  id?: string
+  disabled?: boolean
+  required?: boolean
+}>(), {
+  modelValue: '',
+  supportingText: '',
+  errorText: '',
+  id: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: T]
+}>()
+
+// The native select mirrors the options, so a change always names one of them. An unknown value emits nothing.
+const onNativeChange = (event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
+  const option = props.options.find((candidate) => candidate.value === value)
+  if (option) emit('update:modelValue', option.value)
+}
 
 const generatedId = useId()
 const baseId = computed(() => props.id || `md-select-${generatedId}`)
 const comboboxId = computed(() => `${baseId.value}-combobox`)
 const labelId = computed(() => `${baseId.value}-label`)
 const listboxId = computed(() => `${baseId.value}-listbox`)
-const optionId = (index) => `${baseId.value}-option-${index}`
+const optionId = (index: number) => `${baseId.value}-option-${index}`
 const helperId = computed(() => `${baseId.value}-helper`)
 const helperText = computed(() => (props.error ? props.errorText : props.supportingText))
 const describedBy = computed(() => (helperText.value ? helperId.value : undefined))
@@ -106,13 +93,13 @@ const WINDOW_MARGIN = 8
 // A pause this long ends a type-ahead search, so the next letter starts a new one.
 const TYPEAHEAD_PAUSE = 500
 
-const comboboxRef = ref(null)
-const listboxRef = ref(null)
+const comboboxRef = ref<HTMLElement | null>(null)
+const listboxRef = ref<HTMLElement | null>(null)
 const isOpen = ref(false)
 const active = ref(-1)
-const menuStyle = ref({})
+const menuStyle = ref<Record<string, string>>({})
 let typed = ''
-let typedTimer = null
+let typedTimer: ReturnType<typeof setTimeout> | undefined
 
 const selectedIndex = computed(() => props.options.findIndex((option) => option.value === props.modelValue))
 const selectedLabel = computed(() => (selectedIndex.value >= 0 ? props.options[selectedIndex.value].label : ''))
@@ -165,7 +152,7 @@ function place() {
   const below = natural <= spaceBelow || spaceBelow >= spaceAbove
   const room = below ? spaceBelow : spaceAbove
   const left = Math.max(WINDOW_MARGIN, Math.min(rect.left, window.innerWidth - rect.width - WINDOW_MARGIN))
-  const style = {
+  const style: Record<string, string> = {
     left: `${left}px`,
     width: `${rect.width}px`,
     maxHeight: `${Math.max(0, Math.min(natural, room))}px`
@@ -201,21 +188,21 @@ function closeMenu() {
 }
 
 // Choosing the value that is already set emits nothing, as a native select does.
-function chooseIndex(index) {
+function chooseIndex(index: number) {
   const option = props.options[index]
   if (!option) return
   if (option.value !== props.modelValue) emit('update:modelValue', option.value)
   closeMenu()
 }
 
-function moveTo(index) {
+function moveTo(index: number) {
   const count = props.options.length
   if (count === 0) return
   active.value = Math.min(Math.max(index, 0), count - 1)
   scrollActiveIntoView()
 }
 
-function findMatch(text, start) {
+function findMatch(text: string, start: number): number {
   const count = props.options.length
   for (let step = 0; step < count; step += 1) {
     const index = (start + step) % count
@@ -224,7 +211,7 @@ function findMatch(text, start) {
   return -1
 }
 
-function typeAhead(letter) {
+function typeAhead(letter: string) {
   clearTimeout(typedTimer)
   typed += letter.toLowerCase()
   typedTimer = setTimeout(() => {
@@ -244,7 +231,7 @@ function typeAhead(letter) {
 
 const SINGLE_CHARACTER = /^\S$/
 
-function onKeydown(event) {
+function onKeydown(event: KeyboardEvent) {
   if (props.disabled) return
   const key = event.key
   const plain = !event.ctrlKey && !event.metaKey && !event.altKey
@@ -338,7 +325,7 @@ onBeforeUnmount(() => {
         class="sr-only appearance-none bg-none"
         :value="modelValue"
         :disabled="disabled"
-        @change="emit('update:modelValue', $event.target.value)"
+        @change="onNativeChange"
       >
         <option
           v-for="option in options"

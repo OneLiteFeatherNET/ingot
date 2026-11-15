@@ -23,14 +23,14 @@ describe('MdButton', () => {
   it('renders a button element with type button by default', () => {
     const wrapper = mount(MdButton, { slots: { default: 'Save' } })
 
-    expect(wrapper.element.tagName).toBe('BUTTON')
+    expect((wrapper.element as HTMLElement).tagName).toBe('BUTTON')
     expect(wrapper.attributes('type')).toBe('button')
   })
 
   it('renders an anchor when href is given', () => {
     const wrapper = mount(MdButton, { props: { href: '/tokens' }, slots: { default: 'Tokens' } })
 
-    expect(wrapper.element.tagName).toBe('A')
+    expect((wrapper.element as HTMLElement).tagName).toBe('A')
     expect(wrapper.attributes('href')).toBe('/tokens')
   })
 
@@ -156,7 +156,7 @@ describe('MdButton', () => {
       slots: { icon: () => h('svg', { 'data-test': 'icon' }), default: 'Upload' }
     })
 
-    const iconWrapper = wrapper.find('[data-test="icon"]').element.parentElement
+    const iconWrapper = wrapper.find('[data-test="icon"]').element.parentElement!
     expect(iconWrapper.getAttribute('aria-hidden')).toBe('true')
   })
 

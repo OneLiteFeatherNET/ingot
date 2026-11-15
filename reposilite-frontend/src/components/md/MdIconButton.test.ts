@@ -49,7 +49,7 @@ describe('MdIconButton', () => {
       slots: { default: () => h('svg') }
     })
 
-    expect(wrapper.element.tagName).toBe('BUTTON')
+    expect((wrapper.element as HTMLElement).tagName).toBe('BUTTON')
     expect(wrapper.attributes('aria-label')).toBe('Delete')
   })
 
@@ -60,7 +60,7 @@ describe('MdIconButton', () => {
       slots: { default: () => h('svg') }
     })
 
-    expect(wrapper.element.tagName).toBe('A')
+    expect((wrapper.element as HTMLElement).tagName).toBe('A')
     expect(wrapper.attributes('href')).toBe('/settings')
   })
 

@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, useId, watch } from 'vue'
 
 /*
@@ -28,51 +28,30 @@ import { computed, nextTick, onMounted, onBeforeUnmount, ref, useId, watch } fro
  * it. The field itself stops at the limit, so the counter only goes over for a value that came from
  * elsewhere. `maxLength` of zero shows no counter and sets no limit.
  */
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  label: {
-    type: String,
-    required: true
-  },
-  id: {
-    type: String,
-    default: ''
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: string
+  label: string
+  id?: string
   // The fewest lines the field shows, and the height it starts at.
-  rows: {
-    type: Number,
-    default: 3
-  },
-  maxLength: {
-    type: Number,
-    default: 0
-  },
-  supportingText: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: Boolean,
-    default: false
-  },
-  errorText: {
-    type: String,
-    default: ''
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  required: {
-    type: Boolean,
-    default: false
-  }
+  rows?: number
+  maxLength?: number
+  supportingText?: string
+  error?: boolean
+  errorText?: string
+  disabled?: boolean
+  required?: boolean
+}>(), {
+  modelValue: '',
+  id: '',
+  rows: 3,
+  maxLength: 0,
+  supportingText: '',
+  errorText: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
 
 // The text metrics of the field, from the body-large role (24px lines) and the field's padding (12px top and
 // bottom). The longest the field grows to is MAX_LINES; past that it scrolls.
@@ -84,8 +63,8 @@ const generatedId = useId()
 const inputId = computed(() => props.id || `md-text-area-${generatedId}`)
 const helperId = computed(() => `${inputId.value}-helper`)
 
-const field = ref(null)
-let observer
+const field = ref<HTMLTextAreaElement | null>(null)
+let observer: ResizeObserver | undefined
 
 const length = computed(() => props.modelValue.length)
 const overLimit = computed(() => props.maxLength > 0 && length.value > props.maxLength)
@@ -108,8 +87,8 @@ const grow = () => {
   element.style.overflowY = wanted > cap ? 'auto' : 'hidden'
 }
 
-const onInput = (event) => {
-  emit('update:modelValue', event.target.value)
+const onInput = (event: Event) => {
+  emit('update:modelValue', (event.target as HTMLTextAreaElement).value)
   grow()
 }
 

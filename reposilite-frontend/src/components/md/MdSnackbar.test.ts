@@ -22,7 +22,7 @@ import { createSnackbarQueue } from '../../store/snackbar'
 
 // Each test mounts the snackbar on a queue of its own, so nothing is shared between tests.
 describe('MdSnackbar', () => {
-  let queue
+  let queue: ReturnType<typeof createSnackbarQueue>
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -91,7 +91,7 @@ describe('MdSnackbar', () => {
     const action = wrapper.findAll('button').find(button => button.text() === 'Undo')
     expect(action, 'the action must be offered as a button with its label').toBeDefined()
 
-    await action.trigger('click')
+    await action!.trigger('click')
 
     expect(onClick, 'pressing the action must run its callback once').toHaveBeenCalledTimes(1)
     expect(wrapper.find('[role="status"]').exists(), 'the notice must leave after its action').toBe(false)

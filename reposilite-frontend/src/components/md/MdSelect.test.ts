@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import MdSelect from './MdSelect.vue'
 
 const options = [
@@ -24,9 +25,11 @@ const options = [
   { value: 'PRIVATE', label: 'Private' }
 ]
 
+type Wrapper = ReturnType<typeof mount<typeof MdSelect>>
+
 // Every wrapper is mounted in the document and unmounted after its test, so the listbox,
 // which is teleported to the body, never outlives the test that opened it.
-const mounted = []
+const mounted: Wrapper[] = []
 const mountSelect = (props = {}) => {
   const wrapper = mount(MdSelect, {
     props: { label: 'Visibility', options, ...props },
@@ -39,25 +42,25 @@ const mountSelect = (props = {}) => {
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
-  while (mounted.length > 0) mounted.pop().unmount()
+  while (mounted.length > 0) mounted.pop()!.unmount()
 })
 
-const combobox = (wrapper) => wrapper.get('[role="combobox"]')
-const isOpen = (wrapper) => combobox(wrapper).attributes('aria-expanded') === 'true'
-const listbox = (wrapper) => {
+const combobox = (wrapper: Wrapper) => wrapper.get('[role="combobox"]')
+const isOpen = (wrapper: Wrapper) => combobox(wrapper).attributes('aria-expanded') === 'true'
+const listbox = (wrapper: Wrapper) => {
   const id = combobox(wrapper).attributes('aria-controls')
   return id ? document.getElementById(id) : null
 }
-const optionElements = (wrapper) => [...listbox(wrapper).querySelectorAll('[role="option"]')]
-const activeLabel = (wrapper) => {
+const optionElements = (wrapper: Wrapper) => [...listbox(wrapper)!.querySelectorAll<HTMLElement>('[role="option"]')]
+const activeLabel = (wrapper: Wrapper) => {
   const id = combobox(wrapper).attributes('aria-activedescendant')
-  return id ? document.getElementById(id).textContent.trim() : undefined
+  return id ? document.getElementById(id)!.textContent.trim() : undefined
 }
-const press = (wrapper, key) => combobox(wrapper).trigger('keydown', { key })
-const open = async (wrapper) => {
+const press = (wrapper: Wrapper, key: string) => combobox(wrapper).trigger('keydown', { key })
+const open = async (wrapper: Wrapper) => {
   await combobox(wrapper).trigger('click')
 }
-const stubRect = (element, rect) => {
+const stubRect = (element: Element, rect: Record<string, number>) => {
   vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
     top: rect.top,
     bottom: rect.bottom,
@@ -67,7 +70,7 @@ const stubRect = (element, rect) => {
     height: rect.bottom - rect.top,
     x: rect.left ?? 40,
     y: rect.top
-  })
+  } as DOMRect)
 }
 
 describe('MdSelect', () => {
@@ -143,7 +146,7 @@ describe('MdSelect', () => {
       await open(wrapper)
 
       expect(isOpen(wrapper)).toBe(true)
-      expect(listbox(wrapper).getAttribute('role')).toBe('listbox')
+      expect(listbox(wrapper)!.getAttribute('role')).toBe('listbox')
       expect(optionElements(wrapper).map(option => option.textContent.trim())).toEqual(['Public', 'Hidden', 'Private'])
     })
 
@@ -152,7 +155,7 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).getAttribute('aria-labelledby')).toBe(combobox(wrapper).attributes('aria-labelledby'))
+      expect(listbox(wrapper)!.getAttribute('aria-labelledby')).toBe(combobox(wrapper).attributes('aria-labelledby'))
     })
 
     it('starts with the selected option active and marked selected', async () => {
@@ -188,7 +191,7 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).parentElement).toBe(document.body)
+      expect(listbox(wrapper)!.parentElement).toBe(document.body)
     })
 
     it('uses the theme surface for the menu and the primary role for the selected option', async () => {
@@ -196,7 +199,7 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).classList).toContain('bg-surface-container')
+      expect(listbox(wrapper)!.classList).toContain('bg-surface-container')
       const selected = optionElements(wrapper)[1]
       expect(selected.classList, 'the selected option takes the primary role').toContain('text-primary')
       expect(optionElements(wrapper)[0].classList).toContain('text-on-surface')
@@ -207,7 +210,7 @@ describe('MdSelect', () => {
       await open(wrapper)
       const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
 
-      listbox(wrapper).dispatchEvent(event)
+      listbox(wrapper)!.dispatchEvent(event)
 
       expect(event.defaultPrevented).toBe(true)
     })
@@ -290,7 +293,7 @@ describe('MdSelect', () => {
 
       try {
         combobox(wrapper).element.dispatchEvent(event)
-        await wrapper.vm.$nextTick()
+        await nextTick()
       } finally {
         document.removeEventListener('keydown', outerListener)
       }
@@ -311,7 +314,7 @@ describe('MdSelect', () => {
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     })
 
-    it('stops arrow keys and Space from scrolling the page', async () => {
+    it('stops arrow keys and Space from scrolling the page', () => {
       const wrapper = mountSelect()
       for (const key of ['ArrowDown', ' ']) {
         const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
@@ -367,7 +370,9 @@ describe('MdSelect', () => {
       const wrapper = mountSelect({ modelValue: 'PUBLIC' })
       await open(wrapper)
 
-      await optionElements(wrapper)[1].click()
+      optionElements(wrapper)[1].click()
+
+      await nextTick()
 
       expect(wrapper.emitted('update:modelValue')).toEqual([['HIDDEN']])
       expect(isOpen(wrapper)).toBe(false)
@@ -377,7 +382,9 @@ describe('MdSelect', () => {
       const wrapper = mountSelect({ modelValue: 'PUBLIC' })
       await open(wrapper)
 
-      await optionElements(wrapper)[0].click()
+      optionElements(wrapper)[0].click()
+
+      await nextTick()
 
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
       expect(isOpen(wrapper)).toBe(false)
@@ -389,14 +396,16 @@ describe('MdSelect', () => {
           label: 'Visibility',
           options,
           modelValue: 'PUBLIC',
-          'onUpdate:modelValue': (value) => wrapper.setProps({ modelValue: value })
+          'onUpdate:modelValue': (value: string) => wrapper.setProps({ modelValue: value })
         },
         attachTo: document.body
       })
       mounted.push(wrapper)
       await open(wrapper)
 
-      await optionElements(wrapper)[2].click()
+      optionElements(wrapper)[2].click()
+
+      await nextTick()
 
       expect(wrapper.props('modelValue')).toBe('PRIVATE')
       expect(combobox(wrapper).text()).toBe('Private')
@@ -405,18 +414,20 @@ describe('MdSelect', () => {
 
     it('keeps the focus on the field after a choice', async () => {
       const wrapper = mountSelect()
-      combobox(wrapper).element.focus()
+      ;(combobox(wrapper).element as HTMLElement).focus()
       await open(wrapper)
 
-      await optionElements(wrapper)[1].click()
+      optionElements(wrapper)[1].click()
+
+      await nextTick()
 
       expect(document.activeElement).toBe(combobox(wrapper).element)
     })
   })
 
   describe('focus', () => {
-    const focusVariants = (element) => [...element.classList].filter((name) => name.startsWith('focus:'))
-    const peerFocusVariants = (element) => [...element.classList].filter((name) => name.startsWith('peer-focus:'))
+    const focusVariants = (element: Element) => [...element.classList].filter((name) => name.startsWith('focus:'))
+    const peerFocusVariants = (element: Element) => [...element.classList].filter((name) => name.startsWith('peer-focus:'))
 
     it('outlines the focused field in primary, inside its edge', () => {
       const wrapper = mountSelect()
@@ -437,14 +448,14 @@ describe('MdSelect', () => {
     it('colours the trailing icon in primary while the field is focused', () => {
       const wrapper = mountSelect()
 
-      expect(peerFocusVariants(wrapper.get('svg').element.parentElement)).toEqual(['peer-focus:text-primary'])
+      expect(peerFocusVariants(wrapper.get('svg').element.parentElement!)).toEqual(['peer-focus:text-primary'])
     })
 
     it('keeps the field 1px wide in every state, so focus never grows the border', () => {
       const wrapper = mountSelect()
 
       expect(combobox(wrapper).classes()).toContain('border')
-      expect(combobox(wrapper).classes().some((name) => /^(focus:)?border-[2-9]/.test(name))).toBe(false)
+      expect(combobox(wrapper).classes().some((name: string) => /^(focus:)?border-[2-9]/.test(name))).toBe(false)
     })
 
     it('keeps an invalid field in the error role, focused or not', () => {
@@ -454,7 +465,7 @@ describe('MdSelect', () => {
       expect(focusVariants(combobox(wrapper).element), 'the primary outline does not apply to an invalid field').toEqual([])
       expect(wrapper.get('label').classes()).toContain('text-error')
       expect(peerFocusVariants(wrapper.get('label').element)).toEqual([])
-      expect(peerFocusVariants(wrapper.get('svg').element.parentElement)).toEqual([])
+      expect(peerFocusVariants(wrapper.get('svg').element.parentElement!)).toEqual([])
     })
 
     it('draws no focus colour on a disabled field', () => {
@@ -473,8 +484,8 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).style.top).toBe('160px')
-      expect(listbox(wrapper).style.bottom).toBe('')
+      expect(listbox(wrapper)!.style.top).toBe('160px')
+      expect(listbox(wrapper)!.style.bottom).toBe('')
     })
 
     it('flips above the field when there is no room below it', async () => {
@@ -484,9 +495,9 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).style.top).toBe('')
-      expect(listbox(wrapper).style.bottom).toBe('104px')
-      expect(listbox(wrapper).style.maxHeight).toBe('160px')
+      expect(listbox(wrapper)!.style.top).toBe('')
+      expect(listbox(wrapper)!.style.bottom).toBe('104px')
+      expect(listbox(wrapper)!.style.maxHeight).toBe('160px')
     })
 
     it('scrolls the menu when neither side has room for every option', async () => {
@@ -497,8 +508,8 @@ describe('MdSelect', () => {
 
       await open(wrapper)
 
-      expect(listbox(wrapper).style.bottom).toBe('104px')
-      expect(listbox(wrapper).style.maxHeight).toBe('292px')
+      expect(listbox(wrapper)!.style.bottom).toBe('104px')
+      expect(listbox(wrapper)!.style.maxHeight).toBe('292px')
     })
   })
 })

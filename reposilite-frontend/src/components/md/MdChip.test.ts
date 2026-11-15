@@ -23,7 +23,7 @@ describe('MdChip', () => {
   it('assist chip renders a button by default', () => {
     const wrapper = mount(MdChip, { slots: { default: 'Copy coordinates' } })
 
-    expect(wrapper.element.tagName).toBe('BUTTON')
+    expect((wrapper.element as HTMLElement).tagName).toBe('BUTTON')
     expect(wrapper.attributes('type')).toBe('button')
   })
 
@@ -33,7 +33,7 @@ describe('MdChip', () => {
       slots: { default: 'Artifacts' }
     })
 
-    expect(wrapper.element.tagName).toBe('A')
+    expect((wrapper.element as HTMLElement).tagName).toBe('A')
     expect(wrapper.attributes('href')).toBe('/artifacts')
   })
 
@@ -109,7 +109,7 @@ describe('MdChip', () => {
       slots: { icon: () => h('svg', { 'data-test': 'icon' }), default: 'Copy' }
     })
 
-    const iconWrapper = wrapper.find('[data-test="icon"]').element.parentElement
+    const iconWrapper = wrapper.find('[data-test="icon"]').element.parentElement!
     expect(iconWrapper.getAttribute('aria-hidden')).toBe('true')
   })
 
