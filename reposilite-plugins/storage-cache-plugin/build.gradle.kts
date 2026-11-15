@@ -21,6 +21,10 @@ plugins {
     id("com.gradleup.shadow") version "9.4.2"
 }
 
+// The other reposilite-plugins publish under com.reposilite.plugin. This one is a release unit of Ingot, so its coordinate is
+// net.onelitefeather.ingot:storage-cache-plugin, which the storage catalogue lists.
+group = "net.onelitefeather.ingot"
+
 dependencies {
     compileOnly(project(":reposilite-backend"))
 
