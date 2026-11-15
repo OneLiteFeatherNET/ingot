@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.search.backend
 
 import com.reposilite.plugin.api.Event
+import com.reposilite.scheduling.ScheduledJobClaims
 import java.time.Clock
 
 /**
@@ -70,6 +71,12 @@ interface SearchBackendContext {
 
     /** A logger whose messages carry the prefix `SEARCH |` and the id of the backend. */
     fun logger(): BackendLogger
+
+    /**
+     * The lease store of the instance database. A backend that must have one writer at a time takes its lease here. Null when the
+     * core has none to give, and a backend that needs one then refuses to open. A context that does not override it has none.
+     */
+    val leases: ScheduledJobClaims? get() = null
 
 }
 

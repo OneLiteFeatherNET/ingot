@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.search.backend
 
+import com.reposilite.scheduling.ScheduledJobClaims
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
@@ -34,6 +35,7 @@ internal class CoreSearchBackendContext(
     override val instanceId: String,
     private val backendId: String,
     private val variables: (String) -> String? = { System.getenv(it) },
+    override val leases: ScheduledJobClaims? = null,
     private val sink: (level: String, message: String) -> Unit,
 ) : SearchBackendContext {
 
