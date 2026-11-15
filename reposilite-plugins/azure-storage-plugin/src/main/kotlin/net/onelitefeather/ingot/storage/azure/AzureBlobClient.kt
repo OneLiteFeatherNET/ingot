@@ -43,12 +43,26 @@ internal interface AzureBlobClient : AutoCloseable {
      */
     fun download(name: String, offset: Long, count: Long?): InputStream
 
+    /**
+     * The entries directly under the prefix [prefix] (a listing by hierarchy with the delimiter `/`). At most [maxResults] entries are
+     * returned when it is set. A directory is an entry without properties, and its name ends with `/`.
+     */
+    fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild>
+
     override fun close() {}
 
 }
 
 /** The committed state of a blob that the provider reports. */
 internal data class AzureBlobProperties(val contentLength: Long, val lastModified: Instant)
+
+/** An entry of a listing by hierarchy: a blob with its properties, or a directory with none. The [name] is the full name in the container. */
+internal data class AzureBlobChild(val name: String, val properties: AzureBlobProperties?) {
+
+    val isDirectory: Boolean
+        get() = properties == null
+
+}
 
 /** The blob, or its container, does not exist (404). */
 internal class AzureBlobNotFoundException(name: String) : RuntimeException("Azure blob '$name' does not exist")
