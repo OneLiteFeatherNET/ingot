@@ -16,23 +16,31 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { computed, ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import AccountView from './AccountView.vue'
 
+type SessionOptions = {
+  mode?: string
+  mustChange?: boolean
+  admin?: boolean
+  teams?: string[]
+}
+
 // The session is replaced by plain refs, so each test decides who is signed in and how.
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted(() => ({ session: null as FakeSession | null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string } | undefined) =>
+    error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
 
-const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams = ['developers'] } = {}) => {
+const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams = ['developers'] }: SessionOptions = {}) => {
   const me = {
     changePassword: vi.fn().mockResolvedValue({ status: 204 }),
     tokens: {
@@ -54,19 +62,20 @@ const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams
   }
 }
 
-describe('AccountView', () => {
-  let wrapper
+type FakeSession = ReturnType<typeof fakeSession>
 
-  const mountView = async (options) => {
+describe('AccountView', () => {
+  let wrapper: VueWrapper
+
+  const mountView = async (options?: SessionOptions) => {
     holder.session = fakeSession(options)
-    wrapper = mount(AccountView, { attachTo: document.body })
+    wrapper = mount(AccountView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
     return holder.session
   }
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
@@ -77,7 +86,7 @@ describe('AccountView', () => {
   it('keeps the account page at the 960 pixel reading measure', async () => {
     await mountView()
 
-    expect(Array.from(wrapper.element.classList), 'a reading page, at the start of the column').toEqual(
+    expect(Array.from((wrapper.element as HTMLElement).classList), 'a reading page, at the start of the column').toEqual(
       expect.arrayContaining(['max-w-md-reading'])
     )
   })

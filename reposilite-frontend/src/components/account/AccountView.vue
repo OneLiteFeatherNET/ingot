@@ -14,9 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useSession } from '../../store/session'
+import type { SessionDetails } from '../../store/session'
 import TokenList from '../identity/TokenList.vue'
 import PasswordCard from './PasswordCard.vue'
 import ProfileCard from './ProfileCard.vue'
@@ -30,7 +31,8 @@ import ProfileCard from './ProfileCard.vue'
 const { principal, details, instanceAdmin, authMode, mustChangePassword, client } = useSession()
 
 const identity = computed(() => client.value.identity.me)
-const teams = computed(() => details.value?.teams ?? [])
+// Contract gap: the store's SessionDetails does not declare teams, which GET /api/auth/me sends as string[].
+const teams = computed<string[]>(() => (details.value as (SessionDetails & { teams?: string[] }) | undefined)?.teams ?? [])
 const passwordAvailable = computed(() => authMode.value === 'cookie')
 
 const passwordChanged = () => {

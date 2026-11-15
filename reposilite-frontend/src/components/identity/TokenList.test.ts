@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import TokenList from './TokenList.vue'
 import { setClock, resetClock } from '../../helpers/clock'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
-const wireInstant = (iso) => Date.parse(iso) / 1000
+const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: { message?: string } | undefined) => error?.message ?? String(error)
 }))
 
 const LAPTOP = {
@@ -46,26 +46,28 @@ const CI = {
   lastUsedAt: null
 }
 
-const dialogs = () => [...document.querySelectorAll('[role="dialog"]')]
+const dialogs = () => [...document.querySelectorAll('[role="dialog"]')] as HTMLElement[]
 const dialog = () => dialogs()[0]
-const dialogButton = (label) =>
-  dialogs().flatMap(node => [...node.querySelectorAll('button')]).find(node => node.textContent.trim() === label)
-const rows = (wrapper) => wrapper.findAll('[data-test="token-row"]')
-const rowButton = (row, label) => row.findAll('button').find(button => button.text() === label)
-const headerButton = (wrapper, label) => wrapper.findAll('button').find(button => button.text() === label)
+const dialogButton = (label: string) =>
+  dialogs().flatMap(node => [...node.querySelectorAll('button')]).find(node => node.textContent?.trim() === label) as HTMLButtonElement
+const rows = (wrapper: VueWrapper) => wrapper.findAll('[data-test="token-row"]')
+const rowButton = (row: DOMWrapper<Element>, label: string) =>
+  row.findAll('button').find(button => button.text() === label) as DOMWrapper<HTMLButtonElement>
+const headerButton = (wrapper: VueWrapper, label: string) =>
+  wrapper.findAll('button').find(button => button.text() === label) as DOMWrapper<HTMLButtonElement>
 
-const type = (id, value) => {
-  const input = document.getElementById(id)
+const type = (id: string, value: string) => {
+  const input = document.getElementById(id) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
 describe('TokenList', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: { list: Mock; create: Mock; rotate?: Mock; revoke: Mock }
 
-  const mountList = async (props = {}) => {
-    wrapper = mount(TokenList, { props: { api, ...props }, attachTo: document.body })
+  const mountList = async (props: { title?: string; description?: string; emptyText?: string } = {}) => {
+    wrapper = mount(TokenList, { props: { api, ...props }, attachTo: document.body }) as VueWrapper
     await flushPromises()
   }
 
@@ -81,7 +83,6 @@ describe('TokenList', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
     resetClock()
   })
@@ -208,12 +209,12 @@ describe('TokenList', () => {
       await headerButton(wrapper, 'Create token').trigger('click')
       await flushPromises()
       type('create-token-name', 'new')
-      dialog().querySelector('form').dispatchEvent(new Event('submit'))
+      ;(dialog().querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'))
       await flushPromises()
 
       expect(api.create).toHaveBeenCalledTimes(1)
       expect(document.body.textContent, 'the secret-once dialog shows the new secret').toContain('You will not see this secret again')
-      expect(document.querySelector('input[readonly]').value).toBe('created-secret')
+      expect((document.querySelector('input[readonly]') as HTMLInputElement).value).toBe('created-secret')
       expect(api.list, 'the list is read again to show the new token').toHaveBeenCalledTimes(2)
     })
 
@@ -222,13 +223,13 @@ describe('TokenList', () => {
       await headerButton(wrapper, 'Create token').trigger('click')
       await flushPromises()
       type('create-token-name', 'new')
-      dialog().querySelector('form').dispatchEvent(new Event('submit'))
+      ;(dialog().querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'))
       await flushPromises()
 
       dialogButton('Close').click()
       await flushPromises()
 
-      expect(document.querySelector('input[readonly]')?.value ?? '', 'the secret must not linger').not.toBe('created-secret')
+      expect(document.querySelector<HTMLInputElement>('input[readonly]')?.value ?? '', 'the secret must not linger').not.toBe('created-secret')
     })
   })
 
@@ -245,7 +246,7 @@ describe('TokenList', () => {
       await flushPromises()
 
       expect(api.rotate).toHaveBeenCalledWith('laptop')
-      expect(document.querySelector('input[readonly]').value).toBe('rotated-secret')
+      expect((document.querySelector('input[readonly]') as HTMLInputElement).value).toBe('rotated-secret')
     })
 
     it('shows the Bearer and Basic examples for the rotated secret', async () => {
@@ -256,8 +257,8 @@ describe('TokenList', () => {
       dialogButton('Rotate secret').click()
       await flushPromises()
 
-      const bearer = document.querySelector('[data-snippet="bearer"]').textContent
-      const basic = document.querySelector('[data-snippet="basic"]').textContent
+      const bearer = (document.querySelector('[data-snippet="bearer"]') as HTMLElement).textContent
+      const basic = (document.querySelector('[data-snippet="basic"]') as HTMLElement).textContent
       expect(bearer).toContain('Authorization: Bearer rotated-secret')
       expect(basic).toContain('laptop:rotated-secret')
     })

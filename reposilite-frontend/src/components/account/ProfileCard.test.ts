@@ -17,10 +17,11 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProfileCard from './ProfileCard.vue'
+import type { Principal } from '../../store/session'
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
 
-const render = (props = {}) =>
+const render = (props: { principal?: Principal; teams?: string[]; instanceAdmin?: boolean } = {}) =>
   mount(ProfileCard, { props: { principal: ALICE, teams: [], instanceAdmin: false, ...props } })
 
 describe('ProfileCard', () => {

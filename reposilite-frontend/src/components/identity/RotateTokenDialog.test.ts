@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import RotateTokenDialog from './RotateTokenDialog.vue'
+import type { IdentityToken, IdentityTokenApi } from './identityTokens'
 
-const dialog = () => document.querySelector('[role="dialog"]')
+const dialog = () => document.querySelector('[role="dialog"]') as HTMLElement
 const rotateButton = () =>
-  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === 'Rotate secret')
+  [...dialog().querySelectorAll('button')].find(node => node.textContent?.trim() === 'Rotate secret') as HTMLButtonElement
 
 describe('RotateTokenDialog', () => {
-  let wrapper
-  let api
+  let wrapper: VueWrapper
+  let api: { rotate: Mock }
 
   beforeEach(async () => {
     api = { rotate: vi.fn().mockResolvedValue({ data: { token: { name: 'laptop' }, secret: 'fresh' } }) }
     wrapper = mount(RotateTokenDialog, {
-      props: { modelValue: true, token: { name: 'laptop' }, api },
+      props: { modelValue: true, token: { name: 'laptop' } as IdentityToken, api: api as unknown as IdentityTokenApi },
       attachTo: document.body
-    })
+    }) as VueWrapper
     await flushPromises()
   })
 
@@ -49,8 +50,8 @@ describe('RotateTokenDialog', () => {
     await flushPromises()
 
     expect(api.rotate).toHaveBeenCalledWith('laptop')
-    expect(wrapper.emitted('rotated')[0][0]).toEqual({ token: { name: 'laptop' }, secret: 'fresh' })
-    expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    expect(wrapper.emitted('rotated')?.[0]?.[0]).toEqual({ token: { name: 'laptop' }, secret: 'fresh' })
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
   })
 
   it('shows a failed rotation inside the dialog', async () => {
@@ -60,7 +61,7 @@ describe('RotateTokenDialog', () => {
     rotateButton().click()
     await flushPromises()
 
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('Token not found')
+    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain('Token not found')
     expect(wrapper.emitted('rotated')).toBeUndefined()
   })
 })

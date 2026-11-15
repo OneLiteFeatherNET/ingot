@@ -14,12 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from './DialogShell.vue'
+import type { IdentityToken, IdentityTokenApi } from './identityTokens'
 
 /*
  * Confirms that a token is revoked for good. The user types the token name, and only an exact
@@ -33,26 +34,23 @@ import DialogShell from './DialogShell.vue'
  *   update:modelValue  false when the dialog closes
  *   revoked            the token that was revoked
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  token: {
-    type: Object,
-    default: null
-  },
-  api: {
-    type: Object,
-    required: true
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  token?: IdentityToken | null
+  api: IdentityTokenApi
+}>(), {
+  modelValue: false,
+  token: null
 })
 
-const emit = defineEmits(['update:modelValue', 'revoked'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  revoked: [token: IdentityToken]
+}>()
 
 const typed = ref('')
 const busy = ref(false)
-const failure = ref(null)
+const failure = ref<string | null>(null)
 
 const confirmed = computed(() => props.token !== null && typed.value === props.token.name)
 
@@ -63,12 +61,13 @@ const reset = () => {
 }
 
 const revoke = async () => {
-  if (!confirmed.value) return
+  const token = props.token
+  if (!confirmed.value || token === null) return
   busy.value = true
   failure.value = null
   try {
-    await props.api.revoke(props.token.name)
-    emit('revoked', props.token)
+    await props.api.revoke(token.name)
+    emit('revoked', token)
     emit('update:modelValue', false)
   } catch (error) {
     failure.value = errorMessage(error)

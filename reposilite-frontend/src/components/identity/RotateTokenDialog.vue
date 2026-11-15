@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import DialogShell from './DialogShell.vue'
+import type { IdentityToken, IdentityTokenApi, TokenSecret } from './identityTokens'
 
 /*
  * Confirms that a token gets a new secret.
@@ -31,25 +32,22 @@ import DialogShell from './DialogShell.vue'
  *   update:modelValue  false when the dialog closes
  *   rotated            { token, secret } once the server has issued the new secret
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  token: {
-    type: Object,
-    default: null
-  },
-  api: {
-    type: Object,
-    required: true
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  token?: IdentityToken | null
+  api: IdentityTokenApi
+}>(), {
+  modelValue: false,
+  token: null
 })
 
-const emit = defineEmits(['update:modelValue', 'rotated'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  rotated: [response: TokenSecret]
+}>()
 
 const busy = ref(false)
-const failure = ref(null)
+const failure = ref<string | null>(null)
 
 const reset = () => {
   busy.value = false
@@ -60,6 +58,8 @@ const rotate = async () => {
   busy.value = true
   failure.value = null
   try {
+    // The Rotate action is only offered where the endpoint exists, so this guard is never taken in practice.
+    if (props.token === null || !props.api.rotate) throw new Error('This token cannot be rotated')
     const response = await props.api.rotate(props.token.name)
     emit('rotated', response.data)
     emit('update:modelValue', false)

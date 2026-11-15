@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
@@ -39,6 +39,7 @@ import {
   validateCustomDate,
   validateTokenName
 } from './identityTokens'
+import type { ArtifactAction, IdentityTokenApi, TokenSecret } from './identityTokens'
 
 /*
  * The dialog that creates a token.
@@ -60,22 +61,19 @@ import {
  * artifact node (`nodes`), and the nodes replace the access choice, which is then off. A failure
  * stays inside the dialog and shows the problems the server names for a refused node.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  api: {
-    type: Object,
-    required: true
-  },
-  locale: {
-    type: String,
-    default: undefined
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  api: IdentityTokenApi
+  locale?: string
+}>(), {
+  modelValue: false,
+  locale: undefined
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  created: [response: TokenSecret]
+}>()
 
 const NEVER_WARNING = 'Tokens without expiry stay valid until revoked. Prefer an expiry and rotate the token.'
 
@@ -86,13 +84,13 @@ const customDate = ref('')
 const access = ref(DEFAULT_ACCESS)
 const submitted = ref(false)
 const busy = ref(false)
-const failure = ref(null)
+const failure = ref<string | null>(null)
 
 const limitOn = ref(false)
 const repository = ref('')
 const groupId = ref('')
 const artifactId = ref('')
-const actions = ref([])
+const actions = ref<ArtifactAction[]>([])
 
 const artifact = computed(() => (limitOn.value
   ? artifactNodeTexts({ repository: repository.value, groupId: groupId.value, artifactId: artifactId.value, actions: actions.value })
@@ -115,6 +113,7 @@ const expiryNote = computed(() => {
   if (isNever.value) return NEVER_WARNING
   if (customIssue.value !== '') return ''
   const expiresAt = expiresAtFor({ preset: preset.value, customDate: customDate.value })
+  if (expiresAt === null) return NEVER_WARNING
   // The expiry is the ISO string this dialog built itself, not a wire value from the API.
   return `Expires on ${formatExpiryDate(new Date(expiresAt), props.locale)}`
 })
@@ -135,13 +134,21 @@ const reset = () => {
   actions.value = []
 }
 
-const toggleAction = (word, checked) => {
+const toggleAction = (word: ArtifactAction, checked: boolean) => {
   const others = actions.value.filter(action => action !== word)
   actions.value = checked ? [...others, word] : others
 }
 
+type ProblemResponse = {
+  response?: {
+    data?: {
+      problems?: { message?: string }[]
+    }
+  }
+}
+
 // The messages a refused request names for its nodes, or an empty string when it names none.
-const problemText = (error) => (error?.response?.data?.problems ?? [])
+const problemText = (error: unknown) => ((error as ProblemResponse | undefined)?.response?.data?.problems ?? [])
   .map(problem => problem.message)
   .filter(Boolean)
   .join(' ')

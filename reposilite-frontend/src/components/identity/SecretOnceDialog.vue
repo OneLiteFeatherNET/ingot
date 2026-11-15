@@ -14,12 +14,18 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import CopyIcon from '../icons/CopyIcon.vue'
 import MdButton from '../md/MdButton.vue'
 import DialogShell from './DialogShell.vue'
+
+type Snippet = {
+  key: 'bearer' | 'basic'
+  title: string
+  text: string
+}
 
 /*
  * Shows a secret exactly once, after a token was created or rotated.
@@ -39,26 +45,24 @@ import DialogShell from './DialogShell.vue'
  * Only the Close button closes the dialog; Escape and a click outside do not, so the secret
  * cannot be lost by accident.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  secret: {
-    type: String,
-    default: ''
-  },
-  tokenName: {
-    type: String,
-    default: ''
-  },
-  heading: {
-    type: String,
-    default: 'Your new secret'
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  secret?: string
+  tokenName?: string
+  heading?: string
+}>(), {
+  modelValue: false,
+  secret: '',
+  tokenName: '',
+  heading: 'Your new secret'
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+}>()
+
+// The field selects its whole value when it gets the focus, so the secret can be copied at once.
+const selectAll = (event: FocusEvent) => (event.target as HTMLInputElement).select()
 
 const copy = async () => {
   try {
@@ -70,9 +74,9 @@ const copy = async () => {
 }
 
 // A value in single quotes reaches the shell as it is; a quote inside it is closed, escaped and reopened.
-const quoted = (value) => `'${value.replaceAll("'", "'\\''")}'`
+const quoted = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
-const snippets = computed(() => {
+const snippets = computed<Snippet[]>(() => {
   const url = `${window.location.origin}/api/auth/me`
   return [
     {
@@ -88,7 +92,7 @@ const snippets = computed(() => {
   ]
 })
 
-const copySnippet = async (snippet) => {
+const copySnippet = async (snippet: Snippet) => {
   try {
     await navigator.clipboard.writeText(snippet.text)
     createSuccessToast(`${snippet.title} example copied`)
@@ -125,7 +129,7 @@ const copySnippet = async (snippet) => {
         spellcheck="false"
         autocomplete="off"
         class="md-focus-ring min-w-0 flex-1 rounded-corner-small border border-outline bg-surface-container-highest px-3 py-3 font-mono text-sm text-on-surface"
-        @focus="$event.target.select()"
+        @focus="selectAll"
       >
       <MdButton
         variant="tonal"
