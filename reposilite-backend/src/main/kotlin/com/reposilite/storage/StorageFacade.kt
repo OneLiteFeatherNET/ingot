@@ -69,7 +69,7 @@ open class StorageFacade internal constructor(
             return factory.create(journalist, failureFacade, workingDirectory, repository, settings)
         }
         val nested = mutableListOf<StorageProvider>()
-        val context = StorageProviderContext.of(journalist, failureFacade, workingDirectory, repository) { nestedSettings ->
+        val context = StorageProviderContext.of(journalist, failureFacade, workingDirectory, repository, storageSettings.type) { nestedSettings ->
             buildStorageProvider(journalist, failureFacade, workingDirectory, repository, nestedSettings, path)
                 ?.also { nested += it }
                 ?: throw StorageProviderNotInstalledException(nestedSettings.type)

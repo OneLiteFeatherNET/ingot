@@ -35,12 +35,13 @@ class StorageProviderEnvironmentTest {
         override fun getLogger(): Logger = PrintStreamLogger(System.out, System.err)
     }
 
-    private fun contextWith(variables: Map<String, String>): StorageProviderContext =
+    private fun contextWith(variables: Map<String, String>, providerType: String = "azure"): StorageProviderContext =
         StorageProviderContext.of(
             journalist = journalist,
             failureFacade = FailureFacade(journalist),
             workingDirectory = Path.of("work"),
             repositoryName = "releases",
+            providerType = providerType,
             environment = variables::get,
         )
 
@@ -67,6 +68,46 @@ class StorageProviderEnvironmentTest {
         assertThat(contextWith(emptyMap()).environment("AZURE_ACCOUNT"))
             .describedAs("an unset variable has no value")
             .isNull()
+    }
+
+    @Test
+    fun `environment refuses the settings master key`() {
+        val context = contextWith(mapOf("INGOT_SETTINGS_KEY" to "master-key"))
+
+        assertThatThrownBy { context.environment("SETTINGS_KEY") }
+            .describedAs("the master key that encrypts the settings must never reach a storage provider")
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("SETTINGS_KEY")
+    }
+
+    @Test
+    fun `environment refuses the local database password`() {
+        val context = contextWith(mapOf("INGOT_LOCAL_DATABASE_PASSWORD" to "database-secret"))
+
+        assertThatThrownBy { context.environment("LOCAL_DATABASE_PASSWORD") }
+            .describedAs("the local database credentials are core secrets and stay with core")
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("LOCAL_DATABASE_PASSWORD")
+    }
+
+    @Test
+    fun `environment refuses a variable outside the namespace of its provider`() {
+        val context = contextWith(mapOf("INGOT_GCS_PROJECT" to "ingot"), providerType = "azure")
+
+        assertThatThrownBy { context.environment("GCS_PROJECT") }
+            .describedAs("the azure provider must not read the settings of the gcs provider")
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("AZURE_")
+    }
+
+    @Test
+    fun `environment refuses the core settings even for a provider named after them`() {
+        val context = contextWith(mapOf("INGOT_SETTINGS_KEY" to "master-key"), providerType = "settings")
+
+        assertThatThrownBy { context.environment("SETTINGS_KEY") }
+            .describedAs("the reserved prefixes win over a provider whose type matches them")
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("SETTINGS_KEY")
     }
 
     @Test
