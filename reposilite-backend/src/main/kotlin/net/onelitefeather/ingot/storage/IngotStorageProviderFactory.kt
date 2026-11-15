@@ -40,6 +40,16 @@ interface StorageProviderContext {
     val workingDirectory: Path
     val repositoryName: String
 
+    /**
+     * Builds the provider of another registered storage type from [settings], for a plugin that wraps a delegate. The delegate is built
+     * by the same registry, so it may be of any installed type except the one that is being built.
+     *
+     * @throws StorageProviderNotInstalledException when no installed plugin registers the type of [settings]
+     * @throws IllegalStateException when the type is already being built in the same chain, the message names the chain
+     */
+    fun createProvider(settings: StorageProviderSettings): StorageProvider =
+        throw UnsupportedOperationException("This server does not build nested storage providers for '${settings.type}'")
+
     companion object {
 
         internal fun of(
@@ -47,7 +57,8 @@ interface StorageProviderContext {
             failureFacade: FailureFacade,
             workingDirectory: Path,
             repositoryName: String,
-        ): StorageProviderContext = DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName)
+            nested: (StorageProviderSettings) -> StorageProvider = { throw StorageProviderNotInstalledException(it.type) },
+        ): StorageProviderContext = DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName, nested)
 
     }
 
@@ -80,4 +91,10 @@ private class DefaultStorageProviderContext(
     override val failureFacade: FailureFacade,
     override val workingDirectory: Path,
     override val repositoryName: String,
-) : StorageProviderContext
+    private val nested: (StorageProviderSettings) -> StorageProvider,
+) : StorageProviderContext {
+
+    override fun createProvider(settings: StorageProviderSettings): StorageProvider =
+        nested(settings)
+
+}
