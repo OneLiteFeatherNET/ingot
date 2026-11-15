@@ -44,8 +44,10 @@ interface StorageProviderContext {
      * Builds the provider of another registered storage type from [settings], for a plugin that wraps a delegate. The delegate is built
      * by the same registry, so it may be of any installed type except the one that is being built.
      *
-     * @throws StorageProviderNotInstalledException when no installed plugin registers the type of [settings]
-     * @throws IllegalStateException when the type is already being built in the same chain, the message names the chain
+     * The default throws [UnsupportedOperationException]. The server overrides it for every context it hands out, so a plugin that runs
+     * on this server never sees the default. The server refuses a type that no installed plugin registers with
+     * [StorageProviderNotInstalledException], and a type that is already being built in the same chain with [IllegalStateException]
+     * whose message names the chain.
      */
     fun createProvider(settings: StorageProviderSettings): StorageProvider =
         throw UnsupportedOperationException("This server does not build nested storage providers for '${settings.type}'")
