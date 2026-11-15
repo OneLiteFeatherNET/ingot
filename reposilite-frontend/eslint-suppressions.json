@@ -120,11 +120,6 @@
       "count": 1
     }
   },
-  "src/components/repositories/repositoryRows.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 2
-    }
-  },
   "src/components/settings/PasswordDialog.vue": {
     "vue/max-attributes-per-line": {
       "count": 2

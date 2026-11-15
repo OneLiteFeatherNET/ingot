@@ -62,14 +62,17 @@ export const UNNAMED = 'Unnamed repository'
 // An id that is missing or not text is the empty id, which the search and the sort read as no value.
 const idOf = (entry: Entry | null | undefined): string => (typeof entry?.id === 'string' ? entry.id : '')
 
+// The text of a value of the draft, which is JSON and may hold any type. It is rendered exactly as String() renders it.
+const textOf = (value: unknown): string => String(value)
+
 // The key is the text of the value, as a property lookup reads it.
-const visibilityLabel = (visibility: unknown): string => VISIBILITY_LABELS[String(visibility)] ?? String(visibility ?? NO_VALUE)
+const visibilityLabel = (visibility: unknown): string => VISIBILITY_LABELS[textOf(visibility)] ?? textOf(visibility ?? NO_VALUE)
 
 // A group has no storage of its own, and an entry without one shows the same hyphen.
 const storageLabel = (entry: Entry, type: string): string => {
   if (type === 'GROUP') return NO_VALUE
   const kind = (entry.storageProvider as { type?: unknown } | null | undefined)?.type
-  return STORAGE_LABELS[String(kind)] ?? (kind ? String(kind) : NO_VALUE)
+  return STORAGE_LABELS[textOf(kind)] ?? (kind ? textOf(kind) : NO_VALUE)
 }
 
 /* The address a build tool uses for a repository: the origin, the base path and the id. */
