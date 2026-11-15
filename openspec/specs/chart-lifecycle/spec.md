@@ -1,7 +1,7 @@
 # chart-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change add-chart-lifecycle-and-warnings. Update Purpose after archive.
+The lifecycle settings of the Helm chart: probes, shutdown budget and install-time warnings. A replica whose database is unreachable reports not ready, a slow replica is not removed by a single missed probe, and a rollout waits for the load balancer before the server stops.
 
 ## Requirements
 

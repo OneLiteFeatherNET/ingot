@@ -1,7 +1,7 @@
 # graceful-shutdown Specification
 
 ## Purpose
-TBD - created by archiving change add-graceful-drain. Update Purpose after archive.
+How a replica stops during a rollout. It marks itself as leaving, finishes the requests in flight within a bounded stop timeout, and only then closes the server.
 
 ## Requirements
 

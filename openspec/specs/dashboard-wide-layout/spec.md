@@ -1,7 +1,7 @@
 # dashboard-wide-layout Specification
 
 ## Purpose
-TBD - created by archiving change use-wide-screens. Update Purpose after archive.
+How the dashboard and the Administration pages use a wide window. Lists, tables and the file browser take the width they are given, while text and forms keep a measure that is easy to read.
 
 ## Requirements
 

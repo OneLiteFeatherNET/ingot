@@ -1,7 +1,7 @@
 # administration-layout Specification
 
 ## Purpose
-TBD - created by archiving change rework-administration-layout. Update Purpose after archive.
+The layout of the Administration pages between a phone and a wide desktop. It keeps the side tree beside the content, scales the content container with the window, keeps the page header visible while scrolling, and decides which table columns are shortened or hidden first.
 
 ## Requirements
 

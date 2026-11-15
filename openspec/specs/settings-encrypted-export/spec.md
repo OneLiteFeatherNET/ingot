@@ -1,7 +1,7 @@
 # settings-encrypted-export Specification
 
 ## Purpose
-TBD - created by archiving change encrypt-settings-at-rest. Update Purpose after archive.
+How the settings export carries secret values. A downloaded settings file does not contain credentials in clear text.
 
 ## Requirements
 

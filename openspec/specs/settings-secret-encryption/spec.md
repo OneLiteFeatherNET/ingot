@@ -1,7 +1,7 @@
 # settings-secret-encryption Specification
 
 ## Purpose
-TBD - created by archiving change encrypt-settings-at-rest. Update Purpose after archive.
+How secret values in the shared settings are encrypted at rest, in the database, in the shared configuration file and in database backups. A reader of those files cannot recover the credentials without the key.
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # instance-readiness Specification
 
 ## Purpose
-TBD - created by archiving change add-graceful-drain. Update Purpose after archive.
+What the readiness signal of a replica reports during startup and shutdown. A load balancer stops sending new requests to an instance that is leaving or cannot serve them.
 
 ## Requirements
 

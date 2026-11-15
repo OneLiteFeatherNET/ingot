@@ -1,7 +1,7 @@
 # settings-secret-references Specification
 
 ## Purpose
-TBD - created by archiving change add-settings-secret-references. Update Purpose after archive.
+How a shared setting can name a file as the source of its secret value. Secrets delivered by Kubernetes or Compose secret stores are read from the file, so the value does not have to be pasted into the settings or the configuration file.
 
 ## Requirements
 
