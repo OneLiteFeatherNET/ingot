@@ -78,6 +78,17 @@ internal class FakeAzureBlobClient : AzureBlobClient {
         return content.copyOfRange(offset.toInt(), end.toInt()).inputStream()
     }
 
+    /** The state of the container that [checkContainer] reports. */
+    var containerExists = true
+
+    /** When set, the container refuses the identity (403). */
+    var containerRefused = false
+
+    override fun checkContainer() {
+        if (containerRefused) throw AzureServiceException("container", 403, "AuthorizationPermissionMismatch")
+        if (!containerExists) throw AzureBlobNotFoundException("container")
+    }
+
     /** Every listing request, as prefix and maximum number of results. */
     val listCalls = mutableListOf<Pair<String, Int?>>()
 
