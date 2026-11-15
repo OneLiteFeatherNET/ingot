@@ -390,6 +390,8 @@ describe('SnippetsCard snippet box height', () => {
 describe('SnippetsCard code block spacing', () => {
   const tabs = ['Maven', 'Gradle Kotlin', 'Gradle Groovy', 'SBT']
   const codeText = () => wrapper!.find('.card-editor pre').element.textContent ?? ''
+  // The classes of the wrapper that fades the copy button in and out; the button itself is its child.
+  const revealClasses = () => [...copyButton().element.parentElement!.classList]
   const copied = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve())
 
   beforeEach(() => {
@@ -433,12 +435,32 @@ describe('SnippetsCard code block spacing', () => {
     expect(text, 'the last line ends at the bottom padding').toMatch(/\S$/)
   })
 
-  it('keeps the copy button in the row of the tabs, outside the code box', async () => {
+  it('renders the copy button inside the code field, in its top right corner', async () => {
     await mountCard('releases')
 
-    const row = copyButton().element.parentElement!
-    expect(row.contains(wrapper!.find('#card-menu').element), 'the copy button sits in the same row as the tabs').toBe(true)
-    expect(wrapper!.find('.card-editor').element.contains(copyButton().element), 'the copy button is not in the code box').toBe(false)
+    const field = wrapper!.find('.card-editor').element.parentElement!
+    expect(field.contains(copyButton().element), 'the copy button is inside the code field').toBe(true)
+    expect(wrapper!.find('.card-editor').element.contains(copyButton().element), 'the copy button is not in the scrolling code').toBe(false)
+    expect(revealClasses(), 'the button is pinned to the top right corner').toEqual(expect.arrayContaining(['absolute', 'right-2', 'top-2']))
+  })
+
+  it('reveals the copy button on hover and focus, and keeps it visible on devices without hover', async () => {
+    await mountCard('releases')
+
+    const field = wrapper!.find('.card-editor').element.parentElement!
+    const reveal = revealClasses()
+    expect(field.classList.contains('group'), 'the code field is the hover and focus group').toBe(true)
+    expect(reveal, 'hidden by an opacity transition by default').toEqual(expect.arrayContaining(['opacity-0', 'transition-opacity']))
+    expect(reveal, 'shown while the code field is hovered').toContain('group-hover:opacity-100')
+    expect(reveal, 'shown while the button or the code has keyboard focus').toContain('group-focus-within:opacity-100')
+    expect(reveal, 'shown all the time where there is no hover').toContain('no-hover:opacity-100')
+    expect(reveal, 'never removed from layout or the tab order').not.toEqual(expect.arrayContaining(['hidden', 'invisible']))
+  })
+
+  it('reserves room on the right of the code, so the button never covers a line of the snippet', async () => {
+    await mountCard('releases')
+
+    expect(wrapper!.find('.card-editor').classes(), 'the code scrolls inside a right padding that fits the button').toContain('pr-12')
   })
 
   it('pads the code box equally on every side, with the scroll box inside the padding', async () => {
