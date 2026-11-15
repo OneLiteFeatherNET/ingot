@@ -76,20 +76,59 @@ data class Decision(
 object PermissionEvaluator {
 
     /** Whether the request is allowed. Disabled subjects are denied everything. */
-    fun allows(subject: AccessSubject, request: AccessRequest): Boolean {
-        if (subject.disabled) return false
-        if (request.action == Action.INSTANCE_ADMIN) return isInstanceAdmin(subject)
-        return decideRequest(subject, request).allowed
-    }
+    fun allows(subject: AccessSubject, request: AccessRequest): Boolean = decideAccess(subject, request).allowed
 
     /**
      * Whether the subject is an instance administrator: it is allowed `ingot.admin.*`, through its own nodes or the nodes of
      * its teams, and its token narrowing (if any) allows it too. The former instance role and the legacy MANAGER permission.
      */
-    fun isInstanceAdmin(subject: AccessSubject): Boolean {
-        if (subject.disabled) return false
-        return ownerDecision(subject, NodePattern.INSTANCE_ADMIN) { GrantMatch(false, "no grant covers instance admin") }.allowed &&
-            tokenAllows(subject, NodePattern.INSTANCE_ADMIN)
+    fun isInstanceAdmin(subject: AccessSubject): Boolean = decideInstanceAdmin(subject).allowed
+
+    /**
+     * The decision [allows] takes for [request], with the rule that decided it. The authorizer chain reads the decision and
+     * its trace; [allows] is its allowance.
+     */
+    internal fun decideAccess(subject: AccessSubject, request: AccessRequest): Decision =
+        if (request.action == Action.INSTANCE_ADMIN) decideInstanceAdmin(subject) else decideRequest(subject, request)
+
+    /**
+     * The decision on the instance admin node `ingot.admin.*`: the owner's rule, narrowed by the token when it has a node
+     * list. A denial of the owner or of the token denies. [isInstanceAdmin] is its allowance.
+     */
+    internal fun decideInstanceAdmin(subject: AccessSubject): Decision {
+        val node = NodePattern.INSTANCE_ADMIN
+        if (subject.disabled) return refusalOf(node)
+        val owner = ownerDecision(subject, node) { GrantMatch(false, "no grant covers instance admin") }
+        val token = subject.tokenRules?.let { rules -> decideRules(DecisionSource.TOKEN, subject.principalName.orEmpty(), 0, rules, node) }
+        return when {
+            !owner.allowed -> owner
+            token != null && !token.allowed -> token
+            else -> owner
+        }
+    }
+
+    /**
+     * The decision for a disabled subject, as the evaluator names it for [request]: a request is refused under the node it
+     * asks about, and the admin shortcut under the instance admin node.
+     */
+    internal fun refusalOf(request: AccessRequest): Decision {
+        if (request.action == Action.INSTANCE_ADMIN) return refusalOf(NodePattern.INSTANCE_ADMIN)
+        val (repository, pathInRepository) = splitPath(request.fullPath)
+        return refusalOf(NodePattern.repositoryPath(repository, request.action.repositoryNodeAction(), pathInRepository))
+    }
+
+    /**
+     * The decision for a disabled subject, as [decide] names it for [node]. A qualified artifact node is decided as the
+     * request for its subtree, so it is named by the repository node of that request; every other node is named as it is.
+     */
+    internal fun refusalOf(node: NodePattern): Decision {
+        val repository = node.repository
+        val action = node.action
+        if (node.kindName == "ARTIFACT" && repository != null && action != null && action != "*") {
+            val segments = node.coveredSegments.orEmpty().joinToString("/")
+            return refusalOf(NodePattern.repositoryPath(repository, action, segments))
+        }
+        return Decision(DecisionSource.DEFAULT, null, node.text, allowed = false, depth = 0, trace = emptyList())
     }
 
     /**
