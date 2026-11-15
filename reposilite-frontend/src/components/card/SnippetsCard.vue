@@ -288,10 +288,25 @@ const selectTab = (tab: string) =>
           Replace <code class="font-mono">&lt;repository&gt;</code> with the id of a repository from the list.
           The id in the snippet is a label in your build file, so the instance id works too.
         </p>
-        <CardMenu
-          :configurations="configurations"
-          @select-tab="selectTab"
-        />
+        <div class="flex items-center gap-1">
+          <CardMenu
+            class="min-w-0 flex-1"
+            :configurations="configurations"
+            @select-tab="selectTab"
+          />
+          <!--
+            The copy action shares the row of the tabs, at the top right corner of the code box. It is outside the
+            scrolling code, so it never covers a line of the snippet and does not move when the code scrolls sideways.
+          -->
+          <MdIconButton
+            v-if="!loading"
+            class="shrink-0"
+            aria-label="Copy snippet"
+            @click="copy"
+          >
+            <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
+          </MdIconButton>
+        </div>
 
         <div class="mt-5">
           <transition
@@ -302,31 +317,20 @@ const selectTab = (tab: string) =>
               :key="selectedTab"
             >
               <!--
-                The copy action has a row of its own above the code, so it never sits over a line of
-                the snippet, and the code block below scrolls sideways without moving it.
+                Padded by the same space on all four sides. The code scrolls sideways inside the padding, so the
+                scrollbar sits above the bottom edge rather than on it.
               -->
               <div
-                class="rounded-corner-medium bg-surface-container-highest text-on-surface"
+                class="rounded-corner-medium bg-surface-container-highest p-4 text-on-surface"
+                :class="{ 'min-h-29': loading }"
               >
-                <div
-                  v-if="!loading"
-                  class="flex justify-end px-2 pt-1"
-                >
-                  <MdIconButton
-                    aria-label="Copy snippet"
-                    @click="copy"
-                  >
-                    <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
-                  </MdIconButton>
-                </div>
                 <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
                 <div
                   ref="codeBlock"
                   role="region"
                   tabindex="0"
                   :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
-                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small px-4 pb-3 pt-1"
-                  :class="{ 'min-h-29': loading }"
+                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small"
                 >
                   <div
                     v-if="loading"

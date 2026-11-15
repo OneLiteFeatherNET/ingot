@@ -21,7 +21,7 @@ describe('RepositorySnippet Maven text', () => {
       '  <id>releases-x</id>\n' +
       '  <name>Ingot Repository</name>\n' +
       '  <url>http://localhost/releases</url>\n' +
-      '</repository>\n'
+      '</repository>'
     )
   })
 
@@ -59,7 +59,7 @@ describe('RepositorySnippet url', () => {
       '  <id>releases-x</id>\n' +
       '  <name>Ingot Repository</name>\n' +
       '  <url>http://localhost/releases</url>\n' +
-      '</repository>\n'
+      '</repository>'
     )
   })
 })
@@ -82,13 +82,13 @@ describe('RepositorySnippet Gradle and SBT text', () => {
       'maven {\n' +
       '    name "releasesX"\n' +
       '    url "http://localhost/releases"\n' +
-      '}\n'
+      '}'
     )
   })
 
   it('writes the SBT resolver as one line, the way it is pasted into build.sbt', () => {
     const text = render('scala').find('pre').element.textContent
 
-    expect(text).toBe('resolvers += "releases-x" at "http://localhost/releases"\n')
+    expect(text).toBe('resolvers += "releases-x" at "http://localhost/releases"')
   })
 })

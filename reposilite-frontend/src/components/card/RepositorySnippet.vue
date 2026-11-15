@@ -48,6 +48,10 @@ defineExpose({ content })
 </script>
 
 <template>
+  <!--
+    The closing tag stays on the last line of each snippet: a line break before it would be shown and copied
+    as an empty line.
+  -->
   <pre
     v-if="configuration.lang === 'xml'"
     ref="preElement"
@@ -58,8 +62,7 @@ defineExpose({ content })
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
   <XmlTag name="name">{{ data.title }}</XmlTag>
   <XmlTag name="url"><span class="snippet-url">{{ data.domain }}</span></XmlTag>
-</XmlTag>
-</pre>
+</XmlTag></pre>
   <pre
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
@@ -72,8 +75,7 @@ end="}"
 >
     name <CodeString>{{ gradleId }}</CodeString>
     url <CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString>
-</CodeBrackets>
-</pre>
+</CodeBrackets></pre>
   <pre
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
@@ -89,14 +91,12 @@ end="}"
 start="("
 end=")"
 ><CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString></CodeBrackets>
-</CodeBrackets>
-</pre>
+</CodeBrackets></pre>
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
     class="whitespace-pre"
     data-ingot-component="repository-snippet"
   >
-resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString>
-</pre>
+resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString></pre>
 </template>

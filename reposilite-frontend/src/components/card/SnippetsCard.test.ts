@@ -365,6 +365,8 @@ describe('SnippetsCard snippet text', () => {
 })
 
 describe('SnippetsCard snippet box height', () => {
+  const paddedBox = () => wrapper!.find('.card-editor').element.parentElement!
+
   afterEach(() => {
     wrapper?.unmount()
     wrapper = undefined
@@ -374,14 +376,79 @@ describe('SnippetsCard snippet box height', () => {
     await mountCard('releases/com/example')
 
     expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
-    expect(wrapper!.find('.card-editor').classes(), 'the skeleton keeps its four bars inside the box').toContain('min-h-29')
+    expect(paddedBox().classList.contains('min-h-29'), 'the skeleton keeps its four bars inside the box').toBe(true)
   })
 
   it('lets the code block hug the loaded snippet instead of keeping the skeleton height', async () => {
     await mountCard('')
 
     expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
-    expect(wrapper!.find('.card-editor').classes(), 'a one-line snippet does not get an empty four-line box').not.toContain('min-h-29')
+    expect(paddedBox().classList.contains('min-h-29'), 'a one-line snippet does not get an empty four-line box').toBe(false)
+  })
+})
+
+describe('SnippetsCard code block spacing', () => {
+  const tabs = ['Maven', 'Gradle Kotlin', 'Gradle Groovy', 'SBT']
+  const codeText = () => wrapper!.find('.card-editor pre').element.textContent ?? ''
+  const copied = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve())
+
+  beforeEach(() => {
+    content.mockImplementation(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } })))
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: copied }, configurable: true })
+    copied.mockClear()
+  })
+
+  afterEach(() => {
+    content.mockImplementation(() => new Promise(() => {}))
+    Reflect.deleteProperty(navigator, 'clipboard')
+    localStorage.clear()
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  // The exact text the copy action puts on the clipboard for each build tool, captured before the spacing change.
+  it.each([
+    ['Maven', '<repository>\n  <id>ingot-repository-releases</id>\n  <name>Ingot Repository</name>\n  <url>http://localhost:3000/releases</url>\n</repository>'],
+    ['Gradle Kotlin', 'maven {\n    name = "ingotRepositoryReleases"\n    url = uri("http://localhost:3000/releases")\n}'],
+    ['Gradle Groovy', 'maven {\n    name "ingotRepositoryReleases"\n    url "http://localhost:3000/releases"\n}'],
+    ['SBT', 'resolvers += "ingot-repository-releases" at "http://localhost:3000/releases"']
+  ])('copies the %s snippet byte for byte', async (tab, expected) => {
+    localStorage.setItem('card-tab', tab)
+    await mountCard('releases')
+
+    await copyButton().trigger('click')
+    await flushPromises()
+
+    expect(copied, 'the snippet is written to the clipboard once').toHaveBeenCalledTimes(1)
+    expect(copied.mock.calls[0][0], 'the clipboard text is the snippet as written').toBe(expected)
+  })
+
+  it.each(tabs)('renders the %s code without a blank line above or below it', async (tab) => {
+    localStorage.setItem('card-tab', tab)
+    await mountCard('releases')
+
+    const text = codeText()
+    expect(text.length, 'the snippet has text').toBeGreaterThan(0)
+    expect(text, 'the first line starts at the top padding').toMatch(/^\S/)
+    expect(text, 'the last line ends at the bottom padding').toMatch(/\S$/)
+  })
+
+  it('keeps the copy button in the row of the tabs, outside the code box', async () => {
+    await mountCard('releases')
+
+    const row = copyButton().element.parentElement!
+    expect(row.contains(wrapper!.find('#card-menu').element), 'the copy button sits in the same row as the tabs').toBe(true)
+    expect(wrapper!.find('.card-editor').element.contains(copyButton().element), 'the copy button is not in the code box').toBe(false)
+  })
+
+  it('pads the code box equally on every side, with the scroll box inside the padding', async () => {
+    await mountCard('releases')
+
+    const scrollBox = wrapper!.find('.card-editor')
+    const padded = scrollBox.element.parentElement!
+    expect(padded.classList.contains('p-4'), 'the padding is the same on all four sides').toBe(true)
+    expect(scrollBox.classes(), 'the scroll box adds no padding of its own').not.toEqual(expect.arrayContaining(['px-4', 'pb-3', 'pt-1']))
+    expect(scrollBox.classes(), 'the sideways scrollbar sits inside the padded box').toContain('overflow-x-auto')
   })
 })
 
