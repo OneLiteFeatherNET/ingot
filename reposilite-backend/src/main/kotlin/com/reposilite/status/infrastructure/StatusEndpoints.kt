@@ -53,7 +53,7 @@ internal class StatusEndpoints(
             OpenApiResponse(status = "200", content = [OpenApiContent(from = InstanceStatusResponse::class)])
         ]
     )
-    private val getInstanceStatus = ReposiliteRoute<InstanceStatusResponse>("/api/status/instance", GET) {
+    private val getInstanceStatus = ReposiliteRoute<InstanceStatusResponse>("/api/status/instance", GET, servesWorker = true) {
         managerOnly("dashboard") {
             response = statusFacade.fetchInstanceStatus().asSuccess()
         }
@@ -126,7 +126,7 @@ internal class StatusEndpoints(
             OpenApiResponse(status = "503", content = [OpenApiContent(from = HealthResponse::class)])
         ]
     )
-    private val getHealth = ReposiliteRoute<HealthResponse>("/api/status/health", GET) {
+    private val getHealth = ReposiliteRoute<HealthResponse>("/api/status/health", GET, servesWorker = true) {
         statusFacade.isAlive().also { alive ->
             ctx.status(if (alive) OK else SERVICE_UNAVAILABLE)
             response = HealthResponse(status = if (alive) "UP" else "DOWN").asSuccess()
@@ -143,7 +143,7 @@ internal class StatusEndpoints(
             OpenApiResponse(status = "503", content = [OpenApiContent(from = ReadinessResponse::class)])
         ]
     )
-    private val getReadiness = ReposiliteRoute<ReadinessResponse>("/api/status/ready", GET) {
+    private val getReadiness = ReposiliteRoute<ReadinessResponse>("/api/status/ready", GET, servesWorker = true) {
         statusFacade.readinessProbe.evaluate().also { readiness ->
             ctx.status(if (readiness.status == "UP") OK else SERVICE_UNAVAILABLE)
             response = readiness.asSuccess()

@@ -12,7 +12,7 @@ internal class PrometheusEndpoints(
     prometheusPath: String,
 ) : ReposiliteRoutes() {
 
-    private val getMetrics = ReposiliteRoute<InputStream>(prometheusPath, GET) {
+    private val getMetrics = ReposiliteRoute<InputStream>(prometheusPath, GET, servesWorker = true) {
         response = ctx.basicAuthCredentials()
             ?.takeIf { prometheusFacade.hasAccess(it.username, it.password) }
             ?.let {
