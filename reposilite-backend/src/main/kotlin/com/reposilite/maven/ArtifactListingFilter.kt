@@ -15,6 +15,8 @@
  */
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.identity.authorization.AuthorizationChain
+import net.onelitefeather.ingot.identity.authorization.AuthorizationRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessRequest
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.model.AccessSubject
@@ -43,7 +45,7 @@ internal class ArtifactListingFilter private constructor(
      */
     fun shows(directory: String, name: String, isDirectory: Boolean = true): Boolean {
         val path = if (directory.isEmpty()) name else "$directory/$name"
-        if (PermissionEvaluator.allows(subject, AccessRequest("/$repository/$path", Action.READ))) return true
+        if (chain.decide(AuthorizationRequest.Access(subject, AccessRequest("/$repository/$path", Action.READ))).allowed) return true
         return isDirectory && leadsToReadable(path)
     }
 
@@ -54,6 +56,8 @@ internal class ArtifactListingFilter private constructor(
     }
 
     companion object {
+        private val chain = AuthorizationChain.standard()
+
         /** The filter for [subject] in [repository], or null when no artifact node speaks about reading there. */
         fun of(subject: AccessSubject, repository: String): ArtifactListingFilter? =
             if (PermissionEvaluator.hasArtifactReadRule(subject, repository)) {
