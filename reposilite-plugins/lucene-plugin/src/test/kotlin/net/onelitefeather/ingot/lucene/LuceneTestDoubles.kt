@@ -48,6 +48,10 @@ internal class FakeLeases(
     override fun acquire(key: String, ttl: Duration): ScheduledJobClaims.Lease? {
         val now = clock.millis()
         val entry = table.entries[key]
+        if (entry != null && entry.owner == owner && entry.until > now) {
+            entry.until = now + ttl.toMillis()
+            return ScheduledJobClaims.Lease(key, entry.epoch)
+        }
         if (entry != null && entry.owner != null && entry.until > now) return null
         val epoch = (entry?.epoch ?: 0L) + 1
         table.entries[key] = LeaseTable.Entry(owner, epoch, now + ttl.toMillis())

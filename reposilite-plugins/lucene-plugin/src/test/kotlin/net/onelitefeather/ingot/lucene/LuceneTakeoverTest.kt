@@ -65,6 +65,7 @@ internal class LuceneTakeoverTest {
         val earlier = replica("b").apply { open(); apply(listOf(IndexAction.Upsert(row(JAR)))) }
         val identityBefore = earlier.indexIdentity()
         earlier.close()
+        clock.advance(Duration.ofSeconds(61))
         replica("a").apply { open() }
         clock.advance(Duration.ofSeconds(61))
 
@@ -87,15 +88,28 @@ internal class LuceneTakeoverTest {
     }
 
     @Test
-    fun `a restart on the same volume is a new grant with a new epoch and so rebuilds`() {
+    fun `a restart of the same holder within the lease keeps its index and its identity`() {
         val first = replica("a").apply { open(); apply(listOf(IndexAction.Upsert(row(JAR)))) }
         val identityBefore = first.indexIdentity()
         first.close()
 
         val restarted = replica("a").apply { open() }
 
+        assertThat(restarted.indexIdentity()).`as`("identity after a restart of the same holder").isEqualTo(identityBefore)
+        assertThat(restarted.count()).`as`("documents after a restart of the same holder").isEqualTo(1L)
+    }
+
+    @Test
+    fun `a restart of the same holder after its lease expired is a new grant and rebuilds`() {
+        val first = replica("a").apply { open(); apply(listOf(IndexAction.Upsert(row(JAR)))) }
+        val identityBefore = first.indexIdentity()
+        first.close()
+        clock.advance(Duration.ofSeconds(61))
+
+        val restarted = replica("a").apply { open() }
+
         assertThat(restarted.indexIdentity())
-            .`as`("identity of the index after a restart, which is a new grant")
+            .`as`("identity after a restart once the lease expired")
             .isNotEqualTo(identityBefore)
     }
 
