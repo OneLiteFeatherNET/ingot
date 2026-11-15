@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path'
 import { listSourceTree } from './checks'
 
 // The tree is built in a temporary directory of the test's own, so nothing is read from the repository sources.
-let root
+let root!: string
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'anchors-tree-'))
@@ -31,7 +31,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
-const write = (file, text) => {
+const write = (file: string, text: string) => {
   mkdirSync(dirname(join(root, file)), { recursive: true })
   writeFileSync(join(root, file), text)
 }

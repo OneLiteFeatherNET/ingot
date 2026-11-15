@@ -37,7 +37,7 @@ const makeRouter = (options = {}) =>
   })
 
 const deferred = () => {
-  let resolve
+  let resolve!: (value?: unknown) => void
   const promise = new Promise(done => { resolve = done })
   return { promise, resolve }
 }
@@ -147,7 +147,7 @@ describe('analytics route', () => {
     const analytics = ROUTES.find(route => route.name === 'analytics')
 
     expect(analytics?.path).toBe('/analytics')
-    expect(analytics?.meta).toEqual({ ...dashboard.meta, section: 'analytics' })
+    expect(analytics?.meta).toEqual({ ...dashboard!.meta, section: 'analytics' })
   })
 
   it('keeps a signed in user without the manager permission on the analytics address', async () => {
@@ -422,10 +422,10 @@ describe('account route', () => {
 })
 
 describe('routes gated by permission nodes', () => {
-  const sessionWith = (...nodes) => ({
+  const sessionWith = (...nodes: string[]) => ({
     isManager: () => true,
     isLogged: () => true,
-    can: (node) => nodes.includes(node),
+    can: (node: string) => nodes.includes(node),
     whenSessionKnown: () => Promise.resolve()
   })
 
@@ -492,10 +492,10 @@ describe('routes gated by permission nodes', () => {
 
 describe('the /access address forwards or shows the index', () => {
   // The width is injected, as the session is: the router reads no window.
-  const sessionWith = (...nodes) => ({
+  const sessionWith = (...nodes: string[]) => ({
     isManager: () => true,
     isLogged: () => true,
-    can: (node) => nodes.includes(node),
+    can: (node: string) => nodes.includes(node),
     whenSessionKnown: () => Promise.resolve()
   })
 
@@ -539,7 +539,7 @@ describe('the /access address forwards or shows the index', () => {
 
 describe('focus on in-app navigation', () => {
   // A stand-in for the main element of IndexPage, put in the page for one test and removed after it.
-  let main
+  let main!: HTMLElement
 
   beforeEach(() => {
     main = document.createElement('main')

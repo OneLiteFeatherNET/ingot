@@ -28,8 +28,9 @@ import {
   unlistedRoutes,
 } from './registry'
 import { canUse } from '../store/nodeAccess'
+import type { Can } from './registry'
 
-const canWith = (nodes) => (node) => canUse(nodes, node)
+const canWith = (nodes: string[]): Can => (node) => canUse(nodes, node)
 
 const manifest = (overrides = {}) => ({
   version: 1,
@@ -114,7 +115,7 @@ describe('contributed pages', () => {
 })
 
 describe('contributed pages in the Administration tree', () => {
-  const pageIn = (group, id) => ({ plugin: 'example', id, title: id, group, area: 'maintenance', blocks: [] })
+  const pageIn = (group: string, id: string) => ({ plugin: 'example', id, title: id, group, area: 'maintenance', blocks: [] })
   const everyGroup = () => setContributions({
     version: 1,
     pages: [
@@ -136,14 +137,14 @@ describe('contributed pages in the Administration tree', () => {
     expect(groups.map(group => group.heading), 'the four headings, then Plugins for the unknown group').toEqual([
       'Artifacts', 'Access', 'Instance', 'Monitoring and support', 'Plugins'
     ])
-    expect(groups.at(-1).links.map(link => link.label)).toEqual(['Billing'])
+    expect(groups.at(-1)!.links.map(link => link.label)).toEqual(['Billing'])
   })
 
   it('lists the plugin pages of each heading after the built-in entries of that heading', () => {
     everyGroup()
 
     const groups = adminGroups(canWith(['ingot.admin.settings', 'ingot.admin.maintenance']))
-    const labelsOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.label)
+    const labelsOf = (heading: string) => groups.find(group => group.heading === heading)!.links.map(link => link.label)
 
     expect(labelsOf('Artifacts'), 'the Repositories page, then the plugin page of Repository').toEqual(['Repositories', 'repo'])
     expect(labelsOf('Access'), 'the plugin page of Security alone, no built-in page for this visitor').toEqual(['sec'])
@@ -166,7 +167,7 @@ describe('contributed pages in the Administration tree', () => {
       domains: ['mirror', 'pulse'],
       titleOf: (domain) => settingsLabelOf(domain) ?? domain,
     })
-    const labelsOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.label)
+    const labelsOf = (heading: string) => groups.find(group => group.heading === heading)!.links.map(link => link.label)
 
     expect(labelsOf('Artifacts'), 'the section of Repository is under Artifacts').toEqual(['Repositories', 'Mirror checks'])
     expect(labelsOf('Instance'), 'the section of System is under Instance').toEqual(['Pulse'])
@@ -189,7 +190,7 @@ describe('contributed settings sections in the tree, without the settings groups
       domains: ['mirror', 'pulse'],
       titleOf: (domain) => settingsLabelOf(domain) ?? domain,
     })
-    const keysOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.key)
+    const keysOf = (heading: string) => groups.find(group => group.heading === heading)!.links.map(link => link.key)
 
     expect(keysOf('Artifacts'), 'the Mirror section is under Artifacts').toContain('settings:mirror')
     expect(keysOf('Instance'), 'the Pulse section is under Instance').toContain('settings:pulse')

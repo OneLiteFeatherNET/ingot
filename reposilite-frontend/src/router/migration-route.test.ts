@@ -61,7 +61,7 @@ describe('the Migration addresses', () => {
     expect(router.currentRoute.value.params.domain).toBe('web')
   })
 
-  it('marks the page as a manager page that needs the instance admin node', async () => {
+  it('marks the page as a manager page that needs the instance admin node', () => {
     const router = makeRouter()
 
     const resolved = router.resolve('/settings/migration/connect')

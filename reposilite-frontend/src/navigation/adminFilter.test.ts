@@ -16,10 +16,12 @@
 
 import { describe, it, expect } from 'vitest'
 import { matchEntries } from './adminFilter'
+import type { TreeLink } from './registry'
 
 // The tree is built per test by a function, so no test can change what another one reads. The labels, descriptions and
-// keywords are the ones of the Administration tree in registry.js.
-const link = (key, label, description, keywords, extra = {}) => ({ key, label, description, keywords, to: { name: key }, ...extra })
+// keywords are the ones of the Administration tree in registry.ts.
+const link = (key: string, label: string, description: string, keywords: string, extra: Partial<TreeLink> = {}): TreeLink =>
+  ({ key, label, description, keywords, to: { name: key }, ...extra })
 
 const tree = () => [
   {
@@ -65,8 +67,8 @@ const tree = () => [
   },
 ]
 
-const labelsOf = (groups) => groups.flatMap(group => group.links.map(item => item.label))
-const keysOf = (groups) => groups.flatMap(group => group.links.map(item => item.key))
+const labelsOf = (groups: { links: TreeLink[] }[]) => groups.flatMap(group => group.links.map(item => item.label))
+const keysOf = (groups: { links: TreeLink[] }[]) => groups.flatMap(group => group.links.map(item => item.key))
 
 describe('matchEntries finds a page by the words an operator has in mind', () => {
   it('finds Reverse proxy by its old label, web, which is a keyword', () => {

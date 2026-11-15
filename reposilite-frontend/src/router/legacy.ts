@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import type { RouteLocationRaw } from 'vue-router'
+
 /*
  * Links made before the dashboard used path based URLs look like `#/<path>?tab=<section>`.
  * This turns one of them into the location of the route that replaces it, or returns null
@@ -24,7 +26,7 @@
  */
 const SECTION_ROUTES = ['dashboard', 'tokens', 'console', 'settings']
 
-const decodeSegment = (segment) => {
+const decodeSegment = (segment: string): string => {
   try {
     return decodeURIComponent(segment)
   } catch {
@@ -33,7 +35,7 @@ const decodeSegment = (segment) => {
   }
 }
 
-const legacyLocation = (hash) => {
+const legacyLocation = (hash: unknown): RouteLocationRaw | null => {
   if (typeof hash !== 'string' || !hash.startsWith('#/')) {
     return null
   }
@@ -48,7 +50,7 @@ const legacyLocation = (hash) => {
   search.delete('tab')
   const query = Object.fromEntries(search)
 
-  if (SECTION_ROUTES.includes(tab)) {
+  if (tab !== undefined && SECTION_ROUTES.includes(tab)) {
     return { name: tab, query }
   }
 

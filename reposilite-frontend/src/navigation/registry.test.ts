@@ -33,8 +33,8 @@ import { ROUTES } from '../router/routes'
 import { ACCESS_NODES, canUse } from '../store/nodeAccess'
 
 // A session answers for a node from its node list, as the session store does.
-const canWith = (nodes) => (node) => canUse(nodes, node)
-const keysOf = (items) => items.map(item => item.key)
+const canWith = (nodes: string[]) => (node: string) => canUse(nodes, node)
+const keysOf = (items: { key: string | undefined }[]) => items.map(item => item.key)
 
 
 describe('registry entries', () => {
@@ -70,7 +70,7 @@ describe('registry entries', () => {
 
   it('names the node of every admin route in the route table', () => {
     const nodes = Object.fromEntries(
-      ROUTES.filter(route => route.meta?.node).map(route => [route.name, route.meta.node])
+      ROUTES.filter(route => route.meta?.node).map(route => [route.name, route.meta!.node])
     )
 
     expect(nodes).toMatchObject({
@@ -231,7 +231,7 @@ describe('the labels and descriptions of the Administration tree', () => {
     setSupportBundleOffered(false)
   })
 
-  const linksWith = (options) => adminGroups(everything, options).flatMap(group => group.links)
+  const linksWith = (options: Parameters<typeof adminGroups>[1]) => adminGroups(everything, options).flatMap(group => group.links)
 
   it('gives every built-in entry a label', () => {
     const unlabelled = linksWith({ domains: BUILT_IN_DOMAINS }).filter(link => !link.label).map(link => link.key)
@@ -248,7 +248,7 @@ describe('the labels and descriptions of the Administration tree', () => {
   it('names the renamed settings domains from the frontend, whatever the schema title says', () => {
     const labels = Object.fromEntries(linksWith({ domains: BUILT_IN_DOMAINS, titleOf: () => 'Schema title' })
       .filter(link => link.to.name === 'settings' && link.to.params !== undefined)
-      .map(link => [link.key, link.label]))
+      .map(link => [link.key as string, link.label]))
 
     expect(labels).toEqual({
       'settings:frontend': 'Branding',

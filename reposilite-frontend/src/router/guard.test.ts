@@ -28,10 +28,18 @@ const accessRoute = { name: 'access-users', meta: { manager: true, anyNode: ACCE
 
 // `nodes` is the node list of the session; without it the session is a legacy one and the
 // manager flag decides, as the session store does.
-const fixture = ({ isManager = false, isLogged = false, nodes, known = Promise.resolve(), notify = vi.fn() } = {}) => {
+interface FixtureOptions {
+  isManager?: boolean
+  isLogged?: boolean
+  nodes?: string[]
+  known?: Promise<unknown>
+  notify?: (message: string) => void
+}
+
+const fixture = ({ isManager = false, isLogged = false, nodes, known = Promise.resolve(), notify = vi.fn() }: FixtureOptions = {}) => {
   const can = nodes === undefined
     ? () => isManager
-    : (node) => nodes.some(entry => entry === node || entry === '*' || (entry.endsWith('.*') && node.startsWith(entry.slice(0, -1))))
+    : (node: string) => nodes.some(entry => entry === node || entry === '*' || (entry.endsWith('.*') && node.startsWith(entry.slice(0, -1))))
   const guard = createManagerGuard({
     whenSessionKnown: () => known,
     isManager: () => isManager,
@@ -86,13 +94,13 @@ describe('createManagerGuard', () => {
   })
 
   it('waits for the session to be known before it decides', async () => {
-    let finish
+    let finish!: (value?: unknown) => void
     const known = new Promise(resolve => { finish = resolve })
     const { guard, notify } = fixture({ isManager: true, isLogged: true, known })
 
     const decision = guard(managerRoute)
     let settled = false
-    decision.then(() => { settled = true })
+    void decision.then(() => { settled = true })
     await Promise.resolve()
 
     expect(settled, 'no redirect may be decided while the session is still unknown').toBe(false)
@@ -155,7 +163,7 @@ describe('createManagerGuard with permission nodes', () => {
 })
 
 describe('createPasswordChangeGuard', () => {
-  const guardFor = (mustChange) => createPasswordChangeGuard({ mustChangePassword: () => mustChange })
+  const guardFor = (mustChange: boolean) => createPasswordChangeGuard({ mustChangePassword: () => mustChange })
 
   it('lets every route through when no new password is required', () => {
     expect(guardFor(false)({ name: 'tokens' })).toBe(true)

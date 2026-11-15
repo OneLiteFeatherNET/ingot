@@ -440,7 +440,7 @@
     "count": 1
   },
   {
-    "file": "src/theme/runtime.js",
+    "file": "src/theme/runtime.ts",
     "match": "shadow",
     "count": 2
   }

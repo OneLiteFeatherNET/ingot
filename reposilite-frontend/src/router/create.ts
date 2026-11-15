@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { nextTick } from 'vue'
-import { createRouter } from 'vue-router'
+import { nextTick, type Component } from 'vue'
+import { createRouter, type Router, type RouterHistory, type RouteLocationRaw, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from './routes'
-import { administrationLocation, firstAccessRoute, visibleChildren } from '../navigation/registry'
+import { administrationLocation, firstAccessRoute, visibleChildren, type Can } from '../navigation/registry'
 import { ADMIN_NODES } from '../store/nodeAccess'
 import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
@@ -25,15 +25,27 @@ import { pageTitle } from './title'
 /*
  * Builds the router from its parts. Nothing here reads the browser, the session or the
  * settings on its own: they are passed in, so the router can be built on memory history with
- * fakes in a test, and src/router/index.js is the only place that wires in the real ones.
+ * fakes in a test, and src/router/index.ts is the only place that wires in the real ones.
  *
  * - legacy(hash) turns an old `#/...` link into a location, or returns null. It is asked
  *   once, for the first navigation, which is the one the app starts with.
  * - `narrow()` tells whether the screen is narrow; /access then shows the index of its pages instead of
- *   forwarding to the first one. It defaults to a wide screen, and src/router/index.js passes the media query.
+ *   forwarding to the first one. It defaults to a wide screen, and src/router/index.ts passes the media query.
  * - The session options describe the session: `can(node)` answers for a permission node and
  *   defaults to the manager flag. The defaults are an anonymous visitor.
  */
+export interface AppRouterOptions {
+  history: RouterHistory
+  component: Component
+  legacy?: (hash: string) => RouteLocationRaw | null
+  siteTitle?: string
+  whenSessionKnown?: () => Promise<unknown>
+  isManager?: () => boolean
+  can?: Can
+  mustChangePassword?: () => boolean
+  narrow?: () => boolean
+}
+
 const createAppRouter = ({
   history,
   component,
@@ -44,11 +56,13 @@ const createAppRouter = ({
   can = () => isManager(),
   mustChangePassword = () => false,
   narrow = () => false
-}) => {
+}: AppRouterOptions): Router => {
   const router = createRouter({
     history,
     // A redirect never renders, so it carries no component.
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component }))
+    routes: ROUTES.map((route): RouteRecordRaw => (route.redirect
+      ? route as RouteRecordRaw
+      : { ...route, component } as RouteRecordRaw))
   })
 
   let started = false
@@ -100,7 +114,7 @@ const createAppRouter = ({
     // A move between two steps of the import wizard is taken by the heading of the step (MigrationView), not by the page.
     const betweenMigrationSteps = to.name === 'settings-migration' && from.name === 'settings-migration'
     if (!failure && !firstNavigation && to.path !== from.path && !betweenMigrationSteps) {
-      nextTick(() => document.getElementById('main')?.focus())
+      void nextTick(() => document.getElementById('main')?.focus())
     }
   })
 

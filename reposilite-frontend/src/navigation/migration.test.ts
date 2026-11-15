@@ -18,16 +18,17 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { setContributions, adminGroups, barLayout, unlistedRoutes } from './registry'
 import { canUse, INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
 import { ROUTES } from '../router/routes'
+import type { Can, PluginPage } from './registry'
 
 // What the session answers for an instance admin and for a visitor who may only open the dashboard.
-const instanceAdmin = (node) => canUse(['ingot.admin.*'], node)
-const dashboardOnly = (node) => canUse(['ingot.admin.dashboard'], node)
+const instanceAdmin = (node: string) => canUse(['ingot.admin.*'], node)
+const dashboardOnly = (node: string) => canUse(['ingot.admin.dashboard'], node)
 
-const manifest = (enabledPlugins, pages = []) => ({ pages, sections: [], enabledPlugins })
+const manifest = (enabledPlugins: string[], pages: PluginPage[] = []) => ({ pages, sections: [], enabledPlugins })
 
 // The keys of the links of the Administration tree the visitor may open, with their group heading.
-const treeLinksOf = (can) => adminGroups(can, { domains: [] }).flatMap(group => group.links.map(link => ({ ...link, heading: group.heading })))
-const treeKeysOf = (can) => treeLinksOf(can).map(link => link.key)
+const treeLinksOf = (can: Can) => adminGroups(can, { domains: [] }).flatMap(group => group.links.map(link => ({ ...link, heading: group.heading })))
+const treeKeysOf = (can: Can) => treeLinksOf(can).map(link => link.key)
 
 // Each test sets the manifest it needs, so no test sees the manifest of another.
 beforeEach(() => setContributions(null))
@@ -39,8 +40,8 @@ describe('the Migration entry of the navigation', () => {
     const migration = treeLinksOf(instanceAdmin).find(link => link.key === 'page:migration')
 
     expect(migration, 'Migration is listed in the tree').toBeDefined()
-    expect(migration.heading, 'and sits in the Instance group').toBe('Instance')
-    expect(migration.to).toEqual({ name: 'settings-migration' })
+    expect(migration!.heading, 'and sits in the Instance group').toBe('Instance')
+    expect(migration!.to).toEqual({ name: 'settings-migration' })
   })
 
   it('lists no Migration entry when nexus-import is not enabled', () => {
@@ -84,18 +85,18 @@ describe('the settings domains', () => {
       .flatMap(group => group.links)
       .filter(link => link.to.name === 'settings' && link.to.params !== undefined)
 
-    expect(domainLinks.map(link => link.to.params.domain).sort()).toEqual([...bundled].sort())
-    expect(domainLinks.map(link => link.to.params.domain)).not.toContain('migration')
+    expect(domainLinks.map(link => link.to.params!.domain).sort()).toEqual([...bundled].sort())
+    expect(domainLinks.map(link => link.to.params!.domain)).not.toContain('migration')
   })
 })
 
 describe('the route of the Migration page', () => {
   it('uses the instance admin node, so the route guard and the page agree with the server', () => {
-    const route = ROUTES.find(entry => entry.name === 'settings-migration')
+    const route = ROUTES.find(entry => entry.name === 'settings-migration')!
 
     expect(route.path).toBe('/settings/migration/:step?')
-    expect(route.meta.node).toBe(INSTANCE_ADMIN_NODE)
-    expect(route.meta.manager).toBe(true)
+    expect(route.meta!.node).toBe(INSTANCE_ADMIN_NODE)
+    expect(route.meta!.manager).toBe(true)
   })
 
   it('is placed ahead of the generic settings route, which would take migration as a domain', () => {
@@ -106,9 +107,9 @@ describe('the route of the Migration page', () => {
   })
 
   it('keeps every existing settings address as it was', () => {
-    const settings = ROUTES.find(route => route.name === 'settings')
-    const plugin = ROUTES.find(route => route.name === 'settings-plugin')
-    const entry = ROUTES.find(route => route.name === 'settings-entry')
+    const settings = ROUTES.find(route => route.name === 'settings')!
+    const plugin = ROUTES.find(route => route.name === 'settings-plugin')!
+    const entry = ROUTES.find(route => route.name === 'settings-entry')!
 
     expect(settings.path).toBe('/settings/:domain?')
     expect(plugin.path).toBe('/settings/plugins/:plugin/:page?')

@@ -24,21 +24,24 @@
  * but it is counted only when it matches the text itself.
  */
 
+import type { TreeLink } from './registry'
+
 // The words of a text: letters and digits, lower case. A missing text has no words.
-const wordsOf = (text) => (text ?? '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(word => word !== '')
+const wordsOf = (text: string | undefined): string[] => (text ?? '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(word => word !== '')
 
 // The typed words: the text split on spaces, in lower case.
-const tokensOf = (query) => (query ?? '').trim().toLowerCase().split(/\s+/).filter(token => token !== '')
+const tokensOf = (query: string | undefined): string[] => (query ?? '').trim().toLowerCase().split(/\s+/).filter(token => token !== '')
 
-const haystackOf = (link, heading) => [link.label, heading, link.description, link.keywords, link.plugin].flatMap(wordsOf)
+const haystackOf = (link: TreeLink, heading: string | undefined): string[] =>
+  [link.label, heading, link.description, link.keywords, link.plugin].flatMap(wordsOf)
 
-const matches = (tokens, haystack) => tokens.every(token => haystack.some(word => word.startsWith(token)))
+const matches = (tokens: string[], haystack: string[]) => tokens.every(token => haystack.some(word => word.startsWith(token)))
 
 /*
  * The groups of the tree that the text keeps: [{ id, heading, label, links }] in the order given, and the number of links that
  * match the text. A blank text keeps every group and counts nothing.
  */
-const matchEntries = (groups, query, current) => {
+const matchEntries = <G extends { heading?: string; links: TreeLink[] }>(groups: G[], query: string | undefined, current?: string): { groups: G[]; count: number } => {
   const tokens = tokensOf(query)
   if (tokens.length === 0) return { groups, count: 0 }
 

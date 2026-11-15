@@ -28,10 +28,19 @@
  * read too. A test keeps the list and the routes below in step.
  */
 
+import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import dashboardSegments from './dashboard-segments.json'
-import { adminRouteMeta, routeMeta } from '../navigation/registry'
+import { adminRouteMeta, routeMeta, type RouteMeta } from '../navigation/registry'
 
-const ROUTES = [
+// A route of the table. A redirect carries no meta of its own, and a page route takes its component in create.ts.
+export interface AppRoute {
+  name: string
+  path: string
+  meta?: RouteMeta
+  redirect?: RouteLocationRaw | ((to: RouteLocationNormalized) => RouteLocationRaw)
+}
+
+const ROUTES: AppRoute[] = [
   { name: 'overview', path: '/', meta: routeMeta('overview') },
   { name: 'browse', path: '/browse/:qualifier(.*)*', meta: routeMeta('overview') },
   // The artifact search, open to everyone. The query is in the address; see components/search/searchQuery.js.
@@ -42,7 +51,7 @@ const ROUTES = [
   // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
   { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
-  // the team in `:name`. `/access` is forwarded by the router (create.js) or shows the index of the pages.
+  // the team in `:name`. `/access` is forwarded by the router (create.ts) or shows the index of the pages.
   { name: 'access', path: '/access', meta: routeMeta('access') },
   { name: 'access-users', path: '/access/users', meta: routeMeta('access', 'users') },
   { name: 'access-user', path: '/access/users/:name', meta: routeMeta('access', 'users') },
@@ -82,7 +91,7 @@ const ROUTES = [
   // The repositories are a page of their own under /settings. Placed before the generic settings route, which would take `repositories` as a domain.
   { name: 'settings-repositories', path: '/settings/repositories', meta: routeMeta('settings') },
   // The list address of the Maven page, which had no page of its own. The Repositories page replaces it, so the address leads there.
-  // The generic settings route takes /settings/maven itself, and the guard in create.js moves that one, with its query.
+  // The generic settings route takes /settings/maven itself, and the guard in create.ts moves that one, with its query.
   { name: 'settings-maven-repositories', path: '/settings/maven/repositories', redirect: { name: 'settings-repositories' } },
   { name: 'settings-repository', path: '/settings/repositories/:id', meta: routeMeta('settings') },
   // The support pages are listed before the generic settings route, which would otherwise take their names as domains.

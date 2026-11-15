@@ -153,13 +153,13 @@ describe('the route names of the dashboard before this change', () => {
   it.each(before)('keeps the route %s at %s', (name, path) => {
     const route = ROUTES.find(candidate => candidate.name === name)
     expect(route, `route ${name}`).toBeDefined()
-    expect(route.path).toBe(path)
+    expect(route!.path).toBe(path)
   })
 })
 
 describe('the settings address with one page open to the visitor', () => {
   it('forwards /settings to the one page the visitor may open', async () => {
-    const audit = (node) => node === ADMIN_NODES.audit
+    const audit = (node: string) => node === ADMIN_NODES.audit
     const router = makeRouter({ can: audit, isManager: () => false })
 
     await router.push('/settings')

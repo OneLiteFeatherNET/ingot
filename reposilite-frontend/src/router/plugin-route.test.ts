@@ -15,16 +15,16 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { createRouter, createMemoryHistory, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from './routes'
 
 // The table as the app builds it, on memory history, so no browser is read.
 const router = createRouter({
   history: createMemoryHistory(),
-  routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: {} })),
+  routes: ROUTES.map((route): RouteRecordRaw => (route.redirect ? route as RouteRecordRaw : { ...route, component: {} } as RouteRecordRaw)),
 })
 
-const nameOf = (path) => router.resolve(path).name
+const nameOf = (path: string) => router.resolve(path).name
 
 describe('plugin page address', () => {
   it('resolves a plugin page to the settings-plugin route', () => {

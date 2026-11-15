@@ -30,6 +30,7 @@ import {
   logoFor,
   devSeedFromSearch
 } from './runtime'
+import type { RawAppearance } from './settings'
 
 // Every test builds its own document and spies, so no state leaks between tests.
 const freshDocument = () => document.implementation.createHTMLDocument('theme')
@@ -49,16 +50,16 @@ const SETTINGS = Object.freeze({
   footerText: ''
 })
 
-const withSettings = (overrides) => ({ ...SETTINGS, ...overrides })
+const withSettings = (overrides: RawAppearance) => ({ ...SETTINGS, ...overrides })
 
 // Rules are plain `selector { --name: value; }` blocks. The prefers-contrast block nests its
 // rules, so the output is split at the @media keyword and each half is read on its own.
-const splitMedia = (css) => {
+const splitMedia = (css: string): [string, string] => {
   const index = css.indexOf('@media')
   return index < 0 ? [css, ''] : [css.slice(0, index), css.slice(index)]
 }
 
-const rulesIn = (text) =>
+const rulesIn = (text: string): { selector: string; declarations: Record<string, string> }[] =>
   [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({
     selector: selector.trim(),
     declarations: Object.fromEntries(
@@ -66,9 +67,10 @@ const rulesIn = (text) =>
     )
   }))
 
-const blocksOf = (css) => {
+const blocksOf = (css: string) => {
   const [top, media] = splitMedia(css)
-  const find = (text, selector) => rulesIn(text).find(rule => rule.selector === selector)?.declarations
+  // Each block the tests read is in the generated CSS, so the lookup is typed as found.
+  const find = (text: string, selector: string) => rulesIn(text).find(rule => rule.selector === selector)?.declarations as Record<string, string>
   return {
     light: find(top, ':root'),
     dark: find(top, '.dark'),
@@ -77,7 +79,7 @@ const blocksOf = (css) => {
   }
 }
 
-const roleNames = (declarations) =>
+const roleNames = (declarations: Record<string, string>) =>
   Object.keys(declarations)
     .filter(name => name.startsWith('md-sys-color-'))
     .map(name => name.slice('md-sys-color-'.length))
@@ -89,7 +91,7 @@ const staticRootRoles = () => {
   const css = readFileSync(resolve(process.cwd(), 'src/styles/md3/color.css'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
   const [top] = splitMedia(css)
-  return roleNames(rulesIn(top).find(rule => rule.selector === ':root').declarations)
+  return roleNames(rulesIn(top).find(rule => rule.selector === ':root')!.declarations)
 }
 
 const warnings = () => vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -263,8 +265,8 @@ describe('built-in scheme and operator seed', () => {
 
   // A role may alias another role (surface-tint is primary in the light scheme), so compare the
   // resolved values: the colour the browser paints, not the spelling in the file.
-  const resolveAliases = (declarations) => {
-    const resolve = (value) => value.replace(/var\(--([\w-]+)\)/g, (reference, name) =>
+  const resolveAliases = (declarations: Record<string, string>) => {
+    const resolve = (value: string): string => value.replace(/var\(--([\w-]+)\)/g, (reference: string, name: string) =>
       declarations[name] === undefined ? reference : resolve(declarations[name]))
     return Object.fromEntries(Object.entries(declarations).map(([name, value]) => [name, resolve(value)]))
   }
@@ -272,15 +274,15 @@ describe('built-in scheme and operator seed', () => {
   const builtIn = () => {
     const css = readFileSync(resolve(process.cwd(), 'src/styles/md3/color.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
     const [top] = splitMedia(css)
-    const find = (selector) => resolveAliases(rulesIn(top).find(rule => rule.selector === selector).declarations)
+    const find = (selector: string) => resolveAliases(rulesIn(top).find(rule => rule.selector === selector)!.declarations)
     return { light: find(':root'), dark: find('.dark') }
   }
 
-  const hueOf = (hex) => Hct.fromInt(argbFromHex(hex)).hue
+  const hueOf = (hex: string) => Hct.fromInt(argbFromHex(hex)).hue
 
   // The static colour file is the built-in scheme. It has to stay what the steel seed generates,
   // so that an installation without a seed looks the same as one that sets the steel seed.
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark'] as const) {
     it(`matches the steel seed scheme in every ${theme} role of the built-in colour file`, () => {
       const generated = blocksOf(buildThemeCss(withSettings({ seedColor: STEEL_SEED })))[theme]
       const stored = builtIn()[theme]
@@ -294,7 +296,7 @@ describe('built-in scheme and operator seed', () => {
   it('keeps the previous magenta scheme when an operator sets the previous seed', () => {
     const { light, dark } = blocksOf(buildThemeCss(withSettings({ seedColor: PREVIOUS_SEED })))
 
-    for (const [theme, block] of [['light', light], ['dark', dark]]) {
+    for (const [theme, block] of [['light', light], ['dark', dark]] as const) {
       const hue = hueOf(block['md-sys-color-primary'])
       expect(hue >= 320 || hue <= 30, `the ${theme} primary from the previous seed is at ${hue.toFixed(0)} degrees, expected a magenta or pink hue`).toBe(true)
       expect(block['md-sys-color-primary'], `the ${theme} primary should not be the built-in steel primary`).not.toBe(builtIn()[theme]['md-sys-color-primary'])
