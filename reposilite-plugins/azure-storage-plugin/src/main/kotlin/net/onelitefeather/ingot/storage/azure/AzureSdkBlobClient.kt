@@ -81,7 +81,7 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
         translating(name) { container.getBlobClient(name).delete() }
     }
 
-    /** Maps the status codes that the provider answers to the exceptions of [AzureBlobClient], and rethrows every other failure. */
+    /** Maps the status codes that the provider answers to the exceptions of [AzureBlobClient]. Every other answer is an [AzureServiceException]. */
     private fun <T> translating(name: String, action: () -> T): T =
         try {
             action()
@@ -89,7 +89,7 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
             when (exception.statusCode) {
                 NOT_FOUND -> throw AzureBlobNotFoundException(name)
                 RANGE_NOT_SATISFIABLE -> throw AzureRangeNotSatisfiableException(name)
-                else -> throw exception
+                else -> throw AzureServiceException(name, exception.statusCode, exception.errorCode?.toString())
             }
         }
 
