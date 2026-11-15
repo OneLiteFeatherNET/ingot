@@ -20,16 +20,23 @@ import com.reposilite.audit.decision.DecisionLogSettings
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFactory
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.backend.PrintStreamLogger
+import com.reposilite.maven.application.MavenSettings
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.PluginLoader
 import com.reposilite.shared.extensions.newFixedThreadPool
 import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
+import net.onelitefeather.ingot.cluster.ClusterSettings
+import net.onelitefeather.ingot.cluster.ClusterSources
 import net.onelitefeather.ingot.deploy.BackgroundJobsSetting
+import net.onelitefeather.ingot.deploy.ClusterRequirements
+import net.onelitefeather.ingot.deploy.DeployTarget
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
+import net.onelitefeather.ingot.deploy.SharedStateRefusalException
 import net.onelitefeather.ingot.deploy.logWarnings
 import net.onelitefeather.ingot.plugin.store.PluginStoreFactory
 import net.onelitefeather.ingot.readonly.ReadOnlySetting
@@ -192,7 +199,33 @@ object ReposiliteFactory {
             throw throwable
         }
 
+        // Checked once the shared configuration is loaded, so the repositories are known, and before anything binds a port.
+        checkSharedState(reposilite, parameters, deployTargetResolution.target)
+
         return reposilite
+    }
+
+    private fun checkSharedState(reposilite: Reposilite, parameters: ReposiliteParameters, target: DeployTarget) {
+        if (!ClusterRequirements.applies(target, parameters.backgroundJobsEnabled)) return
+
+        val repositoryStorageTypes = reposilite.extensions.facade<SharedConfigurationFacade>()
+            .getDomainSettings<MavenSettings>()
+            .get()
+            .repositories
+            .associate { it.id to it.storageProvider.type }
+
+        val refusal = ClusterRequirements.refusalFor(
+            target = target,
+            backgroundJobsEnabled = parameters.backgroundJobsEnabled,
+            database = parameters.database,
+            clusterBusConfigured = ClusterSettings.read(ClusterSources.system()).url != null,
+            repositoryStorageTypes = repositoryStorageTypes,
+            allowSharedFilesystem = System.getenv(ClusterRequirements.ALLOW_SHARED_FILESYSTEM_VARIABLE)?.trim() == "true",
+        ) ?: return
+
+        // The start stops here, so the instance is shut down like a failed schema lock: the connection closes and no port is bound.
+        reposilite.shutdown()
+        throw SharedStateRefusalException(refusal)
     }
 
     private fun acquireSchemaLock(reposilite: Reposilite, localConfiguration: LocalConfiguration, schemaLockFactory: SchemaLockFactory): SchemaLock {
