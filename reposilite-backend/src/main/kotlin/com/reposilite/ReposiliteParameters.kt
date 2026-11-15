@@ -138,6 +138,17 @@ class ReposiliteParameters : Runnable {
      */
     var deployTarget: DeployTarget = DeployTarget.ALL
 
+    @Option(names = ["--background-jobs"], description = [
+        "Run the singleton background jobs on this instance: true (default) or false, which is only valid on target server"
+    ])
+    var backgroundJobs: String? = null
+
+    /**
+     * Whether this instance runs the singleton background jobs, resolved once at start from the command line, the system
+     * property and the environment. See [net.onelitefeather.ingot.deploy.BackgroundJobsSetting].
+     */
+    var backgroundJobsEnabled: Boolean = true
+
     @Option(names = ["--disable-interactive-console", "--disable-it"], description = ["Disable interactive console"])
     var disableInteractiveConsole = false
 

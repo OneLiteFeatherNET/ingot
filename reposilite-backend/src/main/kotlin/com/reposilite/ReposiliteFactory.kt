@@ -28,6 +28,7 @@ import com.reposilite.plugin.PluginLoader
 import com.reposilite.shared.extensions.newFixedThreadPool
 import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
+import net.onelitefeather.ingot.deploy.BackgroundJobsSetting
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
 import net.onelitefeather.ingot.deploy.logWarnings
 import net.onelitefeather.ingot.plugin.store.PluginStoreFactory
@@ -106,6 +107,15 @@ object ReposiliteFactory {
             legacyDefaultFrontend = localConfiguration.defaultFrontend.get(),
         )
         parameters.deployTarget = deployTargetResolution.target
+        // Resolved next to the target, so an invalid switch or false on all and worker stops the start before a port binds.
+        parameters.backgroundJobsEnabled = BackgroundJobsSetting.resolve(
+            target = deployTargetResolution.target,
+            commandLine = parameters.backgroundJobs,
+            properties = System.getProperty(BackgroundJobsSetting.PROPERTY)
+                ?.let { mapOf(BackgroundJobsSetting.PROPERTY to it) }
+                ?: emptyMap(),
+            environment = System.getenv(),
+        )
 
         val journalist = ReposiliteJournalist(
             visibleJournalist = rootJournalist,

@@ -33,7 +33,10 @@ import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
+import net.onelitefeather.ingot.deploy.BackgroundJobGate
+import net.onelitefeather.ingot.deploy.SingletonJob
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import io.javalin.http.HttpStatus.CONFLICT
@@ -92,14 +95,17 @@ internal class CleanupPlugin : ReposilitePlugin() {
             readOnly = { readOnlyFacade.isReadOnly() },
             catchUp = CleanupCatchUp.read(),
         )
-        val tick = reposilite().scheduler.scheduleWithFixedDelay({
-            reposilite().ioService.execute {
-                runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
-            }
-        }, 30, 30, SECONDS)
+        // Only an instance that runs the background jobs ticks the schedule; a skipped tick takes no day claim.
+        val tick = BackgroundJobGate(parameters().backgroundJobsEnabled).submit(SingletonJob.CLEANUP_SCHEDULE) {
+            reposilite().scheduler.scheduleWithFixedDelay({
+                reposilite().ioService.execute {
+                    runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
+                }
+            }, 30, 30, SECONDS)
+        }
 
         event { _: ReposiliteDisposeEvent ->
-            tick.cancel(false)
+            tick?.cancel(false)
         }
 
         event { event: RoutingSetupEvent ->

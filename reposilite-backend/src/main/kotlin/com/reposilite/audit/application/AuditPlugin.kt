@@ -34,9 +34,12 @@ import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.deploy.BackgroundJobGate
+import net.onelitefeather.ingot.deploy.SingletonJob
 import java.time.Clock
 import java.util.concurrent.TimeUnit.HOURS
 
@@ -102,7 +105,9 @@ internal class AuditPlugin : ReposilitePlugin() {
         }
 
         event { _: ReposiliteInitializeEvent ->
-            reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
+            BackgroundJobGate(parameters().backgroundJobsEnabled).submit(SingletonJob.AUDIT_PURGE) {
+                reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
+            }
         }
 
         event { event: RoutingSetupEvent ->
