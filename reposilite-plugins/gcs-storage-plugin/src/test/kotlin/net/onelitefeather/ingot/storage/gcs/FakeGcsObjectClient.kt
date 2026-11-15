@@ -59,6 +59,29 @@ internal class FakeGcsObjectClient : GcsObjectClient {
         return GcsObjectInfo(name = name, size = content.size.toLong(), updated = modifiedAt)
     }
 
+    /** Every flat listing as prefix, start offset and limit. */
+    val listings = mutableListOf<Triple<String, String?, Int>>()
+
+    /** Objects under [prefix] whose names are at or after [startOffset], in name order. */
+    override fun list(prefix: String, startOffset: String?, limit: Int): List<GcsObjectInfo> {
+        listings += Triple(prefix, startOffset, limit)
+        return objects.keys.filter { it.startsWith(prefix) && (startOffset == null || it >= startOffset) }
+            .sorted()
+            .take(limit)
+            .map { metadata(it) }
+    }
+
+    /** A delimited listing: objects directly under [prefix], and one directory entry per deeper name. */
+    override fun listDelimited(prefix: String): List<GcsEntry> {
+        val entries = linkedMapOf<String, GcsEntry>()
+        objects.keys.filter { it.startsWith(prefix) }.sorted().forEach { name ->
+            val rest = name.removePrefix(prefix)
+            val entry = if (rest.contains('/')) GcsPrefix(prefix + rest.substringBefore('/') + "/") else metadata(name)
+            entries.putIfAbsent(entry.name, entry)
+        }
+        return entries.values.toList()
+    }
+
     override fun startUpload(name: String, contentType: String, chunkSize: Int): GcsUpload {
         openedUploads += chunkSize
         val writes = mutableListOf<Int>()
@@ -77,7 +100,7 @@ internal class FakeGcsObjectClient : GcsObjectClient {
         }
     }
 
-    private companion object {
+    companion object {
         val modifiedAt: Instant = Instant.parse("2026-01-02T03:04:05Z")
     }
 
