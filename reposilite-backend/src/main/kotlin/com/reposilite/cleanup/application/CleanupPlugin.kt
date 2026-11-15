@@ -99,7 +99,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
             catchUp = CleanupCatchUp.read(),
         )
         // Only an instance that runs the background jobs ticks the schedule; a skipped tick takes no day claim.
-        val tick = BackgroundJobGate(parameters().backgroundJobsEnabled).submit(SingletonJob.CLEANUP_SCHEDULE) {
+        val tick = BackgroundJobGate(parameters().backgroundJobsEnabled, parameters().submittedSingletonJobs).submit(SingletonJob.CLEANUP_SCHEDULE) {
             reposilite().scheduler.scheduleWithFixedDelay({
                 reposilite().ioService.execute { scheduler.runTick() }
             }, 30, 30, SECONDS)

@@ -105,7 +105,7 @@ internal class AuditPlugin : ReposilitePlugin() {
         }
 
         event { _: ReposiliteInitializeEvent ->
-            BackgroundJobGate(parameters().backgroundJobsEnabled).submit(SingletonJob.AUDIT_PURGE) {
+            BackgroundJobGate(parameters().backgroundJobsEnabled, parameters().submittedSingletonJobs).submit(SingletonJob.AUDIT_PURGE) {
                 reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
             }
         }

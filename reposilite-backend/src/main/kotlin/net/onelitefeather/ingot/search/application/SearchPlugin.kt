@@ -186,7 +186,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         if (live != null) {
             // Only an instance that runs the background jobs drains the outbox and ticks the schedulers. The one tick of
             // scheduleRuns also runs verify and the token sweep, so the rebuild job names the whole tick.
-            val gate = BackgroundJobGate(parameters().backgroundJobsEnabled)
+            val gate = BackgroundJobGate(parameters().backgroundJobsEnabled, parameters().submittedSingletonJobs)
             gate.submit(SingletonJob.SEARCH_OUTBOX) { schedulePolling(live.worker, runtime, stopped, live.paused) }
             gate.submit(SingletonJob.SEARCH_REBUILD) { scheduleRuns(live.rebuild, live.verify, live.sweep, runtime) }
         }

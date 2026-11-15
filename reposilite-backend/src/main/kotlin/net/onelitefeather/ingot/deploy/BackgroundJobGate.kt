@@ -34,11 +34,26 @@ enum class SingletonJob(val id: String) {
  * Submits a singleton job only on an instance that runs the background jobs, as decided by
  * [BackgroundJobsSetting.resolve]. A skipped job returns `null` and is never scheduled, so this instance takes no claim
  * for it.
+ *
+ * Every job the gate submits is recorded in [recorder], which the instance shares across its gates. [submitted] is a
+ * read-only snapshot of that record.
  */
-class BackgroundJobGate(private val enabled: Boolean) {
+class BackgroundJobGate(
+    private val enabled: Boolean,
+    private val recorder: MutableSet<SingletonJob> = mutableSetOf(),
+) {
 
-    /** Runs [submission] when this instance runs the singleton jobs. [job] names the call site. */
-    @Suppress("UNUSED_PARAMETER")
-    fun <T> submit(job: SingletonJob, submission: () -> T): T? = if (enabled) submission() else null
+    /** The singleton jobs submitted through this gate's recorder, as a snapshot. */
+    val submitted: Set<SingletonJob>
+        get() = recorder.toSet()
+
+    /** Runs [submission] when this instance runs the singleton jobs. [job] names the call site and is recorded first. */
+    fun <T> submit(job: SingletonJob, submission: () -> T): T? {
+        if (!enabled) {
+            return null
+        }
+        recorder += job
+        return submission()
+    }
 
 }

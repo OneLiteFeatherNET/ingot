@@ -29,6 +29,7 @@ import com.reposilite.plugin.api.ReposiliteStartedEvent
 import com.reposilite.shared.extensions.shutdownGracefully
 import com.reposilite.status.StatusFacade
 import com.reposilite.web.HttpServer
+import net.onelitefeather.ingot.deploy.SingletonJob
 import net.onelitefeather.ingot.logging.AccessLogSetting
 import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.support.SupportBundleSetting
@@ -73,6 +74,10 @@ class Reposilite(
 ) : Facade, Journalist {
 
     val database = databaseConnection.database
+
+    /** The singleton jobs this instance submitted at start, as a read-only snapshot. */
+    val submittedSingletonJobs: Set<SingletonJob>
+        get() = parameters.submittedSingletonJobs.toSet()
 
     /** Held from the start of plugin initialisation until the post-initialise event, so replicas create the schema one at a time. */
     internal var schemaLock: SchemaLock = SchemaLock.NONE

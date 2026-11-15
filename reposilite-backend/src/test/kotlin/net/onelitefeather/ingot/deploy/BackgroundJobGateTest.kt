@@ -59,6 +59,26 @@ internal class BackgroundJobGateTest {
     }
 
     @Test
+    fun `an enabled gate records the job it submits`() {
+        val gate = BackgroundJobGate(enabled = true)
+
+        gate.submit(SingletonJob.CLEANUP_SCHEDULE) { Unit }
+
+        assertThat(gate.submitted).describedAs("recorded jobs").containsExactly(SingletonJob.CLEANUP_SCHEDULE)
+    }
+
+    @Test
+    fun `a disabled gate neither records nor runs the job it skips`() {
+        val gate = BackgroundJobGate(enabled = false)
+        var ran = false
+
+        gate.submit(SingletonJob.CLEANUP_SCHEDULE) { ran = true }
+
+        assertThat(gate.submitted).describedAs("recorded jobs").doesNotContain(SingletonJob.CLEANUP_SCHEDULE)
+        assertThat(ran).describedAs("the skipped job block ran").isFalse()
+    }
+
+    @Test
     fun `the gate names exactly the singleton jobs of design F2`() {
         assertThat(SingletonJob.entries.map { it.id }).containsExactlyInAnyOrder(
             "cleanup-schedule",
