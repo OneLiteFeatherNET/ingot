@@ -30,7 +30,9 @@ import picocli.CommandLine.MissingParameterException
 import picocli.CommandLine.PicocliException
 import picocli.CommandLine.UnmatchedArgumentException
 import java.io.InputStream
+import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
+import kotlin.concurrent.withLock
 
 internal const val REDACTED_COMMAND_ARGUMENTS = "<redacted>"
 
@@ -52,7 +54,7 @@ internal class CommandExecutor(
      * run that follows it must not interleave with another call. Held by [isDangerous], [reasonOf], [prepare],
      * [runCommand] and by [PreparedCommand] for a whole structured answer.
      */
-    internal val commandLock = Any()
+    internal val commandLock = ReentrantLock()
 
     fun execute(command: String): ExecutionResponse =
         execute(command) { logger.info(it) }
@@ -86,7 +88,7 @@ internal class CommandExecutor(
         if (processedCommand.isEmpty()) {
             return false
         }
-        return synchronized(commandLock) {
+        return commandLock.withLock {
             try {
                 val reposiliteCommand = parseCommand(processedCommand) ?: return false
                 reposiliteCommand.isDangerous(processedCommand.split(" ").drop(1))
@@ -98,7 +100,7 @@ internal class CommandExecutor(
 
     /** The reason a dangerous command line gives for asking, which is the description the command has in the help. */
     internal fun reasonOf(command: String): String =
-        synchronized(commandLock) {
+        commandLock.withLock {
             try {
                 commandLine.parseArgs(*command.trim().split(" ").toTypedArray())
                     .subcommand()
@@ -121,7 +123,7 @@ internal class CommandExecutor(
             return PreparedCommand(processedCommand, command, this)
         }
 
-        val redactedCommand = synchronized(commandLock) {
+        val redactedCommand = commandLock.withLock {
             try {
                 val reposiliteCommand = parseCommand(processedCommand)
 
@@ -157,7 +159,7 @@ internal class CommandExecutor(
 
     }
 
-    private fun runCommand(command: String): CommandOutcome = synchronized(commandLock) {
+    private fun runCommand(command: String): CommandOutcome = commandLock.withLock {
         val processedCommand = command.trim()
 
         if (processedCommand.isEmpty()) {

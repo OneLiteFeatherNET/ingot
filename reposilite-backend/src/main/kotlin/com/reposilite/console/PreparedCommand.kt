@@ -16,6 +16,7 @@
 package com.reposilite.console
 
 import com.reposilite.console.api.ExecutionResponse
+import kotlin.concurrent.withLock
 
 internal class PreparedCommand(
     val redactedCommand: String,
@@ -34,12 +35,20 @@ internal class PreparedCommand(
      */
     fun executeStructured(confirmed: Boolean): StructuredAnswer =
         // The check and the run parse the same line, so both happen under the lock that keeps another call from parsing in between.
-        synchronized(commandExecutor.commandLock) {
-            if (!confirmed && isDangerous()) {
+        commandExecutor.commandLock.withLock {
+            val held = !confirmed && isDangerous()
+            onClassified()
+            if (held) {
                 ConfirmationNeeded(command = command.trim().substringBefore(' '), reason = commandExecutor.reasonOf(command))
             } else {
                 StructuredRun(commandExecutor.executeStructured(command))
             }
         }
+
+    /**
+     * Called between the check and the run of a structured call, while the command lock is held. Internal, so that a
+     * test can park a call in that gap and observe that no other call enters it.
+     */
+    internal var onClassified: () -> Unit = {}
 
 }
