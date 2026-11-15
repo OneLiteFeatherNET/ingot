@@ -30,19 +30,20 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 
 internal class CommandExecutorConcurrencyTest {
 
     @Test
-    fun `should give a parked command the arguments it was parsed with when another call runs meanwhile`() {
-        // given: a command that parks in its execution, after its arguments were parsed, until it is released
+    fun `should keep a second call out of the command lock while a parked call holds it`() {
+        // given: a first call parked inside its execution, after its arguments were parsed
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
+        val secondRan = CountDownLatch(1)
         val executor = commandExecutor()
-        executor.registerCommand(ValueProbe(entered, release))
+        executor.registerCommand(ValueProbe(entered, release, secondRan))
         val pool = Executors.newFixedThreadPool(2)
 
         try {
@@ -51,12 +52,21 @@ internal class CommandExecutorConcurrencyTest {
                 .`as`("first call reached the parked execution")
                 .isTrue()
 
-            // when: a second call runs while the first one is parked, and the first one is released afterwards
+            // when: a second call is started while the first one is parked
             val second = pool.submit<ExecutionResponse> { executor.execute("probe --value second") }
-            runCatching { second.get(OVERLAP_WINDOW_MILLIS, MILLISECONDS) }
+
+            // then: the second call has not run, and the first call holds the command lock, so no other call can enter
+            assertThat(secondRan.count)
+                .`as`("second call ran while the first one was parked")
+                .isEqualTo(1)
+            assertThat(executor.commandLock.isFreeNow())
+                .`as`("command lock is free while the first call is parked")
+                .isFalse()
+
+            // when: the first call is released
             release.countDown()
 
-            // then: the first call still echoes its own argument
+            // then: the first call still echoes its own argument, and the second call runs afterwards with its own
             assertThat(first.get(FIXTURE_TIMEOUT_SECONDS, SECONDS).response)
                 .`as`("output of the first call, which was parsed with the value 'first'")
                 .containsExactly("first")
@@ -69,6 +79,10 @@ internal class CommandExecutorConcurrencyTest {
         }
     }
 
+    /** Whether no thread holds the lock right now. The probe takes the lock only for a moment and gives it back. */
+    private fun ReentrantLock.isFreeNow(): Boolean =
+        tryLock().also { acquired -> if (acquired) unlock() }
+
     private fun commandExecutor() =
         CommandExecutor(
             journalist = ReposiliteJournalist(InMemoryLogger(), 0, testEnv = true, noColor = false),
@@ -77,14 +91,11 @@ internal class CommandExecutorConcurrencyTest {
         )
 
     private companion object {
-        /** Upper bound for waiting on the threads of the fixture, not a delay the assertions depend on. */
-        const val FIXTURE_TIMEOUT_SECONDS = 10L
-
         /**
-         * Time given to a second call to finish while the first one is parked. A call that finishes within it
-         * ran during the parked execution; a call that waits for the first one simply times out here.
+         * Upper bound for waiting on a thread of the fixture. It is only reached when a call never completes; the
+         * assertions do not depend on it.
          */
-        const val OVERLAP_WINDOW_MILLIS = 500L
+        const val FIXTURE_TIMEOUT_SECONDS = 10L
     }
 
 }
@@ -92,7 +103,8 @@ internal class CommandExecutorConcurrencyTest {
 @Command(name = "probe", description = ["Echoes the value it was given"])
 private class ValueProbe(
     private val entered: CountDownLatch,
-    private val release: CountDownLatch
+    private val release: CountDownLatch,
+    private val secondRan: CountDownLatch,
 ) : ReposiliteCommand {
 
     @Option(names = ["-v", "--value"], description = ["Value to echo"], required = true)
@@ -104,6 +116,8 @@ private class ValueProbe(
         if (parked.compareAndSet(false, true)) {
             entered.countDown()
             release.await()
+        } else {
+            secondRan.countDown()
         }
         context.append(value.orEmpty())
     }
