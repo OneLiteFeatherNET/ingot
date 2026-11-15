@@ -28,7 +28,7 @@ import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
-import net.onelitefeather.ingot.search.backend.SearchUnavailableException
+import net.onelitefeather.ingot.search.SearchUnavailableException
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.store.FSDirectory
 import org.assertj.core.api.Assertions.assertThat

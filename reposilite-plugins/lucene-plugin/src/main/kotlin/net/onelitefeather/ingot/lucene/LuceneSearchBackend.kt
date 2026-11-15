@@ -87,6 +87,8 @@ internal class LuceneSearchBackend(
     private val openDirectory: (Path) -> Directory = { FSDirectory.open(it) },
     /** The usable bytes of the volume that holds [LuceneSettings.directory]. Production asks the file store; the tests inject it. */
     private val usableSpace: (Path) -> Long = { Files.getFileStore(it).usableSpace },
+    /** Runs after a batch is applied and before its commit. Production does nothing; the fence tests use it to end a lease in the gap. */
+    private val beforeCommit: () -> Unit = {},
 ) : ArtifactSearchBackend {
 
     override val id: String = ID
@@ -216,10 +218,12 @@ internal class LuceneSearchBackend(
         searchers = SearcherManager(opened, null)
     }
 
-    /** Closes the index and gives the lease back, so that another replica can take it at once. */
+    /**
+     * Closes the index. The lease is not released: a restart of this replica within the lease time re-acquires it with its epoch and keeps
+     * the index, and another replica takes it once it has expired. A release would make the next grant a new epoch and a full rebuild.
+     */
     override fun close() {
         closeIndex()
-        lease?.let { runCatching { leases.release(it, done = false) } }
         lease = null
     }
 
@@ -416,6 +420,12 @@ internal class LuceneSearchBackend(
         }
         return try {
             val result = block(current)
+            beforeCommit()
+            // The lease was renewed to renewedAt + LEASE_TTL, and no other replica can take it before that instant. A commit that would
+            // end within FENCE_MARGIN of it is not made, so the commit always finishes while this replica still holds the lease.
+            if (!clock.instant().isBefore(renewedAt.plus(LEASE_TTL).minus(FENCE_MARGIN))) {
+                throw BackendBusyException(FENCED, RETRY_EVERY)
+            }
             current.commit()
             checkNotNull(searchers).maybeRefreshBlocking()
             result
@@ -489,6 +499,10 @@ internal class LuceneSearchBackend(
         val LEASE_TTL: Duration = Duration.ofSeconds(60)
         val RENEW_EVERY: Duration = Duration.ofSeconds(10)
         val RETRY_EVERY: Duration = Duration.ofSeconds(10)
+
+        /** A commit must end at least this long before the lease it was made under expires. Covers the clock skew between replicas. */
+        val FENCE_MARGIN: Duration = Duration.ofSeconds(5)
+        const val FENCED: String = "the batch did not finish inside the Lucene writer lease, it is not written"
 
         /** How long a batch waits when the index volume has no space left (design D3 and D9). */
         val DISK_FULL_RETRY: Duration = Duration.ofSeconds(60)
