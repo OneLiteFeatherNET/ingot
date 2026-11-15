@@ -35,34 +35,52 @@ be tested without the window.
 
 ### Requirement: Settings hub at /settings
 
-With no domain in the address, the Settings page SHALL show a hub of category cards, grouped as Repository, Instance, Data and Plugins.
-Each card SHALL show the domain's title and its saved value. The hub SHALL show only the groups and cards the visitor may edit, SHALL
-NOT show a card for the `maven` domain, and SHALL end with a line that links sign-in and security to Access.
+With no domain in the address, the Settings page SHALL show Overview: the heading Overview, the description "Shared configuration
+for all instances.", a section Needs attention, a section At a glance and, when the visitor may open the dashboard, a link to it.
+It SHALL NOT list the pages of the Administration tree as cards or links. Needs attention SHALL list one row per settings domain
+with an unsaved draft, linking to that domain's page, a control that opens the review of all drafts, and a save conflict when one
+is present; with none of these it SHALL read "Nothing needs attention.". At a glance SHALL list the count of every settings collection
+the visitor may edit, taken from the saved settings, and SHALL render all counts at once after the saved settings are loaded. The
+page SHALL make no request beyond those the Settings page makes today. Its root element SHALL carry
+`data-ingot-component="settings-hub"`.
 
-#### Scenario: The hub lists the saved values
+#### Scenario: Drafts need attention
 
-- **WHEN** a visitor who may edit Settings opens `/settings`
-- **THEN** each card that is shown carries the saved value of its domain, and no card of the `maven` domain is shown
+- **WHEN** a visitor who may edit Settings has changed the draft of Javadoc and opens `/settings`
+- **THEN** Needs attention lists Javadoc with the text Unsaved changes, linking to `/settings/javadoc`, and the saved value of
+  Javadoc is unchanged
 
-#### Scenario: Domains are placed by the mapping
+#### Scenario: Nothing to do
 
-- **WHEN** the hub is shown to a full administrator
-- **THEN** Repository holds Javadoc and Cleanup, Instance holds Web and Frontend, Data holds Statistics, Audit and Search, and Plugins holds every other domain
+- **WHEN** a visitor who may edit Settings has no draft and no conflict and opens `/settings`
+- **THEN** Needs attention reads "Nothing needs attention."
 
-#### Scenario: A plugin domain is never hidden
+#### Scenario: Counts render together
 
-- **WHEN** the server lists a plugin domain that the mapping does not name
-- **THEN** the hub shows it under Plugins, and the change does not require the plugin to name a group
+- **WHEN** a full administrator with seven repositories and no cleanup policy opens `/settings`
+- **THEN** At a glance lists Repositories 7 and Cleanup policies 0 in the same render, and shows no number before the saved
+  settings have loaded
 
-#### Scenario: Unsaved changes are marked, not saved
+#### Scenario: Plugin collection counted
 
-- **WHEN** a visitor has changed the draft of a domain and opens the hub
-- **THEN** that domain's card shows "Unsaved changes", the card's value is the saved value, and the draft is unchanged
+- **WHEN** a plugin section's domain has a collection
+- **THEN** At a glance lists its count under the section label
 
-#### Scenario: A visitor who may not edit Settings sees no hub cards
+#### Scenario: No copy of the tree
+
+- **WHEN** a full administrator opens `/settings` at 1440 pixels wide
+- **THEN** the content area contains no link to an Administration page that the tree also lists, other than the rows of Needs
+  attention
+
+#### Scenario: Anchor kept
+
+- **WHEN** a plugin stylesheet selects `[data-ingot-component="settings-hub"]`
+- **THEN** it matches the root of the Overview content
+
+#### Scenario: A visitor who may not edit Settings
 
 - **WHEN** a visitor without the settings permission opens `/settings`
-- **THEN** no card is shown and the visitor is shown the no access message of the dashboard navigation
+- **THEN** no Overview content is shown, and the visitor is forwarded or shown the no access message as before this change
 
 ### Requirement: Auto forward when one page is visible
 
@@ -141,3 +159,55 @@ settings schema SHALL NOT change.
 
 - **WHEN** an administrator resets the settings to their defaults
 - **THEN** the `maven` domain is reset with the other domains
+
+### Requirement: Settings file actions live on Overview
+
+"Import settings" and "Download as JSON" SHALL be shown in the page header of Overview only, as outlined controls with the same
+labels and behaviour as before. Settings domain pages and the Repositories page SHALL NOT show them. Importing SHALL load the file
+into the draft without a confirmation, and nothing SHALL be stored before Save.
+
+#### Scenario: Overview header
+
+- **WHEN** a full administrator opens `/settings`
+- **THEN** the header shows Import settings and Download as JSON, and no filled button
+
+#### Scenario: Domain page header
+
+- **WHEN** a full administrator opens `/settings/javadoc` or `/settings/repositories`
+- **THEN** neither Import settings nor Download as JSON is shown
+
+#### Scenario: Import stays a draft
+
+- **WHEN** the administrator imports a valid settings file on Overview
+- **THEN** the changed domains appear under Needs attention as unsaved, and the server settings are unchanged until Save
+
+### Requirement: Overview below 1240 pixels
+
+Below 1240 pixels `/settings` SHALL show, in this order: the page header of Overview, Needs attention when it has a row or a
+conflict, the Administration index with its filter, At a glance, and the dashboard link.
+
+#### Scenario: Phone
+
+- **WHEN** a full administrator with a draft in Javadoc opens `/settings` at 320 pixels wide
+- **THEN** the level one heading reads Overview, Needs attention lists Javadoc above the index, and the page does not scroll
+  horizontally
+
+#### Scenario: Nothing needs attention on a tablet
+
+- **WHEN** a full administrator without a draft or a conflict opens `/settings` at 900 pixels wide
+- **THEN** the Needs attention section is not drawn, the index follows the page header, and At a glance follows the index
+
+### Requirement: Overview is the narrow index
+
+Below 1240 pixels the index on `/settings` SHALL list Overview first and mark it `aria-current="page"`, and `/settings` SHALL draw no
+back arrow. Every other Administration page below 1240 pixels SHALL keep its back arrow and its target as before this change.
+
+#### Scenario: Current entry in the index
+
+- **WHEN** a full administrator opens `/settings` at 320 pixels wide
+- **THEN** the index lists Overview first, marked current, and no back arrow is drawn
+
+#### Scenario: Sibling page keeps its back arrow
+
+- **WHEN** the administrator opens `/settings/javadoc` at 900 pixels wide
+- **THEN** the back arrow is drawn and leads to `/settings`
