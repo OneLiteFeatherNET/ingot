@@ -2211,6 +2211,12 @@
       },
       "StorageInformation" : {
         "properties" : {
+          "details" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
           "kind" : {
             "type" : "string"
           },
@@ -2221,7 +2227,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "repository", "kind" ],
+        "required" : [ "repository", "kind", "details" ],
         "type" : "object"
       },
       "StorageUsageResponse" : {
