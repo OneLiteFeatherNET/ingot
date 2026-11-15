@@ -97,6 +97,18 @@ internal class FakeAzureBlobClient : AzureBlobClient {
         return maxResults?.let { entries.take(it) } ?: entries
     }
 
+    /** Every delete request, including the ones that fail. */
+    val deletes = mutableListOf<String>()
+
+    /** Names whose next delete fails with a network error and is then deleted normally, as a retry sees it. */
+    val failingDeletes = mutableSetOf<String>()
+
+    override fun delete(name: String) {
+        deletes += name
+        if (failingDeletes.remove(name)) throw IllegalStateException("network lost")
+        committed.remove(name) ?: throw AzureBlobNotFoundException(name)
+    }
+
     private companion object {
         val modifiedAt: Instant = Instant.parse("2026-01-02T03:04:05Z")
     }
