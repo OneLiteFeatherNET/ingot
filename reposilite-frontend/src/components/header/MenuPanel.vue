@@ -20,6 +20,7 @@ import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
+import type { MenuItem } from '../md/types'
 import LoginModal from './LoginModal.vue'
 import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
@@ -54,17 +55,8 @@ const THEME_LABELS: Record<string, string> = {
 }
 const themeLabel = computed<string>(() => THEME_LABELS[theme.mode])
 
-// One entry of the account menu. A separator has only its type.
-interface AccountItem {
-  value?: string
-  label?: string
-  href?: string
-  type?: 'separator' | 'radio'
-  checked?: boolean
-}
-
 // The account menu: the name, the account page, the three themes (the one in use checked) and logout.
-const accountItems = computed<AccountItem[]>(() => [
+const accountItems = computed<MenuItem[]>(() => [
   { value: 'account', label: 'My account', href: router.resolve({ name: 'account' }).href },
   { type: 'separator' },
   { value: 'theme:light', label: 'Light', type: 'radio', checked: theme.mode === 'light' },
