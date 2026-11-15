@@ -67,6 +67,18 @@ internal class ConsoleApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should refuse the command listing without credentials and disclose no command name`() {
+        // given: a request that carries no credentials
+
+        // when: the command listing is requested anonymously
+        val response = Unirest.get("$base/api/console/commands").asString()
+
+        // then: the request is refused as unauthorized and the body names no command
+        assertThat(response.status).isEqualTo(401)
+        assertThat(response.body).doesNotContain("token-revoke").doesNotContain("stop")
+    }
+
+    @Test
     fun `should hold a dangerous structured command without confirmation and leave the token in place`() {
         // given: a token that a console user may revoke
         val (name, secret) = useDefaultManagementToken()
@@ -107,22 +119,29 @@ internal class ConsoleApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
-    fun `should answer a plain execute with the status and response lines it always had`() {
+    fun `should answer plain executions with the exact JSON body they always had`() {
         // given: an instance admin
         val (name, secret) = useDefaultManagementToken()
 
-        // when: a command runs without structured mode
-        val response = Unirest.post("$base/api/console/execute")
+        // when: a succeeding and a failing command run without structured mode
+        val succeeded = Unirest.post("$base/api/console/execute")
+            .header("Authorization", basic(name, secret))
+            .body("level info")
+            .asString()
+        val failed = Unirest.post("$base/api/console/execute")
             .header("Authorization", basic(name, secret))
             .body("nosuchcommand")
             .asString()
 
-        // then: the answer has the old shape, with no exit code
-        assertThat(response.status).isEqualTo(200)
-        val body = json.readTree(response.body)
-        assertThat(body.get("status").asText()).isEqualTo("FAILED")
-        assertThat(body.get("response").get(0).asText()).isEqualTo("Unknown command nosuchcommand")
-        assertThat(body.has("exitCode")).`as`("plain answer has no exit code").isFalse
+        // then: each body is the plain answer, the same JSON as before, with no exit code or node
+        assertThat(succeeded.status).isEqualTo(200)
+        assertThat(json.readTree(succeeded.body))
+            .`as`("plain body of a succeeded command")
+            .isEqualTo(json.readTree("""{"status":"SUCCEEDED","response":["The new logging level has been set to info"]}"""))
+        assertThat(failed.status).isEqualTo(200)
+        assertThat(json.readTree(failed.body))
+            .`as`("plain body of a failed command")
+            .isEqualTo(json.readTree("""{"status":"FAILED","response":["Unknown command nosuchcommand"]}"""))
     }
 
 }

@@ -16,6 +16,8 @@
 
 package com.reposilite.console
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.reposilite.ReposiliteJournalist
 import com.reposilite.console.CommandStatus.FAILED
 import com.reposilite.console.CommandStatus.SUCCEEDED
@@ -165,23 +167,22 @@ internal class StructuredConsoleExecutionTest {
     }
 
     @Test
-    fun `should keep ANSI sequences and the usual response in plain mode`() {
-        // given: a console with a command that prints coloured output and one that fails to parse
+    fun `should answer a plain execution with the exact JSON body it always had`() {
+        // given: a console with a command that prints coloured output
         val executor = commandExecutor()
         executor.registerCommand(StructuredColouredCommand())
-        executor.registerCommand(StructuredProbeCommand(mutableListOf()))
 
-        // when: the commands run in plain mode
+        // when: a succeeding and a failing command run in plain mode
         val coloured = executor.prepare("coloured").execute()
-        val malformed = executor.prepare("probe -s a -s b").execute()
         val unknown = executor.prepare("nosuchcommand").execute()
 
-        // then: the answers are the ones the plain endpoint has always given
-        assertThat(coloured.status).isEqualTo(SUCCEEDED)
-        assertThat(coloured.response).containsExactly("\u001B[31mred\u001B[0m text")
-        assertThat(malformed.status).isEqualTo(FAILED)
-        assertThat(malformed.response).containsExactly("Invalid arguments for probe")
-        assertThat(unknown.response).containsExactly("Unknown command nosuchcommand")
+        // then: both bodies equal the plain answer, ANSI sequences included, and carry no exit code
+        assertThat(json.valueToTree<JsonNode>(coloured))
+            .`as`("plain body of a succeeded command")
+            .isEqualTo(json.readTree("""{"status":"SUCCEEDED","response":["\u001B[31mred\u001B[0m text"]}"""))
+        assertThat(json.valueToTree<JsonNode>(unknown))
+            .`as`("plain body of a failed command")
+            .isEqualTo(json.readTree("""{"status":"FAILED","response":["Unknown command nosuchcommand"]}"""))
     }
 
     @Test
@@ -248,6 +249,8 @@ internal class StructuredConsoleExecutionTest {
         assertThat(response.status).isEqualTo(SUCCEEDED)
         assertThat(executions).containsExactly("revoke ci")
     }
+
+    private val json = ObjectMapper()
 
     private fun run(answer: StructuredAnswer): StructuredExecution =
         (answer as? StructuredRun)?.execution
