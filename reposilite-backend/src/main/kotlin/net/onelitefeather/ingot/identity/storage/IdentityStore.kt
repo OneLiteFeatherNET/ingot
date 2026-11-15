@@ -103,19 +103,9 @@ class IdentityStore(
             PolicyRevisionTable.selectAll().where { PolicyRevisionTable.id eq POLICY_REVISION_ROW }.single()[PolicyRevisionTable.revision]
         }
 
-    /**
-     * Runs an identity write in its own transaction and advances the policy revision in that same transaction. A write that
-     * fails is rolled back together with the revision, so the revision moves exactly when identity changed. Usage records
-     * (last seen times) do not go through here: they change no right and must not invalidate the caches of every replica.
-     */
+    /** The identity write of this store, see [identityWrite]. */
     private fun <T> identityWrite(block: JdbcTransaction.() -> T): T =
-        transaction(database) {
-            val result = block()
-            PolicyRevisionTable.update(where = { PolicyRevisionTable.id eq POLICY_REVISION_ROW }, body = {
-                it[PolicyRevisionTable.revision] = PolicyRevisionTable.revision + 1L
-            })
-            result
-        }
+        identityWrite(database, block)
 
     // principals
 

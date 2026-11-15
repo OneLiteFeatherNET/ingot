@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login.storage
 import java.time.Clock
 import java.time.Instant
 import net.onelitefeather.ingot.identity.storage.PrincipalTable
+import net.onelitefeather.ingot.identity.storage.identityWrite
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -80,7 +81,7 @@ class SecondFactorStore(
      * in one transaction. The update is guarded by the pending row, so of two confirmations of one enrolment only one writes.
      */
     fun confirmWithRecoveryCodes(id: Int, at: Instant, step: Long, recoveryHashes: List<String>?): Boolean =
-        transaction(database) {
+        identityWrite(database) {
             val confirmed = MfaFactorTable.update(
                 where = { (MfaFactorTable.id eq id) and MfaFactorTable.confirmedAt.isNull() },
                 body = {
@@ -135,7 +136,7 @@ class SecondFactorStore(
 
     /** Turns an enrolment into a factor. The step of the confirming code is recorded, so that the code cannot be used again. */
     fun confirm(id: Int, at: Instant, step: Long) {
-        transaction(database) {
+        identityWrite(database) {
             MfaFactorTable.update(where = { MfaFactorTable.id eq id }, body = {
                 it[MfaFactorTable.confirmedAt] = at
                 it[MfaFactorTable.lastUsedStep] = step
@@ -176,13 +177,13 @@ class SecondFactorStore(
 
     /** Removes one factor of a principal. `true` when it existed. */
     fun deleteFactor(principalId: Int, id: Int): Boolean =
-        transaction(database) {
+        identityWrite(database) {
             MfaFactorTable.deleteWhere { (MfaFactorTable.principalId eq principalId) and (MfaFactorTable.id eq id) } > 0
         }
 
     /** Removes every factor of a principal, pending enrolments included. Returns how many confirmed factors were removed. */
     fun deleteAllFactors(principalId: Int): Int =
-        transaction(database) {
+        identityWrite(database) {
             val confirmed = MfaFactorTable.selectAll()
                 .where { (MfaFactorTable.principalId eq principalId) and MfaFactorTable.confirmedAt.isNotNull() }
                 .count()
@@ -198,7 +199,7 @@ class SecondFactorStore(
 
     /** Replaces the whole set of recovery codes of a principal. Codes of an earlier set stop working at once. */
     fun replaceRecoveryCodes(principalId: Int, hashes: List<String>, at: Instant) {
-        transaction(database) {
+        identityWrite(database) {
             MfaRecoveryCodeTable.deleteWhere { MfaRecoveryCodeTable.principalId eq principalId }
             hashes.forEach { hash ->
                 MfaRecoveryCodeTable.insert {
@@ -211,7 +212,7 @@ class SecondFactorStore(
     }
 
     fun deleteRecoveryCodes(principalId: Int) {
-        transaction(database) { MfaRecoveryCodeTable.deleteWhere { MfaRecoveryCodeTable.principalId eq principalId } }
+        identityWrite(database) { MfaRecoveryCodeTable.deleteWhere { MfaRecoveryCodeTable.principalId eq principalId } }
     }
 
     /** Spends a recovery code of a principal. `true` only for the first use of an unused code of that principal. */

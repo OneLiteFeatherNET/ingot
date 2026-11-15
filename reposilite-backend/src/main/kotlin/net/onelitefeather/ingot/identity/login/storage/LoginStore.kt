@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.identity.login.storage
 
 import net.onelitefeather.ingot.identity.login.AttemptState
 import net.onelitefeather.ingot.identity.storage.PrincipalTable
+import net.onelitefeather.ingot.identity.storage.identityWrite
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
@@ -207,7 +208,7 @@ class LoginStore(
 
     /** Sets the password hash of a principal, creating its credential when it has none yet. */
     fun saveCredential(principalId: Int, passwordHash: String, mustChangePassword: Boolean) {
-        transaction(database) {
+        identityWrite(database) {
             val updatedAt = Instant.now(clock)
             val exists = LocalCredentialTable.selectAll().where { LocalCredentialTable.principalId eq principalId }.any()
             if (exists) {
@@ -280,7 +281,7 @@ class LoginStore(
 
     /** Revokes every token of a family that is not revoked yet. Revoking twice changes nothing. */
     fun revokeFamily(familyId: String, at: Instant) {
-        transaction(database) {
+        identityWrite(database) {
             RefreshTokenTable.update(
                 where = { (RefreshTokenTable.familyId eq familyId) and RefreshTokenTable.revokedAt.isNull() },
                 body = { it[RefreshTokenTable.revokedAt] = at },
@@ -299,7 +300,7 @@ class LoginStore(
 
     /** Revokes every token of every family of a principal, for example after its password changed. */
     fun revokeAllOfPrincipal(principalId: Int, at: Instant) {
-        transaction(database) {
+        identityWrite(database) {
             RefreshTokenTable.update(
                 where = { (RefreshTokenTable.principalId eq principalId) and RefreshTokenTable.revokedAt.isNull() },
                 body = { it[RefreshTokenTable.revokedAt] = at },

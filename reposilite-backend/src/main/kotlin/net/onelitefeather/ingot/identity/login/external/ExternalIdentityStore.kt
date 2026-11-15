@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.identity.login.external
 
 import net.onelitefeather.ingot.identity.storage.PrincipalTable
+import net.onelitefeather.ingot.identity.storage.identityWrite
 import org.jetbrains.exposed.v1.core.ReferenceOption.CASCADE
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
@@ -66,7 +67,7 @@ internal class ExternalIdentityStore(private val database: Database) {
     /** Links the subject to the principal. Returns `false` when another request linked it first. */
     fun link(provider: String, subject: String, principalId: Int): Boolean =
         try {
-            transaction(database) {
+            identityWrite(database) {
                 ExternalIdentityTable.insert {
                     it[ExternalIdentityTable.provider] = provider
                     it[ExternalIdentityTable.subject] = subject
