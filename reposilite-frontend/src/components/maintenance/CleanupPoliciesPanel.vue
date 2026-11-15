@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
@@ -32,41 +32,76 @@ import PolicyDialog from './PolicyDialog.vue'
 import RunHistory from './RunHistory.vue'
 import RunNowDialog from './RunNowDialog.vue'
 import { lastRunOf, normalizeDryRun, normalizeRun, statusLabel } from './cleanup'
+import type { CleanupPreview, CleanupPreviewWire, CleanupRun, CleanupRunWire } from './cleanup'
 import { formatDateTime } from './format'
 import { normalizePolicy, retentionSummary, scheduleLabel, scopeLabel } from './policy'
+import type { CleanupPolicy, PolicyPayload, PolicyWire } from './policy'
 
 /*
  * The cleanup policies: the list, their editor, and the actions that run them. Saving writes the
  * whole cleanup domain, so every change first reads the list the server holds now and then writes
  * it back with the one policy changed. Nothing here deletes an artifact except a run.
  */
-const emit = defineEmits(['ran'])
+
+// The settings domains this panel reads. The OpenAPI document does not describe them, so their shape is declared here.
+interface CleanupSettingsWire {
+  policies?: PolicyWire[] | null
+}
+
+interface MavenSettingsWire {
+  repositories?: { id: string }[] | null
+}
+
+interface EditorState {
+  open: boolean
+  // The policy being edited, or null for a new one.
+  policy: CleanupPolicy | null
+}
+
+interface PreviewState {
+  open: boolean
+  policyId: string
+  result: CleanupPreview | null
+  error: string
+}
+
+interface RunDialogState {
+  open: boolean
+  policyId: string
+  running: boolean
+  result: CleanupRun | null
+  error: string
+}
+
+const emit = defineEmits<{
+  ran: []
+}>()
 
 const { client } = useSession()
 
-const policies = ref([])
-const runs = ref([])
-const repositoryIds = ref([])
+const policies = ref<CleanupPolicy[]>([])
+const runs = ref<CleanupRun[]>([])
+const repositoryIds = ref<string[]>([])
 const loaded = ref(false)
 const loadError = ref('')
 const saving = ref(false)
 const historyPolicy = ref('')
 
 // The editor: `policy` is null for a new policy.
-const editor = ref({ open: false, policy: null })
+const editor = ref<EditorState>({ open: false, policy: null })
 // The policy whose delete is being confirmed, or null.
-const deleting = ref(null)
-const preview = ref({ open: false, policyId: '', result: null, error: '' })
-const runDialog = ref({ open: false, policyId: '', running: false, result: null, error: '' })
+const deleting = ref<string | null>(null)
+const preview = ref<PreviewState>({ open: false, policyId: '', result: null, error: '' })
+const runDialog = ref<RunDialogState>({ open: false, policyId: '', running: false, result: null, error: '' })
 
 async function loadRuns() {
-  const { data } = await client.value.cleanup.runs()
+  const { data }: { data: CleanupRunWire[] } = await client.value.cleanup.runs()
   runs.value = data.map(normalizeRun)
 }
 
 async function load() {
   try {
-    const [cleanup, maven] = await Promise.all([
+    const [cleanup, maven]: [{ data: CleanupSettingsWire }, { data: MavenSettingsWire }] = await Promise.all([
       client.value.settings.fetch('cleanup'),
       client.value.settings.fetch('maven')
     ])
@@ -85,10 +120,14 @@ async function load() {
  * Reads the list the server holds, applies `change` to it and writes the result. A failure is
  * shown as the server's message; the list on screen is then left as it was.
  */
-async function persist(change) {
+// A change to the list: it receives the list the server holds and returns the list to write back.
+const keepList = (current: CleanupPolicy[]): CleanupPolicy[] => current
+type PolicyChange = typeof keepList
+
+async function persist(change: PolicyChange): Promise<boolean> {
   saving.value = true
   try {
-    const { data } = await client.value.settings.fetch('cleanup')
+    const { data }: { data: CleanupSettingsWire } = await client.value.settings.fetch('cleanup')
     const next = change((data.policies ?? []).map(normalizePolicy))
     await client.value.settings.update('cleanup', { policies: next })
     policies.value = next
@@ -101,13 +140,13 @@ async function persist(change) {
   }
 }
 
-const openEditor = (policy) => {
+const openEditor = (policy: CleanupPolicy | null) => {
   editor.value = { open: true, policy }
 }
 
 // The dialog's draft is the policy as the user left it; the stored fields it does not show, such
 // as any the dashboard does not know, are kept from the copy the server holds.
-async function savePolicy(wire) {
+async function savePolicy(wire: PolicyPayload) {
   const editing = editor.value.policy
   const saved = await persist((current) => {
     const original = editing ? current.find(policy => policy.id === editing.id) : undefined
@@ -117,7 +156,7 @@ async function savePolicy(wire) {
   if (saved) editor.value = { open: false, policy: null }
 }
 
-const setEnabled = (policy, enabled) =>
+const setEnabled = (policy: CleanupPolicy, enabled: boolean) =>
   persist(current => current.map(entry => (entry.id === policy.id ? { ...entry, enabled } : entry)))
 
 async function removePolicy() {
@@ -126,17 +165,17 @@ async function removePolicy() {
   if (removed) deleting.value = null
 }
 
-async function openPreview(policy) {
+async function openPreview(policy: CleanupPolicy) {
   preview.value = { open: true, policyId: policy.id, result: null, error: '' }
   try {
-    const { data } = await client.value.cleanup.dryRun(policy.id)
+    const { data }: { data: CleanupPreviewWire } = await client.value.cleanup.dryRun(policy.id)
     preview.value.result = normalizeDryRun(data)
   } catch (error) {
     preview.value.error = errorMessage(error)
   }
 }
 
-const openRun = (policy) => {
+const openRun = (policy: CleanupPolicy) => {
   runDialog.value = { open: true, policyId: policy.id, running: false, result: null, error: '' }
 }
 
@@ -144,7 +183,7 @@ async function runNow() {
   runDialog.value.running = true
   runDialog.value.error = ''
   try {
-    const { data } = await client.value.cleanup.run(runDialog.value.policyId)
+    const { data }: { data: CleanupRunWire } = await client.value.cleanup.run(runDialog.value.policyId)
     runDialog.value.result = normalizeRun(data)
     await loadRuns()
     emit('ran')
@@ -155,12 +194,12 @@ async function runNow() {
   }
 }
 
-const lastRunText = (id) => {
+const lastRunText = (id: string) => {
   const run = lastRunOf(runs.value, id)
   return run ? `Last run: ${statusLabel(run.status)}, ${formatDateTime(run.finishedAt ?? run.startedAt)}` : 'Never run'
 }
 
-const repositoriesOf = (policy) =>
+const repositoriesOf = (policy: CleanupPolicy) =>
   policy.repositories.length ? policy.repositories.join(', ') : 'no repository'
 
 load()

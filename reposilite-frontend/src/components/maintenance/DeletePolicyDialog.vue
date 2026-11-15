@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import { SCRIM_STYLE } from '../settings/dialog'
@@ -34,7 +34,10 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  confirm: []
+}>()
 
 const close = () => emit('update:modelValue', false)
 

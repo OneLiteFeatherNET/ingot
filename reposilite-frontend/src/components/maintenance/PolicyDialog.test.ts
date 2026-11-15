@@ -15,35 +15,36 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PolicyDialog from './PolicyDialog.vue'
+import type { PolicyPayload } from './policy'
 
-let wrapper
+let wrapper!: VueWrapper
 
 const openDialog = async (props = {}) => {
   wrapper = mount(PolicyDialog, {
     props: { modelValue: false, policy: null, existingIds: [], repositoryIds: ['releases', 'snapshots'], saving: false, ...props },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await wrapper.setProps({ modelValue: true })
   await flushPromises()
 }
 
-const field = (id) => document.getElementById(id)
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
 
-const typeInto = async (id, value) => {
+const typeInto = async (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
   await flushPromises()
 }
 
-const chooseRepository = async (id) => {
-  document.querySelector(`[data-repository="${id}"]`).click()
+const chooseRepository = async (id: string) => {
+  (document.querySelector(`[data-repository="${id}"]`) as HTMLElement).click()
   await flushPromises()
 }
 
 const save = async () => {
-  document.getElementById('policy-save').click()
+  (document.getElementById('policy-save') as HTMLElement).click()
   await flushPromises()
 }
 
@@ -51,7 +52,6 @@ const errorText = () => document.querySelector('#policy-form')?.textContent ?? '
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('PolicyDialog validation', () => {
@@ -138,7 +138,7 @@ describe('PolicyDialog submit body', () => {
 
     await save()
 
-    expect(wrapper.emitted('submit')[0][0]).toEqual({
+    expect((wrapper.emitted('submit') as [PolicyPayload][])[0][0]).toEqual({
       id: 'weekly',
       enabled: false,
       repositories: ['releases'],
@@ -155,22 +155,22 @@ describe('PolicyDialog submit body', () => {
     await openDialog()
     await typeInto('policy-id', 'mirror')
     await typeInto('policy-not-downloaded-days', '60')
-    document.getElementById('policy-schedule').value = 'daily'
-    document.getElementById('policy-schedule').dispatchEvent(new Event('change'))
+    field('policy-schedule').value = 'daily'
+    field('policy-schedule').dispatchEvent(new Event('change'))
     await flushPromises()
     await typeInto('policy-schedule-time', '03:30')
 
     await save()
 
-    expect(wrapper.emitted('submit')[0][0].schedule).toBe('03:30')
+    expect((wrapper.emitted('submit') as [PolicyPayload][])[0][0].schedule).toBe('03:30')
   })
 
   it('refuses a daily schedule without a time', async () => {
     await openDialog()
     await typeInto('policy-id', 'mirror')
     await typeInto('policy-not-downloaded-days', '60')
-    document.getElementById('policy-schedule').value = 'daily'
-    document.getElementById('policy-schedule').dispatchEvent(new Event('change'))
+    field('policy-schedule').value = 'daily'
+    field('policy-schedule').dispatchEvent(new Event('change'))
     await flushPromises()
 
     await save()
