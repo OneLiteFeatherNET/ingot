@@ -69,7 +69,7 @@ const size = computed(() => describeSize(props.file))
 // Compact rows put name and size on one line; default rows stack the size and date under the name.
 const textClass = computed(() =>
   props.compactMode
-    ? 'flex min-w-0 flex-1 items-center gap-4'
+    ? 'flex min-w-0 flex-1 items-center gap-2 medium:gap-4'
     : 'flex min-w-0 flex-1 flex-col'
 )
 
@@ -103,15 +103,16 @@ const onFileClick = (event) => {
 
 <template>
   <li
-    class="md-state-layer group relative flex items-center gap-4 rounded-corner-medium transition-colors"
-    :class="compactMode ? 'min-h-14 px-4' : 'min-h-18 px-4 py-2'"
+    class="md-state-layer group relative flex items-center rounded-corner-medium transition-colors"
+    :class="compactMode ? 'min-h-14 gap-2 medium:gap-4 px-4' : 'min-h-18 gap-4 px-4 py-2'"
     :aria-busy="busy ? 'true' : undefined"
     data-ingot-component="detailed-list-entry"
   >
     <router-link
       v-if="isDirectory"
       :to="to"
-      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      :class="compactMode ? 'gap-2 medium:gap-4' : 'gap-4'"
     >
       <BrowserIcon
         name="folder"
@@ -137,7 +138,8 @@ const onFileClick = (event) => {
       v-else
       :href="url"
       target="_blank"
-      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      :class="compactMode ? 'gap-2 medium:gap-4' : 'gap-4'"
       @click="onFileClick"
     >
       <BrowserIcon
