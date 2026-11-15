@@ -5210,6 +5210,9 @@ export interface components {
             threads: number;
         };
         StorageInformation: {
+            details: {
+                [key: string]: string;
+            };
             kind: string;
             region?: string | null;
             repository: string;
