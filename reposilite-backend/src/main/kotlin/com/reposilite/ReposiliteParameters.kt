@@ -81,8 +81,8 @@ class ReposiliteParameters : Runnable {
     var settingsSecretEnvironment: Map<String, String>? = null
 
     /**
-     * The clock of the second factor codes. Null uses the system clock. Only the integration test harness sets it, so that a test
-     * can compute the codes the server expects.
+     * The clock of the second factor codes and of the cleanup schedule. Null uses the system clock. Only the integration test
+     * harness sets it, so that a test can compute the codes the server expects and move the schedule by hand.
      */
     var clock: java.time.Clock? = null
 

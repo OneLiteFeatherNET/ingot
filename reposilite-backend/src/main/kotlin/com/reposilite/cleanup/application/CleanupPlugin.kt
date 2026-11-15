@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 internal class CleanupPlugin : ReposilitePlugin() {
 
     override fun initialize(): CleanupService {
-        val clock = Clock.systemDefaultZone()
+        val clock = parameters().clock ?: Clock.systemDefaultZone()
         val cleanupSettings = facade<SharedConfigurationFacade>().getDomainSettings<CleanupSettings>()
         val mavenFacade = facade<MavenFacade>()
         val repositoryRegistry = facade<RepositoryRegistry>()
@@ -98,9 +98,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
         // Only an instance that runs the background jobs ticks the schedule; a skipped tick takes no day claim.
         val tick = BackgroundJobGate(parameters().backgroundJobsEnabled).submit(SingletonJob.CLEANUP_SCHEDULE) {
             reposilite().scheduler.scheduleWithFixedDelay({
-                reposilite().ioService.execute {
-                    runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
-                }
+                reposilite().ioService.execute { scheduler.runTick() }
             }, 30, 30, SECONDS)
         }
 

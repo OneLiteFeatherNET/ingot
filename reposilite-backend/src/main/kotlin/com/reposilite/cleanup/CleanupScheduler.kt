@@ -55,6 +55,13 @@ internal class CleanupScheduler(
 
     private val startedOn = ConcurrentHashMap<String, LocalDate>()
 
+    /**
+     * One tick as the timer registration runs it. A failure is logged and never thrown, so the timer keeps running.
+     */
+    fun runTick() {
+        runCatching { tick() }.onFailure { journalist.logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
+    }
+
     fun tick() {
         val now = ZonedDateTime.ofInstant(clock.instant(), clock.zone)
         val today = now.toLocalDate()
