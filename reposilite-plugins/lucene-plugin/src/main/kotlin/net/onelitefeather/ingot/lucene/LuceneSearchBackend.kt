@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.lucene
 
+import com.reposilite.scheduling.ScheduledJobClaims
 import net.onelitefeather.ingot.search.ArtifactFilePage
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchPage
@@ -29,9 +30,11 @@ import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.BackendHealth
+import net.onelitefeather.ingot.search.backend.BackendLogger
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.SamplePage
+import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.database.pathHash
 import org.apache.lucene.analysis.standard.StandardAnalyzer
@@ -55,26 +58,32 @@ import org.apache.lucene.util.BytesRef
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.random.Random
 
 /**
  * The `lucene` backend (design D2 to D6): an index of artifact search in one directory on the local disk of this replica. The
- * index is a derived copy of the database. Its commits record the mapping version and the identity of the index, so that [open]
- * can refuse an index it does not write and the core can reset the rebuild cursor of a new index.
+ * index is a derived copy of the database, and exactly one replica writes it: the one that holds the lease [LEASE_KEY].
  *
- * Every write is one batch: it is committed before [apply] returns, and a failed batch rolls the writer back and opens it again from
- * the last commit. A commit that fails for lack of disk space is busy for [DISK_FULL_RETRY], and any other failure is passed on.
+ * A replica that does not hold the lease opens nothing, writes nothing and answers no search; it reports the reason and tries
+ * again every [RETRY_EVERY]. The holder renews the lease on each health check, every [RENEW_EVERY], and checks it again before each
+ * batch. A holder whose lease was taken over closes its index and stops.
  *
- * [openDirectory] opens the directory of the index. Production uses the file system; the tests inject a directory that fails on
- * demand.
+ * Every commit records the mapping version, the identity of the index and the epoch of its holder. A holder whose epoch differs from
+ * the one the index was written under clears the index and takes a new identity, so the core starts a full rebuild, because it does
+ * not know which writes the previous holder acknowledged.
  *
- * The reads of the search, the facets and the files, the sample and the status land in the query pull request of this change; until
- * then those members stop with a message that says so.
+ * Every write is one batch: it is committed before [apply] returns. A commit that fails for lack of disk space is busy for
+ * [DISK_FULL_RETRY], and any other failure reopens the writer from the last commit and is passed on.
  */
 internal class LuceneSearchBackend(
     private val settings: LuceneSettings,
+    private val leases: ScheduledJobClaims,
+    private val clock: Clock,
+    private val log: BackendLogger,
     private val openDirectory: (Path) -> Directory = { FSDirectory.open(it) },
     /** The usable bytes of the volume that holds [LuceneSettings.directory]. Production asks the file store; the tests inject it. */
     private val usableSpace: (Path) -> Long = { Files.getFileStore(it).usableSpace },
@@ -84,6 +93,16 @@ internal class LuceneSearchBackend(
 
     /** The index lives outside the database transaction, so the rebuild applies a page first and commits its cursor after. */
     override val joinsDatabaseTransaction: Boolean = false
+
+    /** The lease of this replica, or null while another replica holds it. */
+    @Volatile
+    private var lease: ScheduledJobClaims.Lease? = null
+
+    /** When the lease was last renewed; the next renewal is due [RENEW_EVERY] later. */
+    private var renewedAt: Instant = Instant.MIN
+
+    /** The earliest time of the next acquisition attempt while this replica does not hold the lease. */
+    private var nextAttempt: Instant = Instant.MIN
 
     @Volatile
     private var store: Directory? = null
@@ -97,24 +116,58 @@ internal class LuceneSearchBackend(
     @Volatile
     private var identity: String? = null
 
-    private val reader = LuceneReader(indexStatus = { status() })
-
     /**
-     * Creates the directory when it is missing, then reads the commit of an existing index. An index whose mapping version is not
-     * [MAPPING_VERSION] is refused, and so is one that cannot be read. Nothing is deleted or rewritten in either case.
+     * Checks that the directory is not a file, then tries to take the lease. A replica that gets it opens its index; one that does not
+     * reports the reason and opens nothing. A failure to open the index throws, and the core reports it.
      */
     override fun open() {
-        val directory = settings.directory
-        check(!Files.isRegularFile(directory)) {
-            "${LuceneSettings.DIRECTORY_VARIABLE} names a file, it must name a directory: $directory"
+        check(!Files.isRegularFile(settings.directory)) {
+            "${LuceneSettings.DIRECTORY_VARIABLE} names a file, it must name a directory: ${settings.directory}"
         }
+        attemptToHold()
+    }
+
+    /** One attempt to take the lease. When it is granted, the index is opened; when it is refused, the reason is logged. */
+    private fun attemptToHold() {
+        val now = clock.instant()
+        nextAttempt = now.plus(RETRY_EVERY)
+        val granted = leases.acquire(LEASE_KEY, LEASE_TTL)
+        if (granted == null) {
+            log.warn(HELD_ELSEWHERE)
+            return
+        }
+        try {
+            openIndex(granted)
+        } catch (failure: Exception) {
+            leases.release(granted, done = false)
+            throw failure
+        }
+        lease = granted
+        renewedAt = now
+        log.info("holds the Lucene writer lease at epoch ${granted.epoch}")
+    }
+
+    /** Opens the index under the lease [granted]: a new index is written, an index of the same epoch is kept, another one is cleared. */
+    private fun openIndex(granted: ScheduledJobClaims.Lease) {
+        val directory = settings.directory
         Files.createDirectories(directory)
         val index = openDirectory(directory)
         try {
             val existing = readCommitData(index, directory)
             val opened = IndexWriter(index, config())
             try {
-                identity = if (existing == null) createIdentity(opened) else verifiedIdentity(existing)
+                identity = when {
+                    existing == null -> commitIdentity(opened, UUID.randomUUID().toString(), granted.epoch)
+                    else -> {
+                        val known = verifiedIdentity(existing)
+                        if (existing[EPOCH_KEY] == granted.epoch.toString()) {
+                            known
+                        } else {
+                            opened.deleteAll()
+                            commitIdentity(opened, UUID.randomUUID().toString(), granted.epoch)
+                        }
+                    }
+                }
             } catch (failure: Exception) {
                 opened.close()
                 throw failure
@@ -135,11 +188,14 @@ internal class LuceneSearchBackend(
         }
     }
 
-    /** Writes the first commit of a new index: its mapping version and a random identity. */
-    private fun createIdentity(opened: IndexWriter): String {
-        val created = UUID.randomUUID().toString()
+    /** Commits the mapping version, the identity and the epoch of the holder, and returns the identity. */
+    private fun commitIdentity(opened: IndexWriter, created: String, epoch: Long): String {
         opened.setLiveCommitData(
-            mapOf(MAPPING_VERSION_KEY to MAPPING_VERSION.toString(), IDENTITY_KEY to created).entries,
+            mapOf(
+                MAPPING_VERSION_KEY to MAPPING_VERSION.toString(),
+                IDENTITY_KEY to created,
+                EPOCH_KEY to epoch.toString(),
+            ).entries,
         )
         opened.commit()
         return created
@@ -160,25 +216,60 @@ internal class LuceneSearchBackend(
         searchers = SearcherManager(opened, null)
     }
 
+    /** Closes the index and gives the lease back, so that another replica can take it at once. */
     override fun close() {
+        closeIndex()
+        lease?.let { runCatching { leases.release(it, done = false) } }
+        lease = null
+    }
+
+    private fun closeIndex() {
         runCatching { searchers?.close() }
         runCatching { writer?.close() }
         runCatching { store?.close() }
         searchers = null
         writer = null
         store = null
+        identity = null
     }
 
-    override fun health(): BackendHealth = when {
-        writer == null -> BackendHealth.Down("the index is not open")
-        usableSpace(settings.directory) < settings.minFreeBytes -> BackendHealth.Down(LOW_SPACE)
-        else -> BackendHealth.Up
+    /**
+     * Renews the lease when it is due, and tries to take it when this replica does not hold it and the retry is due. Up while this
+     * replica holds the lease and the volume has room; down with the reason otherwise.
+     */
+    override fun health(): BackendHealth {
+        try {
+            val now = clock.instant()
+            val held = lease
+            if (held == null) {
+                if (!now.isBefore(nextAttempt)) attemptToHold()
+            } else if (!now.isBefore(renewedAt.plus(RENEW_EVERY))) {
+                renew(held)
+            }
+        } catch (failure: Exception) {
+            return BackendHealth.Down(failure.message ?: OPEN_FAILED)
+        }
+        if (lease == null) return BackendHealth.Down(HELD_ELSEWHERE)
+        return if (usableSpace(settings.directory) < settings.minFreeBytes) BackendHealth.Down(LOW_SPACE) else BackendHealth.Up
+    }
+
+    /** Renews [held] at the current time. A lease that was taken over is given up: the index is closed and nothing is written. */
+    private fun renew(held: ScheduledJobClaims.Lease): Boolean {
+        if (leases.renew(held, LEASE_TTL)) {
+            renewedAt = clock.instant()
+            return true
+        }
+        closeIndex()
+        lease = null
+        nextAttempt = clock.instant().plus(RETRY_EVERY)
+        log.warn(LOST_LEASE)
+        return false
     }
 
     override fun indexIdentity(): String? = identity
 
     override fun count(): Long {
-        val manager = checkNotNull(searchers) { "the index is not open" }
+        val manager = searchers ?: throw SearchUnavailableException(HELD_ELSEWHERE)
         val searcher = manager.acquire()
         try {
             return searcher.indexReader.numDocs().toLong()
@@ -218,17 +309,13 @@ internal class LuceneSearchBackend(
     /** The stored state of the rows of [paths] in [repository], read from the committed index. */
     override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
         if (paths.isEmpty()) return emptyMap()
-        val manager = checkNotNull(searchers) { "the index is not open" }
         val ids = paths.map { path -> BytesRef(pathHash(repository, path)) }
-        val searcher = manager.acquire()
-        try {
+        return withSearcher { searcher ->
             val hits = searcher.search(TermInSetQuery(LuceneDocument.ID, ids), ids.size)
-            return hits.scoreDocs.associate { hit ->
+            hits.scoreDocs.associate { hit ->
                 val document = searcher.storedFields().document(hit.doc)
                 checkNotNull(document.get(LuceneDocument.PATH)) { "a document without a path" } to LuceneDocument.storedRow(document)
             }
-        } finally {
-            manager.release(searcher)
         }
     }
 
@@ -245,13 +332,13 @@ internal class LuceneSearchBackend(
     }
 
     override fun deleteStale(repository: String, before: Long, limit: Int): Int = transaction { current ->
-        val stale = inRepository(current, repository).filter { it.indexedAt < before }.take(limit)
+        val stale = matching(current, repository, prefix = null).filter { it.indexedAt < before }.take(limit)
         stale.forEach { hit -> current.deleteDocuments(idTerm(repository, pathOf(hit))) }
         stale.size
     }
 
     override fun deleteRepository(repository: String, limit: Int): Int = transaction { current ->
-        val rows = inRepository(current, repository).take(limit)
+        val rows = matching(current, repository, prefix = null).take(limit)
         rows.forEach { hit -> current.deleteDocuments(idTerm(repository, pathOf(hit))) }
         rows.size
     }
@@ -286,9 +373,13 @@ internal class LuceneSearchBackend(
     override fun files(query: ArtifactFilesQuery, access: SearchAccess): ArtifactFilePage =
         withSearcher { searcher -> reader.files(query, access, searcher) }
 
-    /** The state of the index: missing when it holds no row, ready otherwise. The core keeps the outbox and rebuild counters. */
+    /** The state of the index: degraded while this replica holds no index, missing when it holds no row, ready otherwise. */
     override fun status(): IndexStatus = IndexStatus(
-        state = if (count() == 0L) IndexState.MISSING else IndexState.READY,
+        state = when {
+            searchers == null -> IndexState.DEGRADED
+            count() == 0L -> IndexState.MISSING
+            else -> IndexState.READY
+        },
         lagSeconds = 0L,
         lastFullRebuild = null,
         deadLetters = 0L,
@@ -298,7 +389,7 @@ internal class LuceneSearchBackend(
     )
 
     private fun <T> withSearcher(block: (IndexSearcher) -> T): T {
-        val manager = checkNotNull(searchers) { "the index is not open" }
+        val manager = searchers ?: throw SearchUnavailableException(HELD_ELSEWHERE)
         val searcher = manager.acquire()
         try {
             return block(searcher)
@@ -312,10 +403,13 @@ internal class LuceneSearchBackend(
     // ---- transactions ---------------------------------------------------------------------------------------------------
 
     /**
-     * Runs [block] on the writer, commits, and refreshes the searcher before it returns, so a reader sees the batch at once. A failure
-     * reopens the writer from the last commit. A commit that fails for lack of disk space becomes [BackendBusyException].
+     * Runs [block] on the writer, commits, and refreshes the searcher before it returns, so a reader sees the batch at once. Before the
+     * batch the lease is renewed at its epoch: a replica that lost it writes nothing and the batch is busy, not counted as an attempt.
+     * A failure reopens the writer from the last commit. A commit that fails for lack of disk space becomes [BackendBusyException].
      */
     private fun <T> transaction(block: (IndexWriter) -> T): T {
+        val held = lease ?: throw BackendBusyException(HELD_ELSEWHERE, RETRY_EVERY)
+        if (!renew(held)) throw BackendBusyException(LOST_LEASE, RETRY_EVERY)
         val current = checkNotNull(writer) { "the index is not open" }
         if (usableSpace(settings.directory) < settings.minFreeBytes) {
             throw BackendBusyException(LOW_SPACE, DISK_FULL_RETRY)
@@ -348,9 +442,6 @@ internal class LuceneSearchBackend(
 
     /** A stored document with the indexed time of its doc value. */
     private class Hit(val document: Document, val indexedAt: Long)
-
-    /** Every row of [repository], read from the writer's current state. */
-    private fun inRepository(current: IndexWriter, repository: String): List<Hit> = matching(current, repository, prefix = null)
 
     /** The rows of [repository] at [prefix] and below it, or every row of the repository when [prefix] is null. */
     private fun matching(current: IndexWriter, repository: String, prefix: String?): List<Hit> =
@@ -391,14 +482,27 @@ internal class LuceneSearchBackend(
 
         const val MAPPING_VERSION_KEY: String = "ingot_mapping_version"
         const val IDENTITY_KEY: String = "ingot_index_identity"
+        const val EPOCH_KEY: String = "ingot_lease_epoch"
+
+        /** The lease that makes one replica the writer (design D4). */
+        const val LEASE_KEY: String = "search.lucene.writer"
+        val LEASE_TTL: Duration = Duration.ofSeconds(60)
+        val RENEW_EVERY: Duration = Duration.ofSeconds(10)
+        val RETRY_EVERY: Duration = Duration.ofSeconds(10)
 
         /** How long a batch waits when the index volume has no space left (design D3 and D9). */
         val DISK_FULL_RETRY: Duration = Duration.ofSeconds(60)
 
-        private const val NO_SPACE = "No space left on device"
+        const val HELD_ELSEWHERE: String = "another replica holds the Lucene writer lease"
+        const val LOST_LEASE: String = "the Lucene writer lease was taken over, this replica stopped writing"
+        const val OPEN_FAILED: String = "the Lucene index cannot be opened"
 
         /** The reason of a batch that waits for the free space to return, and of the health while it is short. */
-        const val LOW_SPACE = "low disk space"
+        const val LOW_SPACE: String = "low disk space"
+
+        private const val NO_SPACE = "No space left on device"
     }
+
+    private val reader = LuceneReader(indexStatus = { status() })
 
 }
