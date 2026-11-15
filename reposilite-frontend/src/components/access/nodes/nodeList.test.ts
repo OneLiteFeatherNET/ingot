@@ -178,7 +178,7 @@ describe('suggestWithArtifacts', () => {
     const items = suggestWithArtifacts(CATALOG, 'ingot.repository.releases.')
 
     expect(items.map(item => item.node)).toContain('ingot.repository.releases.artifact.')
-    expect(items.find(item => item.node === 'ingot.repository.releases.artifact.').continuation).toBe(true)
+    expect(items.find(item => item.node === 'ingot.repository.releases.artifact.')?.continuation).toBe(true)
   })
 
   it('offers the repository names of the catalog while the repository is typed', () => {

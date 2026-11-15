@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { etagOf } from '../../../store/client'
-import { permissionNodesApi } from './permissionNodesApi'
+import { etagOf, type createClient } from '../../../store/client'
+import { bodyAs, permissionNodesApi, type NodeEntry } from './permissionNodesApi'
 
 /*
  * Thin functions over the identity client for the parent teams of a team. `client` is what
@@ -30,27 +30,41 @@ import { permissionNodesApi } from './permissionNodesApi'
  * An answer without an entity tag gives etag null, and the next write is then unconditional.
  */
 
-const namesOf = (data) => (data?.parents ?? []).map(String)
+// The identity endpoints this module calls. A test hands in a fake with the same shape.
+export interface TeamsClient {
+  identity: Pick<ReturnType<typeof createClient>['identity'], 'teams' | 'nodes'>
+}
 
-const teamParentsApi = (client) => {
+// The bodies of the identity answers this module reads.
+interface ParentsBody {
+  parents?: unknown[] | null
+}
+
+interface TeamListBody {
+  name: string
+}
+
+const namesOf = (data: ParentsBody | null | undefined): string[] => (data?.parents ?? []).map(String)
+
+const teamParentsApi = (client: TeamsClient) => {
   const teams = () => client.identity.teams
 
-  const parents = async (name) => {
-    const response = await teams().parents(name)
+  const parents = async (name: string): Promise<{ parents: string[]; etag: string | null }> => {
+    const response = await bodyAs<ParentsBody>(teams().parents(name))
     return { parents: namesOf(response.data), etag: etagOf(response) }
   }
 
   return {
     parents,
-    async setParents(name, list, etag) {
-      const response = await teams().setParents(name, list, etag)
+    async setParents(name: string, list: string[], etag: string | null): Promise<{ parents: string[]; etag: string | null }> {
+      const response = await bodyAs<ParentsBody>(teams().setParents(name, list, etag))
       return { parents: response?.data?.parents ? namesOf(response.data) : [...list], etag: etagOf(response) }
     },
-    async teamNames() {
-      const response = await teams().list()
-      return (response.data ?? []).map(team => team.name)
+    async teamNames(): Promise<string[]> {
+      const response = await bodyAs<TeamListBody[]>(teams().list())
+      return (response.data ?? []).map((team: { name: string }) => team.name)
     },
-    async team(name) {
+    async team(name: string): Promise<{ nodes: NodeEntry[]; parents: string[] }> {
       const [nodes, above] = await Promise.all([permissionNodesApi(client).load('team', name), parents(name)])
       return { nodes: nodes.nodes, parents: above.parents }
     }

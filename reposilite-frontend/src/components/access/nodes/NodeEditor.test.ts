@@ -17,8 +17,9 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import NodeEditor from './NodeEditor.vue'
+import type { NodeEntry } from './permissionNodesApi'
 
 /*
  * The editor is controlled: the host owns the draft. The helper plays the host by feeding every
@@ -56,7 +57,7 @@ const INHERITED = () => [
 ]
 
 describe('NodeEditor', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   const mountEditor = (props = {}) => {
     wrapper = mount(NodeEditor, {
@@ -66,7 +67,7 @@ describe('NodeEditor', () => {
         catalog: CATALOG(),
         templates: TEMPLATES(),
         ...props,
-        'onUpdate:nodes': (value) => wrapper.setProps({ nodes: value })
+        'onUpdate:nodes': (value: unknown) => wrapper.setProps({ nodes: value })
       },
       // Attached, so that the submit button of the template form really submits it.
       attachTo: document.body,
@@ -77,15 +78,14 @@ describe('NodeEditor', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
   })
 
   const input = () => wrapper.find('input[role="combobox"]')
   const rowTexts = () => wrapper.findAll('[data-test="node-row"] code').map(code => code.text())
-  const row = (node) => wrapper.find(`[data-test="node-row"] [data-node="${node}"]`)
-  const buttonNamed = (name) => wrapper.findAll('button').find(button => button.text() === name)
-  const lastDraft = () => wrapper.emitted('update:nodes').at(-1)[0]
-  const type = async (text) => {
+  const row = (node: string) => wrapper.find(`[data-test="node-row"] [data-node="${node}"]`)
+  const buttonNamed = (name: string) => wrapper.findAll('button').find(button => button.text() === name)
+  const lastDraft = (): NodeEntry[] => wrapper.emitted<[NodeEntry[]]>('update:nodes')?.at(-1)?.[0] ?? []
+  const type = async (text: string) => {
     await input().setValue(text)
   }
 
@@ -109,7 +109,7 @@ describe('NodeEditor', () => {
       await type('ingot.admin.teams')
       await wrapper.find('[data-test="add-node"]').trigger('click')
 
-      expect(input().element.value).toBe('')
+      expect((input().element as HTMLInputElement).value).toBe('')
     })
 
     it('adds the typed node when Enter is pressed without a highlighted option', async () => {
@@ -282,7 +282,7 @@ describe('NodeEditor', () => {
       mountEditor()
 
       await row('ingot.repository.releases.read').findAll('[role="radio"]')
-        .find(radio => radio.text() === 'Deny').trigger('click')
+        .find(radio => radio.text() === 'Deny')!.trigger('click')
 
       expect(lastDraft()).toEqual([
         { node: 'ingot.repository.releases.read', allowed: false },
@@ -294,7 +294,7 @@ describe('NodeEditor', () => {
       mountEditor()
 
       await row('ingot.admin.users').findAll('[role="radio"]')
-        .find(radio => radio.text() === 'Allow').trigger('click')
+        .find(radio => radio.text() === 'Allow')!.trigger('click')
 
       expect(lastDraft()[1]).toEqual({ node: 'ingot.admin.users', allowed: true })
     })
@@ -303,8 +303,8 @@ describe('NodeEditor', () => {
       mountEditor()
 
       const radios = row('ingot.admin.users').findAll('[role="radio"]')
-      expect(radios.find(radio => radio.text() === 'Deny').attributes('aria-checked')).toBe('true')
-      expect(radios.find(radio => radio.text() === 'Allow').attributes('aria-checked')).toBe('false')
+      expect(radios.find(radio => radio.text() === 'Deny')!.attributes('aria-checked')).toBe('true')
+      expect(radios.find(radio => radio.text() === 'Allow')!.attributes('aria-checked')).toBe('false')
     })
 
     it('shows the message the server gave for a row', () => {
@@ -339,13 +339,13 @@ describe('NodeEditor', () => {
   })
 
   describe('templates', () => {
-    const openTemplate = async (label) => {
+    const openTemplate = async (label: string) => {
       await wrapper.find('[data-test="template-toggle"]').trigger('click')
       await wrapper.findAll('[data-test="template-option"]')
-        .find(option => option.find('span').text() === label).trigger('click')
+        .find(option => option.find('span').text() === label)!.trigger('click')
     }
 
-    const fillRepository = async (name) => {
+    const fillRepository = async (name: string) => {
       await wrapper.find('[data-test="template-panel"] input').setValue(name)
       await wrapper.find('[data-test="template-apply"]').trigger('click')
     }
@@ -465,7 +465,7 @@ describe('NodeEditor', () => {
       await showTree()
 
       await wrapper.find('[data-node="ingot.admin.users"]').findAll('[role="radio"]')
-        .find(radio => radio.text() === 'Allow').trigger('click')
+        .find(radio => radio.text() === 'Allow')!.trigger('click')
 
       expect(lastDraft()[1]).toEqual({ node: 'ingot.admin.users', allowed: true })
     })
@@ -574,7 +574,7 @@ describe('NodeEditor', () => {
     it('emits save from the bar', async () => {
       mountEditor({ nodes: [] })
 
-      await buttonNamed('Save').trigger('click')
+      await buttonNamed('Save')!.trigger('click')
 
       expect(wrapper.emitted('save')).toHaveLength(1)
     })
@@ -582,7 +582,7 @@ describe('NodeEditor', () => {
     it('emits discard from the bar', async () => {
       mountEditor({ nodes: [] })
 
-      await buttonNamed('Discard').trigger('click')
+      await buttonNamed('Discard')!.trigger('click')
 
       expect(wrapper.emitted('discard')).toHaveLength(1)
     })
@@ -609,7 +609,7 @@ describe('NodeEditor', () => {
     it('passes on the choice to reload from the conflict dialog', async () => {
       mountEditor({ conflict: { kind: 'nodes', name: 'alice' } })
 
-      await buttonNamed('Reload and discard my changes').trigger('click')
+      await buttonNamed('Reload and discard my changes')!.trigger('click')
 
       expect(wrapper.emitted('conflict-reload')).toHaveLength(1)
     })
@@ -668,7 +668,7 @@ describe('NodeEditor', () => {
 })
 
 describe('NodeEditor artifact nodes', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   const mountEditor = (props = {}) => {
     wrapper = mount(NodeEditor, {
@@ -678,7 +678,7 @@ describe('NodeEditor artifact nodes', () => {
         catalog: CATALOG(),
         templates: [],
         ...props,
-        'onUpdate:nodes': (value) => wrapper.setProps({ nodes: value })
+        'onUpdate:nodes': (value: unknown) => wrapper.setProps({ nodes: value })
       }
     })
     return wrapper
@@ -686,7 +686,6 @@ describe('NodeEditor artifact nodes', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
   })
 
   const input = () => wrapper.find('input[role="combobox"]')
@@ -698,10 +697,10 @@ describe('NodeEditor artifact nodes', () => {
     await input().setValue('ingot.artifact.net.onelitefeather')
     expect(options(), 'the deploy action is suggested').toContain('ingot.artifact.net.onelitefeather.deploy')
     await wrapper.findAll('[role="option"]')
-      .find(option => option.find('code').text() === 'ingot.artifact.net.onelitefeather.deploy')
+      .find(option => option.find('code').text() === 'ingot.artifact.net.onelitefeather.deploy')!
       .trigger('click')
 
-    expect(wrapper.emitted('update:nodes').at(-1)[0]).toEqual([
+    expect(wrapper.emitted<[NodeEntry[]]>('update:nodes')?.at(-1)?.[0]).toEqual([
       { node: 'ingot.artifact.net.onelitefeather.deploy', allowed: true }
     ])
   })
@@ -711,10 +710,10 @@ describe('NodeEditor artifact nodes', () => {
 
     await input().setValue('ingot.repository.releases.')
     const continuation = wrapper.findAll('[role="option"]')
-      .find(option => option.find('code').text() === 'ingot.repository.releases.artifact.')
+      .find(option => option.find('code').text() === 'ingot.repository.releases.artifact.')!
     await continuation.trigger('click')
 
-    expect(input().element.value).toBe('ingot.repository.releases.artifact.')
+    expect((input().element as HTMLInputElement).value).toBe('ingot.repository.releases.artifact.')
     expect(wrapper.emitted('update:nodes'), 'nothing was added').toBeUndefined()
   })
 
@@ -741,7 +740,7 @@ describe('NodeEditor artifact nodes', () => {
 })
 
 describe('NodeEditor artifact templates', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   const ARTIFACT_TEMPLATES = () => [
     { id: 'artifact-read', label: 'Read an artifact', nodes: ['ingot.artifact.{groupId}:{artifactId}.read'] },
@@ -762,7 +761,7 @@ describe('NodeEditor artifact templates', () => {
         savedNodes: [],
         catalog: CATALOG(),
         templates: ARTIFACT_TEMPLATES(),
-        'onUpdate:nodes': (value) => wrapper.setProps({ nodes: value })
+        'onUpdate:nodes': (value: unknown) => wrapper.setProps({ nodes: value })
       },
       attachTo: document.body
     })
@@ -771,17 +770,16 @@ describe('NodeEditor artifact templates', () => {
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
   })
 
-  const openTemplate = async (label) => {
+  const openTemplate = async (label: string) => {
     await wrapper.find('[data-test="template-toggle"]').trigger('click')
     await wrapper.findAll('[data-test="template-option"]')
-      .find(option => option.find('span').text() === label).trigger('click')
+      .find(option => option.find('span').text() === label)!.trigger('click')
   }
-  const field = (test) => wrapper.find(`[data-test="${test}"]`)
+  const field = (test: string) => wrapper.find(`[data-test="${test}"]`)
   const apply = () => wrapper.find('[data-test="template-apply"]')
-  const lastDraft = () => wrapper.emitted('update:nodes').at(-1)[0]
+  const lastDraft = (): NodeEntry[] => wrapper.emitted<[NodeEntry[]]>('update:nodes')?.at(-1)?.[0] ?? []
 
   it('asks for a groupId and an optional artifactId and adds the node as Allow', async () => {
     mountEditor()

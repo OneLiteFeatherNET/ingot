@@ -29,7 +29,19 @@ const REPOSITORY_NAME = /^[A-Za-z0-9_-]+$/
  * path or action); the query is null while there is a problem. The path keeps its slashes and loses the spaces at
  * its ends.
  */
-const pathQueryOf = ({ repository = '', path = '', action = 'read' }) => {
+export interface PathQueryInput {
+  repository?: string | null
+  path?: string | null
+  action?: string
+}
+
+export interface PathQuery {
+  field: 'repository' | 'path' | 'action' | ''
+  problem: string
+  query: { repository: string; path: string; action: string } | null
+}
+
+const pathQueryOf = ({ repository = '', path = '', action = 'read' }: PathQueryInput): PathQuery => {
   const repo = String(repository ?? '').trim()
   const typedPath = String(path ?? '').trim()
   if (repo === '') return { field: 'repository', problem: 'Enter the repository the path is in', query: null }

@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { useInheritedNodes } from './useInheritedNodes'
+import { useInheritedNodes, type InheritedSource } from './useInheritedNodes'
+import type { TeamNodes } from './inheritedNodes'
 
 vi.mock('../../../helpers/toast', () => ({
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? `${error}`
 }))
 
 /*
@@ -26,22 +27,22 @@ vi.mock('../../../helpers/toast', () => ({
  * resolves as a promise and nothing waits on a timer.
  */
 
-const failure = (status, message) =>
+const failure = (status: number, message: string) =>
   Object.assign(new Error(message), { response: { status, data: { message } } })
 
-const TEAMS = () => ({
+const TEAMS = (): Record<string, TeamNodes> => ({
   ops: { nodes: [{ node: 'ingot.admin.maintenance', allowed: true }], parents: ['developers'] },
   developers: { nodes: [{ node: 'ingot.repository.releases.read', allowed: true }], parents: [] }
 })
 
 const makeApi = (teams = TEAMS()) => ({
-  team: vi.fn(async (name) => {
+  team: vi.fn(async (name: string) => {
     if (!(name in teams)) throw failure(404, `Team '${name}' not found`)
     return teams[name]
   })
 })
 
-const open = async (source, api = makeApi()) => {
+const open = async (source: InheritedSource, api = makeApi()) => {
   const inherited = useInheritedNodes(() => source, () => api)
   await inherited.load()
   return { inherited, api }
@@ -103,14 +104,14 @@ describe('useInheritedNodes', () => {
   })
 
   it('drops a load that a newer load overtook', async () => {
-    let release
+    let release: (value?: unknown) => void = () => {}
     const slow = new Promise(resolve => { release = resolve })
-    const teams = {
+    const teams: Record<string, TeamNodes> = {
       slow: { nodes: [{ node: 'ingot.admin.users', allowed: true }], parents: [] },
       fast: { nodes: [], parents: [] }
     }
     const api = {
-      team: vi.fn(async (name) => {
+      team: vi.fn(async (name: string) => {
         if (name === 'slow') await slow
         return teams[name]
       })

@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, useId } from 'vue'
+<script setup lang="ts">
+import { computed, ref, useId, type PropType } from 'vue'
 import MdTextField from '../../md/MdTextField.vue'
 
 /*
@@ -42,7 +42,7 @@ const props = defineProps({
     required: true
   },
   options: {
-    type: Array,
+    type: Array as PropType<{ value: string; description?: string }[]>,
     default: () => []
   },
   supportingText: {
@@ -71,7 +71,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const inputId = `combobox-${useId()}`
 const listboxId = `${inputId}-listbox`
-const optionId = (index) => `${inputId}-option-${index}`
+const optionId = (index: number): string => `${inputId}-option-${index}`
 
 const open = ref(false)
 const active = ref(-1)
@@ -79,19 +79,19 @@ const active = ref(-1)
 const showList = computed(() => open.value && props.options.length > 0)
 const activeDescendant = computed(() => (showList.value && active.value >= 0 ? optionId(active.value) : undefined))
 
-const choose = (value) => {
+const choose = (value: string) => {
   emit('update:modelValue', value)
   open.value = false
   active.value = -1
 }
 
-const onInput = (value) => {
+const onInput = (value: string) => {
   emit('update:modelValue', value)
   open.value = true
   active.value = -1
 }
 
-const move = (step) => {
+const move = (step: number) => {
   const count = props.options.length
   if (count === 0) return
   if (!open.value) {
@@ -102,7 +102,7 @@ const move = (step) => {
   active.value = (active.value + step + count) % count
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     move(1)

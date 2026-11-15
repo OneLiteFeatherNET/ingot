@@ -33,7 +33,7 @@
  */
 
 const AREAS = ['settings', 'users', 'teams', 'tokens', 'maintenance', 'audit', 'console', 'dashboard']
-const ACTIONS = ['read', 'deploy', 'delete', 'manage']
+const ACTIONS: string[] = ['read', 'deploy', 'delete', 'manage']
 // An artifact node has no manage action: managing a repository is not scoped to a path.
 const ARTIFACT_ACTIONS = ['read', 'deploy', 'delete']
 const ARTIFACT_ACTION_TEXT = [...ARTIFACT_ACTIONS, '*'].join('|')
@@ -54,7 +54,27 @@ const SHAPE_HINT = 'Use *, ingot.admin.<area> or ingot.repository.<repository>.<
  * form, and rest the segments after '.artifact.'. Null when the node is no artifact node. A
  * qualified node without a repository name (ingot.repository.artifact...) is reported by the caller.
  */
-const artifactPartOf = (segments) => {
+export interface ArtifactPart {
+  repository: string | null
+  rest: string[]
+  nameless?: boolean
+}
+
+/** A node that failed the grammar: the node text (null when the input is no text) and the message. */
+export interface NodeProblem {
+  node: string | null
+  message: string
+}
+
+export interface ParseResult {
+  valid: boolean
+  kind: NodeKind | null
+  problems: NodeProblem[]
+}
+
+export type NodeKind = 'STATIC' | 'REPOSITORY' | 'ARTIFACT' | 'WILDCARD'
+
+const artifactPartOf = (segments: string[]): ArtifactPart | null => {
   if (segments[0] !== 'ingot') return null
   if (segments[1] === 'artifact') return { repository: null, rest: segments.slice(2) }
   if (segments[1] !== 'repository') return null
@@ -64,7 +84,7 @@ const artifactPartOf = (segments) => {
 }
 
 /** The name of a groupId or artifactId that is not valid, as a message, or null when it is valid. */
-const namePartProblem = (label, value, text) => {
+const namePartProblem = (label: string, value: string, text: string): string | null => {
   if (value.includes('*')) return `The ${label} '${value}' of '${text}' is invalid, a wildcard must be the whole ${label}`
   const parts = value.split('.')
   if (parts.some(part => part === '')) return `The ${label} '${value}' of '${text}' has an empty segment`
@@ -73,7 +93,7 @@ const namePartProblem = (label, value, text) => {
 }
 
 /** The messages of an artifact node, the same checks the server makes. */
-const artifactMessages = (text, artifact) => {
+const artifactMessages = (text: string, artifact: ArtifactPart): string[] => {
   const hint = artifact.repository === null ? ARTIFACT_HINT : QUALIFIED_ARTIFACT_HINT
   if (artifact.nameless) return [`The repository name before .artifact. is missing. ${QUALIFIED_ARTIFACT_HINT}`]
   if (text.length > MAX_LENGTH) return [`The node is longer than ${MAX_LENGTH} characters`]
@@ -106,7 +126,7 @@ const artifactMessages = (text, artifact) => {
 }
 
 /** The messages that make a text an invalid node. An empty list means the text is valid. */
-const messagesOf = (text) => {
+const messagesOf = (text: unknown): string[] => {
   if (typeof text !== 'string' || text.trim() === '') return ['Node is required']
   if (text !== text.trim()) return ['Node must not start or end with a space']
   if (text === '*') return []
@@ -129,7 +149,7 @@ const messagesOf = (text) => {
 }
 
 /** STATIC (an admin area), REPOSITORY (a literal repository), ARTIFACT or WILDCARD. Only for a valid text. */
-const kindOf = (text) => {
+const kindOf = (text: string): NodeKind => {
   const segments = text.split('.')
   if (text === '*') return 'WILDCARD'
   if (artifactPartOf(segments) !== null) return 'ARTIFACT'
@@ -141,16 +161,16 @@ const kindOf = (text) => {
  * Checks a text against the grammar. Returns { valid, kind, problems } where problems is a list
  * of { node, message } (the shape the server answers a 400 with) and kind is null when invalid.
  */
-const parseNode = (text) => {
+const parseNode = (text: unknown): ParseResult => {
   const messages = messagesOf(text)
   const node = typeof text === 'string' ? text : null
   if (messages.length > 0) {
     return { valid: false, kind: null, problems: messages.map(message => ({ node, message })) }
   }
-  return { valid: true, kind: kindOf(text), problems: [] }
+  return { valid: true, kind: kindOf(text as string), problems: [] }
 }
 
 /** True when the text is a name the grammar allows for a repository segment (a literal or '*'). */
-const isRepositorySegment = (text) => typeof text === 'string' && SEGMENT.test(text)
+const isRepositorySegment = (text: unknown): boolean => typeof text === 'string' && SEGMENT.test(text)
 
 export { ACTIONS, ARTIFACT_ACTIONS, AREAS, artifactPartOf, isRepositorySegment, parseNode }

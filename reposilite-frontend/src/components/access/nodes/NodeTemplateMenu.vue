@@ -14,14 +14,15 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, useId } from 'vue'
+<script setup lang="ts">
+import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../../md/MdButton.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import { artifactIdProblem, groupIdProblem } from './artifactNodes'
 import { isRepositorySegment, parseNode } from './nodeGrammar'
 import { repositoryNames } from './nodeList'
-import { applyTemplate, fillTemplate, needsArtifact, needsRepository } from './nodeTemplates'
+import { applyTemplate, fillTemplate, needsArtifact, needsRepository, type ArtifactCoordinates } from './nodeTemplates'
+import type { CatalogItem, NodeEntry, NodeTemplate } from './permissionNodesApi'
 
 /*
  * Adds the nodes of a template. The button opens a panel with the templates. A template that has a
@@ -36,16 +37,16 @@ import { applyTemplate, fillTemplate, needsArtifact, needsRepository } from './n
 const props = defineProps({
   /** [{ id, label, nodes }] */
   templates: {
-    type: Array,
+    type: Array as PropType<NodeTemplate[]>,
     default: () => []
   },
   catalog: {
-    type: Array,
+    type: Array as PropType<CatalogItem[]>,
     default: () => []
   },
   /** The nodes already listed (the draft). */
   nodes: {
-    type: Array,
+    type: Array as PropType<NodeEntry[]>,
     default: () => []
   }
 })
@@ -57,7 +58,7 @@ const panelId = `template-panel-${uid}`
 const datalistId = `template-repositories-${uid}`
 
 const open = ref(false)
-const chosen = ref(null)
+const chosen = ref<NodeTemplate | null>(null)
 const repository = ref('')
 const groupId = ref('')
 const artifactId = ref('')
@@ -107,7 +108,7 @@ const toggle = () => {
   else open.value = true
 }
 
-const apply = (template, repositoryName, coordinatesOf) => {
+const apply = (template: NodeTemplate | null, repositoryName: string, coordinatesOf: ArtifactCoordinates) => {
   const { added, skipped } = applyTemplate(template, repositoryName, props.nodes, coordinatesOf)
   if (added.length > 0) emit('apply', added)
   const parts = [`Added ${added.length} ${added.length === 1 ? 'node' : 'nodes'}`]
@@ -116,7 +117,7 @@ const apply = (template, repositoryName, coordinatesOf) => {
   close()
 }
 
-const choose = (template) => {
+const choose = (template: NodeTemplate) => {
   if (needsRepository(template) || needsArtifact(template)) {
     chosen.value = template
     repository.value = ''

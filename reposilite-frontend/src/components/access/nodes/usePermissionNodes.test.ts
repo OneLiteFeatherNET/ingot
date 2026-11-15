@@ -18,7 +18,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { usePermissionNodes } from './usePermissionNodes'
 
 vi.mock('../../../helpers/toast', () => ({
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? `${error}`
 }))
 
 /*
@@ -26,7 +26,7 @@ vi.mock('../../../helpers/toast', () => ({
  * waits on a timer: every call resolves as a promise.
  */
 
-const failure = (status, message, extra = {}) =>
+const failure = (status: number, message: string, extra: Record<string, unknown> = {}) =>
   Object.assign(new Error(message), { response: { status, data: { message, ...extra } } })
 
 const SAVED = () => [
@@ -36,7 +36,7 @@ const SAVED = () => [
 
 const makeApi = (overrides = {}) => ({
   load: vi.fn(async () => ({ nodes: SAVED(), etag: '"1"' })),
-  save: vi.fn(async (kind, name, nodes) => ({ nodes, etag: '"2"' })),
+  save: vi.fn(async (kind: string, name: string, nodes: { node: string; allowed: boolean }[]) => ({ nodes, etag: '"2"' })),
   catalog: vi.fn(async () => [{ node: '*', description: 'Everything', kind: 'WILDCARD' }]),
   templates: vi.fn(async () => [{ id: 'read', label: 'Read', nodes: ['ingot.repository.{repository}.read'] }]),
   ...overrides
@@ -78,7 +78,7 @@ describe('usePermissionNodes', () => {
     })
 
     it('drops a load that a newer load overtook', async () => {
-      let release
+      let release: (value?: unknown) => void = () => {}
       const slow = new Promise(resolve => { release = resolve })
       const api = makeApi({
         load: vi.fn()
@@ -146,7 +146,7 @@ describe('usePermissionNodes', () => {
     })
 
     it('reads the list again when the answer carries no entity tag', async () => {
-      const api = makeApi({ save: vi.fn(async (kind, name, nodes) => ({ nodes, etag: null })) })
+      const api = makeApi({ save: vi.fn(async (kind: string, name: string, nodes: { node: string; allowed: boolean }[]) => ({ nodes, etag: null })) })
       const { nodes } = await open(api)
       api.load.mockResolvedValueOnce({ nodes: [], etag: '"7"' })
 

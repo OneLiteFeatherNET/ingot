@@ -20,7 +20,7 @@
  * problem messages of a failed request. Pure.
  */
 
-const SOURCE_LABELS = {
+const SOURCE_LABELS: Record<string, string> = {
   USER: 'User',
   TEAM: 'Team',
   INHERITED_TEAM: 'Inherited team',
@@ -30,14 +30,47 @@ const SOURCE_LABELS = {
 }
 
 /** The readable name of a source code. An unknown code is shown as it came. */
-const sourceLabel = (source) => SOURCE_LABELS[source] ?? String(source ?? 'Unknown')
+const sourceLabel = (source?: string | null): string => SOURCE_LABELS[source ?? ''] ?? String(source ?? 'Unknown')
+
+/** One entry of the derivation trace as the server sends it. */
+export interface TraceEntry {
+  source?: string | null
+  subject?: string | null
+  node?: string | null
+  allowed?: boolean | null
+  matched?: boolean | null
+  reason?: string | null
+}
+
+/** The decision of a check as the server sends it. */
+export interface Decision {
+  source?: string | null
+  subject?: string | null
+  node?: string | null
+  allowed?: boolean | null
+  depth?: number | null
+  decidingNode?: string | null
+  decidingKind?: string | null
+  explanation?: string | null
+}
+
+/** The error shape of a failed request, as axios reports it. */
+interface RequestError {
+  message?: string
+  response?: {
+    data?: {
+      message?: string
+      problems?: { node?: string | null; message?: string }[]
+    }
+  }
+}
 
 /**
  * The trace as the stepper shows it: one step per entry, in trace order, numbered from 1. A step
  * that did not decide (`matched` is false) is muted, whether it lost inside its layer or was never
  * consulted. The reason is the text of the server, unchanged.
  */
-const traceSteps = (trace) =>
+const traceSteps = (trace?: TraceEntry[] | null) =>
   (trace ?? []).map((entry, index) => ({
     position: index + 1,
     source: entry.source,
@@ -50,7 +83,7 @@ const traceSteps = (trace) =>
     reason: entry.reason ?? ''
   }))
 
-const KIND_LABELS = {
+const KIND_LABELS: Record<string, string> = {
   ARTIFACT: 'Artifact node',
   REPOSITORY: 'Repository node',
   ADMIN: 'Admin node',
@@ -60,13 +93,13 @@ const KIND_LABELS = {
 }
 
 /** The readable name of the kind of the deciding rule. No kind (no node matched) reads as None. */
-const kindLabel = (kind) => (kind ? (KIND_LABELS[kind] ?? String(kind)) : 'None')
+const kindLabel = (kind?: string | null): string => (kind ? (KIND_LABELS[kind] ?? String(kind)) : 'None')
 
 /**
  * The facts of the decision for the summary: source, subject, node and depth, and the deciding node, its kind and the
  * one-sentence explanation of the server. Empty ones are null.
  */
-const decisionSummary = (decision) => ({
+const decisionSummary = (decision?: Decision | null) => ({
   sourceLabel: sourceLabel(decision?.source),
   subject: decision?.subject ?? null,
   node: decision?.node ?? null,
@@ -77,9 +110,9 @@ const decisionSummary = (decision) => ({
 })
 
 /** The messages of a 400 answer: its problems, or its message when it lists none. */
-const problemMessages = (error) => {
-  const data = error?.response?.data
-  const listed = (data?.problems ?? []).map(problem => problem.message).filter(Boolean)
+const problemMessages = (error: unknown): string[] => {
+  const data = (error as RequestError | undefined)?.response?.data
+  const listed = (data?.problems ?? []).map(problem => problem.message).filter((message): message is string => Boolean(message))
   if (listed.length > 0) return listed
   return data?.message ? [data.message] : []
 }

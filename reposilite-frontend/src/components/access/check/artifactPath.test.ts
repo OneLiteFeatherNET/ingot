@@ -39,7 +39,7 @@ describe('pathQueryOf', () => {
   })
 
   it('removes the spaces around the path but keeps its slashes', () => {
-    expect(pathQueryOf({ repository: 'releases', path: '  /net/lib/  ', action: 'read' }).query.path).toBe('/net/lib/')
+    expect(pathQueryOf({ repository: 'releases', path: '  /net/lib/  ', action: 'read' }).query?.path).toBe('/net/lib/')
   })
 
   it('asks for a path when it is empty', () => {

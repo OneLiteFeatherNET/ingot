@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildTree, leafCount } from './nodeTree'
+import { buildTree, leafCount, type TreeItem } from './nodeTree'
 
 const rows = () => [
   { node: 'ingot.repository.releases.read', allowed: true },
@@ -24,7 +24,8 @@ const rows = () => [
   { node: 'ingot.admin.users', allowed: true }
 ]
 
-const child = (item, segment) => item.children.find(candidate => candidate.segment === segment)
+const child = (item: TreeItem, segment: string): TreeItem =>
+  item.children.find(candidate => candidate.segment === segment) as TreeItem
 
 describe('buildTree', () => {
   it('groups nodes by their dot segments under one root', () => {

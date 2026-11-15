@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createErrorToast, errorMessage } from '../../../helpers/toast'
@@ -28,10 +28,10 @@ import SegmentedOption from '../../tokens/SegmentedOption.vue'
 import { detailOf, filterPrincipals } from '../accessPrincipals'
 import { ARTIFACT_ACTIONS, parseNode } from '../nodes/nodeGrammar'
 import { suggestNodes } from '../nodes/nodeList'
-import { permissionNodesApi } from '../nodes/permissionNodesApi'
+import { permissionNodesApi, type CatalogItem } from '../nodes/permissionNodesApi'
 import ComboboxField from './ComboboxField.vue'
 import { pathQueryOf } from './artifactPath'
-import { decisionSummary, kindLabel, problemMessages, traceSteps } from './checkTrace'
+import { decisionSummary, kindLabel, problemMessages, traceSteps, type Decision, type TraceEntry } from './checkTrace'
 
 /*
  * The permission check: pick a principal and a node (and optionally one of the principal's tokens),
@@ -56,20 +56,45 @@ const node = ref('')
 const token = ref('')
 
 // 'node' asks the typed node; 'path' asks the node an artifact directory names.
-const mode = ref('node')
+const mode = ref<'node' | 'path'>('node')
 const repositoryText = ref('')
 const pathText = ref('')
 const actionText = ref('read')
 const ACTION_OPTIONS = ARTIFACT_ACTIONS.map(action => ({ value: action, label: action.charAt(0).toUpperCase() + action.slice(1) }))
 
-const principals = ref([])
-const catalog = ref([])
-const tokenNames = ref([])
+// The principals of the picker: the name is what the check takes, the rest is for the suggestion text.
+interface PrincipalChoice {
+  name: string
+  kind?: string
+  displayName?: string
+}
+
+// The answer of the check: whether the node is allowed, the rule that decided and the steps that led there.
+interface CheckAnswer {
+  allowed?: boolean
+  decision?: Decision | null
+  trace?: TraceEntry[] | null
+}
+
+// The question that was asked. A path question carries the repository, path and action instead of a node.
+interface CheckTarget {
+  principal: string
+  node?: string
+  repository?: string
+  path?: string
+  action?: string
+  token?: string
+}
+
+const principals = ref<PrincipalChoice[]>([])
+const catalog = ref<CatalogItem[]>([])
+const tokenNames = ref<string[]>([])
 
 // idle: nothing asked yet. loading: a check is on its way. ready: `result` answers `checked`.
-const status = ref('idle')
-const result = ref(null)
-const checked = ref(null)
+const status = ref<'idle' | 'loading' | 'ready'>('idle')
+const result = ref<CheckAnswer | null>(null)
+// The question of the last answer. The template reads it only while `result` is set, so the placeholder is never shown.
+const checked = ref<CheckTarget>({ principal: '' })
 
 const nodeServerError = ref('')
 const principalError = ref('')
@@ -81,7 +106,7 @@ let tokensFor = ''
 
 // The question as the address holds it. A part the address leaves out is an empty text.
 const QUESTION_PARTS = ['principal', 'node', 'token', 'repository', 'path', 'action']
-const keyOf = (question) => JSON.stringify(QUESTION_PARTS.map(part => question[part] ?? ''))
+const keyOf = (question: Record<string, string | undefined>): string => JSON.stringify(QUESTION_PARTS.map(part => question[part] ?? ''))
 const questionFromRoute = () => Object.fromEntries(QUESTION_PARTS.map(part => [part, textFromParam(route.query[part])]))
 const queryKey = computed(() => keyOf(questionFromRoute()))
 let handledKey = queryKey.value
@@ -116,7 +141,7 @@ const canCheck = computed(() => status.value !== 'loading' && trimmedPrincipal.v
 const principalOptions = computed(() =>
   filterPrincipals(principals.value, principal.value)
     .slice(0, SUGGESTIONS)
-    .map(entry => ({
+    .map((entry: PrincipalChoice) => ({
       value: entry.name,
       description: [entry.kind === 'MACHINE' ? 'Machine account' : 'User', entry.displayName && entry.displayName !== entry.name ? entry.displayName : '']
         .filter(Boolean)
@@ -155,7 +180,7 @@ const loadCatalog = async () => {
   }
 }
 
-const loadTokens = async (name) => {
+const loadTokens = async (name: string) => {
   const request = ++tokensRequest
   if (name === '') {
     tokenNames.value = []
@@ -163,21 +188,21 @@ const loadTokens = async (name) => {
   }
   try {
     const response = await identity.value.principals.get(name)
-    if (request === tokensRequest) tokenNames.value = detailOf(response.data).tokens.map(entry => entry.name)
+    if (request === tokensRequest) tokenNames.value = detailOf(response.data).tokens.map((entry: { name: string }) => entry.name)
   } catch {
     if (request === tokensRequest) tokenNames.value = []
   }
 }
 
 // The token select follows the principal: another principal has other tokens, so the choice resets.
-const followTokens = (name, keepToken) => {
+const followTokens = (name: string, keepToken: boolean) => {
   if (name === tokensFor) return
   tokensFor = name
   if (!keepToken) token.value = ''
   loadTokens(name)
 }
 
-const onPrincipal = (value) => {
+const onPrincipal = (value: string) => {
   principal.value = value
   principalError.value = ''
   tokenError.value = ''
@@ -185,12 +210,12 @@ const onPrincipal = (value) => {
   followTokens(principals.value.some(entry => entry.name === name) ? name : '', false)
 }
 
-const onNode = (value) => {
+const onNode = (value: string) => {
   node.value = value
   nodeServerError.value = ''
 }
 
-const onToken = (value) => {
+const onToken = (value: string) => {
   token.value = value
   tokenError.value = ''
 }
@@ -201,8 +226,8 @@ const clearErrors = () => {
   tokenError.value = ''
 }
 
-const fail = (error) => {
-  const code = error?.response?.status
+const fail = (error: unknown) => {
+  const code = (error as { response?: { status?: number } } | undefined)?.response?.status
   if (code === 400) {
     nodeServerError.value = problemMessages(error).join(' ') || errorMessage(error)
   } else if (code === 404) {
@@ -235,7 +260,7 @@ const run = async () => {
   }
 }
 
-const chooseMode = (next) => {
+const chooseMode = (next: 'node' | 'path') => {
   mode.value = next
   clearErrors()
 }
@@ -243,7 +268,7 @@ const chooseMode = (next) => {
 const submit = async () => {
   if (!canCheck.value) return
   const question = mode.value === 'path'
-    ? { principal: trimmedPrincipal.value, repository: pathCheck.value.query.repository, path: pathCheck.value.query.path, action: pathCheck.value.query.action, token: token.value }
+    ? { principal: trimmedPrincipal.value, repository: pathCheck.value.query?.repository, path: pathCheck.value.query?.path, action: pathCheck.value.query?.action, token: token.value }
     : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value }
   handledKey = keyOf(question)
   router.replace({

@@ -15,27 +15,27 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { teamParentsApi } from './teamParentsApi'
+import { teamParentsApi, type TeamsClient } from './teamParentsApi'
 
 /*
  * The api turns the answers of the teams and nodes clients into plain values. The client is a fake
  * with the shape of client.identity.
  */
 
-const answer = (data, etag = '"1"') => ({ data, headers: etag ? { etag } : {} })
+const answer = (data: unknown, etag: string | null = '"1"') => ({ data, headers: etag ? { etag } : {} })
 
 const makeClient = () => ({
   identity: {
     teams: {
       parents: vi.fn(async () => answer({ parents: ['developers'] }, '"p4"')),
-      setParents: vi.fn(async (name, parents) => answer({ parents }, '"p5"')),
+      setParents: vi.fn(async (name: string, parents: unknown) => answer({ parents }, '"p5"')),
       list: vi.fn(async () => answer([{ name: 'ops' }, { name: 'developers' }]))
     },
     nodes: {
       get: vi.fn(async () => answer({ nodes: [{ node: 'ingot.admin.users', allowed: true }] }, '"n1"'))
     }
   }
-})
+}) as unknown as TeamsClient
 
 describe('teamParentsApi', () => {
   it('loads the parents of a team with the entity tag of the answer', async () => {
