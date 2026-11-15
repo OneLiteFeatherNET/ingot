@@ -48,6 +48,9 @@ const processedFiles = computed(() => ({
 // Hidden utility files are counted here, on the listing as the server sent it.
 const hiddenCount = computed(() => countHiddenFiles(files.value.list ?? []))
 
+// The names the server lists here, for the details card. Null until this listing is in, so the card waits for it.
+const listedNames = computed(() => loading.value ? null : (files.value.list ?? []).map(file => file.name))
+
 // The type of the repository this browser is in, when it is known and was set: 'proxy', 'group', or ''.
 const readOnlyType = computed(() => {
   const badge = repositoryEntry.value ? typeBadgeOf(repositoryEntry.value) : null
@@ -205,7 +208,10 @@ const toggleCompactMode = () => {
     data-ingot-component="file-browser-view"
   >
     <div class="min-w-0 lg:col-start-2 lg:row-start-1">
-      <Card :qualifier="qualifier" />
+      <Card
+        :qualifier="qualifier"
+        :listing="listedNames"
+      />
     </div>
     <div class="min-w-0">
       <div class="flex items-center justify-between gap-2">
