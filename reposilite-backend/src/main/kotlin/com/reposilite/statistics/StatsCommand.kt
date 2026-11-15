@@ -35,12 +35,14 @@ internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : Re
     private lateinit var filter: String
 
     override fun execute(context: CommandContext) {
+        val uniqueRecords = statisticsFacade.countUniqueRecords()
+        val allRecords = statisticsFacade.countRecords()
         context.append("Statistics: ")
-        context.append("  Unique resolved requests: ${statisticsFacade.countUniqueRecords()}")
-        context.append("  All resolved requests: ${statisticsFacade.countRecords()}")
+        context.append("  Unique resolved requests: $uniqueRecords")
+        context.append("  All resolved requests: $allRecords")
         val data = StatsData(
-            uniqueRecords = statisticsFacade.countUniqueRecords(),
-            allRecords = statisticsFacade.countRecords(),
+            uniqueRecords = uniqueRecords,
+            allRecords = allRecords,
             requests = emptyList(),
         )
         context.data = data
