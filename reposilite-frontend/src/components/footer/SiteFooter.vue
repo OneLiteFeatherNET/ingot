@@ -14,14 +14,13 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // The operator's footer line. It is plain text: interpolation escapes it, and it is never
 // rendered as HTML. Nothing is drawn when the operator set no text.
-defineProps({
-  text: {
-    type: String,
-    default: ''
-  }
+withDefaults(defineProps<{
+  text?: string
+}>(), {
+  text: ''
 })
 </script>
 

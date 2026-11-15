@@ -23,7 +23,7 @@ import { join } from 'node:path'
 const stylesheet = readFileSync(join(process.cwd(), 'src', 'style.css'), 'utf8')
 
 // The text of the block that starts at `start`, from its at-rule to the brace that closes it.
-const blockAt = (css, start) => {
+const blockAt = (css: string, start: number) => {
   let depth = 0
   for (let index = css.indexOf('{', start); index < css.length; index++) {
     if (css[index] === '{') depth++
@@ -56,9 +56,15 @@ describe('global reduced motion rule in the stylesheet', () => {
 
 // The top-level blocks of a stylesheet as { header, body }, comments removed first. The header is the text between the
 // previous statement and the opening brace, so it reads as the selector or at-rule of the block.
-const topLevelBlocks = (css) => {
+interface TopLevelBlock {
+  header: string
+  open: number
+  body?: string
+}
+
+const topLevelBlocks = (css: string): TopLevelBlock[] => {
   const text = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  const blocks = []
+  const blocks: TopLevelBlock[] = []
   let depth = 0
   let boundary = 0
   for (let index = 0; index < text.length; index++) {
@@ -84,12 +90,12 @@ const topLevelBlocks = (css) => {
 
 // The selectors that sit outside every cascade layer. The two token hooks, :root and .dark, are allowed: they only
 // declare custom properties. Blocks of at-rules are skipped, except @media, which is searched for the same rules.
-const unlayeredSelectors = (css) => {
-  const found = []
-  const visit = (text) => {
+const unlayeredSelectors = (css: string) => {
+  const found: string[] = []
+  const visit = (text: string) => {
     for (const block of topLevelBlocks(text)) {
       if (block.header.startsWith('@media')) {
-        visit(block.body)
+        visit(block.body as string)
       } else if (!block.header.startsWith('@') && !block.header.startsWith(':root') && block.header !== '.dark') {
         found.push(block.header)
       }
@@ -144,12 +150,12 @@ describe('container utility', () => {
 
 // Every class selector of the dashboard stylesheets, found in the selector text of each rule (comments removed).
 // Rules inside @utility and @custom-variant blocks are not selectors of the stylesheet, so they are skipped.
-const classSelectorsOf = (css) => {
-  const classes = []
-  const visit = (text) => {
+const classSelectorsOf = (css: string) => {
+  const classes: string[] = []
+  const visit = (text: string) => {
     for (const block of topLevelBlocks(text)) {
       if (block.header.startsWith('@media') || block.header.startsWith('@layer')) {
-        visit(block.body)
+        visit(block.body as string)
       } else if (!block.header.startsWith('@')) {
         classes.push(...[...block.header.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map((match) => match[1]))
       }

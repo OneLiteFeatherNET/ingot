@@ -14,10 +14,25 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, ref, useId } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+<script setup lang="ts">
+import { computed, ref, useId, type PropType } from 'vue'
+import { RouterLink, useRouter, type RouteLocationRaw, type UseLinkReturn } from 'vue-router'
 import { matchEntries } from '../../navigation/adminFilter'
+import type { AdminGroup } from '../../navigation/registry'
+
+interface NavLink {
+  key: string | undefined
+  label: string
+  description?: string
+  to: RouteLocationRaw
+}
+
+interface NavGroup {
+  id?: string
+  heading?: string
+  label?: string
+  links: NavLink[]
+}
 
 /*
  * The Administration tree: the find field and the groups of links. It is drawn in the side column beside a page (see
@@ -36,14 +51,16 @@ import { matchEntries } from '../../navigation/adminFilter'
  */
 const props = defineProps({
   label: { type: String, required: true },
-  groups: { type: Array, required: true },
+  groups: { type: Array as PropType<NavGroup[]>, required: true },
   current: { type: String, default: undefined },
   replace: { type: Boolean, default: false },
-  unsaved: { type: Array, default: () => [] },
+  unsaved: { type: Array as PropType<string[]>, default: () => [] },
   described: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits<{
+  select: [link: NavLink]
+}>()
 
 /*
  * The find field of the navigation. The text keeps the links that match it (adminFilter.js), the current link always
@@ -52,7 +69,8 @@ const emit = defineEmits(['select'])
 const router = useRouter()
 const fieldId = useId()
 const query = ref('')
-const filtered = computed(() => matchEntries(props.groups, query.value, props.current))
+// The links are the registry's tree links, which the matching reads; the prop type only leaves out what the tree does not read.
+const filtered = computed(() => matchEntries(props.groups as AdminGroup[], query.value, props.current))
 const shownGroups = computed(() => filtered.value.groups)
 const announcement = computed(() => {
   const text = query.value.trim()
@@ -61,42 +79,42 @@ const announcement = computed(() => {
   return filtered.value.count === 1 ? '1 page matches' : `${filtered.value.count} pages match`
 })
 // Escape clears a text that is there and keeps the event to itself, so a sheet around the field does not also close.
-const clearQuery = (event) => {
+const clearQuery = (event: KeyboardEvent) => {
   if (query.value === '') return
   event.preventDefault()
   query.value = ''
 }
 const openFirstMatch = () => {
   if (query.value.trim() === '') return
-  const first = matchEntries(props.groups, query.value).groups[0]?.links[0]
+  const first = matchEntries(props.groups as AdminGroup[], query.value).groups[0]?.links[0]
   if (first) router.push(first.to)
 }
 
 // A link whose domain has an unsaved draft says so: the mark is drawn, and the accessible name ends with it.
-const isUnsaved = (link) => props.unsaved.includes(link.key)
+const isUnsaved = (link: NavLink) => link.key !== undefined && props.unsaved.includes(link.key)
 
 // A row shows its description where the tree is an index or a sheet, and only when the entry has one.
-const describes = (link) => props.described && Boolean(link.description)
+const describes = (link: NavLink) => props.described && Boolean(link.description)
 
 // The name of a link is its label (and the unsaved note); the description is read after it, not as part of the name,
 // so a row is found and announced by its label. A link without a description and without a draft has no name of its own.
-const nameOf = (link) => {
+const nameOf = (link: NavLink) => {
   if (!describes(link) && !isUnsaved(link)) return undefined
   return isUnsaved(link) ? `${link.label}, unsaved changes` : link.label
 }
-const descriptionId = (link) => (describes(link) ? `${fieldId}-${link.key.replace(/[^a-zA-Z0-9_-]+/g, '-')}` : undefined)
+const descriptionId = (link: NavLink) => (describes(link) ? `${fieldId}-${(link.key ?? '').replace(/[^a-zA-Z0-9_-]+/g, '-')}` : undefined)
 
 // The id of the visible heading of a group. Each group list is labelled by it, so a screen reader names the group on entry.
-const headingId = (group) => `admin-group-${group.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+const headingId = (group: NavGroup) => `admin-group-${(group.heading ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
-const linkClasses = (active, described) => [
+const linkClasses = (active: boolean, described: boolean) => [
   'md-state-layer md-focus-ring relative flex min-h-10 items-center rounded-corner-full px-4 md-label-large no-underline',
   described ? 'py-2' : '',
   'transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
   active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:text-on-surface'
 ]
 
-const choose = (event, navigate, link) => {
+const choose = (event: MouseEvent, navigate: UseLinkReturn['navigate'], link: NavLink) => {
   navigate(event)
   emit('select', link)
 }

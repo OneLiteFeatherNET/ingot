@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { createApp } from 'vue'
+import { createApp, type Component } from 'vue'
 import { createHead } from '@unhead/vue/client'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
@@ -26,12 +26,12 @@ import { applyAppearance } from './store/appearance'
 import './style.css'
 import 'vue-final-modal/style.css'
 
-const app = createApp(App)
+const app = createApp(App as Component)
 
 // app.config.globalProperties.append = (path, pathToAppend) =>
   // path + (path.endsWith('/') ? '' : '/') + pathToAppend
 
-app.config.globalProperties.drop = (path) =>
+app.config.globalProperties.drop = (path: string) =>
   (path.endsWith('/') ? path.slice(0, -1) : path).split("/")
     .slice(0, -1)
     .join('/')
@@ -39,7 +39,7 @@ app.config.globalProperties.drop = (path) =>
 // The settings have to be in hand before anything reads them, and the router takes its base
 // path from them. They are fetched in both deployments, bounded by a timeout, so a slow or
 // missing settings endpoint delays the first render only that long.
-loadFrontendSettings().then(async () => {
+void loadFrontendSettings().then(async () => {
   // The operator's colours and icon go in before the first render, so the page never paints
   // the default theme first.
   await applyAppearance()

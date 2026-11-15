@@ -24,7 +24,11 @@
  */
 const ABSOLUTE = /^https?:\/\//
 
-const providerLoginHref = (loginUrl, returnTo, resolveUrl = (path) => path) => {
+const providerLoginHref = (
+  loginUrl: string,
+  returnTo: string,
+  resolveUrl: (path: string) => string = (path) => path
+): string => {
   const target = ABSOLUTE.test(loginUrl) ? loginUrl : resolveUrl(loginUrl)
   const url = new URL(target, window.location.href)
   url.searchParams.set('redirect', returnTo)

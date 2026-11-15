@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // The legal line: the ICP licence number and the privacy policy link, when the operator set
 // them. It is drawn in the flow of the page, so the footer that holds it can sit inside the
 // content sheet as well as at the bottom of the page.

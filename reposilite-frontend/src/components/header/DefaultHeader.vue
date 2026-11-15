@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import usePlaceholders from '../../store/placeholders'
 import MenuPanel from './MenuPanel.vue'
 

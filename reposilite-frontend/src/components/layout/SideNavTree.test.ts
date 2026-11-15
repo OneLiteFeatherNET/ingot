@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SideNavTree from './SideNavTree.vue'
 
@@ -55,8 +55,8 @@ describe('SideNavTree', () => {
   }
 
   // The wrapper of a group is the element that holds its heading and its list.
-  const groupWrappers = (wrapper) => wrapper.findAll('ul[aria-labelledby]').map(list => list.element.parentElement)
-  const headingOf = (wrapper, text) => wrapper.findAll('p').find(paragraph => paragraph.text() === text)
+  const groupWrappers = (wrapper: VueWrapper) => wrapper.findAll('ul[aria-labelledby]').map(list => list.element.parentElement as HTMLElement)
+  const headingOf = (wrapper: VueWrapper, text: string) => wrapper.findAll('p').find(paragraph => paragraph.text() === text) as DOMWrapper<HTMLParagraphElement>
 
   it('draws each group heading in the title-small style in the primary colour', async () => {
     const wrapper = await mountTree()

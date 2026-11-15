@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import HeaderHero from './HeaderHero.vue'
 import useTheme from '../../store/theme'
 import { setAppearance } from '../../store/appearance'
@@ -29,7 +29,7 @@ describe('HeaderHero', () => {
 })
 
 describe('HeaderHero logo', () => {
-  const logoSource = (wrapper) => wrapper.find('img').attributes('src')
+  const logoSource = (wrapper: VueWrapper) => wrapper.find('img').attributes('src')
 
   afterEach(() => {
     setAppearance({})

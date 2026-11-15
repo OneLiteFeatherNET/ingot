@@ -16,15 +16,50 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '../router/create'
+import type { AppRouterOptions } from '../router/create'
 import { canUse } from '../store/nodeAccess'
 import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 
+// The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
+interface SessionFlags {
+  isManager: Ref<boolean> | null
+  isLogged: Ref<boolean> | null
+  mustChange: Ref<boolean> | null
+  can: ((node: string) => boolean) | null
+  client: Ref<StubClient> | null
+}
+
+// The settings answers of the client that the Administration tree reads: the domain ids and the title of each one.
+interface StubClient {
+  settings: {
+    domains: () => Promise<{ data: string[] }>
+    schema: (domain: string) => Promise<{ data: { title: string } }>
+  }
+}
+
+// The options a test gives mountAt: who is signed in, what the visitor may do and the client of the session.
+interface MountOptions {
+  manager?: boolean
+  logged?: boolean
+  mustChange?: boolean
+  nodes?: string[]
+  client?: StubClient | null
+}
+
+// A section stub found by its name. The props it was given are read by name, and its emit is called by the tests.
+type StubWrapper = VueWrapper<{
+  $props: Record<string, unknown>
+  $emit: (event: string, ...args: unknown[]) => void
+}>
+
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
-const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null, can: null, client: null }))
+const session = vi.hoisted((): SessionFlags => ({ isManager: null, isLogged: null, mustChange: null, can: null, client: null }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 
 vi.mock('../store/session', () => ({
@@ -46,7 +81,7 @@ vi.mock('../components/header/HeaderHero.vue', async () => {
   return { __esModule: true, default: { name: 'HeroStub', render: () => h('p', { 'data-test': 'hero' }, 'hero') } }
 })
 
-const sectionStub = vi.hoisted(() => (name, key) => async () => {
+const sectionStub = vi.hoisted(() => (name: string, key: string) => async () => {
   const { h, defineComponent } = await import('vue')
   return {
     __esModule: true,
@@ -87,23 +122,23 @@ const QUALIFIER = { path: '', watchable: 0 }
 
 // Builds the router the application builds, on memory history, with the session answered
 // at once. The page is mounted directly, with the router beside it, as the app does.
-const mountAt = async (url, { manager = false, logged = manager, mustChange = false, nodes, client = null } = {}) => {
+const mountAt = async (url: string, { manager = false, logged = manager, mustChange = false, nodes, client = null }: MountOptions = {}) => {
   session.client = client ? ref(client) : null
   session.isManager = ref(manager)
   // Without a node list the session is a legacy one and the manager flag answers, as in the store.
-  session.can = (node) => (nodes === undefined ? session.isManager.value : canUse(nodes, node))
+  session.can = (node) => (nodes === undefined ? session.isManager!.value : canUse(nodes, node))
   session.isLogged = ref(logged)
   session.mustChange = ref(mustChange)
   const router = createAppRouter({
     history: createMemoryHistory(),
     component: IndexPage,
     whenSessionKnown: () => Promise.resolve(),
-    isManager: () => session.isManager.value,
-    can: (node) => session.can(node),
+    isManager: () => session.isManager!.value,
+    can: (node) => session.can!(node),
     isLogged: () => logged,
     openLogin: login.openLogin,
     notify: () => {}
-  })
+  } as AppRouterOptions)
   await router.push(url)
   await router.isReady()
   const wrapper = mount(IndexPage, {
@@ -114,19 +149,19 @@ const mountAt = async (url, { manager = false, logged = manager, mustChange = fa
   return { wrapper, router }
 }
 
-const shownSection = (wrapper) => {
+const shownSection = (wrapper: VueWrapper): string | null | undefined => {
   const section = wrapper.find('[data-test="section"]')
   return section.exists() ? section.attributes('data-section') : null
 }
 
 // The navigation is made of links, so a section is chosen the way a visitor chooses one.
-const chooseLink = async (wrapper, label) => {
+const chooseLink = async (wrapper: DOMWrapper<Element>, label: string) => {
   const link = wrapper.findAll('a').find(anchor => anchor.text() === label)
-  await link.trigger('click')
+  await link!.trigger('click')
   await flushPromises()
 }
 
-const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
+const navigations = (wrapper: VueWrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
 // The four entries of the rail, which the bottom bar shows too for an administrator. Administration holds the rest.
 const SECTION_LABELS = ['Browse', 'Search', 'Dashboard', 'Administration']
@@ -249,7 +284,7 @@ describe('IndexPage manager routes', () => {
     // Arriving on the page already opens the dialog once; the button has to open it again.
     login.openLogin.mockClear()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Sign in').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Sign in')!.trigger('click')
 
     expect(login.openLogin).toHaveBeenCalledTimes(1)
   })
@@ -263,7 +298,7 @@ describe('IndexPage manager routes', () => {
   it('keeps a visitor whose sign in does not grant the permission at the address, with the no access state', async () => {
     const { wrapper, router } = await mountAt('/access/users', { manager: false, logged: false })
 
-    session.isLogged.value = true
+    session.isLogged!.value = true
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath, 'no redirect to overview any more').toBe('/access/users')
@@ -273,7 +308,7 @@ describe('IndexPage manager routes', () => {
   it('shows the section once the visitor has become a manager', async () => {
     const { wrapper } = await mountAt('/access/users', { manager: false, logged: false })
 
-    session.isManager.value = true
+    session.isManager!.value = true
     await flushPromises()
 
     expect(shownSection(wrapper)).toBe('access')
@@ -311,7 +346,7 @@ describe('IndexPage no access state', () => {
     const push = vi.spyOn(router, 'push')
     const replace = vi.spyOn(router, 'replace')
 
-    const link = wrapper.find('[data-test="no-access"]').findAll('a').find(anchor => anchor.text() === 'Browse')
+    const link = wrapper.find('[data-test="no-access"]').findAll('a').find(anchor => anchor.text() === 'Browse')!
 
     expect(link.attributes('href')).toBe('/')
     expect(push).not.toHaveBeenCalled()
@@ -362,7 +397,7 @@ describe('IndexPage account page', () => {
   it('shows the account page after the visitor signs in, without a redirect', async () => {
     const { wrapper, router } = await mountAt('/account', { manager: false, logged: false })
 
-    session.isLogged.value = true
+    session.isLogged!.value = true
     await flushPromises()
 
     expect(shownSection(wrapper)).toBe('account')
@@ -372,7 +407,7 @@ describe('IndexPage account page', () => {
   it('moves to the account page when the server asks for a new password after the page loaded', async () => {
     const { router } = await mountAt('/browse/releases', { manager: false, logged: true })
 
-    session.mustChange.value = true
+    session.mustChange!.value = true
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('account')
@@ -391,9 +426,9 @@ describe('IndexPage navigation', () => {
   })
 
   // The corner of the rail is a link to the start page with a logo and no text, so it is not one of the entries.
-  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text()).filter(Boolean)
-  const barLabels = (wrapper) => navigations(wrapper)[0].findAll('a').map(link => link.text())
-  const barButtons = (wrapper) => navigations(wrapper)[0].findAll('button')
+  const railLabels = (wrapper: VueWrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text()).filter(Boolean)
+  const barLabels = (wrapper: VueWrapper) => navigations(wrapper)[0].findAll('a').map(link => link.text())
+  const barButtons = (wrapper: VueWrapper) => navigations(wrapper)[0].findAll('button')
 
   it('offers the rail with the four entries, in order, to a manager', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
@@ -501,8 +536,8 @@ describe('IndexPage navigation', () => {
   it('keeps the browsed repository path on the Browse link and opens the hub from Administration', async () => {
     const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
 
-    const browse = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Browse')
-    const administration = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Admin')
+    const browse = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Browse')!
+    const administration = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Admin')!
 
     expect(browse.attributes('href'), 'returning to Browse keeps the place in the browser').toBe('/browse/org/repo')
     expect(administration.attributes('href'), 'an administrator opens the hub').toBe('/settings')
@@ -543,10 +578,10 @@ describe('IndexPage Administration tree', () => {
     session.isManager = null
   })
 
-  const treeOf = (wrapper) => wrapper.find('nav[aria-label="Administration"]')
+  const treeOf = (wrapper: VueWrapper) => wrapper.find('nav[aria-label="Administration"]')
   // Each group is a list named by the visible heading of the group (aria-labelledby), see SideNavLayout.
-  const treeGroups = (wrapper) => treeOf(wrapper).findAll('ul[aria-labelledby]')
-  const headingOf = (wrapper, group) => wrapper.get(`#${group.attributes('aria-labelledby')}`).text()
+  const treeGroups = (wrapper: VueWrapper) => treeOf(wrapper).findAll('ul[aria-labelledby]')
+  const headingOf = (wrapper: VueWrapper, group: DOMWrapper<Element>) => wrapper.get(`#${group.attributes('aria-labelledby')}`).text()
 
   it.each([
     ['/audit', 'Audit log'],
@@ -597,7 +632,7 @@ describe('IndexPage view state from the URL', () => {
   it('hands the access view the tab and the name of the principal that is open', async () => {
     const { wrapper } = await mountAt('/access/machines/ci-bot', { manager: true })
 
-    const access = wrapper.findComponent({ name: 'AccessStub' })
+    const access = (wrapper.findComponent({ name: 'AccessStub' }) as StubWrapper)
 
     expect(access.props('tab')).toBe('machines')
     expect(access.props('name')).toBe('ci-bot')
@@ -606,7 +641,7 @@ describe('IndexPage view state from the URL', () => {
   it('hands the access view no name on a list', async () => {
     const { wrapper } = await mountAt('/access/users', { manager: true })
 
-    const access = wrapper.findComponent({ name: 'AccessStub' })
+    const access = (wrapper.findComponent({ name: 'AccessStub' }) as StubWrapper)
 
     expect(access.props('tab')).toBe('users')
     expect(access.props('name')).toBeUndefined()
@@ -615,7 +650,7 @@ describe('IndexPage view state from the URL', () => {
   it('hands the access view the check tab for the check address', async () => {
     const { wrapper } = await mountAt('/access/check?principal=alice', { manager: true })
 
-    const access = wrapper.findComponent({ name: 'AccessStub' })
+    const access = (wrapper.findComponent({ name: 'AccessStub' }) as StubWrapper)
 
     expect(access.props('tab')).toBe('check')
   })
@@ -624,13 +659,13 @@ describe('IndexPage view state from the URL', () => {
     const { wrapper, router } = await mountAt('/tokens/ci-bot', { manager: true })
 
     expect(router.currentRoute.value.fullPath).toBe('/access/machines/ci-bot')
-    expect(wrapper.findComponent({ name: 'AccessStub' }).props('tab')).toBe('machines')
+    expect((wrapper.findComponent({ name: 'AccessStub' }) as StubWrapper).props('tab')).toBe('machines')
   })
 
   it('hands the console the shown levels and the filter from the URL', async () => {
     const { wrapper } = await mountAt('/console?level=info,error&q=boom', { manager: true })
 
-    const console = wrapper.findComponent({ name: 'ConsoleStub' })
+    const console = (wrapper.findComponent({ name: 'ConsoleStub' }) as StubWrapper)
 
     expect(console.props('level')).toBe('info,error')
     expect(console.props('search')).toBe('boom')
@@ -639,13 +674,13 @@ describe('IndexPage view state from the URL', () => {
   it('leaves the console level unset while every level is shown', async () => {
     const { wrapper } = await mountAt('/console', { manager: true })
 
-    expect(wrapper.findComponent({ name: 'ConsoleStub' }).props('level')).toBeUndefined()
+    expect((wrapper.findComponent({ name: 'ConsoleStub' }) as StubWrapper).props('level')).toBeUndefined()
   })
 
   it('writes a level switch into the URL', async () => {
     const { wrapper, router } = await mountAt('/console', { manager: true })
 
-    wrapper.findComponent({ name: 'ConsoleStub' }).vm.$emit('update:level', 'info')
+    ;(wrapper.findComponent({ name: 'ConsoleStub' }) as StubWrapper).vm.$emit('update:level', 'info')
     await flushPromises()
 
     expect(router.currentRoute.value.query.level).toBe('info')
@@ -654,7 +689,7 @@ describe('IndexPage view state from the URL', () => {
   it('writes an empty level when every level is hidden, which differs from showing them all', async () => {
     const { wrapper, router } = await mountAt('/console', { manager: true })
 
-    wrapper.findComponent({ name: 'ConsoleStub' }).vm.$emit('update:level', '')
+    ;(wrapper.findComponent({ name: 'ConsoleStub' }) as StubWrapper).vm.$emit('update:level', '')
     await flushPromises()
 
     expect(router.currentRoute.value.query).toEqual({ level: '' })
@@ -662,7 +697,7 @@ describe('IndexPage view state from the URL', () => {
 
   it('writes the filter text into the URL and drops it when cleared', async () => {
     const { wrapper, router } = await mountAt('/console?q=boom', { manager: true })
-    const console = wrapper.findComponent({ name: 'ConsoleStub' })
+    const console = (wrapper.findComponent({ name: 'ConsoleStub' }) as StubWrapper)
 
     console.vm.$emit('update:search', 'bang')
     await flushPromises()
@@ -677,7 +712,7 @@ describe('IndexPage view state from the URL', () => {
     // A maven repositories address now moves to the Repositories page, so a domain without that move keeps the entry.
     const { wrapper } = await mountAt('/settings/cleanup/policies/nightly', { manager: true })
 
-    const settings = wrapper.findComponent({ name: 'SettingsStub' })
+    const settings = (wrapper.findComponent({ name: 'SettingsStub' }) as StubWrapper)
 
     expect(settings.props('domain')).toBe('cleanup')
     expect(settings.props('collection')).toBe('policies')
@@ -687,7 +722,7 @@ describe('IndexPage view state from the URL', () => {
   it('moves to the domain the settings view chose and drops the entry that was open', async () => {
     const { wrapper, router } = await mountAt('/settings/maven/repositories/releases', { manager: true })
 
-    wrapper.findComponent({ name: 'SettingsStub' }).vm.$emit('update:domain', 'proxy')
+    ;(wrapper.findComponent({ name: 'SettingsStub' }) as StubWrapper).vm.$emit('update:domain', 'proxy')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/proxy')
@@ -762,14 +797,14 @@ describe('IndexPage main landmark', () => {
 })
 
 // A client that lists two settings domains and gives their titles, as the server does.
-const clientWithDomains = () => ({
+const clientWithDomains = (): StubClient => ({
   settings: {
     domains: vi.fn(async () => ({ data: ['web', 'maven'] })),
-    schema: vi.fn(async (domain) => ({ data: { title: domain === 'web' ? 'Web' : 'Maven' } }))
+    schema: vi.fn(async (domain: string) => ({ data: { title: domain === 'web' ? 'Web' : 'Maven' } }))
   }
 })
 
-const treeLabels = (wrapper) => wrapper.findAll('nav[aria-label="Administration"] a').map(link => link.text())
+const treeLabels = (wrapper: VueWrapper) => wrapper.findAll('nav[aria-label="Administration"] a').map(link => link.text())
 
 describe('IndexPage Administration tree', () => {
   beforeEach(() => {
@@ -777,7 +812,7 @@ describe('IndexPage Administration tree', () => {
   })
 
   it('shows the same tree, with the settings domains, on every Administration page', async () => {
-    const trees = {}
+    const trees: Record<string, string[]> = {}
     for (const url of ['/console', '/audit', '/maintenance', '/analytics']) {
       const { wrapper } = await mountAt(url, { manager: true, client: clientWithDomains() })
       trees[url] = treeLabels(wrapper)

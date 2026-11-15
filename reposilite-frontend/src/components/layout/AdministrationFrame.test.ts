@@ -15,9 +15,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import AdministrationFrame from './AdministrationFrame.vue'
+
+type FrameProps = Partial<InstanceType<typeof AdministrationFrame>['$props']>
 
 const shell = { render: () => null }
 
@@ -46,16 +48,16 @@ const groups = () => [
 ]
 
 // The element that holds the side navigation and the page: the wrapper of the layout, which follows the header.
-const measureOf = (wrapper) => wrapper.get('header').element.nextElementSibling
+const measureOf = (wrapper: VueWrapper) => wrapper.get('header').element.nextElementSibling as Element
 
 // The label of a crumb: its text without the separator after it, which is decorative and aria-hidden.
-const crumbLabel = (crumb) => {
-  const copy = crumb.element.cloneNode(true)
+const crumbLabel = (crumb: { element: Element }) => {
+  const copy = crumb.element.cloneNode(true) as HTMLElement
   copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove())
-  return copy.textContent.trim()
+  return (copy.textContent as string).trim()
 }
 
-const mountFrame = async (props, url = '/audit') => {
+const mountFrame = async (props: FrameProps, url = '/audit') => {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push(url)
   await router.isReady()
@@ -258,7 +260,7 @@ describe('AdministrationFrame page header', () => {
     expect(crumbs, 'only the last crumb is drawn').toEqual(['Monitoring and support'])
     const trail = wrapper.get('nav[aria-label="Administration / Monitoring and support"]')
     expect(trail.attributes('title'), 'the full trail is the title').toBe('Administration / Monitoring and support')
-    expect([...trail.element.parentElement.classList], 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
+    expect([...(trail.element.parentElement as HTMLElement).classList], 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
   })
 
   it('draws the shortcut links of the page in a related pages block, each to its own address', async () => {
@@ -282,8 +284,8 @@ describe('AdministrationFrame page header', () => {
 // The Sections button opens the same tree in a side sheet from 600 to 1239 pixels, beside the back arrow. Only the page
 // with a back arrow draws it; the index on /settings already is the tree.
 describe('AdministrationFrame Sections sheet', () => {
-  const sectionsButton = (wrapper) => wrapper.findAll('button').find(button => button.text() === 'Sections')
-  const sheet = (wrapper) => wrapper.find('[role="dialog"]')
+  const sectionsButton = (wrapper: VueWrapper) => wrapper.findAll('button').find(button => button.text() === 'Sections') as DOMWrapper<HTMLButtonElement>
+  const sheet = (wrapper: VueWrapper) => wrapper.find('[role="dialog"]')
 
   it('draws the Sections button beside the back arrow, shown from 600 pixels only', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
@@ -324,17 +326,17 @@ describe('AdministrationFrame Sections sheet', () => {
     const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
     await sectionsButton(wrapper).trigger('click')
 
-    await sheet(wrapper).findAll('a').find(link => link.text() === 'Users').trigger('click')
+    await (sheet(wrapper).findAll('a').find(link => link.text() === 'Users') as DOMWrapper<HTMLAnchorElement>).trigger('click')
     await flushPromises()
 
-    expect(wrapper.vm.$router.currentRoute.value.path, 'the chosen page is open').toBe('/access/users')
+    expect((wrapper.vm as unknown as { $router: Router }).$router.currentRoute.value.path, 'the chosen page is open').toBe('/access/users')
     expect(sheet(wrapper).exists(), 'the sheet is closed').toBe(false)
   })
 })
 
 describe('AdministrationFrame breadcrumb markup', () => {
-  const crumbItems = (wrapper) => wrapper.findAll('[aria-label="Breadcrumb"] li')
-  const separators = (wrapper) => wrapper.findAll('[aria-label="Breadcrumb"] [aria-hidden="true"]')
+  const crumbItems = (wrapper: VueWrapper) => wrapper.findAll('[aria-label="Breadcrumb"] li')
+  const separators = (wrapper: VueWrapper) => wrapper.findAll('[aria-label="Breadcrumb"] [aria-hidden="true"]')
 
   it('draws each separator as an element hidden from assistive technology, so it is not in any name', async () => {
     const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
@@ -347,7 +349,7 @@ describe('AdministrationFrame breadcrumb markup', () => {
   it('draws no separator after the last crumb', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
-    const last = crumbItems(wrapper).at(-1)
+    const last = crumbItems(wrapper).at(-1) as DOMWrapper<Element>
     expect(last.find('[aria-hidden="true"]').exists(), 'the last crumb has no slash after it').toBe(false)
   })
 

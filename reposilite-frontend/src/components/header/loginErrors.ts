@@ -15,7 +15,7 @@
  */
 
 import { watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 import { createErrorToast } from '../../helpers/toast'
 
 /*
@@ -24,7 +24,7 @@ import { createErrorToast } from '../../helpers/toast'
  * act on, and then taken out of the address so that a reload does not show it again.
  */
 // One sentence for each code of the callback (identity model, section 14.4). The codes stay in the address.
-const MESSAGES = {
+const MESSAGES: Readonly<Record<string, string>> = {
   access_denied: 'The provider did not grant access. Try another account, or ask for access there.',
   invalid_state: 'The sign in expired or was started in another browser. Start it again from here.',
   provider_error: 'The provider could not complete the sign in. Try again in a moment.',
@@ -42,17 +42,17 @@ const MESSAGES = {
 
 const GENERIC_MESSAGE = 'The sign in did not complete. Try again, or use another sign in method.'
 
-const loginErrorMessage = (code) => MESSAGES[code] ?? GENERIC_MESSAGE
+const loginErrorMessage = (code: string): string => MESSAGES[code] ?? GENERIC_MESSAGE
 
 // The code of the address, or undefined. A repeated parameter counts by its first value.
-const loginErrorOf = (query) => {
+const loginErrorOf = (query: LocationQuery): string | undefined => {
   const value = Array.isArray(query.loginError) ? query.loginError[0] : query.loginError
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
 // Shows the failure of a provider sign in, if the address names one, and removes it from the address.
 // Every other query parameter stays where it is.
-const useLoginErrorNotice = () => {
+const useLoginErrorNotice = (): void => {
   const route = useRoute()
   const router = useRouter()
 
@@ -61,9 +61,9 @@ const useLoginErrorNotice = () => {
     (code) => {
       if (code === undefined) return
       createErrorToast(loginErrorMessage(code))
-      const query = { ...route.query }
+      const query: LocationQuery = { ...route.query }
       delete query.loginError
-      router.replace({ path: route.path, query, hash: route.hash })
+      void router.replace({ path: route.path, query, hash: route.hash })
     },
     { immediate: true }
   )

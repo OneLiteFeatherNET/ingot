@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter, type RouteRecordName } from 'vue-router'
+import type { AxiosError, AxiosResponse } from 'axios'
+import type { components } from '../../types/api'
 import { useSession } from '../../store/session'
-import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
 import { browseLocation } from '../../router/paths'
 import { tagsFromParam, tagsParam, textFromParam, textParam } from '../../router/url-state'
@@ -32,6 +33,26 @@ import MdTextField from '../md/MdTextField.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import { writePolicyLabelOf } from '../../store/maven/repositoryPolicy'
 
+type RepositoryListEntry = components['schemas']['RepositoryListEntry']
+type RepositoryListEntriesResponse = components['schemas']['RepositoryListEntriesResponse']
+
+// The row the list shows: an entry of the overview endpoint with the missing fields filled in.
+// A type alias, not an interface, so the rows can be passed to helpers that take index signatures.
+type RepositoryRow = {
+  id: string
+  visibility: string
+  description: string
+  tags: string[]
+  type: string
+  typeExplicit: boolean
+  writePolicy: string | null
+}
+
+interface Badge {
+  label: string
+  icon: string
+}
+
 /*
  * The root of the file browser as a list of repositories. The list is loaded once from the overview
  * endpoint, and the search and the tag filter are applied to it on the page, so a keystroke never waits
@@ -41,15 +62,15 @@ import { writePolicyLabelOf } from '../../store/maven/repositoryPolicy'
  * An older backend does not have the endpoint and answers 404; the folder listing is shown in its place.
  * Any other failure is shown with a retry.
  */
-defineProps({
-  qualifier: property(Object, true)
-})
+defineProps<{
+  qualifier: { path: string; watchable: number }
+}>()
 
 // How many of the most used tags are offered as filter chips. A selected tag is always offered too.
 const SHOWN_TAGS = 8
 
 // The visibility labels: an icon and a word, in the variant colour, with no fill. A public repository has none.
-const BADGES = {
+const BADGES: Record<string, Badge> = {
   PRIVATE: {
     label: 'Private',
     icon: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'
@@ -64,13 +85,13 @@ const route = useRoute()
 const router = useRouter()
 const { client, sessionReady, details } = useSession()
 
-const repositories = ref([])
+const repositories = ref<RepositoryRow[]>([])
 const loading = ref(true)
 const failure = ref('')
 const unsupported = ref(false)
 let latestRequest = 0
 
-const normalise = (repository) => ({
+const normalise = (repository: RepositoryListEntry): RepositoryRow => ({
   id: String(repository.id ?? ''),
   visibility: repository.visibility ?? '',
   description: repository.description ?? '',
@@ -82,8 +103,8 @@ const normalise = (repository) => ({
 
 // A repository is one row whatever the answer says: the first entry for an id is kept, so the
 // key of each row is unique and the count is the number of repositories.
-const uniqueById = (list) => {
-  const byId = new Map()
+const uniqueById = (list: RepositoryListEntry[]): RepositoryRow[] => {
+  const byId = new Map<string, RepositoryRow>()
   for (const repository of list.map(normalise)) {
     if (!byId.has(repository.id)) byId.set(repository.id, repository)
   }
@@ -92,8 +113,8 @@ const uniqueById = (list) => {
 
 // A row with a description or tags has more than one line, and its avatar and trailing marks are
 // then aligned to the top of the text, as the MD3 list spec sets it, with 16px of padding.
-const isMultiLine = (repository) => repository.description !== '' || repository.tags.length > 0
-const rowLayout = (repository) => (isMultiLine(repository)
+const isMultiLine = (repository: RepositoryRow): boolean => repository.description !== '' || repository.tags.length > 0
+const rowLayout = (repository: RepositoryRow): string => (isMultiLine(repository)
   ? 'items-start py-4'
   : 'items-center py-3')
 
@@ -107,13 +128,13 @@ const load = async () => {
   loading.value = true
   failure.value = ''
   try {
-    const { data } = await client.value.maven.repositories()
+    const { data }: AxiosResponse<RepositoryListEntriesResponse> = await client.value.maven.repositories()
     if (current !== latestRequest) return
     repositories.value = uniqueById(data.repositories ?? [])
     unsupported.value = false
   } catch (error) {
     if (current !== latestRequest) return
-    if (error?.response?.status === 404) {
+    if ((error as AxiosError | undefined)?.response?.status === 404) {
       unsupported.value = true
     } else {
       failure.value = `Cannot load repositories: ${errorMessage(error)}`
@@ -161,28 +182,28 @@ const statusText = computed(() => (loading.value || failure.value ? '' : countTe
 // The artifact search offers the filter text as its query, and only when there is text to search for.
 const artifactSearchText = computed(() => text.value.trim())
 
-const badgeOf = (repository) => BADGES[repository.visibility] ?? null
+const badgeOf = (repository: RepositoryRow): Badge | null => BADGES[repository.visibility] ?? null
 
 // Replaces the current entry, so typing does not add a history entry for every letter. A value that
 // is undefined leaves its parameter out of the address, which is the default.
-const replaceQuery = (changes) => {
+const replaceQuery = (changes: Record<string, string | string[] | undefined>) => {
   const query = { ...route.query, ...changes }
   for (const key of Object.keys(query)) {
     if (query[key] === undefined) delete query[key]
   }
-  return router.replace({ name: route.name, params: route.params, query })
+  return router.replace({ name: route.name as RouteRecordName, params: route.params, query })
 }
 
-const setText = (value) => replaceQuery({ q: textParam(value) })
+const setText = (value: string) => replaceQuery({ q: textParam(value) })
 
-const toggleTag = (tag) => {
+const toggleTag = (tag: string) => {
   const tags = selectedTags.value.includes(tag)
     ? selectedTags.value.filter(selected => selected !== tag)
     : [...selectedTags.value, tag]
   return replaceQuery({ tag: tagsParam(tags) })
 }
 
-const toggleType = (type) => {
+const toggleType = (type: string) => {
   const types = selectedTypes.value.includes(type)
     ? selectedTypes.value.filter(selected => selected !== type)
     : [...selectedTypes.value, type]
@@ -452,9 +473,9 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
                   aria-hidden="true"
                   focusable="false"
                 >
-                  <path :d="badgeOf(repository).icon" />
+                  <path :d="badgeOf(repository)?.icon" />
                 </svg>
-                {{ badgeOf(repository).label }}
+                {{ badgeOf(repository)?.label }}
               </span>
             </span>
             <svg

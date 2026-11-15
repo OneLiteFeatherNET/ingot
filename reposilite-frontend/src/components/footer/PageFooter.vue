@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 // The page footer: the operator's footer text and the legal line. IndexPage places it, once
 // inside the content sheet and once below the page, and CSS shows the one that fits the window.
 import SiteFooter from './SiteFooter.vue'

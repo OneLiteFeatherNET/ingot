@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { watchEffect } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useSession } from "./store/session"
@@ -35,14 +35,14 @@ const { qualifier } = useQualifier()
 // The document title belongs to the router now: it names the section or the browsed path.
 useHead({
   description
-})
+} as Parameters<typeof useHead>[0])
 fetchColorMode()
 // The dark token set is keyed on `.dark`. The class is mirrored onto the document root so
 // that the body, and any overscroll beyond the app, follow the theme as well.
 watchEffect(() => document.documentElement.classList.toggle('dark', theme.isDark))
 // A rejected stored secret is already handled by the session. Anything else means the
 // server could not be asked, and the page should say so instead of quietly showing nothing.
-initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${errorMessage(error)}`))
+initializeSession().catch((error: unknown) => createErrorToast(`Cannot reach the server: ${errorMessage(error)}`))
 </script>
 
 <template>

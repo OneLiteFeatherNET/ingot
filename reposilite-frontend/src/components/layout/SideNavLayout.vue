@@ -14,10 +14,25 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, ref, watch, type PropType } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import SideNavTree from './SideNavTree.vue'
 import { useTreeFits } from '../../helpers/useTreeFits'
+
+interface NavLink {
+  key: string | undefined
+  label: string
+  description?: string
+  to: RouteLocationRaw
+}
+
+interface NavGroup {
+  id?: string
+  heading?: string
+  label?: string
+  links: NavLink[]
+}
 
 /*
  * The split layout of a page with sections, such as Access and Settings. On wide widths the sections
@@ -43,12 +58,12 @@ import { useTreeFits } from '../../helpers/useTreeFits'
  */
 const props = defineProps({
   label: { type: String, required: true },
-  groups: { type: Array, required: true },
+  groups: { type: Array as PropType<NavGroup[]>, required: true },
   current: { type: String, default: undefined },
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
   // The keys of the entries whose domain has an unsaved draft (see unsavedTreeKeys in settingsHub.js).
-  unsaved: { type: Array, default: () => [] },
+  unsaved: { type: Array as PropType<string[]>, default: () => [] },
   // True on the Overview page: below 1240 pixels it draws the page beside the index, and the index marks Overview.
   overview: { type: Boolean, default: false }
 })
@@ -61,7 +76,7 @@ const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow ||
 // The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
 const leadAbove = computed(() => props.narrow && props.overview)
 
-const navTree = ref(null)
+const navTree = ref<InstanceType<typeof SideNavTree> | null>(null)
 const { fits, measure } = useTreeFits(() => navTree.value?.$el)
 // A save bar that appears or goes away changes the room between the bars, so the decision is taken again.
 watch(() => props.unsaved.length, () => nextTick(measure))
