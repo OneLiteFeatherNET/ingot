@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends string">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useId, watch } from 'vue'
 
 /*
@@ -45,10 +45,10 @@ const forwardedAttrs = () =>
   Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style'))
 
 const props = withDefaults(defineProps<{
-  modelValue?: string
+  modelValue?: T | ''
   label: string
   /* Each option is { value, label }. The value is what modelValue holds. */
-  options: { value: string; label: string }[]
+  options: { value: T; label: string }[]
   supportingText?: string
   error?: boolean
   errorText?: string
@@ -63,11 +63,15 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: T]
 }>()
 
-const onNativeChange = (event: Event) =>
-  emit('update:modelValue', (event.target as HTMLSelectElement).value)
+// The native select mirrors the options, so a change always names one of them. An unknown value emits nothing.
+const onNativeChange = (event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
+  const option = props.options.find((candidate) => candidate.value === value)
+  if (option) emit('update:modelValue', option.value)
+}
 
 const generatedId = useId()
 const baseId = computed(() => props.id || `md-select-${generatedId}`)

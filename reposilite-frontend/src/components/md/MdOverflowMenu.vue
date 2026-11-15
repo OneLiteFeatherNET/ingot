@@ -43,15 +43,23 @@ import MdButton from './MdButton.vue'
  * first item then has the focus. Arrow keys move between the items and wrap at the ends. Escape closes the menu
  * and returns the focus to the button. A focus that leaves the menu closes it, so Tab leaves the menu as well.
  */
-interface MenuItem {
-  value?: string
+// A divider between groups of items. It has no value and takes no focus.
+interface MenuSeparator {
+  type: 'separator'
+}
+
+// A chooseable entry. `type: 'radio'` draws it as the choice in use.
+interface MenuEntry {
+  type?: 'radio'
+  value: string
   label?: string
   ariaLabel?: string
   error?: boolean
   href?: string
-  type?: 'separator' | 'radio'
   checked?: boolean
 }
+
+type MenuItem = MenuSeparator | MenuEntry
 
 withDefaults(defineProps<{
   label: string
@@ -68,7 +76,7 @@ defineSlots<{
 }>()
 
 const emit = defineEmits<{
-  select: [value: string | undefined]
+  select: [value: string]
 }>()
 
 const menuOpen = ref(false)
@@ -137,7 +145,7 @@ const openFromKeyboard = (event: KeyboardEvent) => {
   menuOpen.value = true
 }
 
-const choose = (value?: string) => {
+const choose = (value: string) => {
   menuOpen.value = false
   emit('select', value)
   triggerElement()?.focus({ preventScroll: true })
@@ -145,7 +153,7 @@ const choose = (value?: string) => {
 
 // A link item is followed by the router on a plain click. With a modifier key, or a button other than the primary
 // one, the browser opens the address itself, so the menu only closes.
-const chooseLink = (event: MouseEvent, value?: string) => {
+const chooseLink = (event: MouseEvent, value: string) => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
     closeMenu()
     return
@@ -227,7 +235,7 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
         </div>
         <template
           v-for="(item, index) in items"
-          :key="item.value ?? `separator-${index}`"
+          :key="item.type === 'separator' ? `separator-${index}` : item.value"
         >
           <div
             v-if="item.type === 'separator'"

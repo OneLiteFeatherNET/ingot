@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends string | number | boolean | object">
 import { computed, useAttrs, useId } from 'vue'
 
 /*
@@ -49,11 +49,9 @@ import { computed, useAttrs, useId } from 'vue'
  */
 defineOptions({ inheritAttrs: false })
 
-type RadioValue = string | number | boolean | object
-
 const props = withDefaults(defineProps<{
-  modelValue?: RadioValue
-  value: RadioValue
+  modelValue?: T
+  value: T
   // Required, because the radios of one choice must share it to form a group.
   name: string
   disabled?: boolean
@@ -72,7 +70,7 @@ defineSlots<{
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: RadioValue]
+  'update:modelValue': [value: T]
 }>()
 
 const attrs = useAttrs()
