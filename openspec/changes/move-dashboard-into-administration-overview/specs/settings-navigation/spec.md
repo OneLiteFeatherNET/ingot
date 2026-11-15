@@ -15,7 +15,8 @@ to a Dashboard page and SHALL NOT list the pages of the Administration tree as c
 settings domain with an unsaved draft, linking to that domain's page, a control that opens the review of all drafts, and a save
 conflict when one is present; with none of these it SHALL read "Nothing needs attention.". At a glance SHALL list the count of every
 settings collection the visitor may edit, taken from the saved settings, and SHALL render all counts at once after the saved
-settings are loaded. Its settings half SHALL carry `data-ingot-component="settings-hub"`.
+settings are loaded. The page SHALL make no request beyond those the Dashboard and the Settings page made before this change. Its
+settings half SHALL carry `data-ingot-component="settings-hub"`.
 
 #### Scenario: Drafts need attention
 
@@ -32,6 +33,11 @@ settings are loaded. Its settings half SHALL carry `data-ingot-component="settin
 - **WHEN** a full administrator with seven repositories and no cleanup policy opens `/settings`
 - **THEN** At a glance lists Repositories 7 and Cleanup policies 0 in the same render, and shows no number before the saved settings have loaded
 
+#### Scenario: Plugin collection counted
+
+- **WHEN** a plugin section's domain has a collection
+- **THEN** At a glance lists its count under the section label
+
 #### Scenario: No link to a Dashboard page
 
 - **WHEN** a full administrator opens `/settings`
@@ -46,3 +52,8 @@ settings are loaded. Its settings half SHALL carry `data-ingot-component="settin
 
 - **WHEN** a plugin stylesheet selects `[data-ingot-component="settings-hub"]`
 - **THEN** it matches the root of the settings half of Overview
+
+#### Scenario: A visitor who may not edit Settings
+
+- **WHEN** a visitor who holds neither `ingot.admin.settings` nor `ingot.admin.dashboard` opens `/settings`
+- **THEN** no Overview content is shown, and the visitor is forwarded or shown the no access message as before this change, and an anonymous visitor sees the sign in prompt

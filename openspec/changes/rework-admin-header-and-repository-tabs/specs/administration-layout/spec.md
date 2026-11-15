@@ -30,6 +30,11 @@ sticky. Only the side navigation at 1240 pixels and wider, and the top bar and t
 - **WHEN** an Administration page is drawn at 1280 pixels wide
 - **THEN** the side navigation is the only element of the page content with a sticky position
 
+#### Scenario: No sticky column when the tree does not fit
+
+- **WHEN** an Administration page is drawn at 1366 by 768 pixels and the tree is taller than the space between the bars
+- **THEN** no element of the page content has a sticky position
+
 ## ADDED Requirements
 
 ### Requirement: Stable width under a scrollbar
