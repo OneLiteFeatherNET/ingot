@@ -71,3 +71,9 @@ data class ConfirmedEnrolmentDto(
 data class RecoveryCodesDto(
     val recoveryCodes: List<String>,
 )
+
+/** The number of factors an administrator reset removed. */
+@JsonSchema(requireNonNulls = false)
+data class FactorResetDto(
+    val removed: Int,
+)

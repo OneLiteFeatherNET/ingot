@@ -26,7 +26,9 @@ import com.reposilite.token.AccessTokenType
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.CONFLICT
@@ -49,8 +51,9 @@ import panda.std.Result
 import panda.std.asSuccess
 
 /**
- * The second factors of a user: authenticator codes and recovery codes. A user manages their own factors. Secrets
- * never leave these routes: the authenticator URI is returned once, and the recovery codes are returned once, when they are issued.
+ * The second factors of a user: authenticator codes and recovery codes. A user manages their own factors, and an
+ * instance administrator may list and reset those of any user. Secrets never leave these routes: the authenticator URI is
+ * returned once, and the recovery codes are returned once, when they are issued.
  *
  * Changes to the factors ask for a current code of the user, so a session alone cannot weaken the second factor.
  */
@@ -234,7 +237,79 @@ internal class SecondFactorEndpoints(
         }
     }
 
-    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery)
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/principals/{name}/factors",
+        methods = [HttpMethod.GET],
+        summary = "List a user's second factors",
+        description = "Instance admins only. Names, kinds and times of the factors of a user, never secrets",
+        tags = ["Identity"],
+        pathParams = [OpenApiParam(name = "name", description = "Name of the user", required = true)],
+        responses = [
+            OpenApiResponse(status = "200", description = "The factors of the user"),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val listOfPrincipal = ReposiliteRoute<List<SecondFactorDto>>("/api/identity/principals/{name}/factors", Route.GET) {
+        managerOnly {
+            val name = requireParameter("name")
+            response = facade.secondFactorsOfPrincipal(name)
+                ?.map { it.toDto() }?.asSuccess()
+                ?: notFoundError("Principal not found")
+        }
+    }
+
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/principals/{name}/factors",
+        methods = [HttpMethod.DELETE],
+        summary = "Reset a user's second factors",
+        description = "Instance admins only. Removes every second factor and recovery code of a user, and ends the sessions of the user. The next sign-in needs no second factor",
+        tags = ["Identity"],
+        pathParams = [OpenApiParam(name = "name", description = "Name of the user", required = true)],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = FactorResetDto::class) ]),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val resetAll = ReposiliteRoute<FactorResetDto>("/api/identity/principals/{name}/factors", Route.DELETE) {
+        managerOnly {
+            val name = requireParameter("name")
+            response = facade.resetSecondFactors(name, factorId = null, actor = auditActor())
+                ?.let { FactorResetDto(removed = it).asSuccess() }
+                ?: notFoundError("Principal not found")
+        }
+    }
+
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/principals/{name}/factors/{id}",
+        methods = [HttpMethod.DELETE],
+        summary = "Reset one second factor of a user",
+        description = "Instance admins only. Removes one factor of a user and ends the sessions of the user",
+        tags = ["Identity"],
+        pathParams = [
+            OpenApiParam(name = "name", description = "Name of the user", required = true),
+            OpenApiParam(name = "id", description = "Id of the factor", required = true),
+        ],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = FactorResetDto::class) ]),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val resetOne = ReposiliteRoute<FactorResetDto>("/api/identity/principals/{name}/factors/{id}", Route.DELETE) {
+        managerOnly {
+            val name = requireParameter("name")
+            val factorId = requireParameter("id").toIntOrNull()
+            response = factorId
+                ?.let { facade.resetSecondFactors(name, factorId = it, actor = auditActor()) }
+                ?.takeIf { it > 0 }
+                ?.let { FactorResetDto(removed = it).asSuccess() }
+                ?: notFoundError("Factor not found")
+        }
+    }
+
+    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne)
 
     private fun FactorRecord.toDto() = SecondFactorDto(id = id, kind = kind, name = name, createdAt = createdAt, lastUsedAt = lastUsedAt)
 

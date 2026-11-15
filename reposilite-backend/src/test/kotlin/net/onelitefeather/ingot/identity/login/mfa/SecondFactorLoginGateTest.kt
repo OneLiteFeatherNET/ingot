@@ -241,6 +241,21 @@ internal class SecondFactorLoginGateTest {
     }
 
     @Test
+    fun `resetting one factor of a user announces a change of the credentials`() {
+        withGate { gate ->
+            val principalId = gate.userWithPassword()
+            gate.enrolAuthenticator(principalId)
+            val factorId = gate.facade.secondFactorsOf(principalId).single().id
+            credentialChanges = 0
+
+            val removed = gate.facade.resetSecondFactors("alice", factorId = factorId, actor = AuditActor.SYSTEM_ACTOR)
+
+            assertThat(removed).`as`("factors removed by the reset of one factor").isEqualTo(1)
+            assertThat(credentialChanges).`as`("announcements after a reset of one factor").isEqualTo(1)
+        }
+    }
+
+    @Test
     fun `an account without a local password cannot enrol an authenticator through the facade`() {
         withGate { gate ->
             // A directory account has a principal but no local password, so it has no credential row.
