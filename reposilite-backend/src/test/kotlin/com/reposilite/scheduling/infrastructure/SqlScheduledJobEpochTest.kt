@@ -161,6 +161,24 @@ internal class SqlScheduledJobEpochTest {
     }
 
     @Test
+    fun `renewal keeps the epoch so the same lease renews again and the next grant is epoch two`() {
+        SqliteTestDatabase().use { shared ->
+            val clock = MutableClock()
+            val owner = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a")
+            val lease = owner.acquire(key, ttl)!!
+            clock.advance(Duration.ofSeconds(30))
+            assertThat(owner.renew(lease, ttl)).`as`("first renewal").isTrue()
+            clock.advance(Duration.ofSeconds(30))
+            assertThat(owner.renew(lease, ttl)).`as`("second renewal with the epoch of the grant").isTrue()
+
+            clock.advance(ttl.plusSeconds(1))
+            val takeover = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").acquire(key, ttl)
+
+            assertThat(takeover?.epoch).`as`("epoch of the takeover after two renewals").isEqualTo(2L)
+        }
+    }
+
+    @Test
     fun `a key released as done is never granted again`() {
         SqliteTestDatabase().use { shared ->
             val clock = MutableClock()
