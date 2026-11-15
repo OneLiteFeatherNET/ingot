@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { rankWith, schemaMatches } from '@jsonforms/core'
+import type { ControlElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import MdTextArea from '../md/MdTextArea.vue'
 import { descriptionText } from './description'
 
@@ -30,27 +31,28 @@ const SINGLE_LINE_LIMIT = 120
  * such as the 280 characters of a repository description. It shows the count against the limit. The
  * rank is above the single line field, which would otherwise take the string.
  */
-export const tester = rankWith(4, schemaMatches((schema) =>
-  schema.type === 'string' && schema.enum === undefined && Number.isInteger(schema.maxLength) && schema.maxLength > SINGLE_LINE_LIMIT
-))
+export const tester = rankWith(4, schemaMatches((schema) => {
+  const maxLength = (schema as { maxLength?: number }).maxLength
+  return schema.type === 'string' && schema.enum === undefined && maxLength !== undefined && Number.isInteger(maxLength) && maxLength > SINGLE_LINE_LIMIT
+}))
 
-export default {
+export default defineComponent({
   name: 'MdTextAreaRenderer',
   components: {
     MdTextArea
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const path = computed(() => input.control.value.path)
-    const maxLength = computed(() => input.control.value.schema?.maxLength ?? 0)
+    const maxLength = computed(() => (input.control.value.schema as { maxLength?: number } | undefined)?.maxLength ?? 0)
     const value = computed(() => {
-      const data = input.control.value.data
+      const data: unknown = input.control.value.data
       return data === undefined || data === null ? '' : String(data)
     })
 
     // An emptied field removes the value, so the property is left out and the server default applies.
-    const onInput = (raw) => {
+    const onInput = (raw: string) => {
       input.handleChange(path.value, raw === '' ? undefined : raw)
     }
 
@@ -62,7 +64,7 @@ export default {
       value
     }
   }
-}
+})
 </script>
 
 <template>

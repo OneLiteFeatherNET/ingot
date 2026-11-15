@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { and, formatIs, isStringControl, or, rankWith } from '@jsonforms/core'
+import type { ControlElement, UISchemaElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed, ref } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdButton from '../md/MdButton.vue'
@@ -28,7 +29,7 @@ import { COLOUR_PROPERTIES, isColour } from '../../theme/settings'
 const COLOUR_HELP = 'Use a colour in the form #RRGGBB, such as #006a6a.'
 
 /* A string named after one of the colour settings, or one that declares the colour format. */
-const namesColourSetting = (uischema) => COLOUR_PROPERTIES.includes(uischema?.scope?.split('/').pop())
+const namesColourSetting = (uischema?: UISchemaElement): boolean => COLOUR_PROPERTIES.includes((uischema as ControlElement | undefined)?.scope?.split('/').pop() ?? '')
 
 /*
  * A colour field: an outlined text field with a swatch of the colour in front, a native colour
@@ -38,21 +39,21 @@ const namesColourSetting = (uischema) => COLOUR_PROPERTIES.includes(uischema?.sc
  */
 export const tester = rankWith(4, and(isStringControl, or(formatIs('color'), namesColourSetting)))
 
-export default {
+export default defineComponent({
   name: 'MdColourFieldRenderer',
   components: {
     MdButton,
     MdIconButton,
     MdTextField
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const path = computed(() => input.control.value.path)
-    const picker = ref(null)
+    const picker = ref<HTMLInputElement | null>(null)
 
     const value = computed(() => {
-      const data = input.control.value.data
+      const data: unknown = input.control.value.data
       return data === undefined || data === null ? '' : String(data)
     })
     const hasValue = computed(() => value.value !== '')
@@ -65,11 +66,11 @@ export default {
 
     // An emptied field removes the value, so the property is left out of the saved settings. Anything
     // else is kept as typed, even when it is not a colour: the domain is then invalid and cannot be saved.
-    const onInput = (raw) => {
+    const onInput = (raw: string) => {
       input.handleChange(path.value, raw === '' ? undefined : raw)
     }
-    const onPicked = (event) => {
-      input.handleChange(path.value, event.target.value)
+    const onPicked = (event: Event) => {
+      input.handleChange(path.value, (event.target as HTMLInputElement).value)
     }
     const clear = () => {
       input.handleChange(path.value, undefined)
@@ -103,7 +104,7 @@ export default {
       valid
     }
   }
-}
+})
 </script>
 
 <template>

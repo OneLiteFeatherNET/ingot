@@ -127,10 +127,13 @@
   </section>
 </template>
 
-<script>
-import { composePaths, createDefaultValue, rankWith, schemaTypeIs } from '@jsonforms/core'
+<script lang="ts">
+import { composePaths, rankWith, schemaTypeIs } from '@jsonforms/core'
+import type { ControlElement } from '@jsonforms/core'
 import { DispatchRenderer, rendererProps, useJsonFormsArrayControl, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaArrayControl } from '@dzikoysk/vue-vanilla'
+import { computed, defineComponent } from 'vue'
+import { createEntryValue } from './util'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -146,7 +149,13 @@ export const tester = rankWith(2, schemaTypeIs('array'))
 
 const PRIMITIVE_TYPES = ['string', 'number', 'integer']
 
-export default {
+/* The part of an entry's schema that the list reads: its type for the row kind and its title for the labels. */
+interface ItemSchema {
+  type?: string
+  title?: string
+}
+
+export default defineComponent({
   name: 'ArrayListRenderer',
   components: {
     DispatchRenderer,
@@ -155,13 +164,19 @@ export default {
     MdTextField
   },
   props: {
-    ...rendererProps()
+    ...rendererProps<ControlElement>()
   },
   setup(props) {
     const arrayControl = useVanillaArrayControl(useJsonFormsArrayControl(props))
     const { handleChange } = useJsonFormsControl(props)
+    // The entries of the array are a list, so the template iterates them with a numeric index.
+    const control = computed(() => ({
+      ...arrayControl.control.value,
+      data: arrayControl.control.value.data as unknown[] | undefined
+    }))
     return {
       ...arrayControl,
+      control,
       handleChange,
       composePaths,
       descriptionText
@@ -172,14 +187,14 @@ export default {
       return !this.control.data || this.control.data.length === 0
     },
     /* The control's schema is the schema of one entry, not of the array, so the entry's title and type live on it. */
-    itemSchema() {
-      return this.control.schema ?? {}
+    itemSchema(): ItemSchema {
+      return (this.control.schema ?? {}) as ItemSchema
     },
     primitive() {
-      return PRIMITIVE_TYPES.includes(this.itemSchema.type)
+      return PRIMITIVE_TYPES.includes(this.itemSchema.type ?? '')
     },
     numeric() {
-      return ['number', 'integer'].includes(this.itemSchema.type)
+      return ['number', 'integer'].includes(this.itemSchema.type ?? '')
     },
     itemLabel() {
       return this.itemSchema.title ?? 'Entry'
@@ -190,18 +205,18 @@ export default {
     }
   },
   methods: {
-    displayOf(item) {
+    displayOf(item: unknown): string {
       return item === undefined || item === null ? '' : String(item)
     },
     addClick() {
-      this.addItem(this.control.path, createDefaultValue(this.control.schema))()
+      this.addItem(this.control.path, createEntryValue(this.control.schema))()
     },
-    removeAt(index) {
-      this.removeItems(this.control.path, [index])()
+    removeAt(index: number) {
+      this.removeItems!(this.control.path, [index])()
     },
     /* An emptied text stays an empty string, so the row keeps its place. A number is read as a number. */
-    setItem(index, raw) {
-      let value = raw
+    setItem(index: number, raw: string) {
+      let value: string | number | undefined = raw
       if (this.numeric) {
         const parsed = Number(raw)
         value = raw === '' || Number.isNaN(parsed) ? undefined : parsed
@@ -209,5 +224,5 @@ export default {
       this.handleChange(composePaths(this.control.path, `${index}`), value)
     }
   }
-}
+})
 </script>

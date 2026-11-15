@@ -14,10 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { isBooleanControl, rankWith } from '@jsonforms/core'
+import type { ControlElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
+import { defineComponent } from 'vue'
 import SwitchField from './SwitchField.vue'
 
 /*
@@ -26,21 +28,21 @@ import SwitchField from './SwitchField.vue'
  */
 export const tester = rankWith(2, isBooleanControl)
 
-export default {
+export default defineComponent({
   name: 'BooleanSwitchRenderer',
   components: {
     SwitchField
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const setValue = (value) => input.handleChange(input.control.value.path, value)
+    const setValue = (value: boolean) => input.handleChange(input.control.value.path, value)
     return {
       ...input,
       setValue
     }
   }
-}
+})
 </script>
 
 <template>

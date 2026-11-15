@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as selectTester } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
@@ -33,7 +34,7 @@ import OneOfRenderer, { variantIndexOf, defaultValueOf, holdsData } from './OneO
  * The storage provider of a repository: the discriminator `type` is a constant in each branch,
  * as the backend schema writes it. The file system branch has a default; S3 needs a bucket.
  */
-const fileSystem = {
+const fileSystem: JsonSchema7 = {
   type: 'object',
   title: 'File system Storage Provider',
   properties: {
@@ -43,7 +44,7 @@ const fileSystem = {
   required: ['type']
 }
 
-const s3 = {
+const s3: JsonSchema7 = {
   type: 'object',
   title: 'S3 Storage Provider',
   properties: {
@@ -54,7 +55,7 @@ const s3 = {
   required: ['type', 'bucketName']
 }
 
-const storageSchema = { type: 'object', properties: { storageProvider: { oneOf: [fileSystem, s3] } } }
+const storageSchema: JsonSchema7 = { type: 'object', properties: { storageProvider: { oneOf: [fileSystem, s3] } } }
 
 const renderers = markRaw([
   { tester: selectTester, renderer: MdSelectRenderer },
@@ -64,14 +65,14 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
-const mountStorage = (data) => {
+const mountStorage = (data: Record<string, unknown>) => {
   wrapper = mount(JsonForms, {
     props: {
       data,
       schema: storageSchema,
-      uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/storageProvider', label: 'Storage Provider' }] },
+      uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/storageProvider', label: 'Storage Provider' }] } as UISchemaElement,
       renderers,
       config: { showUnfocusedDescription: true },
       ajv: markRaw(createAjv({ useDefaults: true }))
@@ -81,11 +82,11 @@ const mountStorage = (data) => {
   return wrapper
 }
 
-const select = () => wrapper.find('select')
-const lastData = () => wrapper.emitted('change').at(-1)[0].data.storageProvider
+const select = () => wrapper!.find('select') as DOMWrapper<HTMLSelectElement>
+const lastData = () => (wrapper!.emitted('change') as Array<[{ data: { storageProvider: Record<string, unknown> } }]>).at(-1)![0].data.storageProvider
 const dialogCard = () => document.querySelector('[role="alertdialog"]')
-const dialogButton = (text) => [...document.querySelectorAll('[role="alertdialog"] button')]
-  .find(button => button.textContent.trim() === text)
+const dialogButton = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
+  .find(button => button.textContent.trim() === text)!
 
 afterEach(() => {
   wrapper?.unmount()
@@ -145,20 +146,20 @@ describe('the discriminator of the chosen variant', () => {
     await flushPromises()
 
     expect(select().element.value).toBe('0')
-    expect(wrapper.findAll('[data-test="constant-row"]').map(row => row.text()), 'no "Type fs" row beside the select').toEqual([])
-    expect(wrapper.text()).not.toContain('fs')
+    expect(wrapper!.findAll('[data-test="constant-row"]').map(row => row.text()), 'no "Type fs" row beside the select').toEqual([])
+    expect(wrapper!.text()).not.toContain('fs')
   })
 
   it('keeps the other fields of the variant on the form', () => {
     mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
 
-    expect(wrapper.find('input').element.value, 'the mount point is still shown').toBe('/srv')
+    expect(wrapper!.find('input').element.value, 'the mount point is still shown').toBe('/srv')
   })
 
   it('is still written into the saved data, so the saved settings keep the type', async () => {
     mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
 
-    await wrapper.find('input').setValue('/data')
+    await wrapper!.find('input').setValue('/data')
     await flushPromises()
 
     expect(lastData(), 'the saved value keeps the discriminator').toEqual({ type: 'fs', mount: '/data' })
@@ -189,14 +190,14 @@ describe('switching the storage provider', () => {
     mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
     await select().setValue('1')
     await flushPromises()
-    const writesBeforeCancel = JSON.stringify(wrapper.emitted('change'))
+    const writesBeforeCancel = JSON.stringify(wrapper!.emitted('change'))
 
     dialogButton('Cancel').click()
     await flushPromises()
 
     expect(dialogCard(), 'the dialog closes on cancel').toBeNull()
     expect(select().element.value, 'the select must not stay on the new variant').toBe('0')
-    expect(JSON.stringify(wrapper.emitted('change')), 'a cancelled switch writes nothing').toBe(writesBeforeCancel)
+    expect(JSON.stringify(wrapper!.emitted('change')), 'a cancelled switch writes nothing').toBe(writesBeforeCancel)
   })
 
   it('replaces the data with the new variant when the switch is confirmed', async () => {
@@ -219,8 +220,8 @@ describe('switching the storage provider', () => {
     await select().setValue('0')
     await flushPromises()
 
-    expect(dialogCard().querySelector('h2').textContent.trim()).toBe('Switch storage provider?')
-    expect(dialogCard().querySelector('p').textContent).toContain('The settings of S3 Storage Provider will be removed.')
+    expect(dialogCard()!.querySelector('h2')!.textContent.trim()).toBe('Switch storage provider?')
+    expect(dialogCard()!.querySelector('p')!.textContent).toContain('The settings of S3 Storage Provider will be removed.')
   })
 
   it('reads the variant from the discriminator, not from the position of the schema', async () => {

@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type DOMWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, Layout, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as appearanceTester, default as AppearanceSectionRenderer } from './AppearanceSectionRenderer.vue'
 import { tester as sectionTester, default as SectionRenderer } from './SectionRenderer.vue'
@@ -35,25 +36,27 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const schema = {
+const appearanceSchema: JsonSchema7 = {
   type: 'object',
+  title: 'Appearance',
   properties: {
-    appearance: {
-      type: 'object',
-      title: 'Appearance',
-      properties: {
-        seedColor: { type: 'string', title: 'Seed colour' },
-        footerText: { type: 'string', title: 'Footer text' }
-      }
-    }
+    seedColor: { type: 'string', title: 'Seed colour' },
+    footerText: { type: 'string', title: 'Footer text' }
   }
 }
 
-const mountSettings = (data) => mount(JsonForms, {
+const schema: JsonSchema7 = {
+  type: 'object',
+  properties: {
+    appearance: appearanceSchema
+  }
+}
+
+const mountSettings = (data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema,
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/appearance' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/appearance' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))
@@ -62,8 +65,10 @@ const mountSettings = (data) => mount(JsonForms, {
 
 describe('AppearanceSectionRenderer', () => {
   it('is used for the Appearance group only', () => {
-    expect(appearanceTester({ type: 'Group', elements: [] }, schema.properties.appearance)).toBe(5)
-    expect(appearanceTester({ type: 'Group', elements: [] }, { type: 'object', title: 'Maven' })).toBe(-1)
+    const group: Layout = { type: 'Group', elements: [] }
+
+    expect(appearanceTester(group, appearanceSchema, { rootSchema: schema, config: undefined })).toBe(5)
+    expect(appearanceTester(group, { type: 'object', title: 'Maven' }, { rootSchema: schema, config: undefined })).toBe(-1)
   })
 
   it('titles the group Appearance and puts the preview under its fields', async () => {
@@ -81,7 +86,7 @@ describe('AppearanceSectionRenderer', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="colour-swatch"]').exists()).toBe(true)
-    expect(wrapper.find('input[type="color"]').element.value).toBe('#006a6a')
+    expect((wrapper.find('input[type="color"]') as DOMWrapper<HTMLInputElement>).element.value).toBe('#006a6a')
   })
 
   it('draws the other fields of the group as before', async () => {

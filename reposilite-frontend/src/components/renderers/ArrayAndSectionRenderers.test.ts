@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type DOMWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as arrayTester } from './ArrayListRenderer.vue'
 import ArrayListRenderer from './ArrayListRenderer.vue'
@@ -37,7 +38,7 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountForm = (schema, uischema, data) => mount(JsonForms, {
+const mountForm = (schema: JsonSchema7, uischema: UISchemaElement, data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema,
@@ -48,9 +49,9 @@ const mountForm = (schema, uischema, data) => mount(JsonForms, {
   }
 })
 
-const lastData = (wrapper) => wrapper.emitted('change').at(-1)[0].data
+const lastData = (wrapper: ReturnType<typeof mountForm>) => (wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
 
-const listSchema = {
+const listSchema: JsonSchema7 = {
   type: 'object',
   properties: {
     allowedGroups: {
@@ -64,9 +65,9 @@ const listSchema = {
 const listLayout = {
   type: 'VerticalLayout',
   elements: [{ type: 'Control', scope: '#/properties/allowedGroups' }]
-}
+} as UISchemaElement
 
-const mirrorSchema = {
+const mirrorSchema: JsonSchema7 = {
   type: 'object',
   properties: {
     mirrors: {
@@ -86,7 +87,7 @@ const mirrorSchema = {
 const mirrorLayout = {
   type: 'VerticalLayout',
   elements: [{ type: 'Control', scope: '#/properties/mirrors' }]
-}
+} as UISchemaElement
 
 describe('array of plain values', () => {
   it('draws one row per value, each with its own text field', () => {
@@ -99,7 +100,7 @@ describe('array of plain values', () => {
   it('adds an empty row when Add is pressed, so the data grows by one', async () => {
     const wrapper = mountForm(listSchema, listLayout, { allowedGroups: ['com.example'] })
 
-    await wrapper.findAll('button').find(button => button.text().startsWith('Add')).trigger('click')
+    await wrapper.findAll('button').find(button => button.text().startsWith('Add'))!.trigger('click')
 
     expect(lastData(wrapper).allowedGroups).toHaveLength(2)
   })
@@ -107,7 +108,7 @@ describe('array of plain values', () => {
   it('removes the row whose remove button is pressed, and keeps the others', async () => {
     const wrapper = mountForm(listSchema, listLayout, { allowedGroups: ['com.example', 'org.demo'] })
 
-    await wrapper.findAll('button[aria-label="Remove group 1"]').at(0).trigger('click')
+    await wrapper.findAll('button[aria-label="Remove group 1"]').at(0)!.trigger('click')
 
     expect(lastData(wrapper).allowedGroups).toEqual(['org.demo'])
   })
@@ -115,7 +116,7 @@ describe('array of plain values', () => {
   it('writes an edited text into its own position in the array', async () => {
     const wrapper = mountForm(listSchema, listLayout, { allowedGroups: ['com.example', 'org.demo'] })
 
-    await wrapper.findAll('input').at(1).setValue('org.other')
+    await wrapper.findAll('input').at(1)!.setValue('org.other')
 
     expect(lastData(wrapper).allowedGroups).toEqual(['com.example', 'org.other'])
   })
@@ -133,7 +134,7 @@ describe('array of objects', () => {
     const wrapper = mountForm(mirrorSchema, mirrorLayout, { mirrors: [{ link: 'https://jitpack.io' }] })
 
     expect(wrapper.find('details').exists()).toBe(true)
-    expect(wrapper.find('details input').element.value).toBe('https://jitpack.io')
+    expect((wrapper.find('details input') as DOMWrapper<HTMLInputElement>).element.value).toBe('https://jitpack.io')
   })
 
   it('removes an object item and its data', async () => {
@@ -141,7 +142,7 @@ describe('array of objects', () => {
       mirrors: [{ link: 'https://jitpack.io' }, { link: 'https://repo.example' }]
     })
 
-    await wrapper.findAll('button[aria-label="Remove mirror 1"]').at(0).trigger('click')
+    await wrapper.findAll('button[aria-label="Remove mirror 1"]').at(0)!.trigger('click')
 
     expect(lastData(wrapper).mirrors).toEqual([{ link: 'https://repo.example' }])
   })
@@ -149,7 +150,7 @@ describe('array of objects', () => {
 
 describe('group section', () => {
   it('draws a group as a section with its label as a heading, not as a fieldset', () => {
-    const schema = { type: 'object', properties: { name: { type: 'string', title: 'Name' } } }
+    const schema: JsonSchema7 = { type: 'object', properties: { name: { type: 'string', title: 'Name' } } }
     const layout = {
       type: 'VerticalLayout',
       elements: [{ type: 'Group', label: 'General', elements: [{ type: 'Control', scope: '#/properties/name' }] }]

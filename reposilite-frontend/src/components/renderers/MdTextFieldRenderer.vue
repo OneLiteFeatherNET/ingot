@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { and, isIntegerControl, isNumberControl, isStringControl, isEnumControl, not, or, rankWith } from '@jsonforms/core'
+import type { ControlElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed, ref, watch } from 'vue'
+import { computed, defineComponent, ref, watch } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { descriptionText } from './description'
@@ -31,19 +32,19 @@ import { isSensitive } from './sensitive'
  */
 export const tester = rankWith(3, or(and(isStringControl, not(isEnumControl)), isNumberControl, isIntegerControl))
 
-export default {
+export default defineComponent({
   name: 'MdTextFieldRenderer',
   components: {
     MdIconButton,
     MdTextField
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const path = computed(() => input.control.value.path)
-    const numeric = computed(() => ['number', 'integer'].includes(input.control.value.schema?.type))
+    const numeric = computed(() => ['number', 'integer'].includes((input.control.value.schema as { type?: string } | undefined)?.type ?? ''))
 
-    // A secret is a string whose key or schema marks it as one (see sensitive.js). It is masked until
+    // A secret is a string whose key or schema marks it as one (see sensitive.ts). It is masked until
     // the user reveals it with the toggle in the trailing icon.
     const secret = computed(() => !numeric.value && isSensitive(path.value, input.control.value.schema))
     const revealed = ref(false)
@@ -55,13 +56,13 @@ export default {
       return numeric.value ? 'number' : 'text'
     })
     const displayValue = computed(() => {
-      const value = input.control.value.data
+      const value: unknown = input.control.value.data
       return value === undefined || value === null ? '' : String(value)
     })
 
     // An emptied field removes the value instead of storing an empty string, so the property is
     // left out of the saved configuration.
-    const onInput = (raw) => {
+    const onInput = (raw: string) => {
       if (raw === '') {
         input.handleChange(path.value, undefined)
       } else if (numeric.value) {
@@ -84,7 +85,7 @@ export default {
       toggleReveal
     }
   }
-}
+})
 </script>
 
 <template>

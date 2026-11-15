@@ -14,15 +14,16 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { and, isLayout, rankWith, uiTypeIs } from '@jsonforms/core'
+import type { JsonSchema, Layout, UISchemaElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsLayout } from '@jsonforms/vue'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import SectionRenderer from './SectionRenderer.vue'
 import AppearancePreview from '../settings/AppearancePreview.vue'
 
 /* The group of the appearance object of the dashboard settings, which the settings title Appearance. */
-const isAppearanceGroup = (uischema, schema) => schema?.title === 'Appearance'
+const isAppearanceGroup = (_uischema: UISchemaElement, schema: JsonSchema): boolean => schema?.title === 'Appearance'
 
 export const tester = rankWith(5, and(isLayout, uiTypeIs('Group'), isAppearanceGroup))
 
@@ -30,19 +31,19 @@ export const tester = rankWith(5, and(isLayout, uiTypeIs('Group'), isAppearanceG
  * The Appearance section, drawn exactly as any other section, with the live preview of its colours
  * under the fields. The preview reads the values of this group, so it follows the form as it is edited.
  */
-export default {
+export default defineComponent({
   name: 'AppearanceSectionRenderer',
   components: {
     AppearancePreview,
     SectionRenderer
   },
-  props: rendererProps(),
+  props: rendererProps<Layout>(),
   setup(props) {
     const { layout } = useJsonFormsLayout(props)
-    const appearance = computed(() => layout.value.data ?? {})
+    const appearance = computed<Record<string, unknown>>(() => (layout.value.data ?? {}) as Record<string, unknown>)
     return { appearance }
   }
-}
+})
 </script>
 
 <template>

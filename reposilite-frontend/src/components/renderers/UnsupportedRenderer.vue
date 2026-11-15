@@ -29,10 +29,12 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {isControl, rankWith} from '@jsonforms/core'
+import type {ControlElement} from '@jsonforms/core'
 import {rendererProps, useJsonFormsControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
+import {defineComponent} from 'vue'
 
 /*
  * The last resort for a control. A schema node that no other renderer can draw used to render as nothing,
@@ -44,14 +46,14 @@ export const tester = rankWith(1, isControl)
 
 export const MESSAGE = 'This section cannot be edited here, use Download as JSON'
 
-export default {
+export default defineComponent({
   name: 'UnsupportedRenderer',
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     return {
       ...useVanillaControl(useJsonFormsControl(props)),
       message: MESSAGE
     }
   }
-}
+})
 </script>

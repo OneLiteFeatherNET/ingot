@@ -79,15 +79,16 @@
   </div>
 </template>
 
-<script>
-import {inject, ref, computed} from 'vue'
+<script lang="ts">
+import {defineComponent, inject, ref, computed} from 'vue'
 import {
-  createCombinatorRenderInfos, createDefaultValue,
+  createCombinatorRenderInfos,
   getConfig,
   getData, getSchema, isInherentlyEnabled,
   isOneOfControl,
   rankWith,
 } from '@jsonforms/core'
+import type {ControlElement, JsonFormsSubStates, JsonSchema, Layout, UISchemaElement} from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsOneOfControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
 import {VueFinalModal} from 'vue-final-modal'
@@ -97,6 +98,7 @@ import isEqual from 'lodash/isEqual'
 import isPlainObject from 'lodash/isPlainObject'
 import {SCRIM_STYLE} from '../settings/dialog'
 import { descriptionText } from './description'
+import { createEntryValue } from './util'
 
 /*
  * The variant is picked from an outlined select, the same field as an enum. The rank is above the
@@ -105,19 +107,20 @@ import { descriptionText } from './description'
 export const tester = rankWith(4, isOneOfControl)
 
 /* The properties a variant fixes to one value, such as the discriminator `type: { const: 's3' }`. */
-export const constantsOf = (branch) => Object.entries(branch?.properties ?? {})
+export const constantsOf = (branch?: JsonSchema): Array<[string, unknown]> => Object.entries(branch?.properties ?? {})
   .filter(([, schema]) => schema && Object.prototype.hasOwnProperty.call(schema, 'const'))
-  .map(([key, schema]) => [key, schema.const])
+  .map(([key, schema]): [string, unknown] => [key, (schema as { const?: unknown }).const])
 
 /*
  * The index of the variant whose constants all match the data, or undefined when none does. A
  * branch without a constant cannot be recognised from the data and is never a match.
  */
-export const variantIndexOf = (branches, data) => {
+export const variantIndexOf = (branches: JsonSchema[], data: unknown): number | undefined => {
   if (!isPlainObject(data)) return undefined
+  const record = data as Record<string, unknown>
   const index = branches.findIndex((branch) => {
     const constants = constantsOf(branch)
-    return constants.length > 0 && constants.every(([key, value]) => data[key] === value)
+    return constants.length > 0 && constants.every(([key, value]) => record[key] === value)
   })
   return index === -1 ? undefined : index
 }
@@ -126,43 +129,43 @@ export const variantIndexOf = (branches, data) => {
  * The data a variant starts from. createDefaultValue leaves out a constant without a default, so
  * the constants are written in: the discriminator is what later recognises the variant.
  */
-export const defaultValueOf = (branch) => {
-  const value = createDefaultValue(branch)
+export const defaultValueOf = (branch: JsonSchema): unknown => {
+  const value = createEntryValue(branch)
   if (!isPlainObject(value)) return value
-  return {...value, ...Object.fromEntries(constantsOf(branch))}
+  return {...(value as Record<string, unknown>), ...Object.fromEntries(constantsOf(branch))}
 }
 
 /*
  * The uischema of a variant without its discriminator. The select above already shows the variant, so a row
  * with the same value beneath it only repeats it. The data keeps the discriminator; only the row is left out.
  */
-export const withoutDiscriminator = (uischema, branch) => {
+export const withoutDiscriminator = (uischema: UISchemaElement, branch: JsonSchema): UISchemaElement => {
   const discriminators = new Set(constantsOf(branch).map(([key]) => `#/properties/${key}`))
   if (discriminators.size === 0 || !uischema) return uischema
-  const strip = (element) => ({
+  const strip = (element: Layout): Layout => ({
     ...element,
     elements: element.elements
-      .filter(child => !(child.type === 'Control' && discriminators.has(child.scope)))
-      .map(child => (Array.isArray(child.elements) ? strip(child) : child))
+      .filter(child => !(child.type === 'Control' && discriminators.has((child as ControlElement).scope)))
+      .map(child => (Array.isArray((child as Layout).elements) ? strip(child as Layout) : child))
   })
-  return Array.isArray(uischema.elements) ? strip(uischema) : uischema
+  return Array.isArray((uischema as Layout).elements) ? strip(uischema as Layout) : uischema
 }
 
 /* A value nothing has been typed or chosen into: missing, null, or an empty string. */
-const isBlank = (value) => value === undefined || value === null || value === ''
+const isBlank = (value: unknown): boolean => value === undefined || value === null || value === ''
 
 /*
  * Switching throws away the data of the current variant, so the dialog only asks when a field
  * holds something a switch would lose: a value that is neither blank nor the variant's default.
  * The discriminator equals its default, so it never counts on its own.
  */
-export const holdsData = (data, branch) => {
+export const holdsData = (data: unknown, branch: JsonSchema): boolean => {
   if (!isPlainObject(data)) return false
-  const defaults = defaultValueOf(branch)
-  return Object.entries(data).some(([key, value]) => !isBlank(value) && !isEqual(value, defaults[key]))
+  const defaults = defaultValueOf(branch) as Record<string, unknown>
+  return Object.entries(data as Record<string, unknown>).some(([key, value]) => !isBlank(value) && !isEqual(value, defaults[key]))
 }
 
-const isControlEnabled = (ownProps, jsonforms) => {
+const isControlEnabled = (ownProps: { schema?: JsonSchema; uischema: ControlElement }, jsonforms: JsonFormsSubStates): boolean => {
   const state = { jsonforms }
   const config = getConfig(state)
   const rootData = getData(state)
@@ -176,10 +179,10 @@ const isControlEnabled = (ownProps, jsonforms) => {
       ownProps.schema || rootSchema,
       rootData,
       config
-  )
+  ) as boolean
 }
 
-export default {
+export default defineComponent({
   name: 'OneOfRenderer',
   components: {
     DispatchRenderer,
@@ -187,11 +190,11 @@ export default {
     MdSelect,
     VueFinalModal
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useJsonFormsOneOfControl(props)
     const vanilla = useVanillaControl(input)
-    const jsonforms = inject('jsonforms')
+    const jsonforms = inject<JsonFormsSubStates>('jsonforms')
 
     if (!jsonforms) {
       throw new Error("'jsonforms' couldn't be injected. Are you within JSON Forms?")
@@ -207,12 +210,12 @@ export default {
         ?? 0)
 
     // The variant the user picked while the dialog asks. The select shows it until the dialog closes.
-    const pendingIndex = ref(null)
+    const pendingIndex = ref<number | null>(null)
     const dialog = computed(() => pendingIndex.value !== null)
     const shownIndex = computed(() => pendingIndex.value ?? committedIndex.value)
 
     const oneOfRenderInfos = computed(() => createCombinatorRenderInfos(
-        jsonformsControl.value.schema.oneOf,
+        jsonformsControl.value.schema.oneOf as JsonSchema[],
         jsonformsControl.value.rootSchema,
         'oneOf',
         jsonformsControl.value.uischema,
@@ -250,16 +253,16 @@ export default {
      */
     const focusTrap = computed(() => ({
       allowOutsideClick: true,
-      initialFocus: () => document.getElementById(switchCancelId.value),
-      setReturnFocus: () => document.getElementById(variantSelectId.value)
+      initialFocus: () => document.getElementById(switchCancelId.value) as HTMLElement,
+      setReturnFocus: () => document.getElementById(variantSelectId.value) as HTMLElement
     }))
 
-    const switchTo = (index) => {
+    const switchTo = (index: number) => {
       pendingIndex.value = null
       input.handleChange(jsonformsControl.value.path, defaultValueOf(branches.value[index]))
     }
 
-    const onVariantSelected = (value) => {
+    const onVariantSelected = (value: string) => {
       const next = Number(value)
       if (next === committedIndex.value) {
         pendingIndex.value = null
@@ -281,7 +284,7 @@ export default {
       if (next !== null) switchTo(next)
     }
 
-    const onDialogUpdate = (open) => {
+    const onDialogUpdate = (open: boolean) => {
       if (!open) cancelSwitch()
     }
 
@@ -310,5 +313,5 @@ export default {
       descriptionText
     }
   }
-}
+})
 </script>

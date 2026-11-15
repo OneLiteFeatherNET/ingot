@@ -15,26 +15,28 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import type { JsonSchema7 } from '@jsonforms/core'
 import { tester } from './BooleanSwitchRenderer.vue'
 
-const rootSchema = {
+const rootSchema: JsonSchema7 = {
   type: 'object',
   properties: {
     enabled: { type: 'boolean' },
     name: { type: 'string' }
   }
 }
+const context = { rootSchema, config: undefined }
 
 describe('BooleanSwitchRenderer tester', () => {
   it('claims a boolean control above the vanilla checkbox rank', () => {
     const uischema = { type: 'Control', scope: '#/properties/enabled' }
 
-    expect(tester(uischema, rootSchema)).toBe(2)
+    expect(tester(uischema, rootSchema, context)).toBe(2)
   })
 
   it('does not claim a string control', () => {
     const uischema = { type: 'Control', scope: '#/properties/name' }
 
-    expect(tester(uischema, rootSchema)).toBe(-1)
+    expect(tester(uischema, rootSchema, context)).toBe(-1)
   })
 })

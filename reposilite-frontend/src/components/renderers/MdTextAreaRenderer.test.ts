@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as areaTester } from './MdTextAreaRenderer.vue'
 import MdTextAreaRenderer from './MdTextAreaRenderer.vue'
@@ -31,16 +32,16 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const control = { type: 'Control', scope: '#/properties/description', label: 'Description' }
+const control: ControlElement = { type: 'Control', scope: '#/properties/description', label: 'Description' }
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
-const mountDescription = (data = {}) => {
+const mountDescription = (data: Record<string, unknown> = {}) => {
   wrapper = mount(JsonForms, {
     props: {
       data,
       schema: { type: 'object', properties: { description: { type: 'string', maxLength: 280, default: '' } } },
-      uischema: { type: 'VerticalLayout', elements: [control] },
+      uischema: { type: 'VerticalLayout', elements: [control] } as UISchemaElement,
       renderers,
       config: {},
       ajv: markRaw(createAjv({ useDefaults: true }))
@@ -50,8 +51,8 @@ const mountDescription = (data = {}) => {
   return wrapper
 }
 
-const area = () => wrapper.find('textarea')
-const lastData = () => wrapper.emitted('change').at(-1)[0].data
+const area = () => wrapper!.find('textarea') as DOMWrapper<HTMLTextAreaElement>
+const lastData = () => (wrapper!.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
 
 afterEach(() => {
   wrapper?.unmount()
@@ -60,22 +61,26 @@ afterEach(() => {
 
 describe('MdTextAreaRenderer tester', () => {
   // JSON Forms hands a tester the root schema and resolves the scope itself, so the tests do the same.
-  const rootWith = (schema) => ({ type: 'object', properties: { description: schema } })
-  const longText = { type: 'string', maxLength: 280 }
-  const shortText = { type: 'string' }
+  const rootWith = (schema: JsonSchema7): JsonSchema7 => ({ type: 'object', properties: { description: schema } })
+  const longText: JsonSchema7 = { type: 'string', maxLength: 280 }
+  const shortText: JsonSchema7 = { type: 'string' }
 
   it('takes a string whose limit is longer than a single line, above the text field', () => {
     const root = rootWith(longText)
 
-    expect(areaTester(control, root), 'a long text outranks the text field').toBeGreaterThan(textTester(control, root))
+    expect(areaTester(control, root, { rootSchema: root, config: undefined }), 'a long text outranks the text field').toBeGreaterThan(textTester(control, root, { rootSchema: root, config: undefined }))
   })
 
   it('leaves a short string to the text field', () => {
-    expect(areaTester(control, rootWith(shortText))).toBe(-1)
+    const root = rootWith(shortText)
+
+    expect(areaTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 
   it('leaves an enum to the select, whatever its limit', () => {
-    expect(areaTester(control, rootWith({ type: 'string', enum: ['A'], maxLength: 280 }))).toBe(-1)
+    const root = rootWith({ type: 'string', enum: ['A'], maxLength: 280 })
+
+    expect(areaTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 })
 
@@ -84,7 +89,7 @@ describe('MdTextAreaRenderer', () => {
     mountDescription({ description: 'Nightly builds' })
 
     expect(area().element.value).toBe('Nightly builds')
-    expect(wrapper.text()).toContain('14 / 280')
+    expect(wrapper!.text()).toContain('14 / 280')
   })
 
   it('writes the typed text into the data of the form', async () => {

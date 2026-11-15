@@ -19,6 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as selectTester, oneOfTester, optionsOf } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
@@ -35,21 +36,21 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountField = (schema, data) => mount(JsonForms, {
+const mountField = (schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { field: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))
   }
 })
 
-const lastData = (wrapper) => wrapper.emitted('change').at(-1)[0].data
+const lastData = (wrapper: ReturnType<typeof mountField>) => (wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
 
 // A one-of whose branches are constants, the shape of a plain choice with titles.
-const providerChoice = {
+const providerChoice: JsonSchema7 = {
   oneOf: [
     { const: 'fs', title: 'Local file system' },
     { const: 's3', title: 'S3 Storage Provider' }

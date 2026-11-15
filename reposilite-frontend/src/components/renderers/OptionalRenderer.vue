@@ -29,26 +29,27 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {DispatchRenderer, rendererProps, useJsonFormsControlWithDetail} from '@jsonforms/vue'
 import SwitchField from './SwitchField.vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {provide, ref} from 'vue'
+import {defineComponent, provide, ref} from 'vue'
 import {OPTIONAL_PATH_KEY} from './util'
 import {and, rankWith, schemaMatches, uiTypeIs} from '@jsonforms/core'
+import type {ControlElement, JsonSchema} from '@jsonforms/core'
 import includes from 'lodash/includes'
 import {findUISchema} from '@jsonforms/core/src/reducers'
 
 export const tester = rankWith(2, and(uiTypeIs('Control'), schemaMatches(schema => Array.isArray(schema.type) && includes(schema.type, 'null'))))
 
-export default {
+export default defineComponent({
   name: 'OptionalRenderer',
   components: {DispatchRenderer, SwitchField},
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const control = useVanillaControl(useJsonFormsControlWithDetail(props))
     const present = ref(control.control.value.data !== undefined)
-    const setPresent = (value) => { present.value = value }
+    const setPresent = (value: boolean) => { present.value = value }
     provide(OPTIONAL_PATH_KEY, control.control.value.path)
     return {
       ...control,
@@ -57,28 +58,30 @@ export default {
     }
   },
   computed: {
-    filteredSchema() {
+    filteredSchema(): JsonSchema {
       const schema = this.control.schema
-      return Array.isArray(schema.type) 
+      return Array.isArray(schema.type)
         ? {
             ...schema,
             type: schema.type.filter(t => t !== 'null')
-          } 
+          }
         : schema
     },
     matchedUISchema() {
+      // The control carries no scope of its own, so the lookup receives undefined here, as it always has.
+      const scope = (this.control as { scope?: string }).scope as string
       return findUISchema(
           this.control.uischemas,
           this.control.schema,
-          this.control.scope,
+          scope,
           this.control.path,
           undefined,
-          this.control,
+          this.control as unknown as ControlElement,
           this.control.rootSchema
       )
     }
   }
-}
+})
 </script>
 
 <style scoped>

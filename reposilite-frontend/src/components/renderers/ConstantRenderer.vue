@@ -11,11 +11,12 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {and, isControl, rankWith, schemaMatches} from '@jsonforms/core'
+import type {ControlElement} from '@jsonforms/core'
 import {rendererProps, useJsonFormsControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {computed} from 'vue'
+import {computed, defineComponent} from 'vue'
 
 /*
  * A constant is not an input: its value is fixed by the schema, so there is nothing to type or
@@ -24,13 +25,13 @@ import {computed} from 'vue'
  */
 export const tester = rankWith(4, and(isControl, schemaMatches(schema => 'const' in schema)))
 
-export default {
+export default defineComponent({
   name: 'ConstantRenderer',
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const displayValue = computed(() => {
-      const value = input.control.value.schema?.const
+      const value: unknown = input.control.value.schema?.const
       return value === undefined || value === null ? '' : String(value)
     })
     return {
@@ -38,5 +39,5 @@ export default {
       displayValue
     }
   }
-}
+})
 </script>
