@@ -185,4 +185,30 @@ test.describe('browse layout', () => {
     const listingBox = await boxOf(page.locator('#browser-list'))
     expect(Math.abs(memberListBox.left - listingBox.left), 'left edge of the member list against the listing, in px').toBeLessThanOrEqual(0.5)
   })
+
+  test('right-aligns the file sizes of a version directory in one column at 1440 px', async ({ page, seed }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    const repository = await seed.repository('size-column')
+    const directory = 'com/example/demo/1.0'
+    // Rows with no action, one action (delete only) and two actions (view or javadoc, and delete) side by side.
+    await seed.upload(repository, `${directory}/demo-1.0.jar`, 'jar bytes\n')
+    await seed.upload(repository, `${directory}/demo-1.0.pom`, '<project/>\n')
+    await seed.upload(repository, `${directory}/maven-metadata.xml`, '<metadata/>\n')
+    await seed.upload(repository, `${directory}/demo-1.0-javadoc.jar`, 'javadoc bytes, a bit longer\n')
+    await seed.upload(repository, `${directory}/demo-1.0-sources.jar`, 'sources\n')
+    await page.goto(siteUrl(`/browse/${repository}/${directory}`))
+    // The size sits on the name line only in the compact list, which the toggle switches on.
+    await page.getByRole('button', { name: 'Compact list' }).click()
+
+    const rows = page.locator('[data-ingot-component="detailed-list-entry"]')
+    await expect(rows, 'one row per uploaded file').toHaveCount(5)
+    const sizeRights = await rows.evaluateAll(elements => elements.map((row) => {
+      const size = row.querySelector('.md-label-small')
+      return { name: row.querySelector('a').textContent.trim(), right: size.getBoundingClientRect().right }
+    }))
+    const reference = sizeRights[0].right
+    for (const { name, right } of sizeRights) {
+      expect(Math.abs(right - reference), `right edge of the size of ${name} against the first row, in px`).toBeLessThanOrEqual(0.5)
+    }
+  })
 })

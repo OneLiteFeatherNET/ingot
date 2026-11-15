@@ -213,3 +213,52 @@ describe('DetailedListEntry md3 list spec', () => {
     expect(name.classes(), 'the headline uses body-large').toContain('md-body-large')
   })
 })
+
+describe('DetailedListEntry actions slot', () => {
+  const xml = { name: 'maven-metadata.xml', type: 'FILE', contentType: 'application/xml', contentLength: 512 }
+  const javadoc = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentLength: 4096 }
+  // Viewable and a javadoc: the widest set of actions a row can have.
+  const widest = { name: 'example-1.0-javadoc.xml', type: 'FILE', contentType: 'application/xml', contentLength: 1024 }
+  const folder = { name: 'releases', type: 'DIRECTORY' }
+
+  const mountRow = (file) => {
+    const wrapper = mount(DetailedListEntry, {
+      props: {
+        file,
+        qualifier: { path: 'releases/net/example' },
+        url: `https://repo.example/releases/net/example/${file.name}`,
+        to: `/releases/net/example/${file.name}`,
+        openDeleteEntryModal: () => {},
+        compactMode: true
+      },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('gives every row the same actions slot, whatever actions the row has', () => {
+    const slots = [jar, xml, javadoc, widest, folder].map(file => actionsOf(mountRow(file)).classes().join(' '))
+
+    expect(new Set(slots).size, 'the actions container of each row carries the same classes').toBe(1)
+  })
+
+  it('reserves the width of the widest action set on a row with fewer actions', () => {
+    const wrapper = mountRow(jar)
+
+    expect(actionsOf(wrapper).classes(), 'a fixed width that holds view, javadoc and delete').toContain('w-32')
+    expect(wrapper.find('[aria-label="View example-1.0.jar in a new tab"]').exists(), 'a missing view action is not rendered').toBe(false)
+    expect(wrapper.find('[aria-label="Open javadoc for example-1.0.jar in a new tab"]').exists(), 'a missing javadoc action is not rendered').toBe(false)
+  })
+
+  it('renders only the actions a row has inside the same slot', () => {
+    const wrapper = mountRow(xml)
+    const names = actionsOf(wrapper).findAll('button').map(button => button.attributes('aria-label'))
+
+    expect(names, 'the xml row offers view and delete').toEqual(['View maven-metadata.xml in a new tab', 'Delete maven-metadata.xml'])
+  })
+})

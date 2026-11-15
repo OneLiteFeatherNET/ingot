@@ -161,10 +161,12 @@ const onFileClick = (event) => {
     <!--
       Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
       user tabs into these buttons, and a touch screen has no hover to reveal them with.
+      The slot is as wide as the widest set of actions (view, javadoc and delete, three 40px
+      buttons and two 4px gaps), on every row, so the size text right-aligns in one column.
     -->
     <div
       data-row-actions
-      class="relative z-10 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+      class="relative z-10 flex w-32 shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
     >
       <MdIconButton
         v-if="canViewContent"
