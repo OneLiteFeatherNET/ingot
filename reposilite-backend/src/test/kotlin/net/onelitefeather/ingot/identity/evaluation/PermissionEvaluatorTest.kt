@@ -268,14 +268,18 @@ internal class PermissionEvaluatorTest {
      * A user whose own level holds [ownRules], and whose team one level further away holds [grants]. The team grant is the
      * only way the team reaches the repository.
      */
-    private fun userWithOwnRules(ownRules: List<SourcedRule>, grants: List<Grant>) = AccessSubject(
+    private fun userWithOwnRules(
+        ownRules: List<SourcedRule>,
+        grants: List<Grant>,
+        teamRules: List<SourcedRule> = emptyList(),
+    ) = AccessSubject(
         principalId = 2,
         principalName = "alice",
         kind = PrincipalKind.USER,
         disabled = false,
         levels = listOf(
             AccessLevel(source = DecisionSource.USER, depth = 0, rules = ownRules, grants = emptyList()),
-            AccessLevel(source = DecisionSource.TEAM, depth = 1, rules = emptyList(), grants = grants),
+            AccessLevel(source = DecisionSource.TEAM, depth = 1, rules = teamRules, grants = grants),
         ),
         tokenRules = null,
     )
@@ -310,6 +314,47 @@ internal class PermissionEvaluatorTest {
 
         // then: the subtree is readable, so the repository is listed as before
         assertThat(PermissionEvaluator.canSee(alice, "/releases")).describedAs("visibility through a readable subtree").isTrue
+    }
+
+    @Test
+    fun `a read inside an allowed subtree is decided allowed despite a personal denial of the repository read`() {
+        // given: a personal denial of releases.read, and a personal allow of releases:com/example.read, the deeper node
+        val subtreeRead = SourcedRule("alice", NodePattern.of("ingot.repository.releases.artifact.com.example.read"), allowed = true)
+        val alice = userWithOwnRules(listOf(personalDenialOfReleasesRead, subtreeRead), listOf(team("releases", null, Role.READ)))
+
+        // then: the deeper node is more specific, so a read inside the subtree is allowed and the subtree is readable
+        assertThat(allowed(alice, "/releases/com/example/app/1.0/app-1.0.jar", Action.READ))
+            .describedAs("read inside the allowed subtree").isTrue
+        assertThat(allowed(alice, "/releases/org/other/app-1.0.jar", Action.READ))
+            .describedAs("read outside the allowed subtree").isFalse
+        assertThat(PermissionEvaluator.canSee(alice, "/releases")).describedAs("visibility through the readable subtree").isTrue
+    }
+
+    @Test
+    fun `a personal denial of the repository read keeps a HIDDEN repository unlisted for a readable subtree`() {
+        // given: the same subject; a HIDDEN repository is listed by a node or a grant of the whole repository, not by a subtree
+        val subtreeRead = SourcedRule("alice", NodePattern.of("ingot.repository.releases.artifact.com.example.read"), allowed = true)
+        val alice = userWithOwnRules(listOf(personalDenialOfReleasesRead, subtreeRead), listOf(team("releases", null, Role.READ)))
+
+        // then
+        assertThat(PermissionEvaluator.canListHidden(alice, "releases")).describedAs("listing of a HIDDEN repository by a subtree").isFalse
+    }
+
+    @Test
+    fun `a personal denial of the repository read hides it when only a team allows a subtree`() {
+        // given: a personal denial of releases.read, a team allow of releases:com/example.read and a team READ grant on releases
+        val subtreeRead = SourcedRule("deployers", NodePattern.of("ingot.repository.releases.artifact.com.example.read"), allowed = true)
+        val alice = userWithOwnRules(
+            ownRules = listOf(personalDenialOfReleasesRead),
+            grants = listOf(team("releases", null, Role.READ)),
+            teamRules = listOf(subtreeRead),
+        )
+
+        // then: the personal level decides the read as denied, so the team subtree is never reached and the repository is hidden
+        assertThat(allowed(alice, "/releases/com/example/app/1.0/app-1.0.jar", Action.READ))
+            .describedAs("read inside the team subtree").isFalse
+        assertThat(PermissionEvaluator.canSee(alice, "/releases")).describedAs("visibility of a denied repository").isFalse
+        assertThat(PermissionEvaluator.canListHidden(alice, "releases")).describedAs("listing of a denied HIDDEN repository").isFalse
     }
 
 }
