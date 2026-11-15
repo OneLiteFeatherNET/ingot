@@ -33,11 +33,8 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
-import java.net.http.WebSocket
 import java.time.Duration
 import java.util.Base64
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionStage
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.SECONDS
 import kotlin.concurrent.thread
@@ -243,45 +240,6 @@ internal class ConsoleSessionIntegrationTest : ReposiliteSpecification() {
 
         fun close() {
             body.close()
-        }
-    }
-
-    /** A console WebSocket. Messages are queued as they arrive, and a receive waits for them with a timeout. */
-    private class ConsoleSocket(uri: URI) {
-
-        private val messages = LinkedBlockingQueue<String>()
-
-        private val socket: WebSocket = HttpClient.newHttpClient()
-            .newWebSocketBuilder()
-            .buildAsync(uri, object : WebSocket.Listener {
-                override fun onOpen(webSocket: WebSocket) {
-                    webSocket.request(1)
-                }
-
-                override fun onText(webSocket: WebSocket, data: CharSequence, last: Boolean): CompletionStage<*> {
-                    messages.add(data.toString())
-                    webSocket.request(1)
-                    return CompletableFuture.completedFuture(null)
-                }
-            })
-            .get(TIMEOUT_SECONDS, SECONDS)
-
-        fun send(text: String) {
-            socket.sendText(text, true).get(TIMEOUT_SECONDS, SECONDS)
-        }
-
-        /** Every message received up to and including the first one that matches [predicate]. */
-        fun receiveUntil(predicate: (String) -> Boolean): List<String> {
-            val seen = mutableListOf<String>()
-            while (true) {
-                val message = messages.poll(TIMEOUT_SECONDS, SECONDS) ?: throw AssertionError("no matching message, received: $seen")
-                seen += message
-                if (predicate(message)) return seen
-            }
-        }
-
-        fun close() {
-            socket.abort()
         }
     }
 
