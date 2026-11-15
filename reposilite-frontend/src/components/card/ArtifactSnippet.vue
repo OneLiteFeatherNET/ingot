@@ -39,6 +39,10 @@ defineExpose({ content })
 </script>
 
 <template>
+  <!--
+    The closing tag stays on the last line of each snippet: a line break before it would be shown and copied
+    as an empty line.
+  -->
   <pre
     v-if="configuration.lang === 'xml'"
     ref="preElement"
@@ -48,30 +52,26 @@ defineExpose({ content })
   <XmlTag name="groupId">{{ data.groupId }}</XmlTag>
   <XmlTag name="artifactId">{{ data.artifactId }}</XmlTag>
   <XmlTag name="version">{{ data.version }}</XmlTag>
-</XmlTag>
-</pre>
+</XmlTag></pre>
   <pre
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
     data-ingot-component="artifact-snippet"
   >
-implementation <CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString>
-</pre>
+implementation <CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString></pre>
   <pre
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
     data-ingot-component="artifact-snippet"
   >
 implementation<CodeBrackets
-start="("
-end=")"
-><CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString></CodeBrackets>
-</pre>
+  start="("
+  end=")"
+  ><CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString></CodeBrackets></pre>
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
     data-ingot-component="artifact-snippet"
   >
-<CodeString>{{ data.groupId }}</CodeString> %% <CodeString>{{ data.artifactId }}</CodeString> %% <CodeString>{{ data.version }}</CodeString>
-</pre>
+<CodeString>{{ data.groupId }}</CodeString> %% <CodeString>{{ data.artifactId }}</CodeString> %% <CodeString>{{ data.version }}</CodeString></pre>
 </template>

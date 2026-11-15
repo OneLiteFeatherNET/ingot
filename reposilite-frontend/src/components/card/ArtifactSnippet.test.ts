@@ -21,19 +21,19 @@ describe('ArtifactSnippet', () => {
       '  <groupId>net.onelitefeather</groupId>\n' +
       '  <artifactId>mycelium-bom</artifactId>\n' +
       '  <version>1.8.9</version>\n' +
-      '</dependency>\n'
+      '</dependency>'
     )
   })
 
   it('keeps the Gradle Groovy coordinate on one line', () => {
     const text = render('groovy').find('pre').element.textContent
 
-    expect(text).toBe('implementation "net.onelitefeather:mycelium-bom:1.8.9"\n')
+    expect(text).toBe('implementation "net.onelitefeather:mycelium-bom:1.8.9"')
   })
 
   it('keeps the Gradle Kotlin coordinate on one line', () => {
     const text = render('kotlin').find('pre').element.textContent
 
-    expect(text).toBe('implementation("net.onelitefeather:mycelium-bom:1.8.9")\n')
+    expect(text).toBe('implementation("net.onelitefeather:mycelium-bom:1.8.9")')
   })
 })
