@@ -15,39 +15,56 @@
  */
 package com.reposilite.console.infrastructure
 
+import com.reposilite.console.ConfirmationNeeded
 import com.reposilite.console.ConsoleFacade
 import com.reposilite.console.MAX_COMMAND_LENGTH
+import com.reposilite.console.StructuredRun
+import com.reposilite.console.api.CommandListing
+import com.reposilite.console.api.ConfirmationRequiredResponse
 import com.reposilite.console.api.ExecutionResponse
+import com.reposilite.console.api.StructuredExecutionResponse
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.openapi.OpenApiSecurity
 import panda.std.asError
+import panda.std.asSuccess
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route
+import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.POST
+import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 
-internal class ConsoleEndpoint(private val consoleFacade: ConsoleFacade) : ReposiliteRoutes() {
+internal class ConsoleEndpoint(
+    private val consoleFacade: ConsoleFacade,
+    /** The instance id that a structured answer names as its node. */
+    private val nodeId: String,
+) : ReposiliteRoutes() {
 
     @OpenApi(
         security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/console/execute",
         methods = [HttpMethod.POST],
         summary = "Remote command execution",
-        description = "Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command.",
+        description = "Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command or '/api/console/commands'. " +
+            "With 'structured=true' the answer carries an exit code and the output with its streams, and a dangerous command waits for 'confirm=true' (409 until then).",
         tags = ["Cli"],
         headers = [OpenApiParam(name = "Authorization", description = "Name and secret provided as basic auth credentials", required = true)],
+        queryParams = [
+            OpenApiParam(name = "structured", description = "Answer with exit code, output streams and node instead of the plain status and response lines", required = false),
+            OpenApiParam(name = "confirm", description = "Confirms a dangerous command in structured mode", required = false),
+        ],
         responses = [
             OpenApiResponse(
                 status = "200",
-                description = "Status of the executed command",
+                description = "Status of the executed command (plain), or the structured answer when 'structured=true'",
                 content = [OpenApiContent(from = ExecutionResponse::class)]
             ),
             OpenApiResponse(
@@ -64,25 +81,87 @@ internal class ConsoleEndpoint(private val consoleFacade: ConsoleFacade) : Repos
                 status = "403",
                 description = "Error message when the token has no console area (ingot.admin.console)",
                 content = [OpenApiContent(from = ErrorResponse::class)]
+            ),
+            OpenApiResponse(
+                status = "409",
+                description = "Structured call of a dangerous command without 'confirm=true'. Nothing ran. Body: error 'confirmationRequired', command, reason",
+                content = [OpenApiContent(from = ConfirmationRequiredResponse::class)]
             )
         ]
     )
-    private val executeCommand = ReposiliteRoute<ExecutionResponse>("/api/console/execute", POST) {
+    private val executeCommand = ReposiliteRoute<Any>("/api/console/execute", POST) {
         logger.info("REMOTE EXECUTION $uri from ${ctx.ip()}")
 
         authenticated {
             requireArea("console")
                 .peek {
-                    response =
-                        consoleFacade
-                            .prepareCommand(ctx.body())
-                            .peek { logger.info("$name (${ctx.ip()}) requested command: ${it.redactedCommand}") }
-                            .map { it.execute() }
+                    val structured = ctx.queryParam("structured") == "true"
+                    val confirmed = ctx.queryParam("confirm") == "true"
+                    consoleFacade
+                        .prepareCommand(ctx.body())
+                        .peek { logger.info("$name (${ctx.ip()}) requested command: ${it.redactedCommand}") }
+                        .peek { prepared ->
+                            if (!structured) {
+                                response = prepared.execute().asSuccess()
+                                return@peek
+                            }
+                            when (val answer = prepared.executeStructured(confirmed)) {
+                                is StructuredRun -> {
+                                    response = StructuredExecutionResponse(
+                                        status = answer.execution.status,
+                                        exitCode = answer.execution.exitCode,
+                                        output = answer.execution.output,
+                                        data = null,
+                                        node = nodeId,
+                                    ).asSuccess()
+                                }
+                                // The 409 has its own body. Nothing ran, and no response is set, so the body written here stands alone.
+                                is ConfirmationNeeded -> {
+                                    ctx.status(CONFLICT)
+                                        .json(ConfirmationRequiredResponse("confirmationRequired", answer.command, answer.reason))
+                                }
+                            }
+                        }
+                        .onError { response = it.asError() }
                 }
                 .onError { response = it.asError() }
         }
     }
 
-    override val routes = routes(executeCommand)
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/console/commands",
+        methods = [HttpMethod.GET],
+        summary = "Console command listing",
+        description = "The registered console commands with their aliases, options, parameters, and the 'dangerous' and 'sensitive' flags. Used for help and completion.",
+        tags = ["Cli"],
+        headers = [OpenApiParam(name = "Authorization", description = "Name and secret provided as basic auth credentials", required = true)],
+        responses = [
+            OpenApiResponse(
+                status = "200",
+                description = "Command listing of the given version",
+                content = [OpenApiContent(from = CommandListing::class)]
+            ),
+            OpenApiResponse(
+                status = "401",
+                description = "Error message related to the unauthorized access",
+                content = [OpenApiContent(from = ErrorResponse::class)]
+            ),
+            OpenApiResponse(
+                status = "403",
+                description = "Error message when the token has no console area (ingot.admin.console)",
+                content = [OpenApiContent(from = ErrorResponse::class)]
+            )
+        ]
+    )
+    private val listCommands = ReposiliteRoute<CommandListing>("/api/console/commands", GET) {
+        authenticated {
+            requireArea("console")
+                .peek { response = consoleFacade.listCommands().asSuccess() }
+                .onError { response = it.asError() }
+        }
+    }
+
+    override val routes = routes(executeCommand, listCommands)
 
 }

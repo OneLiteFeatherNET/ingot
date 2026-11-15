@@ -22,6 +22,24 @@ interface ReposiliteCommand {
     val sensitiveInput: Boolean
         get() = false
 
+    /**
+     * Whether some invocation of this command hides its input. The command listing shows it, because a listing has no
+     * arguments to ask [sensitiveInput] about. Defaults to [sensitiveInput].
+     */
+    val mayHideInput: Boolean
+        get() = sensitiveInput
+
+    /** Whether some form of this command is dangerous. Remote clients see it in the command listing. */
+    val dangerous: Boolean
+        get() = false
+
+    /**
+     * Whether this invocation is dangerous, asked after the command line has been parsed. A structured execution holds a
+     * dangerous invocation until it is confirmed. Defaults to [dangerous].
+     */
+    fun isDangerous(arguments: List<String>): Boolean =
+        dangerous
+
     fun execute(context: CommandContext)
 
 }

@@ -47,6 +47,9 @@ internal class HelpCommand(private val consoleFacade: ConsoleFacade) : Reposilit
 @Command(name = "stop", aliases = ["shutdown"], description = ["Shutdown server"])
 internal class StopCommand(private val reposilite: Reposilite) : ReposiliteCommand {
 
+    override val dangerous: Boolean
+        get() = true
+
     override fun execute(context: CommandContext) {
         reposilite.logger.warn("The shutdown request has been sent")
         reposilite.scheduler.schedule({ reposilite.shutdown() }, 1, SECONDS)

@@ -39,6 +39,8 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
+import net.onelitefeather.ingot.cluster.ClusterSettings
+import net.onelitefeather.ingot.cluster.ClusterSources
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.web.TrustedProxies
 
@@ -84,7 +86,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
         }
 
         event { event: RoutingSetupEvent ->
-            event.registerRoutes(ConsoleEndpoint(consoleFacade))
+            event.registerRoutes(ConsoleEndpoint(consoleFacade, nodeId = ClusterSettings.instanceIdOf(ClusterSources.system())))
         }
 
         event { event: HttpServerInitializationEvent ->

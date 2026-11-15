@@ -31,6 +31,14 @@ private const val DEFAULT_TOP = 20
 @Command(name = "cache", description = ["Inspect or purge an Ingot cache. Usage: cache <target> <action> [<repository>]. Targets: resolution. Actions: stats, purge."])
 internal class CacheCommand(private val mavenFacade: MavenFacade) : ReposiliteCommand {
 
+    /** Listed as dangerous because of its purge action, which is the only dangerous form of this command. */
+    override val dangerous: Boolean
+        get() = true
+
+    /** Only `purge` removes entries. `stats` reads them and runs at once. Asked after parsing, so [action] is the parsed one. */
+    override fun isDangerous(arguments: List<String>): Boolean =
+        this::action.isInitialized && action == "purge"
+
     @Parameters(index = "0", paramLabel = "<target>", description = ["Cache to operate on. Supported: 'resolution'."])
     private lateinit var target: String
 

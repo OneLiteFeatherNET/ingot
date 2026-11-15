@@ -35,6 +35,9 @@ internal class SettingsReencryptCommand(
     private val cipher: SettingsSecretCipher,
 ) : ReposiliteCommand {
 
+    override val dangerous: Boolean
+        get() = true
+
     override fun execute(context: CommandContext) {
         val record = cipher.activeRecord
         if (record == null) {
@@ -66,6 +69,9 @@ internal class SettingsDecryptCommand(
     private val records: SettingsKeyRecords,
     private val cipher: SettingsSecretCipher,
 ) : ReposiliteCommand {
+
+    override val dangerous: Boolean
+        get() = true
 
     override fun execute(context: CommandContext) {
         if (!cipher.sealing) {

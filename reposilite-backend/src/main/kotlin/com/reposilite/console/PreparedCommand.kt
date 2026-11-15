@@ -26,4 +26,17 @@ internal class PreparedCommand(
     fun execute(): ExecutionResponse =
         commandExecutor.execute(command)
 
+    fun isDangerous(): Boolean =
+        commandExecutor.isDangerous(command)
+
+    /**
+     * Runs the command in structured mode. A dangerous command is held, and nothing runs, unless [confirmed] is set.
+     */
+    fun executeStructured(confirmed: Boolean): StructuredAnswer {
+        if (!confirmed && isDangerous()) {
+            return ConfirmationNeeded(command = command.trim().substringBefore(' '), reason = commandExecutor.reasonOf(command))
+        }
+        return StructuredRun(commandExecutor.executeStructured(command))
+    }
+
 }
