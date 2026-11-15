@@ -22,34 +22,9 @@
 import { matchesSearch, parseSearch } from '../../store/maven/repositories'
 import type { Searchable } from '../../store/maven/repositories'
 import type { ControlElement, GroupLayout, UISchemaElement, VerticalLayout } from '@jsonforms/core'
+import type { CollectionEntry, SettingsSchema } from '../../types/settings'
 
-/*
- * A JSON schema of a settings domain as the backend writes it. The keywords the helpers and the forms read are named.
- * There is no open index signature: a value of type {} (for instance a narrowed unknown) must still be a schema.
- */
-export interface SettingsSchema {
-  $schema?: string
-  type?: string | string[]
-  title?: string
-  description?: string
-  format?: string
-  additionalProperties?: boolean
-  const?: unknown
-  default?: unknown
-  required?: string[]
-  properties?: Record<string, SettingsSchema>
-  items?: SettingsSchema
-  enum?: unknown[]
-  oneOf?: SettingsSchema[]
-  anyOf?: SettingsSchema[]
-  allOf?: SettingsSchema[]
-}
-
-/* An entry of a collection. Its `id` addresses it, and the other fields belong to the entry. */
-export interface CollectionEntry {
-  id?: unknown
-  [field: string]: unknown
-}
+export type { CollectionEntry, SettingsSchema } from '../../types/settings'
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/
 

@@ -31,6 +31,7 @@
 
 import { validateNewId } from './collections'
 import type { SettingsSchema } from './collections'
+import type { RepositoryEntry } from '../../types/settings'
 import { errorMessage } from '../../helpers/toast'
 import { validatePrincipalName } from '../access/accessPrincipals'
 import { ROLES, validateTeamName } from '../access/accessTeams'
@@ -65,13 +66,7 @@ export interface StepDef {
   label: string
 }
 
-/* The repository entry the settings store receives. Optional fields are added only when the schema defines them. */
-export interface RepositoryEntry {
-  id: string
-  visibility: string
-  type: string
-  [field: string]: unknown
-}
+export type { RepositoryEntry } from '../../types/settings'
 
 /* The ports the create sequence calls. Each one touches the settings store or the identity endpoints. */
 export interface WizardPorts {

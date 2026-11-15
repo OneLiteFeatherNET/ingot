@@ -20,6 +20,7 @@ import { buildCreateBody as buildPrincipalBody } from '../access/accessPrincipal
 import { manualMembers, teamDetailOf } from '../access/accessTeams'
 import { repositoryRoleNodes } from '../access/nodes/nodeTemplates'
 import { buildCreateBody as buildTokenBody } from '../identity/identityTokens'
+import type { NodeListBody, TeamBody } from '../../types/settings'
 
 /* The identity calls this step makes. The identity client of the session satisfies it. */
 export interface IdentityPorts {
@@ -40,19 +41,10 @@ export interface IdentityPorts {
   }
 }
 
-/* The members of a team as the server lists them. Only the principal and its source are read here. */
-interface TeamBody {
-  members?: { principal: string; source: string }[]
-}
-
 /* One node of a principal's node list, and whether it is allowed. */
 interface NodeGrant {
   node: string
   allowed: boolean
-}
-
-interface NodeListBody {
-  nodes?: { node: string; allowed?: boolean }[]
 }
 
 /*
