@@ -22,18 +22,45 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 
+/** The databases whose revision the current thread already advanced in an open guarded write. */
+private val heldRevisions: ThreadLocal<MutableSet<Database>> = ThreadLocal.withInitial { mutableSetOf() }
+
 /**
  * Runs an identity write in its own transaction. The policy revision is advanced first, in that same transaction. The update
  * takes the write lock of the revision row until the transaction ends, so a write of another replica cannot commit between
  * the decision of this write and its own changes: it waits for the commit, or fails on a database that refuses it. A write
- * that fails is rolled back together with the revision, so the revision moves exactly when identity changed. Usage records
- * (last seen times, spent recovery codes) do not go through here: they change no right and must not invalidate the caches of
- * every replica.
+ * that fails is rolled back together with the revision, so the revision moves exactly when identity changed. A write inside a
+ * [guardedIdentityWrite] of the same database advances nothing, because that guarded write has advanced it already. Usage
+ * records (last seen times, spent recovery codes) do not go through here: they change no right and must not invalidate the
+ * caches of every replica.
  */
 internal fun <T> identityWrite(database: Database, block: JdbcTransaction.() -> T): T =
     transaction(database) {
-        PolicyRevisionTable.update(where = { PolicyRevisionTable.id eq POLICY_REVISION_ROW }, body = {
-            it[PolicyRevisionTable.revision] = PolicyRevisionTable.revision + 1L
-        })
+        if (database !in heldRevisions.get()) {
+            advancePolicyRevision()
+        }
         block()
     }
+
+/**
+ * Runs a guarded write: the decision and the writes of one facade method share one transaction, and the revision is advanced
+ * first, so no other write can commit between the decision and the writes. Writes made inside [block] advance nothing more,
+ * so one guarded change advances the revision once.
+ */
+internal fun <T> guardedIdentityWrite(database: Database, block: () -> T): T =
+    transaction(database) {
+        advancePolicyRevision()
+        val held = heldRevisions.get()
+        held += database
+        try {
+            block()
+        } finally {
+            held -= database
+        }
+    }
+
+private fun JdbcTransaction.advancePolicyRevision() {
+    PolicyRevisionTable.update(where = { PolicyRevisionTable.id eq POLICY_REVISION_ROW }, body = {
+        it[PolicyRevisionTable.revision] = PolicyRevisionTable.revision + 1L
+    })
+}

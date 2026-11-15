@@ -113,7 +113,7 @@ class IdentityStore(
      * changes. See [identityWrite].
      */
     fun <T> guardedWrite(block: () -> T): T =
-        identityWrite(database) { block() }
+        guardedIdentityWrite(database, block)
 
     // principals
 
