@@ -51,8 +51,10 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -80,6 +82,12 @@ class IdentityStore(
         transaction(database) {
             SchemaUtils.create(*IDENTITY_TABLES)
             SchemaUtils.createMissingTablesAndColumns(*IDENTITY_TABLES)
+            if (!PolicyRevisionTable.selectAll().where { PolicyRevisionTable.id eq POLICY_REVISION_ROW }.any()) {
+                PolicyRevisionTable.insert {
+                    it[PolicyRevisionTable.id] = POLICY_REVISION_ROW
+                    it[PolicyRevisionTable.revision] = 0L
+                }
+            }
         }
     }
 
@@ -88,6 +96,26 @@ class IdentityStore(
 
     fun now(): Instant =
         Instant.now(clock)
+
+    /** The policy revision as stored. Every identity write advances it, see [identityWrite]. */
+    fun policyRevision(): Long =
+        transaction(database) {
+            PolicyRevisionTable.selectAll().where { PolicyRevisionTable.id eq POLICY_REVISION_ROW }.single()[PolicyRevisionTable.revision]
+        }
+
+    /**
+     * Runs an identity write in its own transaction and advances the policy revision in that same transaction. A write that
+     * fails is rolled back together with the revision, so the revision moves exactly when identity changed. Usage records
+     * (last seen times) do not go through here: they change no right and must not invalidate the caches of every replica.
+     */
+    private fun <T> identityWrite(block: JdbcTransaction.() -> T): T =
+        transaction(database) {
+            val result = block()
+            PolicyRevisionTable.update(where = { PolicyRevisionTable.id eq POLICY_REVISION_ROW }, body = {
+                it[PolicyRevisionTable.revision] = PolicyRevisionTable.revision + 1L
+            })
+            result
+        }
 
     // principals
 
@@ -129,7 +157,7 @@ class IdentityStore(
         }
 
     fun updatePrincipal(id: Int, displayName: String?, disabled: Boolean?) {
-        transaction(database) {
+        identityWrite {
             PrincipalTable.update(where = { PrincipalTable.id eq id }, body = {
                 if (displayName != null) it[PrincipalTable.displayName] = displayName
                 if (disabled != null) it[PrincipalTable.disabled] = disabled
@@ -154,7 +182,7 @@ class IdentityStore(
      * that team). Nothing else is touched.
      */
     fun deletePrincipal(principal: PrincipalRecord) {
-        transaction(database) {
+        identityWrite {
             findTeamRowIdsByKey(foldName(privateTeamName(principal.name))).forEach { deleteTeamRows(it) }
             InstanceRoleTable.deleteWhere { InstanceRoleTable.principalId eq principal.id }
             TeamMemberTable.deleteWhere { TeamMemberTable.principalId eq principal.id }
@@ -206,7 +234,7 @@ class IdentityStore(
     fun updateTeam(id: Int, description: String?, externalRef: String?, updateExternalRef: Boolean) {
         // An update that names no column has nothing to write, and an UPDATE without columns is not valid SQL.
         if (description == null && !updateExternalRef) return
-        transaction(database) {
+        identityWrite {
             TeamTable.update(where = { TeamTable.id eq id }, body = {
                 if (description != null) it[TeamTable.description] = description
                 if (updateExternalRef) it[TeamTable.externalRef] = externalRef
@@ -215,7 +243,7 @@ class IdentityStore(
     }
 
     fun deleteTeam(id: Int) {
-        transaction(database) { deleteTeamRows(id) }
+        identityWrite { deleteTeamRows(id) }
     }
 
     // memberships
@@ -241,7 +269,7 @@ class IdentityStore(
      * synchronisation keeps its own rows.
      */
     fun replaceManualMembers(teamId: Int, principalIds: Set<Int>) {
-        transaction(database) {
+        identityWrite {
             val syncMembers = TeamMemberTable.selectAll()
                 .where { (TeamMemberTable.teamId eq teamId) and (TeamMemberTable.memberSource eq TeamMemberSource.SYNC.name) }
                 .map { it[TeamMemberTable.principalId].value }
@@ -256,7 +284,7 @@ class IdentityStore(
     }
 
     fun addMember(teamId: Int, principalId: Int, source: TeamMemberSource) {
-        transaction(database) {
+        identityWrite {
             val exists = TeamMemberTable.selectAll()
                 .where { (TeamMemberTable.teamId eq teamId) and (TeamMemberTable.principalId eq principalId) }
                 .any()
@@ -266,7 +294,7 @@ class IdentityStore(
 
     /** Removes the membership of one principal in one team, whatever its source. Used by the synchronisation of provider groups. */
     fun removeMember(teamId: Int, principalId: Int) {
-        transaction(database) {
+        identityWrite {
             TeamMemberTable.deleteWhere { (TeamMemberTable.teamId eq teamId) and (TeamMemberTable.principalId eq principalId) }
         }
     }
@@ -295,7 +323,7 @@ class IdentityStore(
         }
 
     fun addGrant(teamId: Int, repository: String?, pathPrefix: String?, role: Role): GrantRecord =
-        transaction(database) {
+        identityWrite {
             val id = TeamGrantTable.insertAndGetId {
                 it[TeamGrantTable.teamId] = EntityID(teamId, TeamTable)
                 it[TeamGrantTable.repository] = repository
@@ -306,12 +334,12 @@ class IdentityStore(
         }
 
     fun deleteGrant(id: Int) {
-        transaction(database) { TeamGrantTable.deleteWhere { TeamGrantTable.id eq id } }
+        identityWrite { TeamGrantTable.deleteWhere { TeamGrantTable.id eq id } }
     }
 
     /** Replaces every grant of the team in one transaction. */
     fun replaceGrants(teamId: Int, grants: List<Triple<String?, String?, Role>>) {
-        transaction(database) {
+        identityWrite {
             TeamGrantTable.deleteWhere { TeamGrantTable.teamId eq teamId }
             grants.forEach { (repository, pathPrefix, role) ->
                 TeamGrantTable.insert {
@@ -329,7 +357,7 @@ class IdentityStore(
      * remove one route, all routes of a path, or all legacy grants of the team.
      */
     fun deleteLegacyGrants(teamId: Int, pathPrefix: String?, role: Role?) {
-        transaction(database) {
+        identityWrite {
             val legacyRoles = Role.entries.filter { it.legacy }.map { it.name }
             TeamGrantTable.deleteWhere {
                 var condition = (TeamGrantTable.teamId eq teamId) and (TeamGrantTable.role inList legacyRoles)
@@ -345,7 +373,7 @@ class IdentityStore(
     /** Grants the instance role to a principal or to a team, once. Exactly one of the two must be given. */
     fun grantInstanceRole(principalId: Int?, teamId: Int?) {
         require((principalId == null) != (teamId == null)) { "Exactly one of principalId or teamId must be set" }
-        transaction(database) {
+        identityWrite {
             val subjectKind = if (principalId != null) {
                 PrincipalTable.selectAll().where { PrincipalTable.id eq principalId }.single()[PrincipalTable.kind]
             } else {
@@ -374,7 +402,7 @@ class IdentityStore(
 
     /** Removes the instance role: the admin node of the subject is deleted, whatever its value. */
     fun revokeInstanceRole(principalId: Int?, teamId: Int?) {
-        transaction(database) {
+        identityWrite {
             if (principalId != null) {
                 PermissionNodeTable.deleteWhere { adminNodeOf(PRINCIPAL_KINDS, principalId) }
             } else {
@@ -444,7 +472,7 @@ class IdentityStore(
 
     /** Writes every field of the token except its id and owner. The name is compared exactly, as it always was. */
     fun saveToken(token: TokenRecord) {
-        transaction(database) {
+        identityWrite {
             PrincipalTokenTable.update(where = { PrincipalTokenTable.id eq token.id }, body = {
                 it[PrincipalTokenTable.name] = token.name
                 it[PrincipalTokenTable.secretHash] = token.secretHash
@@ -480,7 +508,7 @@ class IdentityStore(
         }
 
     fun deleteToken(id: Int) {
-        transaction(database) { PrincipalTokenTable.deleteWhere { PrincipalTokenTable.id eq id } }
+        identityWrite { PrincipalTokenTable.deleteWhere { PrincipalTokenTable.id eq id } }
     }
 
     /**
@@ -545,7 +573,7 @@ class IdentityStore(
 
     /** Replaces every node rule of the subject in one transaction. The caller has checked the rules and their uniqueness. */
     fun replaceNodes(subjectKind: String, subjectId: Int, rules: List<NodeRule>) {
-        transaction(database) {
+        identityWrite {
             PermissionNodeTable.deleteWhere { (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) }
             val createdAt = now()
             rules.forEach { rule ->
@@ -575,7 +603,7 @@ class IdentityStore(
 
     /** Replaces the parents of the team in one transaction. */
     fun replaceParents(teamId: Int, parentIds: Set<Int>) {
-        transaction(database) {
+        identityWrite {
             TeamParentTable.deleteWhere { TeamParentTable.teamId eq teamId }
             parentIds.forEach { parentId ->
                 TeamParentTable.insert {
@@ -743,7 +771,7 @@ class IdentityStore(
     /** Runs the write in its own transaction and reports a unique-key violation as `null`. */
     private fun <T : Any> insertUnique(block: () -> T): T? =
         try {
-            transaction(database) { block() }
+            identityWrite { block() }
         } catch (exception: ExposedSQLException) {
             null
         }
