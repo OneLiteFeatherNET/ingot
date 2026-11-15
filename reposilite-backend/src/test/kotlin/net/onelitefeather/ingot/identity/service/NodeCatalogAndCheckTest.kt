@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.ReplaceGrantsRequest
 import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -497,6 +498,156 @@ internal class NodeCatalogAndCheckTest {
     }
 
     /** Creates an instance admin with a usable token and returns the identifier of that principal, for the check. */
+    @Test
+    fun `the node check response of an allowing team is the same field by field`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            assertThat(checkLines(check)).describedAs("response lines").containsExactly(
+                "allowed=true",
+                "decision.source=TEAM",
+                "decision.subject=deployers",
+                "decision.node=ingot.repository.releases.deploy",
+                "decision.allowed=true",
+                "decision.depth=0",
+                "decision.decidingNode=ingot.repository.releases.deploy",
+                "decision.decidingKind=REPOSITORY",
+                "decision.explanation=Allowed by the repository node 'ingot.repository.releases.deploy' of deployers (TEAM)",
+                "trace.size=2",
+                "trace[0].source=TEAM",
+                "trace[0].subject=deployers",
+                "trace[0].node=ingot.artifact.net.onelitefeather.deploy",
+                "trace[0].allowed=false",
+                "trace[0].matched=false",
+                "trace[0].reason=does not match ingot.repository.releases.deploy: the path '' is outside 'net/onelitefeather/'",
+                "trace[0].depth=0",
+                "trace[0].kind=ARTIFACT",
+                "trace[1].source=TEAM",
+                "trace[1].subject=deployers",
+                "trace[1].node=ingot.repository.releases.deploy",
+                "trace[1].allowed=true",
+                "trace[1].matched=true",
+                "trace[1].reason=matches with specificity 4",
+                "trace[1].depth=0",
+                "trace[1].kind=REPOSITORY",
+            )
+        }
+    }
+
+    @Test
+    fun `the path check response of a denied artifact group is the same field by field`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(
+                admin, "alice", null, null,
+                repository = "releases", path = "net/onelitefeather/lib/1.0/lib-1.0.jar", action = "deploy",
+            ).orNull()!!
+
+            assertThat(checkLines(check)).describedAs("response lines").containsExactly(
+                "allowed=false",
+                "decision.source=TEAM",
+                "decision.subject=deployers",
+                "decision.node=ingot.repository.releases.deploy",
+                "decision.allowed=false",
+                "decision.depth=0",
+                "decision.decidingNode=ingot.artifact.net.onelitefeather.deploy",
+                "decision.decidingKind=ARTIFACT",
+                "decision.explanation=Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of deployers (TEAM)",
+                "trace.size=2",
+                "trace[0].source=TEAM",
+                "trace[0].subject=deployers",
+                "trace[0].node=ingot.artifact.net.onelitefeather.deploy",
+                "trace[0].allowed=false",
+                "trace[0].matched=true",
+                "trace[0].reason=matches with specificity artifact(qualified=false, artifactId=false, groupSegments=2, literalAction=true)",
+                "trace[0].depth=0",
+                "trace[0].kind=ARTIFACT",
+                "trace[1].source=TEAM",
+                "trace[1].subject=deployers",
+                "trace[1].node=ingot.repository.releases.deploy",
+                "trace[1].allowed=true",
+                "trace[1].matched=true",
+                "trace[1].reason=matches with specificity 4",
+                "trace[1].depth=0",
+                "trace[1].kind=REPOSITORY",
+            )
+        }
+    }
+
+    @Test
+    fun `the node check response of a node no rule covers is the same field by field`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.snapshots.read", token = null).orNull()!!
+
+            assertThat(checkLines(check)).describedAs("response lines").containsExactly(
+                "allowed=false",
+                "decision.source=DEFAULT",
+                "decision.subject=null",
+                "decision.node=ingot.repository.snapshots.read",
+                "decision.allowed=false",
+                "decision.depth=0",
+                "decision.decidingNode=null",
+                "decision.decidingKind=null",
+                "decision.explanation=Denied because no node or grant matches",
+                "trace.size=2",
+                "trace[0].source=TEAM",
+                "trace[0].subject=deployers",
+                "trace[0].node=ingot.artifact.net.onelitefeather.deploy",
+                "trace[0].allowed=false",
+                "trace[0].matched=false",
+                "trace[0].reason=does not match ingot.repository.snapshots.read: the action deploy does not cover read",
+                "trace[0].depth=0",
+                "trace[0].kind=ARTIFACT",
+                "trace[1].source=TEAM",
+                "trace[1].subject=deployers",
+                "trace[1].node=ingot.repository.releases.deploy",
+                "trace[1].allowed=true",
+                "trace[1].matched=false",
+                "trace[1].reason=does not match ingot.repository.snapshots.read",
+                "trace[1].depth=0",
+                "trace[1].kind=REPOSITORY",
+            )
+        }
+    }
+
+    /** The response of a check as one `field=value` line per field, so a difference names the field that changed. */
+    private fun checkLines(check: PermissionCheckDto): List<String> {
+        val decision = check.decision
+        val header = listOf(
+            "allowed=${check.allowed}",
+            "decision.source=${decision.source}",
+            "decision.subject=${decision.subject}",
+            "decision.node=${decision.node}",
+            "decision.allowed=${decision.allowed}",
+            "decision.depth=${decision.depth}",
+            "decision.decidingNode=${decision.decidingNode}",
+            "decision.decidingKind=${decision.decidingKind}",
+            "decision.explanation=${decision.explanation}",
+            "trace.size=${check.trace.size}",
+        )
+        val candidates = check.trace.mapIndexed { index, candidate ->
+            listOf(
+                "trace[$index].source=${candidate.source}",
+                "trace[$index].subject=${candidate.subject}",
+                "trace[$index].node=${candidate.node}",
+                "trace[$index].allowed=${candidate.allowed}",
+                "trace[$index].matched=${candidate.matched}",
+                "trace[$index].reason=${candidate.reason}",
+                "trace[$index].depth=${candidate.depth}",
+                "trace[$index].kind=${candidate.kind}",
+            )
+        }.flatten()
+        return header + candidates
+    }
+
     private fun bootstrapAdmin(service: IdentityFacade): AccessTokenIdentifier {
         val admin = service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "admin")).orNull()!!
         service.createToken("admin", CreateTokenRequest(name = "admin-token"))
