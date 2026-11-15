@@ -183,7 +183,7 @@ export interface PluginPage {
   area: string
   group?: string
   title: string
-  description?: string
+  description?: string | null
   blocks?: unknown[]
 }
 
@@ -373,7 +373,7 @@ const ADMIN_ENTRIES: PageEntry[] = ADMIN_TREE
 
 // The node names a permission lists: its `node`, then its `anyNode` alternatives. The store is still JavaScript, so its
 // list is typed here, at the boundary.
-const requiredNodesOf = (permission: Permission): string[] => requiredNodes(permission) as string[]
+const requiredNodesOf = (permission: Permission): string[] => requiredNodes(permission)
 
 // Whether the instance offers the support pages (GET /api/admin/support/availability). False until the server has
 // answered, so a support page is listed only once the instance says it is on (see src/store/supportBundle.js).

@@ -74,7 +74,7 @@ variant the operator seed path uses. The default therefore looks exactly like se
   variant forms such as `hover:bg-<role>/90` (the opacity modifier works).
 
 The dashboard applies the `dark` class to the document root and to the app wrapper. The
-mode comes from `src/store/theme.js` (`auto`, `light` or `dark`).
+mode comes from `src/store/theme.ts` (`auto`, `light` or `dark`).
 
 Roles:
 
@@ -240,7 +240,7 @@ so no magenta opens a chart and the pink end sits last.
 
 Each token is a CSS custom property, `--md-ext-color-chart-1` to `-8`, in `color.css`:
 light values on `:root`, dark values on `.dark`. They have no Tailwind utility, because a
-chart reads them through `src/store/palette.js` (`categorical()`), not through a class.
+chart reads them through `src/store/palette.ts` (`categorical()`), not through a class.
 
 Generation: each hue was harmonised toward the steel seed `#3A5F85` with `Blend.harmonize` from
 `@material/material-color-utilities`, chroma 52. Light takes tone 40 and dark tone 80 of the
@@ -270,7 +270,7 @@ Series are assigned in the order above, and every pair is checked, adjacent or n
 still needs its labels, because colour alone does not identify a series for everyone.
 
 The colour tests in `src/styles/md3/color.test.ts` hold the rules above: 3:1 on the surfaces,
-15 CIE76 units between any two series, and a steel blue first series. `src/store/palette.test.js`
+15 CIE76 units between any two series, and a steel blue first series. `src/store/palette.test.ts`
 checks that the palette reads the eight tokens that `color.css` defines.
 
 Charts use these colours for marks only. Text on a chart uses `chrome()` roles.
@@ -613,7 +613,7 @@ Renders `role="progressbar"` with `aria-valuenow` as a percentage.
 ### MdSnackbar
 
 The notification of the dashboard. It shows one notice at a time from a shared queue
-(`src/store/snackbar.js`), and it is mounted once, in `src/App.vue`. Do not mount a second
+(`src/store/snackbar.ts`), and it is mounted once, in `src/App.vue`. Do not mount a second
 one.
 
 Callers do not use the component directly. They use the helpers in `src/helpers/toast.ts`:

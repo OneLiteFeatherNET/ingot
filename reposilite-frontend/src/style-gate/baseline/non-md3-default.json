@@ -285,157 +285,157 @@
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-blue-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-blue-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-cyan-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-cyan-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-fuchsia-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-fuchsia-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-gray-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-gray-500",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-green-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-green-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-red-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-red-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-white",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-yellow-300",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "dark:text-yellow-400",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "font-bold",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-blue-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-blue-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-cyan-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-cyan-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-fuchsia-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-fuchsia-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-gray-500",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-gray-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-gray-900",
     "count": 2
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-green-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-green-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-red-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-red-700",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-yellow-600",
     "count": 1
   },
   {
-    "file": "src/store/console/ansi.js",
+    "file": "src/store/console/ansi.ts",
     "match": "text-yellow-700",
     "count": 1
   },
