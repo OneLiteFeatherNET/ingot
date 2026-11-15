@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type DOMWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as colourTester } from './MdColourFieldRenderer.vue'
 import MdColourFieldRenderer from './MdColourFieldRenderer.vue'
@@ -31,46 +32,48 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountColour = (name, schema, data) => mount(JsonForms, {
+const mountColour = (name: string, schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { [name]: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${name}`, label: 'Seed colour' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${name}`, label: 'Seed colour' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))
   }
 })
 
-const seed = (data = {}) => mountColour('seedColor', { type: 'string' }, { seedColor: data.value })
+const seed = (data: { value?: string } = {}) => mountColour('seedColor', { type: 'string' }, { seedColor: data.value })
+type Seeded = ReturnType<typeof seed>
 
-const lastData = (wrapper) => wrapper.emitted('change').at(-1)[0].data
-const textInput = (wrapper) => wrapper.find('input[type="text"]')
-const picker = (wrapper) => wrapper.find('input[type="color"]')
-const clearButton = (wrapper) => wrapper.findAll('button').find(button => button.text() === 'Clear')
+const lastData = (wrapper: Seeded) => (wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
+const textInput = (wrapper: Seeded) => wrapper.find('input[type="text"]') as DOMWrapper<HTMLInputElement>
+const picker = (wrapper: Seeded) => wrapper.find('input[type="color"]') as DOMWrapper<HTMLInputElement>
+const clearButton = (wrapper: Seeded) => wrapper.findAll('button').find(button => button.text() === 'Clear') as DOMWrapper<HTMLButtonElement>
 
 describe('MdColourFieldRenderer tester', () => {
-  const schema = { type: 'string' }
-  const control = (scope) => ({ type: 'Control', scope })
+  const schema: JsonSchema7 = { type: 'string' }
+  const context = { rootSchema: schema, config: undefined }
+  const control = (scope: string) => ({ type: 'Control', scope }) as ControlElement
 
   it('takes the colour settings by name, above the text field', () => {
-    const colour = colourTester(control('#/properties/appearance/properties/primaryColor'), schema)
+    const colour = colourTester(control('#/properties/appearance/properties/primaryColor'), schema, context)
 
-    expect(colour, 'a colour field outranks the text field').toBeGreaterThan(textTester(control('#/properties/x'), schema))
+    expect(colour, 'a colour field outranks the text field').toBeGreaterThan(textTester(control('#/properties/x'), schema, context))
   })
 
   it('takes every named colour setting', () => {
     for (const name of ['seedColor', 'primaryColor', 'secondaryColor', 'tertiaryColor', 'errorColor']) {
-      expect(colourTester(control(`#/properties/${name}`), schema), name).toBeGreaterThan(-1)
+      expect(colourTester(control(`#/properties/${name}`), schema, context), name).toBeGreaterThan(-1)
     }
   })
 
   it('takes a string that declares the colour format, whatever its name', () => {
-    expect(colourTester(control('#/properties/accent'), { type: 'string', format: 'color' })).toBeGreaterThan(-1)
+    expect(colourTester(control('#/properties/accent'), { type: 'string', format: 'color' }, context)).toBeGreaterThan(-1)
   })
 
   it('leaves other strings to the text field', () => {
-    expect(colourTester(control('#/properties/title'), schema)).toBe(-1)
+    expect(colourTester(control('#/properties/title'), schema, context)).toBe(-1)
   })
 })
 

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import type { JsonSchema } from '@jsonforms/core'
+
 /*
  * The property keys whose values are masked in the settings. The match is made on the last
  * segment of the path, case-insensitively: `secretKey`, `Proxy_PASSWORD`, `accessKey`,
@@ -22,7 +24,8 @@
 export const SENSITIVE_KEY_PATTERN = /secret|password|access[-_]?key|endpoint/i
 
 /* The key a control is bound to: the last segment of its path, such as `secretKey` in `storage.secretKey`. */
-export const keyOf = (path) => String(path ?? '').split('.').pop()
+export const keyOf = (path?: string | null): string => String(path ?? '').split('.').pop() ?? ''
 
 /* A value is sensitive when its key matches the pattern, or its schema declares the password format. */
-export const isSensitive = (path, schema) => schema?.format === 'password' || SENSITIVE_KEY_PATTERN.test(keyOf(path))
+export const isSensitive = (path?: string | null, schema?: JsonSchema | null): boolean =>
+  schema?.format === 'password' || SENSITIVE_KEY_PATTERN.test(keyOf(path))

@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { isEnumControl, isOneOfEnumControl, rankWith } from '@jsonforms/core'
+import type { ControlElement, JsonSchema } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { descriptionText } from './description'
 import MdSelect from '../md/MdSelect.vue'
 
@@ -32,29 +33,30 @@ export const tester = rankWith(3, isEnumControl)
 export const oneOfTester = rankWith(6, isOneOfEnumControl)
 
 /* The values of an enum, or the constants of a oneOf, with their titles as labels. */
-export const optionsOf = (schema) => {
+export const optionsOf = (schema?: JsonSchema): Array<{ value: unknown; label: string }> => {
   if (Array.isArray(schema?.enum)) {
     return schema.enum.map(value => ({ value, label: String(value) }))
   }
-  return (schema?.oneOf ?? []).map(branch => ({ value: branch.const, label: branch.title ?? String(branch.const) }))
+  const branches = (schema?.oneOf ?? []) as Array<{ const?: unknown; title?: string }>
+  return branches.map(branch => ({ value: branch.const, label: branch.title ?? String(branch.const) }))
 }
 
-export default {
+export default defineComponent({
   name: 'MdSelectRenderer',
   components: {
     MdSelect
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const choices = computed(() => optionsOf(input.control.value.schema))
     const options = computed(() => choices.value.map(choice => ({ value: String(choice.value), label: choice.label })))
     const selected = computed(() => {
-      const value = input.control.value.data
+      const value: unknown = input.control.value.data
       return value === undefined || value === null ? '' : String(value)
     })
 
-    const onSelect = (text) => {
+    const onSelect = (text: string) => {
       const match = choices.value.find(choice => String(choice.value) === text)
       input.handleChange(input.control.value.path, match?.value)
     }
@@ -67,7 +69,7 @@ export default {
       onSelect
     }
   }
-}
+})
 </script>
 
 <template>

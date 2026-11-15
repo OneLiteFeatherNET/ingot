@@ -15,10 +15,11 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as tagsTester } from './TagsFieldRenderer.vue'
 import TagsFieldRenderer from './TagsFieldRenderer.vue'
@@ -33,21 +34,21 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const tagsSchema = {
+const tagsSchema: JsonSchema7 = {
   type: 'object',
   properties: {
     tags: { type: 'array', items: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,31}$' }, maxItems: 10, uniqueItems: true, title: 'Tags' }
   }
 }
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
-const mountTags = (data = { tags: [] }, config = {}) => {
+const mountTags = (data: Record<string, unknown> = { tags: [] }, config: Record<string, unknown> = {}) => {
   wrapper = mount(JsonForms, {
     props: {
       data,
       schema: tagsSchema,
-      uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/tags' }] },
+      uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/tags' }] } as UISchemaElement,
       renderers,
       config,
       ajv: markRaw(createAjv({ useDefaults: true }))
@@ -57,10 +58,10 @@ const mountTags = (data = { tags: [] }, config = {}) => {
   return wrapper
 }
 
-const field = () => wrapper.find('input')
-const chipTexts = () => wrapper.findAll('[data-test="chip"]').map(chip => chip.text())
-const lastData = () => wrapper.emitted('change').at(-1)[0].data
-const press = (key) => field().trigger('keydown', { key })
+const field = () => wrapper!.find('input')
+const chipTexts = () => wrapper!.findAll('[data-test="chip"]').map(chip => chip.text())
+const lastData = () => (wrapper!.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
+const press = (key: string) => field().trigger('keydown', { key })
 
 afterEach(() => {
   wrapper?.unmount()
@@ -69,24 +70,26 @@ afterEach(() => {
 
 describe('TagsFieldRenderer tester', () => {
   // JSON Forms hands a tester the root schema and resolves the scope itself, so the tests do the same.
-  const rootWith = (name, schema) => ({ type: 'object', properties: { [name]: schema } })
-  const control = { type: 'Control', scope: '#/properties/tags' }
-  const stringArray = { type: 'array', items: { type: 'string' } }
+  const rootWith = (name: string, schema: JsonSchema7): JsonSchema7 => ({ type: 'object', properties: { [name]: schema } })
+  const control: ControlElement = { type: 'Control', scope: '#/properties/tags' }
+  const stringArray: JsonSchema7 = { type: 'array', items: { type: 'string' } }
 
   it('takes a string array named tags, above the array renderer', () => {
     const root = rootWith('tags', stringArray)
 
-    expect(tagsTester(control, root), 'the tags field outranks the generic list').toBeGreaterThan(arrayTester(control, root))
+    expect(tagsTester(control, root, { rootSchema: root, config: undefined }), 'the tags field outranks the generic list').toBeGreaterThan(arrayTester(control, root, { rootSchema: root, config: undefined }))
   })
 
   it('leaves string arrays with other names to the list', () => {
     const root = rootWith('allowedGroups', stringArray)
 
-    expect(tagsTester({ type: 'Control', scope: '#/properties/allowedGroups' }, root)).toBe(-1)
+    expect(tagsTester({ type: 'Control', scope: '#/properties/allowedGroups' } as ControlElement, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 
   it('leaves an array of objects named tags to the list', () => {
-    expect(tagsTester(control, rootWith('tags', { type: 'array', items: { type: 'object' } }))).toBe(-1)
+    const root = rootWith('tags', { type: 'array', items: { type: 'object' } })
+
+    expect(tagsTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 })
 
@@ -95,7 +98,7 @@ describe('TagsFieldRenderer', () => {
     mountTags({ tags: ['team-core', 'ci'] })
 
     expect(chipTexts()).toEqual(['team-core', 'ci'])
-    expect(wrapper.find('[data-test="array"]').exists(), 'the generic list is not drawn').toBe(false)
+    expect(wrapper!.find('[data-test="array"]').exists(), 'the generic list is not drawn').toBe(false)
   })
 
   it('writes a new chip into the data of the form', async () => {
@@ -110,20 +113,20 @@ describe('TagsFieldRenderer', () => {
   it('writes the removal of a chip into the data of the form', async () => {
     mountTags({ tags: ['team-core', 'ci'] })
 
-    await wrapper.find('[aria-label="Remove team-core"]').trigger('click')
+    await wrapper!.find('[aria-label="Remove team-core"]').trigger('click')
 
     expect(lastData().tags).toEqual(['ci'])
   })
 
   it('refuses a tag that is not valid and writes nothing', async () => {
     mountTags({ tags: [] })
-    const changesBefore = wrapper.emitted('change')?.length ?? 0
+    const changesBefore = wrapper!.emitted('change')?.length ?? 0
 
     await field().setValue('Not Valid')
     await press('Enter')
 
-    expect(wrapper.emitted('change')?.length ?? 0, 'no change reaches the form').toBe(changesBefore)
-    expect(wrapper.text()).toContain('Use lower case letters, digits and hyphens')
+    expect(wrapper!.emitted('change')?.length ?? 0, 'no change reaches the form').toBe(changesBefore)
+    expect(wrapper!.text()).toContain('Use lower case letters, digits and hyphens')
   })
 
   it('offers the tags that other repositories use, from the form configuration', async () => {
@@ -131,7 +134,7 @@ describe('TagsFieldRenderer', () => {
 
     await field().trigger('focus')
 
-    const suggestions = wrapper.findAll('[data-test="suggestion"]').map(button => button.text())
+    const suggestions = wrapper!.findAll('[data-test="suggestion"]').map(button => button.text())
     expect(suggestions).toEqual(['ci', 'internal'])
   })
 

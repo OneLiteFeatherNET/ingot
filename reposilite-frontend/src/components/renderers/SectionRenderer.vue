@@ -25,11 +25,12 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
 import {and, isLayout, rankWith, uiTypeIs} from '@jsonforms/core'
+import type {Layout} from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsLayout} from '@jsonforms/vue'
 import {useVanillaLayout} from '@dzikoysk/vue-vanilla'
-import {inject} from 'vue'
+import {defineComponent, inject} from 'vue'
 
 /*
  * A Group is a titled section of a form, not a fieldset. The vanilla group draws a bordered box
@@ -40,16 +41,16 @@ import {inject} from 'vue'
  */
 export const tester = rankWith(4, and(isLayout, uiTypeIs('Group')))
 
-export default {
+export default defineComponent({
   name: 'SectionRenderer',
   components: {
     DispatchRenderer
   },
-  props: rendererProps(),
+  props: rendererProps<Layout>(),
   setup(props) {
     // A group inside another object is a sub-group: a smaller heading, and no box of its own.
     const nested = inject('jsonforms.nestedInfo', { level: 0 }).level > 0
     return { ...useVanillaLayout(useJsonFormsLayout(props)), nested }
   }
-}
+})
 </script>

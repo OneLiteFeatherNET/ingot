@@ -14,11 +14,12 @@
   - limitations under the License.
   -->
 
-<script>
+<script lang="ts">
 import { and, rankWith, schemaMatches, scopeEndsWith } from '@jsonforms/core'
+import type { ControlElement } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import MdChipInput from '../md/MdChipInput.vue'
 import { descriptionText } from './description'
 import { validateTag } from '../../store/maven/repositories'
@@ -31,28 +32,28 @@ import { validateTag } from '../../store/maven/repositories'
  */
 export const tester = rankWith(4, and(
   scopeEndsWith('tags'),
-  schemaMatches((schema) => schema.type === 'array' && schema.items?.type === 'string')
+  schemaMatches((schema) => schema.type === 'array' && (schema as { items?: { type?: string } }).items?.type === 'string')
 ))
 
-export default {
+export default defineComponent({
   name: 'TagsFieldRenderer',
   components: {
     MdChipInput
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
     const path = computed(() => input.control.value.path)
 
-    const tags = computed(() => {
-      const data = input.control.value.data
-      return Array.isArray(data) ? data : []
+    const tags = computed<string[]>(() => {
+      const data: unknown = input.control.value.data
+      return Array.isArray(data) ? (data as string[]) : []
     })
-    const suggestions = computed(() => input.control.value.config?.tagSuggestions ?? [])
-    const maxItems = computed(() => input.control.value.schema?.maxItems ?? 0)
+    const suggestions = computed<string[]>(() => (input.control.value.config as { tagSuggestions?: string[] } | undefined)?.tagSuggestions ?? [])
+    const maxItems = computed(() => (input.control.value.schema as { maxItems?: number } | undefined)?.maxItems ?? 0)
 
     // An empty list stays an empty list: removing the last chip must not drop the property.
-    const onChange = (next) => {
+    const onChange = (next: string[]) => {
       input.handleChange(path.value, next)
     }
 
@@ -66,7 +67,7 @@ export default {
       validateTag
     }
   }
-}
+})
 </script>
 
 <template>

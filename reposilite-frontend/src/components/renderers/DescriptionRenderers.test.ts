@@ -19,6 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
@@ -31,11 +32,11 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountField = (key, schema, data) => mount(JsonForms, {
+const mountField = (key: string, schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { [key]: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${key}`, label: 'Field' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${key}`, label: 'Field' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))

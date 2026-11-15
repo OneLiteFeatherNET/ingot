@@ -19,6 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import UnsupportedRenderer, { tester as unsupportedTester } from './UnsupportedRenderer.vue'
 
@@ -30,11 +31,11 @@ const renderers = markRaw([
 
 const FALLBACK = 'This section cannot be edited here, use Download as JSON'
 
-const mountField = (schema, data = {}) => mount(JsonForms, {
+const mountField = (schema: JsonSchema7, data: Record<string, unknown> = {}) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { field: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))

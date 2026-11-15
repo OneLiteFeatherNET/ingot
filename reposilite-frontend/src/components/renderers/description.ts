@@ -19,7 +19,7 @@
 const LINE_BREAK = /<br\s*\/?>/gi
 
 /** Splits a schema description on <br>, <br/> and <br /> into trimmed, non-empty lines. */
-export const splitDescription = (text) => {
+export const splitDescription = (text?: string | null): string[] => {
   if (!text) return []
   return String(text)
     .split(LINE_BREAK)
@@ -28,4 +28,4 @@ export const splitDescription = (text) => {
 }
 
 /** The lines joined with newlines, for an element styled with white-space: pre-line. */
-export const descriptionText = (text) => splitDescription(text).join('\n')
+export const descriptionText = (text?: string | null): string => splitDescription(text).join('\n')

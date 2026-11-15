@@ -19,6 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
@@ -31,18 +32,18 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountField = (key, schema, data = { [key]: 'hunter2' }) => mount(JsonForms, {
+const mountField = (key: string, schema: JsonSchema7, data: Record<string, unknown> = { [key]: 'hunter2' }) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { [key]: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${key}`, label: 'Field' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: `#/properties/${key}`, label: 'Field' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))
   }
 })
 
-const toggleOf = (wrapper) => wrapper.find('button[aria-label]')
+const toggleOf = (wrapper: ReturnType<typeof mountField>) => wrapper.find('button[aria-label]')
 
 describe('MdTextFieldRenderer secrets', () => {
   it('masks a property whose key names a secret', () => {
@@ -142,13 +143,13 @@ describe('MdTextFieldRenderer secrets', () => {
   })
 
   it('masks again when the control is bound to another property', async () => {
-    const schema = { type: 'object', properties: { secretKey: { type: 'string' }, accessKey: { type: 'string' } } }
+    const schema: JsonSchema7 = { type: 'object', properties: { secretKey: { type: 'string' }, accessKey: { type: 'string' } } }
     const data = { secretKey: 'hunter2', accessKey: 'AKIA' }
     const wrapper = mount(JsonForms, {
       props: {
         data,
         schema,
-        uischema: { type: 'Control', scope: '#/properties/secretKey', label: 'Field' },
+        uischema: { type: 'Control', scope: '#/properties/secretKey', label: 'Field' } as ControlElement,
         renderers,
         config: { showUnfocusedDescription: true },
         ajv: markRaw(createAjv({ useDefaults: true }))
@@ -157,7 +158,7 @@ describe('MdTextFieldRenderer secrets', () => {
     await wrapper.find('button[aria-label="Show secret"]').trigger('click')
     expect(wrapper.find('input').attributes('type')).toBe('text')
 
-    await wrapper.setProps({ uischema: { type: 'Control', scope: '#/properties/accessKey', label: 'Field' } })
+    await wrapper.setProps({ uischema: { type: 'Control', scope: '#/properties/accessKey', label: 'Field' } as ControlElement })
 
     expect(wrapper.find('input').attributes('type')).toBe('password')
     expect(wrapper.find('button[aria-label="Show secret"]').exists()).toBe(true)
@@ -168,6 +169,6 @@ describe('MdTextFieldRenderer secrets', () => {
 
     await wrapper.find('input').setValue('new-value')
 
-    expect(wrapper.emitted('change').at(-1)[0].data.secretKey).toBe('new-value')
+    expect((wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data.secretKey).toBe('new-value')
   })
 })

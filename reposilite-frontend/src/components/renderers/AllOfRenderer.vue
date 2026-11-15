@@ -28,19 +28,21 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {createCombinatorRenderInfos, findMatchingUISchema, isAllOfControl, rankWith} from '@jsonforms/core'
+import type {ControlElement, JsonSchema} from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsAllOfControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
+import {defineComponent} from 'vue'
 
 export const tester = rankWith(3, isAllOfControl)
 
-export default {
+export default defineComponent({
   name: 'AllOfRenderer',
   components: {
     DispatchRenderer
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup: props => useVanillaControl(useJsonFormsAllOfControl(props)),
   computed: {
     delegateUISchema() {
@@ -52,7 +54,7 @@ export default {
     },
     allOfRenderInfos() {
       return createCombinatorRenderInfos(
-          this.control.schema.allOf,
+          this.control.schema.allOf as JsonSchema[],
           this.control.rootSchema,
           'allOf',
           this.control.uischema,
@@ -61,5 +63,5 @@ export default {
       )
     }
   }
-}
+})
 </script>

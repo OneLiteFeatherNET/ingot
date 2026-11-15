@@ -19,6 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
+import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
@@ -31,18 +32,18 @@ const renderers = markRaw([
   ...vanillaRenderers
 ])
 
-const mountField = (schema, data) => mount(JsonForms, {
+const mountField = (schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
   props: {
     data,
     schema: { type: 'object', properties: { field: schema } },
-    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] },
+    uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/field', label: 'Field' }] } as UISchemaElement,
     renderers,
     config: { showUnfocusedDescription: true },
     ajv: markRaw(createAjv({ useDefaults: true }))
   }
 })
 
-const lastData = (wrapper) => wrapper.emitted('change').at(-1)[0].data
+const lastData = (wrapper: ReturnType<typeof mountField>) => (wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
 
 describe('MdTextFieldRenderer', () => {
   it('draws a text string as an outlined text field labelled by the property', () => {
@@ -81,7 +82,7 @@ describe('MdTextFieldRenderer', () => {
 })
 
 describe('MdSelectRenderer', () => {
-  const visibility = { type: 'string', enum: ['PUBLIC', 'PRIVATE'] }
+  const visibility: JsonSchema7 = { type: 'string', enum: ['PUBLIC', 'PRIVATE'] }
 
   it('draws an enum as a select with one option per value', () => {
     const wrapper = mountField(visibility, { field: 'PUBLIC' })

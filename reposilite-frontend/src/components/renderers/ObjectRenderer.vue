@@ -15,22 +15,23 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {findUISchema, isObjectControl, rankWith} from '@jsonforms/core'
+import type {ControlElement, UISchemaElement} from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsControlWithDetail} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {inject} from 'vue'
+import {defineComponent, inject} from 'vue'
 import {OPTIONAL_PATH_KEY, useNested} from './util'
 import isEmpty from 'lodash/isEmpty'
 
 export const tester = rankWith(2, isObjectControl)
 
-export default {
+export default defineComponent({
   name: 'ObjectRenderer',
   components: {
     DispatchRenderer
   },
-  props: rendererProps(),
+  props: rendererProps<ControlElement>(),
   setup: props => {
     const control = useVanillaControl(useJsonFormsControlWithDetail(props))
     const nested = useNested('object')
@@ -45,7 +46,7 @@ export default {
   },
   computed: {
     detailUiSchema() {
-      const result = findUISchema(
+      const result: UISchemaElement & { label?: string; options?: Record<string, unknown> } = findUISchema(
           this.control.uischemas,
           this.control.schema,
           this.control.uischema.scope,
@@ -74,7 +75,7 @@ export default {
       return result
     }
   }
-}
+})
 </script>
 
 <style scoped>
