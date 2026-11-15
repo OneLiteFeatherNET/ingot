@@ -46,19 +46,30 @@ internal class RecordingDelegate(initial: Map<String, ByteArray> = emptyMap()) :
     @Volatile
     var reportedSizeOverride: Long? = null
 
+    /** When set, every write fails and stores nothing. */
+    @Volatile
+    var failWrites = false
+
+    /** When set, every removal fails and removes nothing. */
+    @Volatile
+    var failRemovals = false
+
+    /** Runs after a full read has taken its bytes, so a test can change the store while the read is still open. */
     @Volatile
     var onFullRead: () -> Unit = {}
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> {
         writes.incrementAndGet()
-        files[location.toString()] = inputStream.readBytes()
+        val bytes = inputStream.readBytes()
+        if (failWrites) return Result.error(ErrorResponse(500, "write refused by the test delegate"))
+        files[location.toString()] = bytes
         return Result.ok(Unit)
     }
 
     override fun getFile(location: Location): Result<InputStream, ErrorResponse> {
         fullReads.incrementAndGet()
-        onFullRead()
         val bytes = files[location.toString()] ?: return notFoundError("missing ${location}")
+        onFullRead()
         return Result.ok(ByteArrayInputStream(bytes))
     }
 
@@ -73,6 +84,7 @@ internal class RecordingDelegate(initial: Map<String, ByteArray> = emptyMap()) :
 
     override fun removeFile(location: Location): Result<Unit, ErrorResponse> {
         removals.incrementAndGet()
+        if (failRemovals) return Result.error(ErrorResponse(500, "removal refused by the test delegate"))
         files.remove(location.toString())
         return Result.ok(Unit)
     }
