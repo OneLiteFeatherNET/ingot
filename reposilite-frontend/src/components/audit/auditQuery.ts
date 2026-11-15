@@ -21,11 +21,88 @@
  * of its arguments, and the reference time is passed in, so the presets can be tested on any day.
  */
 
+import type { RouteLocationRaw } from 'vue-router'
 import { browseLocation } from '../../router/paths'
+
+/*
+ * One audit event as the audit API sends it. The generated API types (types/api.ts) do not declare the
+ * audit endpoints yet, so the shape is declared here, from the server's record.
+ */
+export interface AuditEvent {
+  id: number
+  timestamp: string
+  actor: string
+  // Not sent by the API yet; an event without it links to the user page.
+  actorKind?: string
+  actorAddress?: string | null
+  action: string
+  repository?: string | null
+  path?: string | null
+  details?: Record<string, unknown> | null
+  occurrences: number
+  success: boolean
+}
+
+/** The fields the labels and links read. A full event satisfies it, and so does a partial one. */
+export type AuditEventFields = Pick<AuditEvent, 'action' | 'actor'> & Partial<AuditEvent>
+
+/** One page of the audit log, and the cursor of the next one. */
+export interface AuditPage {
+  events: AuditEvent[]
+  nextCursor?: string | null
+}
+
+/** The filters as the view holds them. `range` is one of the keys of RANGE_OPTIONS. */
+export interface AuditFilters {
+  action: string
+  actor: string
+  repository: string
+  text: string
+  range: string
+  from: string
+  to: string
+}
+
+/** A route query, as the address holds it. */
+export type AuditQuery = Record<string, unknown>
+
+/** The route query the view writes back to the address. */
+export type AuditRouteQuery = Record<string, string>
+
+/** The parameters of one API call. */
+export type AuditParams = Record<string, string | undefined>
+
+/** The time bounds of a range, as ISO-8601 instants. */
+export interface AuditBounds {
+  from?: string
+  to?: string
+}
+
+export interface ActionOption {
+  value: string
+  label: string
+}
+
+export interface ActionGroup {
+  key: string
+  label: string
+  actions: string[]
+}
+
+export interface RangeOption {
+  key: string
+  label: string
+  hours: number | null
+}
+
+export interface IdentityTarget {
+  label: string
+  path: string | null
+}
 
 const HOUR_MS = 60 * 60 * 1000
 
-export const ACTION_LABELS = {
+export const ACTION_LABELS: Readonly<Record<string, string>> = {
   ARTIFACT_DEPLOYED: 'Artifact deployed',
   ARTIFACT_DELETED: 'Artifact deleted',
   SETTINGS_CHANGED: 'Settings changed',
@@ -60,7 +137,7 @@ export const ACTION_LABELS = {
  * The identity chips. Each one stands for several actions, which travel as one comma separated
  * `action` filter, so the address of a chip is the list of its actions.
  */
-export const ACTION_GROUPS = [
+export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'accounts', label: 'Accounts', actions: ['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'] },
   { key: 'teams', label: 'Teams', actions: ['TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED'] },
   { key: 'instance-admin', label: 'Instance admin', actions: ['INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED'] },
@@ -75,13 +152,13 @@ export const ACTION_GROUPS = [
   },
 ]
 
-export const ACTION_OPTIONS = [
+export const ACTION_OPTIONS: ActionOption[] = [
   { value: '', label: 'All actions' },
   ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
 ]
 
 /** The time-range chips. `hours` is the look-back of a preset; `custom` reads the From and To fields. */
-export const RANGE_OPTIONS = [
+export const RANGE_OPTIONS: RangeOption[] = [
   { key: 'all', label: 'All time', hours: null },
   { key: '24h', label: '24 hours', hours: 24 },
   { key: '7d', label: '7 days', hours: 7 * 24 },
@@ -91,17 +168,17 @@ export const RANGE_OPTIONS = [
 
 const RANGE_KEYS = RANGE_OPTIONS.map(option => option.key)
 
-const text = (value) => (typeof value === 'string' ? value.trim() : '')
+const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
 /** The known actions of an action filter, which holds one action or a comma separated list of them. */
-const knownActions = (value) =>
+const knownActions = (value: string): string =>
   value.split(',').map(part => part.trim()).filter(part => Object.hasOwn(ACTION_LABELS, part)).join(',')
 
 /**
  * Reads the filters from a route query. An unknown action or range is dropped rather than sent,
  * so a hand-edited address shows the unfiltered view instead of an error.
  */
-export const readAuditFilters = (query = {}) => {
+export const readAuditFilters = (query: AuditQuery = {}): AuditFilters => {
   const action = knownActions(text(query.action))
   const range = text(query.range)
   return {
@@ -119,8 +196,8 @@ export const readAuditFilters = (query = {}) => {
  * The route query for a set of filters. Empty filters and the default range are left out, so the
  * address of an unfiltered view stays `/audit`.
  */
-export const auditFiltersToQuery = (filters) => {
-  const query = {}
+export const auditFiltersToQuery = (filters: AuditFilters): AuditRouteQuery => {
+  const query: AuditRouteQuery = {}
   if (filters.action) query.action = filters.action
   if (filters.actor) query.actor = filters.actor
   if (filters.repository) query.repository = filters.repository
@@ -137,7 +214,7 @@ export const auditFiltersToQuery = (filters) => {
  * The bounds a filter sends to the API, as ISO-8601 instants. A preset counts back from `now`, so the
  * same address shows the last 24 hours whenever it is opened.
  */
-export const auditRangeBounds = (filters, now) => {
+export const auditRangeBounds = (filters: AuditFilters, now: number): AuditBounds => {
   if (filters.range === 'custom') {
     return {
       from: filters.from ? new Date(filters.from).toISOString() : undefined,
@@ -152,7 +229,7 @@ export const auditRangeBounds = (filters, now) => {
 }
 
 /** The parameters of one API call. Empty values are left out, and the cursor is added for later pages. */
-export const auditParams = (filters, now, cursor) => {
+export const auditParams = (filters: AuditFilters, now: number, cursor?: string | null): AuditParams => {
   const params = {
     action: filters.action || undefined,
     actor: filters.actor || undefined,
@@ -165,42 +242,42 @@ export const auditParams = (filters, now, cursor) => {
 }
 
 /** The value a datetime-local input shows for an ISO instant, in the reader's time zone. */
-export const isoToLocalInput = (iso) => {
+export const isoToLocalInput = (iso: string): string => {
   if (!iso) return ''
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const pad = (value) => String(value).padStart(2, '0')
+  const pad = (value: number): string => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 /** The ISO instant for a datetime-local value, or an empty string when the input is blank or invalid. */
-export const localInputToIso = (value) => {
+export const localInputToIso = (value: string): string => {
   if (!value) return ''
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
 
-export const actionLabel = (action) => ACTION_LABELS[action] ?? action
+export const actionLabel = (action: string): string => ACTION_LABELS[action] ?? action
 
-const NON_PRINCIPAL_ACTORS = new Set(['anonymous', 'system'])
+const NON_PRINCIPAL_ACTORS = new Set<string>(['anonymous', 'system'])
 
 // A login provider that changed something on its own, at a sign in, is recorded as `system:<provider>`.
 const PROVIDER_ACTOR_PREFIX = 'system:'
 
 /** The provider of an event written by a login provider (`system:oidc:corp`), or `null` for any other actor. */
-export const providerOf = (event) =>
+export const providerOf = (event: AuditEventFields): string | null =>
   (typeof event.actor === 'string' && event.actor.startsWith(PROVIDER_ACTOR_PREFIX)
     ? event.actor.slice(PROVIDER_ACTOR_PREFIX.length)
     : null)
 
 /** The actor as a reader sees it: a login provider reads as the provider, every other actor as its name. */
-export const actorLabelOf = (event) => {
+export const actorLabelOf = (event: AuditEventFields): string => {
   const provider = providerOf(event)
   return provider ? `Login provider ${provider}` : event.actor
 }
 
 /** The action as a reader sees it: a team change that a login provider made at a sign in reads as a sync. */
-export const actionLabelOf = (event) =>
+export const actionLabelOf = (event: AuditEventFields): string =>
   (event.action === 'TEAM_MEMBERSHIP_CHANGED' && providerOf(event) !== null
     ? 'Team members synced at sign in'
     : actionLabel(event.action))
@@ -212,7 +289,7 @@ export const actionLabelOf = (event) =>
  * authenticated account is linked: `anonymous` and `system` are not accounts, and a failed login names
  * whatever the caller typed, so it is not linked either.
  */
-export const actorLocationOf = (event) => {
+export const actorLocationOf = (event: AuditEventFields): string | null => {
   if (NON_PRINCIPAL_ACTORS.has(event.actor) || providerOf(event) !== null || event.action === 'LOGIN_FAILED') {
     return null
   }
@@ -221,9 +298,9 @@ export const actorLocationOf = (event) => {
 }
 
 const MACHINE_TEAM_PREFIX = 'machine:'
-const PRINCIPAL_PAGES = { USER: 'users', MACHINE: 'machines' }
-const KIND_LABELS = { USER: 'User', MACHINE: 'Machine' }
-const GONE_ACTIONS = new Set(['PRINCIPAL_DELETED', 'TEAM_DELETED'])
+const PRINCIPAL_PAGES: Readonly<Record<string, string>> = { USER: 'users', MACHINE: 'machines' }
+const KIND_LABELS: Readonly<Record<string, string>> = { USER: 'User', MACHINE: 'Machine' }
+const GONE_ACTIONS = new Set<string>(['PRINCIPAL_DELETED', 'TEAM_DELETED'])
 
 /**
  * The account or team an identity event acts on. A team event names `team`; a principal event names
@@ -231,7 +308,7 @@ const GONE_ACTIONS = new Set(['PRINCIPAL_DELETED', 'TEAM_DELETED'])
  * as a user. A deleted target and the private team of a machine (`machine:*`) have no page to open,
  * so they get a label and no link.
  */
-const identityTargetOf = (event) => {
+const identityTargetOf = (event: AuditEventFields): IdentityTarget | null => {
   const details = event.details
   if (typeof details?.team === 'string' && details.team) {
     const privateTeam = details.team.startsWith(MACHINE_TEAM_PREFIX)
@@ -241,7 +318,7 @@ const identityTargetOf = (event) => {
     }
   }
   if (typeof details?.principal === 'string' && details.principal) {
-    const kind = Object.hasOwn(PRINCIPAL_PAGES, details.kind) ? details.kind : 'USER'
+    const kind = typeof details.kind === 'string' && Object.hasOwn(PRINCIPAL_PAGES, details.kind) ? details.kind : 'USER'
     return {
       label: `${KIND_LABELS[kind]} ${details.principal}`,
       path: GONE_ACTIONS.has(event.action) ? null : `/access/${PRINCIPAL_PAGES[kind]}/${encodeURIComponent(details.principal)}`,
@@ -250,10 +327,10 @@ const identityTargetOf = (event) => {
   return null
 }
 
-const isIdentityEvent = (event) => /^(PRINCIPAL|TEAM|INSTANCE_ADMIN)_/.test(event.action)
+const isIdentityEvent = (event: AuditEventFields): boolean => /^(PRINCIPAL|TEAM|INSTANCE_ADMIN)_/.test(event.action)
 
 /** What a row acts on, as a label. */
-export const targetLabelOf = (event) => {
+export const targetLabelOf = (event: AuditEventFields): string => {
   if (isIdentityEvent(event)) {
     return identityTargetOf(event)?.label ?? ''
   }
@@ -274,7 +351,7 @@ export const targetLabelOf = (event) => {
  * editor, and an account or team opens its admin page (a path string, because the routes belong to
  * the access pages). A row with none of these has no link.
  */
-export const targetLocationOf = (event) => {
+export const targetLocationOf = (event: AuditEventFields): RouteLocationRaw | null => {
   if (isIdentityEvent(event)) {
     return identityTargetOf(event)?.path ?? null
   }

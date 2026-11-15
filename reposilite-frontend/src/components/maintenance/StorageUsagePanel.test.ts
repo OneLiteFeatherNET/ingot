@@ -16,11 +16,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 import prettyBytes from 'pretty-bytes'
 import StorageUsagePanel from './StorageUsagePanel.vue'
 
+// The error shape the mocked errorMessage reads: a plain Error, or an HTTP error with a response body.
+type ErrorLike = (Error & { response?: { data?: { message?: string } } }) | undefined
+
 // The client is swapped per test through this holder. The panel reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient> }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -31,7 +35,7 @@ vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
   createWarningToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message || error?.message || `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message || error?.message || `${error}`
 }))
 
 const COMPUTED_AT = '2026-10-15T09:30:00Z'
@@ -55,17 +59,17 @@ const fakeClient = (overrides = {}) => ({
   }
 })
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountPanel = async (props = {}) => {
-  wrapper = mount(StorageUsagePanel, { props: { revision: 0, ...props } })
+  wrapper = mount(StorageUsagePanel, { props: { revision: 0, ...props } }) as VueWrapper
   await flushPromises()
   return wrapper
 }
 
-const rowOf = (id) => wrapper.findAll('li').find(item => item.find('.font-mono').exists() && item.find('.font-mono').text() === id)
+const rowOf = (id: string): DOMWrapper<Element> => wrapper.findAll('li').find(item => item.find('.font-mono').exists() && item.find('.font-mono').text() === id)!
 
-const buttonNamed = (text) => wrapper.findAll('button').find(button => button.text() === text)
+const buttonNamed = (text: string) => wrapper.findAll('button').find(button => button.text() === text)!
 
 beforeEach(() => {
   session.client = fakeClient()
@@ -73,7 +77,6 @@ beforeEach(() => {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('StorageUsagePanel', () => {

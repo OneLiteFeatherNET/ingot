@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import StorageUsagePanel from './StorageUsagePanel.vue'
 import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'

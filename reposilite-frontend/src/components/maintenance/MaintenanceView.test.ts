@@ -16,9 +16,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import MaintenanceView from './MaintenanceView.vue'
 
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient> }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -29,7 +30,7 @@ vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
   createWarningToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const POLICY = {
@@ -54,7 +55,7 @@ const fakeClient = () => ({
     }))
   },
   settings: {
-    fetch: vi.fn((name) => Promise.resolve({
+    fetch: vi.fn((name: string) => Promise.resolve({
       data: name === 'cleanup' ? { policies: [POLICY] } : { repositories: [{ id: 'snapshots' }] }
     })),
     update: vi.fn(() => Promise.resolve({ data: '' }))
@@ -71,7 +72,7 @@ const fakeClient = () => ({
   }
 })
 
-let wrapper
+let wrapper: VueWrapper
 
 beforeEach(() => {
   session.client = fakeClient()
@@ -79,13 +80,12 @@ beforeEach(() => {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
   document.body.innerHTML = ''
 })
 
 describe('MaintenanceView', () => {
   it('shows the read-only switch in a section labelled Writes, above the other panels', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
 
     const section = wrapper.find('section[aria-labelledby]')
@@ -93,7 +93,7 @@ describe('MaintenanceView', () => {
     expect(section.text(), 'the section is labelled Writes').toContain('Writes')
     expect(section.find('[role="switch"]').exists(), 'a principal with the maintenance area sees the switch').toBe(true)
     const storageHeading = wrapper.findAll('h3').find(heading => heading.text().includes('Storage usage'))
-    expect(section.element.compareDocumentPosition(storageHeading.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the section comes before the storage panel').toBeTruthy()
+    expect(section.element.compareDocumentPosition(storageHeading!.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the section comes before the storage panel').toBeTruthy()
   })
 
   it('hides the Writes section and the switch when the probe answers 403', async () => {
@@ -103,7 +103,7 @@ describe('MaintenanceView', () => {
         get: vi.fn(() => Promise.reject(Object.assign(new Error('Forbidden'), { response: { status: 403, data: {} } })))
       }
     }
-    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
 
     expect(wrapper.find('#read-only-switch').exists(), 'a principal without the maintenance area sees no read-only switch').toBe(false)
@@ -111,7 +111,7 @@ describe('MaintenanceView', () => {
   })
 
   it('shows the storage usage and the cleanup policies on one page', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
 
     expect(wrapper.text()).toContain('Storage usage')
@@ -119,7 +119,7 @@ describe('MaintenanceView', () => {
   })
 
   it('shows the search index beside the storage usage and the cleanup policies', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
 
     expect(wrapper.text()).toContain('Search index')
@@ -127,15 +127,17 @@ describe('MaintenanceView', () => {
   })
 
   it('reloads the storage figures once a run has finished', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
-    wrapper.findAll('button').find(button => button.attributes('aria-label') === 'Run snapshots-weekly now').trigger('click')
+    void wrapper.findAll('button').find(button => button.attributes('aria-label') === 'Run snapshots-weekly now')!.trigger('click')
     await flushPromises()
-    document.getElementById('run-now-input').value = 'snapshots-weekly'
-    document.getElementById('run-now-input').dispatchEvent(new Event('input'))
+    const runInput = document.getElementById('run-now-input') as HTMLInputElement
+    runInput.value = 'snapshots-weekly'
+    runInput.dispatchEvent(new Event('input'))
     await flushPromises()
 
-    document.getElementById('run-now-confirm').click()
+    const confirmButton = document.getElementById('run-now-confirm') as HTMLElement
+    confirmButton.click()
     await flushPromises()
 
     expect(session.client.maven.storage).toHaveBeenCalledTimes(2)

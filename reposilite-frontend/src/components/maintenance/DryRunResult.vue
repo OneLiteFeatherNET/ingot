@@ -14,21 +14,19 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { isNothingToDelete } from './cleanup'
+import type { CleanupPreview } from './cleanup'
 
 /*
  * What a dry run of a policy would delete. Nothing is deleted by showing it; the list is the
  * answer to "what would a run remove now", computed by the server at the time shown.
  */
-const props = defineProps({
-  preview: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps<{
+  preview: CleanupPreview
+}>()
 
 const empty = computed(() => isNothingToDelete(props.preview))
 </script>

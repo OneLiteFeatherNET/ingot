@@ -14,14 +14,16 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { SCRIM_STYLE } from '../settings/dialog'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { statusLabel } from './cleanup'
+import type { CleanupRun } from './cleanup'
 
 /*
  * Confirms a run now. A run deletes artifacts at once and cannot be undone, so the run button
@@ -43,17 +45,20 @@ const props = defineProps({
   },
   /** The run record the server returned, once the run has finished. */
   result: {
-    type: Object,
+    type: Object as PropType<CleanupRun | null>,
     default: null
   },
   /** The readable failure of the run, when it did not start. */
   error: {
-    type: String,
+    type: String as PropType<string | null>,
     default: null
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  confirm: []
+}>()
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.policyId)

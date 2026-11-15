@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdSelect from '../md/MdSelect.vue'
@@ -33,7 +34,7 @@ const props = defineProps({
   },
   /** The configured repository names the scope offers. */
   repositories: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   },
   running: {
@@ -42,7 +43,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  confirm: [request: { repositories?: string[] }]
+}>()
 
 const scope = ref('')
 

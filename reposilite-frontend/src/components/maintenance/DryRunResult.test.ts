@@ -16,11 +16,13 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import prettyBytes from 'pretty-bytes'
 import DryRunResult from './DryRunResult.vue'
 import { normalizeDryRun } from './cleanup'
+import type { CleanupPreview } from './cleanup'
 
-let wrapper
+let wrapper: VueWrapper
 
 const preview = (overrides = {}) => normalizeDryRun({
   policyId: 'snapshots-weekly',
@@ -35,14 +37,13 @@ const preview = (overrides = {}) => normalizeDryRun({
   ...overrides
 })
 
-const mountResult = (props) => {
-  wrapper = mount(DryRunResult, { props })
+const mountResult = (props: { preview: CleanupPreview }) => {
+  wrapper = mount(DryRunResult, { props }) as VueWrapper
   return wrapper
 }
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('DryRunResult', () => {

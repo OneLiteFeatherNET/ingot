@@ -133,7 +133,7 @@ describe('datetime-local conversion', () => {
 describe('labels and links', () => {
   it('offers every action with a label, after the all-actions option', () => {
     expect(ACTION_OPTIONS[0]).toEqual({ value: '', label: 'All actions' })
-    expect(ACTION_OPTIONS.find(option => option.value === 'TOKEN_SECRET_REGENERATED').label).toBe('Secret regenerated')
+    expect(ACTION_OPTIONS.find(option => option.value === 'TOKEN_SECRET_REGENERATED')!.label).toBe('Secret regenerated')
     expect(actionLabel('CLEANUP_RUN')).toBe('Cleanup run')
   })
 
@@ -242,7 +242,7 @@ describe('session and password action labels', () => {
   })
 
   it('groups the session and password actions under one chip', () => {
-    const group = ACTION_GROUPS.find(candidate => candidate.key === 'sessions')
+    const group = ACTION_GROUPS.find(candidate => candidate.key === 'sessions')!
 
     expect(group.label).toBe('Sessions and passwords')
     expect(group.actions).toEqual([
@@ -252,14 +252,14 @@ describe('session and password action labels', () => {
   })
 
   it('keeps every action of the chip group when the address is read', () => {
-    const action = ACTION_GROUPS.find(candidate => candidate.key === 'sessions').actions.join(',')
+    const action = ACTION_GROUPS.find(candidate => candidate.key === 'sessions')!.actions.join(',')
 
     expect(readAuditFilters({ action }).action).toBe(action)
   })
 })
 
 describe('identity action groups', () => {
-  const group = (key) => ACTION_GROUPS.find(candidate => candidate.key === key)
+  const group = (key: string) => ACTION_GROUPS.find(candidate => candidate.key === key)!
 
   it('labels a permission node change in the log and offers it in the action picker', () => {
     expect(actionLabel('NODES_CHANGED')).toBe('Permission nodes changed')
@@ -300,7 +300,7 @@ describe('identity action groups', () => {
 })
 
 describe('identity targets', () => {
-  const identityEvent = (action, details) => ({ action, actor: 'admin', repository: null, path: null, details })
+  const identityEvent = (action: string, details: Record<string, unknown> | null) => ({ action, actor: 'admin', repository: null, path: null, details })
 
   it('links a user principal to its user page', () => {
     const event = identityEvent('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER' })

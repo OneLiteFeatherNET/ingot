@@ -16,10 +16,14 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import IndexPanel from './IndexPanel.vue'
 
+// The error shape the mocked errorMessage reads: a plain Error, or an HTTP error with a response body.
+type ErrorLike = (Error & { response?: { data?: { message?: string } } }) | undefined
+
 // The client is swapped per test through this holder. The panel reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient> }))
 const toast = vi.hoisted(() => ({ createErrorToast: vi.fn(), createSuccessToast: vi.fn() }))
 
 vi.mock('../../store/session', () => ({
@@ -31,7 +35,7 @@ vi.mock('../../helpers/toast', () => ({
   createErrorToast: toast.createErrorToast,
   createWarningToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message || error?.message || `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message || error?.message || `${error}`
 }))
 
 const SECONDS = 1760931012.5
@@ -72,7 +76,7 @@ const indexBody = (overrides = {}) => ({
   ...overrides
 })
 
-const httpError = (status, message = `Request failed with status code ${status}`) =>
+const httpError = (status: number, message = `Request failed with status code ${status}`) =>
   Object.assign(new Error(message), { response: { status, data: { status, message } } })
 
 const fakeClient = (overrides = {}) => ({
@@ -85,16 +89,16 @@ const fakeClient = (overrides = {}) => ({
   }
 })
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountPanel = async () => {
-  wrapper = mount(IndexPanel, { attachTo: document.body })
+  wrapper = mount(IndexPanel, { attachTo: document.body }) as VueWrapper
   await flushPromises()
   return wrapper
 }
 
-const buttonNamed = (text) => wrapper.findAll('button').find(button => button.text() === text)
-const dialogButton = (id) => document.getElementById(id)
+const buttonNamed = (text: string) => wrapper.findAll('button').find(button => button.text() === text)!
+const dialogButton = (id: string) => document.getElementById(id) as HTMLElement
 
 beforeEach(() => {
   session.client = fakeClient()
@@ -104,7 +108,6 @@ beforeEach(() => {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
   vi.useRealTimers()
   document.body.innerHTML = ''
 })
@@ -227,7 +230,7 @@ describe('IndexPanel active run', () => {
       .mockResolvedValueOnce({ data: indexBody({ activeRun: run() }) })
       .mockResolvedValue({ data: indexBody({ runs: [run({ status: 'COMPLETED', finishedAt: SECONDS + 60 })] }) })
     session.client = fakeClient({ searchIndex })
-    wrapper = mount(IndexPanel)
+    wrapper = mount(IndexPanel) as VueWrapper
     await vi.advanceTimersByTimeAsync(0)
     expect(searchIndex).toHaveBeenCalledTimes(1)
 
@@ -268,8 +271,9 @@ describe('IndexPanel actions', () => {
     await mountPanel()
     await buttonNamed('Rebuild index').trigger('click')
     await flushPromises()
-    document.getElementById('search-index-scope').value = 'snapshots'
-    document.getElementById('search-index-scope').dispatchEvent(new Event('change'))
+    const scope = document.getElementById('search-index-scope') as HTMLSelectElement
+    scope.value = 'snapshots'
+    scope.dispatchEvent(new Event('change'))
     await flushPromises()
 
     dialogButton('search-index-rebuild-confirm').click()

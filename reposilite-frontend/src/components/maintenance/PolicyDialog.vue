@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
@@ -32,6 +33,7 @@ import {
   scopeHelp,
   validateDraft
 } from './policy'
+import type { PolicyDraft, PolicyErrors, PolicyPayload, PolicyWire, ScheduleMode } from './policy'
 
 /*
  * Creates a policy, or edits one. The id of an existing policy is fixed. Errors are shown once the
@@ -45,16 +47,16 @@ const props = defineProps({
   },
   /** The policy being edited, or null for a new one. */
   policy: {
-    type: Object,
+    type: Object as PropType<PolicyWire | null>,
     default: null
   },
   existingIds: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   },
   /** The repository ids the maven settings define. */
   repositoryIds: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   },
   saving: {
@@ -63,9 +65,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  submit: [policy: PolicyPayload]
+}>()
 
-const draft = ref(emptyDraft())
+const draft = ref<PolicyDraft>(emptyDraft())
 const submitted = ref(false)
 const isEditing = computed(() => props.policy !== null)
 
@@ -73,14 +78,14 @@ const errors = computed(() => validateDraft(draft.value, {
   existingIds: props.existingIds,
   editing: isEditing.value
 }))
-const shownErrors = computed(() => (submitted.value ? errors.value : {}))
+const shownErrors = computed<PolicyErrors>(() => (submitted.value ? errors.value : {}))
 const warnings = computed(() => policyWarnings(draft.value))
 
 // Every repository the maven settings define, plus any the policy already names, so that a
 // repository removed from the settings can still be seen and unselected.
 const repositoryOptions = computed(() => [...new Set([...props.repositoryIds, ...draft.value.repositories])])
 
-const scheduleOptions = [
+const scheduleOptions: { value: ScheduleMode, label: string }[] = [
   { value: 'manual', label: 'Manual only' },
   { value: 'daily', label: 'Daily at a time' }
 ]
@@ -92,7 +97,7 @@ watch(() => props.modelValue, (open) => {
   submitted.value = false
 }, { immediate: true })
 
-const toggleRepository = (id) => {
+const toggleRepository = (id: string) => {
   const selected = draft.value.repositories
   draft.value.repositories = selected.includes(id)
     ? selected.filter(entry => entry !== id)
@@ -127,7 +132,7 @@ const submit = () => {
         id="policy-dialog-title"
         class="md-headline-small text-on-surface"
       >
-        {{ isEditing ? `Edit ${policy.id}` : 'New cleanup policy' }}
+        {{ isEditing ? `Edit ${policy?.id}` : 'New cleanup policy' }}
       </h2>
 
       <form

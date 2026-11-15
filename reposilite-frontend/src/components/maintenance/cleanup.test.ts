@@ -24,8 +24,9 @@ import {
   normalizeDryRun,
   isNothingToDelete
 } from './cleanup'
+import type { CleanupRun } from './cleanup'
 
-const run = (id, policyId, startedAt, overrides = {}) => ({
+const run = (id: number, policyId: string, startedAt: string, overrides: Partial<CleanupRun> = {}) => ({
   id,
   policyId,
   trigger: 'MANUAL',
@@ -94,7 +95,7 @@ describe('lastRunOf', () => {
       run(1, 'a', '2026-10-01T10:00:00Z')
     ]
 
-    expect(lastRunOf(runs, 'a').id).toBe(3)
+    expect(lastRunOf(runs, 'a')?.id).toBe(3)
   })
 
   it('returns null when the policy has never run', () => {
@@ -104,15 +105,15 @@ describe('lastRunOf', () => {
 
 describe('normalizeRun', () => {
   it('reads a missing finish time as not finished', () => {
-    expect(normalizeRun({ id: 1, policyId: 'a', startedAt: '2026-10-01T10:00:00Z' }).finishedAt).toBeNull()
+    expect(normalizeRun({ id: '1', policyId: 'a', startedAt: '2026-10-01T10:00:00Z' }).finishedAt).toBeNull()
   })
 
   it('reads missing failures as none', () => {
-    expect(normalizeRun({ id: 1, policyId: 'a' }).failures).toEqual([])
+    expect(normalizeRun({ id: '1', policyId: 'a' }).failures).toEqual([])
   })
 
   it('reads missing counters as zero', () => {
-    const normalized = normalizeRun({ id: 1, policyId: 'a' })
+    const normalized = normalizeRun({ id: '1', policyId: 'a' })
 
     expect(normalized.deletedCount).toBe(0)
     expect(normalized.deletedBytes).toBe(0)
@@ -142,6 +143,8 @@ describe('isNothingToDelete', () => {
   })
 
   it('is false for a preview with deletions', () => {
-    expect(isNothingToDelete(normalizeDryRun({ policyId: 'a', count: 1, deletions: [{}] }))).toBe(false)
+    const deletion = { repository: 'snapshots', path: 'net/x/1.0-SNAPSHOT/x.jar', version: '1.0-SNAPSHOT', sizeBytes: 1, reason: 'older than 30 days' }
+
+    expect(isNothingToDelete(normalizeDryRun({ policyId: 'a', count: 1, deletions: [deletion] }))).toBe(false)
   })
 })

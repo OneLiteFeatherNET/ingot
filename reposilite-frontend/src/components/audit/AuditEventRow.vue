@@ -1,8 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { PropType } from 'vue'
 import { RouterLink } from 'vue-router'
-import { property } from '../../helpers/vue-extensions'
 import { actionLabelOf, actorLabelOf, actorLocationOf, targetLabelOf, targetLocationOf } from './auditQuery'
+import type { AuditEvent } from './auditQuery'
 
 /*
  * One audited event. The row is dense: time, actor, action, target and result sit in one line on a
@@ -11,14 +12,16 @@ import { actionLabelOf, actorLabelOf, actorLocationOf, targetLabelOf, targetLoca
  * the set of open rows.
  */
 const props = defineProps({
-  event: property(Object, true),
+  event: { type: Object as PropType<AuditEvent>, required: true },
   expanded: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['toggle'])
+const emit = defineEmits<{
+  toggle: [id: AuditEvent['id']]
+}>()
 
 const detailsId = computed(() => `audit-details-${props.event.id}`)
 const time = computed(() => new Date(props.event.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' }))

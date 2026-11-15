@@ -17,17 +17,20 @@
 import prettyBytes from 'pretty-bytes'
 
 // The same formatting as the file browser, so a size reads the same on every page.
-export const formatBytes = (bytes) => prettyBytes(Math.max(0, Number(bytes) || 0))
+export const formatBytes = (bytes: unknown): string => prettyBytes(Math.max(0, Number(bytes) || 0))
 
 // "1 artifact", "2 artifacts". The plural defaults to the singular with an s.
-export const countLabel = (count, singular, plural = `${singular}s`) =>
+export const countLabel = (count: number, singular: string, plural: string = `${singular}s`): string =>
   `${count} ${count === 1 ? singular : plural}`
 
 /*
  * An ISO-8601 instant in the browser's locale and time zone. A missing or unreadable value
  * gets the fallback, so a half-written record never shows "Invalid Date".
  */
-export const formatDateTime = (value, fallback = 'Not recorded') => {
+export const formatDateTime = (
+  value: string | number | Date | null | undefined,
+  fallback: string = 'Not recorded'
+): string => {
   if (!value) return fallback
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString()

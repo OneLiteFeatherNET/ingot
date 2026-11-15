@@ -16,13 +16,14 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import RunHistory from './RunHistory.vue'
 import { normalizeRun } from './cleanup'
 
-let wrapper
+let wrapper: VueWrapper
 
-const run = (id, policyId, startedAt, overrides = {}) => normalizeRun({
-  id,
+const run = (id: number, policyId: string, startedAt: string, overrides = {}) => normalizeRun({
+  id: String(id),
   policyId,
   trigger: 'MANUAL',
   startedAt,
@@ -37,7 +38,7 @@ const run = (id, policyId, startedAt, overrides = {}) => normalizeRun({
 const mountHistory = (props = {}) => {
   wrapper = mount(RunHistory, {
     props: { runs: [], policyIds: ['snapshots-weekly', 'mirror-cache-nightly'], policy: '', ...props }
-  })
+  }) as VueWrapper
   return wrapper
 }
 
@@ -45,7 +46,6 @@ const rowIds = () => wrapper.findAll('li').map(item => item.attributes('data-run
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('RunHistory order', () => {
@@ -121,6 +121,6 @@ describe('RunHistory filter', () => {
     select.element.value = 'snapshots-weekly'
     await select.trigger('change')
 
-    expect(wrapper.emitted('update:policy')[0]).toEqual(['snapshots-weekly'])
+    expect(wrapper.emitted('update:policy')?.[0]).toEqual(['snapshots-weekly'])
   })
 })

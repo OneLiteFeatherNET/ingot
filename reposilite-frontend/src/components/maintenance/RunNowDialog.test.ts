@@ -15,26 +15,26 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import prettyBytes from 'pretty-bytes'
 import RunNowDialog from './RunNowDialog.vue'
 import { normalizeRun } from './cleanup'
 
-let wrapper
+let wrapper!: VueWrapper
 
 const openDialog = async (props = {}) => {
   wrapper = mount(RunNowDialog, {
     props: { modelValue: false, policyId: 'snapshots-weekly', running: false, result: null, error: null, ...props },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await wrapper.setProps({ modelValue: true })
   await flushPromises()
 }
 
-const input = () => document.getElementById('run-now-input')
-const runButton = () => document.getElementById('run-now-confirm')
+const input = () => document.getElementById('run-now-input') as HTMLInputElement
+const runButton = () => document.getElementById('run-now-confirm') as HTMLElement
 
-const typeText = async (value) => {
+const typeText = async (value: string) => {
   input().value = value
   input().dispatchEvent(new Event('input'))
   await flushPromises()
@@ -42,7 +42,6 @@ const typeText = async (value) => {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('RunNowDialog confirmation', () => {
@@ -106,7 +105,7 @@ describe('RunNowDialog confirmation', () => {
 describe('RunNowDialog result', () => {
   it('summarises a finished run with its status, count and bytes', async () => {
     const result = normalizeRun({
-      id: 9,
+      id: '9',
       policyId: 'snapshots-weekly',
       trigger: 'MANUAL',
       startedAt: '2026-10-15T10:00:00Z',
@@ -126,7 +125,7 @@ describe('RunNowDialog result', () => {
   })
 
   it('no longer offers the run button once a result is shown', async () => {
-    const result = normalizeRun({ id: 9, policyId: 'snapshots-weekly', startedAt: '2026-10-15T10:00:00Z', status: 'SUCCEEDED' })
+    const result = normalizeRun({ id: '9', policyId: 'snapshots-weekly', startedAt: '2026-10-15T10:00:00Z', status: 'SUCCEEDED' })
     await openDialog({ result })
 
     expect(runButton()).toBeNull()

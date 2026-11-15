@@ -15,12 +15,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 
 // The client is swapped per test through this holder. The panel reads it through the session.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null as unknown as FakeClient }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -31,7 +31,7 @@ vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
   createWarningToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: (Error & { response?: { data?: { message?: string } } }) | undefined) => error?.response?.data?.message ?? error?.message ?? String(error)
 }))
 
 const SNAPSHOTS = {
@@ -79,11 +79,19 @@ const RUN = {
   failures: []
 }
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 // The client answers the way the server does: the settings domain holds the policy list, the
 // maven domain holds the repositories, and the cleanup endpoints act on the policy they name.
-const fakeClient = ({ policies = [SNAPSHOTS, MIRROR], runs = [], update, dryRun, run } = {}) => ({
+interface FakeOptions {
+  policies?: unknown[]
+  runs?: unknown[]
+  update?: (name: string, body: { policies: unknown[] }) => Promise<unknown>
+  dryRun?: () => Promise<unknown>
+  run?: () => Promise<unknown>
+}
+
+const fakeClient = ({ policies = [SNAPSHOTS, MIRROR], runs = [], update, dryRun, run }: FakeOptions = {}) => ({
   settings: {
     fetch: vi.fn((name) => Promise.resolve({
       data: name === 'cleanup'
@@ -99,27 +107,29 @@ const fakeClient = ({ policies = [SNAPSHOTS, MIRROR], runs = [], update, dryRun,
   }
 })
 
-let wrapper
+type FakeClient = ReturnType<typeof fakeClient>
+
+let wrapper!: VueWrapper
 
 const mountPanel = async () => {
-  wrapper = mount(CleanupPoliciesPanel, { attachTo: document.body })
+  wrapper = mount(CleanupPoliciesPanel, { attachTo: document.body }) as VueWrapper
   await flushPromises()
   return wrapper
 }
 
-const buttonLabelled = (label) => document.querySelector(`[aria-label="${label}"]`)
-const pageButton = (text) => wrapper.findAll('button').find(button => button.text() === text).element
+const buttonLabelled = (label: string) => document.querySelector(`[aria-label="${label}"]`) as HTMLElement
+const pageButton = (text: string) => wrapper.findAll('button').find(button => button.text() === text)?.element as HTMLElement
 
-const field = (id) => document.getElementById(id)
+const field = (id: string) => document.getElementById(id) as HTMLInputElement
 
-const typeInto = async (id, value) => {
+const typeInto = async (id: string, value: string) => {
   field(id).value = value
   field(id).dispatchEvent(new Event('input'))
   await flushPromises()
 }
 
-const clickIn = async (element) => {
-  element.click()
+const clickIn = async (element: Element | null) => {
+  (element as HTMLElement).click()
   await flushPromises()
 }
 
@@ -137,7 +147,6 @@ beforeEach(() => {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
   document.body.innerHTML = ''
 })
 
@@ -307,10 +316,10 @@ describe('CleanupPoliciesPanel run now', () => {
     await clickIn(buttonLabelled('Run snapshots-weekly now'))
 
     await typeInto('run-now-input', 'snapshots-weekly ')
-    expect(document.getElementById('run-now-confirm').hasAttribute('disabled')).toBe(true)
+    expect((document.getElementById('run-now-confirm') as HTMLElement).hasAttribute('disabled')).toBe(true)
 
     await typeInto('run-now-input', 'snapshots-weekly')
-    expect(document.getElementById('run-now-confirm').hasAttribute('disabled')).toBe(false)
+    expect((document.getElementById('run-now-confirm') as HTMLElement).hasAttribute('disabled')).toBe(false)
   })
 
   it('starts the run only after the confirmation and reports its result', async () => {

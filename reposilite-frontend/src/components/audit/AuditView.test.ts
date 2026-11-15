@@ -5,7 +5,8 @@ import download from 'downloadjs'
 import AuditView from './AuditView.vue'
 
 // The client is swapped per test through this holder, as in the token view tests.
-const session = vi.hoisted(() => ({ client: null }))
+// The holder is set in beforeEach, so the null start is never read.
+const session = vi.hoisted(() => ({ client: null as unknown as FakeClient }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
@@ -16,7 +17,7 @@ vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
   createWarningToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: { message: string } | undefined) => error?.message ?? ''
 }))
 
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
@@ -39,13 +40,13 @@ const event = (overrides = {}) => ({
 })
 
 const deferred = () => {
-  let resolve
-  let reject
+  let resolve!: (value: unknown) => void
+  let reject!: (reason?: unknown) => void
   const promise = new Promise((res, rej) => { resolve = res; reject = rej })
   return { promise, resolve, reject }
 }
 
-const page = (events, nextCursor = null) => Promise.resolve({ data: { events, nextCursor } })
+const page = (events: unknown[], nextCursor: string | null = null) => Promise.resolve({ data: { events, nextCursor } })
 
 const fakeClient = (overrides = {}) => ({
   audit: {
@@ -54,6 +55,8 @@ const fakeClient = (overrides = {}) => ({
     ...overrides
   }
 })
+
+type FakeClient = ReturnType<typeof fakeClient>
 
 const createTestRouter = () => createRouter({
   history: createMemoryHistory(),
@@ -135,7 +138,7 @@ describe('AuditView loading', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toContain('Network is down')
 
-    await wrapper.findAll('button').find(button => button.text() === 'Retry').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Retry')!.trigger('click')
     await flushPromises()
 
     expect(session.client.audit.list).toHaveBeenCalledTimes(2)
@@ -152,7 +155,7 @@ describe('AuditView paging', () => {
     })
     const wrapper = await mountView()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Load more').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Load more')!.trigger('click')
     await flushPromises()
 
     expect(session.client.audit.list).toHaveBeenLastCalledWith({ cursor: 'cursor-2' })
@@ -205,7 +208,7 @@ describe('AuditView filters', () => {
   it('reports a chosen time range through the address and keeps the other filters', async () => {
     const wrapper = await mountView({ query: { actor: 'ci-deployer' } })
 
-    await wrapper.findAll('button').find(button => button.text() === '7 days').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === '7 days')!.trigger('click')
 
     expect(wrapper.emitted('update:query')).toEqual([[{ actor: 'ci-deployer', range: '7d' }]])
   })
@@ -225,14 +228,14 @@ describe('AuditView filters', () => {
   ])('filters by the actions of the %s chip and keeps the other filters', async (chip, actions) => {
     const wrapper = await mountView({ query: { actor: 'admin' } })
 
-    await wrapper.findAll('button').find(button => button.text() === chip).trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === chip)!.trigger('click')
 
     expect(wrapper.emitted('update:query')).toEqual([[{ actor: 'admin', action: actions }]])
   })
 
   it('marks the chip whose actions are the filter, and clears the filter when it is chosen again', async () => {
     const wrapper = await mountView({ query: { action: 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED' } })
-    const chip = wrapper.findAll('button').find(button => button.text() === 'Instance admin')
+    const chip = wrapper.findAll('button').find(button => button.text() === 'Instance admin')!
 
     expect(chip.attributes('aria-checked')).toBe('true')
     await chip.trigger('click')
@@ -262,7 +265,7 @@ describe('AuditView filters', () => {
 
     const inputs = wrapper.findAll('input[type="datetime-local"]')
     expect(inputs).toHaveLength(2)
-    expect(inputs[0].element.value).not.toBe('')
+    expect((inputs[0].element as HTMLInputElement).value).not.toBe('')
   })
 })
 
@@ -270,7 +273,7 @@ describe('AuditView export', () => {
   it('exports the events that match the filters as a CSV file', async () => {
     const wrapper = await mountView({ query: { action: 'ARTIFACT_DEPLOYED', range: '24h' } })
 
-    await wrapper.findAll('button').find(button => button.text() === 'Export CSV').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Export CSV')!.trigger('click')
     await flushPromises()
 
     expect(session.client.audit.exportCsv).toHaveBeenCalledWith({
