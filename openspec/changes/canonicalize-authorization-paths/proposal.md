@@ -1,11 +1,11 @@
 # Proposal
 
-## Open maintainer questions
+## Maintainer decisions
 
-1. **Breaking or warn first?** Default: warn first. `INGOT_AUTHORIZATION_PATHS` defaults to `warn`: decisions stay on the raw path exactly as today, and every request whose raw and canonical decisions differ is logged at WARN and counted. The commit is `fix(maven)` without `!`, which keeps the drop-in rule. The alternative is `enforce` as the default, traversal sequences refused before authorization, and the title `fix(maven)!: canonicalize repository paths before authorization` with a `BREAKING CHANGE:` footer. Trade-off: warn first leaves the upload check on the raw path until an operator sets `enforce`. That is the open risk, and the maintainer weighs it against the drop-in rule.
-2. **Does the security impact hold?** Default: unproven until the verify tasks run. `Location.of` already rejects dot segments and illegal characters (`Location.kt`), but it runs after the upload check (`RepositoryRouteDispatcher.kt:79-85`). Whether an encoded form reaches storage with a meaning the check did not see depends on how Javalin decodes path parameters, and that is a verify task. If the impact is confirmed, the maintainer may prefer the breaking title.
-3. **Which switch and which values?** Default: `INGOT_AUTHORIZATION_PATHS` with `warn`, `enforce` and `off`, read with the `REPOSILITE_AUTHORIZATION_PATHS` fallback as CLAUDE.md requires. `off` runs no comparison at all.
-4. **Is an encoded slash refused or decoded?** Default: in `enforce`, `%2F` inside a segment is refused with 400, as the design says. A client that sends it today is refused only after the switch is set. Alternative: decode it into a separator, which keeps such clients working but changes which path is authorized.
+1. **Breaking or warn first?** Decided: always enforced, no switch. Verification confirmed that a deny rule could be judged against a different spelling of the path than the one stored, so a `warn` default would leave that open. No released version is affected, so the title stays `fix(maven)` without `!`.
+2. **Does the security impact hold?** Decided: yes, on unreleased builds that carry permission node denials. Legacy allow-prefix routes are not affected.
+3. **Which switch and which values?** Decided: none. `INGOT_AUTHORIZATION_PATHS` is not added, so the protection cannot be turned off.
+4. **Is an encoded slash refused or decoded?** Decided: refused with 400.
 
 ## Why
 
@@ -20,11 +20,10 @@ Verified in code:
 
 ## What Changes
 
-- One canonicalizer is introduced for the path that authorization sees. It percent-decodes once, rejects dot segments, encoded slashes and NUL, collapses repeated slashes and splits the path into repository and location.
-- Uploads, deletes and metadata writes are judged by the canonical path when the switch is `enforce`. In `warn`, they keep the raw decision, and a difference is logged and counted.
-- Traversal-looking paths are refused with 400 before authorization in `enforce`.
-- Legacy route matching sees the string the decision uses.
-- The corpus rows of change `record-decision-corpus` that name this change are updated in this change's commit.
+- One canonicalizer is introduced for the path that authorization sees. It percent-decodes once, rejects dot segments, encoded slashes, backslashes, NUL and control characters, collapses repeated slashes and splits the path into repository and location.
+- Uploads and deletes are judged by the canonical path, and the same repository and location are handed to storage. This is always on.
+- Malformed paths are refused with 400 before authorization.
+- Legacy route matching sees the canonical string.
 
 ### Out of scope
 
@@ -37,19 +36,12 @@ Verified in code:
 
 ### New Capabilities
 
-- `maven-path-canonicalization`: the canonical path used by authorization, its three modes and the switch.
+- `maven-path-canonicalization`: the canonical path used by authorization, always enforced for writes, with no switch.
 
 ## Impact
 
-- **Operators, default (`warn`):** no response changes. A WARN line and a counter appear for requests with encoded slashes, dot segments or doubled slashes whose two decisions differ. No configuration is needed.
-- **Operators, `enforce` (opt-in):** uploads and deletes are judged on the canonical path. An upload accepted today may get 403 if its canonical form is not allowed. Traversal-looking paths get 400. A legacy route can match a decoded string it did not match before. Operators who use encoded paths must review their routes before switching.
-- **Operators, breaking variant:** `enforce` becomes the default, so the same changes reach every installation without a switch. This is why the variant carries `!`.
-- **Configuration:** one new optional key, `INGOT_AUTHORIZATION_PATHS`, with the `REPOSILITE_` fallback. Docs: `docs/gitbook/explanation/permission-evaluation.md` and `docs/gitbook/reference/access-tokens-and-routes.md`.
-- **Code:** `reposilite-backend`, in the maven repository security provider, the route dispatcher and the legacy route matcher.
-- **Commits:** `test(maven)` for the failing tests, `fix(maven)` for the canonicalizer and the switch, `docs(maven)` for the pages. Pull request title, squash-merged onto main, default variant:
+- **Operators:** no configuration is needed and none is added. Paths without escapes, dot segments or doubled slashes are judged and stored exactly as before. An escaped spelling of an allowed path is now accepted and stored at its decoded location instead of answered with 403. Ambiguous encodings are answered with 400.
+- **Code:** `reposilite-backend`, in the repository route dispatcher and a new canonicalizer.
+- **Commits:** `fix(maven)` for the canonicalizer, its tests and the dispatcher. Pull request title, squash-merged onto main:
 
   `fix(maven): canonicalize repository paths before authorization`
-
-  Breaking variant, only if question 1 is answered that way:
-
-  `fix(maven)!: canonicalize repository paths before authorization`
