@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.search.ArtifactFilePage
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchPage
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
+import net.onelitefeather.ingot.search.IndexState
 import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.SearchFacets
 import net.onelitefeather.ingot.search.access.SearchAccess
@@ -93,6 +94,8 @@ internal class LuceneSearchBackend(
 
     @Volatile
     private var identity: String? = null
+
+    private val reader = LuceneReader(indexStatus = { status() })
 
     /**
      * Creates the directory when it is missing, then reads the commit of an existing index. An index whose mapping version is not
@@ -205,7 +208,7 @@ internal class LuceneSearchBackend(
     }
 
     override fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> =
-        TODO("the reads land in the query pull request")
+        withSearcher { searcher -> reader.pathsAt(searcher, repository, prefix, after, limit) }
 
     /** The stored state of the rows of [paths] in [repository], read from the committed index. */
     override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
@@ -236,28 +239,70 @@ internal class LuceneSearchBackend(
         return present.size
     }
 
-    override fun deleteStale(repository: String, before: Long, limit: Int): Int =
-        TODO("the deletes land in the write pull request of the removals")
+    override fun deleteStale(repository: String, before: Long, limit: Int): Int = transaction { current ->
+        val stale = inRepository(current, repository).filter { it.indexedAt < before }.take(limit)
+        stale.forEach { hit -> current.deleteDocuments(idTerm(repository, pathOf(hit))) }
+        stale.size
+    }
 
-    override fun deleteRepository(repository: String, limit: Int): Int =
-        TODO("the deletes land in the write pull request of the removals")
+    override fun deleteRepository(repository: String, limit: Int): Int = transaction { current ->
+        val rows = inRepository(current, repository).take(limit)
+        rows.forEach { hit -> current.deleteDocuments(idTerm(repository, pathOf(hit))) }
+        rows.size
+    }
 
-    override fun repositories(): List<String> = TODO("the reads land in the query pull request")
+    override fun repositories(): List<String> = withSearcher { searcher -> reader.repositories(searcher) }
 
-    override fun sampleStart(random: Random): String? = TODO("the reads land in the query pull request")
+    override fun sampleStart(random: Random): String? = withSearcher { searcher ->
+        val rows = reader.sampleRows(searcher)
+        if (rows.isEmpty()) null else rows[random.nextInt(rows.size)].let { cursorOf(it.repository, it.path) }
+    }
 
-    override fun sample(cursor: String?, limit: Int): SamplePage = TODO("the reads land in the query pull request")
+    /**
+     * Up to [limit] rows after [cursor] in the order of repository and path. When the rows after the cursor end before the limit, the
+     * sample continues with the rows at or before the cursor, from the start, so a small index is covered completely.
+     */
+    override fun sample(cursor: String?, limit: Int): SamplePage = withSearcher { searcher ->
+        val all = reader.sampleRows(searcher)
+        val after = cursor?.let { all.indexOfFirst { row -> cursorOf(row.repository, row.path) > it } }?.takeIf { it >= 0 }
+        val rows = (if (cursor == null) all else after?.let { all.subList(it, all.size) } ?: emptyList()).take(limit).toMutableList()
+        if (cursor != null && rows.size < limit) {
+            rows += all.filter { cursorOf(it.repository, it.path) <= cursor }.take(limit - rows.size)
+        }
+        SamplePage(rows, rows.lastOrNull()?.let { cursorOf(it.repository, it.path) })
+    }
 
     override fun search(query: ArtifactSearchQuery, access: SearchAccess): ArtifactSearchPage =
-        TODO("the queries land in the query pull request")
+        withSearcher { searcher -> reader.search(query, access, searcher) }
 
     override fun facets(query: ArtifactSearchQuery, access: SearchAccess): SearchFacets =
-        TODO("the queries land in the query pull request")
+        withSearcher { searcher -> reader.facets(query, access, searcher) }
 
     override fun files(query: ArtifactFilesQuery, access: SearchAccess): ArtifactFilePage =
-        TODO("the queries land in the query pull request")
+        withSearcher { searcher -> reader.files(query, access, searcher) }
 
-    override fun status(): IndexStatus = TODO("the status lands in the query pull request")
+    /** The state of the index: missing when it holds no row, ready otherwise. The core keeps the outbox and rebuild counters. */
+    override fun status(): IndexStatus = IndexStatus(
+        state = if (count() == 0L) IndexState.MISSING else IndexState.READY,
+        lagSeconds = 0L,
+        lastFullRebuild = null,
+        deadLetters = 0L,
+        droppedEnqueues = 0L,
+        pendingEntries = 0L,
+        tokensComplete = true,
+    )
+
+    private fun <T> withSearcher(block: (IndexSearcher) -> T): T {
+        val manager = checkNotNull(searchers) { "the index is not open" }
+        val searcher = manager.acquire()
+        try {
+            return block(searcher)
+        } finally {
+            manager.release(searcher)
+        }
+    }
+
+    private fun cursorOf(repository: String, path: String): String = "$repository\n$path"
 
     // ---- transactions ---------------------------------------------------------------------------------------------------
 
@@ -296,17 +341,26 @@ internal class LuceneSearchBackend(
     /** A stored document with the indexed time of its doc value. */
     private class Hit(val document: Document, val indexedAt: Long)
 
-    /** The rows of [repository] at [prefix] and below it, read from the writer's current state. */
-    private fun matching(current: IndexWriter, repository: String, prefix: String): List<Hit> =
+    /** Every row of [repository], read from the writer's current state. */
+    private fun inRepository(current: IndexWriter, repository: String): List<Hit> = matching(current, repository, prefix = null)
+
+    /** The rows of [repository] at [prefix] and below it, or every row of the repository when [prefix] is null. */
+    private fun matching(current: IndexWriter, repository: String, prefix: String?): List<Hit> =
         DirectoryReader.open(current).use { reader ->
             val searcher = IndexSearcher(reader)
-            val below = BooleanQuery.Builder()
-                .add(TermQuery(Term(LuceneDocument.PATH, prefix)), BooleanClause.Occur.SHOULD)
-                .add(PrefixQuery(Term(LuceneDocument.PATH, "$prefix/")), BooleanClause.Occur.SHOULD)
-                .build()
             val query = BooleanQuery.Builder()
                 .add(TermQuery(Term(LuceneDocument.REPOSITORY, repository)), BooleanClause.Occur.FILTER)
-                .add(below, BooleanClause.Occur.FILTER)
+                .apply {
+                    if (prefix != null) {
+                        add(
+                            BooleanQuery.Builder()
+                                .add(TermQuery(Term(LuceneDocument.PATH, prefix)), BooleanClause.Occur.SHOULD)
+                                .add(PrefixQuery(Term(LuceneDocument.PATH, "$prefix/")), BooleanClause.Occur.SHOULD)
+                                .build(),
+                            BooleanClause.Occur.FILTER,
+                        )
+                    }
+                }
                 .build()
             val docs = searcher.search(query, maxOf(1, reader.maxDoc())).scoreDocs.sortedBy { it.doc }
             val indexedAt = MultiDocValues.getNumericValues(reader, LuceneDocument.INDEXED_AT)

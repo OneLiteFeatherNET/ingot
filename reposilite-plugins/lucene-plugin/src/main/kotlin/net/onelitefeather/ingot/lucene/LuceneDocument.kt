@@ -81,13 +81,13 @@ internal object LuceneDocument {
         document.add(StringField(PATH, file.path, Field.Store.YES))
         document.add(StringField(PATH_LC, lower(file.path), Field.Store.NO))
         document.add(StringField(GROUP_ID, file.groupId, Field.Store.YES))
-        document.add(StringField(GROUP_ID_LC, lower(file.groupId), Field.Store.NO))
+        document.add(StringField(GROUP_ID_LC, lower(file.groupId), Field.Store.YES))
         document.add(StringField(ARTIFACT_ID, file.artifactId, Field.Store.YES))
-        document.add(StringField(ARTIFACT_ID_LC, lower(file.artifactId), Field.Store.NO))
+        document.add(StringField(ARTIFACT_ID_LC, lower(file.artifactId), Field.Store.YES))
         document.add(StringField(VERSION, file.version, Field.Store.YES))
-        document.add(StringField(VERSION_LC, lower(file.version), Field.Store.NO))
-        document.add(StringField(GAV, HexFormat.of().formatHex(gavKeyOf(file.groupId, file.artifactId, file.version)), Field.Store.NO))
-        document.add(StringField(ARTIFACT_KEY, "${lower(file.groupId)}:${lower(file.artifactId)}", Field.Store.NO))
+        document.add(StringField(VERSION_LC, lower(file.version), Field.Store.YES))
+        document.add(StringField(GAV, HexFormat.of().formatHex(gavKeyOf(file.groupId, file.artifactId, file.version)), Field.Store.YES))
+        document.add(StringField(ARTIFACT_KEY, "${lower(file.groupId)}:${lower(file.artifactId)}", Field.Store.YES))
         file.classifier?.let { document.add(StringField(CLASSIFIER, it, Field.Store.YES)) }
         document.add(StringField(EXTENSION, lower(file.extension), Field.Store.YES))
         document.add(StringField(SNAPSHOT, file.snapshot.toString(), Field.Store.YES))
@@ -142,7 +142,7 @@ internal object LuceneDocument {
         document.add(NumericDocValuesField(name, value))
     }
 
-    private fun numberOf(document: Document, name: String): Long =
+    fun numberOf(document: Document, name: String): Long =
         checkNotNull(document.getField(name)?.numericValue()) { "a document without $name" }.toLong()
 
     private fun lower(value: String): String = value.lowercase(Locale.ROOT)
