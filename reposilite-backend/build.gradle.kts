@@ -484,6 +484,16 @@ fun integrationShardAssignment(classesDirs: FileCollection, count: Int): Map<Str
     return keys.withIndex().associate { (position, key) -> key to position % count }
 }
 
+// The storage cache plugin, compiled classes only. Its service file stays out, so the integration tests build the cache through its
+// factory and do not load the plugin from the class path.
+val storageCachePlugin = project(":reposilite-plugins:storage-cache-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(storageCachePlugin.layout.buildDirectory.dir("classes/kotlin/main"))
+            .builtBy(":reposilite-plugins:storage-cache-plugin:compileKotlin"),
+    )
+}
+
 tasks.named<Test>("integration") {
     // Never replayed from the build cache. The suite starts containers that Gradle cannot see, so a cached pass would
     // say nothing about the images and services of this run. CI reads the cache with --build-cache for the unit suite.
