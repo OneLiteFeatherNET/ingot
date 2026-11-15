@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.storage.cache
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.storage.s3.RelatedKeyRule
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
@@ -55,7 +60,7 @@ internal class CacheStorageProvider(
     private val clock: Clock = Clock.systemUTC(),
     private val publishInvalidation: (Collection<String>) -> Unit = {},
     private val onFailure: (String) -> Unit = {},
-) : StorageProvider {
+) : StorageProvider, RelatedKeyAware {
 
     /** A copy in the index. [pins] counts the open streams of it, and an entry with a pin is never evicted. */
     private class Entry(val size: Long, var lastAccess: Long) {
@@ -185,6 +190,11 @@ internal class CacheStorageProvider(
 
     override fun canHold(contentLength: Long): Result<Long, ErrorResponse> =
         delegate.canHold(contentLength)
+
+    /** The head cache of an S3 delegate drops the related keys of the format, so the rule goes to the delegate when it takes one. */
+    override fun useRelatedKeys(rule: RelatedKeyRule) {
+        (delegate as? RelatedKeyAware)?.useRelatedKeys(rule)
+    }
 
     /** Releases the directory lock and shuts the delegate down. The cache has nothing else to flush. */
     override fun shutdown() {
