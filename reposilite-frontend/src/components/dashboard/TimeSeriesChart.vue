@@ -14,51 +14,47 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { init, use } from 'echarts/core'
+import type { ECharts, EChartsCoreOption } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import useTheme from '../../store/theme'
 import { categorical, chrome } from '../../store/palette'
 import { summariseSeries } from './seriesSummary'
+import type { Series } from './seriesSummary'
 
 // ECharts ships every chart type and component separately so a build only pays for what it
 // draws. The dashboard needs one chart type and three components, which keeps this bundle
 // far below the full distribution.
 use([LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
-const props = defineProps({
-  series: {
-    type: Array,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  series: Series[]
   /**
    * Appended to every value in the axis and the tooltip. A chart carries one unit and one
    * scale: two measures that do not share a unit belong in two charts, because a single
    * axis makes their relative size look like a fact when it is an accident of units.
    */
-  unit: {
-    type: String,
-    default: ''
-  },
-  height: {
-    type: String,
-    default: '220px'
-  }
+  unit?: string
+  height?: string
+}>(), {
+  unit: '',
+  height: '220px'
 })
 
 const { theme } = useTheme()
-const container = ref(null)
-let chart = null
+const container = ref<HTMLElement | null>(null)
+let chart: ECharts | null = null
 
 // One series is its own subject and the surrounding heading already names it, so a legend
 // would only repeat the title. Several series have to be told apart, and then the legend is
 // what keeps identity off colour alone.
 const multiSeries = computed(() => props.series.length > 1)
 
-const formatValue = (value) => {
+const formatValue = (value: number): string => {
   const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 10) / 10
   return props.unit ? `${rounded} ${props.unit}` : `${rounded}`
 }
@@ -67,7 +63,7 @@ const formatValue = (value) => {
 // values in words. It is visually hidden, the plot already shows the trend.
 const summaryText = computed(() => summariseSeries(props.series, formatValue).join('. '))
 
-const buildOption = () => {
+const buildOption = (): EChartsCoreOption => {
   const ink = chrome()
 
   return {
@@ -137,7 +133,7 @@ const render = () => {
 const resize = () => chart?.resize()
 
 onMounted(() => {
-  chart = init(container.value, null, { renderer: 'canvas' })
+  chart = init(container.value as HTMLElement, null, { renderer: 'canvas' })
   render()
   window.addEventListener('resize', resize)
 })

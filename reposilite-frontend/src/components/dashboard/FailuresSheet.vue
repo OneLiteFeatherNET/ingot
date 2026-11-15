@@ -14,11 +14,13 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
+import type { AxiosResponse } from 'axios'
 import { VueFinalModal } from 'vue-final-modal'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import type { components } from '../../types/api'
 import { copyToClipboard, selectText } from '../card/copySnippet'
 import CloseIcon from '../icons/CloseIcon.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
@@ -26,28 +28,33 @@ import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { absoluteTime, relativeTime } from './failures'
 
+type FailureResponse = components['schemas']['FailureResponse']
+type FailuresResponse = components['schemas']['FailuresResponse']
+
 /*
  * The failures behind the Failures tile. A side sheet from 840px up and a full-screen dialog
  * below, which is where a stack trace has room to be read. Nothing is fetched until the sheet
  * opens, so a dashboard nobody inspects never asks for the failure list.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+}>(), {
+  modelValue: false
 })
 
-const emit = defineEmits(['update:modelValue', 'cleared'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  cleared: []
+}>()
 
 const { client } = useSession()
 const titleId = useId()
-const failures = ref([])
+const failures = ref<FailureResponse[]>([])
 const loading = ref(false)
 const loadFailed = ref(false)
 const now = ref(0)
-const expandedIds = ref([])
-const copiedId = ref(null)
+const expandedIds = ref<number[]>([])
+const copiedId = ref<number | null>(null)
 
 const open = computed({
   get: () => props.modelValue,
@@ -59,7 +66,7 @@ const hasFailures = computed(() => failures.value.length > 0)
 const load = () => {
   loading.value = true
   return client.value.status.failures()
-    .then(response => {
+    .then((response: AxiosResponse<FailuresResponse>) => {
       failures.value = response.data.failures
       loadFailed.value = false
       now.value = Date.now()
@@ -82,15 +89,15 @@ watch(() => props.modelValue, (isOpen) => {
   }
 }, { immediate: true })
 
-const isExpanded = (failure) => expandedIds.value.includes(failure.id)
+const isExpanded = (failure: FailureResponse) => expandedIds.value.includes(failure.id)
 
-const toggle = (failure) => {
+const toggle = (failure: FailureResponse) => {
   expandedIds.value = isExpanded(failure)
     ? expandedIds.value.filter(id => id !== failure.id)
     : [...expandedIds.value, failure.id]
 }
 
-const reportOf = (failure) =>
+const reportOf = (failure: FailureResponse) =>
   [
     `${failure.type}: ${failure.message ?? '(no message)'}`,
     `Source: ${failure.source}`,
@@ -101,13 +108,13 @@ const reportOf = (failure) =>
   ].join('\n')
 
 // Without a clipboard the text is selected instead, so the copy can still be finished by hand.
-const copy = async (failure, event) => {
+const copy = async (failure: FailureResponse, event: Event) => {
   const copied = await copyToClipboard(reportOf(failure), navigator.clipboard)
   if (copied) {
     copiedId.value = failure.id
     return
   }
-  const stackTrace = event.currentTarget.closest('li')?.querySelector('pre')
+  const stackTrace = (event.currentTarget as HTMLElement).closest('li')?.querySelector('pre')
   if (stackTrace && selectText(stackTrace)) {
     createErrorToast('The clipboard is not available here. The stack trace is selected for copying.')
   }

@@ -14,29 +14,29 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { STATUS } from '../../store/palette'
 import { useSession } from '../../store/session'
+import type { Health, Integration } from './instanceHealth'
 import { describeHealth, integrationsOf, toAnswer } from './instanceHealth'
 import StatusLabel from './StatusLabel.vue'
 
 // Health moves as often as the status tiles it sits under, so it is polled on the same beat.
 const POLL_INTERVAL_MS = 5000
 
-defineProps({
+withDefaults(defineProps<{
   // With a cluster, the cluster summary states the health once, so the row drops its own label and keeps
   // the detail lines and the integrations.
-  showLabel: {
-    type: Boolean,
-    default: true
-  }
+  showLabel?: boolean
+}>(), {
+  showLabel: true
 })
 
 const { client, isManager } = useSession()
-const health = ref(null)
-const integrations = ref([])
-let timer = null
+const health = ref<Health | null>(null)
+const integrations = ref<Integration[]>([])
+let timer: ReturnType<typeof setInterval> | undefined
 
 
 const indicator = computed(() => health.value ?? {
@@ -45,7 +45,7 @@ const indicator = computed(() => health.value ?? {
   details: []
 })
 
-const DOT_COLORS = {
+const DOT_COLORS: Record<string, string> = {
   up: STATUS.good,
   down: STATUS.critical,
   unknown: 'var(--md-sys-color-outline)',

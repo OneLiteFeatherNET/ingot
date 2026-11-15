@@ -16,14 +16,29 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import type { Router } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import { createTokenStore, tokenStoreKey } from '../../store/tokens'
+import type { createClient } from '../../store/client'
+import type { MavenRepository } from './gettingStarted'
 import GettingStartedCard from './GettingStartedCard.vue'
 
+type StoreClient = ReturnType<typeof createClient>
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+type Domain = 'maven' | 'frontend'
+
+// The saved repositories carry a description besides the fields the checklist reads.
+interface RepositoryFixture extends MavenRepository {
+  description?: string
+}
+
 // Whether the signed-in user manages the instance is set per test; the card reads it through the session.
-const session = vi.hoisted(() => ({ isManager: null }))
+// The ref is created inside the mock factory, so it stays null until the factory has run.
+const session: { isManager: Ref<boolean> | null } = vi.hoisted(() => ({ isManager: null }))
 vi.mock('../../store/session', async () => {
   const { ref: vueRef } = await import('vue')
   session.isManager = vueRef(true)
@@ -33,8 +48,13 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error instanceof Error ? error.message : `${error}`)
 }))
+
+const managerRef = (): Ref<boolean> => {
+  if (!session.isManager) throw new Error('the session mock has not been created')
+  return session.isManager
+}
 
 const MAVEN_SCHEMA = {
   type: 'object',
@@ -54,9 +74,9 @@ const FRONTEND_SCHEMA = {
   properties: { title: { type: 'string' }, organizationLogo: { type: 'string' } }
 }
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
-const DEFAULT_REPOSITORIES = [
+const DEFAULT_REPOSITORIES: RepositoryFixture[] = [
   { id: 'releases', visibility: 'PUBLIC', description: 'Release artifacts' },
   { id: 'snapshots', visibility: 'PUBLIC', description: 'Snapshot artifacts' },
   { id: 'private', visibility: 'PRIVATE', description: '' },
@@ -64,20 +84,21 @@ const DEFAULT_REPOSITORIES = [
 ]
 
 // A server where the default repositories exist, one public team repository and a read-only token.
-const fakeClient = ({ failDomains = false, repositories = DEFAULT_REPOSITORIES } = {}) => {
+const fakeClient = ({ failDomains = false, repositories = DEFAULT_REPOSITORIES }: { failDomains?: boolean, repositories?: RepositoryFixture[] } = {}): StoreClient => {
   const state = {
     maven: { repositories: clone(repositories) },
     frontend: { title: 'Ingot Repository', organizationLogo: 'https://avatars.githubusercontent.com/u/103827826' }
   }
   const schemas = { maven: MAVEN_SCHEMA, frontend: FRONTEND_SCHEMA }
+  // The fake implements only the calls the card makes, so it is cast to the store's client type.
   return {
     settings: {
       domains: vi.fn(async () => {
         if (failDomains) throw new Error('settings are unavailable')
         return { data: ['maven', 'frontend'] }
       }),
-      schema: vi.fn(async (domain) => ({ data: schemas[domain] })),
-      fetch: vi.fn(async (domain) => ({ data: clone(state[domain]) })),
+      schema: vi.fn(async (domain: Domain) => ({ data: schemas[domain] })),
+      fetch: vi.fn(async (domain: Domain) => ({ data: clone(state[domain]) })),
       update: vi.fn()
     },
     tokens: {
@@ -85,18 +106,20 @@ const fakeClient = ({ failDomains = false, repositories = DEFAULT_REPOSITORIES }
         data: [{ name: 'reader', routes: [{ path: '/releases', permission: { identifier: 'route:read' } }] }]
       }))
     }
-  }
+  } as unknown as StoreClient
 }
 
-let wrapper
-let router
-let configuration
-let tokenStore
+const clientRef = (client: StoreClient): ClientRef => ref(client) as unknown as ClientRef
 
-const $ = (selector) => document.querySelector(selector)
+let wrapper: VueWrapper | undefined
+let router: Router
+let configuration: ReturnType<typeof createConfigurationStore>
+let tokenStore: ReturnType<typeof createTokenStore>
 
-const mountCard = async ({ client = fakeClient() } = {}) => {
-  configuration = createConfigurationStore(ref(client))
+const $ = (selector: string): HTMLElement | null => document.querySelector<HTMLElement>(selector)
+
+const mountCard = async ({ client = fakeClient() }: { client?: StoreClient } = {}): Promise<void> => {
+  configuration = createConfigurationStore(clientRef(client))
   tokenStore = createTokenStore({ getClient: () => client, notify: { success: vi.fn(), error: vi.fn() } })
   router = createRouter({
     history: createMemoryHistory(),
@@ -121,7 +144,7 @@ const mountCard = async ({ client = fakeClient() } = {}) => {
 
 beforeEach(() => {
   localStorage.clear()
-  session.isManager.value = true
+  managerRef().value = true
 })
 
 afterEach(() => {
@@ -143,12 +166,12 @@ describe('GettingStartedCard', () => {
   it('sends each open step to the place that completes it', async () => {
     await mountCard()
 
-    expect($('[data-step-action="deploy-token"]').getAttribute('href')).toBe('/tokens/new')
-    expect($('[data-step-action="repository"]').getAttribute('href')).toBe('/settings/repositories?new=repository')
+    expect($('[data-step-action="deploy-token"]')?.getAttribute('href')).toBe('/tokens/new')
+    expect($('[data-step-action="repository"]')?.getAttribute('href')).toBe('/settings/repositories?new=repository')
   })
 
   it('does not show itself to someone who does not manage the instance', async () => {
-    session.isManager.value = false
+    managerRef().value = false
     await mountCard()
 
     expect($('#getting-started-title')).toBeNull()
@@ -157,11 +180,11 @@ describe('GettingStartedCard', () => {
   it('hides itself when dismissed, and stays hidden on the next visit', async () => {
     await mountCard()
 
-    $('#getting-started-title').closest('section').querySelector('button').click()
+    $('#getting-started-title')?.closest('section')?.querySelector('button')?.click()
     await flushPromises()
     expect($('#getting-started-title')).toBeNull()
 
-    wrapper.unmount()
+    wrapper?.unmount()
     wrapper = undefined
     await mountCard()
 
@@ -171,22 +194,22 @@ describe('GettingStartedCard', () => {
   it('shows an explanation instead of a checklist that can never complete when the settings fail to load', async () => {
     await mountCard({ client: fakeClient({ failDomains: true }) })
 
-    expect($('[role="alert"]').textContent).toContain('Some steps could not be checked')
+    expect($('[role="alert"]')?.textContent).toContain('Some steps could not be checked')
     expect($('[data-step-action]')).toBeNull()
   })
 
   describe('public repository review', () => {
     const reviewStep = () => $('li [data-step-action="public-review"]')?.closest('li')
-    const openReview = () => $('[data-step-action="public-review"]').click()
+    const openReview = () => $('[data-step-action="public-review"]')?.click()
     // The first text of each row is the repository id.
-    const dialogIds = () => [...document.querySelectorAll('[role="dialog"] li')].map(row => row.querySelector('span').textContent.trim())
+    const dialogIds = () => [...document.querySelectorAll('[role="dialog"] li')].map(row => row.querySelector('span')?.textContent?.trim())
 
     it('is to do with a Review action while a public repository is not yet confirmed', async () => {
       await mountCard()
 
-      expect(reviewStep().dataset.state).toBe('open')
-      expect($('[data-step-action="public-review"]').textContent.trim()).toBe('Review')
-      expect($('[data-step-action="public-review"]').getAttribute('href'), 'the review opens a dialog, it does not navigate').toBeNull()
+      expect(reviewStep()?.dataset.state).toBe('open')
+      expect($('[data-step-action="public-review"]')?.textContent?.trim()).toBe('Review')
+      expect($('[data-step-action="public-review"]')?.getAttribute('href'), 'the review opens a dialog, it does not navigate').toBeNull()
     })
 
     it('lists every public repository in the review, sorted by id', async () => {
@@ -202,27 +225,27 @@ describe('GettingStartedCard', () => {
       openReview()
       await flushPromises()
 
-      const looksRight = [...document.querySelectorAll('[role="dialog"] button')].find(button => button.textContent.trim() === 'Looks right')
-      looksRight.click()
+      const looksRight = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent?.trim() === 'Looks right')
+      looksRight?.click()
       await flushPromises()
 
-      expect(reviewStep().dataset.state).toBe('done')
+      expect(reviewStep()?.dataset.state).toBe('done')
       expect(document.body.textContent).toContain('2 of 4 steps done')
-      expect(JSON.parse(localStorage.getItem('ingot.checklist.publicReview'))).toEqual(['mirror', 'releases', 'snapshots'])
+      expect(JSON.parse(localStorage.getItem('ingot.checklist.publicReview') ?? 'null')).toEqual(['mirror', 'releases', 'snapshots'])
     })
 
     it('stays confirmed on the next visit when the public set has not changed', async () => {
       localStorage.setItem('ingot.checklist.publicReview', JSON.stringify(['mirror', 'releases', 'snapshots']))
       await mountCard()
 
-      expect(reviewStep().dataset.state).toBe('done')
+      expect(reviewStep()?.dataset.state).toBe('done')
     })
 
     it('is to do again when a repository became public after the confirmation', async () => {
       localStorage.setItem('ingot.checklist.publicReview', JSON.stringify(['mirror', 'releases']))
       await mountCard()
 
-      expect(reviewStep().dataset.state, 'snapshots is public but was never confirmed').toBe('open')
+      expect(reviewStep()?.dataset.state, 'snapshots is public but was never confirmed').toBe('open')
     })
 
     it('is done straight away when no repository is public', async () => {
@@ -232,7 +255,7 @@ describe('GettingStartedCard', () => {
         })
       })
 
-      expect(reviewStep().dataset.state).toBe('done')
+      expect(reviewStep()?.dataset.state).toBe('done')
     })
   })
 })

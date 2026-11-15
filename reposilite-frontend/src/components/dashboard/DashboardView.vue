@@ -14,14 +14,15 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import type { components } from '../../types/api'
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
 
 // The status panel reports the cluster it finds in its answer; the trends below draw from it.
-const cluster = ref(null)
+const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
 </script>
 
 <!--

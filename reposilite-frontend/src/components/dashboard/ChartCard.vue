@@ -14,40 +14,32 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 
-defineProps({
-  title: {
-    type: String,
-    required: true
-  },
+withDefaults(defineProps<{
+  title: string
   /** Names the unit and the window, so the axis does not have to repeat either. */
-  subtitle: {
-    type: String,
-    default: ''
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  },
+  subtitle?: string
+  loading?: boolean
   /**
    * The request behind the card failed. Shown in place of the plot with a retry, which is a
    * different thing from "nothing to draw": a failure must not read as an empty instance.
    */
-  error: {
-    type: String,
-    default: ''
-  },
+  error?: string
   /** Shown instead of the plot when there is genuinely nothing to draw. */
-  emptyMessage: {
-    type: String,
-    default: ''
-  }
+  emptyMessage?: string
+}>(), {
+  subtitle: '',
+  loading: false,
+  error: '',
+  emptyMessage: ''
 })
 
-const emit = defineEmits(['retry'])
+const emit = defineEmits<{
+  retry: []
+}>()
 </script>
 
 <template>

@@ -16,18 +16,27 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import type { Router } from 'vue-router'
 import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
 
+// The dialog takes an id and an optional description of each public repository.
+interface DialogRepository {
+  id: string
+  description?: string
+}
+
+// Unannotated on purpose: the fixtures also carry the visibility, which the dialog does not take as a prop.
 const REPOSITORIES = [
   { id: 'mirror', visibility: 'PUBLIC', description: 'Mirror of upstream' },
   { id: 'releases', visibility: 'PUBLIC', description: '' }
 ]
 
-let wrapper
-let router
+let wrapper: VueWrapper | undefined
+let router: Router
 
-const mountDialog = async (props = {}) => {
+const mountDialog = async (props: { modelValue?: boolean, repositories?: DialogRepository[] } = {}): Promise<void> => {
   router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -45,9 +54,9 @@ const mountDialog = async (props = {}) => {
 }
 
 // The dialog is teleported to the body, so the checks read the document.
-const dialog = () => document.querySelector('[role="dialog"]')
-const buttonNamed = (text) =>
-  [...(dialog()?.querySelectorAll('button') ?? [])].find(button => button.textContent.trim() === text)
+const dialog = (): Element | null => document.querySelector('[role="dialog"]')
+const buttonNamed = (text: string): HTMLButtonElement | undefined =>
+  [...(dialog()?.querySelectorAll('button') ?? [])].find(button => button.textContent?.trim() === text)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -58,13 +67,13 @@ describe('PublicRepositoriesDialog', () => {
   it('explains that anyone can read the listed repositories without signing in', async () => {
     await mountDialog()
 
-    expect(dialog().textContent).toContain('Anyone can read these repositories without signing in.')
+    expect(dialog()?.textContent).toContain('Anyone can read these repositories without signing in.')
   })
 
   it('lists each public repository with its id and description', async () => {
     await mountDialog()
 
-    const rows = [...dialog().querySelectorAll('li')].map(row => row.textContent.replace(/\s+/g, ' ').trim())
+    const rows = [...(dialog()?.querySelectorAll('li') ?? [])].map(row => row.textContent?.replace(/\s+/g, ' ').trim())
     expect(rows[0], 'the first row names the mirror repository').toContain('mirror')
     expect(rows[0], 'the first row shows the description of the mirror repository').toContain('Mirror of upstream')
     expect(rows[1], 'the second row names the releases repository').toContain('releases')
@@ -73,7 +82,7 @@ describe('PublicRepositoriesDialog', () => {
   it('links each row to the visibility setting of its repository', async () => {
     await mountDialog()
 
-    const links = [...dialog().querySelectorAll('a')]
+    const links = [...(dialog()?.querySelectorAll('a') ?? [])]
     expect(links.map(link => link.getAttribute('href'))).toEqual([
       '/settings/repositories/mirror',
       '/settings/repositories/releases'
@@ -83,26 +92,26 @@ describe('PublicRepositoriesDialog', () => {
   it('tells the admin when no repository is public and offers nothing to confirm', async () => {
     await mountDialog({ repositories: [] })
 
-    expect(dialog().textContent).toContain('No repository is public.')
+    expect(dialog()?.textContent).toContain('No repository is public.')
     expect(buttonNamed('Looks right'), 'there is nothing to confirm').toBeUndefined()
   })
 
   it('emits confirm when the admin chooses "Looks right"', async () => {
     await mountDialog()
 
-    buttonNamed('Looks right').click()
+    buttonNamed('Looks right')?.click()
     await flushPromises()
 
-    expect(wrapper.emitted('confirm')).toHaveLength(1)
+    expect(wrapper?.emitted('confirm')).toHaveLength(1)
   })
 
   it('navigates to the repository and closes the dialog when a row is followed', async () => {
     await mountDialog()
 
-    dialog().querySelector('a').click()
+    dialog()?.querySelector('a')?.click()
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/repositories/mirror')
-    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(wrapper?.emitted('update:modelValue')).toEqual([[false]])
   })
 })

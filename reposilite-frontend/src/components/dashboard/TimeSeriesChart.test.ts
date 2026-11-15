@@ -15,24 +15,44 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import TimeSeriesChart from './TimeSeriesChart.vue'
+import type { Series } from './seriesSummary'
+
+// The option the chart is given. Only the fields the tests read are typed.
+type ChartOption = {
+  animation: boolean
+  legend: { show: boolean }
+  series: { name: string }[]
+}
+
+type FakeChart = {
+  setOption: Mock<(option: ChartOption) => void>
+  resize: Mock<() => void>
+  dispose: Mock<() => void>
+}
 
 // ECharts draws on a canvas, which the test environment does not have. Its init is replaced by a double that records
 // the options it is given. The double is created for each test, so no chart is shared between tests.
-const echarts = vi.hoisted(() => ({ init: null }))
+const echarts: { init: ((...args: unknown[]) => FakeChart) | null } = vi.hoisted(() => ({ init: null }))
 
 vi.mock('echarts/core', () => ({
-  init: (...args) => echarts.init(...args),
+  init: (...args: unknown[]) => echarts.init?.(...args),
   use: () => {}
 }))
 
-const fakeChart = () => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() })
+const fakeChart = (): FakeChart => ({
+  setOption: vi.fn<(option: ChartOption) => void>(),
+  resize: vi.fn<() => void>(),
+  dispose: vi.fn<() => void>()
+})
 
-const series = [{ name: 'downloads', data: [[Date.UTC(2026, 0, 1), 3], [Date.UTC(2026, 0, 2), 5]] }]
+const series: Series[] = [{ name: 'downloads', data: [[Date.UTC(2026, 0, 1), 3], [Date.UTC(2026, 0, 2), 5]] }]
 
-let chart
-let wrapper
+let chart: FakeChart
+let wrapper: VueWrapper | undefined
 
 beforeEach(() => {
   chart = fakeChart()
@@ -57,13 +77,13 @@ describe('TimeSeriesChart animation', () => {
 
     await wrapper.setProps({ series: [...series, { name: 'uploads', data: [] }] })
 
-    const latest = chart.setOption.mock.calls.at(-1)[0]
-    expect(latest.animation, 'the animation flag of the redrawn option').toBe(false)
+    const latest = chart.setOption.mock.calls.at(-1)?.[0]
+    expect(latest?.animation, 'the animation flag of the redrawn option').toBe(false)
   })
 })
 
 describe('TimeSeriesChart legend', () => {
-  const instances = [
+  const instances: Series[] = [
     { name: 'ingot-0', data: [[Date.UTC(2026, 0, 1), 100]] },
     { name: 'ingot-1', data: [[Date.UTC(2026, 0, 1), 150]] }
   ]

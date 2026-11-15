@@ -14,7 +14,7 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
@@ -34,6 +34,13 @@ import { SCRIM_STYLE } from '../settings/dialog'
 
 // The sentence the switch describes and the dialog opens with. Both use the same text, so a screen reader
 // hears on focus what the confirmation then says.
+// The state the read-only endpoint answers with. Its 200 response has no content in the OpenAPI description,
+// so both fields are named here as the contract the switch reads.
+interface ReadOnlyState {
+  enabled: boolean
+  source: string
+}
+
 const CONSEQUENCE = 'Every upload, deploy and delete is refused with 503 on every instance until read-only mode is turned off. Reads continue, and scheduled cleanup and index runs wait.'
 const SWITCH_ID = 'read-only-switch'
 
@@ -48,7 +55,7 @@ const busy = ref(false)
 const confirmOpen = ref(false)
 const failure = ref('')
 
-const applyState = (data) => {
+const applyState = (data: ReadOnlyState) => {
   enabled.value = data.enabled
   forced.value = data.source === 'environment'
 }
@@ -66,7 +73,7 @@ onMounted(() => {
 
 // The server answers with the state it now holds, and that is what the switch shows. A 409 means the
 // environment forces the state; its problem body names the variable, and that text is shown as it is.
-const request = (next) => {
+const request = (next: boolean) => {
   busy.value = true
   failure.value = ''
   const call = next ? client.value.readOnly.enable() : client.value.readOnly.disable()
@@ -82,7 +89,7 @@ const request = (next) => {
 
 const focusSwitch = () => nextTick(() => document.getElementById(SWITCH_ID)?.focus())
 
-const onSwitch = (next) => {
+const onSwitch = (next: boolean) => {
   if (busy.value || forced.value) return
   if (next) {
     confirmOpen.value = true

@@ -16,6 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { describeHealth, findIntegrations, toAnswer } from './instanceHealth'
+import type { ProbeAnswer } from './instanceHealth'
 
 describe('describeHealth', () => {
   it('reports an instance that answers UP as healthy', () => {
@@ -72,12 +73,12 @@ describe('toAnswer', () => {
 })
 
 describe('findIntegrations', () => {
-  const url = (endpoint) => `http://test${endpoint}`
+  const url = (endpoint: string) => `http://test${endpoint}`
   const SWAGGER_PAGE = '<!doctype html><html><body><div id="swagger-ui"></div></body></html>'
   const DASHBOARD_PAGE = '<!doctype html><html><body><div id="app"></div></body></html>'
 
   it('lists the API docs and metrics that answer, with their absolute links', async () => {
-    const probe = (endpoint) => Promise.resolve(
+    const probe = (endpoint: string): Promise<ProbeAnswer> => Promise.resolve(
       endpoint === '/swagger'
         ? { status: 200, contentType: 'text/html; charset=utf-8', body: SWAGGER_PAGE }
         : { status: 200, contentType: 'text/plain', body: '# TYPE jvm_threads gauge' }
@@ -92,7 +93,7 @@ describe('findIntegrations', () => {
   })
 
   it('leaves out an integration that is not there', async () => {
-    const probe = (endpoint) => Promise.resolve(
+    const probe = (endpoint: string): Promise<ProbeAnswer> => Promise.resolve(
       endpoint === '/swagger'
         ? { status: 404, contentType: 'application/json', body: '{}' }
         : { status: 200, contentType: 'text/plain', body: '# TYPE jvm_threads gauge' }
@@ -104,7 +105,7 @@ describe('findIntegrations', () => {
   })
 
   it('treats the metrics endpoint as present when it asks for credentials', async () => {
-    const probe = (endpoint) => Promise.resolve(
+    const probe = (endpoint: string): Promise<ProbeAnswer> => Promise.resolve(
       endpoint === '/metrics'
         ? { status: 401, contentType: 'application/json', body: '{}' }
         : { status: 404, contentType: 'application/json', body: '{}' }

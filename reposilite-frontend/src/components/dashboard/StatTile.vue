@@ -14,12 +14,16 @@
   ~ limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { PropType } from 'vue'
 import { STATUS } from '../../store/palette'
 import LinkIcon from '../icons/LinkIcon.vue'
 import MdCard from '../md/MdCard.vue'
 import StatusLabel from './StatusLabel.vue'
+
+// The reserved state names of the palette. Declared at runtime below, so the validator stays in place.
+type StatusName = keyof typeof STATUS
 
 const props = defineProps({
   label: {
@@ -40,7 +44,7 @@ const props = defineProps({
    * close to full" at a glance where "151.5 of 512 MB" makes the reader do the division.
    */
   ratio: {
-    type: Number,
+    type: Number as PropType<number | null>,
     default: null
   },
   /**
@@ -53,9 +57,9 @@ const props = defineProps({
   },
   /** One of the reserved state names. Always shown with `statusLabel`, never colour alone. */
   status: {
-    type: String,
+    type: String as PropType<StatusName | null>,
     default: null,
-    validator: (value) => value === null || value in STATUS
+    validator: (value: StatusName | null) => value === null || value in STATUS
   },
   statusLabel: {
     type: String,
@@ -76,7 +80,7 @@ const meterWidth = computed(() => `${meterValue.value}%`)
 // The meter fill is the primary role until the reading is one the operator has to act on,
 // and only then does it turn to a state colour.
 const meterColor = computed(() => {
-  if (props.ratio === null) return null
+  if (props.ratio === null) return undefined
   if (props.ratio >= 0.9) return STATUS.critical
   if (props.ratio >= 0.75) return STATUS.warning
   return 'var(--md-sys-color-primary)'

@@ -16,10 +16,15 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
+import type { components } from '../../types/api'
 
-const session = vi.hoisted(() => ({ client: null }))
+type AllResolved = () => Promise<{ data: components['schemas']['AllResolvedResponse'] }>
+type StatisticsClient = { statistics: { allResolved: AllResolved } }
+
+const session: { client: Ref<StatisticsClient> | null } = vi.hoisted(() => ({ client: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 vi.mock('../../helpers/toast', () => ({ createErrorToast: vi.fn() }))
 vi.mock('./TimeSeriesChart.vue', async () => {
@@ -27,7 +32,7 @@ vi.mock('./TimeSeriesChart.vue', async () => {
   return { default: { render: () => createElement('div', { class: 'chart-stub' }) } }
 })
 
-const clientWith = (allResolved) => ({
+const clientWith = (allResolved: AllResolved): StatisticsClient => ({
   statistics: { allResolved }
 })
 

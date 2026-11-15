@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+import type { components } from '../../types/api'
+
+type Instance = components['schemas']['ClusterInstanceResponse']
+type SummedKey = 'usedMemory' | 'maxMemory' | 'usedThreads' | 'maxThreads' | 'failuresCount'
+
 /*
  * Consumer contract for the cluster view of the instance status (GET /api/status/instance).
  *
@@ -64,20 +69,21 @@
  * The summary is computed here from `instances`, not sent by the backend.
  */
 
-const HEALTH_RANK = { up: 0, unknown: 1, down: 2 }
+const HEALTH_RANK: Record<string, number> = { up: 0, unknown: 1, down: 2 }
 
-export const HEALTH_LABEL = { up: 'Healthy', unknown: 'Health unavailable', down: 'Unhealthy' }
+export const HEALTH_LABEL: Record<string, string> = { up: 'Healthy', unknown: 'Health unavailable', down: 'Unhealthy' }
 
 /** The label for a health state. Anything the backend did not name is shown as unknown. */
-export const healthLabel = (state) => HEALTH_LABEL[state] ?? HEALTH_LABEL.unknown
+export const healthLabel = (state: string | null | undefined): string => HEALTH_LABEL[String(state)] ?? HEALTH_LABEL.unknown
 
 /** Time since the instance last restarted, never negative, so clock skew cannot show a negative uptime. */
-export const uptimeOf = (instance, now) => Math.max(0, now - instance.uptimeStart)
+export const uptimeOf = (instance: Pick<Instance, 'uptimeStart'>, now: number): number => Math.max(0, now - instance.uptimeStart)
 
-const sumOf = (instances, key) => instances.reduce((total, instance) => total + instance[key], 0)
+const sumOf = (instances: Instance[], key: SummedKey): number =>
+  instances.reduce((total, instance) => total + instance[key], 0)
 
 // The worst instance decides. The first one seeds the comparison, so an empty list has no health.
-const worstHealth = (instances) => instances.length === 0
+const worstHealth = (instances: Instance[]): string | null => instances.length === 0
   ? null
   : instances.reduce(
     (worst, { health }) => (HEALTH_RANK[health] > HEALTH_RANK[worst] ? health : worst),
@@ -90,10 +96,10 @@ const worstHealth = (instances) => instances.length === 0
  * version or "mixed" with every version listed once, and the health is the worst instance's.
  * Stale instances are still listed, so they stay in the sums as well.
  *
- * @param {object[]} instances the `cluster.instances` of the status response
- * @param {number} now the current time in epoch milliseconds, passed in so the rule is pure
+ * @param instances the `cluster.instances` of the status response
+ * @param now the current time in epoch milliseconds, passed in so the rule is pure
  */
-export const summariseCluster = (instances, now) => {
+export const summariseCluster = (instances: Instance[], now: number) => {
   const versions = [...new Set(instances.map(instance => instance.version))]
   const shortest = instances.length === 0
     ? null
