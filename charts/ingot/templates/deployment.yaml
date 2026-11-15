@@ -1,3 +1,4 @@
+{{- include "ingot.scalableCheck" . }}
 {{- $roles := list "" -}}
 {{- if eq .Values.mode "scalable" -}}
 {{- $roles = list "read" "write" "worker" -}}
