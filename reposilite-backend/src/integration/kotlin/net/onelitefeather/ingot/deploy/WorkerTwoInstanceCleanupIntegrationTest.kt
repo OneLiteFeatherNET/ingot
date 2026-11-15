@@ -127,6 +127,20 @@ internal class WorkerTwoInstanceCleanupIntegrationTest {
             .isTrue()
     }
 
+    @Test
+    fun `with the switch off the cleanup schedule is never submitted and the worker submits it`() {
+        // given: a worker and a server with the background jobs switched off, started on one database
+        val fixture = startPair()
+
+        // then: the worker submitted the cleanup schedule, and the server with the switch off submitted none
+        assertThat(fixture.worker.reposilite.submittedSingletonJobs)
+            .describedAs("singleton jobs submitted by the worker")
+            .contains(SingletonJob.CLEANUP_SCHEDULE)
+        assertThat(fixture.server.reposilite.submittedSingletonJobs)
+            .describedAs("singleton jobs submitted by the server with INGOT_BACKGROUND_JOBS=false")
+            .doesNotContain(SingletonJob.CLEANUP_SCHEDULE)
+    }
+
     // ---- fixture
 
     private class Node(val instanceId: String, val reposilite: Reposilite)
