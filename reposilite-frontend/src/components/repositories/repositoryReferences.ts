@@ -19,7 +19,7 @@
  * Vue, the router or the network.
  */
 
-import { effectiveTypeOf } from '../../store/maven/repositoryTypes'
+import { effectiveTypeOf, type Entry } from '../../store/maven/repositoryTypes'
 
 export const MIXED_WARNING = 'References local and remote repositories. Split it into a group and a proxy.'
 
@@ -27,7 +27,7 @@ export const MIXED_WARNING = 'References local and remote repositories. Split it
  * The ids of the groups of the draft that list the repository `id` as a member, in the order of the draft. An entry
  * without an id (`id` is empty) has no member name, so no group is named for it; a blank reference is not a match.
  */
-export const groupsReferencing = (entries, id) => (id === '' ? [] : entries
+export const groupsReferencing = (entries: Entry[], id: string): unknown[] => (id === '' ? [] : entries
   .filter(entry => entry.id !== id && effectiveTypeOf(entry).type === 'GROUP')
   .filter(entry => (Array.isArray(entry.proxied) ? entry.proxied : [])
     .some(item => String(item?.reference ?? '').trim() === id))

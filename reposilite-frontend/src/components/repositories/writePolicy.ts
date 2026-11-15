@@ -20,14 +20,28 @@
  * Allow once or Allow again afterwards restores the earlier state. Nothing here touches Vue or the network.
  */
 
-export const WRITE_CHOICES = [
+export type WriteChoice = 'allow' | 'allowOnce' | 'readOnly'
+
+export interface WriteChoiceOption {
+  value: WriteChoice
+  label: string
+}
+
+// An entry of the draft as the write policy reads it. Only the two keys of the policy are named.
+export interface PolicyEntry {
+  readOnly?: unknown
+  redeployment?: unknown
+  [field: string]: unknown
+}
+
+export const WRITE_CHOICES: readonly WriteChoiceOption[] = [
   { value: 'allow', label: 'Allow' },
   { value: 'allowOnce', label: 'Allow once' },
   { value: 'readOnly', label: 'Read only' }
 ]
 
 /* The choice a hosted entry is in. A missing redeployment is off, as the server reads it. */
-export const writePolicyOf = (entry = {}) => {
+export const writePolicyOf = (entry: PolicyEntry = {}): WriteChoice => {
   if (entry.readOnly === true) return 'readOnly'
   return entry.redeployment === true ? 'allow' : 'allowOnce'
 }
@@ -36,9 +50,9 @@ export const writePolicyOf = (entry = {}) => {
  * The entry with the choice applied. The same entry comes back when the choice is already the stored one, so a save
  * does not rewrite a repository the visitor only looked at. The given entry is never changed.
  */
-export const writePolicyChange = (entry, choice) => {
+export const writePolicyChange = (entry: PolicyEntry, choice: WriteChoice): PolicyEntry => {
   if (writePolicyOf(entry) === choice) return entry
-  const next = { ...entry }
+  const next: PolicyEntry = { ...entry }
   if (choice === 'readOnly') {
     next.readOnly = true
     return next

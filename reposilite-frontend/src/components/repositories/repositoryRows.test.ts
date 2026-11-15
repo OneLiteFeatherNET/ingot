@@ -33,8 +33,8 @@ describe('rows of the repositories table', () => {
   })
 
   it('gives the type in words, and says derived for a repository without a declared type', () => {
-    expect(rows.find(row => row.id === 'releases').type).toMatchObject({ label: 'Hosted', derived: false })
-    expect(rows.find(row => row.id === 'central').type).toMatchObject({ label: 'Proxy', derived: true })
+    expect(rows.find(row => row.id === 'releases')!.type).toMatchObject({ label: 'Hosted', derived: false })
+    expect(rows.find(row => row.id === 'central')!.type).toMatchObject({ label: 'Proxy', derived: true })
   })
 
   it('shows visibility as a word', () => {
@@ -53,8 +53,8 @@ describe('rows of the repositories table', () => {
 
   it('marks a repository that the server has not saved as unsaved', () => {
     const fresh = rowsOf([...entries, { id: 'new-one', type: 'HOSTED' }], { origin: ORIGIN, basePath: '/', savedIds: ['releases'] })
-    expect(fresh.find(row => row.id === 'new-one').unsaved).toBe(true)
-    expect(fresh.find(row => row.id === 'releases').unsaved).toBe(false)
+    expect(fresh.find(row => row.id === 'new-one')!.unsaved).toBe(true)
+    expect(fresh.find(row => row.id === 'releases')!.unsaved).toBe(false)
   })
 
   it('shows every row as saved when no list of saved ids is given', () => {

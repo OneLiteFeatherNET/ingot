@@ -15,14 +15,13 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import WritePolicyField from './WritePolicyField.vue'
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 // The help line of each choice, in the order of the choices: Allow, Allow once, Read only.

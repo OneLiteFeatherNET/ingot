@@ -16,12 +16,14 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import RepositoriesView from './RepositoriesView.vue'
 import RepositoryDetail from './RepositoryDetail.vue'
 import { loadedStore, repositorySchema } from './fixtures/repositories'
+
+type LoadedStore = Awaited<ReturnType<typeof loadedStore>>
 
 // The session is an administrator without a live client, so the wizard and the access card stay off the network.
 vi.mock('../../store/session', () => ({
@@ -31,7 +33,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? String(error)
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -42,11 +44,10 @@ vi.mock('../../store/placeholders', () => ({
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 const routesOf = () => [
@@ -55,7 +56,7 @@ const routesOf = () => [
 ]
 
 // The list is mounted under a router that owns the query and the address, as the app does.
-const mountList = async ({ address = '/settings/repositories', store } = {}) => {
+const mountList = async ({ address = '/settings/repositories', store }: { address?: string; store?: LoadedStore } = {}) => {
   const router = createRouter({ history: createMemoryHistory(), routes: routesOf() })
   await router.push(address)
   const configuration = store ?? await loadedStore({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
@@ -72,13 +73,13 @@ const mountList = async ({ address = '/settings/repositories', store } = {}) => 
   return { wrapper, router, store: configuration }
 }
 
-const buttonLabelled = (label) => wrapper.find(`button[aria-label="${label}"]`)
+const buttonLabelled = (label: string) => wrapper.find(`button[aria-label="${label}"]`)
 // The Actions menu of a row is teleported to the body: its items are read from the document.
-const openActionsOf = async (name) => {
+const openActionsOf = async (name: string) => {
   buttonLabelled(`Actions for ${name}`).trigger('click')
   await flushPromises()
 }
-const menuItemOf = (label) => document.querySelector(`[role="menu"] [aria-label="${label}"]`)
+const menuItemOf = (label: string) => document.querySelector<HTMLElement>(`[role="menu"] [aria-label="${label}"]`)!
 const wizardDialogs = () => document.querySelectorAll('#repository-wizard')
 const deleteDialog = () => document.querySelector('#delete-entry-form')
 const headingText = () => wrapper.find('h2').text()
@@ -87,7 +88,7 @@ describe('creating a repository from the page', () => {
   it('opens the existing wizard once from New repository', async () => {
     await mountList()
 
-    const button = wrapper.findAll('button').find(control => control.text() === 'New repository')
+    const button = wrapper.findAll('button').find(control => control.text() === 'New repository')!
     expect(button, 'the page offers New repository').toBeDefined()
     await button.trigger('click')
     await flushPromises()
@@ -123,9 +124,9 @@ describe('deleting a repository from the page', () => {
     await flushPromises()
 
     expect(deleteDialog(), 'the delete dialog opens').not.toBeNull()
-    const groups = Array.from(deleteDialog().querySelectorAll('li')).map(item => item.textContent.trim())
+    const groups = Array.from(deleteDialog()!.querySelectorAll('li')).map(item => item.textContent.trim())
     expect(groups, 'the group that lists the repository is named before the confirm button').toEqual(['all'])
-    expect(document.querySelector('#delete-entry-confirm').disabled, 'the confirm button waits for the typed name').toBe(true)
+    expect(document.querySelector<HTMLButtonElement>('#delete-entry-confirm')!.disabled, 'the confirm button waits for the typed name').toBe(true)
     expect(document.activeElement?.id, 'the initial focus is on Cancel').toBe('delete-entry-cancel')
   })
 
@@ -135,11 +136,11 @@ describe('deleting a repository from the page', () => {
     menuItemOf('Delete releases').click()
     await flushPromises()
 
-    const input = document.querySelector('#delete-entry-confirm-input')
+    const input = document.querySelector<HTMLInputElement>('#delete-entry-confirm-input')!
     input.value = 'releases'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
-    deleteDialog().dispatchEvent(new Event('submit', { cancelable: true }))
+    deleteDialog()!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
     expect(wrapper.findAll('tbody th[scope="row"]').map(cell => cell.text()), 'the row is removed').not.toContain('releases')
@@ -157,7 +158,7 @@ describe('deleting a repository from the page', () => {
     await flushPromises()
     expect(deleteDialog(), 'the dialog is open').not.toBeNull()
 
-    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await flushPromises()
 
     expect(deleteDialog(), 'Escape closes the dialog').toBeNull()

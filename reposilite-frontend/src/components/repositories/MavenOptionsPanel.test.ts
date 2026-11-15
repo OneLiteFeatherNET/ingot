@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey } from '../../store/configuration'
 import MavenOptionsPanel from './MavenOptionsPanel.vue'
@@ -23,11 +23,10 @@ import { loadedStore, repositorySchema, repositoriesServer } from './fixtures/re
 
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null }, isManager: { value: false } }) }))
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 // The served maven schema with its one domain-level field, as the instance declares it.
@@ -117,7 +116,7 @@ describe('the Maven options section', () => {
     store.validateDomain('maven')
     await flushPromises()
 
-    const input = wrapper.findAll('input').find(candidate => candidate.element.value === '-1')
+    const input = wrapper.findAll('input').find(candidate => candidate.element.value === '-1')!
     expect(input, 'the field shows the typed value').toBeDefined()
     expect(input.attributes('aria-invalid'), 'the field says it is invalid').toBe('true')
     expect(store.invalidDomains.value, 'the save bar is blocked').toContain('maven')

@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, provide } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
@@ -44,7 +44,7 @@ const formsConfiguration = {
   showUnfocusedDescription: true
 }
 
-const onChange = (event) => {
+const onChange = (event: { data: Record<string, unknown> }) => {
   store.setDomainData('maven', event.data)
   store.validateDomain('maven')
 }

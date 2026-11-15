@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import RepositoriesView from './RepositoriesView.vue'
@@ -31,7 +31,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? String(error)
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -42,11 +42,10 @@ vi.mock('../../store/placeholders', () => ({
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 const routesOf = () => [
@@ -54,7 +53,7 @@ const routesOf = () => [
   { name: 'settings-repository', path: '/settings/repositories/:id', component: RepositoryDetail, props: true }
 ]
 
-const mountAt = async (address) => {
+const mountAt = async (address: string) => {
   const router = createRouter({ history: createMemoryHistory(), routes: routesOf() })
   await router.push(address)
   const store = await loadedStore({ server: repositoriesServer(), schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
@@ -73,14 +72,14 @@ const mountAt = async (address) => {
 const controls = () => Array.from(document.querySelectorAll('button, a[href], input, select, textarea'))
   .filter(control => !control.hasAttribute('disabled') && control.getAttribute('aria-hidden') !== 'true')
 
-const accessibleName = (control) => (control.getAttribute('aria-label') ?? control.textContent ?? '').trim()
+const accessibleName = (control: Element) => (control.getAttribute('aria-label') ?? control.textContent ?? '').trim()
 
 // The target size of a control, read from its shared classes: the 48px touch target, or a size of at least 24px
 // (Tailwind's 6 is 1.5rem) given as min-h and min-w, or as size.
-const hasTargetClass = (control) => {
+const hasTargetClass = (control: Element) => {
   const classes = (control.getAttribute('class') ?? '').split(/\s+/)
   if (classes.includes('md-touch-target')) return true
-  const sizeOf = (prefix) => {
+  const sizeOf = (prefix: string) => {
     const found = classes.find(name => new RegExp(`^${prefix}-\\d+$`).test(name))
     return found ? Number(found.slice(prefix.length + 1)) : 0
   }
@@ -101,7 +100,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
     await flushPromises()
     expect(positive(), 'the open Actions menu has no positive tabindex').toEqual([])
 
-    document.querySelector('[role="menuitem"][aria-label="Delete releases"]').click()
+    document.querySelector<HTMLElement>('[role="menuitem"][aria-label="Delete releases"]')!.click()
     await flushPromises()
     expect(positive(), 'the delete dialog has no positive tabindex').toEqual([])
   })
@@ -164,7 +163,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
   it('reports the filter count in a status region once for each change', async () => {
     await mountAt('/settings/repositories')
 
-    const input = wrapper.find('input[type="search"], input[type="text"]')
+    const input = wrapper.find<HTMLInputElement>('input[type="search"], input[type="text"]')
     input.element.value = 'snap'
     input.trigger('input')
     await flushPromises()
@@ -176,7 +175,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
   it('reports the sort in one status region, and no other region repeats it', async () => {
     await mountAt('/settings/repositories')
 
-    const sort = wrapper.findAll('thead th').find(header => header.text().startsWith('Type')).find('button')
+    const sort = wrapper.findAll('thead th').find(header => header.text().startsWith('Type'))!.find('button')
     await sort.trigger('click')
     await flushPromises()
 
@@ -186,13 +185,13 @@ describe('the repositories page keyboard and screen reader contract', () => {
 
   it('returns the focus to New repository when Escape closes the wizard', async () => {
     await mountAt('/settings/repositories')
-    const opener = wrapper.findAll('button').find(control => control.text() === 'New repository')
+    const opener = wrapper.findAll('button').find(control => control.text() === 'New repository')!
     opener.element.focus()
     await opener.trigger('click')
     await flushPromises()
     expect(document.querySelectorAll('#repository-wizard').length, 'the wizard is open').toBe(1)
 
-    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await flushPromises()
 
     expect(document.querySelectorAll('#repository-wizard').length, 'Escape closes the wizard').toBe(0)

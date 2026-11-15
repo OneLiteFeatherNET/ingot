@@ -15,16 +15,18 @@
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import RepositoryDetail from './RepositoryDetail.vue'
-import { loadedStore, repositorySchema } from './fixtures/repositories'
+import { loadedStore, repositorySchema, type RepositoryRecord, type RepositorySchema } from './fixtures/repositories'
+
+type LoadedStore = Awaited<ReturnType<typeof loadedStore>>
 
 // The session answers as an instance administrator, so the access card asks the identity endpoint.
 const holder = vi.hoisted(() => ({
   session: {
-    client: { value: null },
+    client: { value: null as null | { identity: { repositoryAccess: () => Promise<{ data: unknown }> } } },
     isManager: { value: true }
   }
 }))
@@ -33,7 +35,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | null | undefined)?.message ?? String(error)
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -44,7 +46,7 @@ beforeEach(() => {
   holder.session.client = {
     value: {
       identity: {
-        repositoryAccess: async () => ({ data: { visibility: 'PUBLIC', entries: [] } })
+        repositoryAccess: () => Promise.resolve({ data: { visibility: 'PUBLIC', entries: [] } })
       }
     }
   }
@@ -54,14 +56,13 @@ beforeEach(() => {
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 
-let wrapper
+let wrapper: VueWrapper
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
-const mountDetail = async ({ id = 'releases', schema, store, address } = {}) => {
+const mountDetail = async ({ id = 'releases', schema, store, address }: { id?: string; schema?: RepositorySchema; store?: LoadedStore; address?: string } = {}) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -84,10 +85,10 @@ const mountDetail = async ({ id = 'releases', schema, store, address } = {}) => 
 }
 
 // The entry of the draft, read the way the page reads it, so each test compares what was stored.
-const entryOf = (store, id) => store.configurations.value.maven.repositories.find(entry => entry.id === id)
-const radioNamed = (label) => document.querySelector(`input[type="radio"][value="${label}"]`)
-const writePolicyRadios = () => Array.from(document.querySelectorAll('fieldset input[type="radio"]'))
-const buttonNamed = (text) => Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === text)
+const entryOf = (store: LoadedStore, id: string) => (store.configurations.value.maven.repositories as RepositoryRecord[]).find(entry => entry.id === id)!
+const radioNamed = (label: string) => document.querySelector<HTMLInputElement>(`input[type="radio"][value="${label}"]`)!
+const writePolicyRadios = () => Array.from(document.querySelectorAll<HTMLInputElement>('fieldset input[type="radio"]'))
+const buttonNamed = (text: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent?.trim() === text)!
 
 describe('the repository detail page', () => {
   it('does not repeat the id of the repository as a heading, the page heading names it', async () => {
@@ -213,7 +214,7 @@ describe('the repository detail page', () => {
     buttonNamed('Declare Proxy').click()
     await flushPromises()
     expect(entryOf(store, 'central').type, 'the type is written after the confirmation').toBe('PROXY')
-    expect(entryOf(store, 'central').proxied.length, 'the empty entry is gone').toBe(1)
+    expect((entryOf(store, 'central').proxied as unknown[]).length, 'the empty entry is gone').toBe(1)
   })
 
   it('shows the Mixed warning and offers no declare action', async () => {

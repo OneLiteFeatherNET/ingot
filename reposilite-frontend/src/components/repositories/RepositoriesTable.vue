@@ -14,13 +14,14 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import TypeBadge from './TypeBadge.vue'
 import { WRITE_CHOICES } from './writePolicy'
 import { MIXED_WARNING } from './repositoryReferences'
+import type { RepositoryRow, SortDirection, SortKey } from './repositoryRows'
 
 /*
  * The table of the repositories: a plain HTML table, not an ARIA grid, so each row is reached with Tab in the order
@@ -30,69 +31,58 @@ import { MIXED_WARNING } from './repositoryReferences'
  * widths; Name, Type and Actions are always shown. The table itself is the only thing that scrolls on a narrow screen,
  * inside a named region.
  */
-const props = defineProps({
-  // The rows the page shows, already filtered and sorted (see repositoryRows.js).
-  rows: {
-    type: Array,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  // The rows the page shows, already filtered and sorted (see repositoryRows.ts).
+  rows: RepositoryRow[]
   // The column the rows are sorted by, or null when they keep the order of the draft.
-  sortKey: {
-    type: String,
-    default: null
-  },
-  sortDirection: {
-    type: String,
-    default: 'ascending'
-  },
+  sortKey?: SortKey | null
+  sortDirection?: SortDirection
   // The Version policy column is shown only when the served schema has the field.
-  versionPolicy: {
-    type: Boolean,
-    default: false
-  },
+  versionPolicy?: boolean
   // The Write policy column is shown only when the served schema has the fields it reads.
-  writePolicy: {
-    type: Boolean,
-    default: false
-  },
-  caption: {
-    type: String,
-    required: true
-  },
-  emptyText: {
-    type: String,
-    default: 'No repositories yet.'
-  }
+  writePolicy?: boolean
+  caption: string
+  emptyText?: string
+}>(), {
+  sortKey: null,
+  sortDirection: 'ascending',
+  versionPolicy: false,
+  writePolicy: false,
+  emptyText: 'No repositories yet.'
 })
 
-const emit = defineEmits(['sort', 'copy', 'delete'])
+const emit = defineEmits<{
+  sort: [key: SortKey]
+  copy: [row: RepositoryRow]
+  delete: [row: RepositoryRow]
+}>()
 
 const router = useRouter()
 
-const SORT_ARROWS = { ascending: '▲', descending: '▼' }
-const VERSION_LABELS = { RELEASE: 'Release', SNAPSHOT: 'Snapshot', MIXED: 'Mixed' }
-const WRITE_LABELS = Object.fromEntries(WRITE_CHOICES.map(choice => [choice.value, choice.label]))
+const SORT_ARROWS: Record<SortDirection, string> = { ascending: '▲', descending: '▼' }
+const VERSION_LABELS: Record<string, string> = { RELEASE: 'Release', SNAPSHOT: 'Snapshot', MIXED: 'Mixed' }
+const WRITE_LABELS: Record<string, string> = Object.fromEntries(WRITE_CHOICES.map(choice => [choice.value, choice.label]))
 
 const columnCount = computed(() => 6 + (props.versionPolicy ? 1 : 0) + (props.writePolicy ? 1 : 0))
 
-const ariaSort = (key) => (props.sortKey === key ? props.sortDirection : undefined)
-const arrowOf = (key) => (props.sortKey === key ? SORT_ARROWS[props.sortDirection] : '')
+const ariaSort = (key: SortKey): SortDirection | undefined => (props.sortKey === key ? props.sortDirection : undefined)
+const arrowOf = (key: SortKey): string => (props.sortKey === key ? SORT_ARROWS[props.sortDirection] : '')
 
 // A group has no version policy of its own; an absent one means Mixed, as the server reads it.
-const versionLabel = (row) => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[row.versionPolicy] ?? 'Mixed'))
-const writeLabel = (row) => (row.writePolicy ? WRITE_LABELS[row.writePolicy] : '-')
+const versionLabel = (row: RepositoryRow): string => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[String(row.versionPolicy)] ?? 'Mixed'))
+const writeLabel = (row: RepositoryRow): string => (row.writePolicy ? WRITE_LABELS[row.writePolicy] : '-')
 
 // A row opens its detail at its route: the id, or a key address for an entry without one.
-const detailHref = (route) => router.resolve({ name: 'settings-repository', params: { id: route } }).href
-const openDetail = (route) => router.push({ name: 'settings-repository', params: { id: route } })
+const detailHref = (route: string): string => router.resolve({ name: 'settings-repository', params: { id: route } }).href
+const openDetail = (route: string) => router.push({ name: 'settings-repository', params: { id: route } })
 
 // The actions of a row, in one menu. An unnamed entry has no address to copy, so it has no copy action.
-const actionsOf = (row) => [
+const actionsOf = (row: RepositoryRow) => [
   { value: 'edit', label: 'Edit', ariaLabel: `Edit ${row.name}`, href: detailHref(row.route) },
   ...(row.unnamed ? [] : [{ value: 'copy', label: 'Copy address', ariaLabel: `Copy address of ${row.name}` }]),
   { value: 'delete', label: 'Delete', ariaLabel: `Delete ${row.name}`, error: true }
 ]
-const onAction = (row, value) => {
+const onAction = (row: RepositoryRow, value: string) => {
   if (value === 'edit') openDetail(row.route)
   else if (value === 'copy') emit('copy', row)
   else emit('delete', row)
