@@ -20,6 +20,7 @@ import com.reposilite.storage.StorageProviderFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.net.URL
 import java.net.URLClassLoader
 import java.util.ServiceLoader
 import java.util.jar.JarFile
@@ -32,9 +33,25 @@ internal class GcsStorageShadedJarIntegrationTest {
 
     private val jar = File(checkNotNull(System.getProperty("ingot.gcs.jar")) { "The build must pass the path of the shaded jar" })
 
-    /** A loader of the jar whose parent is the class loader of the server classes, as the plugin loader uses. */
-    private fun pluginLoader(): URLClassLoader =
-        URLClassLoader(arrayOf(jar.toURI().toURL()), StorageProviderFactory::class.java.classLoader)
+    /**
+     * A loader of the jar that prefers the classes of the jar, as the server's plugin loader does for a plugin that the server does not
+     * carry itself. The server's own types (the storage API) are not in the jar, so they still come from the parent.
+     */
+    private fun pluginLoader(): ChildFirstLoader =
+        ChildFirstLoader(arrayOf(jar.toURI().toURL()), StorageProviderFactory::class.java.classLoader)
+
+    private class ChildFirstLoader(urls: Array<URL>, parent: ClassLoader) : URLClassLoader(urls, parent) {
+
+        override fun loadClass(name: String, resolve: Boolean): Class<*> =
+            synchronized(getClassLoadingLock(name)) {
+                findLoadedClass(name) ?: try {
+                    findClass(name)
+                } catch (_: ClassNotFoundException) {
+                    super.loadClass(name, resolve)
+                }
+            }
+
+    }
 
     @Test
     fun `should relocate the copies of guava, protobuf and gax into the shaded package`() {
@@ -51,7 +68,19 @@ internal class GcsStorageShadedJarIntegrationTest {
     }
 
     @Test
-    fun `should find the gcs factory of the jar through its service file`() {
+    fun `should list the gcs factory in the service file of the jar`() {
+        // when: the service file of the storage provider factories is read from the jar
+        val factories = JarFile(jar).use { file ->
+            val entry = checkNotNull(file.getEntry("META-INF/services/com.reposilite.storage.StorageProviderFactory")) { "no service file" }
+            file.getInputStream(entry).bufferedReader().readLines()
+        }
+
+        // then: the gcs factory is listed there
+        assertThat(factories).`as`("service file").containsExactly("net.onelitefeather.ingot.storage.gcs.GcsStorageProviderFactory")
+    }
+
+    @Test
+    fun `should find the gcs factory through the service loader of the jar`() {
         // when: the storage provider factories are listed with the plugin loader
         pluginLoader().use { loader ->
             val factories = ServiceLoader.load(StorageProviderFactory::class.java, loader).map { it.javaClass.name }.toList()
