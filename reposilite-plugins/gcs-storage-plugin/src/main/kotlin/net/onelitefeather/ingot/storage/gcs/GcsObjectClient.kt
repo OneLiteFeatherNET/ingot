@@ -16,6 +16,9 @@
 
 package net.onelitefeather.ingot.storage.gcs
 
+import java.io.InputStream
+import java.time.Instant
+
 /**
  * The part of the Google Cloud Storage client that the provider uses. The provider talks to this interface only, so its rules are
  * tested with an in-memory fake, and the SDK is reached through one adapter. Names are full object names, with the prefix of the
@@ -32,7 +35,19 @@ internal interface GcsObjectClient {
      */
     fun startUpload(name: String, contentType: String, chunkSize: Int): GcsUpload
 
+    /** Reads [length] bytes from [offset] of an object, or the rest of the object when [length] is null. Only those bytes are transferred. */
+    fun read(name: String, offset: Long, length: Long?): InputStream
+
+    /** The metadata of an object, or [GcsNotFoundException] when the object does not exist. */
+    fun metadata(name: String): GcsObjectInfo
+
 }
+
+/** The metadata of one object as the service reports it. */
+internal data class GcsObjectInfo(val name: String, val size: Long, val updated: Instant)
+
+/** The service has no object of this name. */
+internal class GcsNotFoundException(name: String) : RuntimeException("Object not found: $name")
 
 /** A resumable upload of one object. */
 internal interface GcsUpload {
