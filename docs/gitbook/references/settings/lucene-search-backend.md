@@ -40,7 +40,9 @@ The lease keeps a second writer out, but it does not make search work on two rep
 
 Each commit records the epoch of its holder. When a replica takes the lease at an epoch other than the one its index was written under, it clears the index and takes a new identity. The core then starts a full rebuild from the database, because the replica cannot know which writes the previous holder acknowledged. Until the rebuild completes the index is incomplete, and the Maintenance page shows the rebuild.
 
-The same happens when the holder restarts. Releasing the lease at shutdown lets another replica take it at once, and a restart is a new grant with a new epoch. A restart therefore rebuilds the index. The index is a copy of the database, so the cost is time, not data.
+A restart of the same holder does not rebuild the index. The replica keeps its owner in its data directory, and a restart within the lease time re-acquires its own live lease with the same epoch, so its index is kept. The lease is not released at shutdown for that reason. A restart after the lease has expired is a new grant with a new epoch, and it rebuilds the index. Another replica takes the lease once it has expired, which takes at most one minute. The index is a copy of the database, so a rebuild costs time, not data.
+
+A takeover cannot overlap the old holder's writes. The holder commits a batch only while its lease is valid for the whole commit, with a margin of five seconds for the clock skew between replicas. A batch that would finish later is not written.
 
 ## Index location and commits
 
