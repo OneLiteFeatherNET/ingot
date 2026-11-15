@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// The downloadjs package ships no type declarations. This declares the one call the support bundle makes.
+// The downloadjs package ships no type declarations. This declares the call that the dashboard makes to save a file.
 declare module 'downloadjs' {
   export default function download(data: Blob | string, fileName?: string, mimeType?: string): void
 }
