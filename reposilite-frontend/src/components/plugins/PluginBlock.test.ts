@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import axios from 'axios'
 import PluginBlock from './PluginBlock.vue'
+import type { PluginBlockDefinition } from './pluginBlocks'
 
 vi.mock('axios', () => ({
   default: {
@@ -30,7 +31,7 @@ vi.mock('axios', () => ({
 
 const PLUGIN = 'example'
 
-const rows = (count) => Array.from({ length: count }, (_, index) => ({ name: `row ${index}` }))
+const rows = (count: number) => Array.from({ length: count }, (_, index) => ({ name: `row ${index}` }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -42,7 +43,7 @@ afterEach(() => {
   document.cookie = 'ingot_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
 })
 
-const mountBlock = (block) => mount(PluginBlock, { props: { plugin: PLUGIN, block } })
+const mountBlock = (block: PluginBlockDefinition) => mount(PluginBlock, { props: { plugin: PLUGIN, block } })
 
 describe('plugin blocks draw text, never markup', () => {
   it('shows markup in a text block as plain characters', () => {
@@ -53,7 +54,7 @@ describe('plugin blocks draw text, never markup', () => {
   })
 
   it('shows markup in a table cell as plain characters', async () => {
-    axios.get.mockResolvedValue({ data: [{ name: '<b>bold</b>' }] })
+    vi.mocked(axios.get).mockResolvedValue({ data: [{ name: '<b>bold</b>' }] })
 
     const wrapper = mountBlock({ type: 'table', source: '/api/plugins/example/items', columns: [{ key: 'name', label: 'Name' }] })
     await flushPromises()
@@ -65,7 +66,7 @@ describe('plugin blocks draw text, never markup', () => {
 
 describe('table block', () => {
   it('shows at most 500 rows and says how many it cut', async () => {
-    axios.get.mockResolvedValue({ data: rows(600) })
+    vi.mocked(axios.get).mockResolvedValue({ data: rows(600) })
 
     const wrapper = mountBlock({ type: 'table', source: '/api/plugins/example/items', columns: [{ key: 'name', label: 'Name' }] })
     await flushPromises()
@@ -77,7 +78,7 @@ describe('table block', () => {
 
 describe('action block', () => {
   it('asks for the confirm text before it sends anything', async () => {
-    axios.request.mockResolvedValue({ data: {} })
+    vi.mocked(axios.request).mockResolvedValue({ data: {} })
 
     const wrapper = mountBlock({
       type: 'action',
@@ -93,7 +94,7 @@ describe('action block', () => {
   })
 
   it('sends the write with the CSRF header once the confirm text is accepted', async () => {
-    axios.request.mockResolvedValue({ data: {} })
+    vi.mocked(axios.request).mockResolvedValue({ data: {} })
 
     const wrapper = mountBlock({
       type: 'action',
@@ -107,10 +108,10 @@ describe('action block', () => {
     await flushPromises()
 
     expect(axios.request).toHaveBeenCalledTimes(1)
-    const config = axios.request.mock.calls[0][0]
+    const config = vi.mocked(axios.request).mock.calls[0][0]
     expect(config.method).toBe('POST')
     expect(config.url).toContain('/api/plugins/example/start')
-    expect(config.headers['X-CSRF-Token']).toBe('token-1')
+    expect(config.headers?.['X-CSRF-Token']).toBe('token-1')
   })
 })
 
@@ -141,7 +142,7 @@ describe('prefix of the data paths', () => {
 describe('status block', () => {
   it('polls at the refresh interval and stops while the page is hidden', async () => {
     vi.useFakeTimers()
-    axios.get.mockResolvedValue({ data: { state: 'running', message: 'half way', progress: 0.5 } })
+    vi.mocked(axios.get).mockResolvedValue({ data: { state: 'running', message: 'half way', progress: 0.5 } })
 
     mountBlock({ type: 'status', source: '/api/plugins/example/status', refreshSeconds: 5 })
     await flushPromises()

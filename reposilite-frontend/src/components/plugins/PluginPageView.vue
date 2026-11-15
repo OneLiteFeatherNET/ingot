@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 // A page a server plugin contributed, drawn from its declaration. The permission is checked by the page
 // that shows it (IndexPage), and the page is drawn inside the Administration frame, which names it in
 // its heading. This view draws the description and the plugin of the page, and then its blocks.
@@ -6,14 +6,14 @@ import { computed } from 'vue'
 import { contributedPageByRoute } from '../../navigation/registry'
 import PluginBlock from './PluginBlock.vue'
 import NotFoundView from '../util/NotFoundView.vue'
-import { property } from '../../helpers/vue-extensions'
+import type { DrawnPage } from './pluginBlocks'
 
 const props = defineProps({
-  plugin: property(String, true),
-  pageId: property(String, true),
+  plugin: { type: String, required: true },
+  pageId: { type: String, required: true },
 })
 
-const page = computed(() => contributedPageByRoute(props.plugin, props.pageId))
+const page = computed(() => contributedPageByRoute(props.plugin, props.pageId) as DrawnPage | undefined)
 
 // The page id reaches the DOM only in the shape the server accepts for a page id, so a plugin cannot put free text there.
 const PAGE_ID = /^[a-z0-9-]{1,32}$/

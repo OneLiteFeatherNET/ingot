@@ -7,7 +7,7 @@ import {
 } from './detailsCollapsed'
 
 // A window whose media query answers for the screen width the test chooses.
-const screen = ({ wide }) => ({ matchMedia: () => ({ matches: wide }) })
+const screen = ({ wide }: { wide: boolean }) => ({ matchMedia: () => ({ matches: wide }) })
 
 describe('defaultDetailsCollapsed', () => {
   it('keeps the details open on a wide screen', () => {

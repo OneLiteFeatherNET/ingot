@@ -79,6 +79,11 @@
       "count": 1
     }
   },
+  "src/components/card/SnippetsCard.test.ts": {
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    }
+  },
   "src/components/console/ConsoleView.vue": {
     "vue/multiline-html-element-content-newline": {
       "count": 2
@@ -201,6 +206,11 @@
   "src/components/identity/TokenList.test.ts": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
+    }
+  },
+  "src/components/plugins/PluginBlock.test.ts": {
+    "@typescript-eslint/unbound-method": {
+      "count": 13
     }
   },
   "src/components/renderers/AllOfRenderer.vue": {

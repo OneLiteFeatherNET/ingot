@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, onBeforeUnmount, ref, useId, watch, watchEffect } from 'vue'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref, useId, watch, watchEffect, type PropType } from 'vue'
 import { useSession } from '../../store/session'
 import { copyToClipboard, selectText } from './copySnippet'
 import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
@@ -27,15 +27,18 @@ import DownIcon from '../icons/DownIcon.vue'
 import CardMenu from './CardMenu.vue'
 import RepositorySnippet from "./RepositorySnippet.vue"
 import ArtifactSnippet from "./ArtifactSnippet.vue"
+import type { SnippetConfiguration, SnippetData } from './snippetTypes'
 
 const props = defineProps({
   qualifier: {
-    type: Object,
+    type: Object as PropType<{ path: string }>,
     required: true
   }
 })
 
-const emit = defineEmits(['update:collapsed'])
+const emit = defineEmits<{
+  'update:collapsed': [collapsed: boolean]
+}>()
 
 // Folded away or open. Remembered per viewer, and the page reads the same choice to lay out the listing.
 const collapsed = ref(readDetailsCollapsed())
@@ -53,13 +56,13 @@ const label = ref('')
 // The repository the details are for, shown under the heading. Empty on the root page and for an artifact.
 const subtitle = ref('')
 const rootPage = ref(false)
-const configurations = [
+const configurations: SnippetConfiguration[] = [
   { name: 'Maven', lang: 'xml' },
   { name: 'Gradle Kotlin', lang: 'kotlin' },
   { name: 'Gradle Groovy', lang: 'groovy' },
   { name: 'SBT', lang: 'scala' }
 ]
-const data = ref({})
+const data = ref<SnippetData>({})
 const loading = ref(false)
 const { createRepositories } = useRepository()
 const { parseMetadata } = useMetadata()
@@ -72,10 +75,10 @@ const displayRepository = () => {
   title.value = rootPage.value ? 'Use a repository' : 'Repository details'
   label.value = rootPage.value ? 'Use a repository' : `Repository details: ${repository}`
   subtitle.value = rootPage.value ? '' : repository
-  data.value = createRepositories(props.qualifier)
+  data.value = { ...createRepositories(props.qualifier), type: 'repository' }
 }
 
-const displayArtifact = (metadataSource, version) => {
+const displayArtifact = (metadataSource: string, version?: string) => {
   title.value = 'Artifact details'
   label.value = 'Artifact details'
   subtitle.value = ''
@@ -126,7 +129,7 @@ watchEffect(() => {
     })
 })
 
-const selectedTab = ref()
+const selectedTab = ref<string>()
 const transitionName = ref('slide-right')
 
 watch(selectedTab, (to, from) => {
@@ -135,8 +138,8 @@ watch(selectedTab, (to, from) => {
   transitionName.value = toIndex - fromIndex < 0 ? 'slide-left' : 'slide-right'
 })
 
-const snippetRef = ref()
-const codeBlock = ref()
+const snippetRef = ref<Array<{ content?: string }>>()
+const codeBlock = ref<HTMLElement>()
 
 // '' (nothing yet), 'copied' or 'selected'. Shown as a status line next to the copy action.
 const copyState = ref('')
@@ -145,7 +148,7 @@ const copyMessage = computed(() => {
   if (copyState.value === 'selected') return 'Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.'
   return ''
 })
-let resetCopyState
+let resetCopyState: ReturnType<typeof setTimeout> | undefined
 
 const copy = async () => {
   if (copyState.value === 'copied') return
@@ -167,7 +170,7 @@ const copy = async () => {
 
 onBeforeUnmount(() => clearTimeout(resetCopyState))
 
-const selectTab = (tab) =>
+const selectTab = (tab: string) =>
   selectedTab.value = tab
 </script>
 
@@ -186,7 +189,7 @@ const selectTab = (tab) =>
           <button
             type="button"
             class="md-state-layer md-focus-ring -mx-2 inline-flex min-h-12 min-w-0 max-w-full items-center gap-1 rounded-corner-small px-2 text-left text-on-surface"
-            :aria-expanded="String(!collapsed)"
+            :aria-expanded="collapsed ? 'false' : 'true'"
             :aria-controls="bodyId"
             :aria-label="loading ? undefined : label"
             @click="toggleCollapsed"

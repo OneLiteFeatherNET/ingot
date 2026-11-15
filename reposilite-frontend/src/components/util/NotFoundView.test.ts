@@ -44,6 +44,6 @@ describe('NotFoundView', () => {
     const back = wrapper.findAll('a').find(link => link.text() === 'Back to overview')
 
     expect(back, 'a visitor needs a way out of a dead address').toBeDefined()
-    expect(back.attributes('href')).toBe('/')
+    expect(back!.attributes('href')).toBe('/')
   })
 })

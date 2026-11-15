@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 </script>
 

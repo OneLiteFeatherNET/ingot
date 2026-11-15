@@ -15,7 +15,7 @@
  */
 -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { typeBadgeOf } from '../../store/maven/repositoryTypes'
 
@@ -36,7 +36,7 @@ const props = defineProps({
 
 const badge = computed(() => typeBadgeOf(props.repository))
 
-const TONES = {
+const TONES: Record<string, string> = {
   hosted: 'bg-tertiary-container text-on-tertiary-container',
   proxy: 'bg-secondary-container text-on-secondary-container',
   group: 'bg-primary-container text-on-primary-container',

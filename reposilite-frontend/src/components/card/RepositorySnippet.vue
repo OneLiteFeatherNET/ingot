@@ -14,19 +14,20 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import XmlTag from './XmlTag.vue'
 import CodeString from './CodeString.vue'
 import CodeBrackets from "./CodeBrackets.vue"
-import { computed, ref } from 'vue'
+import { computed, ref, type PropType } from 'vue'
+import type { RepositorySnippetData, SnippetConfiguration } from './snippetTypes'
 
 const props = defineProps({
   configuration: {
-    type: Object,
+    type: Object as PropType<SnippetConfiguration>,
     required: true
   },
   data: {
-    type: Object,
+    type: Object as PropType<RepositorySnippetData>,
     required: true
   }
 })
@@ -40,7 +41,7 @@ const gradleId = computed(() => {
   return gradleIdUppercase.charAt(0).toLowerCase() + gradleIdUppercase.slice(1)
 })
 
-const preElement = ref(null)
+const preElement = ref<HTMLElement | null>(null)
 const content = computed(() => preElement?.value?.textContent)
 
 defineExpose({ content })

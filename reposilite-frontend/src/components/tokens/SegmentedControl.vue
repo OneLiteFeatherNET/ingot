@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 /*
  * An MD3 segmented button: one outlined track whose segments are single-choice radios.
  *
@@ -34,13 +34,14 @@ defineProps({
   }
 })
 
-const STEP = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
+const STEP: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
 
-const onKeydown = (event) => {
-  const radios = [...event.currentTarget.querySelectorAll('[role="radio"]:not(:disabled)')]
+const onKeydown = (event: KeyboardEvent) => {
+  const track = event.currentTarget as HTMLElement
+  const radios = [...track.querySelectorAll<HTMLElement>('[role="radio"]:not(:disabled)')]
   if (radios.length === 0) return
-  const current = radios.indexOf(event.target)
-  let next
+  const current = radios.indexOf(event.target as HTMLElement)
+  let next: number
   if (event.key === 'Home') {
     next = 0
   } else if (event.key === 'End') {

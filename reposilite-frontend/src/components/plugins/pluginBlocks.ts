@@ -20,14 +20,41 @@
  * in transit cannot widen a call. The rule is the same in both places.
  */
 
+import type { Method } from 'axios'
+import type { JsonSchema, UISchemaElement } from '@jsonforms/core'
+import type { PluginPage } from '../../navigation/registry'
+
 export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status']
+
+// One block of a page as the server declares it. Each kind reads only the fields it names.
+export interface PluginBlockDefinition {
+  type?: string
+  text?: string
+  label?: string
+  source?: string
+  target?: string
+  path?: string
+  method?: Method
+  confirm?: string
+  danger?: boolean
+  refreshSeconds?: number
+  columns?: { key: string; label: string }[]
+  schema?: JsonSchema
+  uiSchema?: UISchemaElement
+}
+
+// A contributed page with its blocks typed. The registry keeps the blocks as unknown until a page draws them.
+export type DrawnPage = Omit<PluginPage, 'blocks'> & { blocks?: PluginBlockDefinition[] }
+
+// The line a block shows when a request fails.
+export const failureText = (failure: unknown): string => (failure as Error | undefined)?.message ?? 'unknown error'
 
 export const MAX_TABLE_ROWS = 500
 
 const PATH_CHARACTERS = /^[A-Za-z0-9._~/-]+$/
 
 // A path is allowed when it is below the prefix of the plugin and climbs out of nothing.
-export const pathAllowed = (plugin, path) => {
+export const pathAllowed = (plugin: string, path: unknown): boolean => {
   const prefix = `/api/plugins/${plugin}/`
   if (typeof path !== 'string' || !path.startsWith(prefix) || !PATH_CHARACTERS.test(path)) return false
   const rest = path.slice(prefix.length)
@@ -35,14 +62,14 @@ export const pathAllowed = (plugin, path) => {
 }
 
 // The text a value shows as: strings as they are, everything else as compact JSON.
-export const displayValue = (value) => {
+export const displayValue = (value: unknown): string => {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value
   return JSON.stringify(value)
 }
 
 // The rows a table shows and how many it cut. The count of the rows is kept, so the cut is said out loud.
-export const tableRows = (rows) => ({
+export const tableRows = <T>(rows: T[]) => ({
   shown: rows.slice(0, MAX_TABLE_ROWS),
   total: rows.length,
   cut: rows.length > MAX_TABLE_ROWS,

@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import download from 'downloadjs'
 import { useSession } from '../../store/session'
@@ -23,19 +23,19 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 // The page offers the support bundle of the instance that answers. The download is a zip the operator reads before sharing it.
 const { client } = useSession()
 // loading, ready, off (the opt-out) or failed
-const state = ref('loading')
+const state = ref<'loading' | 'ready' | 'off' | 'failed'>('loading')
 const busy = ref(false)
 
 const DEFAULT_FILE_NAME = 'ingot-support-bundle.zip'
 
-const fileNameOf = (disposition) => disposition?.match(/filename="([^"]+)"/)?.[1] ?? DEFAULT_FILE_NAME
+const fileNameOf = (disposition?: string) => disposition?.match(/filename="([^"]+)"/)?.[1] ?? DEFAULT_FILE_NAME
 
 onMounted(async () => {
   try {
     const { data } = await client.value.support.availability()
     state.value = data?.enabled === true ? 'ready' : 'off'
   } catch (error) {
-    state.value = error?.response?.status === 404 ? 'off' : 'failed'
+    state.value = (error as { response?: { status?: number } } | undefined)?.response?.status === 404 ? 'off' : 'failed'
   }
 })
 

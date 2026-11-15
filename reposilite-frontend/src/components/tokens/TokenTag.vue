@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 defineProps({
   /** Reserved for the one property that changes what a token may reach. */
   accent: {
