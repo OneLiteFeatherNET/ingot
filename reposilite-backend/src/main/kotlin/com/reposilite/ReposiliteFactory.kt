@@ -24,6 +24,7 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.backend.PrintStreamLogger
+import com.reposilite.maven.EffectiveRepositoryType
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.PluginLoader
@@ -208,11 +209,16 @@ object ReposiliteFactory {
     private fun checkSharedState(reposilite: Reposilite, parameters: ReposiliteParameters, target: DeployTarget) {
         if (!ClusterRequirements.applies(target, parameters.backgroundJobsEnabled)) return
 
-        val repositoryStorageTypes = reposilite.extensions.facade<SharedConfigurationFacade>()
+        val repositories = reposilite.extensions.facade<SharedConfigurationFacade>()
             .getDomainSettings<MavenSettings>()
             .get()
             .repositories
-            .associate { it.id to it.storageProvider.type }
+        val localNames = repositories.map { it.id }.toSet()
+        val repositoryStorageTypes = repositories.associate { it.id to it.storageProvider.type }
+        val groupRepositories = repositories
+            .filter { it.effectiveType(localNames) == EffectiveRepositoryType.GROUP }
+            .map { it.id }
+            .toSet()
 
         val refusal = ClusterRequirements.refusalFor(
             target = target,
@@ -220,6 +226,7 @@ object ReposiliteFactory {
             database = parameters.database,
             clusterBusConfigured = ClusterSettings.read(ClusterSources.system()).url != null,
             repositoryStorageTypes = repositoryStorageTypes,
+            groupRepositories = groupRepositories,
             allowSharedFilesystem = System.getenv(ClusterRequirements.ALLOW_SHARED_FILESYSTEM_VARIABLE)?.trim() == "true",
         ) ?: return
 

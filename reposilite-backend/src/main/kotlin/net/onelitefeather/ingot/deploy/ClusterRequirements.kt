@@ -44,7 +44,9 @@ object ClusterRequirements {
     /**
      * The refusal naming every unmet requirement, or null when the start may go on. [database] is the database setting,
      * [clusterBusConfigured] tells whether a bus URL is set, and [repositoryStorageTypes] maps each repository id to its
-     * storage type. A repository on the local file system is only unmet while [allowSharedFilesystem] is false.
+     * storage type. [groupRepositories] are the ids of the repositories of type GROUP: they hold no files of their own,
+     * so their storage type does not count. A repository on the local file system is only unmet while
+     * [allowSharedFilesystem] is false.
      */
     fun refusalFor(
         target: DeployTarget,
@@ -52,11 +54,13 @@ object ClusterRequirements {
         database: String,
         clusterBusConfigured: Boolean,
         repositoryStorageTypes: Map<String, String>,
+        groupRepositories: Set<String>,
         allowSharedFilesystem: Boolean,
     ): StartupRefusal? {
         if (!applies(target, backgroundJobsEnabled)) return null
 
         val fileSystemRepositories = repositoryStorageTypes
+            .filterKeys { it !in groupRepositories }
             .filterValues { it == FILE_SYSTEM_STORAGE }
             .keys
             .map { "'$it'" }

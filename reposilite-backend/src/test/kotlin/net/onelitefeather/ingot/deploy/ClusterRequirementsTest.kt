@@ -124,6 +124,36 @@ internal class ClusterRequirementsTest {
     }
 
     @Test
+    fun `a group repository stored on the file system does not refuse the worker start`() {
+        // when: the worker starts on PostgreSQL with a bus and one group repository whose storage is the file system
+        val refusal = refusalOf(
+            target = DeployTarget.WORKER,
+            database = POSTGRES,
+            repositories = mapOf("public" to "fs"),
+            groupRepositories = setOf("public"),
+        )
+
+        // then: no refusal, because a group holds no files of its own
+        assertThat(refusal).describedAs("refusal").isNull()
+    }
+
+    @Test
+    fun `a normal repository on the file system still refuses next to a group repository`() {
+        // when: the worker starts with a normal repository and a group repository, both on the file system
+        val refusal = refusalOf(
+            target = DeployTarget.WORKER,
+            database = POSTGRES,
+            repositories = mapOf("releases" to "fs", "public" to "fs"),
+            groupRepositories = setOf("public"),
+        )
+
+        // then: only the normal repository is named
+        assertThat(refusal!!.line).describedAs("refusal line")
+            .contains("repository 'releases' is stored on the local file system")
+            .doesNotContain("public")
+    }
+
+    @Test
     fun `a worker with shared state starts`() {
         // when: the worker starts on PostgreSQL with a bus and object storage
         val refusal = refusalOf(target = DeployTarget.WORKER, database = POSTGRES, repositories = OBJECT_STORAGE)
@@ -223,6 +253,7 @@ internal class ClusterRequirementsTest {
             database: String = POSTGRES,
             clusterBusConfigured: Boolean = true,
             repositories: Map<String, String> = OBJECT_STORAGE,
+            groupRepositories: Set<String> = emptySet(),
             allowSharedFilesystem: Boolean = false,
         ): StartupRefusal? = ClusterRequirements.refusalFor(
             target = target,
@@ -230,6 +261,7 @@ internal class ClusterRequirementsTest {
             database = database,
             clusterBusConfigured = clusterBusConfigured,
             repositoryStorageTypes = repositories,
+            groupRepositories = groupRepositories,
             allowSharedFilesystem = allowSharedFilesystem,
         )
     }
