@@ -236,8 +236,14 @@ internal class UpgradeScenario(
     }
 }
 
-/** Settings Ingot may add to configuration.cdn on its own, because they did not exist before the upgrade. */
-private val SETTINGS_ADDED_BY_INGOT = setOf("hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "pluginUi", "pluginStyles", "plugins")
+/**
+ * Settings Ingot may add to configuration.cdn on its own, because they did not exist before the upgrade. The three pool keys
+ * are written with the defaults that match the old pool behaviour, so an instance that keeps them behaves as before.
+ */
+private val SETTINGS_ADDED_BY_INGOT = setOf(
+    "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "pluginUi", "pluginStyles", "plugins",
+    "databaseMaxLifetime", "databaseConnectionTimeout", "databaseKeepalive",
+)
 
 /**
  * Both products rewrite configuration.cdn on startup, so the header comments differ and that is expected. What must not
