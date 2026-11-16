@@ -22,6 +22,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -33,6 +34,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 
 data class LocalCredential(
@@ -58,6 +60,7 @@ data class RefreshTokenRecord(
 private const val MAX_USER_AGENT_LENGTH = 512
 private const val MAX_IP_LENGTH = 64
 private const val FIRST_ADMINISTRATOR = "first-administrator"
+private val KNOWN_ADDRESS_WRITE_INTERVAL: Duration = Duration.ofHours(1)
 
 /** Reads and writes the login tables. Every method runs in its own transaction. */
 class LoginStore(
@@ -67,7 +70,13 @@ class LoginStore(
 
     init {
         transaction(database) {
-            SchemaUtils.createMissingTablesAndColumns(LocalCredentialTable, RefreshTokenTable, LoginAttemptTable, LoginSetupMarkerTable)
+            SchemaUtils.createMissingTablesAndColumns(
+                LocalCredentialTable,
+                RefreshTokenTable,
+                LoginAttemptTable,
+                LoginKnownAddressTable,
+                LoginSetupMarkerTable,
+            )
         }
     }
 
@@ -146,6 +155,47 @@ class LoginStore(
     /** Removes the rows whose last failure is older than [cutoff]. Such a row can no longer hold a lock. */
     internal fun deleteAttemptsBefore(cutoff: Instant): Int =
         transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.lastFailureAt less cutoff } }
+
+    /** Whether [subject] signed in from the address with [addressHash] at or after [since]. */
+    internal fun isKnownAddress(subject: String, addressHash: String, since: Instant): Boolean =
+        transaction(database) {
+            LoginKnownAddressTable.selectAll()
+                .where {
+                    (LoginKnownAddressTable.subject eq subject) and
+                        (LoginKnownAddressTable.addressHash eq addressHash) and
+                        (LoginKnownAddressTable.lastSuccessAt greaterEq since)
+                }
+                .any()
+        }
+
+    /**
+     * Records a successful sign-in from an address. The row is written at most once per [KNOWN_ADDRESS_WRITE_INTERVAL], so a
+     * client that signs in on every request does not write on every request.
+     */
+    internal fun recordKnownAddress(subject: String, addressHash: String, now: Instant) {
+        transaction(database) {
+            val inserted = LoginKnownAddressTable.insertIgnore {
+                it[LoginKnownAddressTable.subject] = subject
+                it[LoginKnownAddressTable.addressHash] = addressHash
+                it[LoginKnownAddressTable.firstSeenAt] = now
+                it[LoginKnownAddressTable.lastSuccessAt] = now
+            }.insertedCount > 0
+            if (!inserted) {
+                LoginKnownAddressTable.update(
+                    where = {
+                        (LoginKnownAddressTable.subject eq subject) and
+                            (LoginKnownAddressTable.addressHash eq addressHash) and
+                            (LoginKnownAddressTable.lastSuccessAt less now.minus(KNOWN_ADDRESS_WRITE_INTERVAL))
+                    },
+                    body = { it[LoginKnownAddressTable.lastSuccessAt] = now },
+                )
+            }
+        }
+    }
+
+    /** Removes the known addresses whose last sign-in is older than [cutoff]. */
+    internal fun deleteKnownAddressesBefore(cutoff: Instant): Int =
+        transaction(database) { LoginKnownAddressTable.deleteWhere { LoginKnownAddressTable.lastSuccessAt less cutoff } }
 
     fun findCredential(principalId: Int): LocalCredential? =
         transaction(database) {
