@@ -36,6 +36,7 @@ internal object EnrolmentRoutes {
         "POST" to "/api/identity/me/factors/totp/confirm",
         "POST" to "/api/identity/me/factors/passkey/options",
         "POST" to "/api/identity/me/factors/passkey",
+        "PATCH" to "/api/identity/me/factors/[^/]+",
         "DELETE" to "/api/identity/me/factors/[^/]+",
         "POST" to "/api/identity/me/recovery-codes",
         "POST" to "/api/auth/refresh",

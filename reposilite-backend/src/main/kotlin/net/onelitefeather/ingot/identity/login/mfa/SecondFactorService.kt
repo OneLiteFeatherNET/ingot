@@ -43,6 +43,21 @@ import net.onelitefeather.ingot.identity.storage.IdentityStore
 /** The name an authenticator enrolment carries until the user renames it. */
 internal const val AUTHENTICATOR_NAME = "Authenticator app"
 
+/** The longest name a second factor can carry. The column holds more, the label of a factor needs no more. */
+internal const val MAX_FACTOR_NAME_LENGTH = 64
+
+/**
+ * The name a user gives a factor, or `null` when it is refused. The name is trimmed, must not be blank, must not be longer than
+ * [MAX_FACTOR_NAME_LENGTH] characters and must not contain a control character, so that a name cannot break a line of a log
+ * or of a table.
+ */
+internal fun validFactorName(raw: String?): String? {
+    val name = raw?.trim() ?: return null
+    if (name.isEmpty() || name.length > MAX_FACTOR_NAME_LENGTH) return null
+    if (name.any { it.isISOControl() }) return null
+    return name
+}
+
 /** Shown to the user as the account of the authenticator. */
 internal const val AUTHENTICATOR_ISSUER = "Ingot"
 
@@ -155,6 +170,15 @@ sealed interface FactorRemoval {
     data object WrongCode : FactorRemoval
 
     data class Blocked(val retryAfterSeconds: Long) : FactorRemoval
+
+}
+
+sealed interface FactorRename {
+
+    data class Renamed(val factor: FactorRecord) : FactorRename
+
+    /** The id names none of the confirmed factors of the caller. A factor of another user looks the same. */
+    data object NotFound : FactorRename
 
 }
 
@@ -488,6 +512,19 @@ internal class SecondFactorService(
                 FactorRemoval.Removed
             }
         }
+    }
+
+    /**
+     * Gives one factor of [principalId] a new [name], which the caller has validated with [validFactorName]. No code is needed:
+     * the step-up of the route is the proof. A factor of another principal is not found, like an unknown id.
+     */
+    fun renameFactor(principalId: Int, account: String, factorId: Int, name: String, actor: AuditActor): FactorRename {
+        if (!store.renameFactor(principalId, factorId, name)) {
+            return FactorRename.NotFound
+        }
+        audit(AuditEvent(action = AuditAction.MFA_FACTOR_RENAMED, actor = actor, details = mapOf("principal" to account, "factor" to factorId)))
+        val renamed = store.findFactor(principalId, factorId)?.toRecord() ?: return FactorRename.NotFound
+        return FactorRename.Renamed(renamed)
     }
 
     /**

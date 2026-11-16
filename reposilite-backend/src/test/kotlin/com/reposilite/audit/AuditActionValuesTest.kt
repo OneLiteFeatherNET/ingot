@@ -28,7 +28,7 @@ internal class AuditActionValuesTest {
 
     @Test
     fun `earlier audit actions keep their names and their order`() {
-        assertThat(AuditAction.entries.map { it.name }.dropLast(1)).containsExactly(
+        assertThat(AuditAction.entries.map { it.name }.dropLast(2)).containsExactly(
             "ARTIFACT_DEPLOYED",
             "ARTIFACT_DELETED",
             "SETTINGS_CHANGED",
@@ -89,7 +89,12 @@ internal class AuditActionValuesTest {
 
     @Test
     fun `the throttled sign-in action is appended after the earlier ones`() {
-        assertThat(AuditAction.entries.last()).isEqualTo(AuditAction.LOGIN_THROTTLED)
+        assertThat(AuditAction.entries[AuditAction.entries.size - 2]).isEqualTo(AuditAction.LOGIN_THROTTLED)
+    }
+
+    @Test
+    fun `the factor rename action is appended after the throttled sign-in action`() {
+        assertThat(AuditAction.entries.last()).isEqualTo(AuditAction.MFA_FACTOR_RENAMED)
     }
 
 }

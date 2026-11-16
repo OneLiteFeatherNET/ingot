@@ -31,6 +31,7 @@ import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
 import net.onelitefeather.ingot.identity.login.mfa.ExternalSecondFactor
 import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
 import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.FactorRename
 import net.onelitefeather.ingot.identity.login.mfa.FirstFactorPasskey
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorPolicy
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyChallenge
@@ -164,6 +165,9 @@ class LoginFacade internal constructor(
 
     fun removeSecondFactor(principalId: Int, account: String, factorId: Int, code: String, ip: String, actor: AuditActor): FactorRemoval =
         secondFactor?.removeFactor(principalId, account, factorId, code, ip, actor) ?: FactorRemoval.NotFound
+
+    fun renameSecondFactor(principalId: Int, account: String, factorId: Int, name: String, actor: AuditActor): FactorRename =
+        secondFactor?.renameFactor(principalId, account, factorId, name, actor) ?: FactorRename.NotFound
 
     fun regenerateRecoveryCodes(principalId: Int, account: String, code: String, ip: String, actor: AuditActor): RecoveryCodesOutcome =
         secondFactor?.regenerateRecoveryCodes(principalId, account, code, ip, actor) ?: RecoveryCodesOutcome.NoFactor
