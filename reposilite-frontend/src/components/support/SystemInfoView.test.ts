@@ -83,4 +83,27 @@ describe('SystemInfoView', () => {
 
     expect(wrapper.text()).toContain('turned off')
   })
+
+  it('shows the tier label of a plugin next to its version', async () => {
+    // given: a plugin that declares the official tier
+    const plugins = [{ name: 'checksum', version: '2.0.0', dependencies: [], tier: 'official' }]
+    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
+    await flushPromises()
+
+    // then: the row names the plugin, its version and the label as text
+    const row = wrapper.findAll('li').find(item => item.text().includes('checksum'))
+    expect(row?.text()).toContain('2.0.0')
+    expect(row?.text()).toContain('Official')
+  })
+
+  it('shows Community for a plugin without a tier', async () => {
+    // given: a plugin that sends no tier
+    const plugins = [{ name: 'metrics', version: '1.2.3', dependencies: [] }]
+    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
+    await flushPromises()
+
+    // then: the row shows the community label
+    const row = wrapper.findAll('li').find(item => item.text().includes('metrics'))
+    expect(row?.text()).toContain('Community')
+  })
 })

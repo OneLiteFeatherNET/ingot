@@ -29,6 +29,10 @@ const failure = ref('')
 
 const entriesOf = (object: Record<string, unknown> | undefined) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
 
+// The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
+const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
+const tierLabel = (tier: string | undefined) => TIER_LABELS[tier ?? 'community'] ?? 'Community'
+
 const load = async () => {
   try {
     const { data } = await client.value.support.systemInfo()
@@ -224,8 +228,13 @@ onMounted(load)
           <li
             v-for="plugin in info.plugins"
             :key="plugin.name"
+            class="flex flex-wrap items-center gap-2"
           >
             {{ plugin.name }} {{ plugin.version }}
+            <span
+              class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
+              data-ingot-part="plugin-tier"
+            >{{ tierLabel(plugin.tier) }}</span>
           </li>
         </ul>
       </section>
