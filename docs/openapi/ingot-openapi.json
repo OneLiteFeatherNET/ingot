@@ -1588,11 +1588,14 @@
           "name" : {
             "type" : "string"
           },
+          "tier" : {
+            "type" : "string"
+          },
           "version" : {
             "type" : "string"
           }
         },
-        "required" : [ "name", "version", "dependencies" ],
+        "required" : [ "name", "version", "dependencies", "tier" ],
         "type" : "object"
       },
       "PluginUiBlock" : {

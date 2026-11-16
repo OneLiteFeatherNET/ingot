@@ -22,9 +22,12 @@ import com.reposilite.plugin.api.Event
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposilitePlugin.ReposilitePluginAccessor
 import com.reposilite.storage.StorageProviderRegistry
+import net.onelitefeather.ingot.plugin.tier.PluginOrigin
+import net.onelitefeather.ingot.plugin.tier.PluginTierResolver
 import kotlin.reflect.full.findAnnotation
 
 data class PluginEntry(
@@ -38,10 +41,17 @@ class Extensions(private val journalist: Journalist) : Journalist {
     internal val storageProviders: StorageProviderRegistry = StorageProviderRegistry.applicationClassPath { journalist.logger.warn(it) }
 
     private val plugins: MutableMap<String, PluginEntry> = mutableMapOf()
+    /** The origin of each registered plugin by plugin id. It is kept here, not in [PluginEntry], which is public API. */
+    private val origins: MutableMap<String, PluginOrigin> = mutableMapOf()
     private val facades: MutableList<Facade> = mutableListOf()
     private val events: MutableMap<Class<*>, MutableList<EventListener<Event>>> = mutableMapOf()
 
+    /** Registers a plugin without an origin. It reads as coming from the plugins directory, which never grants Core. */
     fun registerPlugin(plugin: ReposilitePlugin) {
+        registerPlugin(plugin, PluginOrigin.PLUGINS_DIRECTORY)
+    }
+
+    fun registerPlugin(plugin: ReposilitePlugin, origin: PluginOrigin) {
         val pluginEntry = plugin::class.findAnnotation<Plugin>()
             ?.let { PluginEntry(it, plugin) }
             ?.also { ReposilitePluginAccessor.injectExtension(it.plugin, this) }
@@ -50,7 +60,18 @@ class Extensions(private val journalist: Journalist) : Journalist {
         val name = pluginEntry.metadata.name
         check(!plugins.containsKey(name)) { "Plugin $name is already registered" }
         plugins[name] = pluginEntry
+        origins[name] = origin
     }
+
+    /**
+     * The tier that the start log and the support information show for the plugin with this id. A name that is not registered
+     * reads as the plugins directory with the default tier, so this never fails and never grants Core without an origin.
+     */
+    fun effectiveTierOf(name: String): PluginTier =
+        PluginTierResolver.resolve(
+            origins[name] ?: PluginOrigin.PLUGINS_DIRECTORY,
+            plugins[name]?.metadata?.tier ?: PluginTier.COMMUNITY,
+        )
 
     fun registerFacade(facade: Facade) {
         facades.add(facade)

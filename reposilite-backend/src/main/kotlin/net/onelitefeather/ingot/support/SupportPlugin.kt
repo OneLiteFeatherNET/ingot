@@ -84,7 +84,8 @@ internal class SupportPlugin : ReposilitePlugin() {
             repositoryDetails = { repositoryDetails(shared) },
             plugins = {
                 reposilite.extensions.getPlugins().values.map { entry ->
-                    PluginFact(entry.metadata.name, entry.metadata.version, entry.metadata.dependencies.toList())
+                    val tier = reposilite.extensions.effectiveTierOf(entry.metadata.name)
+                    PluginFact(entry.metadata.name, entry.metadata.version, entry.metadata.dependencies.toList(), tier.name.lowercase())
                 }
             },
             cluster = { status.fetchClusterStatus() },

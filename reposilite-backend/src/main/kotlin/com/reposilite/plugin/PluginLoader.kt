@@ -23,7 +23,6 @@ import net.onelitefeather.ingot.plugin.store.PluginStore
 import net.onelitefeather.ingot.plugin.store.StoreEntry
 import net.onelitefeather.ingot.plugin.store.StoreState
 import net.onelitefeather.ingot.plugin.tier.PluginOrigin
-import net.onelitefeather.ingot.plugin.tier.PluginTierResolver
 import kotlin.reflect.full.findAnnotation
 import panda.std.Result.supplyThrowing
 import java.io.File
@@ -52,9 +51,6 @@ class PluginLoader(
     private val storeStates: MutableList<StoreEntry> = mutableListOf()
     private val storePluginIds: MutableSet<String> = mutableSetOf()
 
-    /** The origin of every registered plugin, by plugin id. It decides the effective tier, see [PluginTierResolver]. */
-    private val pluginOrigins: MutableMap<String, PluginOrigin> = mutableMapOf()
-
     /** The outcome of every plugin that the store selected, in selection order, as the status of the store shows it. */
     val storeEntries: List<StoreEntry>
         get() = storeStates.toList()
@@ -82,7 +78,7 @@ class PluginLoader(
             return
         }
 
-        val effective = plugins.map { it to effectiveTierOf(it) }
+        val effective = plugins.map { it to extensions.effectiveTierOf(it.metadata.name) }
         extensions.logger.info(effective.joinToString(", ") { (entry, tier) -> "${entry.metadata.name} (${tier.name.lowercase()})" })
         effective.forEach { (entry, tier) ->
             val name = entry.metadata.name
@@ -93,21 +89,6 @@ class PluginLoader(
                 extensions.logger.warn("Plugin $name declares CORE, but it is loaded from outside the image and is shown as COMMUNITY. The plugin is not shipped in the image.")
             }
         }
-    }
-
-    /**
-     * A plugin without a loader origin, registered directly through the extensions, reads from the plugins directory. That origin
-     * never grants Core, and a tier never stops the start.
-     */
-    private fun effectiveTierOf(entry: PluginEntry): PluginTier {
-        val origin = pluginOrigins[entry.metadata.name] ?: PluginOrigin.PLUGINS_DIRECTORY
-        return PluginTierResolver.resolve(origin, entry.metadata.tier)
-    }
-
-    /** Registers a plugin and remembers where it came from, so that its effective tier can be computed. */
-    private fun register(plugin: ReposilitePlugin, origin: PluginOrigin) {
-        extensions.registerPlugin(plugin)
-        pluginOrigins[requireNotNull(plugin::class.findAnnotation<Plugin>()).name] = origin
     }
 
     /**
@@ -177,7 +158,7 @@ class PluginLoader(
                 .onEach { extensions.logger.debug("Plugin class: $it") }
                 .forEach {
                     val origin = if (it::class.java.name in declaredByPluginJars) PluginOrigin.PLUGINS_DIRECTORY else PluginOrigin.BUILT_IN
-                    register(it, origin)
+                    extensions.registerPlugin(it, origin)
                 }
         }
 
@@ -238,7 +219,7 @@ class PluginLoader(
             )
         }
 
-        register(plugin, PluginOrigin.PLUGIN_STORE)
+        extensions.registerPlugin(plugin, PluginOrigin.PLUGIN_STORE)
         storePluginIds += name
         return entry
     }
@@ -315,7 +296,7 @@ class PluginLoader(
                 if (extensions.getPlugins().containsKey(name)) {
                     extensions.logger.debug("Bundled plugin $name is not loaded, a plugin with the same id is already registered")
                 } else {
-                    register(plugin, PluginOrigin.BUNDLED_IMAGE)
+                    extensions.registerPlugin(plugin, PluginOrigin.BUNDLED_IMAGE)
                 }
             }
     }

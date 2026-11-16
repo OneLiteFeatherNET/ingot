@@ -90,7 +90,7 @@ class SupportInformationCollector(private val sources: SupportSources) {
             database = DatabaseInformation(kind = database.kind, endpoint = database.endpoint),
             storage = sources.repositoryStorage().map { StorageInformation(it.repository, it.kind, it.region, sources.repositoryDetails()[it.repository].orEmpty()) },
             cluster = sources.cluster(),
-            plugins = sources.plugins().map { PluginInformation(it.name, it.version, it.dependencies) },
+            plugins = sources.plugins().map { PluginInformation(it.name, it.version, it.dependencies, it.tier) },
             environment = environmentRedacted,
             systemProperties = propertiesRedacted,
             configuration = ConfigurationInformation(local = local, shared = shared),
