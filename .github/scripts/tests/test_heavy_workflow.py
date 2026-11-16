@@ -54,6 +54,7 @@ HELPERS = {
     "images-build": ("images", "helm", "ha"),
     "images-arm64": ("images",),
     "container-tests": ("images",),
+    "integration-prepare": ("integration",),
     "integration-shards": ("integration",),
 }
 SHARD_COUNT = 8
@@ -210,6 +211,106 @@ class IntegrationJobTest(unittest.TestCase):
         steps = self.shard_steps()
         self.assertIn("!= 'partial'", steps["Run the full integration suite"]["if"])
         self.assertIn("== 'partial'", steps["Run the selected integration tests"]["if"])
+
+
+class IntegrationPrepareTest(unittest.TestCase):
+    """The prepare job compiles the suite once and saves the Gradle caches; the shards restore exactly those caches."""
+
+    PREPARE = "integration-prepare"
+
+    def prepare(self):
+        return load()["jobs"][self.PREPARE]
+
+    def shards(self):
+        return load()["jobs"]["integration-shards"]
+
+    def aggregate(self):
+        return load()["jobs"]["integration"]
+
+    def gradle_runs(self, job):
+        return [step["run"] for step in job["steps"] if "gradlew" in step.get("run", "")]
+
+    def uses_of(self, job, action):
+        return [step for step in job["steps"] if step.get("uses", "").startswith(action + "@")]
+
+    def test_the_prepare_job_has_the_name_the_design_names(self):
+        self.assertEqual("Prepare the integration shards", self.prepare()["name"])
+
+    def test_the_prepare_job_has_the_gate_condition_of_the_shards(self):
+        self.assertEqual(self.shards()["if"], self.prepare()["if"])
+
+    def test_the_prepare_job_needs_only_the_gate(self):
+        self.assertEqual([GATE], self.prepare()["needs"])
+
+    def test_the_shards_wait_for_the_prepare_job(self):
+        self.assertIn(self.PREPARE, self.shards()["needs"])
+
+    def test_the_prepare_job_runs_one_gradle_build_and_no_test(self):
+        runs = self.gradle_runs(self.prepare())
+        self.assertEqual(1, len(runs))
+        self.assertIn(":reposilite-backend:prepareIntegration", runs[0])
+        self.assertNotIn(":reposilite-backend:integration", runs[0])
+
+    def test_the_prepare_build_retries_throttled_downloads_and_uses_the_build_cache(self):
+        run = self.gradle_runs(self.prepare())[0]
+        self.assertIn("$GRADLE_RETRY", run)
+        self.assertIn("--build-cache", run)
+        self.assertEqual(self.shards()["env"]["GRADLE_RETRY"], self.prepare()["env"]["GRADLE_RETRY"])
+
+    def test_every_shard_gradle_run_keeps_the_build_cache(self):
+        for run in self.gradle_runs(self.shards()):
+            with self.subTest(run=run):
+                self.assertIn("--build-cache", run)
+
+    def test_the_prepare_job_saves_exactly_one_cache(self):
+        self.assertEqual(1, len(self.uses_of(self.prepare(), "actions/cache/save")))
+
+    def test_the_shards_restore_exactly_one_cache(self):
+        self.assertEqual(1, len(self.uses_of(self.shards(), "actions/cache/restore")))
+
+    def test_the_shards_restore_the_key_the_prepare_job_saves(self):
+        saved = self.uses_of(self.prepare(), "actions/cache/save")[0]["with"]["key"]
+        restored = self.uses_of(self.shards(), "actions/cache/restore")[0]["with"]["key"]
+        self.assertEqual(saved, restored)
+
+    def test_the_key_is_unique_to_the_run_attempt(self):
+        key = self.uses_of(self.prepare(), "actions/cache/save")[0]["with"]["key"]
+        self.assertIn("github.run_id", key)
+        self.assertIn("github.run_attempt", key)
+
+    def test_the_prepare_job_saves_the_dependency_and_the_build_cache(self):
+        path = self.uses_of(self.prepare(), "actions/cache/save")[0]["with"]["path"]
+        self.assertIn("~/.gradle/caches/modules-2", path)
+        self.assertIn("~/.gradle/caches/build-cache-1", path)
+
+    def test_the_prepare_job_saves_only_after_a_successful_build(self):
+        self.assertEqual("${{ success() }}", self.uses_of(self.prepare(), "actions/cache/save")[0]["if"])
+
+    def test_the_shards_do_not_fail_on_a_cache_miss(self):
+        self.assertIs(False, self.uses_of(self.shards(), "actions/cache/restore")[0]["with"]["fail-on-cache-miss"])
+
+    def test_the_shards_restore_before_their_gradle_run(self):
+        names = [step.get("name", "") for step in self.shards()["steps"]]
+        restore = names.index("Restore the integration caches of the prepare job")
+        self.assertLess(names.index("Set up Gradle"), restore)
+        self.assertLess(restore, names.index("Run the full integration suite"))
+        self.assertLess(restore, names.index("Run the selected integration tests"))
+
+    def test_save_and_restore_come_from_the_same_pinned_commit(self):
+        saved = self.uses_of(self.prepare(), "actions/cache/save")[0]["uses"]
+        restored = self.uses_of(self.shards(), "actions/cache/restore")[0]["uses"]
+        self.assertEqual(saved.split("@")[1], restored.split("@")[1])
+
+    def test_the_prepare_job_is_a_helper_of_the_integration_flag(self):
+        self.assertEqual(("integration",), HELPERS[self.PREPARE])
+
+    def test_the_aggregate_also_waits_for_the_prepare_job(self):
+        self.assertIn(self.PREPARE, self.aggregate()["needs"])
+
+    def test_the_aggregate_fails_when_the_prepare_job_failed(self):
+        step = self.aggregate()["steps"][0]
+        self.assertEqual("${{ needs.integration-prepare.result }}", step["env"]["PREPARE"])
+        self.assertIn('test "$PREPARE" = success', step["run"])
 
 
 class GateAndAggregateTest(unittest.TestCase):

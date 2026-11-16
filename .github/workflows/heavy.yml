@@ -640,6 +640,54 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Resolves and compiles everything the integration suite needs, once, before the shards start. Without it each shard
+  # downloaded the same dependencies from Maven Central, which answers many parallel requests with 429, and compiled the
+  # same classes. This job runs the Gradle build without a test. Its Gradle caches are saved under a key unique to this
+  # run attempt, and the shards restore exactly that key. A miss only means the shards download as they did before.
+  #
+  # The caches are run-scoped entries, so every heavy run adds one to the repository's 10 GB cache, and GitHub evicts
+  # the least recently used entries first. The size of one entry depends on the dependency graph, not measured yet.
+  integration-prepare:
+    name: "Prepare the integration shards"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      GRADLE_RETRY: "-Dorg.gradle.internal.repository.max.retries=10 -Dorg.gradle.internal.repository.initial.backoff=2000"
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # Read-only on a pull request: setup-gradle restores the cache of main and never writes one from here. The
+      # entry this job saves below is the only one the shards read from this run.
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Compile the integration suite and download its plugin jars"
+        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:prepareIntegration $GRADLE_RETRY
+
+      # Saved only after a successful build. The dependencies and the local build cache are the two directories the
+      # shards need; the wrapper distribution comes from setup-gradle as before.
+      - name: "Save the integration caches for the shards"
+        if: ${{ success() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          key: integration-prepare-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/caches/build-cache-1
+
   # The Testcontainers integration suite, about 108 minutes in full, split into eight shards that run in parallel. Each shard
   # takes every eighth top-level class of the suite (build.gradle.kts, integrationShard). A labelled pull request runs the
   # integration tests its change can reach (select_backend_tests.py) in every shard, and a release pull request or a manual
@@ -651,7 +699,7 @@ jobs:
   # to ten times with a growing pause (GRADLE_RETRY below) instead of failing the shard.
   integration-shards:
     name: "Integration tests shard ${{ matrix.shard }} of 8"
-    needs: [ gate ]
+    needs: [ gate, integration-prepare ]
     if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -686,6 +734,18 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # The dependencies and the build cache that integration-prepare saved for this run attempt. They are restored over
+      # the main entry that setup-gradle has just restored: both hold content-addressed files, so the overlay adds what
+      # this run downloaded or compiled. A miss is not a failure; the shard then downloads and compiles as before.
+      - name: "Restore the integration caches of the prepare job"
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          key: integration-prepare-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/caches/build-cache-1
+          fail-on-cache-miss: false
 
       # Only a labelled pull request on a normal branch gets a partial run. A release pull request, a dispatch, a
       # failed gate, a missing diff and a failing script all give mode=full. Every shard computes the same selection
@@ -743,11 +803,12 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The aggregate under the check name "Integration tests (backend)". It passes only when every shard succeeded. It
+  # The aggregate under the check name "Integration tests (backend)". It passes only when the prepare job and every shard
+  # succeeded. The shards still run when the prepare job fails, so a failed prepare is shown red here, not hidden. It
   # has the same condition as the shards, so it is skipped together with them when the gate did not ask for this suite.
   integration:
     name: "Integration tests (backend)"
-    needs: [ gate, integration-shards ]
+    needs: [ gate, integration-prepare, integration-shards ]
     if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -756,9 +817,11 @@ jobs:
     steps:
       - name: "Check the integration shards"
         env:
+          PREPARE: ${{ needs.integration-prepare.result }}
           SHARDS: ${{ needs.integration-shards.result }}
         run: |
-          echo "Integration shards: $SHARDS."
+          echo "Integration prepare: $PREPARE. Integration shards: $SHARDS."
+          test "$PREPARE" = success
           test "$SHARDS" = success
 
   # The search backend container tests. The workflow keeps its nightly schedule and is called here for a label.
