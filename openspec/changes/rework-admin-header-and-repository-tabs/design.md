@@ -62,12 +62,14 @@ Every Administration page at one width has the same header height, which is what
 - the actions row is at least 48 pixels high and does not wrap at 1240 pixels and wider; at 600 to 1239 pixels it may wrap,
   and the test measures the Overview with its three actions, the page most likely to wrap.
 
-`scrollbar-gutter: stable` is set on the root element in `src/style.css`, next to the `html, body` rule of the surface
-roles. Under overlay scrollbars the gutter is zero, so nothing changes there.
+The root element keeps `scrollbar-gutter: auto` and does not reserve a gutter. `src/style.css` sets the value explicitly next to
+the `html, body` rule of the surface roles, so the style test has a rule to read. A reserved gutter sits outside the page box,
+so the sticky top bar and the page sheet cannot paint into it and stop 15 pixels short of the window edge, which the top bar
+navigation test checks. The frame is laid out from the left edge, so it stays still without a gutter.
 
 The "Loading configuration" text of the settings page reserves the height of the first row of the page, so the text does
-not collapse when the configuration arrives. The arriving content still changes the page height, which the gutter now
-absorbs horizontally. This is accepted as the cost of loading.
+not collapse when the configuration arrives. The arriving content still changes the page height. The frame does not move
+sideways, because it is laid out from the left edge, so this is accepted as the cost of loading.
 
 ## D4. Page change motion
 
@@ -170,7 +172,7 @@ router and store per test). Layout is measured in Playwright with `getBoundingCl
 timeouts.
 
 Group 1 (`fix(ui)`):
-- the root element's computed `scrollbar-gutter` is `stable` (unit, reads `style.css`);
+- the root element sets `scrollbar-gutter: auto` in `style.css` (unit, reads `style.css`);
 - on the Overview, a group page, a list and a detail page at 1440 and 600 pixels, the header height is the same and the side
   navigation's top edge matches the content's top edge, within 0.5 pixel (Playwright);
 - the left edge of the frame at 1440 pixels is the same on a short page and on a page with a scrollbar (Playwright).
