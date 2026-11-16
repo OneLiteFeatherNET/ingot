@@ -4,6 +4,8 @@ description: Set up the embedded Lucene search backend of a single Ingot instanc
 
 # Use Lucene for search
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 This guide moves the artifact search of one Ingot instance from the database to an index on its own disk. There is no other service to run. The plugin is not part of the server image: you install its jar yourself, as in step 2. The settings are in the [Lucene reference](../../references/settings/lucene-search-backend.md), and the way the backends are chosen is in [Choose a search backend](choose-a-search-backend.md).
 
 {% hint style="danger" %}

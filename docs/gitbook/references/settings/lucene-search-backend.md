@@ -4,6 +4,8 @@ description: Reference for the embedded Lucene search backend of Ingot, the vari
 
 # Lucene search backend
 
+Tier: [Experimental](../plugins/plugin-tiers.md#experimental)
+
 The Lucene backend is a plugin that answers artifact search from an index on the local disk of one Ingot instance, with no other service. It is not part of the server image. You install `lucene-plugin.jar` into the plugins directory yourself, or from the plugin store, and the jar in that directory is the switch: without it the backend is not registered. Choosing it is a separate step, see [Choose a search backend](../../configure/search/choose-a-search-backend.md). For the steps of a first setup, see [Use Lucene for search](../../configure/search/use-lucene-for-search.md).
 
 {% hint style="danger" %}

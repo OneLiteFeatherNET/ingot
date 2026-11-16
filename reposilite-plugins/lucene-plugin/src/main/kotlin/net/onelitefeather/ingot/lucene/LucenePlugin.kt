@@ -20,6 +20,7 @@ package net.onelitefeather.ingot.lucene
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.reposilite
@@ -51,7 +52,7 @@ internal fun luceneRuntimeProblem(feature: Int): String? {
  * runs before anything else in the plugin, and the registration code that touches Lucene lives in another file, so no Lucene class
  * is loaded on Java 17.
  */
-@Plugin(name = "lucene-search", dependencies = ["search"])
+@Plugin(name = "lucene-search", dependencies = ["search"], tier = PluginTier.EXPERIMENTAL)
 class LucenePlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {
