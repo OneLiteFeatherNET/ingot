@@ -43,7 +43,7 @@ import kotlin.random.Random
  * through [open], so no test sees another test's rows. The subclasses pick the implementation: the in-memory fake as the
  * reference, and the database backend on each vendor that runs in the unit suite.
  */
-internal abstract class ArtifactSearchBackendContract {
+abstract class ArtifactSearchBackendContract {
 
     @TempDir
     lateinit var directory: Path
