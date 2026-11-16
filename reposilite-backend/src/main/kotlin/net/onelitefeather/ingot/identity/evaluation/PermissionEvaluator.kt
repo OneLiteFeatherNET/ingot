@@ -213,13 +213,14 @@ object PermissionEvaluator {
     }
 
     private fun canSeeWholeRepository(subject: AccessSubject, fragment: String, repository: String): Boolean {
-        if (!tokenAllows(subject, NodePattern.repository(repository, "read"))) return false
+        val read = NodePattern.repository(repository, "read")
+        if (!tokenAllows(subject, read)) return false
         if (isInstanceAdmin(subject)) return true
-        if (subject.levels.any { level -> level.grants.any { grantReaches(it, fragment) } }) return true
+        val owner = ownerDecision(subject, read) { grant -> nodeGrantMatch(grant, read, includeLegacy = true) }
+        if (owner.allowed) return true
+        if (owner.isExplicitDenial()) return false
 
-        return ownerDecision(subject, NodePattern.repository(repository, "read")) { grant ->
-            nodeGrantMatch(grant, NodePattern.repository(repository, "read"), includeLegacy = true)
-        }.allowed
+        return subject.levels.any { level -> level.grants.any { grantReaches(it, fragment) } }
     }
 
     /**
@@ -272,7 +273,9 @@ object PermissionEvaluator {
         val read = NodePattern.repository(repository, "read")
         if (!tokenAllows(subject, read)) return false
         if (isInstanceAdmin(subject)) return true
-        if (ownerDecision(subject, read) { grant -> nodeGrantMatch(grant, read, includeLegacy = false) }.allowed) return true
+        val owner = ownerDecision(subject, read) { grant -> nodeGrantMatch(grant, read, includeLegacy = false) }
+        if (owner.allowed) return true
+        if (owner.isExplicitDenial()) return false
 
         return subject.levels.any { level ->
             level.grants.any { grant ->
@@ -381,6 +384,12 @@ object PermissionEvaluator {
             decidingKind = winner.candidate.kind,
         )
     }
+
+    /**
+     * Whether the owner's decision is a denial by a rule of the principal, its teams or its inheritance, and not the default
+     * denial of a node nothing covers. A role grant never denies, so it is never an explicit denial.
+     */
+    private fun Decision.isExplicitDenial(): Boolean = !allowed && decidingKind != null
 
     /** Whether the token narrows its owner away from the node. A token without a node list narrows nothing. */
     private fun tokenAllows(subject: AccessSubject, node: NodePattern): Boolean {
