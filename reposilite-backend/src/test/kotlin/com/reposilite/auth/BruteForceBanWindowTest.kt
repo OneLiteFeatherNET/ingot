@@ -2,6 +2,7 @@ package com.reposilite.auth
 
 import com.reposilite.auth.api.Credentials
 import com.reposilite.auth.application.BruteForceProtectionSettings
+import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.unauthorized
@@ -12,12 +13,17 @@ import com.reposilite.token.ExportService
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.token.api.CreateAccessTokenRequest
 import com.reposilite.token.infrastructure.InMemoryAccessTokenRepository
+import net.onelitefeather.ingot.identity.login.BasicAddressGuard
+import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import panda.std.Result
 import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
 import panda.std.reactive.toMutableReference
+import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -40,13 +46,25 @@ internal class BruteForceBanWindowTest {
     )
     private val hook = HookedAuthenticator(BasicAuthenticator(tokens, clock))
     private val settings = BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 300).toMutableReference()
-    private val authentication = AuthenticationFacade(
-        journalist = journalist,
-        authenticators = sortedSetOf(Authenticator.priorityComparator, hook),
-        accessTokenFacade = tokens,
-        bruteForceProtectionSettings = settings,
-        clock = clock,
-    )
+
+    /** The lock lives in the shared login table, so the test needs a database of its own. Opened on first use. */
+    @TempDir
+    lateinit var workingDirectory: Path
+    private val connection by lazy { DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1) }
+    private val authentication by lazy {
+        AuthenticationFacade(
+            journalist = journalist,
+            authenticators = sortedSetOf(Authenticator.priorityComparator, hook),
+            accessTokenFacade = tokens,
+            clock = clock,
+            basicAddressGuard = BasicAddressGuard(LoginStore(connection.database, clock), settings, clock),
+        )
+    }
+
+    @AfterEach
+    fun closeDatabase() {
+        connection.close()
+    }
 
     @Test
     fun `should keep the ban for the full period counted from the attempt that reached the limit`() {
@@ -114,7 +132,7 @@ internal class BruteForceBanWindowTest {
     }
 
     @Test
-    fun `should keep the failure record for the whole ban when the ban is longer than an hour`() {
+    fun `should keep the ban for the full duration when the ban is longer than an hour`() {
         // given: a two hour ban and an IP that reached the limit
         settings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 7200))
         createToken("deploy-bot", "secret")
@@ -128,8 +146,8 @@ internal class BruteForceBanWindowTest {
     }
 
     @Test
-    fun `should keep the failure record for a ban that was lengthened after the record was written`() {
-        // given: an IP that reached the limit under the default five minute ban
+    fun `should keep the lock length that was in force when the limit was reached`() {
+        // given: an IP that reached the limit under the five minute ban, which the lock is written with
         createToken("deploy-bot", "secret")
         repeat(3) { authenticate("lengthened-ip", "deploy-bot", "wrong-secret") }
 
@@ -137,8 +155,8 @@ internal class BruteForceBanWindowTest {
         settings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 7200))
         clock.advance(Duration.ofMinutes(90))
 
-        // then: the IP is still banned for the lengthened period
-        assertError(unauthorized("Invalid authorization credentials"), authenticate("lengthened-ip", "deploy-bot", "secret"))
+        // then: the lock was written for five minutes, so the IP is accepted again. A raised ban applies to the next lock only.
+        assertOk(authenticate("lengthened-ip", "deploy-bot", "secret"))
     }
 
     private fun createToken(name: String, secret: String): AccessTokenDto =

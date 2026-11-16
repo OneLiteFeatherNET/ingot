@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -69,7 +70,7 @@ private const val FIRST_ADMINISTRATOR = "first-administrator"
 private val KNOWN_ADDRESS_WRITE_INTERVAL: Duration = Duration.ofHours(1)
 
 /** Reads and writes the login tables. Every method runs in its own transaction. */
-class LoginStore(
+open class LoginStore(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -108,7 +109,7 @@ class LoginStore(
             LoginSetupMarkerTable.selectAll().where { LoginSetupMarkerTable.name eq FIRST_ADMINISTRATOR }.any()
         }
 
-    internal fun findAttempt(attemptKey: String): AttemptRecord? =
+    internal open fun findAttempt(attemptKey: String): AttemptRecord? =
         transaction(database) {
             LoginAttemptTable.selectAll()
                 .where { LoginAttemptTable.attemptKey eq attemptKey }
@@ -153,6 +154,34 @@ class LoginStore(
                 },
             ) > 0
         }
+
+    /**
+     * Adds one failure to [attemptKey] in one statement, without a version check, and inserts the row when it does not exist.
+     * It is the fallback for a failure that lost every conditional write: the count goes up even when another instance wrote
+     * in between. The lock is not set here, since that rule belongs to the caller.
+     */
+    internal fun incrementAttemptFailures(attemptKey: String, now: Instant) {
+        transaction(database) {
+            val inserted = LoginAttemptTable.insertIgnore {
+                it[LoginAttemptTable.attemptKey] = attemptKey
+                it[LoginAttemptTable.failures] = 1
+                it[LoginAttemptTable.lockouts] = 0
+                it[LoginAttemptTable.lastFailureAt] = now
+                it[LoginAttemptTable.lockedUntil] = null
+                it[LoginAttemptTable.version] = 1
+            }.insertedCount > 0
+            if (!inserted) {
+                LoginAttemptTable.update(
+                    where = { LoginAttemptTable.attemptKey eq attemptKey },
+                    body = {
+                        it[LoginAttemptTable.failures] = LoginAttemptTable.failures + 1
+                        it[LoginAttemptTable.lastFailureAt] = now
+                        it[LoginAttemptTable.version] = LoginAttemptTable.version + 1
+                    },
+                )
+            }
+        }
+    }
 
     internal fun deleteAttempt(attemptKey: String) {
         transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.attemptKey eq attemptKey } }

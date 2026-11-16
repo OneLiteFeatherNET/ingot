@@ -48,7 +48,11 @@ class AuthenticationPlugin : ReposilitePlugin() {
                 failureFacade = facade(),
                 authenticationSettings = sharedConfigurationFacade.getDomainSettings(),
                 disableUserPasswordAuthentication = System.getProperty("reposilite.ldap.disable-user-password-authentication", "false") == "true"
-            ).authenticationFacade(extensions = extensions(), authorizationRevision = authorizationRevision)
+            ).authenticationFacade(
+                extensions = extensions(),
+                authorizationRevision = authorizationRevision,
+                database = reposilite().database,
+            )
 
         authorizationRevision?.let { revision ->
             event { _: ReposiliteStartedEvent -> revision.start(refreshInterval) }

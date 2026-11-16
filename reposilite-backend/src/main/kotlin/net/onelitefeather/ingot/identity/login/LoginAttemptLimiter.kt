@@ -65,12 +65,28 @@ internal class LoginAttemptLimiter(
         write(key) { state -> LoginDelayPolicy.onFailure(state, now, rule) }
     }
 
+    /**
+     * Counts one failure of [key] against its own limit, for callers that carry their own settings. Answers `true` when this
+     * failure locked the key.
+     */
+    fun recordLimitedFailure(key: String, maxFailedAttempts: Int, lockout: Duration): Boolean {
+        val now = Instant.now(clock)
+        val written = write(key) { state -> LoginAttemptPolicy.onFailure(state, now, maxFailedAttempts, lockout) }
+        purgeQuietKeys(now, lockout)
+        return written?.lockedUntil != null
+    }
+
     private fun recordFailure(key: String, now: Instant, maxFailedAttempts: Int, lockout: Duration) {
         write(key) { state -> LoginAttemptPolicy.onFailure(state, now, maxFailedAttempts, lockout) }
     }
 
-    /** Applies [next] to the state of [key] under the version it was read at, and retries a lost race against the winner. */
-    private fun write(key: String, next: (AttemptState) -> AttemptState) {
+    /**
+     * Applies [next] to the state of [key] under the version it was read at, and retries a lost race against the winner.
+     * Answers the state that was written, or `null` after [MAX_WRITE_ATTEMPTS] lost races. Then the failure is still counted
+     * in one atomic increment, but the lock rule is not applied by this failure: the next failure applies it, because it
+     * reads the incremented count.
+     */
+    private fun write(key: String, next: (AttemptState) -> AttemptState): AttemptState? {
         repeat(MAX_WRITE_ATTEMPTS) {
             val existing = store.findAttempt(key)
             val state = next(existing?.state ?: AttemptState.NONE)
@@ -80,9 +96,11 @@ internal class LoginAttemptLimiter(
                 store.updateAttempt(key, expectedVersion = existing.version, state = state)
             }
             if (written) {
-                return
+                return state
             }
         }
+        store.incrementAttemptFailures(key, Instant.now(clock))
+        return null
     }
 
     /**
@@ -105,6 +123,13 @@ internal class LoginAttemptLimiter(
         /** The key of an address, across all user names. */
         fun addressKey(address: String): String =
             digest("address|$address")
+
+        /**
+         * The key of the per-address counter of Basic and Bearer requests. It is kept apart from [addressKey], which the
+         * dashboard uses, so that failed Basic requests cannot lock dashboard logins.
+         */
+        fun basicAddressKey(address: String): String =
+            digest("basic-address|$address")
 
         /**
          * The key of a user name across every address. It delays guesses from addresses the name never signed in from, and

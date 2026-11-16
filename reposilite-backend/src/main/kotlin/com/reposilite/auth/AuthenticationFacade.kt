@@ -16,10 +16,6 @@
 
 package com.reposilite.auth
 
-import com.github.benmanes.caffeine.cache.Caffeine
-import com.github.benmanes.caffeine.cache.Expiry
-import com.github.benmanes.caffeine.cache.Cache as CaffeineCache
-import com.github.benmanes.caffeine.cache.Ticker as CaffeineTicker
 import com.google.common.cache.Cache
 import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
@@ -30,7 +26,6 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.auth.api.SessionDetails
 import com.reposilite.auth.api.SessionGrant
 import com.reposilite.auth.api.SessionPrincipal
-import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.Extensions
@@ -47,8 +42,6 @@ import com.reposilite.token.api.AccessTokenDto
 import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
 import panda.std.Result
 import panda.std.asSuccess
-import panda.std.reactive.Reference
-import panda.std.reactive.Subscriber
 import java.time.Clock
 import java.time.Duration
 import java.util.SortedSet
@@ -61,22 +54,15 @@ private data class CachedAuthentication(
     val revision: Long,
 )
 
-private data class FailedAttempt(
-    val count: Int,
-    /** Clock time of the attempt that reached the limit, null while the limit has not been reached. */
-    val limitReachedMillis: Long?,
-    /** Clock time of the last failed attempt, from which the lifetime of the record is counted. */
-    val writtenAtMillis: Long,
-)
-
 class AuthenticationFacade(
     private val journalist: Journalist,
     private val authenticators: SortedSet<Authenticator>,
     private val accessTokenFacade: AccessTokenFacade,
-    private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings()),
     private val extensions: Extensions = Extensions(journalist),
     private val clock: Clock = Clock.systemUTC(),
     private val ticker: Ticker = Ticker.systemTicker(),
+    /** The per-address limit of Basic and Bearer requests. Nothing is refused or counted until a guard is passed. */
+    private val basicAddressGuard: AddressLoginGuard = AddressLoginGuard.NONE,
     /** The policy revision of this replica. A cached credential is dropped once the revision it was cached under has moved. */
     private val authorizationRevision: AuthorizationRevision? = null,
 ) : Journalist, Facade {
@@ -87,9 +73,6 @@ class AuthenticationFacade(
          * write and not from the last hit, so that a credential in continuous use is checked again once per bound.
          */
         val CREDENTIAL_CACHE_MAX_AGE: Duration = Duration.ofMinutes(1)
-
-        /** Lower bound for the lifetime of a failure record, which is longer whenever the ban is longer. */
-        private val FAILED_ATTEMPT_MIN_LIFETIME: Duration = Duration.ofHours(1)
     }
 
     /**
@@ -123,45 +106,8 @@ class AuthenticationFacade(
     @Volatile
     private var installedSignInObserver: SignInObserver = SignInObserver.OFF
 
-    /**
-     * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
-     * forgotten while the ban it started is still running, also when the ban duration is changed at runtime.
-     */
-    private val failedAttempts: CaffeineCache<String, FailedAttempt> by lazy {
-        Caffeine
-            .newBuilder()
-            .ticker(CaffeineTicker { clock.millis() * 1_000_000L })
-            .expireAfter(failedAttemptExpiry)
-            .build()
-        }
-
-    private val failedAttemptExpiry = object : Expiry<String, FailedAttempt> {
-
-        override fun expireAfterCreate(key: String, value: FailedAttempt, currentTime: Long): Long =
-            failedAttemptLifetime().toNanos()
-
-        override fun expireAfterUpdate(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long =
-            failedAttemptLifetime().toNanos()
-
-        override fun expireAfterRead(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long {
-            val remainingMillis = value.writtenAtMillis + failedAttemptLifetime().toMillis() - clock.millis()
-            return maxOf(0L, remainingMillis) * 1_000_000L
-        }
-
-    }
-
-    /** Rewrites every failure record, so that its lifetime is counted again with the current ban duration. */
-    private fun refreshFailedAttemptLifetimes() {
-        failedAttempts.asMap().forEach { (ip, attempt) -> failedAttempts.put(ip, attempt) }
-    }
-
-    private fun failedAttemptLifetime(): Duration =
-        maxOf(FAILED_ATTEMPT_MIN_LIFETIME, Duration.ofSeconds(bruteForceProtectionSettings.map { it.banDurationSeconds }))
-
     init {
         accessTokenFacade.onTokenChanged { forgetCachedCredentials(it) }
-        // A longer ban must also keep the records that were written before the change
-        bruteForceProtectionSettings.subscribe(Subscriber { refreshFailedAttemptLifetimes() })
     }
 
     fun registerAuthenticator(authenticator: Authenticator) {
@@ -199,7 +145,7 @@ class AuthenticationFacade(
     ): Result<out AccessTokenDto, ErrorResponse> {
         val observer = if (guarded) installedSignInObserver else SignInObserver.OFF
 
-        if (isBruteForceBlocked(credentials.ip)) {
+        if (basicAddressGuard.isLocked(credentials.ip)) {
             recordRejectedLogin(credentials)
             observer.record(path, SignInOutcome.FAILED)
             return unauthorizedError("Invalid authorization credentials")
@@ -236,12 +182,15 @@ class AuthenticationFacade(
 
         // Asked before recordSuccess, which records the address as known
         val newAddress = result.isOk && guard.isNewAddress(credentials.name, credentials.ip)
-        trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
         if (result.isErr) {
+            if (basicAddressGuard.recordFailure(credentials.ip)) {
+                logger.warn("Brute force protection: IP ${credentials.ip} has been blocked")
+            }
             recordRejectedLogin(credentials)
             observer.record(path, SignInOutcome.FAILED)
             guard.recordFailure(credentials.name)
         } else {
+            basicAddressGuard.recordSuccess(credentials.ip)
             observer.record(path, SignInOutcome.SUCCEEDED)
             if (newAddress) {
                 observer.newSignIn(credentials.name, credentials.ip, path, userAgent)
@@ -311,69 +260,6 @@ class AuthenticationFacade(
                 success = false,
             )
         )
-    }
-
-    private fun isBruteForceBlocked(ip: String): Boolean {
-        if (bruteForceProtectionSettings.map { !it.enabled }) {
-            return false
-        }
-
-        val attempt = failedAttempts.getIfPresent(ip) ?: return false
-
-        if (attempt.count < bruteForceProtectionSettings.map { it.maxAttempts }) {
-            return false
-        }
-
-        if (attempt.limitReachedMillis == null) {
-            return false
-        }
-
-        if (isBanned(attempt)) {
-            return true // Host is still blocked
-        }
-
-        failedAttempts.invalidate(ip) // Ban duration has passed, unblocking the host
-        return false
-    }
-
-    /**
-     * The ban lasts the configured duration counted from the attempt that reached the limit, on the injected clock.
-     */
-    private fun isBanned(attempt: FailedAttempt): Boolean {
-        val reachedAt = attempt.limitReachedMillis ?: return false
-        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
-        return clock.millis() - reachedAt < banDuration
-    }
-
-    private fun trackBruteForceAttempt(ip: String, success: Boolean) {
-        if (bruteForceProtectionSettings.map { !it.enabled }) {
-            return
-        }
-
-        if (success) {
-            val current = failedAttempts.getIfPresent(ip)
-            // A valid login from a shared address must not lift a ban that is still running
-            if (current == null || !isBanned(current)) {
-                failedAttempts.invalidate(ip)
-            }
-            return
-        }
-
-        val current = failedAttempts.getIfPresent(ip)
-        val count = (current?.count ?: 0) + 1
-        val maxAttempts = bruteForceProtectionSettings.map { it.maxAttempts }
-        val now = clock.millis()
-        val updated =
-            FailedAttempt(
-                count = count,
-                limitReachedMillis = if (count >= maxAttempts) current?.limitReachedMillis ?: now else null,
-                writtenAtMillis = now,
-            )
-        failedAttempts.put(ip, updated)
-
-        if (updated.count == bruteForceProtectionSettings.map { it.maxAttempts }) {
-            logger.warn("Brute force protection: IP $ip has been blocked after ${bruteForceProtectionSettings.map { it.maxAttempts }} failed authentication attempts")
-        }
     }
 
     fun getSessionDetails(identifier: AccessTokenIdentifier): Result<SessionDetails, ErrorResponse> =

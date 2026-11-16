@@ -22,11 +22,17 @@ import com.reposilite.auth.BasicAuthenticator
 import com.reposilite.auth.LdapAuthenticator
 import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.auth.application.LdapSettings
+import com.reposilite.configuration.local.infrastructure.DatabaseConnection
+import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.specification.AccessTokenSpecification
+import net.onelitefeather.ingot.identity.login.BasicAddressGuard
+import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import panda.std.reactive.MutableReference
 import panda.std.reactive.toMutableReference
+import java.time.Clock
 
 internal abstract class AuthenticationSpecification : AccessTokenSpecification() {
 
@@ -35,9 +41,12 @@ internal abstract class AuthenticationSpecification : AccessTokenSpecification()
     protected val bruteForceProtectionSettings: MutableReference<BruteForceProtectionSettings> = BruteForceProtectionSettings().toMutableReference()
 
     protected lateinit var authenticationFacade: AuthenticationFacade
+    private var connection: DatabaseConnection? = null
 
     @BeforeEach
     fun createAuthenticationFacade() {
+        val databaseConnection = DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1)
+        connection = databaseConnection
         this.authenticationFacade = AuthenticationFacade(
             journalist = logger,
             authenticators = sortedSetOf(
@@ -51,8 +60,13 @@ internal abstract class AuthenticationSpecification : AccessTokenSpecification()
                 )
             ),
             accessTokenFacade = accessTokenFacade,
-            bruteForceProtectionSettings = bruteForceProtectionSettings
+            basicAddressGuard = BasicAddressGuard(LoginStore(databaseConnection.database), bruteForceProtectionSettings, Clock.systemUTC()),
         )
+    }
+
+    @AfterEach
+    fun closeDatabase() {
+        connection?.close()
     }
 
 }

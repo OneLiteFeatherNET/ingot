@@ -16,6 +16,7 @@
 
 package com.reposilite.auth.application
 
+import com.reposilite.auth.AddressLoginGuard
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.Authenticator
 import com.reposilite.auth.BasicAuthenticator
@@ -25,8 +26,12 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.AccessTokenFacade
+import net.onelitefeather.ingot.identity.login.BasicAddressGuard
+import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
+import org.jetbrains.exposed.v1.jdbc.Database
 import panda.std.reactive.Reference
+import java.time.Clock
 import java.util.SortedSet
 
 class AuthenticationComponents(
@@ -60,13 +65,23 @@ class AuthenticationComponents(
         authenticators: SortedSet<Authenticator> = authenticators(),
         extensions: Extensions = Extensions(journalist),
         authorizationRevision: AuthorizationRevision? = null,
+        database: Database? = null,
+        clock: Clock = Clock.systemUTC(),
     ): AuthenticationFacade =
         AuthenticationFacade(
             journalist = journalist,
             authenticators = authenticators,
             accessTokenFacade = accessTokenFacade,
-            bruteForceProtectionSettings = authenticationSettings.computed { it.bruteForceProtection },
             extensions = extensions,
+            clock = clock,
+            // Without a database there is no shared table to count in, so the legacy switch has no counter there
+            basicAddressGuard = database?.let {
+                BasicAddressGuard(
+                    store = LoginStore(it, clock),
+                    settings = authenticationSettings.computed { settings -> settings.bruteForceProtection },
+                    clock = clock,
+                )
+            } ?: AddressLoginGuard.NONE,
             authorizationRevision = authorizationRevision,
         )
 
