@@ -513,11 +513,15 @@ jobs:
   # The driver runs five checks: a rolling restart without a failed read, the takeover of a killed cleanup run,
   # two deploys at the same moment, a refresh token moved between replicas, and both replicas listing both instances.
   ha:
-    name: "HA smoke test"
+    name: "HA smoke test (${{ matrix.database }})"
     needs: [ gate, images-build ]
     if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.ha == 'true' && needs.images-build.result == 'success')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [ mariadb, postgresql ]
     permissions:
       contents: read
     steps:
@@ -553,10 +557,10 @@ jobs:
       - name: "Load the images into kind"
         run: kind load docker-image ingot:ci ingot-dashboard:ci --name ingot-ha
 
-      # Applies the dependencies, installs the replicas, and runs the five checks. A failed check prints the pod
-      # state, the events and the logs of every replica and dependency before the step fails.
+      # Applies the dependencies of the database leg, installs the replicas, and runs the five checks. A failed check
+      # prints the pod state, the events and the logs of every replica and dependency before the step fails.
       - name: "Run the two-replica smoke test"
-        run: python3 charts/ingot/tests/ha_smoke.py
+        run: python3 charts/ingot/tests/ha_smoke.py ${{ matrix.database }}
 
   # The browser suite of the dashboard, in its own job so that a failing browser test shows as its own check and does
   # not hide the unit tests above. The suite starts the shaded jar itself, so the jar is built on the same runner.
