@@ -192,6 +192,7 @@ internal class AuthLoginEndpoints(
                 SetupOutcome.AlreadyCompleted -> errorResponse(CONFLICT, "The first administrator was created by another instance of this database, sign in instead")
                 SetupOutcome.WrongCode -> errorResponse(FORBIDDEN, "Invalid setup code")
                 is SetupOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed setup attempts, try again later")
+                is SetupOutcome.BreachCheckUnavailable -> serviceUnavailable(ctx, outcome.retryAfterSeconds, BREACH_CHECK_UNAVAILABLE)
                 SetupOutcome.NameTaken -> errorResponse(CONFLICT, "This user name is already taken")
                 is SetupOutcome.InvalidInput -> badRequestError(outcome.problem)
             }
@@ -247,6 +248,15 @@ internal fun <V> tooManyRequests(ctx: Context, retryAfterSeconds: Long, message:
     ctx.header("Retry-After", retryAfterSeconds.toString())
     return errorResponse(TOO_MANY_REQUESTS, message)
 }
+
+/** The answer of a request that the server refuses for now, because a service it depends on does not answer. */
+internal fun <V> serviceUnavailable(ctx: Context, retryAfterSeconds: Long, message: String): Result<V, ErrorResponse> {
+    ctx.header("Retry-After", retryAfterSeconds.toString())
+    return errorResponse(SERVICE_UNAVAILABLE, message)
+}
+
+/** The message of a password change or setup that the breached-password service could not check. */
+internal const val BREACH_CHECK_UNAVAILABLE = "The breached password check is not reachable, try again later"
 
 /** The answer of a password login that needs a second factor: no session, and the challenge cookie for the verification. */
 private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: String): Result<Any, ErrorResponse> {

@@ -61,6 +61,9 @@ sealed interface PasswordOutcome {
     /** The new password breaks the password rules. [problem] says which. */
     data class InvalidInput(val problem: String) : PasswordOutcome
 
+    /** The breached-password check gave no answer and the settings refuse the change then. Retry after the given seconds. */
+    data class BreachCheckUnavailable(val retryAfterSeconds: Long) : PasswordOutcome
+
     data object NotFound : PasswordOutcome
 
     /** Machine principals have no password. */
@@ -93,5 +96,8 @@ sealed interface SetupOutcome {
 
     /** The user name or the password does not meet the rules. [problem] says which. */
     data class InvalidInput(val problem: String) : SetupOutcome
+
+    /** The breached-password check gave no answer and the settings refuse the password then. Nothing was created. */
+    data class BreachCheckUnavailable(val retryAfterSeconds: Long) : SetupOutcome
 
 }

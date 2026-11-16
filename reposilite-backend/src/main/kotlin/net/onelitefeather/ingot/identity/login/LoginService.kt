@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login
 import com.reposilite.audit.api.AuditAction.LOGIN_FAILED
 import com.reposilite.audit.api.AuditAction.LOGIN_SUCCEEDED
 import com.reposilite.audit.api.AuditAction.MFA_FIRST_FACTOR_ACCEPTED
+import com.reposilite.audit.api.AuditAction.PASSWORD_BREACH_CHECK_UNAVAILABLE
 import com.reposilite.audit.api.AuditAction.PASSWORD_CHANGED
 import com.reposilite.audit.api.AuditAction.PASSWORD_RESET
 import com.reposilite.audit.api.AuditAction.SETUP_COMPLETED
@@ -65,6 +66,8 @@ class LoginService internal constructor(
     private val secondFactorRequired: (PrincipalRecord) -> Boolean = { false },
     /** The per-account delay of guesses from new addresses. `null` leaves the login as it was before the delay existed. */
     private val accountThrottle: AccountThrottle? = null,
+    /** The breached-password check of new passwords. `null` leaves the check out, as the default mode does. */
+    private val breachCheck: PasswordBreachCheck? = null,
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -158,6 +161,7 @@ class LoginService internal constructor(
             return PasswordOutcome.WrongCurrentPassword
         }
         passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
+        breachRefusal(newPassword, actor)?.let { return it.toPasswordOutcome() }
         setPassword(principal, newPassword, mustChange = false)
         audit(AuditEvent(action = PASSWORD_CHANGED, actor = actor, details = mapOf("principal" to principal.name)))
         return PasswordOutcome.Changed
@@ -170,6 +174,7 @@ class LoginService internal constructor(
             return PasswordOutcome.NotAUser
         }
         passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
+        breachRefusal(newPassword, actor)?.let { return it.toPasswordOutcome() }
         setPassword(principal, newPassword, mustChange = true)
         audit(AuditEvent(action = PASSWORD_RESET, actor = actor, details = mapOf("principal" to principal.name)))
         return PasswordOutcome.Changed
@@ -183,6 +188,39 @@ class LoginService internal constructor(
             password.length > MAX_PASSWORD_LENGTH -> "Password must not have more than $MAX_PASSWORD_LENGTH characters"
             else -> null
         }
+    }
+
+    /**
+     * What the breached-password check says about a password that is about to be set: `null` when it may be set. An
+     * outage that the settings allow is audited and lets the password through.
+     */
+    private fun breachRefusal(password: String, actor: AuditActor): BreachRefusal? {
+        val check = breachCheck ?: return null
+        return when (val verdict = check.verdictOf(password)) {
+            BreachVerdict.Clear -> null
+            BreachVerdict.Breached -> BreachRefusal.Breached
+            is BreachVerdict.Unavailable -> if (verdict.failClosed) {
+                BreachRefusal.Unavailable(BREACH_CHECK_RETRY_SECONDS)
+            } else {
+                audit(AuditEvent(action = PASSWORD_BREACH_CHECK_UNAVAILABLE, actor = actor))
+                null
+            }
+        }
+    }
+
+    private sealed interface BreachRefusal {
+        data object Breached : BreachRefusal
+        data class Unavailable(val retryAfterSeconds: Long) : BreachRefusal
+    }
+
+    private fun BreachRefusal.toPasswordOutcome(): PasswordOutcome = when (this) {
+        BreachRefusal.Breached -> PasswordOutcome.InvalidInput(BREACHED_PASSWORD_PROBLEM)
+        is BreachRefusal.Unavailable -> PasswordOutcome.BreachCheckUnavailable(retryAfterSeconds)
+    }
+
+    private fun BreachRefusal.toSetupOutcome(): SetupOutcome = when (this) {
+        BreachRefusal.Breached -> InvalidInput(BREACHED_PASSWORD_PROBLEM)
+        is BreachRefusal.Unavailable -> SetupOutcome.BreachCheckUnavailable(retryAfterSeconds)
     }
 
     /** Whether at least one human principal exists. The setup code is needed exactly as long as this is `false`. */
@@ -231,6 +269,7 @@ class LoginService internal constructor(
         val name = username.trim()
         usernameProblem(name)?.let { return InvalidInput(it) }
         passwordProblem(password)?.let { return InvalidInput(it) }
+        breachRefusal(password, AuditActor.named(name, ip))?.let { return it.toSetupOutcome() }
 
         // The claim makes the setup exclusive across instances: of all instances on the database, only one gets it.
         if (!credentials.claimFirstAdministrator()) {
@@ -273,6 +312,10 @@ class LoginService internal constructor(
     companion object {
         const val MAX_PASSWORD_LENGTH = 256
         private const val SETUP_ACTOR = "setup"
+        private const val BREACHED_PASSWORD_PROBLEM = "This password appears in a breached password list, choose another one"
+
+        /** The retry hint of a change refused because the breached-password service did not answer. */
+        private const val BREACH_CHECK_RETRY_SECONDS = 60L
     }
 
 }
