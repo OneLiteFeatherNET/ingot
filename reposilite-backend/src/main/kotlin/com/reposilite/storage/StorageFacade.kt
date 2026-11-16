@@ -24,6 +24,7 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
 import net.onelitefeather.ingot.storage.IngotStorageProviderFactory
+import net.onelitefeather.ingot.storage.NestedStorageProviderSettings
 import net.onelitefeather.ingot.storage.StorageProviderContext
 import net.onelitefeather.ingot.storage.StorageProviderNotInstalledException
 import java.nio.file.Path
@@ -43,6 +44,17 @@ open class StorageFacade internal constructor(
         storageSettings: StorageProviderSettings,
     ): StorageProvider? =
         buildStorageProvider(journalist, failureFacade, workingDirectory, repository, storageSettings, chain = emptyList())
+
+    /**
+     * Binds [settings] to the settings class of its registered factory. The delegate of a [NestedStorageProviderSettings] is bound the
+     * same way, so a check on the namespace or the type of the delegate reads its typed settings. Settings of a type that no installed
+     * plugin registers are returned as they are.
+     */
+    fun bind(settings: StorageProviderSettings): StorageProviderSettings {
+        val factory = storageProviders.resolve(settings.type) ?: return settings
+        val bound = settings.boundTo(factory.settingsType)
+        return if (bound is NestedStorageProviderSettings) bound.withDelegate(bind(bound.delegate)) else bound
+    }
 
     /**
      * Builds a provider through its registered factory. A factory of the Ingot API builds its delegates through the context, which calls

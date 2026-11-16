@@ -20,6 +20,7 @@ package net.onelitefeather.ingot.storage.cache
 
 import com.reposilite.storage.StorageProviderSettings
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.NestedStorageProviderSettings
 import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
 import net.onelitefeather.ingot.storage.capability.SupportDetails
 import java.nio.file.Path
@@ -33,13 +34,16 @@ internal const val CACHE_STORAGE_TYPE = "cache"
  */
 data class CacheStorageProviderSettings(
     override val type: String = CACHE_STORAGE_TYPE,
-    val delegate: StorageProviderSettings,
+    override val delegate: StorageProviderSettings,
     val directory: String = "",
     val maxSize: String = "5GB",
     val maxFileSize: String = "",
     val cacheOnUpload: Boolean = false,
     val cacheMutable: Boolean = false,
-) : StorageProviderSettings, SharedNamespaceAware, SupportDetails {
+) : NestedStorageProviderSettings, SharedNamespaceAware, SupportDetails {
+
+    override fun withDelegate(delegate: StorageProviderSettings): CacheStorageProviderSettings = copy(delegate = delegate)
+
 
     /** The namespace of the delegate, so that a cache and a plain repository over the same store collide as they would without the cache. */
     override fun namespaceKey(repositoryName: String): String? =

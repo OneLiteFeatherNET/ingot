@@ -36,6 +36,7 @@ import com.reposilite.shared.notFoundError
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.storage.s3.CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS
 import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
@@ -144,7 +145,7 @@ internal class RepositoryProvider(
 
         val namespaceConflicts = findSharedNamespaceConflicts(
             configuration.mapNotNull { settings ->
-                (settings.storageProvider as? SharedNamespaceAware)?.let { settings.id to it }
+                (boundStorage(settings.storageProvider) as? SharedNamespaceAware)?.let { settings.id to it }
             }
         )
 
@@ -188,6 +189,13 @@ internal class RepositoryProvider(
     /** For each mirrored entry, whether it names one of the local repositories, which decides how the mirror is reached. */
     private fun linksIn(settings: RepositorySettings, names: Set<String>): List<Boolean> =
         settings.proxied.map { it.referencedHost() in names }
+
+    /**
+     * The storage settings with their delegates bound, so that a namespace check reads the typed settings of a plugin type. Settings that
+     * cannot be bound keep their unresolved form here, and the repository build reports the failure.
+     */
+    private fun boundStorage(settings: StorageProviderSettings): StorageProviderSettings =
+        runCatching { storageFacade.bind(settings) }.getOrDefault(settings)
 
 
     fun findRepository(name: String): Result<Repository, ErrorResponse> =

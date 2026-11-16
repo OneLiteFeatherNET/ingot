@@ -41,6 +41,18 @@ private fun settings(
 class CacheStorageProviderSettingsTest {
 
     @Test
+    fun `binding the delegate gives the cache the namespace of the bound delegate`() {
+        val unbound = settings(delegate = TestDelegateSettings())
+
+        val bound = unbound.withDelegate(NamespacedDelegateSettings(namespace = "bucket"))
+
+        assertThat(bound.namespaceKey("releases"))
+            .describedAs("the namespace is read from the typed delegate, which exists only after the delegate is bound")
+            .isEqualTo("bucket/releases")
+        assertThat(unbound.namespaceKey("releases")).isNull()
+    }
+
+    @Test
     fun `type is always cache`() {
         assertThat(settings().type).isEqualTo("cache")
     }
