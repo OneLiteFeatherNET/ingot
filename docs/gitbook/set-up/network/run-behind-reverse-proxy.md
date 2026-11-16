@@ -261,5 +261,6 @@ Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HS
 ## Related
 
 * [Enable TLS](enable-tls.md), for HTTPS served by Ingot itself.
+* [Put a CDN in front](put-a-cdn-in-front.md), for a shared cache between clients and this proxy.
 * [Run the dashboard in a separate container](../deploy/run-split-dashboard-container.md), for a proxy in front of a split dashboard.
 * [Run as a service](../deploy/run-as-service.md), to keep Ingot running behind the proxy.
