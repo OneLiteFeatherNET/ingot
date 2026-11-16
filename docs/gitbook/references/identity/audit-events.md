@@ -122,6 +122,7 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | `SETUP_COMPLETED` | The first administrator is created with the setup code (`LoginService.completeSetup`). The actor is the new user. | `principal` |
 | `PASSWORD_CHANGED` | A user changes their own password (`LoginService.changePassword`). The password is not recorded. | `principal` |
 | `PASSWORD_RESET` | An administrator sets a new password for a user (`LoginService.resetPassword`). | `principal` |
+| `PASSWORD_BREACH_CHECK_UNAVAILABLE` | The breached-password service did not answer and `passwordPolicy.breachCheck.failClosed` is off, so a password change, reset or setup went on without the check. The actor is the one who set the password. | none |
 
 `LOGIN_FAILED` has three sources:
 

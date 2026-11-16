@@ -42,6 +42,22 @@ With the switch on, a name that has failed `threshold` times (default 10) within
 
 Upgrade note: the table of known addresses starts empty when the switch is turned on. Until an owner has signed in once from an address, that address counts as new. An owner whose name is already delayed by an attack waits out the delay from such an address, so turn the switch on and let the owners sign in. A Maven client that retries a stale token sees `429` for at most `maxDelaySeconds`. Gradle 9 does not wait for `Retry-After` (Maven 3.9 does), so a Gradle build that meets the delay fails at once and has to be started again after the delay.
 
+### Password policy
+
+The password policy applies when a password is set, changed or reset, and when the first administrator is created during setup. It never applies at sign-in, so a stored password is not checked again and no user is locked out by a new rule. With the defaults, a new password needs at least 12 characters, as it always has, and no breached-password check runs.
+
+| Key in `passwordPolicy` | Default | Meaning |
+| --- | --- | --- |
+| `minLength` | `12` | Fewest characters of a new password, counted in UTF-16 code units as before. Between 8 and 256. A higher value applies to the next password a user sets. The docs recommend 12 to 15 for new installations. |
+| `breachCheck.mode` | `OFF` | `OFF` makes no check. `RANGE` asks the range service. `OFFLINE` compares with a file. |
+| `breachCheck.file` | empty | `OFFLINE` only: a file with one SHA-1 hash in hexadecimal per line, optionally followed by `:COUNT`. It is read once at start, and the start fails when it cannot be read. |
+| `breachCheck.rangeUrl` | `https://api.pwnedpasswords.com/range/` | `RANGE` only: base address of the range service, ending in a slash. The five characters are appended. Must be an `https://` address, so a mirror of the API can be used. |
+| `breachCheck.failClosed` | `false` | `RANGE` only: when the service does not answer, the change is refused with `503` and `Retry-After`. When `false`, the change is allowed and `PASSWORD_BREACH_CHECK_UNAVAILABLE` is written to the audit trail. |
+
+`RANGE` is a call to an outside service, which is why it is off by default. The instance computes the SHA-1 of the new password and sends only its first five hexadecimal characters with `Add-Padding: true`. The suffixes that come back are compared on the instance, so the password never leaves it. The request has no user name, address, cookie or authorization header. It waits at most three seconds to connect and three seconds for the answer.
+
+`OFFLINE` makes no call. The whole file is held in memory, so a list of the size of the full public collection needs a heap that holds it. A breached password is refused with `400` and the message that it appears in a breached password list. A change refused for an outage of `RANGE` gets `503` with `Retry-After`.
+
 ### Local login
 
 The local provider has the id `local` and the label "Username and password". It has no settings of its own. It is announced once a user exists or the first administrator has been claimed. Users with a password sign in with `POST /api/auth/login` and the provider `local`.
