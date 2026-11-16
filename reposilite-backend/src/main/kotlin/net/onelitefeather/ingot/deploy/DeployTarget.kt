@@ -32,11 +32,12 @@ fun DeployTargetResolution.logWarnings(logger: Logger) {
 
 /**
  * What this instance serves. `all` is the default and serves the dashboard together with the API and the Maven
- * endpoints. `server` serves the API and the Maven endpoints only.
+ * endpoints. `server` serves the API and the Maven endpoints only. `worker` serves no repository or dashboard traffic.
  */
 enum class DeployTarget(val value: String) {
     ALL("all"),
-    SERVER("server");
+    SERVER("server"),
+    WORKER("worker");
 
     companion object {
         val VALID_VALUES: String = entries.joinToString(", ") { it.value }
