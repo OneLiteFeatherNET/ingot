@@ -17,7 +17,9 @@
 package net.onelitefeather.ingot.storage.gcs
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.badRequestError
 import com.reposilite.shared.internalServerError
+import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.FileDetails
@@ -97,7 +99,42 @@ class GcsStorageProvider internal constructor(
         return internalServerError("Failed to $operation")
     }
 
-    override fun getFile(location: Location): Result<InputStream, ErrorResponse> = TODO("reads land in a later change of the series")
+    override fun getFile(location: Location): Result<InputStream, ErrorResponse> =
+        answer(location, "read") {
+            ok(client.read(objectName(location), 0, null))
+        }
+
+    /**
+     * The window of design D5. The size is read first, so the range is truncated to the object as HTTP ranges are, and a range that
+     * starts at or after the end is an empty stream. A range of length zero asks for no content at all.
+     */
+    override fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> {
+        if (offset < 0 || length < 0) {
+            return badRequestError("The range of $location must not start or end before zero")
+        }
+        if (length == 0L) {
+            return ok(InputStream.nullInputStream())
+        }
+        return answer(location, "read") {
+            val name = objectName(location)
+            val count = minOf(length, maxOf(0L, client.metadata(name).size - offset))
+            if (count == 0L) {
+                ok(InputStream.nullInputStream())
+            } else {
+                ok(client.read(name, offset, count))
+            }
+        }
+    }
+
+    /** Answers a missing object as not found, and any other failure as a server error. */
+    private fun <T> answer(location: Location, operation: String, action: () -> Result<T, ErrorResponse>): Result<T, ErrorResponse> =
+        try {
+            action()
+        } catch (_: GcsNotFoundException) {
+            notFoundError("File not found: $location")
+        } catch (exception: Exception) {
+            failed("$operation $location", exception)
+        }
 
     override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> = TODO("details land in a later change of the series")
 

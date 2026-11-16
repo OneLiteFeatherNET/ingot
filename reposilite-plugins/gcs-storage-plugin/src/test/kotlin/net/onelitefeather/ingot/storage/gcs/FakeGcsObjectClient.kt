@@ -17,6 +17,8 @@
 package net.onelitefeather.ingot.storage.gcs
 
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.time.Instant
 
 /**
  * An in-memory object service. An object becomes visible when its upload is finished, as in Google Cloud Storage. Every request is
@@ -42,6 +44,21 @@ internal class FakeGcsObjectClient : GcsObjectClient {
         contentTypes[name] = contentType
     }
 
+    /** Every ranged read as name, offset and length, where a null length reads to the end. */
+    val reads = mutableListOf<Triple<String, Long, Long?>>()
+
+    override fun read(name: String, offset: Long, length: Long?): InputStream {
+        reads += Triple(name, offset, length)
+        val content = objects[name] ?: throw GcsNotFoundException(name)
+        val end = length?.let { minOf(content.size.toLong(), offset + it) } ?: content.size.toLong()
+        return content.copyOfRange(offset.toInt(), end.toInt()).inputStream()
+    }
+
+    override fun metadata(name: String): GcsObjectInfo {
+        val content = objects[name] ?: throw GcsNotFoundException(name)
+        return GcsObjectInfo(name = name, size = content.size.toLong(), updated = modifiedAt)
+    }
+
     override fun startUpload(name: String, contentType: String, chunkSize: Int): GcsUpload {
         openedUploads += chunkSize
         val writes = mutableListOf<Int>()
@@ -58,6 +75,10 @@ internal class FakeGcsObjectClient : GcsObjectClient {
                 contentTypes[name] = contentType
             }
         }
+    }
+
+    private companion object {
+        val modifiedAt: Instant = Instant.parse("2026-01-02T03:04:05Z")
     }
 
 }
