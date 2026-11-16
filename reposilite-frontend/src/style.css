@@ -131,10 +131,11 @@
   html {
     scroll-padding-top: var(--spacing-md-top-bar);
     /*
-     * The gutter of the vertical scrollbar is kept whether or not the page scrolls, so a page that gains or loses a
-     * scrollbar does not move its frame sideways.
+     * No gutter is reserved for the vertical scrollbar. A reserved gutter sits outside the page box, so the sticky top
+     * bar and the page sheet could not paint into it and would stop short of the window edge. The frame does not move
+     * sideways when a scrollbar appears, because it is laid out from the left edge.
      */
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
   }
 
   /*
