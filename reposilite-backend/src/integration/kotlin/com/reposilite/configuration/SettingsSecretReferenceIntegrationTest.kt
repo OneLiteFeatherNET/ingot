@@ -17,6 +17,7 @@
 
 package com.reposilite.configuration
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteParameters
@@ -38,6 +39,9 @@ internal class LocalSettingsSecretReferenceIntegrationTest : SettingsSecretRefer
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteSettingsSecretReferenceIntegrationTest : SettingsSecretReferenceIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresSettingsSecretReferenceIntegrationTest : SettingsSecretReferenceIntegrationTest()
 
 /**
  * A mirror password that is stored as a reference reaches the upstream as its resolved value, while the stored document keeps the
