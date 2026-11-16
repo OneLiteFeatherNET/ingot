@@ -48,11 +48,10 @@ private fun canSeeRows(): List<CorpusRow> = listOf(
         { subjectOf(team(grants = listOf(grant(Role.READ, "releases", "com/example")))) }, "/releases", true,
     ),
     canSeeRow(
-        "can-see.personal-denial-ignored-when-grant-reaches", "own deny releases.read, inherited grant READ on releases",
+        "can-see.personal-denial-wins-over-reaching-grant", "own deny releases.read, inherited grant READ on releases",
         { subjectOf(own(listOf(deny(READ_RELEASES))), inherited(1, grants = listOf(grant(Role.READ, "releases")))) },
-        "/releases", true,
-        note = "known surprise: a grant that reaches the repository shows it before any personal denial is consulted, while" +
-            " allows of the same subject deny the request",
+        "/releases", false,
+        note = "an explicit personal denial on the repository hides it, even when an inherited grant reaches it",
     ),
     canSeeRow(
         "can-see.token-narrowing-hides", "team grant READ on releases, token lists snapshots.read",
@@ -114,10 +113,10 @@ private fun canListHiddenRows(): List<CorpusRow> = listOf(
         { subjectOf(team(grants = listOf(grant(Role.READ, "releases")))) }, "snapshots", false,
     ),
     canListHiddenRow(
-        "can-list-hidden.personal-denial-ignored-by-grant", "own deny releases.read, inherited grant READ on releases",
+        "can-list-hidden.personal-denial-wins-over-grant", "own deny releases.read, inherited grant READ on releases",
         { subjectOf(own(listOf(deny(READ_RELEASES))), inherited(1, grants = listOf(grant(Role.READ, "releases")))) },
-        "releases", true,
-        note = "known surprise: the grant loop of the listing does not consult denials",
+        "releases", false,
+        note = "an explicit personal denial on the repository hides it from the listing, even when an inherited grant reaches it",
     ),
     canListHiddenRow(
         "can-list-hidden.token-narrowing", "team grant READ on releases, token lists snapshots.read",
