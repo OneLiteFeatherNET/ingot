@@ -4,6 +4,8 @@ description: Import the access tokens of a Reposilite 2.x installation into Ingo
 
 # Upgrade from Reposilite 2.x
 
+Tier: [Official](../../references/plugins/plugin-tiers.md#official)
+
 Reposilite 2.x keeps its tokens in `tokens.dat`, which Ingot cannot read directly. The `migration-plugin` converts that file, and the `token-import` command loads the result. The plugin reads only `tokens.dat`, so this procedure imports tokens and nothing else from 2.x.
 
 {% hint style="warning" %}

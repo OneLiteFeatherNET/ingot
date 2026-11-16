@@ -4,6 +4,8 @@ description: Move a Nexus Repository 3 installation into Ingot with the guided M
 
 # Use the Nexus import wizard
 
+Tier: [Core](../../references/plugins/plugin-tiers.md#core)
+
 The Migration page of the dashboard walks an instance administrator through an import from Nexus Repository 3 in seven steps: Connect, Discover, Mapping, Dry run, Sync, Verify and Cut-over. It calls the import API of the `nexus-import` plugin, so everything the wizard does can also be done with `curl`. The wizard only puts the steps in order and keeps you from skipping one.
 
 The page is visible only when the plugin is enabled. Switch the plugin on as described in [Sonatype Nexus importer](import-from-other-repository-managers.md#switch-it-on). Without the switch the address `/settings/migration` shows the not-found page, and no entry appears in the navigation.

@@ -176,6 +176,7 @@
   * [Plugin API](references/plugins/plugin-api.md)
   * [Plugin store](references/plugins/plugin-store.md)
   * [Dashboard anchors](references/plugins/dashboard-anchors.md)
+  * [Plugin tiers](references/plugins/plugin-tiers.md)
 * [Console commands](references/console-commands.md)
 * [Command line client](references/cli.md)
 * [Glossary](references/glossary.md)

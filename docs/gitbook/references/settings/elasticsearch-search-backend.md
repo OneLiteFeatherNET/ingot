@@ -4,6 +4,8 @@ description: Reference for the Elasticsearch search backend of Ingot, the variab
 
 # Elasticsearch search backend
 
+Tier: [Experimental](../plugins/plugin-tiers.md#experimental)
+
 The Elasticsearch backend is a plugin that answers artifact search from an Elasticsearch 8.x or 9.x cluster instead of the database. It is not part of the server image. You install `elasticsearch-plugin.jar` into the plugins directory yourself, or from the plugin store, and the jar in that directory is the switch: without it the backend is not registered. Choosing it for the cluster is a separate step, see [Choose a search backend](../../configure/search/choose-a-search-backend.md). For the steps of a first setup, see [Use Elasticsearch for search](../../configure/search/use-elasticsearch-for-search.md).
 
 {% hint style="warning" %}

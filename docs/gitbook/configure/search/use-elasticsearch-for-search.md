@@ -4,6 +4,8 @@ description: Set up the Elasticsearch search backend of an Ingot cluster step by
 
 # Use Elasticsearch for search
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 This guide moves the artifact search of an Ingot cluster from the database to an Elasticsearch 8.x or 9.x cluster that you run. The plugin is not part of the server image. You install its jar yourself, as described in step 2. The settings of the plugin are in the [Elasticsearch reference](../../references/settings/elasticsearch-search-backend.md). The way the backends are chosen and switched is in [Choose a search backend](choose-a-search-backend.md).
 
 {% hint style="warning" %}

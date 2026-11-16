@@ -196,6 +196,16 @@ The Elasticsearch plugin is not part of the image. It is installed by hand, or f
 
 See [Elasticsearch search backend](../references/settings/elasticsearch-search-backend.md) for the variables, the privileges of the API key and the security obligations of the cluster.
 
+### Plugin tiers are shown on start (unreleased)
+
+Every loaded plugin now has a tier: Core, Official, Community or Experimental. The existing startup line that lists the loaded plugins is unchanged, byte for byte. One additional INFO line follows it and lists each plugin with its tier, for example `checksum (official)`. Each Experimental plugin also logs one WARN line at start, which names the plugin and says that its API may change. No configuration, environment variable, volume, manifest or plugin changes for existing deployments. No plugin is refused, skipped or started in another order because of its tier.
+
+* A parser that matches the existing line sees no difference. A parser that matches every INFO line sees one new line directly after it.
+* An installation with `INGOT_OPENSEARCH_ENABLED=true`, or with an Experimental jar in the plugins directory, sees one WARN line for each such plugin.
+* The system information page shows the tier next to each plugin, and the support bundle file `plugins.json` gains a `tier` field per plugin. No existing field changes.
+
+See [Plugin tiers](../references/plugins/plugin-tiers.md) for the four tiers and the rules that give a plugin its tier.
+
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](../references/settings/settings-domains.md)). No configuration file, environment variable, volume or plugin changes.

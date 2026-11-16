@@ -4,6 +4,8 @@ description: Reference for the OpenSearch search backend of Ingot, the variables
 
 # OpenSearch search backend
 
+Tier: [Experimental](../plugins/plugin-tiers.md#experimental)
+
 The OpenSearch backend is an opt-in plugin that answers artifact search from an OpenSearch 2.x cluster instead of the database. It ships in the server image as `opensearch-plugin.jar` in `/app/bundled-plugins/`, and it does nothing until its switch is on. Choosing it for the cluster is a separate step, see [Choose a search backend](../../configure/search/choose-a-search-backend.md). For the steps of a first setup, see [Use OpenSearch for search](../../configure/search/use-opensearch-for-search.md).
 
 {% hint style="warning" %}
