@@ -373,6 +373,14 @@ The system information page and the support bundle are on by default, because bo
 | --- | --- | --- | --- |
 | `INGOT_S3_BUFFER_TO_DISK` | `REPOSILITE_S3_BUFFER_TO_DISK`, read when the `INGOT_` variable is not set | `false` | `true` writes every S3 upload to a temporary file before it is sent, as before large uploads were streamed. `false` streams uploads as multipart uploads above 8 MiB. Read once at start, for every S3 repository of the instance. Any value other than `true` or `false`, in any case, stops the start with a message that names the variable. See [Large uploads](../../set-up/cluster/use-s3-storage.md#large-uploads). |
 
+### S3 presigned redirect variables
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_S3_PRESIGNED_REDIRECTS` | `REPOSILITE_S3_PRESIGNED_REDIRECTS`, read when the `INGOT_` variable is not set | `false` | `true` answers a cacheable `GET` of a public S3 file with `302 Found` and a presigned `Location`, so the bucket serves the bytes. Only files of `PUBLIC` repositories that no credentialed mirror serves are redirected. Read once at start. Any value other than `true` or `false`, in any case, stops the start with a message that names the variable. See [Presigned redirects](../../set-up/cluster/use-s3-storage.md#presigned-redirects). |
+| `INGOT_S3_PRESIGN_TTL_SECONDS` | `REPOSILITE_S3_PRESIGN_TTL_SECONDS`, read when the `INGOT_` variable is not set | `300` | The lifetime of a presigned URL in seconds, from 60 to 3600. The `max-age` of the redirect is half of it or `maxAge`, whichever is smaller. A value outside the range, or not a whole number, stops the start with a message that names the variable. |
+| `INGOT_S3_PRESIGN_ENDPOINT` | `REPOSILITE_S3_PRESIGN_ENDPOINT`, read when the `INGOT_` variable is not set | empty | The address in the presigned URL, for a bucket that clients reach under another name than Ingot does. Empty means the configured S3 `endpoint`. |
+
 ### S3 storage system properties
 
 These are JVM system properties. There is no environment variable form. Pass them in `JAVA_OPTS`, for example `JAVA_OPTS=-Dreposilite.s3.pathStyleAccessEnabled=true`. Set them before the server starts. Only the exact value `true` turns a property on.
