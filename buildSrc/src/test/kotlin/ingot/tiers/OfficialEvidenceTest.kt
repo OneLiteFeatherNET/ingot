@@ -50,14 +50,14 @@ class OfficialEvidenceTest {
 
     private fun workflowRunning(vararg gradlePaths: String) {
         workflowsDir.createDirectories().resolve("ci.yml").writeText(
-            gradlePaths.joinToString(separator = "\n") { "          run: ./gradlew $it:test" },
+            gradlePaths.joinToString(separator = "\n") { "          run: ./gradlew $it" },
         )
     }
 
     @Test
     fun officialModuleWithoutContractTestSourceSetFails() {
         officialModule("official-fixture", withContractTest = false)
-        workflowRunning(":reposilite-plugins:official-fixture")
+        workflowRunning(":reposilite-plugins:official-fixture:contractTest")
 
         val violations = PluginTierCheck.evidenceViolations(pluginsDir, workflowsDir)
 
@@ -69,7 +69,7 @@ class OfficialEvidenceTest {
     @Test
     fun officialModuleNotRunByAnyWorkflowFails() {
         officialModule("unnamed-fixture", withContractTest = true)
-        workflowRunning(":reposilite-plugins:some-other-module")
+        workflowRunning(":reposilite-plugins:some-other-module:contractTest")
 
         val violations = PluginTierCheck.evidenceViolations(pluginsDir, workflowsDir)
 
@@ -79,9 +79,20 @@ class OfficialEvidenceTest {
     }
 
     @Test
+    fun officialModuleRunOnlyByUnitTestsFails() {
+        officialModule("unit-only-fixture", withContractTest = true)
+        workflowRunning(":reposilite-plugins:unit-only-fixture:test")
+
+        val violations = PluginTierCheck.evidenceViolations(pluginsDir, workflowsDir)
+
+        assertThat(violations).describedAs("the unit tests are not the contract tests").hasSize(1)
+        assertThat(violations.single()).describedAs("the violation names the missing contractTest task").contains("contractTest")
+    }
+
+    @Test
     fun officialModuleWithContractTestAndWorkflowPasses() {
         officialModule("complete-fixture", withContractTest = true)
-        workflowRunning(":reposilite-plugins:complete-fixture")
+        workflowRunning(":reposilite-plugins:complete-fixture:contractTest")
 
         assertThat(PluginTierCheck.evidenceViolations(pluginsDir, workflowsDir))
             .describedAs("a module with both pieces of evidence passes")

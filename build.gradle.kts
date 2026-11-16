@@ -213,5 +213,6 @@ tasks.register<CheckPluginTiersTask>("checkPluginTiers") {
     group = "verification"
     description = "Fails when a plugin declares an experimental opt-in or a tier its evidence does not back up."
     pluginsDirectory.set(layout.projectDirectory.dir("reposilite-plugins"))
+    workflowsDirectory.set(layout.projectDirectory.dir(".github/workflows"))
     tierFile.set(layout.buildDirectory.file("plugin-tiers.json"))
 }

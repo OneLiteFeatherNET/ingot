@@ -72,6 +72,31 @@ object PluginTierCheck {
 
     fun violations(checks: List<ModuleCheck>): List<String> = checks.flatMap { it.violations() }
 
+    // An Official module needs a contractTest source set and a workflow that runs its contractTest task. The workflow
+    // files are read as text, so the task has to be named by its Gradle path, as the CI job spells it.
+    fun evidenceViolations(pluginsDir: Path, workflowsDir: Path): List<String> {
+        val official = scan(pluginsDir).filter { it.declared == Tier.OFFICIAL }
+        if (official.isEmpty()) return emptyList()
+
+        val workflows = workflowsDir.takeIf { it.isDirectory() }
+            ?.listDirectoryEntries()
+            ?.filter { it.isRegularFile() && (it.extension == "yml" || it.extension == "yaml") }
+            ?.joinToString(separator = "\n") { it.readText() }
+            .orEmpty()
+
+        return official.flatMap { check ->
+            buildList {
+                if (!pluginsDir.resolve(check.module).resolve("src/contractTest").isDirectory()) {
+                    add("${check.module} declares OFFICIAL but has no contractTest source set. Add src/contractTest with the contract tests of the plugin.")
+                }
+                val task = Regex(":reposilite-plugins:${Regex.escape(check.module)}:contractTest(?!\\w)")
+                if (!task.containsMatchIn(workflows)) {
+                    add("${check.module} declares OFFICIAL but no workflow runs :reposilite-plugins:${check.module}:contractTest.")
+                }
+            }
+        }
+    }
+
     // The plugin id and the tier of every module that has a @Plugin class, keyed by plugin id, in lower case.
     fun tierJson(checks: List<ModuleCheck>): String {
         val entries = checks
