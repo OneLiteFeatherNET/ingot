@@ -25,7 +25,8 @@ gradle.startParameter.maxWorkerCount = maxOf(1, minOf(cores - 2, 16))
 include(
     "reposilite-frontend",
     "reposilite-backend",
-    "reposilite-search-http"
+    "reposilite-search-http",
+    "ingot-cli"
 )
 
 // Plugins aren't needed to build the server jar, so the Docker build trims them from the context (see .dockerignore).
