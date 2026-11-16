@@ -72,6 +72,8 @@ class GcsStorageProvider internal constructor(
         try {
             client.checkBucket()
             ReadinessOutcome.Ok
+        } catch (_: GcsNotFoundException) {
+            ReadinessOutcome.Failed("bucket '$bucket' is missing")
         } catch (exception: GcsServiceException) {
             when (exception.statusCode) {
                 in REFUSED_STATUSES -> ReadinessOutcome.Failed("no permission on the bucket '$bucket'")
@@ -151,9 +153,15 @@ class GcsStorageProvider internal constructor(
         return internalServerError("Failed to $operation")
     }
 
+    /**
+     * The whole object. The metadata is requested first: the reader of the service opens lazily, so without this request a missing object
+     * would only fail while the caller reads the stream.
+     */
     override fun getFile(location: Location): Result<InputStream, ErrorResponse> =
         answer(location, "read") {
-            ok(client.read(objectName(location), 0, null))
+            val name = objectName(location)
+            client.metadata(name)
+            ok(client.read(name, 0, null))
         }
 
     /**

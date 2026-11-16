@@ -119,9 +119,9 @@ internal class GcsSdkObjectClient(
             Storage.BlobListOption.prefix(prefix),
             Storage.BlobListOption.currentDirectory(),
             Storage.BlobListOption.pageSize(MAX_PAGE.toLong()),
-        ).iterateAll().map { blob ->
-            if (blob.isDirectory) GcsPrefix(blob.name) else blob.toInfo(blob.name)
-        }
+        ).iterateAll()
+            .map { blob -> if (blob.isDirectory) GcsPrefix(blob.name) else blob.toInfo(blob.name) }
+            .sortedBy { it.name }
     }
 
     override fun checkBucket() = translated {
