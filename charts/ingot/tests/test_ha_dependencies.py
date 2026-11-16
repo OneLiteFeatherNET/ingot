@@ -20,6 +20,7 @@ import ha_smoke
 
 HA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ha")
 DEPENDENCIES = os.path.join(HA_DIR, "dependencies.yaml")
+POSTGRES_DEPENDENCIES = os.path.join(HA_DIR, "postgres-dependencies.yaml")
 VALUES = os.path.join(HA_DIR, "values.yaml")
 NAMESPACE = "ingot-ha"
 
@@ -77,6 +78,33 @@ class DependencyManifestTest(unittest.TestCase):
         secrets = {doc["metadata"]["name"] for doc in of_kind(self.documents, "Secret")}
         self.assertTrue({"ingot-database", "ingot-s3-keys"} <= secrets,
                         "the values file names these two Secrets, so the manifest must create them")
+
+
+class PostgresDependencyManifestTest(unittest.TestCase):
+
+    def setUp(self):
+        self.assertTrue(os.path.exists(POSTGRES_DEPENDENCIES),
+                        "the PostgreSQL leg of the smoke test needs charts/ingot/tests/ha/postgres-dependencies.yaml")
+        self.documents = load_documents(POSTGRES_DEPENDENCIES)
+
+    def test_exactly_one_postgres_service_is_defined_on_port_5432(self):
+        services = [doc for doc in of_kind(self.documents, "Service") if doc["metadata"]["name"] == "postgres"]
+        self.assertEqual(1, len(services), "the manifest must define exactly one Service named postgres")
+        self.assertEqual(5432, services[0]["spec"]["ports"][0]["port"], "PostgreSQL listens on 5432")
+
+    def test_the_database_secret_names_the_postgresql_engine_and_the_postgres_service(self):
+        secrets = [doc for doc in of_kind(self.documents, "Secret") if doc["metadata"]["name"] == "ingot-database"]
+        self.assertEqual(1, len(secrets), "the manifest must define the ingot-database Secret the values file reads")
+        connection = secrets[0]["stringData"]["database"]
+        self.assertTrue(connection.startswith("postgresql "),
+                        f"the connection string must start with the postgresql engine, got: {connection}")
+        self.assertIn(f"postgres.{NAMESPACE}.svc.cluster.local:5432", connection.split(),
+                      "the connection string must name the PostgreSQL Service in the smoke namespace")
+
+    def test_every_image_is_pinned_by_digest_and_not_latest(self):
+        for image in images_of(self.documents):
+            self.assertIn("@sha256:", image, f"the image {image} must be pinned by digest")
+            self.assertNotIn(":latest", image, f"the image {image} must not use latest")
 
 
 class ValuesFileTest(unittest.TestCase):

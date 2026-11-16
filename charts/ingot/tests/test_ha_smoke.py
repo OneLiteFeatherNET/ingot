@@ -9,9 +9,13 @@ Run from the repository root:
     python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
 """
 
+import contextlib
+import io
+import os
 import subprocess
 import unittest
 
+import ha_smoke
 from ha_smoke import (
     CURL_BODYLESS_SCRIPT,
     CURL_SCRIPT,
@@ -209,6 +213,10 @@ class FakeKubectl:
 
     def run(self, args, **kwargs):
         self.calls.append(list(args))
+        return subprocess.CompletedProcess(args, 0, b"", b"")
+
+    def apply_file(self, path):
+        self.run(["apply", "-f", path])
 
 
 class FakeHeldRun:
@@ -468,6 +476,69 @@ class BodilessRequestTest(unittest.TestCase):
         args = exec_args("POST", "http://pod/run", ["-H", "X: y"], b"")
         self.assertEqual(["POST", "http://pod/run", "-H", "X: y"], args[-4:],
                          "the method, the url and the headers reach the script as its arguments")
+
+
+class DatabaseArgumentTest(unittest.TestCase):
+
+    def test_mariadb_is_accepted_as_the_database(self):
+        self.assertEqual("mariadb", ha_smoke.parse_database(["mariadb"]))
+
+    def test_postgresql_is_accepted_as_the_database(self):
+        self.assertEqual("postgresql", ha_smoke.parse_database(["postgresql"]))
+
+    def test_an_unknown_database_is_rejected(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            ha_smoke.parse_database(["oracle"])
+
+    def test_the_database_argument_is_required(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            ha_smoke.parse_database([])
+
+
+class DatabaseProfileTest(unittest.TestCase):
+
+    def dependency_calls(self, database):
+        kubectl = FakeKubectl()
+        ha_smoke.Smoke(kubectl, FakeClock(), out=lambda line: None, database=database).install_dependencies()
+        return kubectl.calls
+
+    def wait_call(self, calls):
+        return next(call for call in calls if call[:1] == ["wait"] and "deployment/floci" in call)
+
+    def test_the_postgresql_leg_applies_the_postgres_manifest(self):
+        manifest = os.path.join(ha_smoke.HA_DIR, "postgres-dependencies.yaml")
+        self.assertIn(["apply", "-f", manifest], self.dependency_calls("postgresql"),
+                      "the PostgreSQL leg must apply its own dependency manifest")
+
+    def test_the_postgresql_leg_waits_for_the_postgres_deployment(self):
+        wait = self.wait_call(self.dependency_calls("postgresql"))
+        self.assertIn("deployment/postgres", wait, "the PostgreSQL leg must wait for its database")
+        self.assertNotIn("deployment/mariadb", wait, "the PostgreSQL leg must not wait for MariaDB")
+
+    def test_the_mariadb_leg_applies_the_dependency_manifest(self):
+        manifest = os.path.join(ha_smoke.HA_DIR, "dependencies.yaml")
+        self.assertIn(["apply", "-f", manifest], self.dependency_calls("mariadb"),
+                      "the MariaDB leg keeps applying the dependency manifest it applied before")
+
+    def test_the_mariadb_leg_waits_for_the_same_names_as_before(self):
+        self.assertEqual(["wait", "deployment/mariadb", "deployment/floci", "deployment/nats",
+                          "--for=condition=Available", "--timeout=300s"],
+                         self.wait_call(self.dependency_calls("mariadb")),
+                         "the MariaDB leg waits exactly as the driver did before the database argument")
+
+    def test_the_postgresql_diagnostics_read_the_postgres_logs(self):
+        kubectl = FakeKubectl()
+        ha_smoke.diagnostics(kubectl, out=lambda line: None, database="postgresql")
+        selectors = [call[call.index("-l") + 1] for call in kubectl.calls if call[:1] == ["logs"] and "-l" in call]
+        self.assertIn("app in (postgres,floci,nats)", selectors,
+                      "after a failed PostgreSQL check the logs of the PostgreSQL database must be printed")
+
+    def test_the_mariadb_diagnostics_keep_reading_the_mariadb_logs(self):
+        kubectl = FakeKubectl()
+        ha_smoke.diagnostics(kubectl, out=lambda line: None, database="mariadb")
+        selectors = [call[call.index("-l") + 1] for call in kubectl.calls if call[:1] == ["logs"] and "-l" in call]
+        self.assertIn("app in (mariadb,floci,nats)", selectors,
+                      "the MariaDB leg keeps printing the MariaDB logs it printed before")
 
 
 class TimeoutNamingTest(unittest.TestCase):

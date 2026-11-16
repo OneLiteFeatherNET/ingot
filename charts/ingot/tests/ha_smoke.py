@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ElementTree
+from typing import NamedTuple
 from datetime import datetime
 
 LEASE_TTL_SECONDS = 60
@@ -211,7 +212,24 @@ TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 CHART_DIR = os.path.dirname(TESTS_DIR)
 HA_DIR = os.path.join(TESTS_DIR, "ha")
 DEPENDENCIES = os.path.join(HA_DIR, "dependencies.yaml")
+POSTGRES_DEPENDENCIES = os.path.join(HA_DIR, "postgres-dependencies.yaml")
 VALUES = os.path.join(HA_DIR, "values.yaml")
+
+
+class DatabaseProfile(NamedTuple):
+    """What the driver needs from one database: its dependency manifest, the Deployment it waits for, and the label of
+    its pods in the diagnostics."""
+
+    manifest: str
+    deployment: str
+    label: str
+
+
+DATABASES = {
+    "mariadb": DatabaseProfile(manifest=DEPENDENCIES, deployment="mariadb", label="mariadb"),
+    "postgresql": DatabaseProfile(manifest=POSTGRES_DEPENDENCIES, deployment="postgres", label="postgres"),
+}
+"""The databases the smoke test runs on, by the name the job passes as its argument."""
 
 SERVER_SELECTOR = f"app.kubernetes.io/name=ingot,app.kubernetes.io/instance={RELEASE}"
 SERVICE_URL = f"http://{RELEASE}.{NAMESPACE}.svc.cluster.local:8080"
@@ -398,11 +416,12 @@ def policy_settings():
 class Smoke:
     """Runs the five checks in order. Each check leaves the instance with two ready replicas."""
 
-    def __init__(self, kubectl, clock, out=print):
+    def __init__(self, kubectl, clock, out=print, database="mariadb"):
         self.kubectl = kubectl
         self.http = ClusterHttp(kubectl)
         self.clock = clock
         self.out = out
+        self.profile = DATABASES[database]
 
     # -- helpers -------------------------------------------------------------------------------------------------------
 
@@ -464,13 +483,16 @@ class Smoke:
 
     # -- setup ---------------------------------------------------------------------------------------------------------
 
-    def install(self):
+    def install_dependencies(self):
         self.out("installing the dependencies")
         self.kubectl.run(["create", "namespace", NAMESPACE], check=False)
-        self.kubectl.apply_file(DEPENDENCIES)
-        self.kubectl.run(["wait", "deployment/mariadb", "deployment/floci", "deployment/nats",
+        self.kubectl.apply_file(self.profile.manifest)
+        self.kubectl.run(["wait", f"deployment/{self.profile.deployment}", "deployment/floci", "deployment/nats",
                           "--for=condition=Available", "--timeout=300s"])
         self.kubectl.run(["wait", "job/ingot-smoke-bucket", "--for=condition=complete", "--timeout=300s"])
+
+    def install(self):
+        self.install_dependencies()
         self.out("installing two server replicas from the CI values")
         result = subprocess.run(["helm", "install", RELEASE, CHART_DIR, "--namespace", NAMESPACE,
                                  "--create-namespace", "-f", VALUES, "--timeout", "300s"],
@@ -719,8 +741,16 @@ def run_checks(checks, out=lambda line: None):
     return failures
 
 
-def diagnostics(kubectl, out=print):
+def parse_database(argv):
+    """The database of the run, the one positional argument of the driver. Any other value exits with a usage error."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("database", choices=sorted(DATABASES), help="the database the two replicas run on")
+    return parser.parse_args(argv).database
+
+
+def diagnostics(kubectl, out=print, database="mariadb"):
     """Pod state, events and logs of the replicas and the dependencies, printed after a failed check."""
+    label = DATABASES[database].label
     commands = [
         ["get", "pods", "-o", "wide"],
         ["get", "events", "--sort-by=.lastTimestamp"],
@@ -728,7 +758,7 @@ def diagnostics(kubectl, out=print):
         # a replica whose container restarted: why the previous one ended (OOMKilled, exit code) and its last lines
         ["describe", "pods", "-l", SERVER_SELECTOR],
         ["logs", "-l", SERVER_SELECTOR, "--all-containers", "--prefix", "--previous", "--tail=100"],
-        ["logs", "-l", "app in (mariadb,floci,nats)", "--all-containers", "--prefix", "--tail=100"],
+        ["logs", "-l", f"app in ({label},floci,nats)", "--all-containers", "--prefix", "--tail=100"],
     ]
     for args in commands:
         result = kubectl.run(args, check=False)
@@ -738,15 +768,14 @@ def diagnostics(kubectl, out=print):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.parse_args(argv)
+    database = parse_database(argv)
     kubectl = Kubectl(NAMESPACE)
-    smoke = Smoke(kubectl, SystemClock())
+    smoke = Smoke(kubectl, SystemClock(), database=database)
     try:
         smoke.run_all()
     except Exception as failure:  # the diagnostics must print for every failure, then the job fails
         print(f"FAILED: {failure}", flush=True)
-        diagnostics(kubectl)
+        diagnostics(kubectl, database=database)
         return 1
     return 0
 
