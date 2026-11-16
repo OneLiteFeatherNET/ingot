@@ -155,6 +155,11 @@ contract). Creating or rotating a token is a sensitive action (D8): a Basic or B
 who has a factor is refused with `step_up_required`. That stops a stolen token from minting another token, and it does
 not affect any existing pipeline, which creates tokens from the dashboard or through the administrator API.
 
+A directory password sent over Basic is the exception, because it is a password and not a token. For a user with an enrolled
+factor it is refused with the generic answer `Invalid authorization credentials`, and the server log names the reason. Without
+this refusal, Basic would skip the factor for every directory account. Builds that need a non-interactive login use an access
+token instead, which the factor does not block.
+
 Known gap, recorded on purpose: an administrator's access token with `ingot_admin.*` (or the legacy instance admin
 flag) is not covered by `requiredForAdmins`. Covering it would break every pipeline that uses such a token. The policy
 covers browser sessions only. The gap is listed in the identity model open points with this change.
@@ -206,11 +211,14 @@ deliberately.
 - **LDAP users** (`login.ldap`) sign in with the directory password, and then pass the same login gate as local users.
   They can enrol Ingot factors. A directory user has no `local_credential` row, so enrolment relies on the password login
   of the same session (`ath`, D8).
-- **OpenID Connect and GitHub users** rely on their identity provider by default. No Ingot factor is requested at a
-  callback, unless the policy covers the user. A policy-covered user passes the gate only when the ID token's `acr` is in
-  `mfaAcrValues` or its `amr` is in `mfaAmrValues` and the provider is configured with those lists, which are empty by
-  default, so nothing is trusted until an operator says so. Otherwise the user is asked for an Ingot factor, like a local
-  user. GitHub issues no ID token, so GitHub users always need an Ingot factor under a policy.
+- **OpenID Connect and GitHub users** rely on their identity provider by default. A user that no policy covers is never asked
+  for an Ingot factor at the callback, even when a factor is set up for that user. A covered user with a factor is asked for
+  it, like a local user, unless the trust lists pass them. A policy-covered OpenID Connect user passes the gate only when the ID
+  token's `acr` is in `mfaAcrValues` or its `amr` is in `mfaAmrValues` and the provider is configured with those lists, which
+  are empty by default, so nothing is trusted until an operator says so. GitHub issues no ID token, so a covered GitHub user is
+  never trusted and is challenged at the callback only when a factor exists. A covered GitHub user without a factor is not
+  challenged at the callback. During the grace period that user enrols inside the step-up window of the sign-in, where the `ath`
+  of the sign-in is the proof (D8), as for directory accounts; the next GitHub sign-in then challenges for that factor.
 
 Reason: the identity provider is the source of truth for its own factors, and an Ingot prompt on top of an already strong
 sign-in is an unwelcome second prompt. The policy stays a hard requirement, which is why the trust is opt-in.

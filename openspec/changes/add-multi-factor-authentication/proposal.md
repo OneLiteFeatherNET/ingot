@@ -83,7 +83,8 @@ The dashboard part is a separate change, `add-multi-factor-dashboard`, with its 
 - New tables `mfa_factor`, `mfa_recovery_code` and `auth_challenge` are created on start with the other identity tables.
   No existing table is altered.
 - Users without a factor and without a covering policy keep the login they have today. Access tokens, Basic
-  authentication and the legacy `/api/tokens` endpoint are unchanged.
+  authentication and the legacy `/api/tokens` endpoint are unchanged. The one exception is a directory password sent over
+  Basic by a user with a factor, which is refused (design D9).
 - An operator who wants TOTP must set the existing `INGOT_SETTINGS_KEY` (or `INGOT_SETTINGS_KEY_FILE`). This is an
   opt-in requirement of a new feature, not a change to an existing one. The upgrade notes say so.
 
