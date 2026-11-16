@@ -198,36 +198,40 @@ class IdentityFacade(
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
-        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+        return store.guardedWrite {
+            val principal = principalNamed(name) ?: return@guardedWrite notFoundError("Principal not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return@guardedWrite preconditionFailed("Principal '$name'")
 
-        val disabledChanged = request.disabled != null && request.disabled != principal.disabled
-        request.displayName?.let { if (it.isBlank()) return badRequestError("Display name cannot be blank") }
-        if (request.disabled == true) adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
-        store.updatePrincipal(principal.id, request.displayName, request.disabled)
-        if (disabledChanged) invalidateTokensOf(principal)
+            val disabledChanged = request.disabled != null && request.disabled != principal.disabled
+            request.displayName?.let { if (it.isBlank()) return@guardedWrite badRequestError("Display name cannot be blank") }
+            if (request.disabled == true) adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return@guardedWrite it }
+            store.updatePrincipal(principal.id, request.displayName, request.disabled)
+            if (disabledChanged) invalidateTokensOf(principal)
 
-        // Disabling has its own event. Everything else that changed is listed by field name.
-        val disabledNow = disabledChanged && request.disabled == true
-        if (disabledNow) audit(PRINCIPAL_DISABLED, actor, mapOf("principal" to principal.name))
-        val changed = listOfNotNull(
-            "displayName".takeIf { request.displayName != null && request.displayName != principal.displayName },
-            "disabled".takeIf { disabledChanged && !disabledNow },
-        )
-        if (changed.isNotEmpty()) audit(PRINCIPAL_UPDATED, actor, mapOf("principal" to principal.name, "changed" to changed))
-        return snapshotOf(principalNamed(name)!!).asSuccess()
+            // Disabling has its own event. Everything else that changed is listed by field name.
+            val disabledNow = disabledChanged && request.disabled == true
+            if (disabledNow) audit(PRINCIPAL_DISABLED, actor, mapOf("principal" to principal.name))
+            val changed = listOfNotNull(
+                "displayName".takeIf { request.displayName != null && request.displayName != principal.displayName },
+                "disabled".takeIf { disabledChanged && !disabledNow },
+            )
+            if (changed.isNotEmpty()) audit(PRINCIPAL_UPDATED, actor, mapOf("principal" to principal.name, "changed" to changed))
+            return@guardedWrite snapshotOf(principalNamed(name)!!).asSuccess()
+        }
     }
 
     fun deletePrincipal(name: String, ifMatch: String?, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
-        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
-        adminGuard<Unit>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
+        return store.guardedWrite {
+            val principal = principalNamed(name) ?: return@guardedWrite notFoundError("Principal not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return@guardedWrite preconditionFailed("Principal '$name'")
+            adminGuard<Unit>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return@guardedWrite it }
 
-        val tokenNames = store.tokensOf(principal.id).map { it.name }
-        invalidateTokensOf(principal)
-        store.deletePrincipal(principal)
-        audit(PRINCIPAL_DELETED, actor, mapOf("principal" to principal.name, "kind" to principal.kind.name, "tokens" to tokenNames))
-        return Unit.asSuccess()
+            val tokenNames = store.tokensOf(principal.id).map { it.name }
+            invalidateTokensOf(principal)
+            store.deletePrincipal(principal)
+            audit(PRINCIPAL_DELETED, actor, mapOf("principal" to principal.name, "kind" to principal.kind.name, "tokens" to tokenNames))
+            return@guardedWrite Unit.asSuccess()
+        }
     }
 
     // tokens
@@ -238,49 +242,51 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<CreatedTokenDto> {
-        val principal = principalNamed(principalName) ?: return notFoundError("Principal not found")
-        if (caller != null && accessTokens.subjectOf(caller).principalName != principal.name) {
-            notHeld<CreatedTokenDto>(caller, rightsOfPrincipal(principal), "the rights of principal '${principal.name}'")?.let { return it }
-        }
-        val name = validateName(request.name, MAX_NAME_LENGTH)
-            ?: return badRequestError(nameProblem(request.name, MAX_NAME_LENGTH, "Token name"))
-        if (store.findToken(name) != null) return errorResponse(CONFLICT, "Token '$name' already exists")
+        return store.guardedWrite {
+            val principal = principalNamed(principalName) ?: return@guardedWrite notFoundError("Principal not found")
+            if (caller != null && accessTokens.subjectOf(caller).principalName != principal.name) {
+                notHeld<CreatedTokenDto>(caller, rightsOfPrincipal(principal), "the rights of principal '${principal.name}'")?.let { return@guardedWrite it }
+            }
+            val name = validateName(request.name, MAX_NAME_LENGTH)
+                ?: return@guardedWrite badRequestError(nameProblem(request.name, MAX_NAME_LENGTH, "Token name"))
+            if (store.findToken(name) != null) return@guardedWrite errorResponse(CONFLICT, "Token '$name' already exists")
 
-        val scopes = request.scopes?.let { names ->
-            if (names.isEmpty()) return badRequestError("Scopes cannot be empty, omit them for an unrestricted token")
-            names.map { parseAction(it) ?: return badRequestError("Unknown scope '$it', supported: ${Action.entries.joinToString { action -> action.name }}") }.toSet()
-        }
-        val parsedNodes = request.nodes?.let { raw ->
-            if (raw.isEmpty()) return badRequestError("Nodes cannot be empty, omit them for an unrestricted token")
-            parseNodes(raw)
-        }
-        if (parsedNodes != null && parsedNodes.isErr) return badRequestProblems(parsedNodes.error.message, parsedNodes.error.problems.orEmpty())
-        val tokenNodes = parsedNodes?.orNull() ?: scopes?.let { ScopeRules.nodesOf(it) }
-        val givenSecret = request.secret
-        if (givenSecret != null && givenSecret.isBlank()) return badRequestError("Secret cannot be blank")
+            val scopes = request.scopes?.let { names ->
+                if (names.isEmpty()) return@guardedWrite badRequestError("Scopes cannot be empty, omit them for an unrestricted token")
+                names.map { parseAction(it) ?: return@guardedWrite badRequestError("Unknown scope '$it', supported: ${Action.entries.joinToString { action -> action.name }}") }.toSet()
+            }
+            val parsedNodes = request.nodes?.let { raw ->
+                if (raw.isEmpty()) return@guardedWrite badRequestError("Nodes cannot be empty, omit them for an unrestricted token")
+                parseNodes(raw)
+            }
+            if (parsedNodes != null && parsedNodes.isErr) return@guardedWrite badRequestProblems(parsedNodes.error.message, parsedNodes.error.problems.orEmpty())
+            val tokenNodes = parsedNodes?.orNull() ?: scopes?.let { ScopeRules.nodesOf(it) }
+            val givenSecret = request.secret
+            if (givenSecret != null && givenSecret.isBlank()) return@guardedWrite badRequestError("Secret cannot be blank")
 
-        // A generated secret carries the id of its row, so the row is written first and the hash after it. Until then the
-        // row verifies nothing, which is the safe state to be in if the request is interrupted. A secret the caller gives
-        // is stored as it comes, in one write.
-        val created = store.createToken(
-            principalId = principal.id,
-            name = name,
-            secretHash = givenSecret?.let { AccessTokenSecurityProvider.encodeSecret(it) }.orEmpty(),
-            scopes = scopes,
-            expiresAt = request.expiresAt,
-            createdAt = LocalDate.now(clock),
-            description = request.description.orEmpty(),
-            nodes = tokenNodes,
-        ) ?: return errorResponse(CONFLICT, "Token '$name' already exists")
+            // A generated secret carries the id of its row, so the row is written first and the hash after it. Until then the
+            // row verifies nothing, which is the safe state to be in if the request is interrupted. A secret the caller gives
+            // is stored as it comes, in one write.
+            val created = store.createToken(
+                principalId = principal.id,
+                name = name,
+                secretHash = givenSecret?.let { AccessTokenSecurityProvider.encodeSecret(it) }.orEmpty(),
+                scopes = scopes,
+                expiresAt = request.expiresAt,
+                createdAt = LocalDate.now(clock),
+                description = request.description.orEmpty(),
+                nodes = tokenNodes,
+            ) ?: return@guardedWrite errorResponse(CONFLICT, "Token '$name' already exists")
 
-        val secret = givenSecret ?: BearerSecret.create(created.id)
-        if (givenSecret == null) {
-            store.saveToken(created.copy(secretHash = AccessTokenSecurityProvider.encodeSecret(secret)))
+            val secret = givenSecret ?: BearerSecret.create(created.id)
+            if (givenSecret == null) {
+                store.saveToken(created.copy(secretHash = AccessTokenSecurityProvider.encodeSecret(secret)))
+            }
+
+            extensions.emitEvent(AuditEvent(action = TOKEN_CREATED, actor = actor, details = mapOf("token" to name, "principal" to principal.name)))
+            // The secret goes out in this response only. The audit record names the token and never its secret.
+            return@guardedWrite CreatedTokenDto(token = created.toDto(), secret = secret).asSuccess()
         }
-
-        extensions.emitEvent(AuditEvent(action = TOKEN_CREATED, actor = actor, details = mapOf("token" to name, "principal" to principal.name)))
-        // The secret goes out in this response only. The audit record names the token and never its secret.
-        return CreatedTokenDto(token = created.toDto(), secret = secret).asSuccess()
     }
 
     fun listTokens(principalName: String): IdentityResult<List<TokenDto>> {
@@ -289,14 +295,16 @@ class IdentityFacade(
     }
 
     fun deleteToken(principalName: String, tokenName: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
-        val principal = principalNamed(principalName) ?: return notFoundError("Principal not found")
-        val token = store.tokensOf(principal.id).firstOrNull { it.name == tokenName } ?: return notFoundError("Token not found")
-        adminGuard<Unit>(AdminChange(tokenRemoved = token.id))?.let { return it }
+        return store.guardedWrite {
+            val principal = principalNamed(principalName) ?: return@guardedWrite notFoundError("Principal not found")
+            val token = store.tokensOf(principal.id).firstOrNull { it.name == tokenName } ?: return@guardedWrite notFoundError("Token not found")
+            adminGuard<Unit>(AdminChange(tokenRemoved = token.id))?.let { return@guardedWrite it }
 
-        store.deleteToken(token.id)
-        accessTokens.tokenStateChanged(token.name)
-        extensions.emitEvent(AuditEvent(action = TOKEN_DELETED, actor = actor, details = mapOf("token" to token.name, "principal" to principal.name)))
-        return Unit.asSuccess()
+            store.deleteToken(token.id)
+            accessTokens.tokenStateChanged(token.name)
+            extensions.emitEvent(AuditEvent(action = TOKEN_DELETED, actor = actor, details = mapOf("token" to token.name, "principal" to principal.name)))
+            return@guardedWrite Unit.asSuccess()
+        }
     }
 
     // teams
@@ -327,21 +335,23 @@ class IdentityFacade(
         actor: AuditActor,
         caller: WriteCaller,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
-        if (request.name?.trim()?.startsWith("machine:", ignoreCase = true) == true) {
-            return errorResponse(CONFLICT, "Team names starting with 'machine:' are reserved")
-        }
-        val name = validateName(request.name, MAX_TEAM_NAME_LENGTH)
-            ?: return badRequestError(nameProblem(request.name, MAX_TEAM_NAME_LENGTH, "Team name"))
-        if (store.findTeam(name) != null) return errorResponse(CONFLICT, "Team '$name' already exists")
-        val reference = request.externalRef?.takeIf { it.isNotBlank() }
-        // A new team holds no rights yet, so only the idp right is checked for its link.
-        if (reference != null) guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, name, reference, rights = null, actor)?.let { return it }
+        return store.guardedWrite {
+            // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
+            if (request.name?.trim()?.startsWith("machine:", ignoreCase = true) == true) {
+                return@guardedWrite errorResponse(CONFLICT, "Team names starting with 'machine:' are reserved")
+            }
+            val name = validateName(request.name, MAX_TEAM_NAME_LENGTH)
+                ?: return@guardedWrite badRequestError(nameProblem(request.name, MAX_TEAM_NAME_LENGTH, "Team name"))
+            if (store.findTeam(name) != null) return@guardedWrite errorResponse(CONFLICT, "Team '$name' already exists")
+            val reference = request.externalRef?.takeIf { it.isNotBlank() }
+            // A new team holds no rights yet, so only the idp right is checked for its link.
+            if (reference != null) guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, name, reference, rights = null, actor)?.let { return@guardedWrite it }
 
-        val team = store.createTeam(name, request.description.orEmpty(), reference)
-            ?: return errorResponse(CONFLICT, "Team '$name' already exists")
-        audit(TEAM_CREATED, actor, mapOf("team" to team.name))
-        return snapshotOf(team).asSuccess()
+            val team = store.createTeam(name, request.description.orEmpty(), reference)
+                ?: return@guardedWrite errorResponse(CONFLICT, "Team '$name' already exists")
+            audit(TEAM_CREATED, actor, mapOf("team" to team.name))
+            return@guardedWrite snapshotOf(team).asSuccess()
+        }
     }
 
     fun getTeam(name: String): IdentityResult<IdentitySnapshot<TeamDetailDto>> =
@@ -354,34 +364,38 @@ class IdentityFacade(
         actor: AuditActor,
         caller: WriteCaller,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        // Only a change of the reference is guarded and written. A repeated reference leaves the stored value alone, so a
-        // stale write cannot restore a link that was removed after this team was read.
-        val linkChanges = ExternalReferenceChange.changes(team.externalRef, request.externalRef)
-        if (linkChanges) {
-            val reference = ExternalReferenceChange.normalised(request.externalRef).orEmpty()
-            guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, team.name, reference, rights = rightsOfTeam(team), actor)?.let { return it }
-        }
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            // Only a change of the reference is guarded and written. A repeated reference leaves the stored value alone, so a
+            // stale write cannot restore a link that was removed after this team was read.
+            val linkChanges = ExternalReferenceChange.changes(team.externalRef, request.externalRef)
+            if (linkChanges) {
+                val reference = ExternalReferenceChange.normalised(request.externalRef).orEmpty()
+                guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, team.name, reference, rights = rightsOfTeam(team), actor)?.let { return@guardedWrite it }
+            }
 
-        store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = linkChanges)
-        val changed = listOfNotNull(
-            "description".takeIf { request.description != null && request.description != team.description },
-            "externalRef".takeIf { linkChanges },
-        )
-        if (changed.isNotEmpty()) audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to changed))
-        return snapshotOf(publicTeam(name)!!).asSuccess()
+            store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = linkChanges)
+            val changed = listOfNotNull(
+                "description".takeIf { request.description != null && request.description != team.description },
+                "externalRef".takeIf { linkChanges },
+            )
+            if (changed.isNotEmpty()) audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to changed))
+            return@guardedWrite snapshotOf(publicTeam(name)!!).asSuccess()
+        }
     }
 
     fun deleteTeam(name: String, ifMatch: String?, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        adminGuard<Unit>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            adminGuard<Unit>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return@guardedWrite it }
 
-        invalidateTeamMembers(team)
-        store.deleteTeam(team.id)
-        audit(TEAM_DELETED, actor, mapOf("team" to team.name))
-        return Unit.asSuccess()
+            invalidateTeamMembers(team)
+            store.deleteTeam(team.id)
+            audit(TEAM_DELETED, actor, mapOf("team" to team.name))
+            return@guardedWrite Unit.asSuccess()
+        }
     }
 
     /** Replaces the MANUAL members. SYNC members are not touched, the synchronisation owns them. */
@@ -392,35 +406,37 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        if (members == null) return badRequestError("Members are required, send an empty list to remove all manual members")
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            if (members == null) return@guardedWrite badRequestError("Members are required, send an empty list to remove all manual members")
 
-        val principals = members.map { memberName ->
-            principalNamed(memberName) ?: return badRequestError("Unknown principal '$memberName'")
-        }
-        val principalIds = principals.map { it.id }.toSet()
-        val dropped = store.listMemberships(team.id)
-            .filter { it.source == TeamMemberSource.MANUAL && it.principalId !in principalIds }
-            .map { team.id to it.principalId }
-            .toSet()
-        if (manualMemberNames(team) != principals.map { it.name }.toSet()) {
-            notHeld<IdentitySnapshot<TeamDetailDto>>(caller, rightsOfTeam(team), "the rights of team '$name'")?.let { return it }
-        }
-        adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(membershipsLost = dropped))?.let { return it }
+            val principals = members.map { memberName ->
+                principalNamed(memberName) ?: return@guardedWrite badRequestError("Unknown principal '$memberName'")
+            }
+            val principalIds = principals.map { it.id }.toSet()
+            val dropped = store.listMemberships(team.id)
+                .filter { it.source == TeamMemberSource.MANUAL && it.principalId !in principalIds }
+                .map { team.id to it.principalId }
+                .toSet()
+            if (manualMemberNames(team) != principals.map { it.name }.toSet()) {
+                notHeld<IdentitySnapshot<TeamDetailDto>>(caller, rightsOfTeam(team), "the rights of team '$name'")?.let { return@guardedWrite it }
+            }
+            adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(membershipsLost = dropped))?.let { return@guardedWrite it }
 
-        val manualBefore = manualMemberNames(team)
-        invalidateTeamMembers(team)
-        store.replaceManualMembers(team.id, principalIds)
-        invalidateTeamMembers(team)
+            val manualBefore = manualMemberNames(team)
+            invalidateTeamMembers(team)
+            store.replaceManualMembers(team.id, principalIds)
+            invalidateTeamMembers(team)
 
-        val manualAfter = principals.map { it.name }.toSet()
-        val added = (manualAfter - manualBefore).sorted()
-        val removed = (manualBefore - manualAfter).sorted()
-        if (added.isNotEmpty() || removed.isNotEmpty()) {
-            audit(TEAM_MEMBERSHIP_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+            val manualAfter = principals.map { it.name }.toSet()
+            val added = (manualAfter - manualBefore).sorted()
+            val removed = (manualBefore - manualAfter).sorted()
+            if (added.isNotEmpty() || removed.isNotEmpty()) {
+                audit(TEAM_MEMBERSHIP_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+            }
+            return@guardedWrite snapshotOf(team).asSuccess()
         }
-        return snapshotOf(team).asSuccess()
     }
 
     // instance role
@@ -431,15 +447,17 @@ class IdentityFacade(
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
-        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+        return store.guardedWrite {
+            val principal = principalNamed(name) ?: return@guardedWrite notFoundError("Principal not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return@guardedWrite preconditionFailed("Principal '$name'")
 
-        if (!store.hasDirectInstanceRole(principal.id)) {
-            store.grantInstanceRole(principalId = principal.id, teamId = null)
-            invalidateTokensOf(principal)
-            audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("principal" to principal.name))
+            if (!store.hasDirectInstanceRole(principal.id)) {
+                store.grantInstanceRole(principalId = principal.id, teamId = null)
+                invalidateTokensOf(principal)
+                audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("principal" to principal.name))
+            }
+            return@guardedWrite snapshotOf(principalNamed(name)!!).asSuccess()
         }
-        return snapshotOf(principalNamed(name)!!).asSuccess()
     }
 
     /** Removes the instance role of a principal, unless that leaves no usable instance admin (see [adminGuard]). */
@@ -448,16 +466,18 @@ class IdentityFacade(
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
-        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+        return store.guardedWrite {
+            val principal = principalNamed(name) ?: return@guardedWrite notFoundError("Principal not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return@guardedWrite preconditionFailed("Principal '$name'")
 
-        if (store.hasDirectInstanceRole(principal.id)) {
-            adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalRoleLost = setOf(principal.id)))?.let { return it }
-            store.revokeInstanceRole(principalId = principal.id, teamId = null)
-            invalidateTokensOf(principal)
-            audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("principal" to principal.name))
+            if (store.hasDirectInstanceRole(principal.id)) {
+                adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalRoleLost = setOf(principal.id)))?.let { return@guardedWrite it }
+                store.revokeInstanceRole(principalId = principal.id, teamId = null)
+                invalidateTokensOf(principal)
+                audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("principal" to principal.name))
+            }
+            return@guardedWrite snapshotOf(principalNamed(name)!!).asSuccess()
         }
-        return snapshotOf(principalNamed(name)!!).asSuccess()
     }
 
     /** Grants the instance role to a team: every member with a usable token becomes an instance admin. */
@@ -466,15 +486,17 @@ class IdentityFacade(
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
 
-        if (!store.listInstanceRoleTeamIds().contains(team.id)) {
-            store.grantInstanceRole(principalId = null, teamId = team.id)
-            invalidateTeamMembers(team)
-            audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("team" to team.name))
+            if (!store.listInstanceRoleTeamIds().contains(team.id)) {
+                store.grantInstanceRole(principalId = null, teamId = team.id)
+                invalidateTeamMembers(team)
+                audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("team" to team.name))
+            }
+            return@guardedWrite snapshotOf(publicTeam(name)!!).asSuccess()
         }
-        return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
     /** Removes the instance role of a team, unless that leaves no usable instance admin (see [adminGuard]). */
@@ -483,16 +505,18 @@ class IdentityFacade(
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
 
-        if (store.listInstanceRoleTeamIds().contains(team.id)) {
-            adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
-            store.revokeInstanceRole(principalId = null, teamId = team.id)
-            invalidateTeamMembers(team)
-            audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("team" to team.name))
+            if (store.listInstanceRoleTeamIds().contains(team.id)) {
+                adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return@guardedWrite it }
+                store.revokeInstanceRole(principalId = null, teamId = team.id)
+                invalidateTeamMembers(team)
+                audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("team" to team.name))
+            }
+            return@guardedWrite snapshotOf(publicTeam(name)!!).asSuccess()
         }
-        return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
     /** Replaces every grant of the team. Legacy roles are not assignable: only private teams carry them. */
@@ -503,37 +527,39 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        if (grants == null) return badRequestError("Grants are required, send an empty list to remove all grants")
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            if (grants == null) return@guardedWrite badRequestError("Grants are required, send an empty list to remove all grants")
 
-        val parsed = grants.map { request ->
-            val role = request.role?.uppercase()?.let { parseRole(it) } ?: return badRequestError("Unknown role '${request.role}', supported: READ, DEPLOY, MAINTAIN, ADMIN")
-            if (role !in Role.ASSIGNABLE) return badRequestError("Role $role cannot be assigned, supported: READ, DEPLOY, MAINTAIN, ADMIN")
-            val repository = request.repository?.trim()?.takeIf { it.isNotEmpty() }
-            if (repository != null && repository.contains('/')) return badRequestError("Repository '$repository' must not contain '/'")
-            val pathPrefix = normalizePrefix(request.pathPrefix)
-                ?: return badRequestError("A grant names a path. Repository-wide access is granted with permission nodes, see /api/identity/teams/{name}/nodes")
-            if (role == Role.ADMIN) return badRequestError("ADMIN applies to a whole repository, grant it with permission nodes")
-            Triple(repository, pathPrefix, role)
-        }
-        val oldGrants = store.listGrants(team.id).map { Triple(it.repository, it.pathPrefix, it.role) }
-        val changedGrants = (oldGrants.toSet() - parsed.toSet()) + (parsed.toSet() - oldGrants.toSet())
-        if (changedGrants.isNotEmpty()) {
-            notHeld<IdentitySnapshot<TeamDetailDto>>(caller, Rights(emptyList(), changedGrants.toList()), "the grants of team '$name'")?.let { return it }
-        }
-        val before = store.listGrants(team.id).map { describeGrant(it.repository, it.pathPrefix, it.role.name) }.toSet()
-        val after = parsed.map { (repository, pathPrefix, role) -> describeGrant(repository, pathPrefix, role.name) }.toSet()
+            val parsed = grants.map { request ->
+                val role = request.role?.uppercase()?.let { parseRole(it) } ?: return@guardedWrite badRequestError("Unknown role '${request.role}', supported: READ, DEPLOY, MAINTAIN, ADMIN")
+                if (role !in Role.ASSIGNABLE) return@guardedWrite badRequestError("Role $role cannot be assigned, supported: READ, DEPLOY, MAINTAIN, ADMIN")
+                val repository = request.repository?.trim()?.takeIf { it.isNotEmpty() }
+                if (repository != null && repository.contains('/')) return@guardedWrite badRequestError("Repository '$repository' must not contain '/'")
+                val pathPrefix = normalizePrefix(request.pathPrefix)
+                    ?: return@guardedWrite badRequestError("A grant names a path. Repository-wide access is granted with permission nodes, see /api/identity/teams/{name}/nodes")
+                if (role == Role.ADMIN) return@guardedWrite badRequestError("ADMIN applies to a whole repository, grant it with permission nodes")
+                Triple(repository, pathPrefix, role)
+            }
+            val oldGrants = store.listGrants(team.id).map { Triple(it.repository, it.pathPrefix, it.role) }
+            val changedGrants = (oldGrants.toSet() - parsed.toSet()) + (parsed.toSet() - oldGrants.toSet())
+            if (changedGrants.isNotEmpty()) {
+                notHeld<IdentitySnapshot<TeamDetailDto>>(caller, Rights(emptyList(), changedGrants.toList()), "the grants of team '$name'")?.let { return@guardedWrite it }
+            }
+            val before = store.listGrants(team.id).map { describeGrant(it.repository, it.pathPrefix, it.role.name) }.toSet()
+            val after = parsed.map { (repository, pathPrefix, role) -> describeGrant(repository, pathPrefix, role.name) }.toSet()
 
-        store.replaceGrants(team.id, parsed)
-        invalidateTeamMembers(team)
+            store.replaceGrants(team.id, parsed)
+            invalidateTeamMembers(team)
 
-        val added = (after - before).sorted()
-        val removed = (before - after).sorted()
-        if (added.isNotEmpty() || removed.isNotEmpty()) {
-            audit(TEAM_GRANTS_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+            val added = (after - before).sorted()
+            val removed = (before - after).sorted()
+            if (added.isNotEmpty() || removed.isNotEmpty()) {
+                audit(TEAM_GRANTS_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+            }
+            return@guardedWrite snapshotOf(team).asSuccess()
         }
-        return snapshotOf(team).asSuccess()
     }
 
     // permission nodes
@@ -552,16 +578,18 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
-        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
-        return parseNodes(nodes).flatMap { rules ->
-            notHeld<IdentitySnapshot<List<NodeDto>>>(
-                caller,
-                Rights(changedNodes(store.listNodes(principal.kind.name, principal.id), rules), emptyList()),
-                "the nodes of principal '$name'",
-            ) ?: run {
-                replaceNodeRules(principal.kind.name, principal.id, rules, principal.name, actor, subjectKey = "principal", kind = principal.kind.name)
-                principalNodes(name)
+        return store.guardedWrite {
+            val principal = principalNamed(name) ?: return@guardedWrite notFoundError("Principal not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return@guardedWrite preconditionFailed("Principal '$name'")
+            return@guardedWrite parseNodes(nodes).flatMap { rules ->
+                notHeld<IdentitySnapshot<List<NodeDto>>>(
+                    caller,
+                    Rights(changedNodes(store.listNodes(principal.kind.name, principal.id), rules), emptyList()),
+                    "the nodes of principal '$name'",
+                ) ?: run {
+                    replaceNodeRules(principal.kind.name, principal.id, rules, principal.name, actor, subjectKey = "principal", kind = principal.kind.name)
+                    principalNodes(name)
+                }
             }
         }
     }
@@ -579,16 +607,18 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        return parseNodes(nodes).flatMap { rules ->
-            notHeld<IdentitySnapshot<List<NodeDto>>>(
-                caller,
-                Rights(changedNodes(store.listNodes(NODE_SUBJECT_TEAM, team.id), rules), emptyList()),
-                "the nodes of team '$name'",
-            ) ?: run {
-                replaceNodeRules(NODE_SUBJECT_TEAM, team.id, rules, team.name, actor, subjectKey = "team", kind = null)
-                teamNodes(name)
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            return@guardedWrite parseNodes(nodes).flatMap { rules ->
+                notHeld<IdentitySnapshot<List<NodeDto>>>(
+                    caller,
+                    Rights(changedNodes(store.listNodes(NODE_SUBJECT_TEAM, team.id), rules), emptyList()),
+                    "the nodes of team '$name'",
+                ) ?: run {
+                    replaceNodeRules(NODE_SUBJECT_TEAM, team.id, rules, team.name, actor, subjectKey = "team", kind = null)
+                    teamNodes(name)
+                }
             }
         }
     }
@@ -609,57 +639,59 @@ class IdentityFacade(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<String>>> {
-        val team = publicTeam(name) ?: return notFoundError("Team not found")
-        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
-        if (parents == null) return badRequestError("Parents are required, send an empty list to remove all parents")
-        val duplicates = parents.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.sorted()
-        if (duplicates.isNotEmpty()) {
-            return badRequestProblems(
-                "Parents listed twice: ${duplicates.joinToString()}",
-                duplicates.map { ErrorProblem(it, "Parent '$it' is listed twice") },
-            )
-        }
-        val found = parents.associateWith { publicTeam(it) }
-        val unknown = found.filterValues { it == null }.keys.map { ErrorProblem(it, "Unknown team '$it' as parent, parents must be existing teams") }
-        if (unknown.isNotEmpty()) {
-            return badRequestProblems(unknown.joinToString("; ") { it.message }, unknown)
-        }
-        val parentTeams = found.values.filterNotNull()
-        val graph = store.listAllParents().toMutableMap()
-        graph[team.id] = parentTeams.map { it.id }.toSet()
-        when (val problem = TeamHierarchy.problemOf(graph)) {
-            null -> Unit
-            is HierarchyProblem.Cycle -> return errorResponse(
-                CONFLICT,
-                "Inheritance of '${teamNameOf(problem.teamId)}' would form a cycle: a team cannot inherit from itself, directly or through its parents",
-            )
-            is HierarchyProblem.TooDeep -> return errorResponse(
-                CONFLICT,
-                "Inheritance of '${teamNameOf(problem.teamId)}' would be ${problem.depth} levels deep, the limit is ${TeamHierarchy.MAX_DEPTH} levels",
-            )
-        }
+        return store.guardedWrite {
+            val team = publicTeam(name) ?: return@guardedWrite notFoundError("Team not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return@guardedWrite preconditionFailed("Team '$name'")
+            if (parents == null) return@guardedWrite badRequestError("Parents are required, send an empty list to remove all parents")
+            val duplicates = parents.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.sorted()
+            if (duplicates.isNotEmpty()) {
+                return@guardedWrite badRequestProblems(
+                    "Parents listed twice: ${duplicates.joinToString()}",
+                    duplicates.map { ErrorProblem(it, "Parent '$it' is listed twice") },
+                )
+            }
+            val found = parents.associateWith { publicTeam(it) }
+            val unknown = found.filterValues { it == null }.keys.map { ErrorProblem(it, "Unknown team '$it' as parent, parents must be existing teams") }
+            if (unknown.isNotEmpty()) {
+                return@guardedWrite badRequestProblems(unknown.joinToString("; ") { it.message }, unknown)
+            }
+            val parentTeams = found.values.filterNotNull()
+            val graph = store.listAllParents().toMutableMap()
+            graph[team.id] = parentTeams.map { it.id }.toSet()
+            when (val problem = TeamHierarchy.problemOf(graph)) {
+                null -> Unit
+                is HierarchyProblem.Cycle -> return@guardedWrite errorResponse(
+                    CONFLICT,
+                    "Inheritance of '${teamNameOf(problem.teamId)}' would form a cycle: a team cannot inherit from itself, directly or through its parents",
+                )
+                is HierarchyProblem.TooDeep -> return@guardedWrite errorResponse(
+                    CONFLICT,
+                    "Inheritance of '${teamNameOf(problem.teamId)}' would be ${problem.depth} levels deep, the limit is ${TeamHierarchy.MAX_DEPTH} levels",
+                )
+            }
 
-        val currentParents = store.listParents(team.id)
-        val newParentIds = parentTeams.map { it.id }.toSet()
-        val changedParents = (currentParents - newParentIds) + (newParentIds - currentParents)
-        if (changedParents.isNotEmpty()) {
-            val parentRights = changedParents.mapNotNull { store.findTeamById(it) }.map { rightsOfTeam(it) }
-            notHeld<IdentitySnapshot<List<String>>>(
-                caller,
-                Rights(parentRights.flatMap { it.nodes }, parentRights.flatMap { it.grants }),
-                "the rights of the parents of team '$name'",
-            )?.let { return it }
+            val currentParents = store.listParents(team.id)
+            val newParentIds = parentTeams.map { it.id }.toSet()
+            val changedParents = (currentParents - newParentIds) + (newParentIds - currentParents)
+            if (changedParents.isNotEmpty()) {
+                val parentRights = changedParents.mapNotNull { store.findTeamById(it) }.map { rightsOfTeam(it) }
+                notHeld<IdentitySnapshot<List<String>>>(
+                    caller,
+                    Rights(parentRights.flatMap { it.nodes }, parentRights.flatMap { it.grants }),
+                    "the rights of the parents of team '$name'",
+                )?.let { return@guardedWrite it }
+            }
+            val before = parentNamesOf(team)
+            store.replaceParents(team.id, parentTeams.map { it.id }.toSet())
+            invalidateAllTokens()
+            val after = parentTeams.map { it.name }.toSet()
+            val added = (after - before).sorted()
+            val removed = (before - after).sorted()
+            if (added.isNotEmpty() || removed.isNotEmpty()) {
+                audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to listOf("parents"), "added" to added, "removed" to removed))
+            }
+            return@guardedWrite teamParents(name)
         }
-        val before = parentNamesOf(team)
-        store.replaceParents(team.id, parentTeams.map { it.id }.toSet())
-        invalidateAllTokens()
-        val after = parentTeams.map { it.name }.toSet()
-        val added = (after - before).sorted()
-        val removed = (before - after).sorted()
-        if (added.isNotEmpty() || removed.isNotEmpty()) {
-            audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to listOf("parents"), "added" to added, "removed" to removed))
-        }
-        return teamParents(name)
     }
 
     // rights: a caller may hand on only what it holds itself

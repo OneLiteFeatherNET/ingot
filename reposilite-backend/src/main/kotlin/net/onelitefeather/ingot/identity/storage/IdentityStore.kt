@@ -107,6 +107,14 @@ class IdentityStore(
     private fun <T> identityWrite(block: JdbcTransaction.() -> T): T =
         identityWrite(database, block)
 
+    /**
+     * Runs a guarded write: the decision and the write of a facade method share one transaction, and the revision is held
+     * from its start. Store calls made inside [block] join that transaction, so the state they read is the state the write
+     * changes. See [identityWrite].
+     */
+    fun <T> guardedWrite(block: () -> T): T =
+        guardedIdentityWrite(database, block)
+
     // principals
 
     fun createPrincipal(kind: PrincipalKind, name: String, displayName: String, disabled: Boolean, createdAt: Instant = now()): PrincipalRecord? {

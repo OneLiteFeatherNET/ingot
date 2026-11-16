@@ -66,7 +66,8 @@ internal class IdentityWriteRevisionTest {
                 decider.revokePrincipalInstanceAdmin("alice", ifMatch = null)
 
                 // then: the decider recorded the revision it read before deciding, and the write took effect
-                assertThat(revision.lastSeen).describedAs("the guarded write records the revision it read before it decided").isEqualTo(decidedOn)
+                // The guarded write holds the revision from its start, so the decision reads the value its own advance produced.
+                assertThat(revision.lastSeen).describedAs("the guarded write records the revision it holds when it decides").isEqualTo(decidedOn + 1)
                 assertThat(deciderStore.findPrincipal("alice")?.let { deciderStore.hasDirectInstanceRole(it.id) })
                     .describedAs("the instance role is revoked through the decider")
                     .isFalse()
