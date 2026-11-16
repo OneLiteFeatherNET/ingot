@@ -53,4 +53,27 @@ class AuthorizationRevision(private val store: IdentityStore) : AutoCloseable {
         executor?.shutdownNow()
         executor = null
     }
+
+    companion object {
+
+        const val INTERVAL_VARIABLE = "INGOT_AUTHORIZATION_REFRESH"
+        const val LEGACY_INTERVAL_VARIABLE = "REPOSILITE_AUTHORIZATION_REFRESH"
+
+        /** The interval when neither variable is set. */
+        val DEFAULT_REFRESH_INTERVAL: Duration = Duration.ofSeconds(2)
+
+        /**
+         * The refresh interval in whole seconds: the INGOT variable, then the REPOSILITE one, then the default. A value that is
+         * not a positive number of seconds is refused at start instead of being guessed at.
+         */
+        fun refreshInterval(environment: Map<String, String> = System.getenv()): Duration {
+            val (name, value) = sequenceOf(INTERVAL_VARIABLE, LEGACY_INTERVAL_VARIABLE)
+                .mapNotNull { name -> environment[name]?.trim()?.takeIf { it.isNotEmpty() }?.let { name to it } }
+                .firstOrNull()
+                ?: return DEFAULT_REFRESH_INTERVAL
+            val seconds = value.toLongOrNull()?.takeIf { it > 0 }
+                ?: throw IllegalArgumentException("$name must be a positive number of seconds, but was '$value'")
+            return Duration.ofSeconds(seconds)
+        }
+    }
 }

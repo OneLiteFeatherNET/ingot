@@ -25,6 +25,7 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.AccessTokenFacade
+import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
 import panda.std.reactive.Reference
 import java.util.SortedSet
 
@@ -58,6 +59,7 @@ class AuthenticationComponents(
     fun authenticationFacade(
         authenticators: SortedSet<Authenticator> = authenticators(),
         extensions: Extensions = Extensions(journalist),
+        authorizationRevision: AuthorizationRevision? = null,
     ): AuthenticationFacade =
         AuthenticationFacade(
             journalist = journalist,
@@ -65,6 +67,7 @@ class AuthenticationComponents(
             accessTokenFacade = accessTokenFacade,
             bruteForceProtectionSettings = authenticationSettings.computed { it.bruteForceProtection },
             extensions = extensions,
+            authorizationRevision = authorizationRevision,
         )
 
 }
