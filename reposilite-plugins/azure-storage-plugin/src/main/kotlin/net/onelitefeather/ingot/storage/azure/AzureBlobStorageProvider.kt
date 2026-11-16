@@ -17,15 +17,20 @@
 package net.onelitefeather.ingot.storage.azure
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.badRequestError
 import com.reposilite.shared.internalServerError
+import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
+import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import io.javalin.http.ContentType
+import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import panda.std.Result
 import panda.std.Result.ok
+import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
@@ -105,16 +110,62 @@ internal class AzureBlobStorageProvider(
         Base64.getEncoder().encodeToString("$uploadId-%06d".format(index).toByteArray(Charsets.UTF_8))
 
     /** Logs an unexpected failure with its exception and answers it as a server error. */
-    private fun failed(operation: String, exception: Exception): Result<Unit, ErrorResponse> {
+    private fun <T> failed(operation: String, exception: Exception): Result<T, ErrorResponse> {
         failureFacade.throwException("Azure Blob storage provider failed to $operation", exception)
         return internalServerError("Failed to $operation")
     }
 
+    /** Answers a missing blob as not found, and any other failure as a server error. */
+    private fun <T> answer(location: Location, operation: String, action: () -> Result<T, ErrorResponse>): Result<T, ErrorResponse> =
+        try {
+            action()
+        } catch (_: AzureBlobNotFoundException) {
+            notFoundError("File not found: $location")
+        } catch (exception: Exception) {
+            failed("$operation $location", exception)
+        }
+
     override fun getFile(location: Location): Result<InputStream, ErrorResponse> =
-        throw UnsupportedOperationException("reads are added by a later change")
+        answer(location, "read") {
+            ok(client.download(blobName(location), 0, null))
+        }
+
+    /**
+     * The window of design D5. The size is read first, so the range is truncated to the blob as HTTP ranges are, and a range that
+     * starts at or after the end is an empty stream. A range of length zero asks for no content at all.
+     */
+    override fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> {
+        if (offset < 0 || length < 0) {
+            return badRequestError("The range of $location must not start or end before zero")
+        }
+        return answer(location, "read") {
+            val name = blobName(location)
+            val size = client.properties(name).contentLength
+            val count = minOf(length, maxOf(0L, size - offset))
+            if (count == 0L) {
+                return@answer ok(ByteArrayInputStream(ByteArray(0)))
+            }
+            try {
+                ok(client.download(name, offset, count))
+            } catch (_: AzureRangeNotSatisfiableException) {
+                // The size changed since it was read. The service answers such a range with 416, which is an empty window.
+                ok(ByteArrayInputStream(ByteArray(0)))
+            }
+        }
+    }
 
     override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
-        throw UnsupportedOperationException("details are added by a later change")
+        answer<FileDetails>(location, "read the details of") {
+            ok(client.properties(blobName(location)).toDocumentInfo(location))
+        }
+
+    private fun AzureBlobProperties.toDocumentInfo(location: Location): DocumentInfo =
+        DocumentInfo(
+            name = location.getSimpleName(),
+            contentType = ContentType.contentTypeByExtension(location.getExtension()) ?: APPLICATION_OCTET_STREAM,
+            contentLength = contentLength,
+            lastModifiedTime = lastModified,
+        )
 
     override fun removeFile(location: Location): Result<Unit, ErrorResponse> =
         throw UnsupportedOperationException("removal is added by a later change")
@@ -123,13 +174,25 @@ internal class AzureBlobStorageProvider(
         throw UnsupportedOperationException("listings are added by a later change")
 
     override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> =
-        throw UnsupportedOperationException("properties are added by a later change")
+        answer(location, "read the time of") {
+            ok(FileTime.from(client.properties(blobName(location)).lastModified))
+        }
 
     override fun getFileSize(location: Location): Result<Long, ErrorResponse> =
-        throw UnsupportedOperationException("properties are added by a later change")
+        answer(location, "read the size of") {
+            ok(client.properties(blobName(location)).contentLength)
+        }
 
     override fun exists(location: Location): Boolean =
-        throw UnsupportedOperationException("properties are added by a later change")
+        try {
+            client.properties(blobName(location))
+            true
+        } catch (_: AzureBlobNotFoundException) {
+            false
+        } catch (exception: Exception) {
+            failureFacade.throwException("Azure Blob storage provider failed to check $location", exception)
+            false
+        }
 
     override fun usage(): Result<Long, ErrorResponse> =
         ok(-1)

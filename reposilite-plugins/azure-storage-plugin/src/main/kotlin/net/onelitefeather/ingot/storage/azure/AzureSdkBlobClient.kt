@@ -19,8 +19,11 @@ package net.onelitefeather.ingot.storage.azure
 import com.azure.core.util.BinaryData
 import com.azure.storage.blob.BlobContainerClient
 import com.azure.storage.blob.models.BlobHttpHeaders
+import com.azure.storage.blob.models.BlobRange
+import com.azure.storage.blob.models.BlobStorageException
 import com.azure.storage.blob.options.BlockBlobCommitBlockListOptions
 import com.azure.storage.blob.options.BlockBlobSimpleUploadOptions
+import java.io.InputStream
 
 /** The [AzureBlobClient] of the Azure SDK. It is the only class of the plugin that talks to the service. */
 internal class AzureSdkBlobClient(private val container: BlobContainerClient) : AzureBlobClient {
@@ -43,6 +46,32 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
             null,
             null,
         )
+    }
+
+    override fun properties(name: String): AzureBlobProperties = translating(name) {
+        val properties = container.getBlobClient(name).properties
+        AzureBlobProperties(contentLength = properties.blobSize, lastModified = properties.lastModified.toInstant())
+    }
+
+    override fun download(name: String, offset: Long, count: Long?): InputStream = translating(name) {
+        container.getBlobClient(name).openInputStream(BlobRange(offset, count), null)
+    }
+
+    /** Maps the status codes that the provider answers to the exceptions of [AzureBlobClient], and rethrows every other failure. */
+    private fun <T> translating(name: String, action: () -> T): T =
+        try {
+            action()
+        } catch (exception: BlobStorageException) {
+            when (exception.statusCode) {
+                NOT_FOUND -> throw AzureBlobNotFoundException(name)
+                RANGE_NOT_SATISFIABLE -> throw AzureRangeNotSatisfiableException(name)
+                else -> throw exception
+            }
+        }
+
+    private companion object {
+        const val NOT_FOUND = 404
+        const val RANGE_NOT_SATISFIABLE = 416
     }
 
 }
