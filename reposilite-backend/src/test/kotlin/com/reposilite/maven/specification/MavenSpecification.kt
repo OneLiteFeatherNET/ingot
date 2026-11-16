@@ -75,6 +75,7 @@ import panda.std.reactive.toMutableReference
 import panda.std.reactive.toReference
 import java.io.File
 import java.time.Clock
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -111,7 +112,11 @@ internal abstract class MavenSpecification {
     /** The index sink the maven components write through; a fresh one per test. */
     protected val indexSink = RecordingArtifactIndexSink()
 
-    private val clock = Clock.systemDefaultZone()
+    /** The clock of the facade. Tests that check the time of a write override it with a fixed clock. */
+    protected open fun clock(): Clock = Clock.systemDefaultZone()
+
+    /** The mirror usage record, kept by the test so that a check can read it. */
+    protected val mirrorCacheLedger = InMemoryMirrorCacheLedger()
     protected val logger = InMemoryLogger()
     protected val extensions = Extensions(logger)
 
@@ -147,6 +152,9 @@ internal abstract class MavenSpecification {
 
     /** The escape hatch of the cache scope, see [com.reposilite.maven.PrivateAsPublicSetting]. Off unless a test turns it on. */
     protected open fun cachePrivateAsPublic(): Boolean = false
+
+    /** The lifetime of presigned URLs, or null when the redirects are off. */
+    protected open fun presignedRedirectTtl(): Duration? = null
 
     @BeforeEach
     fun initializeFacade() {
@@ -194,7 +202,7 @@ internal abstract class MavenSpecification {
         this.mavenSettings = MavenSettings(repositories = repositories()).toMutableReference()
 
         this.mavenFacade = MavenComponents(
-            clock = clock,
+            clock = clock(),
             workingDirectory = workingDirectory.toPath(),
             journalist = logger,
             extensions = extensions,
@@ -207,10 +215,11 @@ internal abstract class MavenSpecification {
             ioService = ioService,
             mavenSettings = mavenSettings,
             frontendSettings = reference(FrontendSettings()),
-            mirrorCacheLedger = InMemoryMirrorCacheLedger(),
+            mirrorCacheLedger = mirrorCacheLedger,
             artifactIndexSink = indexSink,
             uploadChecksumDefault = uploadChecksumDefault(),
             cachePrivateAsPublic = cachePrivateAsPublic(),
+            presignedRedirectTtl = presignedRedirectTtl(),
         ).mavenFacade()
     }
 
