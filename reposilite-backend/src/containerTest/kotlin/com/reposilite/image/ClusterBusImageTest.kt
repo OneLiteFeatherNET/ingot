@@ -42,25 +42,38 @@ class ClusterBusImageTest {
     fun `two replicas see each other through the bus`() {
         Network.newNetwork().use { network ->
             withMariaDb(network) { database ->
-                withNats(network) { bus ->
-                    val first = replica(ImageUnderTest.server, network, database, "replica-a", bus)
-                    first.use {
-                        it.startOrExplain()
-                        // One after the other: both would create the tables of a fresh database at the same moment.
-                        replica(ImageUnderTest.server, network, database, "replica-b", bus).use { second ->
-                            second.startOrExplain()
+                withNats(network) { bus -> assertReplicasSeeEachOther(network, database, bus) }
+            }
+        }
+    }
 
-                            listOf(first, second).forEach { server ->
-                                assertThat(Http.get(server.baseUrl()).isSuccessful).describedAs("a replica answers").isTrue()
-                                val status = awaitStatus(server) { body ->
-                                    STATE_CONNECTED in body && "\"id\":\"replica-a\"" in body && "\"id\":\"replica-b\"" in body
-                                }
-                                assertThat(status)
-                                    .describedAs("the bus is connected and lists both replicas")
-                                    .contains(STATE_CONNECTED, "\"transport\":\"nats\"", "\"id\":\"replica-a\"", "\"id\":\"replica-b\"")
-                            }
-                        }
+    @Test
+    @DisplayName("two replicas on one PostgreSQL database and one NATS broker see each other in the bus status")
+    fun `two replicas on postgresql see each other through the bus`() {
+        Network.newNetwork().use { network ->
+            Postgres.start(network).use { database ->
+                withNats(network) { bus -> assertReplicasSeeEachOther(network, database.connection, bus) }
+            }
+        }
+    }
+
+    /** Starts two replicas of the new image on [database] and [bus], and asserts that each lists both in its bus status. */
+    private fun assertReplicasSeeEachOther(network: Network, database: String, bus: String) {
+        val first = replica(ImageUnderTest.server, network, database, "replica-a", bus)
+        first.use {
+            it.startOrExplain()
+            // One after the other: both would create the tables of a fresh database at the same moment.
+            replica(ImageUnderTest.server, network, database, "replica-b", bus).use { second ->
+                second.startOrExplain()
+
+                listOf(first, second).forEach { server ->
+                    assertThat(Http.get(server.baseUrl()).isSuccessful).describedAs("a replica answers").isTrue()
+                    val status = awaitStatus(server) { body ->
+                        STATE_CONNECTED in body && "\"id\":\"replica-a\"" in body && "\"id\":\"replica-b\"" in body
                     }
+                    assertThat(status)
+                        .describedAs("the bus is connected and lists both replicas")
+                        .contains(STATE_CONNECTED, "\"transport\":\"nats\"", "\"id\":\"replica-a\"", "\"id\":\"replica-b\"")
                 }
             }
         }

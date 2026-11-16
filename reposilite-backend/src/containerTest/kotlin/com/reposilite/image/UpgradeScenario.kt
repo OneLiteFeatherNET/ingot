@@ -27,7 +27,10 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
 
 /** Where the data of the rehearsal lives. SQLite is the default of both products. */
-internal enum class DatabaseEngine { SQLITE, MARIADB }
+internal enum class DatabaseEngine { SQLITE, MARIADB, POSTGRESQL }
+
+/** The PostgreSQL image, pinned as in SharedContainers, so the rehearsal and the integration tests run the same server. */
+internal const val POSTGRES_IMAGE = "postgres:18-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015"
 
 /**
  * The upgrade an operator actually performs, rehearsed on one data directory in three phases:
@@ -52,6 +55,11 @@ internal class UpgradeScenario(
                 DatabaseEngine.MARIADB -> withMariaDb { network, address ->
                     // Written before the first start, as an operator who moved the database would have it.
                     Files.writeString(directory.resolve("configuration.cdn"), "database: mariadb $address $DB_NAME $DB_USER $DB_PASSWORD\n")
+                    phases(data, network)
+                }
+                DatabaseEngine.POSTGRESQL -> withPostgres { network, connection ->
+                    // Written before the first start, as an operator who moved the database would have it.
+                    Files.writeString(directory.resolve("configuration.cdn"), "database: $connection\n")
                     phases(data, network)
                 }
             }
@@ -219,6 +227,18 @@ internal class UpgradeScenario(
                     val address = database.containerInfo.networkSettings.networks.values.single().ipAddress
                     block(network, "$address:$MARIADB_PORT")
                 }
+        }
+    }
+
+    /**
+     * Starts a PostgreSQL server on a network of its own, with the same empty-database rule as [withMariaDb]. The
+     * connection string comes from [Postgres], which names the server by its address on that network.
+     */
+    private fun withPostgres(block: (Network, String) -> Unit) {
+        Network.newNetwork().use { network ->
+            Postgres.start(network).use { database ->
+                block(network, database.connection)
+            }
         }
     }
 
