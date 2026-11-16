@@ -18,12 +18,14 @@ import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.AccountThrottle
+import net.onelitefeather.ingot.identity.login.JdkBreachRangeClient
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginProviderType
 import net.onelitefeather.ingot.identity.login.LoginService
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.OwnTokens
+import net.onelitefeather.ingot.identity.login.PasswordBreachCheck
 import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.ProviderAnnouncement
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
@@ -132,6 +134,11 @@ class LoginPlugin : ReposilitePlugin() {
         }
         accountThrottle?.let { facade<AuthenticationFacade>().installAccountGuard(it) }
 
+        // The breached-password check reads its settings on every password change. The offline list of its mode OFFLINE is
+        // loaded here, so that an unreadable file stops the start rather than the first password change. Off by default.
+        val breachCheck = PasswordBreachCheck(settings = loginSettings, range = JdkBreachRangeClient())
+        breachCheck.preload()
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -142,6 +149,7 @@ class LoginPlugin : ReposilitePlugin() {
                 audit = audit,
                 secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
                 accountThrottle = accountThrottle,
+                breachCheck = breachCheck,
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {

@@ -43,7 +43,7 @@ data class LoginSettings(
     val publicUrl: String = "",
     @get:Doc(title = "Account Throttle", description = "Delay of password and token guesses for one user name from addresses the name has not signed in from. Only applies while the switch INGOT_LOGIN_ACCOUNT_THROTTLE is on; the thresholds here have no effect without it")
     val accountThrottle: AccountThrottleSettings = AccountThrottleSettings(),
-    @get:Doc(title = "Password Policy", description = "Rules for a password that a user or an administrator sets. The default keeps the rules Reposilite has always enforced")
+    @get:Doc(title = "Password Policy", description = "Length of a new password and the check against lists of breached passwords. The defaults keep the rules Reposilite has always enforced: at least 12 characters and no breach check")
     val passwordPolicy: PasswordPolicySettings = PasswordPolicySettings(),
 ) : ValidatedSettings {
 
@@ -79,9 +79,32 @@ data class AccountThrottleSettings(
 data class PasswordPolicySettings(
     @get:Doc(title = "Minimum Length", description = "Fewest characters of a new password, counted as before in UTF-16 code units. Between 8 and 256. A higher value applies to the next password that is set; stored passwords are not checked again")
     val minLength: Int = 12,
+    @get:Doc(title = "Breached Password Check", description = "Check of a new password against lists of breached passwords. Off by default")
+    val breachCheck: BreachCheckSettings = BreachCheckSettings(),
 ) {
 
     fun violations(): List<String> =
-        listOfNotNull("passwordPolicy.minLength: must be between 8 and 256".takeIf { minLength !in 8..256 })
+        listOfNotNull("passwordPolicy.minLength: must be between 8 and 256".takeIf { minLength !in 8..256 }) + breachCheck.violations()
 
 }
+
+@JsonSchema(requireNonNulls = false)
+@Doc(title = "Breached Password Check", description = "Where a new password is compared with breached passwords")
+data class BreachCheckSettings(
+    @get:Doc(title = "Mode", description = "OFF makes no check. RANGE sends the first five characters of the SHA-1 of a new password to the range service and compares the rest here. OFFLINE compares with the file below. RANGE is an outside call")
+    val mode: BreachCheckMode = BreachCheckMode.OFF,
+    @get:Doc(title = "File", description = "OFFLINE only: a file with one SHA-1 hash in hexadecimal per line. It is read once at start, and the start fails when it cannot be read")
+    val file: String = "",
+    @get:Doc(title = "Range URL", description = "RANGE only: base address of the range service, ending in a slash. The five characters are appended to it. Must be an https address")
+    val rangeUrl: String = "https://api.pwnedpasswords.com/range/",
+    @get:Doc(title = "Fail Closed", description = "RANGE only: when the service does not answer, refuse the change with 503 and Retry-After. When off, the change is allowed and an audit event records the outage")
+    val failClosed: Boolean = false,
+) {
+
+    fun violations(): List<String> =
+        listOfNotNull("passwordPolicy.breachCheck.rangeUrl: must be an https:// address".takeIf { !rangeUrl.startsWith("https://") })
+
+}
+
+/** How a new password is compared with breached passwords. See [BreachCheckSettings.mode]. */
+enum class BreachCheckMode { OFF, RANGE, OFFLINE }

@@ -31,6 +31,7 @@ import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
+import io.javalin.http.Context
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.openapi.HttpMethod
@@ -88,7 +89,7 @@ internal class SelfServiceEndpoints(
                 if (current == null || replacement == null) {
                     badRequestError("Password change requires currentPassword and newPassword")
                 } else {
-                    passwordResponse(facade.changeOwnPassword(user.principalId, current, replacement, AuditActor.named(user.name, ctx.ip())))
+                    passwordResponse(ctx, facade.changeOwnPassword(user.principalId, current, replacement, AuditActor.named(user.name, ctx.ip())))
                 }
             }
         }
@@ -187,6 +188,7 @@ internal class SelfServiceEndpoints(
                     PasswordOutcome.NotFound -> notFoundError("Principal not found")
                     PasswordOutcome.NotAUser -> badRequestError("Only a user has a password")
                     is PasswordOutcome.InvalidInput -> badRequestError(outcome.problem)
+                    is PasswordOutcome.BreachCheckUnavailable -> serviceUnavailable(ctx, outcome.retryAfterSeconds, BREACH_CHECK_UNAVAILABLE)
                     PasswordOutcome.WrongCurrentPassword -> badRequestError("Unexpected outcome of a reset: ${outcome::class.simpleName}")
                 }
             }
@@ -204,11 +206,12 @@ internal class SelfServiceEndpoints(
 
 }
 
-private fun passwordResponse(outcome: PasswordOutcome): Result<Unit, ErrorResponse> =
+private fun passwordResponse(ctx: Context, outcome: PasswordOutcome): Result<Unit, ErrorResponse> =
     when (outcome) {
         PasswordOutcome.Changed -> Unit.asSuccess()
         PasswordOutcome.WrongCurrentPassword -> errorResponse(FORBIDDEN, "The current password is wrong")
         is PasswordOutcome.InvalidInput -> badRequestError(outcome.problem)
+        is PasswordOutcome.BreachCheckUnavailable -> serviceUnavailable(ctx, outcome.retryAfterSeconds, BREACH_CHECK_UNAVAILABLE)
         PasswordOutcome.NotFound -> notFoundError("Account not found")
         PasswordOutcome.NotAUser -> errorResponse(FORBIDDEN, "Only a user has a password")
     }
