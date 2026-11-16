@@ -18,13 +18,15 @@ package net.onelitefeather.ingot.storage.azure
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 
 /**
  * The plugin `azure-storage`. Its storage factory is registered through the service file of the storage providers, so this class only
- * gives the jar its plugin identity, which the plugin store and the dashboard list.
+ * gives the jar its plugin identity, which the plugin store and the dashboard list. The plugin is Experimental, because its factory
+ * opts in to the storage API that is still marked as experimental.
  */
-@Plugin(name = "azure-storage")
+@Plugin(name = "azure-storage", tier = PluginTier.EXPERIMENTAL)
 class AzureStoragePlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? = null
