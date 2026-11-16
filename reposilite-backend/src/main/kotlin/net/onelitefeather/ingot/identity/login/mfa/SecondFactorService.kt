@@ -349,9 +349,6 @@ internal class SecondFactorService(
             }
             is CodeCheck.Accepted ->
                 if (store.claimChallenge(idHash, now)) {
-                    if (check.recovery) {
-                        audit(AuditEvent(action = AuditAction.MFA_RECOVERY_CODE_USED, actor = AuditActor.named(principal.name, ip), details = mapOf("principal" to principal.name)))
-                    }
                     signInObserver.record(SignInPath.MFA, SignInOutcome.SUCCEEDED)
                     ChallengeCompletion.Verified(principal, recoveryCodeUsed = check.recovery)
                 } else {
@@ -529,8 +526,8 @@ internal class SecondFactorService(
 
     /**
      * Checks a code of the user for a step-up. The code is checked like any other second factor code: a wrong one counts as a
-     * failure and is audited without the code, and a recovery code is spent. A success is not audited here, because a step-up
-     * happens at every sensitive action; a spent recovery code is.
+     * failure and is audited without the code, and a recovery code is spent and audited by [checkCode]. A success is not audited
+     * here, because a step-up happens at every sensitive action; a spent recovery code is.
      */
     fun stepUp(principalId: Int, account: String, code: String, ip: String): StepUpOutcome {
         if (store.findFactors(principalId).isEmpty()) {
@@ -539,12 +536,7 @@ internal class SecondFactorService(
         return when (val check = checkCode(principalId, account, code, ip, context = "step-up")) {
             CodeCheck.Rejected -> StepUpOutcome.WrongCode
             is CodeCheck.Blocked -> StepUpOutcome.Blocked(check.retryAfterSeconds)
-            is CodeCheck.Accepted -> {
-                if (check.recovery) {
-                    audit(AuditEvent(action = AuditAction.MFA_RECOVERY_CODE_USED, actor = AuditActor.named(account, ip), details = mapOf("principal" to account)))
-                }
-                StepUpOutcome.Verified(recovery = check.recovery)
-            }
+            is CodeCheck.Accepted -> StepUpOutcome.Verified(recovery = check.recovery)
         }
     }
 
@@ -587,6 +579,8 @@ internal class SecondFactorService(
     /**
      * Checks a code for [principalId]: six digits are an authenticator code, anything else a recovery code. A rejected code
      * counts as a failure and is audited without the code. A blocked attempt is refused before any code is looked at.
+     * Every accepted recovery code is spent here, so it is audited here once, for every path that consumes one: sign-in,
+     * step-up, factor removal, recovery code regeneration and enrolment proof.
      */
     private fun checkCode(
         principalId: Int,
@@ -615,6 +609,9 @@ internal class SecondFactorService(
         // The address alone keeps its count, so a success cannot reset the attempts of an address.
         limiter.forget(keys[0])
         limiter.forget(keys[2])
+        if (accepted is CodeCheck.Accepted && accepted.recovery) {
+            audit(AuditEvent(action = AuditAction.MFA_RECOVERY_CODE_USED, actor = AuditActor.named(account, ip), details = mapOf("principal" to account)))
+        }
         return accepted
     }
 
