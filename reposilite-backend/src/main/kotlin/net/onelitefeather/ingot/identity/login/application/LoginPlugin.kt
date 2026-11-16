@@ -17,6 +17,7 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.identity.login.AccountThrottle
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginProviderType
@@ -128,6 +129,12 @@ class LoginPlugin : ReposilitePlugin() {
                 clock = clock,
                 audit = audit,
                 secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
+                accountThrottle = AccountThrottle(
+                    store = LoginStore(database, clock),
+                    settings = loginSettings,
+                    clock = clock,
+                    enabled = AccountThrottle.enabledIn(),
+                ),
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {
