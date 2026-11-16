@@ -121,6 +121,11 @@ dependencies {
     val nimbus = "10.9.1"
     implementation("com.nimbusds:nimbus-jose-jwt:$nimbus")
 
+    // WebAuthn verification of passkeys (Apache-2.0). Used for the registration and assertion ceremonies only; it is
+    // chosen over Yubico's java-webauthn-server because its licence is the same as Ingot's.
+    val webauthn4j = "0.32.0.RELEASE"
+    implementation("com.webauthn4j:webauthn4j-core:$webauthn4j")
+
     val expressible = "1.3.6"
     api("org.panda-lang:expressible:$expressible")
     api("org.panda-lang:expressible-kt:$expressible")

@@ -50,6 +50,7 @@ internal class SecondFactorServiceTest {
         val service: SecondFactorService,
         val audit: MutableList<AuditEvent>,
         val principalId: Int,
+        val store: SecondFactorStore,
     ) {
         /** The seed of the authenticator enrolled by [enrolAuthenticator], once one exists. */
         var seed: ByteArray? = null
@@ -65,7 +66,7 @@ internal class SecondFactorServiceTest {
             val audit = mutableListOf<AuditEvent>()
             val principal = identities.createPrincipal(PrincipalKind.USER, "alice", "Alice", false, clock.instant())!!
             val service = service(connection.database, identities, keyed, settings, audit)
-            block(Fixture(identities, service, audit, principal.id))
+            block(Fixture(identities, service, audit, principal.id, SecondFactorStore(connection.database, clock)))
         }
     }
 
@@ -212,6 +213,23 @@ internal class SecondFactorServiceTest {
     fun `a user without a confirmed authenticator needs no second factor`() {
         withFixture { fixture ->
             assertThat(fixture.service.requiresSecondFactor(fixture.principalId)).`as`("user without factors").isFalse()
+        }
+    }
+
+    @Test
+    fun `a user whose only factor is a passkey needs no authenticator code at sign-in`() {
+        withFixture { fixture ->
+            fixture.store.insertPasskey(
+                principalId = fixture.principalId,
+                factorKey = "passkey-key",
+                name = "Laptop",
+                credentialId = "cred-1",
+                publicKey = ByteArray(8),
+                signCount = 0,
+                at = clock.instant(),
+            )
+
+            assertThat(fixture.service.requiresSecondFactor(fixture.principalId)).`as`("passkey only").isFalse()
         }
     }
 
