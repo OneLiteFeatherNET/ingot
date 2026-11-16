@@ -1793,7 +1793,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1859,7 +1859,7 @@ export interface paths {
                         "application/json": components["schemas"]["PasskeyOptionsDto"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1925,6 +1925,15 @@ export interface paths {
                         "application/json": components["schemas"]["AuthenticatorEnrolmentDto"];
                     };
                 };
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -1986,7 +1995,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2067,7 +2076,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2167,6 +2176,94 @@ export interface paths {
                 };
                 /** @description Bad Request */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/identity/me/step-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm the session with a second factor
+         * @description Completes a second factor for the signed-in browser session, with a current authenticator code or a recovery code in the body. The session of the same family is reissued with the authentication time now, which opens the step-up window of five minutes for the sensitive actions. Only a browser session may step up, and an access token gets 403. A user without a factor gets 409, since there is nothing to step up with
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StepUpDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2528,6 +2625,15 @@ export interface paths {
                         "application/json": components["schemas"]["FactorResetDto"];
                     };
                 };
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -2579,6 +2685,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["FactorResetDto"];
+                    };
+                };
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -6041,6 +6156,12 @@ export interface components {
             memory: number;
             /** Format: int32 */
             threads: number;
+        };
+        StepUpDto: {
+            /** Format: date-time */
+            authenticatedAt?: string;
+            /** Format: date-time */
+            stepUpUntil?: string;
         };
         StorageInformation: {
             details: {
