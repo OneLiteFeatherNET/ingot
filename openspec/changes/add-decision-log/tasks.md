@@ -4,7 +4,7 @@ One Conventional Commits type per commit. Every test follows F.I.R.S.T.: fake si
 
 ## 1. Failing tests
 
-- [ ] 1.1 `test(identity)`: write failing tests first. Cases: a denied check writes exactly one record with the listed fields; an allowed read writes none; an allowed write writes one; a refused admin operation writes one; a record holds the raw resource only when it differs; `off` writes nothing; in `async`, a full queue drops the record, increments the counter and does not delay the answer; in `sync`, a failing sink refuses the request with 503 and applies no decision; the drop warning is asserted through a captured appender. Verify: the tests fail because the decision record does not exist.
+- [ ] 1.1 `test(identity)`: write failing tests first. Cases: a denied check writes exactly one record with the listed fields; an allowed read writes none; an allowed write writes one; a refused admin operation writes one; a record holds the raw resource only when it differs; `off` writes nothing; in `async`, a full queue drops the record, increments the counter and does not delay the answer; in `sync`, a failing sink refuses the request with 503 and applies no decision; with no decision log setting nothing is written; the drop warning is asserted through a captured appender. Verify: the tests fail because the decision record does not exist.
 
 ## 2. Record and modes
 
@@ -13,7 +13,7 @@ One Conventional Commits type per commit. Every test follows F.I.R.S.T.: fake si
 
 ## 3. Documentation
 
-- [ ] 3.1 `docs(identity)`: document the decision records, the three modes and the counter in `docs/gitbook/explanation/permission-evaluation.md`, and the effect on the audit table in `docs/gitbook/explanation/drop-in-compatibility.md`. Verify: both pages name the default `async` and the way to turn the log off.
+- [ ] 3.1 `docs(identity)`: document the decision records, the three modes and the counter in `docs/gitbook/explanation/permission-evaluation.md`, and the effect on the audit table in `docs/gitbook/explanation/drop-in-compatibility.md`. Verify: both pages name the default `off` and the way to turn the log on with `INGOT_DECISION_LOG`.
 
 ## 4. Verification
 

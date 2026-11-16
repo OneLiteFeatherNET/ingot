@@ -8,7 +8,7 @@ A record of authorization decisions for refused requests, writes and refused adm
 
 ### Requirement: Denials, writes and refused admin operations are recorded
 
-Ingot SHALL record one decision record for each denied check, each write decision (allowed or refused) and each refused admin operation. Ingot SHALL NOT record an allowed read.
+While the mode is `async` or `sync`, Ingot SHALL record one decision record for each denied check, each write decision (allowed or refused) and each refused admin operation. Ingot SHALL NOT record an allowed read.
 
 #### Scenario: A denied read is recorded
 
@@ -59,9 +59,19 @@ In `sync` mode, a record for a denial or a write SHALL be stored before the answ
 
 ### Requirement: The mode follows the drop-in rule
 
-The mode SHALL be read from `INGOT_DECISION_LOG` with the values `off`, `async` and `sync`, falling back to `REPOSILITE_DECISION_LOG`. The default SHALL be `async`.
+The mode SHALL be read from `INGOT_DECISION_LOG` with the values `off`, `async` and `sync`, falling back to `REPOSILITE_DECISION_LOG`. The default SHALL be `off`. An unset, blank or unknown value SHALL give `off`. Ingot SHALL NOT change the audit table on upgrade.
 
-#### Scenario: The default records without configuration
+#### Scenario: The default records nothing without configuration
 
 - **WHEN** neither variable is set
+- **THEN** the mode is `off`, and no decision record is written
+
+#### Scenario: No decision log setting writes no record
+
+- **WHEN** no decision log setting is given
+- **THEN** no decision record is written
+
+#### Scenario: An operator turns the log on
+
+- **WHEN** `INGOT_DECISION_LOG` is `async`
 - **THEN** the mode is `async`, and denials and writes are recorded

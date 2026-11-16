@@ -22,12 +22,13 @@ A record is an `AuditEvent` whose action is `AUTHORIZATION_DENIED` or `AUTHORIZA
 - Every write decision, allowed or refused.
 - Every refused admin operation.
 - Allowed reads are never recorded.
+- Nothing of this is recorded while the mode is `off`, which is the default.
 
 ## D3. Modes
 
-- `off`: nothing is recorded, and the decision path does not allocate a record.
-- `async` (default): a bounded queue in front of a single writer. Offering to the queue never blocks. A full queue drops the record and increments a counter. The counter is logged once per minute while it changes, so the drop is visible without a log flood.
-- `sync`: the record is written before the answer. A write failure refuses the request with 503, and the decision is not applied.
+- `off` (default): nothing is recorded, and the decision path does not allocate a record.
+- `async` (opt-in): a bounded queue in front of a single writer. Offering to the queue never blocks. A full queue drops the record and increments a counter. The counter is logged once per minute while it changes, so the drop is visible without a log flood.
+- `sync` (opt-in): the record is written before the answer. A write failure refuses the request with 503, and the decision is not applied.
 
 ## D4. Privacy
 
