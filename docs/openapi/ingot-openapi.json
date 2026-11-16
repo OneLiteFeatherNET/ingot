@@ -1562,6 +1562,72 @@
         "required" : [ "label", "index", "required", "description" ],
         "type" : "object"
       },
+      "PasskeyAssertionDto" : {
+        "properties" : {
+          "authenticatorData" : {
+            "type" : [ "string", "null" ]
+          },
+          "challengeId" : {
+            "type" : [ "string", "null" ]
+          },
+          "clientDataJSON" : {
+            "type" : [ "string", "null" ]
+          },
+          "credentialId" : {
+            "type" : [ "string", "null" ]
+          },
+          "signature" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "PasskeyOptionsDto" : {
+        "properties" : {
+          "allowCredentials" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "challenge" : {
+            "type" : "string"
+          },
+          "challengeId" : {
+            "type" : "string"
+          },
+          "rpId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PasskeyRegisteredDto" : {
+        "properties" : {
+          "id" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PasskeyRegistrationDto" : {
+        "properties" : {
+          "attestationObject" : {
+            "type" : [ "string", "null" ]
+          },
+          "challengeId" : {
+            "type" : [ "string", "null" ]
+          },
+          "clientDataJSON" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "PlannedDeletion" : {
         "properties" : {
           "path" : {
@@ -2203,6 +2269,13 @@
         "properties" : {
           "code" : {
             "type" : [ "string", "null" ]
+          },
+          "passkey" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/PasskeyAssertionDto"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
         "type" : "object"
@@ -2915,9 +2988,48 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/auth/mfa/passkey/options" : {
+      "post" : {
+        "description" : "Starts the passkey step of the sign-in that the login route started, and returns the assertion options: the challenge the authenticator signs and the passkeys that may answer. Needs the challenge cookie. The relying party is the public address of the instance, or the request host when login.publicUrl is blank. The options are completed at /api/auth/mfa/verify",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyOptionsDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "Start a passkey sign-in",
+        "tags" : [ "Auth" ]
+      }
+    },
     "/api/auth/mfa/verify" : {
       "post" : {
-        "description" : "Completes the sign-in that the login route started for a user with an authenticator. Takes the code from the authenticator app or a recovery code, and needs the challenge cookie. The challenge is single use and expires after five minutes. Starts the browser session on success",
+        "description" : "Completes the sign-in that the login route started for a user with a second factor. Takes the code from the authenticator app or a recovery code, or a passkey assertion of the options that /api/auth/mfa/passkey/options returned. Needs the challenge cookie. The challenge is single use and expires after five minutes. A wrong code or assertion keeps it open. Starts the browser session on success. A body with a passkey takes it before a code",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2957,6 +3069,16 @@
               }
             },
             "description" : "Unauthorized"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "429" : {
             "content" : {
@@ -3702,6 +3824,129 @@
           "sessionCookie" : [ ]
         } ],
         "summary" : "List own second factors",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/factors/passkey" : {
+      "post" : {
+        "description" : "Completes the registration that /api/identity/me/factors/passkey/options started, with the attestation of the browser, both in base64url. Stores the passkey with its public key. A registration whose origin, challenge or attestation does not match is refused with 400, and the challenge cannot be used twice",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasskeyRegistrationDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyRegisteredDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Complete a passkey registration",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/factors/passkey/options" : {
+      "post" : {
+        "description" : "Starts the registration of a passkey for the signed-in user and returns the challenge the browser signs. The relying party is the public address of the instance (login.publicUrl), or the request host when that is blank. Without an address the answer is 409 with the reason. The registration is completed at /api/identity/me/factors/passkey",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyOptionsDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Start a passkey registration",
         "tags" : [ "Identity" ]
       }
     },
