@@ -38,9 +38,12 @@ Each entry has these fields. Unknown fields are ignored, so a schema 1 reader ac
 | `coordinates` | text | Yes | `groupId:artifactId:version`, exactly three non-blank segments. |
 | `sha256` | text | Yes | SHA-256 of the jar in hexadecimal, in either case. |
 | `compatibility` | object | Yes, for the entry to be usable | See the compatibility rule below. |
+| `tier` | text | No, `community` by default | The tier of the plugin: `core`, `official`, `community` or `experimental`. See [Plugin tiers](plugin-tiers.md). |
 | `yanked` | boolean | No, `false` by default | A yanked entry stays listed, but a new selection of it is refused. A copy already in the cache still loads. |
 
 A text field that is missing or blank, or a `coordinates` value that is malformed, refuses the whole catalogue. An entry without a complete `compatibility` block is refused by itself, and the other entries of the same catalogue stay usable.
+
+The `tier` field is optional and additive, so the schema stays `1`. A missing `tier` reads as `community`. A value other than the four names, such as `"gold"`, refuses that entry only, with a reason that names the field. When a plugin loads, its tier in the catalogue is compared with the tier of the loaded jar. A difference is logged as one warning that names both tiers, the plugin still loads, and the tier of the jar is the one shown.
 
 ```json
 {
