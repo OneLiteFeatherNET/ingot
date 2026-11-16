@@ -17,16 +17,16 @@
 package com.reposilite.audit.decision
 
 /**
- * `off` records nothing, `async` (the default) queues records for a background writer, and `sync` stores each record
- * before the answer is sent.
+ * `off` (the default) records nothing, `async` queues records for a background writer, and `sync` stores each record
+ * before the answer is sent. Upgrading from Reposilite starts no audit rows until an operator opts in.
  */
 enum class DecisionLogMode { OFF, ASYNC, SYNC }
 
 /**
  * The decision log switch, read from `INGOT_DECISION_LOG`. The `REPOSILITE_DECISION_LOG` name is the fallback when the
- * `INGOT_` name is unset or blank. An unknown value keeps the default mode.
+ * `INGOT_` name is unset or blank. An unset, blank or unknown value gives `off`.
  */
-data class DecisionLogSettings(val mode: DecisionLogMode = DecisionLogMode.ASYNC) {
+data class DecisionLogSettings(val mode: DecisionLogMode = DecisionLogMode.OFF) {
 
     companion object {
 

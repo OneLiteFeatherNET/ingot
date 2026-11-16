@@ -22,8 +22,23 @@ import org.junit.jupiter.api.Test
 internal class DecisionLogSettingsTest {
 
     @Test
-    fun `the mode is async when no variable is set`() {
-        assertThat(DecisionLogSettings.read(emptyMap()).mode).isEqualTo(DecisionLogMode.ASYNC)
+    fun `the mode is off when no variable is set`() {
+        assertThat(DecisionLogSettings.read(emptyMap()).mode).isEqualTo(DecisionLogMode.OFF)
+    }
+
+    @Test
+    fun `a blank INGOT variable without a REPOSILITE variable gives off`() {
+        assertThat(DecisionLogSettings.read(mapOf("INGOT_DECISION_LOG" to "   ")).mode).isEqualTo(DecisionLogMode.OFF)
+    }
+
+    @Test
+    fun `a blank REPOSILITE variable gives off`() {
+        assertThat(DecisionLogSettings.read(mapOf("REPOSILITE_DECISION_LOG" to "")).mode).isEqualTo(DecisionLogMode.OFF)
+    }
+
+    @Test
+    fun `the async mode is selected by the INGOT variable`() {
+        assertThat(DecisionLogSettings.read(mapOf("INGOT_DECISION_LOG" to "async")).mode).isEqualTo(DecisionLogMode.ASYNC)
     }
 
     @Test
@@ -56,8 +71,8 @@ internal class DecisionLogSettingsTest {
     }
 
     @Test
-    fun `an unknown value keeps the default mode`() {
-        assertThat(DecisionLogSettings.read(mapOf("INGOT_DECISION_LOG" to "sometimes")).mode).isEqualTo(DecisionLogMode.ASYNC)
+    fun `an unknown value gives off`() {
+        assertThat(DecisionLogSettings.read(mapOf("INGOT_DECISION_LOG" to "sometimes")).mode).isEqualTo(DecisionLogMode.OFF)
     }
 
 }
