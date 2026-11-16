@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.storage.gcs
 
+import com.google.auth.Credentials
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.NoCredentials
 import com.google.cloud.http.HttpTransportOptions
@@ -41,16 +42,22 @@ internal fun storageOptionsOf(settings: GcsStorageProviderSettings): StorageOpti
     if (settings.projectId.isNotBlank()) {
         builder.setProjectId(settings.projectId)
     }
-    if (settings.authentication == AUTHENTICATION_SERVICE_ACCOUNT_KEY) {
-        builder.setCredentials(ServiceAccountCredentials.fromStream(settings.credentialsJson.byteInputStream()))
-    }
     if (settings.endpoint.isNotBlank()) {
-        // The endpoint is the emulator of the container tests, which takes no credentials
         builder.setHost(settings.endpoint)
-        builder.setCredentials(NoCredentials.getInstance())
     }
+    credentialsOf(settings)?.let { builder.setCredentials(it) }
     return builder
 }
+
+/** The explicit credentials of one repository, or null when the SDK reads them from the environment (`adc`). */
+internal fun credentialsOf(settings: GcsStorageProviderSettings): Credentials? =
+    when {
+        // The endpoint is the emulator of the container tests, which takes no credentials
+        settings.endpoint.isNotBlank() -> NoCredentials.getInstance()
+        settings.authentication == AUTHENTICATION_SERVICE_ACCOUNT_KEY ->
+            ServiceAccountCredentials.fromStream(settings.credentialsJson.byteInputStream())
+        else -> null
+    }
 
 /**
  * The adapter from the provider's object client to the Cloud Storage client of the SDK. A 404 of the service is a missing object,
