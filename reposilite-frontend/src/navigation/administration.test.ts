@@ -295,7 +295,7 @@ describe('the Administration tree of an administrator', () => {
       ['Artifacts', ['Repositories', 'Cleanup policies', 'Javadoc', 'Search index']],
       ['Access', ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check']],
       ['Instance', ['Branding', 'Reverse proxy', 'Usage statistics', 'Migration']],
-      ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Analytics', 'System information', 'Support bundle']],
+      ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Analytics', 'System and support']],
     ])
   })
 

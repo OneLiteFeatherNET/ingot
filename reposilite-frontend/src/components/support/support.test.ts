@@ -15,6 +15,7 @@
  */
 
 import { afterEach, describe, it, expect } from 'vitest'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { PAGES, adminGroups, railGroups, setSupportBundleOffered } from '../../navigation/registry'
 import { canUse } from '../../store/nodeAccess'
@@ -28,29 +29,22 @@ const keysOf = (links: { key: string | undefined }[]) => links.map(link => link.
 afterEach(() => setSupportBundleOffered(false))
 
 describe('support pages in the Administration tree', () => {
-  it('lists both support pages in the Support group for a principal with the console area', () => {
+  it('lists one page for the system information and the support bundle in the Support group for a principal with the console area', () => {
     setSupportBundleOffered(true)
 
-    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support'))).toEqual(['page:console', 'page:system-info', 'page:support'])
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support'))).toEqual(['page:console', 'page:system-info'])
   })
 
-  it('names each page with its label and its route', () => {
+  it('names the one page System and support, with its label and its route', () => {
     setSupportBundleOffered(true)
 
     expect(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support').slice(1)).toEqual([
       {
         key: 'page:system-info',
-        label: 'System information',
-        description: 'What this instance runs on. Secrets are withheld or masked, and the page only reads.',
-        keywords: 'version, java, environment',
+        label: 'System and support',
+        description: 'What this instance runs on and what a maintainer needs to look at. Secrets are withheld or masked, and the page only reads.',
+        keywords: 'version, java, environment, zip, debug',
         to: { name: 'system-info' },
-      },
-      {
-        key: 'page:support',
-        label: 'Support bundle',
-        description: 'What a maintainer needs to look at this instance, as one zip.',
-        keywords: 'zip, debug',
-        to: { name: 'support' },
       },
     ])
   })
@@ -81,18 +75,29 @@ describe('support routes', () => {
     expect(ROUTES.find(route => route.name === 'system-info')?.path).toBe('/settings/system-info')
   })
 
-  it('routes the support page to its own address under settings', () => {
+  it('redirects the old support address to the system information page, and keeps the route name', () => {
     expect(ROUTES.find(route => route.name === 'support')?.path).toBe('/settings/support')
+    expect(ROUTES.find(route => route.name === 'support')?.redirect).toEqual({ name: 'system-info' })
   })
 
-  it('guards both support routes with the console node and the manager flag', () => {
-    const expected = { section: 'settings', manager: true, node: CONSOLE }
+  it('keeps the query and the fragment of the old address when it redirects', async () => {
+    const system = ROUTES.find(route => route.name === 'system-info')
+    const support = ROUTES.find(route => route.name === 'support')
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ ...system, component: { render: () => null } } as RouteRecordRaw, support as RouteRecordRaw],
+    })
 
-    expect(ROUTES.find(route => route.name === 'system-info')?.meta).toEqual(expected)
-    expect(ROUTES.find(route => route.name === 'support')?.meta).toEqual(expected)
+    await router.push('/settings/support?tab=plugins#support-cluster')
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/system-info?tab=plugins#support-cluster')
   })
 
-  it('places both support addresses before the generic settings route, which would take the names as domains', () => {
+  it('guards the system information route with the console node and the manager flag', () => {
+    expect(ROUTES.find(route => route.name === 'system-info')?.meta).toEqual({ section: 'settings', manager: true, node: CONSOLE })
+  })
+
+  it('places both support names before the generic settings route, which would take the names as domains', () => {
     const indexOf = (name: string) => ROUTES.findIndex(route => route.name === name)
 
     expect(indexOf('system-info')).toBeLessThan(indexOf('settings'))
