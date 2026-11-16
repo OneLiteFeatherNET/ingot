@@ -74,9 +74,13 @@ Listeners run synchronously, on the thread that emitted the event. Listeners for
 | `DeployEvent` (`com.reposilite.maven.api`) | After a file is stored by a deployment. | `repository`, `gav`, `by` |
 | `DeleteEvent` (`com.reposilite.maven.api`) | After a file is removed. | `repository`, `gav`, `by`, `cleanupRunId` |
 | `AuditEvent` (`com.reposilite.audit.api`) | When an audited action happens. | `action`, `actor`, `repository`, `path`, `details`, `success` |
+| `LoginThrottledEvent` (`com.reposilite.plugin.api`, experimental) | After a sign-in is answered with a delay by the account throttle, while the switch is on. Once per answered request. | `name`, `address`, `path` (`dashboard`, `basic`, `bearer` or `console`), `retryAfterSeconds` |
+| `NewSignInEvent` (`com.reposilite.plugin.api`, experimental) | After a successful sign-in from an address that is new for the name, while the account throttle is on. | `name`, `address`, `path`, `userAgentHash` (SHA-256 in hex, or `null`) |
 | `ArtifactSearchBackendRegistrationEvent` (`net.onelitefeather.ingot.search.backend`, experimental) | After every plugin has initialized. Register in `initialize` or `load`. | `register(factory)` |
 
 Do not put secret values in `AuditEvent.details`. Use names, counts and field paths.
+
+The sign-in events carry a name, an address and a path, and never a secret, a password or a second-factor code. `NewSignInEvent` carries the user agent only as its SHA-256 hash. Both events are published only while the account throttle is on (`INGOT_LOGIN_ACCOUNT_THROTTLE=true`). A listener that throws is logged and does not change the answer to the request.
 
 The search backend event is experimental, like the other types of the search backend API, which carry `@ExperimentalIngotSearchApi`. A plugin registers a search backend in it, see [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md).
 
