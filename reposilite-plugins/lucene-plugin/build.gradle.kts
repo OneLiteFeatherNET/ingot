@@ -18,6 +18,12 @@ dependencies {
     testImplementation(testFixtures(project(":reposilite-backend")))
 }
 
+// Lucene 10 is compiled for Java 21. The plugin's own bytecode stays at 17 so that its entry class loads on a 17 server,
+// and only the tests run on a Java 21 launcher.
+tasks.withType<Test>().configureEach {
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+}
+
 // Not part of the image. The jar is installed by the operator, and its presence in the plugins directory is its own switch.
 tasks.withType<ShadowJar> {
     archiveFileName.set("lucene-plugin.jar")
