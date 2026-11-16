@@ -417,8 +417,8 @@ Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the leg
 
 | Value | Meaning |
 | --- | --- |
-| `false` (default) | A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, is answered with `Cache-Control: private`. A shared cache does not store it. |
-| `true` | Those answers are answered with `Cache-Control: public` again, as before. Use it only when the cache in front of Ingot may hold access-controlled files for other clients. |
+| `false` (default) | A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, and a file that reaches a remote mirror with `authorization`, is answered with `Cache-Control: private`. A shared cache does not store it. |
+| `true` | Those answers are answered with `Cache-Control: public` again, as before, the answers of credentialed mirrors included. Use it only when the cache in front of Ingot may hold access-controlled files for other clients. |
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`. See [Visibility](../repositories/repository-settings.md#visibility).
 

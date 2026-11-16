@@ -101,6 +101,8 @@ The documented deployments serve the dashboard and its API from one origin, so n
 
 Files of `PRIVATE` and `HIDDEN` repositories, and files that a group serves from a private member, are now answered with `Cache-Control: private, max-age=<seconds>` instead of `public`. A shared cache in front of Ingot, such as a CDN or a company proxy, no longer stores those answers, so a file downloaded with credentials is not handed to other clients. Maven, Gradle and the dashboard ignore the header, and status codes, bodies and `ETag` values stay the same. Refused `401` answers for files carry `no-cache, no-store, max-age=0`.
 
+The same applies to a proxy or group whose remote mirror has `authorization`: a shared cache no longer stores its files, because the upstream would not hand them to an anonymous client. Maven, Gradle and the dashboard are not affected.
+
 No configuration change is needed. To restore the old `public` value for these answers, set `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC=true`. Do that only when the cache in front of Ingot may keep access-controlled files for other clients. See [Environment variables](../references/configuration/environment-variables.md#maven-cache-control).
 
 Directory listings are not cacheable either, in HTML and in the JSON listings under `/api/maven/details`. They answer `Cache-Control: no-cache, no-store, max-age=0` and `Vary: Authorization, Cookie`, because a listing shows the caller only what the caller may read. Artifacts are unchanged. No client depends on a shared cache storing listings.
