@@ -17,7 +17,7 @@ Open the pages under **Administration**, in the group **Support**, or call `GET 
 | `configuration-local.json` | The local configuration (the file the instance reads at start), one value per key. |
 | `configuration-shared.json` | Every shared settings domain, with its secrets masked. |
 | `cluster.json` | The cluster section: the bus state and transport, the redacted bus URL and the members. `{"enabled": false}` on an instance without a bus. |
-| `plugins.json` | The plugins with their version and dependencies. |
+| `plugins.json` | The plugins with their version, dependencies and tier. The tier is the effective one that the start log shows, for example `official` or `experimental`. |
 | `logs/<instance>.log` | The cached log lines of the instance that answered, scrubbed as described below. |
 
 The bundle describes one instance, the one that answers the request. The cluster members appear in it, but the logs of the other members do not. The log holds the most recent lines kept in memory, 64 by default, set by `cachedLogSize` in the local configuration. Raise that value when a ticket needs more history.
