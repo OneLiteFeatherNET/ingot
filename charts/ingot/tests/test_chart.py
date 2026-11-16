@@ -1055,6 +1055,39 @@ class ScalableCiValuesTest(unittest.TestCase):
         self.assertLessEqual({"ingot-read", "ingot-write", "ingot-worker"}, names,
                              "the scalable CI values must render the three server workloads")
 
+    def test_scalable_ci_values_stay_out_of_the_chart_ci_directory(self):
+        self.assertFalse(os.path.exists(os.path.join(CHART_DIR, "ci", "scalable-values.yaml")),
+                         "chart-testing installs ci/ values into a random namespace, which cannot see the Secrets")
+
+    def test_scalable_ci_secrets_are_created_by_the_dependencies(self):
+        secrets = {doc["metadata"]["name"] for doc in ha_dependency_documents() if doc.get("kind") == "Secret"}
+        values = scalable_ci_values()
+        self.assertLessEqual({values["database"]["existingSecret"], values["objectStorage"]["existingSecret"]}, secrets,
+                             "every Secret the scalable CI values name must be applied by the dependencies first")
+
+    def test_scalable_ci_database_key_exists_in_the_database_secret(self):
+        database = next(doc for doc in ha_dependency_documents()
+                        if doc.get("kind") == "Secret" and doc["metadata"]["name"] == "ingot-database")
+        key = scalable_ci_values()["database"]["secretKey"]
+        self.assertIn(key, database["stringData"], "database.secretKey must select a key of the database Secret")
+
+    def test_scalable_ci_cluster_bus_points_at_the_nats_service(self):
+        nats = next(doc for doc in ha_dependency_documents()
+                    if doc.get("kind") == "Service" and doc["metadata"]["name"] == "nats")
+        port = nats["spec"]["ports"][0]["port"]
+        self.assertEqual(f"nats://nats.ingot-scalable.svc.cluster.local:{port}", scalable_ci_values()["clusterBus"]["url"],
+                         "the cluster bus must name the NATS Service of the dependencies in ingot-scalable")
+
+
+def scalable_ci_values():
+    with open(os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")) as handle:
+        return yaml.safe_load(handle)
+
+
+def ha_dependency_documents():
+    with open(os.path.join(CHART_DIR, "tests", "ha", "dependencies.yaml")) as handle:
+        return [doc for doc in yaml.safe_load_all(handle) if doc]
+
 
 if __name__ == "__main__":
     unittest.main()
