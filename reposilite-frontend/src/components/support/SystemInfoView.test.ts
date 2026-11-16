@@ -228,12 +228,12 @@ describe('SystemInfoView tabs', () => {
     expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
   })
 
-  it('shows the failure of the system information in place of the tabs', async () => {
+  it('shows the failure of the system information in the Overview, and keeps the tabs', async () => {
     const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.reject(new Error('The instance did not answer.'))) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('The instance did not answer.')
-    expect(wrapper.find('[role="tablist"]').exists(), 'no tab is drawn on a failure').toBe(false)
+    expect(tabsOf(wrapper), 'the four tabs stay, as the design keeps the Overview for the message').toHaveLength(4)
   })
 })
 
