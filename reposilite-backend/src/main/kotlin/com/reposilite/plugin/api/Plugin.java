@@ -52,4 +52,10 @@ public @interface Plugin {
      */
     Class<? extends SharedSettings> settings() default SharedSettings.class;
 
+    /**
+     * @return the support tier of this plugin. A plugin that does not set it reads as {@link PluginTier#COMMUNITY}.
+     * The tier is information only, it never decides whether the plugin loads.
+     */
+    PluginTier tier() default PluginTier.COMMUNITY;
+
 }
