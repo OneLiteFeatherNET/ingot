@@ -24,7 +24,7 @@ flowchart LR
 
 * A Kubernetes cluster and `kubectl` with access to a namespace for Ingot.
 * Helm 3.8 or later, which installs charts from an OCI registry.
-* A database for anything beyond one replica. MariaDB or PostgreSQL. The default SQLite file works for one replica only.
+* A database for anything beyond one replica. PostgreSQL is recommended, and MariaDB is supported. The default SQLite file works for one replica only.
 * An S3 bucket for repositories, if you run more than one replica. Filesystem storage needs a volume that several pods can mount.
 * An ingress controller, if you want a host name. Autoscaling needs the Kubernetes metrics server.
 
@@ -56,7 +56,7 @@ kubectl -n ingot create secret generic ingot-database \
 Use `postgresql` as the engine for PostgreSQL. The password is split on spaces, so it must not contain a space.
 
 {% hint style="info" %}
-SQLite, MariaDB and PostgreSQL are supported. MySQL and H2 are experimental.
+PostgreSQL is the recommended database for several replicas and for production. MariaDB is supported but not recommended. SQLite is the default for one replica. MySQL and H2 are experimental.
 {% endhint %}
 
 ## Write the values
