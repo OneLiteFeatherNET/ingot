@@ -193,11 +193,17 @@ describe('reduced motion rule in the stylesheets', () => {
 })
 
 describe('scrollbar gutter of the root element', () => {
-  // Every rule whose selector is the root element, `html`. Its declarations decide whether a page that gains a
-  // vertical scrollbar moves the layout beside it.
+  // Every rule whose selector is the root element, `html`. Its declarations decide whether a page reserves the space of
+  // a vertical scrollbar. The gutter is not reserved: a reserved gutter sits outside the page box, so the sticky top bar
+  // and the page sheet cannot paint into it and stop short of the window edge. The frame keeps its left edge anyway,
+  // because it is laid out from the left.
   const rootRules = [...stylesheet.matchAll(/^\s*html\s*\{/gm)].map((match) => blockAt(stylesheet, match.index))
 
-  it('sets scrollbar-gutter to stable on the root element', () => {
-    expect(rootRules.join('\n'), 'a declaration scrollbar-gutter: stable in a rule for html').toContain('scrollbar-gutter: stable')
+  it('lets the root element keep no scrollbar gutter, so the top bar reaches the window edge', () => {
+    expect(rootRules.join('\n'), 'a declaration scrollbar-gutter: auto in a rule for html').toContain('scrollbar-gutter: auto')
+  })
+
+  it('reserves no gutter on the root element', () => {
+    expect(rootRules.join('\n'), 'no reserved gutter on html').not.toContain('scrollbar-gutter: stable')
   })
 })
