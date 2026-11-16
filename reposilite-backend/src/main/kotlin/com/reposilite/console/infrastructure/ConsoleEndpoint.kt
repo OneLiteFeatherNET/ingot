@@ -23,6 +23,9 @@ import com.reposilite.console.api.CommandListing
 import com.reposilite.console.api.ConfirmationRequiredResponse
 import com.reposilite.console.api.ExecutionResponse
 import com.reposilite.console.api.StructuredExecutionResponse
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
+import com.reposilite.console.consoleCommandAudit
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
@@ -42,10 +45,15 @@ import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 
+/** The exit code of a command held for confirmation. It is never run, so it is the code of the 409 answer. */
+private const val CONFIRMATION_EXIT_CODE = 3
+
 internal class ConsoleEndpoint(
     private val consoleFacade: ConsoleFacade,
     /** The instance id that a structured answer names as its node. */
     private val nodeId: String,
+    /** Emits an audit event for every command that reaches execution from this channel. */
+    private val audit: (AuditEvent) -> Unit,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -101,12 +109,27 @@ internal class ConsoleEndpoint(
                         .prepareCommand(ctx.body())
                         .peek { logger.info("$name (${ctx.ip()}) requested command: ${it.redactedCommand}") }
                         .peek { prepared ->
+                            fun record(exitCode: Int, confirmedCall: Boolean) =
+                                audit(
+                                    consoleCommandAudit(
+                                        actor = AuditActor.named(name, ctx.ip()),
+                                        command = prepared.redactedCommand,
+                                        channel = "http",
+                                        client = ctx.header("User-Agent"),
+                                        confirmed = confirmedCall,
+                                        exitCode = exitCode,
+                                    )
+                                )
+
                             if (!structured) {
-                                response = prepared.execute().asSuccess()
+                                val plain = prepared.executePlain()
+                                record(plain.exitCode, confirmedCall = false)
+                                response = plain.response.asSuccess()
                                 return@peek
                             }
                             when (val answer = prepared.executeStructured(confirmed)) {
                                 is StructuredRun -> {
+                                    record(answer.execution.exitCode, confirmedCall = confirmed)
                                     response = StructuredExecutionResponse(
                                         status = answer.execution.status,
                                         exitCode = answer.execution.exitCode,
@@ -117,6 +140,7 @@ internal class ConsoleEndpoint(
                                 }
                                 // The 409 has its own body. Nothing ran, and no response is set, so the body written here stands alone.
                                 is ConfirmationNeeded -> {
+                                    record(CONFIRMATION_EXIT_CODE, confirmedCall = false)
                                     ctx.status(CONFLICT)
                                         .json(ConfirmationRequiredResponse("confirmationRequired", answer.command, answer.reason))
                                 }

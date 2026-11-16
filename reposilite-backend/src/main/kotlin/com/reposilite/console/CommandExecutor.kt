@@ -36,6 +36,9 @@ import kotlin.concurrent.withLock
 
 internal const val REDACTED_COMMAND_ARGUMENTS = "<redacted>"
 
+/** The plain answer of a command together with the exit code of the same run, which the audit event records. */
+internal class PlainExecution(val response: ExecutionResponse, val exitCode: Int)
+
 /** Colour and style sequences a command may put into its output through [CommandContext.effect]. */
 private val ANSI_SEQUENCE = Regex("\u001B\\[[0-9;?]*[ -/]*[@-~]")
 
@@ -60,10 +63,14 @@ internal class CommandExecutor(
         execute(command) { logger.info(it) }
 
     fun execute(command: String, outputConsumer: Consumer<String>): ExecutionResponse =
-        runCommand(command).let { outcome ->
-            logLines(outcome.lines, outputConsumer)
-            ExecutionResponse(outcome.status, outcome.lines)
-        }
+        executePlain(command, outputConsumer).response
+
+    /** Runs the command as the plain endpoint does, and also says the exit code that the audit records. */
+    internal fun executePlain(command: String, outputConsumer: Consumer<String> = Consumer { logger.info(it) }): PlainExecution {
+        val outcome = runCommand(command)
+        logLines(outcome.lines, outputConsumer)
+        return PlainExecution(ExecutionResponse(outcome.status, outcome.lines), outcome.exitCode())
+    }
 
     /**
      * Runs the command for a remote caller that reads an exit code. The lines reach the log as they do for a plain
