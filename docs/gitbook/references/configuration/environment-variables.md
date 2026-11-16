@@ -58,6 +58,9 @@ For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the 
 | `webThreadPool` | `INGOT_LOCAL_WEBTHREADPOOL` | `REPOSILITE_LOCAL_WEBTHREADPOOL` |
 | `ioThreadPool` | `INGOT_LOCAL_IOTHREADPOOL` | `REPOSILITE_LOCAL_IOTHREADPOOL` |
 | `databaseThreadPool` | `INGOT_LOCAL_DATABASETHREADPOOL` | `REPOSILITE_LOCAL_DATABASETHREADPOOL` |
+| `databaseMaxLifetime` | `INGOT_LOCAL_DATABASEMAXLIFETIME` | `REPOSILITE_LOCAL_DATABASEMAXLIFETIME` |
+| `databaseConnectionTimeout` | `INGOT_LOCAL_DATABASECONNECTIONTIMEOUT` | `REPOSILITE_LOCAL_DATABASECONNECTIONTIMEOUT` |
+| `databaseKeepalive` | `INGOT_LOCAL_DATABASEKEEPALIVE` | `REPOSILITE_LOCAL_DATABASEKEEPALIVE` |
 | `compressionStrategy` | `INGOT_LOCAL_COMPRESSIONSTRATEGY` | `REPOSILITE_LOCAL_COMPRESSIONSTRATEGY` |
 | `idleTimeout` | `INGOT_LOCAL_IDLETIMEOUT` | `REPOSILITE_LOCAL_IDLETIMEOUT` |
 | `bypassExternalCache` | `INGOT_LOCAL_BYPASSEXTERNALCACHE` | `REPOSILITE_LOCAL_BYPASSEXTERNALCACHE` |
@@ -73,6 +76,8 @@ For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the 
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
 
 `schemaLockTimeout` is the number of seconds a replica waits for the schema lock before its start fails. It defaults to `300`. The `REPOSILITE_LOCAL_` name is read only when the `INGOT_LOCAL_` name is not set. See [Multi-replica operation](../architecture/multi-replica-operation.md#schema-initialisation).
+
+`databaseMaxLifetime`, `databaseConnectionTimeout` and `databaseKeepalive` are whole numbers of seconds for the database connection pool: the lifetime of a connection, the time a request waits for a free connection, and the interval of the keepalive queries on idle connections. They default to `1800`, `30` and `120`, the values the pool uses without them. A lifetime of `0` means no limit, and a keepalive of `0` turns the keepalive off. They apply to MariaDB, MySQL, PostgreSQL and custom JDBC URLs, and not to SQLite or H2. The `REPOSILITE_LOCAL_` names are read only when the `INGOT_LOCAL_` names are not set. Hikari replaces a lifetime from 1 to 29 seconds, or a negative one, with 1800 seconds. It turns the keepalive off for a value from 1 to 29 seconds, for a negative value, and for a value at or above the lifetime. Hikari logs a warning for each of these changes.
 
 ## Deploy target
 
