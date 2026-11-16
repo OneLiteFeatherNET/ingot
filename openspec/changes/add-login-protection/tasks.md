@@ -132,7 +132,7 @@ Title: `feat(identity): add an optional idle timeout for browser sessions`
 - [ ] 6.4 Open the pull request for section 5 with the title `feat(identity): add an optional idle timeout for browser sessions`.
   Verify: `gh pr view` shows the title, and the pull request description contains no session link or attribution line.
 
-## 8. Follow-up changes (not part of this proposal)
+## 7. Follow-up changes (not part of this proposal)
 
 - `restructure-sign-in-protection-page` (`feat(ui)`): the administration page "Sign-in protection" with the sections per address,
   per account, credential paths, password policy, notifications and session. Proposed separately.
