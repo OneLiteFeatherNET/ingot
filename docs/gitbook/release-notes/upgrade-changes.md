@@ -217,3 +217,7 @@ The Lucene plugin is not part of the image. It is installed by hand, or from the
 * The search backend stays `database` until `searchEngine` is set to `lucene` on the one replica. The backend serves exactly one replica; more than one replica must not use it. Read [Use Lucene for search](../configure/search/use-lucene-for-search.md) before you switch.
 
 See [Lucene search backend](../references/settings/lucene-search-backend.md) for the variables and the single-writer rule.
+
+### Storage cache type is new and optional (unreleased)
+
+The storage type `cache` is new. It keeps copies of immutable files on the disk of the node in front of another storage, see [Cache provider](../references/repositories/storage-providers.md#cache-provider). It is provided by the storage cache plugin, which is not part of the image and is installed as a jar in the `plugins` folder. No existing configuration changes: a repository uses the cache only when its storage block has `"type": "cache"`, and the file system and S3 providers keep their settings and defaults.

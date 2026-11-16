@@ -71,6 +71,7 @@
   * [Separate releases and snapshots](configure/repositories/separate-releases-and-snapshots.md)
   * [Set cleanup policies](configure/repositories/set-cleanup-policies.md)
   * [Verify uploaded checksums](configure/repositories/verify-uploaded-checksums.md)
+  * [Use a local read cache](configure/repositories/use-a-local-read-cache.md)
 * [Search](configure/search/README.md)
   * [Choose a search backend](configure/search/choose-a-search-backend.md)
   * [Use OpenSearch for search](configure/search/use-opensearch-for-search.md)

@@ -10,6 +10,7 @@ A storage provider holds the files of one repository. Each repository chooses it
 | --- | --- | --- |
 | File system | `fs` | A directory on the disk of the server. |
 | S3 | `s3` | A bucket of an S3-compatible object store. |
+| Cache | `cache` | A local copy of immutable files in front of another provider. Installed as the storage cache plugin, see [Cache provider](#cache-provider). |
 
 When a stored `storageProvider` has no `type`, Ingot uses `s3` if the document contains `bucketName` and `fs` otherwise. A repository without a `storageProvider` uses the file system provider with its defaults.
 
@@ -129,6 +130,43 @@ Two S3 repositories with the same endpoint and bucket whose key prefixes are equ
 | Quota enforcement | None. The S3 provider accepts every upload, and it has no `quota` field. |
 | Usage report | The storage usage API lists every object of the repository to add up the size and the file count. For S3 repositories `quota` and `quotaBytes` are `null`. |
 | Cost of the report | Listing takes time on a large bucket. The report is computed in the background. |
+
+## Cache provider
+
+The cache provider keeps a copy of immutable files on the disk of the node and serves them from there. It is not part of the server: it is the storage cache plugin, `net.onelitefeather.ingot:storage-cache-plugin`, installed as a jar in the `plugins` folder. Without the jar, the type `cache` is unknown. For when to use it, see [Use a local read cache](../../configure/repositories/use-a-local-read-cache.md).
+
+### Settings
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `type` | String | `cache` | Fixed value. |
+| `delegate` | Object | none, required | The storage provider that holds the files: a settings block of any installed type except `cache`. |
+| `directory` | String | `""` | Where the copies are kept. An empty value means `<working directory>/cache/<repository name>`. Must be on the disk of this node. |
+| `maxSize` | String | `5GB` | The most the copies may take. A number followed by `B`, `KB`, `MB`, `GB` or `TB`, read in binary units, case insensitive. |
+| `maxFileSize` | String | `""` | The largest file that is copied, in the same units. An empty value means no limit. |
+| `cacheOnUpload` | Boolean | `false` | Copy an accepted upload into the cache while it is stored. |
+| `cacheMutable` | Boolean | `false` | Reserved. `true` is refused, because mutable files are never copied. |
+
+Example:
+
+```json
+{"type":"cache","delegate":{"type":"s3","bucketName":"maven-releases"},"maxSize":"20GB"}
+```
+
+A repository whose setting is refused does not start, and the failure names the setting. The same happens when the delegate is a `cache`. A delegate whose type no installed plugin provides is refused with the reason that the storage provider is not installed.
+
+### Behaviour
+
+* A full read of an immutable file is served from the copy. The first read copies the file from the delegate while it is served, and concurrent first reads share one copy from the delegate.
+* A range read of a file that is not copied yet goes to the delegate and does not start a copy.
+* Metadata, snapshot files and the index files of the format are never copied. Every operation on them goes to the delegate.
+* Writes and removals go to the delegate first. A copy is dropped when its file is removed or overwritten, and the other nodes of a cluster drop theirs too. Without a cluster bus no message is sent.
+* A copy that cannot be written or read is reported in the log, and the request is answered by the delegate. A cache problem never fails a read or a write.
+* When `maxSize` is full, the least recently read copy that no client is reading is removed for a new copy. When no copy can be removed, the download is answered by the delegate and is not copied.
+
+### Support details
+
+The support details of a repository whose provider is a cache show the settings of the delegate. The counters of the cache itself are not shown yet.
 
 ## Storage capabilities
 
