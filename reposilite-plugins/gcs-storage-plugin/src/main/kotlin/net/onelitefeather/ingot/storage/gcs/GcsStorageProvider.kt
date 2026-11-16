@@ -22,10 +22,15 @@ import com.reposilite.shared.internalServerError
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
+import com.reposilite.storage.api.DirectoryInfo
+import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import com.reposilite.storage.api.SimpleDirectoryInfo
 import io.javalin.http.ContentType
+import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
+import io.javalin.http.HttpStatus.NOT_FOUND
 import panda.std.Result
 import panda.std.Result.ok
 import java.io.InputStream
@@ -136,17 +141,75 @@ class GcsStorageProvider internal constructor(
             failed("$operation $location", exception)
         }
 
-    override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> = TODO("details land in a later change of the series")
+    /**
+     * An object answers with its metadata. A location without an object is a directory when a listing with one result finds an
+     * object below it, as design D5 describes. The repository root is always a directory.
+     */
+    override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> {
+        if (location.toString().isEmpty()) {
+            return directoryDetails(location)
+        }
+        return answer<FileDetails>(location, "read the details of") {
+            ok(client.metadata(objectName(location)).toDocumentInfo(location))
+        }.flatMapErr { error ->
+            if (error.status == NOT_FOUND.code) directoryDetails(location) else Result.error(error)
+        }
+    }
+
+    private fun directoryDetails(location: Location): Result<FileDetails, ErrorResponse> =
+        answer<FileDetails>(location, "list") {
+            val prefix = directoryPrefix(location)
+            if (location.toString().isNotEmpty() && client.list(prefix, null, 1).isEmpty()) {
+                notFoundError("Directory not found or is empty")
+            } else {
+                ok(DirectoryInfo(name = location.getSimpleName(), files = client.listDelimited(prefix).map { it.toFileDetails() }))
+            }
+        }
+
+    /** The prefix of the objects under [location], with the prefix of the repository and one trailing slash. */
+    private fun directoryPrefix(location: Location): String {
+        val path = location.toString().replace('\\', '/')
+        return objectPrefix + if (path.isEmpty()) "" else "$path/"
+    }
+
+    private fun GcsEntry.toFileDetails(): FileDetails = when (this) {
+        is GcsObjectInfo -> toDocumentInfo(Location.of(name.removePrefix(objectPrefix)))
+        is GcsPrefix -> SimpleDirectoryInfo(name = name.removePrefix(objectPrefix).trimEnd('/').substringAfterLast('/'))
+    }
+
+    private fun GcsObjectInfo.toDocumentInfo(location: Location): DocumentInfo =
+        DocumentInfo(
+            name = location.getSimpleName(),
+            contentType = ContentType.contentTypeByExtension(location.getExtension()) ?: APPLICATION_OCTET_STREAM,
+            contentLength = size,
+            lastModifiedTime = updated,
+        )
 
     override fun removeFile(location: Location): Result<Unit, ErrorResponse> = TODO("removal lands in a later change of the series")
 
     override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> = TODO("listing lands in a later change of the series")
 
-    override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> = TODO("metadata lands in a later change of the series")
+    override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> =
+        answer(location, "read the time of") {
+            ok(FileTime.from(client.metadata(objectName(location)).updated))
+        }
 
-    override fun getFileSize(location: Location): Result<Long, ErrorResponse> = TODO("metadata lands in a later change of the series")
+    override fun getFileSize(location: Location): Result<Long, ErrorResponse> =
+        answer(location, "read the size of") {
+            ok(client.metadata(objectName(location)).size)
+        }
 
-    override fun exists(location: Location): Boolean = TODO("metadata lands in a later change of the series")
+    /** An object exists, and so does a location with an object below it. */
+    override fun exists(location: Location): Boolean =
+        try {
+            client.metadata(objectName(location))
+            true
+        } catch (_: GcsNotFoundException) {
+            client.list(directoryPrefix(location), null, 1).isNotEmpty()
+        } catch (exception: Exception) {
+            failureFacade.throwException("Google Cloud Storage provider failed to check $location", exception)
+            false
+        }
 
     override fun usage(): Result<Long, ErrorResponse> = TODO("capabilities land in a later change of the series")
 

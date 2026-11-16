@@ -41,10 +41,30 @@ internal interface GcsObjectClient {
     /** The metadata of an object, or [GcsNotFoundException] when the object does not exist. */
     fun metadata(name: String): GcsObjectInfo
 
+    /**
+     * A flat listing of the objects under [prefix] whose names are at or after [startOffset], in name order, at most [limit] of them.
+     * Note that [startOffset] is inclusive, as the service defines it.
+     */
+    fun list(prefix: String, startOffset: String?, limit: Int): List<GcsObjectInfo>
+
+    /** A listing with the delimiter `/`: the objects directly under [prefix] and one [GcsPrefix] for each deeper directory. */
+    fun listDelimited(prefix: String): List<GcsEntry>
+
+}
+
+/** One entry of a delimited listing: an object, or a directory prefix. */
+internal sealed interface GcsEntry {
+
+    /** The full object name, or the full prefix including its trailing slash. */
+    val name: String
+
 }
 
 /** The metadata of one object as the service reports it. */
-internal data class GcsObjectInfo(val name: String, val size: Long, val updated: Instant)
+internal data class GcsObjectInfo(override val name: String, val size: Long, val updated: Instant) : GcsEntry
+
+/** A directory prefix below the listed prefix, with its trailing slash. */
+internal data class GcsPrefix(override val name: String) : GcsEntry
 
 /** The service has no object of this name. */
 internal class GcsNotFoundException(name: String) : RuntimeException("Object not found: $name")
