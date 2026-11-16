@@ -263,6 +263,63 @@ internal class AuthorizationDecisionLogTest {
     }
 
     @Test
+    fun `a probe of a denial writes no record`() {
+        val log = FakeLog()
+        val stage = FixedStage(AuthorizerDecision.Deny(denial()))
+
+        val outcome = chain(stage, trail(log)).probe(access(Action.READ))
+
+        assertThat(outcome.allowed).isFalse()
+        assertThat(log.records).isEmpty()
+    }
+
+    @Test
+    fun `a probe of an allowed write writes no record and builds no identifier`() {
+        val log = FakeLog()
+        val ids = IdentifierCounter()
+        val stage = FixedStage(AuthorizerDecision.Allow(allowance()))
+
+        chain(stage, trail(log, ids)).probe(access(Action.WRITE))
+
+        assertThat(log.records).isEmpty()
+        assertThat(ids.built).isZero()
+    }
+
+    @Test
+    fun `a probe answers exactly as a decision of the same request does`() {
+        val probed = chain(FixedStage(AuthorizerDecision.Deny(denial())), trail(FakeLog())).probe(access(Action.WRITE))
+        val decided = chain(FixedStage(AuthorizerDecision.Deny(denial()))).decide(access(Action.WRITE))
+
+        assertThat(probed).isEqualTo(decided)
+    }
+
+    @Test
+    fun `a denied probe followed by a denied request records only the request`() {
+        val log = FakeLog()
+        val decisions = trail(log)
+
+        chain(FixedStage(AuthorizerDecision.Deny(denial())), decisions).probe(access(Action.READ))
+        chain(FixedStage(AuthorizerDecision.Deny(denial())), decisions).decide(access(Action.READ))
+
+        val record = log.records.single()
+        assertThat(record.outcome).isEqualTo(DecisionOutcome.DENY)
+        assertThat(record.decisionId).isEqualTo("decision-1")
+    }
+
+    @Test
+    fun `a denied probe followed by an allowed write records only the write`() {
+        val log = FakeLog()
+        val decisions = trail(log)
+
+        chain(FixedStage(AuthorizerDecision.Deny(denial())), decisions).probe(access(Action.READ))
+        chain(FixedStage(AuthorizerDecision.Allow(allowance())), decisions).decide(access(Action.WRITE))
+
+        val record = log.records.single()
+        assertThat(record.outcome).isEqualTo(DecisionOutcome.ALLOW)
+        assertThat(record.write).isTrue()
+    }
+
+    @Test
     fun `a log that reports a failed store does not change the answer`() {
         val failed = FakeLog(outcome = RecordOutcome.FAILED)
         val stage = FixedStage(AuthorizerDecision.Allow(allowance()))

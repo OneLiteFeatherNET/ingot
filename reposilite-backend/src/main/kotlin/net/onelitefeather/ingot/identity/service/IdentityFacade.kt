@@ -738,7 +738,7 @@ class IdentityFacade(
      */
     private fun callerHolds(caller: AccessTokenIdentifier, rights: Rights): Boolean {
         val subject = accessTokens.subjectOf(caller)
-        if (authorization.decide(AuthorizationRequest.AdminArea(subject, area = null)).allowed) return true
+        if (authorization.probe(AuthorizationRequest.AdminArea(subject, area = null)).allowed) return true
         return rights.nodes.all { holdsNode(subject, it) } &&
             rights.grants.all { (repository, pathPrefix, role) -> holdsGrant(subject, repository, pathPrefix, role) }
     }
@@ -747,7 +747,7 @@ class IdentityFacade(
         if (NodePattern.problemOf(node) != null) return false
         val parsed = NodePattern.of(node)
         if (parsed.kindName == "EVERYTHING" || parsed.repository == NodePattern.WILDCARD || parsed.action == NodePattern.WILDCARD) return false
-        return authorization.decide(AuthorizationRequest.Node(subject, parsed)).allowed
+        return authorization.probe(AuthorizationRequest.Node(subject, parsed)).allowed
     }
 
     private fun holdsGrant(subject: AccessSubject, repository: String?, pathPrefix: String?, role: Role): Boolean {
@@ -762,9 +762,9 @@ class IdentityFacade(
                 Action.INSTANCE_ADMIN -> return false
             }
             when {
-                prefix.isEmpty() -> authorization.decide(AuthorizationRequest.Node(subject, NodePattern.repository(repository, nodeAction))).allowed
+                prefix.isEmpty() -> authorization.probe(AuthorizationRequest.Node(subject, NodePattern.repository(repository, nodeAction))).allowed
                 nodeAction == "manage" -> false
-                else -> authorization.decide(AuthorizationRequest.RepositoryPath(subject, repository, prefix, nodeAction)).allowed
+                else -> authorization.probe(AuthorizationRequest.RepositoryPath(subject, repository, prefix, nodeAction)).allowed
             }
         }
     }
@@ -921,7 +921,7 @@ class IdentityFacade(
         decide: (AccessSubject) -> Decision,
     ): IdentityResult<PermissionCheckDto> {
         val callerSubject = accessTokens.subjectOf(caller)
-        val callerIsAdmin = authorization.decide(AuthorizationRequest.AdminArea(callerSubject, area = null)).allowed
+        val callerIsAdmin = authorization.probe(AuthorizationRequest.AdminArea(callerSubject, area = null)).allowed
         if (!callerIsAdmin && callerSubject.principalName != principal) {
             return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
         }
@@ -1143,7 +1143,7 @@ class IdentityFacade(
         if (caller !is WriteCaller.Token || idpGuard == IdpGuardMode.OFF) return null
         val subject = accessTokens.subjectOf(caller.identifier)
         val reason = when {
-            !authorization.decide(AuthorizationRequest.AdminArea(subject, "idp")).allowed -> "idp"
+            !authorization.probe(AuthorizationRequest.AdminArea(subject, "idp")).allowed -> "idp"
             rights != null && !callerHolds(caller.identifier, rights) -> "rights"
             else -> return null
         }

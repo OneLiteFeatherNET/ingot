@@ -31,30 +31,44 @@ internal class AuthorizationChain(
     private val decisions: DecisionTrail = DecisionTrail.OFF,
 ) {
 
+    /**
+     * Decides a request that a caller asked for, and hands the decision to the decision log. A denial and a write are recorded.
+     */
     fun decide(request: AuthorizationRequest): AuthorizationOutcome {
+        val verdict = evaluate(request)
+        if (decisions.enabled) {
+            decisions.observe(request, verdict.outcome, verdict.stage)
+        }
+        return verdict.outcome
+    }
+
+    /**
+     * Answers an internal question of the service, such as whether the caller is an admin before a write is checked. It takes
+     * the same decision as [decide] and records nothing, so a probe never shows up as a decision of a request.
+     */
+    fun probe(request: AuthorizationRequest): AuthorizationOutcome =
+        evaluate(request).outcome
+
+    private fun evaluate(request: AuthorizationRequest): Verdict {
         if (request.subject.disabled) {
-            return observed(request, AuthorizationOutcome(allowed = false, decision = request.refusal()), STAGE_DISABLED)
+            return Verdict(AuthorizationOutcome(allowed = false, decision = request.refusal()), STAGE_DISABLED)
         }
 
         var lastOpinion = request.refusal()
         for (stage in restrictions + builtIn + bindings + plugins) {
             when (val answer = stage.decide(request)) {
                 is AuthorizerDecision.Allow ->
-                    return observed(request, AuthorizationOutcome(allowed = true, decision = answer.decision), stageName(stage))
+                    return Verdict(AuthorizationOutcome(allowed = true, decision = answer.decision), stageName(stage))
                 is AuthorizerDecision.Deny ->
-                    return observed(request, AuthorizationOutcome(allowed = false, decision = answer.decision), stageName(stage))
+                    return Verdict(AuthorizationOutcome(allowed = false, decision = answer.decision), stageName(stage))
                 is AuthorizerDecision.NoOpinion -> answer.decision?.let { lastOpinion = it }
             }
         }
-        return observed(request, AuthorizationOutcome(allowed = false, decision = lastOpinion), STAGE_DEFAULT)
+        return Verdict(AuthorizationOutcome(allowed = false, decision = lastOpinion), STAGE_DEFAULT)
     }
 
-    private fun observed(request: AuthorizationRequest, outcome: AuthorizationOutcome, stage: String): AuthorizationOutcome {
-        if (decisions.enabled) {
-            decisions.observe(request, outcome, stage)
-        }
-        return outcome
-    }
+    /** The outcome of the chain and the name of the stage that decided it. */
+    private class Verdict(val outcome: AuthorizationOutcome, val stage: String)
 
     private fun stageName(stage: Authorizer): String =
         if (stage === builtIn) STAGE_BUILT_IN else STAGE_EXTENSION
