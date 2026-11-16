@@ -75,7 +75,7 @@ Rotation uses `INGOT_SETTINGS_KEY_PREVIOUS` (or its `_FILE` spelling) for decryp
 
 1. Add the new key as the previous key on every replica, with the old key still active.
 2. Make the new key active and the old key the previous key on every replica. Writes now seal with the new key.
-3. Run `settings-reencrypt` once on one replica. It seals every value with the active key, stores the check of the active key, and records one `SETTINGS_SECRETS_REENCRYPTED` event with the two key identifiers. Then remove the previous key and restart.
+3. Run `settings-reencrypt` once on one replica. It seals every value with the active key, the seeds of second factor authenticators included, stores the check of the active key, and records one `SETTINGS_SECRETS_REENCRYPTED` event with the two key identifiers. Then remove the previous key and restart.
 
 A replica that holds only the previous key stops at start once the record names the new key.
 

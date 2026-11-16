@@ -25,8 +25,9 @@ import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import picocli.CommandLine.Command
 
 /**
- * Seals the stored secrets with the active key. Run once on one replica after the rotation, see the rotation steps in the
- * encryption how-to. The key record is then moved to the active key, so a replica that holds only the previous key stops at start.
+ * Seals the stored secrets with the active key, and the second factor seeds with it too. Run once on one replica after the rotation, see
+ * the rotation steps in the encryption how-to. The key record is then moved to the active key, so a replica that holds only the
+ * previous key stops at start.
  */
 @Command(name = "settings-reencrypt", description = ["Seal the stored settings secrets with the active settings key"])
 internal class SettingsReencryptCommand(
@@ -53,8 +54,22 @@ internal class SettingsReencryptCommand(
             return
         }
 
+        // The stores outside the shared settings, such as the authenticator seeds, are sealed with the same key in the same run.
+        val reports = sharedConfigurationFacade.sealedSecretStores().map { it.reseal() }
+        val unreadable = reports.flatMap { it.unreadable }
+
         records.write(record)
         context.append("Sealed $count stored secret values with the settings key id ${record.keyId}")
+        context.append(
+            "second factor seeds: ${reports.sumOf { it.resealed }} re-sealed, ${reports.sumOf { it.current }} already sealed with the active key"
+        )
+        if (unreadable.isNotEmpty()) {
+            context.append(
+                "No configured settings key opens these seeds, they are left unchanged: ${unreadable.joinToString()}. " +
+                    "Set the key they were sealed with as INGOT_SETTINGS_KEY_PREVIOUS and run settings-reencrypt again, " +
+                    "or enrol the authenticators again."
+            )
+        }
     }
 
 }

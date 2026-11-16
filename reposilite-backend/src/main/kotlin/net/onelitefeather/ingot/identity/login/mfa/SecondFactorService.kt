@@ -29,6 +29,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.storage.FactorRow
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
@@ -207,7 +208,12 @@ internal class SecondFactorService(
     private val signInObserver: SignInObserver = SignInObserver.OFF,
     /** The passkey ceremonies. Without it no passkey can be registered or asserted, and a sign-in never completes with one. */
     private val passkeys: PasskeyService? = null,
+    /** Receives the error line of a seed that no configured key opens, once per factor. The line names the factor, never the seed. */
+    private val logError: (String) -> Unit = {},
 ) {
+
+    /** The factors whose seed was reported as unopenable, so that every retry of a sign-in does not repeat the line. */
+    private val unopenableFactors = ConcurrentHashMap.newKeySet<Int>()
 
     /**
      * Starts an enrolment. A previous enrolment that never got its code is replaced. A user who already has a factor must
@@ -584,12 +590,26 @@ internal class SecondFactorService(
     private fun acceptAuthenticatorCode(principalId: Int, code: String, allowed: (FactorRow) -> Boolean): CodeCheck? {
         val now = clock.instant()
         for (factor in store.findFactors(principalId).filter { it.kind == KIND_TOTP && allowed(it) }) {
-            val seed = runCatching { seeds.open(factor.factorKey, checkNotNull(factor.secret)) }.getOrNull() ?: continue
+            val seed = runCatching { seeds.open(factor.factorKey, checkNotNull(factor.secret)) }.getOrNull()
+            if (seed == null) {
+                reportUnopenable(factor.id)
+                continue
+            }
             val step = TotpAlgorithm.matchingStep(seed, code, now.epochSecond) ?: continue
             // The code matched this factor. It is accepted only if no code of the same or a later step was accepted before.
             return if (store.claimTotpStep(factor.id, step, now)) CodeCheck.Accepted(recovery = false) else null
         }
         return null
+    }
+
+    private fun reportUnopenable(factorId: Int) {
+        if (unopenableFactors.add(factorId)) {
+            logError(
+                "Second factor | The authenticator of second factor $factorId cannot be opened with the configured settings keys, " +
+                    "its codes are refused. Run settings-reencrypt with the previous settings key set (INGOT_SETTINGS_KEY_PREVIOUS), " +
+                    "or enrol the authenticator again."
+            )
+        }
     }
 
     private fun acceptRecoveryCode(principalId: Int, code: String): CodeCheck? {

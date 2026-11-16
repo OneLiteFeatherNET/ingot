@@ -39,6 +39,7 @@ import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
+import net.onelitefeather.ingot.settings.encryption.SealedSecretStore
 import net.onelitefeather.ingot.settings.encryption.SealedSetting
 import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import io.javalin.http.HttpStatus
@@ -50,6 +51,7 @@ import panda.std.asError
 import panda.std.asSuccess
 import panda.std.ok
 import panda.std.reactive.MutableReference
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 import java.util.ConcurrentModificationException
 import java.util.function.Supplier
@@ -94,6 +96,20 @@ class SharedConfigurationFacade(
     }
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
+
+    private val sealedSecretStores = CopyOnWriteArrayList<SealedSecretStore>()
+
+    /**
+     * Registers a store of values sealed with the settings key outside the shared settings, so that `settings-reencrypt` re-seals them
+     * too. A store is registered once, while the plugins start.
+     */
+    fun registerSealedSecretStore(store: SealedSecretStore) {
+        sealedSecretStores.add(store)
+    }
+
+    /** The stores registered with [registerSealedSecretStore], in registration order. */
+    fun sealedSecretStores(): List<SealedSecretStore> =
+        sealedSecretStores.toList()
 
     /**
      * Serializes reads and writes of the settings of this instance, so a precondition is checked against the state it writes.

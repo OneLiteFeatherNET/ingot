@@ -53,6 +53,9 @@ data class FactorRow(
     val lastUsedAt: Instant?,
 )
 
+/** A new envelope for the seed of the factor [id], written only while the row still holds [expected]. */
+data class SeedReplacement(val id: Int, val expected: String, val sealed: String)
+
 /** A sign-in challenge as stored. Only its hash is kept. [challenge] holds the bytes of a WebAuthn ceremony and is null otherwise. */
 data class ChallengeRow(
     val idHash: String,
@@ -191,6 +194,35 @@ class SecondFactorStore(
                     it[MfaFactorTable.lastUsedAt] = at
                 },
             ) > 0
+        }
+
+    /**
+     * The authenticator seeds, confirmed or pending, that come after [afterId] in id order, at most [limit] of them. Passkeys and
+     * recovery codes hold no sealed value, so they are never returned.
+     */
+    fun sealedSeedsAfter(afterId: Int, limit: Int): List<FactorRow> =
+        transaction(database) {
+            MfaFactorTable.selectAll()
+                .where {
+                    (MfaFactorTable.kind eq KIND_TOTP) and MfaFactorTable.secret.isNotNull() and (MfaFactorTable.id greater afterId)
+                }
+                .orderBy(MfaFactorTable.id, SortOrder.ASC)
+                .limit(limit)
+                .map { it.toFactor() }
+        }
+
+    /**
+     * Writes new seed envelopes in one transaction. A row changes only while it still holds the envelope it was read with, so a seed
+     * that another instance wrote in the meantime is left as it is. Returns the number of rows that changed.
+     */
+    fun replaceSeeds(replacements: List<SeedReplacement>): Int =
+        identityWrite(database) {
+            replacements.sumOf { replacement ->
+                MfaFactorTable.update(
+                    where = { (MfaFactorTable.id eq replacement.id) and (MfaFactorTable.secret eq replacement.expected) },
+                    body = { it[MfaFactorTable.secret] = replacement.sealed },
+                )
+            }
         }
 
     /** Removes one factor of a principal. `true` when it existed. */

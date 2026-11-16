@@ -48,7 +48,7 @@ Rotation takes three rolling restarts.
 
 1. Generate the new key. Give it to every instance as `INGOT_SETTINGS_KEY_PREVIOUS_FILE` (or `INGOT_SETTINGS_KEY_PREVIOUS`), with the old key still active. Restart each instance.
 2. Make the new key active and the old key the previous key on every instance. Restart each instance. New writes now use the new key.
-3. On one instance, run the console command `settings-reencrypt`. It seals every stored value with the new key and moves the key record. Then remove `INGOT_SETTINGS_KEY_PREVIOUS` from every instance and restart them.
+3. On one instance, run the console command `settings-reencrypt`. It seals every stored value with the new key, including the seeds of authenticator codes, and moves the key record. A seed that neither key opens is left unchanged and named in the output: its owner has to enrol the authenticator again. Then remove `INGOT_SETTINGS_KEY_PREVIOUS` from every instance and restart them.
 
 A restart that happens between steps is safe. An instance that still holds only the old key stops at start once the record names the new key, and that is the signal to finish step 2 for it.
 

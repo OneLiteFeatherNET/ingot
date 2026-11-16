@@ -178,7 +178,7 @@ These commands act on the secret values of the shared settings. They need a sett
 
 | Command | Arguments | Behavior |
 | --- | --- | --- |
-| `settings-reencrypt` | none | Seals every stored secret value with the active key and stores the key record. Prints `Sealed <n> stored secret values with the settings key id <key id>`. Run it once on one replica after a key rotation. Without an active key it fails with `No settings key is active, set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first`. |
+| `settings-reencrypt` | none | Seals every stored secret value with the active key and stores the key record. Prints `Sealed <n> stored secret values with the settings key id <key id>`, then `second factor seeds: <n> re-sealed, <n> already sealed with the active key`. A seed that no configured key opens is named in the output and left unchanged. Run it once on one replica after a key rotation. Without an active key it fails with `No settings key is active, set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first`. |
 | `settings-decrypt` | none | Writes every stored secret value in clear and clears the key record. Prints `Wrote <n> stored secret values in clear, remove the settings key before starting an older build`. It needs the active key, and fails without one. Take an export first. |
 
 Both commands fail with `The stored settings could not be written, the settings may be managed by a file or changed concurrently` when the stored settings cannot be saved. The steps for a rotation and for a return to an older build are in [Encrypt settings secrets](../manage/operate/encrypt-settings-secrets.md).
