@@ -142,6 +142,12 @@ These events come from `IdentityFacade` unless another source is named. The acto
 
 Failed logins are folded. All failures of one actor name from one address inside the same minute share one row, and `occurrences` counts them. The next failure after that minute starts a new row. A folded row has no `repository`, `path` or `details`.
 
+### Second factors
+
+| Action | Written when | Details keys |
+| --- | --- | --- |
+| `MFA_FACTOR_RENAMED` | A user renames one of their own second factors with `PATCH /api/identity/me/factors/{id}`. The actor is the user with the client address. The chosen name is not recorded. | `principal` (the user name), `factor` (the factor id) |
+
 ## Retention
 
 Retention and address recording are fields of the settings domain `audit` (title "Audit"). They are shared settings, stored with the other shared settings, and edited in the dashboard settings or through `GET` and `PUT /api/settings/domain/audit`. The code defines no environment variable and no `configuration.cdn` key for them.
