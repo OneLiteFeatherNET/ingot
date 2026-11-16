@@ -29,14 +29,49 @@ dependencies {
     "integrationRuntimeOnly"("org.junit.platform:junit-platform-launcher:6.1.0")
 }
 
+// The Cloud Storage client declares Cloud Monitoring, the native TLS provider, the gRPC generated clients and the XML stack as runtime
+// dependencies. The plugin uses the HTTP transport only, so those are left out. The gRPC transport classes stay in the jar: the tracing
+// of the HTTP path reads the gRPC context, and excluding the whole gRPC group leaves that class missing at run time. The jar is
+// therefore large, and pruning it further is a follow-up that the documentation names.
+configurations.configureEach {
+    exclude(group = "com.google.cloud.opentelemetry")
+    exclude(group = "org.conscrypt")
+    exclude(group = "com.google.cloud", module = "google-cloud-monitoring")
+    exclude(group = "com.google.cloud", module = "google-cloud-core-grpc")
+    exclude(group = "com.google.api.grpc", module = "proto-google-cloud-monitoring-v3")
+    exclude(group = "com.google.api.grpc", module = "grpc-google-cloud-storage-v2")
+    exclude(group = "com.google.api.grpc", module = "gapic-google-cloud-storage-v2")
+    exclude(group = "com.google.api.grpc", module = "proto-google-cloud-storage-v2")
+    exclude(group = "com.google.api", module = "gax-grpc")
+    exclude(group = "com.fasterxml.jackson.dataformat")
+    exclude(group = "com.fasterxml.woodstox")
+    exclude(group = "org.codehaus.woodstox")
+}
+
 // Not part of the image. The jar is installed by the operator into the plugins directory, the same as the other optional plugins.
+// The libraries of the SDK that can clash with the server, or with another plugin, live under a package of their own. The server's
+// Jackson is not in this jar at all (it is compileOnly), so relocating the copies of the SDK does not touch it.
+val shadedPackage = "net.onelitefeather.ingot.storage.gcs.shaded"
+
 tasks.withType<ShadowJar> {
     archiveFileName.set("gcs-storage-plugin.jar")
     destinationDirectory.set(file("$rootDir/reposilite-test/workspace/plugins"))
     mergeServiceFiles()
+    relocate("com.google.common", "$shadedPackage.com.google.common")
+    relocate("com.google.protobuf", "$shadedPackage.com.google.protobuf")
+    relocate("com.google.api.gax", "$shadedPackage.com.google.api.gax")
 
     // The size is printed so that the figure in the documentation can be checked on each SDK bump.
     doLast {
         logger.lifecycle("gcs-storage-plugin.jar: ${archiveFile.get().asFile.length()} bytes")
+    }
+}
+
+// The integration suite reads the shaded jar as an artifact, so the jar is built first and its path is handed to the tests.
+tasks.named<Test>("integration") {
+    val shadedJar = tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }
+    dependsOn("shadowJar")
+    doFirst {
+        systemProperty("ingot.gcs.jar", shadedJar.get().asFile.absolutePath)
     }
 }
