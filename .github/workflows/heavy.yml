@@ -640,15 +640,17 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The Testcontainers integration suite, about 108 minutes in full, split into four shards that run in parallel. Each shard
-  # takes every fourth top-level class of the suite (build.gradle.kts, integrationShard). A labelled pull request runs the
+  # The Testcontainers integration suite, about 108 minutes in full, split into eight shards that run in parallel. Each shard
+  # takes every eighth top-level class of the suite (build.gradle.kts, integrationShard). A labelled pull request runs the
   # integration tests its change can reach (select_backend_tests.py) in every shard, and a release pull request or a manual
   # run on main runs the whole suite. A selection that names no integration filter, or a failing script, runs the whole
   # suite as well. The aggregate below keeps the check name that branch protection and the judge read.
   #
-  # Free plan: four shards take four of the twenty jobs that run at once. Each shard starts its own containers.
+  # Free plan: eight shards take eight of the twenty jobs that run at once. Each shard starts its own containers.
+  # Many shards resolving at once can draw 429 Too Many Requests from Maven Central, so Gradle retries a download up
+  # to ten times with a growing pause (GRADLE_RETRY below) instead of failing the shard.
   integration-shards:
-    name: "Integration tests shard ${{ matrix.shard }} of 4"
+    name: "Integration tests shard ${{ matrix.shard }} of 8"
     needs: [ gate ]
     if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
     runs-on: ubuntu-latest
@@ -656,7 +658,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [ 0, 1, 2, 3 ]
+        shard: [ 0, 1, 2, 3, 4, 5, 6, 7 ]
     permissions:
       contents: read
     env:
@@ -664,6 +666,7 @@ jobs:
       # PostgreSQL, S3, NATS and Valkey containers, so memory scales with it. Read by integrationForks() in
       # build.gradle.kts.
       INGOT_TEST_FORKS: "4"
+      GRADLE_RETRY: "-Dorg.gradle.internal.repository.max.retries=10 -Dorg.gradle.internal.repository.initial.backoff=2000"
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -710,7 +713,7 @@ jobs:
           fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           {
-            echo "## Integration test selection (shard ${{ matrix.shard }} of 4)"
+            echo "## Integration test selection (shard ${{ matrix.shard }} of 8)"
             echo
             echo "- Mode: \`$mode\`"
             sed -n 's/^reason=/- Reason: /p' "$selection"
@@ -725,11 +728,11 @@ jobs:
           selection="$RUNNER_TEMP/integration-selection.txt"
           test_args=()
           while IFS= read -r pattern; do test_args+=(--tests "$pattern"); done < <(sed -n 's/^integration=//p' "$selection")
-          ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration "${test_args[@]}" -PintegrationShard=${{ matrix.shard }} -PintegrationShards=4
+          ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration "${test_args[@]}" -PintegrationShard=${{ matrix.shard }} -PintegrationShards=8 $GRADLE_RETRY
 
       - name: "Run the full integration suite"
         if: ${{ steps.select.outputs.mode != 'partial' }}
-        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration -PintegrationShard=${{ matrix.shard }} -PintegrationShards=4
+        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration -PintegrationShard=${{ matrix.shard }} -PintegrationShards=8 $GRADLE_RETRY
 
       - name: "Publish the integration test report"
         if: failure()

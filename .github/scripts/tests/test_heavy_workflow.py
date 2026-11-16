@@ -56,7 +56,7 @@ HELPERS = {
     "container-tests": ("images",),
     "integration-shards": ("integration",),
 }
-SHARD_COUNT = 4
+SHARD_COUNT = 8
 
 
 def all_job_ids():
@@ -171,10 +171,10 @@ class IntegrationJobTest(unittest.TestCase):
     def test_the_aggregate_does_not_run_gradle(self):
         self.assertNotIn("gradlew", str(self.job()["steps"]))
 
-    def test_the_shards_are_indexed_zero_to_three_and_never_fail_fast(self):
+    def test_the_shards_are_indexed_zero_to_seven_and_never_fail_fast(self):
         strategy = self.shards()["strategy"]
         self.assertIs(False, strategy["fail-fast"])
-        self.assertEqual([0, 1, 2, 3], strategy["matrix"]["shard"])
+        self.assertEqual(list(range(SHARD_COUNT)), strategy["matrix"]["shard"])
         self.assertEqual(SHARD_COUNT, len(strategy["matrix"]["shard"]))
 
     def test_each_shard_has_a_time_limit_of_ninety_minutes(self):
@@ -186,8 +186,13 @@ class IntegrationJobTest(unittest.TestCase):
     def test_the_gradle_runs_pass_the_shard_index_and_the_count(self):
         for name in ("Run the selected integration tests", "Run the full integration suite"):
             with self.subTest(step=name):
-                self.assertIn("-PintegrationShard=${{ matrix.shard }} -PintegrationShards=4",
+                self.assertIn("-PintegrationShard=${{ matrix.shard }} -PintegrationShards=8 $GRADLE_RETRY",
                               self.shard_steps()[name]["run"])
+
+    def test_the_shards_retry_downloads_that_maven_central_throttles(self):
+        retry = self.shards()["env"]["GRADLE_RETRY"]
+        self.assertIn("-Dorg.gradle.internal.repository.max.retries=10", retry)
+        self.assertIn("-Dorg.gradle.internal.repository.initial.backoff=2000", retry)
 
     def test_each_shard_publishes_its_own_report(self):
         step = self.shard_steps()["Publish the integration test report"]
