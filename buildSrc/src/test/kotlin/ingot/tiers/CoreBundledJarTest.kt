@@ -57,7 +57,7 @@ class CoreBundledJarTest {
     @Test
     fun coreDeclarationWithoutBundledJarFails() {
         module("core-fixture", "CORE")
-        dockerfileCopies("other-plugin.jar")
+        dockerfileCopies()
 
         val violations = violations()
 
