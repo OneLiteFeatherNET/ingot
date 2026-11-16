@@ -17,6 +17,7 @@
 // The command line client for a running Ingot. It shares no code with the server: the JSON of the console API is the contract.
 plugins {
     kotlin("jvm")
+    id("com.gradleup.shadow") version "9.4.2"
 }
 
 dependencies {
@@ -28,4 +29,16 @@ dependencies {
 
 application {
     mainClass = "net.onelitefeather.ingot.cli.MainKt"
+}
+
+// One runnable jar, ingot-cli-<version>.jar, with its dependencies. The release attaches it next to the image.
+tasks.shadowJar {
+    archiveBaseName = "ingot-cli"
+    archiveClassifier = ""
+    archiveVersion = project.version.toString()
+    mergeServiceFiles()
+}
+
+tasks.jar {
+    enabled = false
 }
