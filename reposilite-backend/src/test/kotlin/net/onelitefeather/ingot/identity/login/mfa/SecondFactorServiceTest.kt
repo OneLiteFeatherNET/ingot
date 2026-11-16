@@ -698,6 +698,131 @@ internal class SecondFactorServiceTest {
         }
     }
 
+    /** Asserts that spending [recoveryCode] wrote exactly one spent-code event for alice at [IP], without the code. */
+    private fun assertSpentOnce(fixture: Fixture, recoveryCode: String) {
+        val spent = fixture.audit.filter { it.action == AuditAction.MFA_RECOVERY_CODE_USED }
+        assertThat(spent).`as`("recovery code audit events").hasSize(1)
+        val event = spent.single()
+        assertThat(event.actor).`as`("actor of the spent code").isEqualTo(AuditActor.named("alice", IP))
+        assertThat(event.details).`as`("details of the spent code").containsEntry("principal", "alice")
+        assertThat(event.details.values.map { it.toString() }).`as`("audit details without the code").noneMatch { it.contains(recoveryCode) }
+    }
+
+    @Test
+    fun `a sign-in with a recovery code writes exactly one spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.audit.clear()
+
+            fixture.service.completeChallenge(fixture.signInChallenge(), recoveryCode, IP)
+
+            assertSpentOnce(fixture, recoveryCode)
+        }
+    }
+
+    @Test
+    fun `a step-up with a recovery code writes exactly one spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.audit.clear()
+
+            fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+
+            assertSpentOnce(fixture, recoveryCode)
+        }
+    }
+
+    @Test
+    fun `removing a factor with a recovery code writes exactly one spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            val factorId = fixture.service.factorsOf(fixture.principalId).single().id
+            fixture.audit.clear()
+
+            val outcome = fixture.service.removeFactor(fixture.principalId, "alice", factorId, recoveryCode, IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("removal with a recovery code").isEqualTo(FactorRemoval.Removed)
+            assertSpentOnce(fixture, recoveryCode)
+        }
+    }
+
+    @Test
+    fun `regenerating recovery codes with a recovery code writes exactly one spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.audit.clear()
+
+            val outcome = fixture.service.regenerateRecoveryCodes(fixture.principalId, "alice", recoveryCode, IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("regeneration with a recovery code").isInstanceOf(RecoveryCodesOutcome.Regenerated::class.java)
+            assertSpentOnce(fixture, recoveryCode)
+        }
+    }
+
+    @Test
+    fun `a second enrolment with a recovery code as proof writes exactly one spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.audit.clear()
+
+            val started = fixture.service.enrolmentStart(fixture.principalId, "alice", code = recoveryCode, ip = IP)
+
+            assertThat(started).`as`("enrolment with a recovery code as proof").isInstanceOf(TotpEnrolmentStart.Started::class.java)
+            assertSpentOnce(fixture, recoveryCode)
+        }
+    }
+
+    @Test
+    fun `a spent recovery code refused for a removal writes no spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+            val factorId = fixture.service.factorsOf(fixture.principalId).single().id
+            fixture.audit.clear()
+
+            val outcome = fixture.service.removeFactor(fixture.principalId, "alice", factorId, recoveryCode, IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("removal with a spent recovery code").isEqualTo(FactorRemoval.WrongCode)
+            assertThat(fixture.audit.none { it.action == AuditAction.MFA_RECOVERY_CODE_USED }).`as`("no spent-code event for a refused code").isTrue()
+        }
+    }
+
+    @Test
+    fun `a spent recovery code refused for a regeneration writes no spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+            fixture.audit.clear()
+
+            val outcome = fixture.service.regenerateRecoveryCodes(fixture.principalId, "alice", recoveryCode, IP, AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("regeneration with a spent recovery code").isEqualTo(RecoveryCodesOutcome.WrongCode)
+            assertThat(fixture.audit.none { it.action == AuditAction.MFA_RECOVERY_CODE_USED }).`as`("no spent-code event for a refused code").isTrue()
+        }
+    }
+
+    @Test
+    fun `a spent recovery code refused as enrolment proof writes no spent-code audit event`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+            fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+            fixture.audit.clear()
+
+            val started = fixture.service.enrolmentStart(fixture.principalId, "alice", code = recoveryCode, ip = IP)
+
+            assertThat(started).`as`("enrolment with a spent recovery code").isEqualTo(TotpEnrolmentStart.ProofRequired)
+            assertThat(fixture.audit.none { it.action == AuditAction.MFA_RECOVERY_CODE_USED }).`as`("no spent-code event for a refused code").isTrue()
+        }
+    }
+
     private companion object {
         const val IP = "10.0.0.1"
     }
