@@ -22,6 +22,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.shared.stream.RangedInputStream
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
+import java.time.Duration
 import panda.std.Result
 
 interface StorageProvider {
@@ -52,6 +53,12 @@ interface StorageProvider {
     fun usage(): Result<Long, ErrorResponse>
 
     fun canHold(contentLength: Long): Result<Long, ErrorResponse>
+
+    /**
+     * A presigned GET URL of [location] that is valid for [ttl], or null when the instance serves the file itself. The default is null,
+     * so every storage that does not presign, and every plugin compiled against the older interface, keeps serving through the instance.
+     */
+    fun presignedGetUrl(location: Location, ttl: Duration): String? = null
 
     fun shutdown() {}
 

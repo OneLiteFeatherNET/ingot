@@ -44,6 +44,7 @@ import net.onelitefeather.ingot.logging.OpenTelemetryTraceContext
 import net.onelitefeather.ingot.logging.applyToTinyLog
 import net.onelitefeather.ingot.web.RequestLimitSettings
 import net.onelitefeather.ingot.web.ShutdownSettings
+import com.reposilite.storage.s3.S3PresignConfig
 import java.time.Duration
 import kotlin.io.path.absolutePathString
 
@@ -84,6 +85,8 @@ object ReposiliteFactory {
         logSettings: LogSettings = LogSettings(),
         // The access record is off unless the caller switches it on, like the other opt-in handlers
         accessLogSetting: AccessLogSetting = AccessLogSetting(enabled = false),
+        // Read before anything binds a port, like the read-only switch
+        presignConfig: S3PresignConfig = S3PresignConfig.read(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -143,6 +146,7 @@ object ReposiliteFactory {
             readOnlySetting = readOnlySetting,
             supportBundleSetting = supportBundleSetting,
             accessLogSetting = accessLogSetting,
+            presignConfig = presignConfig,
             awaitDelay = awaitDelay,
         )
 

@@ -148,6 +148,16 @@ internal class MavenEndpoints(
      * proxy) is answered with the whole body. A ranged answer carries its own Content-Length for the stored bytes.
      */
     private fun serveDocument(ctx: Context, request: LookupRequest, details: DocumentInfo): Result<Unit, ErrorResponse> {
+        // Runs after the read check of findFile, so the presigned URL is given only to a caller who could read the file.
+        // With INGOT_S3_PRESIGNED_REDIRECTS off, or for any file the rule excludes, this answers null and nothing changes.
+        val conditional = listOf("Range", "If-None-Match", "If-Modified-Since", "If-Range").any { ctx.header(it) != null }
+        mavenFacade.presignedRedirectOf(request, ctx.method().name, conditional)?.let { redirect ->
+            ctx.status(HttpStatus.FOUND)
+            ctx.header("Location", redirect.url)
+            ctx.header(Header.CACHE_CONTROL, redirect.cacheControl)
+            return Unit.asSuccess()
+        }
+
         val etag = mavenFacade.findEntityTag(request, details)
         val rangesSupported = details.contentLength >= 0
 

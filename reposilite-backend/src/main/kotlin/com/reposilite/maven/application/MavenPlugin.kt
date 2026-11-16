@@ -85,6 +85,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 metadataLocks = metadataLocksFor(reposilite().database, clock),
                 mirrorEnvironment = MirrorEnvironment.read(),
                 uploadChecksumDefault = readInstanceUploadChecksumPolicy(),
+                presignedRedirectTtl = reposilite().presignConfig.takeIf { it.enabled }?.ttl,
             ).mavenFacade()
 
         // Consumers that start before this plugin look the registry up lazily, so it only has to exist by then.

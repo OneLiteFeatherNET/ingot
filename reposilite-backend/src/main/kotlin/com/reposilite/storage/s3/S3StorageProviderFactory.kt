@@ -21,6 +21,8 @@ import com.reposilite.shared.maskSecret
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProviderFactory
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.auth.signer.AwsS3V4Signer
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption
@@ -29,6 +31,7 @@ import software.amazon.awssdk.core.retry.backoff.FullJitterBackoffStrategy
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
@@ -36,10 +39,13 @@ import java.time.Duration
 private val useS3V4Signer = System.getProperty("reposilite.s3.use-s3-v4-signer", "false") == "true"
 
 /**
- * [bufferToDisk] is read once, when the factory is created at start-up, and is the same for every repository of the process.
+ * [bufferToDisk] and [presign] are read once, when the factory is created at start-up, and are the same for every repository of the process.
+ * The presigner is always built, because signing is local and sends nothing; the redirect switch is read by the instance, which decides
+ * whether a presigned URL is asked for at all. Only the endpoint of [presign] is used here.
  */
 class S3StorageProviderFactory(
     private val bufferToDisk: Boolean = S3BufferToDiskSetting.read(),
+    private val presign: S3PresignConfig = S3PresignConfig.read(),
 ) : StorageProviderFactory<S3StorageProvider, S3StorageProviderSettings> {
 
     override fun create(
@@ -60,16 +66,19 @@ class S3StorageProviderFactory(
             )
         }
 
-        if (settings.accessKey.isNotEmpty() && settings.secretKey.isNotEmpty()) {
-            client.credentialsProvider(
+        val credentials: AwsCredentialsProvider? =
+            if (settings.accessKey.isNotEmpty() && settings.secretKey.isNotEmpty()) {
                 StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(
                         settings.accessKey,
                         settings.secretKey
                     )
                 )
-            )
-        }
+            } else {
+                null
+            }
+
+        credentials?.let { client.credentialsProvider(it) }
 
         // The AWS Java SDK uses by default the env variable AWS_REGION to determine the region
         // We use reposilite as a dummy region for S3-compatible providers, see https://github.com/dzikoysk/reposilite/issues/1666
@@ -105,6 +114,17 @@ class S3StorageProviderFactory(
 
         val keyPrefix = settings.resolveKeyPrefix(repositoryName)
 
+        // The presigner signs locally with the same credentials, region and path style as the client. The endpoint is the
+        // presign endpoint when one is set, and the configured S3 endpoint otherwise.
+        val presigner = S3Presigner.builder()
+            .region(region)
+            .credentialsProvider(credentials ?: DefaultCredentialsProvider.create())
+            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(pathStyleAccessEnabled).build())
+            .also { builder ->
+                (presign.endpoint ?: settings.endpoint).takeIf { it.isNotEmpty() }?.let { builder.endpointOverride(URI.create(it)) }
+            }
+            .build()
+
         return try {
             S3StorageProvider(
                 failureFacade = failureFacade,
@@ -112,6 +132,7 @@ class S3StorageProviderFactory(
                 bucket = settings.bucketName,
                 keyPrefix = keyPrefix,
                 bufferToDisk = bufferToDisk,
+                presigner = presigner,
             )
         } catch (exception: Exception) {
             failureFacade.logger.error("Cannot connect to S3 storage provider: ${exception.message}")

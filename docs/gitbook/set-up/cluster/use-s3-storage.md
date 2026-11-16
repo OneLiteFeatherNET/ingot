@@ -177,6 +177,14 @@ Repositories that share a bucket must not write to overlapping key spaces. Enabl
 
 Ingot finds shared buckets by comparing the endpoint text and the bucket name. Use the same endpoint spelling in every repository that shares a bucket.
 
+## Presigned redirects
+
+By default Ingot streams every download from the bucket. With `INGOT_S3_PRESIGNED_REDIRECTS=true`, a plain `GET` of a cacheable file in a `PUBLIC` S3 repository is answered with `302 Found` and a `Location` that is a presigned URL for the object. The client then reads the bytes from the bucket, and Ingot sends no bytes for that request.
+
+The `302` carries `Cache-Control: public, max-age=<seconds>`, where the value is the smaller of `maxAge` and half of `INGOT_S3_PRESIGN_TTL_SECONDS`. A shared cache drops the redirect before its URL expires. A presigned URL is a bearer link for its lifetime, so the redirect is made only for files that anyone may read. Ingot serves the bytes itself for every other answer: a `HEAD`, a request with a `Range` or a conditional header, a metadata file, a snapshot, a file of a private or hidden repository, a file that a credentialed mirror serves, and a file that is not stored yet.
+
+The URL is valid for `INGOT_S3_PRESIGN_TTL_SECONDS`, 300 seconds by default. Set `INGOT_S3_PRESIGN_ENDPOINT` when clients reach the bucket under another address than the one Ingot uses. A client that does not follow a `302` for `GET` cannot use this switch, so leave it off for such a client.
+
 ## Limits
 
 * S3 repositories have no quota. The `quota` setting applies to filesystem repositories only. The S3 provider reports its usage as unknown (`-1`) and never refuses an upload for lack of space.

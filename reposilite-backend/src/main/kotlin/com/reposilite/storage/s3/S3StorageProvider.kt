@@ -72,6 +72,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
 import software.amazon.awssdk.services.s3.model.UploadPartRequest
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -85,6 +86,13 @@ private val skipBucketCreation = System.getProperty("reposilite.s3.skip-bucket-c
 /** The size of every part of a multipart upload but the last. S3 accepts parts from 5 MiB, so this is the size used for the probe too. */
 private const val UPLOAD_PART_SIZE = 8 * 1024 * 1024
 
+/** A presigned GET URL of the object [key] in [bucket], valid for [ttl]. The signature is computed locally, so no request is sent. */
+internal fun S3Presigner.presignedGetUrl(bucket: String, key: String, ttl: Duration): String =
+    presignGetObject { request ->
+        request.signatureDuration(ttl)
+            .getObjectRequest(GetObjectRequest.builder().bucket(bucket).key(key).build())
+    }.url().toString()
+
 class S3StorageProvider(
     private val failureFacade: FailureFacade,
     private val s3: S3Client,
@@ -92,6 +100,8 @@ class S3StorageProvider(
     private val keyPrefix: String = "",
     /** Restores the temporary file path for every upload, see `INGOT_S3_BUFFER_TO_DISK`. */
     private val bufferToDisk: Boolean = false,
+    /** Signs the URLs of [presignedGetUrl]. Null when the redirects are off, so no URL is ever presigned. */
+    private val presigner: S3Presigner? = null,
 ) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist,
     RelatedKeyAware, ClusterCacheAware, ReadinessProbe, UsageCapability {
 
@@ -121,6 +131,23 @@ class S3StorageProvider(
 
     override fun shutdown() {
         s3.close()
+    }
+
+    /**
+     * A presigned GET URL for a stored object, or null when there is no presigner or the object is not stored. A miss is answered by the
+     * instance as before. A presign that fails is logged and answered as null, so the download is served by the instance.
+     */
+    override fun presignedGetUrl(location: Location, ttl: Duration): String? {
+        val presigner = presigner ?: return null
+        if (!head(location).isOk) {
+            return null
+        }
+        return try {
+            presigner.presignedGetUrl(bucket = bucket, key = location.toBucketKey(), ttl = ttl)
+        } catch (exception: Exception) {
+            failureFacade.throwException("S3 Storage Provider failed to presign $location", exception)
+            null
+        }
     }
 
     /** Bounds the HEAD answers of this storage to the cluster, when the storage caches them. */

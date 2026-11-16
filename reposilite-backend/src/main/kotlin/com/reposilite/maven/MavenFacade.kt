@@ -40,6 +40,7 @@ import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
+import com.reposilite.shared.extensions.maxAge
 import com.reposilite.shared.http.CacheScope
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
@@ -52,6 +53,7 @@ import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import panda.std.Result
 import com.reposilite.shared.http.ConditionalRequests
 import java.io.InputStream
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -66,6 +68,8 @@ class MavenFacade internal constructor(
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
     private val cachePrivateAsPublic: Boolean,
+    /** The lifetime of the presigned URLs of S3 downloads, or null when the redirects are off, see `INGOT_S3_PRESIGNED_REDIRECTS`. */
+    private val presignedRedirectTtl: Duration? = null,
     private val operationCounters: MavenOperationCounters = MavenOperationCounters(),
 ) : Journalist, Facade {
 
@@ -278,6 +282,28 @@ class MavenFacade internal constructor(
             nodeOf = { name -> getRepository(name)?.cacheScopeNode() },
             privateAsPublic = cachePrivateAsPublic,
         )
+
+    /**
+     * The redirect of a file answer to a presigned URL, or null when the instance serves the answer. This is called after the read check
+     * of the request. The scope is resolved without the escape hatch, so a file that a credentialed mirror serves is never presigned,
+     * whatever `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC` says. See [presignedRedirectApplies].
+     */
+    internal fun presignedRedirectOf(request: LookupRequest, method: String, hasRangeOrConditionalHeaders: Boolean): PresignedRedirect? {
+        val ttl = presignedRedirectTtl ?: return null
+        val repository = getRepository(request.repository) ?: return null
+        val scope = resolveCacheScope(
+            repository = request.repository,
+            nodeOf = { name -> getRepository(name)?.cacheScopeNode() },
+            privateAsPublic = false,
+        )
+        if (!presignedRedirectApplies(method, hasRangeOrConditionalHeaders, repository.acceptsCachingOf(request.gav), scope)) {
+            return null
+        }
+        val url = repository.storageProvider.presignedGetUrl(request.gav, ttl) ?: return null
+        // The redirect serves the copy, so the mirror usage record moves forward as it does for a download from Ingot.
+        touchMirrorCopy(request)
+        return PresignedRedirect(url = url, cacheControl = redirectCacheControl(maxAge, ttl))
+    }
 
     fun canAccessResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         repositorySecurityProvider.canAccessResource(accessToken, repository, gav)

@@ -87,6 +87,8 @@ The cache is local to one instance. Instances do not share it, so:
 * Mutable metadata is never cached. Every `maven-metadata*` file, with its checksums, and every file inside a `-SNAPSHOT` directory is read from S3 on each request.
 * With a cluster bus configured, a cached answer is used at most 300 seconds after it was stored, whatever `expireAfterAccessSeconds` and `expireAfterCreationSeconds` say. Reads do not extend this bound. Without a bus, the two expiry fields apply unchanged.
 
+With `INGOT_S3_PRESIGNED_REDIRECTS=true`, a cacheable download of a public file is redirected to a presigned URL and the bucket serves its bytes. See [Presigned redirects](../../set-up/cluster/use-s3-storage.md#presigned-redirects).
+
 The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret fields are masked in the settings API when `hideSettingsSecrets` is `true`, see [Settings domains](../settings/settings-domains.md#settings-api).
 
 ### Region and credentials
