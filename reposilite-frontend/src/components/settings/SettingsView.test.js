@@ -145,6 +145,12 @@ afterEach(() => {
   wrapper = undefined
 })
 
+// The status block of Overview has its own tests (DashboardView); here it is a marker, so these tests fetch no status.
+vi.mock('../dashboard/DashboardView.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { render: () => h('div', { 'data-test': 'status-block' }) } }
+})
+
 describe('SettingsView page', () => {
   it('shows the Administration heading and a single line that says the configuration is shared', async () => {
     await mountSettings()

@@ -45,7 +45,7 @@ import SettingsIcon from '../components/icons/SettingsIcon.vue'
 import HistoryIcon from '../components/icons/HistoryIcon.vue'
 import MoreIcon from '../components/icons/MoreIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
-import { routeAllowed } from '../store/nodeAccess'
+import { ADMIN_NODES, routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
@@ -137,6 +137,8 @@ const pluginPageNode = computed((): string | undefined => (route.name === 'setti
   : undefined))
 const sectionAllowed = computed((): boolean => {
   if (route.name === 'settings-plugin') return pluginPageNode.value !== undefined && can(pluginPageNode.value)
+  // Overview is open to the dashboard node; a settings domain under /settings is not, and says so.
+  if (route.name === 'settings' && route.params.domain) return can(ADMIN_NODES.settings)
   return routeAllowed(currentMeta(), can, isManager.value) && (!currentMeta().signedIn || isLogged.value)
 })
 // The migration page exists only while the nexus-import plugin is enabled. Until the manifest is read, the page waits.

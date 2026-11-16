@@ -155,7 +155,7 @@ describe('the Overview page at /settings', () => {
     await mountAt()
 
     expect(wrapper.get('h1').text()).toBe('Overview')
-    expect(wrapper.text()).toContain('Shared configuration for all instances.')
+    expect(wrapper.text()).toContain('Status of this instance and its shared configuration.')
   })
 
   it('reads "Nothing needs attention." when no domain has a draft', async () => {

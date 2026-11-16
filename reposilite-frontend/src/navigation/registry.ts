@@ -316,7 +316,7 @@ const ADMIN_TREE: TreeGroup[] = [
     id: 'overview',
     label: 'Overview',
     entries: [
-      { key: 'overview', route: 'settings', label: 'Overview', permission: { node: ADMIN_NODES.settings }, description: 'Shared configuration for all instances.', keywords: 'settings, configuration, import, export, draft, unsaved' },
+      { key: 'overview', route: 'settings', label: 'Overview', permission: { anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] }, description: 'Shared configuration for all instances.', keywords: 'settings, configuration, import, export, draft, unsaved' },
     ],
   },
   {
@@ -576,7 +576,8 @@ const shortcutsOf = (treeKey: string, can: Can): { label: string; to: NamedLocat
  * Administration page the visitor may open (for example the audit log of a visitor with only that node).
  */
 const administrationLocation = (can: Can): NamedLocation => {
-  if (can(ADMIN_NODES.settings)) return { name: 'settings' }
+  // Overview is the first entry of the tree and holds the status for the dashboard node, so both nodes open it.
+  if (can(ADMIN_NODES.settings) || can(ADMIN_NODES.dashboard)) return { name: 'settings' }
   const first = ADMIN_ENTRIES.find(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
   return first ? { name: first.route } : { name: 'settings' }
 }

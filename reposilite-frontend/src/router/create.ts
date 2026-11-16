@@ -100,7 +100,7 @@ const createAppRouter = ({
   // /settings without a domain is the hub. A visitor who may not open the hub but may open one Administration page
   // is sent to that page, so the address of the Administration entry always opens something. Also after the guard.
   router.beforeEach((to) => {
-    if (to.name !== 'settings' || to.params.domain || can(ADMIN_NODES.settings)) return true
+    if (to.name !== 'settings' || to.params.domain || can(ADMIN_NODES.settings) || can(ADMIN_NODES.dashboard)) return true
     const location = administrationLocation(can)
     return location.name === 'settings' ? true : { ...location, replace: true }
   })

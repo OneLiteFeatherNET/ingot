@@ -321,6 +321,20 @@ describe('IndexPage no access state', () => {
     login.openLogin.mockClear()
   })
 
+  it('keeps a dashboard-only visitor at /settings/javadoc and says that there is no access to the settings page', async () => {
+    const { wrapper, router } = await mountAt('/settings/javadoc', { logged: true, nodes: ['ingot.admin.dashboard'] })
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/javadoc')
+    expect(wrapper.text()).toContain('You do not have access to this page')
+    expect(wrapper.text(), 'the status is not shown on a settings page').not.toContain('Instance status')
+  })
+
+  it('opens Overview for a dashboard-only visitor at /settings, without a no access message', async () => {
+    const { wrapper } = await mountAt('/settings', { logged: true, nodes: ['ingot.admin.dashboard'] })
+
+    expect(wrapper.text()).not.toContain('You do not have access to this page')
+  })
+
   it('keeps a signed in visitor without the console node at /console and says that there is no access', async () => {
     const { wrapper, router } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
 

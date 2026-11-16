@@ -129,6 +129,12 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+// The status block of Overview has its own tests (DashboardView); here it is a marker, so these tests fetch no status.
+vi.mock('../dashboard/DashboardView.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { render: () => h('div', { 'data-test': 'status-block' }) } }
+})
+
 describe('SettingsView download', () => {
   it('asks for a password before the saved state is downloaded', async () => {
     await mountWith()

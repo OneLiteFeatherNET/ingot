@@ -15,21 +15,18 @@
   -->
 
 <script setup>
-import { RouterLink } from 'vue-router'
 
 /*
  * The part of the Overview page of /settings below its heading that the tree cannot show: At a glance, the count of every
- * settings collection, and the link to the Dashboard, where the instance status is. The Administration pages themselves are
+ * settings collection. The instance status is a section of Overview, not of this hub. The Administration pages themselves are
  * the tree beside the page, so this page lists none of them. The root carries the settings-hub anchor. Needs attention is
  * SettingsAttention, which the frame draws above the index on narrow widths.
  *
  * Props:
  *   glance     [{ key, label, count }], as glanceRows builds them
- *   dashboard  true when the visitor may open the Dashboard
  */
 defineProps({
-  glance: { type: Array, required: true },
-  dashboard: { type: Boolean, default: false }
+  glance: { type: Array, required: true }
 })
 </script>
 
@@ -64,20 +61,5 @@ defineProps({
         </template>
       </dl>
     </section>
-
-    <p
-      v-if="dashboard"
-      class="md-body-medium text-on-surface-variant"
-      data-test="settings-hub-dashboard-line"
-    >
-      Instance status and resources are on the
-      <RouterLink
-        :to="{ name: 'dashboard' }"
-        class="text-primary underline"
-        data-test="settings-hub-dashboard"
-      >
-        Dashboard
-      </RouterLink>
-    </p>
   </div>
 </template>

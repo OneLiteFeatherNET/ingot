@@ -79,13 +79,18 @@ describe('registry entries', () => {
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
       audit: 'ingot.admin.audit',
-      settings: 'ingot.admin.settings',
       'access-users': 'ingot.admin.users',
       'access-machines': 'ingot.admin.users',
       'access-teams': 'ingot.admin.teams',
       tokens: 'ingot.admin.users',
       token: 'ingot.admin.users'
     })
+  })
+
+  it('lets the settings route open for either the settings node or the dashboard node, the Overview of both', () => {
+    const settings = ROUTES.find(route => route.name === 'settings')!
+
+    expect(settings.meta?.anyNode, 'Overview is open to both nodes').toEqual(['ingot.admin.settings', 'ingot.admin.dashboard'])
   })
 
   it('keeps the manager flag on every route that names a node, for legacy sessions', () => {
