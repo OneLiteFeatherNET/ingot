@@ -91,6 +91,21 @@ Writes that set, change or clear the external reference of a team now need the a
 
 Mixed-version rolling upgrades are not guarded until every replica runs this release. An old replica accepts the writes that a new one refuses, because it has no guard, and the guard applies to the replica that serves the request. Upgrade all replicas before you grant or remove rights that depend on the guard, or stop the writes of automation until the upgrade is complete. See [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md) and [Environment variables](environment-variables.md#identity-variables).
 
+### Second factors for dashboard sign-in are optional (unreleased)
+
+Dashboard sign-in can ask for a second factor: an authenticator app, a passkey or recovery codes. No operator action is needed. Nothing changes until an administrator sets a policy or a user enrols a factor. Existing configuration, volumes, manifests and plugins stay as they are, and access tokens, Maven, Gradle and CI keep working without a prompt.
+
+* **No new required setting.** The `login` domain gains the object `mfa`, with every policy switch off, and each OpenID Connect provider gains the lists `mfaAcrValues` and `mfaAmrValues`, which are empty. Both keep their defaults until you change them.
+* **The settings key is needed for authenticator codes only.** An authenticator app stores its seed encrypted, so it needs `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`. Without the key, the enrolment is refused with the reason. Passkeys and recovery codes need no key. Keep the key for as long as users hold authenticator codes, and see the rotation note in [Encrypt the settings secrets](../manage/operate/encrypt-settings-secrets.md).
+* **New tables and a column, added at the first start.** The tables `mfa_factor`, `mfa_recovery_code` and `auth_challenge`, and the column `required_since` of `principal`, are created. Existing rows are not changed. A rollback to the previous release leaves them in place and ignores them, so the second factor is not checked after a rollback.
+* **External sign-ins follow the policy only.** A user that the policy does not cover signs in as before, also when the user holds a factor. A covered user with a factor is asked for the factor, unless the provider has verified one through the trusted values of `mfaAcrValues` or `mfaAmrValues`. A covered GitHub user with a factor is challenged, because GitHub issues no ID token and no trusted value applies.
+* **Restricted sessions after a grace period.** The policy is per user, and its grace period starts at the first sign-in after the policy covers the user. After it ends, a covered user without a factor gets a session that can only enrol a factor. Nothing is revoked by the server. Live sessions get the new scope at their next refresh.
+* **Access token rule.** Creating, rotating or deleting an own token of a user with a factor needs a browser session with a fresh second factor. A token caller gets `403`. Tokens that already exist are not changed.
+
+The dashboard has no second factor screen yet. Until that change lands, enrolment and the second factor are done through the API, as described in [Configure second factors](../configure/authentication/configure-second-factors.md).
+
+See [Configure second factors](../configure/authentication/configure-second-factors.md) and [Recover admin access](../manage/access/recover-admin-access.md) before you set a policy.
+
 ### Cookie requests from other sites
 
 A request to the API that carries the session or refresh cookie is now refused with `403` when it comes from another site or from a sibling subdomain. The body is the same error response as the CSRF refusal. Requests with an `Authorization` header, top-level navigations and same-origin requests are not affected. Maven, Gradle, sbt and token clients send no cookie and are not affected either.
