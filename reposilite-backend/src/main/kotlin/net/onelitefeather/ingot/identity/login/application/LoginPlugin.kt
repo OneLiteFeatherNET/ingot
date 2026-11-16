@@ -36,6 +36,7 @@ import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyService
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
 import net.onelitefeather.ingot.identity.login.mfa.SettingsSeedCipher
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
@@ -124,15 +125,18 @@ class LoginPlugin : ReposilitePlugin() {
         // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
         val secondFactors = database?.let { database ->
             val credentials = LoginStore(database, clock)
+            val factorStore = SecondFactorStore(database, clock)
+            val identities = IdentityStore(database)
             SecondFactorService(
-                store = SecondFactorStore(database, clock),
-                identities = IdentityStore(database),
+                store = factorStore,
+                identities = identities,
                 limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
                 seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
                 clock = clock,
                 audit = audit,
                 hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
                 signInObserver = signInObserver,
+                passkeys = PasskeyService(store = factorStore, identities = identities, clock = clock, audit = audit),
             )
         }
 
@@ -233,9 +237,9 @@ class LoginPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             if (loginService != null) {
-                event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
+                event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath, publicUrl = { loginSettings.get().publicUrl }))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
-                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade))
+                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade, publicUrl = { loginSettings.get().publicUrl }))
                 event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {

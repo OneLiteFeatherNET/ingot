@@ -44,22 +44,30 @@ import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
 import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
 import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.NO_RELYING_PARTY_MESSAGE
+import net.onelitefeather.ingot.identity.login.mfa.PASSKEY_NAME
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyRegistration
 import net.onelitefeather.ingot.identity.login.mfa.RecoveryCodesOutcome
+import net.onelitefeather.ingot.identity.login.mfa.RelyingParty
 import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
 import net.onelitefeather.ingot.identity.model.PrincipalKind
+import net.onelitefeather.ingot.identity.session.SessionCookies
 import panda.std.Result
 import panda.std.asSuccess
 
 /**
- * The second factors of a user: authenticator codes and recovery codes. A user manages their own factors, and an
+ * The second factors of a user: authenticator codes, passkeys and recovery codes. A user manages their own factors, and an
  * instance administrator may list and reset those of any user. Secrets never leave these routes: the authenticator URI is
  * returned once, and the recovery codes are returned once, when they are issued.
  *
- * Changes to the factors ask for a current code of the user, so a session alone cannot weaken the second factor.
+ * Changes to the factors ask for a current code of the user, so a session alone cannot weaken the second factor. A passkey is
+ * registered with the ceremony of the browser, which is itself the proof of the user at the device.
  */
 internal class SecondFactorEndpoints(
     private val facade: LoginFacade,
     private val accessTokens: AccessTokenFacade,
+    /** `login.publicUrl`, which the relying party of a passkey is taken from when it is set. */
+    private val publicUrl: () -> String,
 ) : ReposiliteRoutes() {
 
     private data class Caller(val principalId: Int, val name: String)
@@ -309,7 +317,74 @@ internal class SecondFactorEndpoints(
         }
     }
 
-    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne)
+    @OpenApi(
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/me/factors/passkey/options",
+        methods = [HttpMethod.POST],
+        summary = "Start a passkey registration",
+        description = "Starts the registration of a passkey for the signed-in user and returns the challenge the browser signs. The relying party is the public address of the instance (login.publicUrl), or the request host when that is blank. Without an address the answer is 409 with the reason. The registration is completed at /api/identity/me/factors/passkey",
+        tags = ["Identity"],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyOptionsDto::class) ]),
+            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "503", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val startPasskey = ReposiliteRoute<PasskeyOptionsDto>("/api/identity/me/factors/passkey/options", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        authenticated {
+            val caller = callerOf(identifier)
+            response = caller.flatMap { user ->
+                val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
+                val challenge = relyingParty?.let { facade.startPasskeyRegistration(user.principalId) }
+                when {
+                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                    challenge == null -> errorResponse(CONFLICT, "Passkeys need the database")
+                    else -> PasskeyOptionsDto(challengeId = challenge.challengeId, challenge = challenge.challenge, rpId = relyingParty.id).asSuccess()
+                }
+            }
+        }
+    }
+
+    @OpenApi(
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/me/factors/passkey",
+        methods = [HttpMethod.POST],
+        summary = "Complete a passkey registration",
+        description = "Completes the registration that /api/identity/me/factors/passkey/options started, with the attestation of the browser, both in base64url. Stores the passkey with its public key. A registration whose origin, challenge or attestation does not match is refused with 400, and the challenge cannot be used twice",
+        tags = ["Identity"],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = PasskeyRegistrationDto::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyRegisteredDto::class) ]),
+            OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "503", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val finishPasskey = ReposiliteRoute<PasskeyRegisteredDto>("/api/identity/me/factors/passkey", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        authenticated {
+            val caller = callerOf(identifier)
+            val request = runCatching { body<PasskeyRegistrationDto>() }.getOrNull()
+            response = caller.flatMap { user ->
+                val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
+                val challengeId = request?.challengeId?.takeIf { it.isNotBlank() }
+                val clientDataJson = decodeBase64Url(request?.clientDataJSON)
+                val attestationObject = decodeBase64Url(request?.attestationObject)
+                when {
+                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                    challengeId == null || clientDataJson == null || attestationObject == null ->
+                        badRequestError("Registration requires challengeId, clientDataJSON and attestationObject in base64url")
+                    else -> when (val outcome = facade.finishPasskeyRegistration(user.principalId, challengeId, clientDataJson, attestationObject, relyingParty.id, relyingParty.origin)) {
+                        is PasskeyRegistration.Registered -> PasskeyRegisteredDto(id = outcome.factorId, name = PASSKEY_NAME).asSuccess()
+                        PasskeyRegistration.Refused -> badRequestError("The passkey was not accepted, start the registration again")
+                    }
+                }
+            }
+        }
+    }
+
+    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne, startPasskey, finishPasskey)
 
     private fun FactorRecord.toDto() = SecondFactorDto(id = id, kind = kind, name = name, createdAt = createdAt, lastUsedAt = lastUsedAt)
 

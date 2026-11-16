@@ -18,16 +18,66 @@ package net.onelitefeather.ingot.identity.login.api
 
 import io.javalin.openapi.JsonSchema
 import java.time.Instant
+import java.util.Base64
 
-/** The methods a user with an authenticator may complete a sign-in with. */
+/** The methods a user may complete a sign-in with, as the login answer names them. */
 internal const val METHOD_AUTHENTICATOR = "AUTHENTICATOR"
 internal const val METHOD_RECOVERY_CODE = "RECOVERY_CODE"
+internal const val METHOD_PASSKEY = "PASSKEY"
 
-/** `POST /api/auth/mfa/verify`: the code of the authenticator app, or one recovery code. */
+/**
+ * `POST /api/auth/mfa/verify`: the code of the authenticator app, one recovery code, or a passkey assertion. A body with
+ * [passkey] is a passkey sign-in, and a body with only [code] is a code sign-in as before.
+ */
 @JsonSchema(requireNonNulls = false)
 data class SecondFactorRequest(
     val code: String? = null,
+    val passkey: PasskeyAssertionDto? = null,
 )
+
+/**
+ * The assertion of a passkey for a sign-in. [challengeId] is the id of the options that `POST /api/auth/mfa/passkey/options`
+ * returned; the other fields are the authenticator's answer, in base64url.
+ */
+@JsonSchema(requireNonNulls = false)
+data class PasskeyAssertionDto(
+    val challengeId: String? = null,
+    val credentialId: String? = null,
+    val clientDataJSON: String? = null,
+    val authenticatorData: String? = null,
+    val signature: String? = null,
+)
+
+/**
+ * The options of a passkey ceremony. [challengeId] is the handle to send back, [challenge] the bytes to sign, and [rpId] the
+ * relying party. [allowCredentials] lists the passkeys that may answer an assertion, and is empty for a registration.
+ */
+@JsonSchema(requireNonNulls = false)
+data class PasskeyOptionsDto(
+    val challengeId: String,
+    val challenge: String,
+    val rpId: String,
+    val allowCredentials: List<String> = emptyList(),
+)
+
+/** `POST /api/identity/me/factors/passkey`: the attestation of the browser, with the id of the registration options. */
+@JsonSchema(requireNonNulls = false)
+data class PasskeyRegistrationDto(
+    val challengeId: String? = null,
+    val clientDataJSON: String? = null,
+    val attestationObject: String? = null,
+)
+
+/** The passkey that a registration created. */
+@JsonSchema(requireNonNulls = false)
+data class PasskeyRegisteredDto(
+    val id: Int,
+    val name: String,
+)
+
+/** Decodes a base64url field of a request. `null` when the field is missing, blank or not base64url. */
+internal fun decodeBase64Url(value: String?): ByteArray? =
+    value?.takeIf { it.isNotBlank() }?.let { runCatching { Base64.getUrlDecoder().decode(it) }.getOrNull() }
 
 /**
  * The answer of a password login for a user with a second factor. No session cookie is set. The challenge cookie is, and

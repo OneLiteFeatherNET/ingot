@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.identity.login
 
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorMethod
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 
 /** The result of one login attempt with one provider. */
@@ -44,9 +45,10 @@ sealed interface LoginOutcome {
 
     /**
      * The password was right, and the user has a second factor. No session starts. [challenge] is the id of the sign-in
-     * challenge, which the browser keeps in a cookie until the factor completes the sign-in.
+     * challenge, which the browser keeps in a cookie until the factor completes the sign-in. [methods] lists the ways the
+     * sign-in can be completed.
      */
-    data class SecondFactorRequired(val challenge: String) : LoginOutcome
+    data class SecondFactorRequired(val challenge: String, val methods: List<SecondFactorMethod>) : LoginOutcome
 
 }
 

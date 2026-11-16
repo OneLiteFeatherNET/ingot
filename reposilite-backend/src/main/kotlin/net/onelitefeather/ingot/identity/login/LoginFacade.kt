@@ -27,6 +27,10 @@ import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
 import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
 import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
 import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyChallenge
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyProof
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyRegistration
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyStart
 import net.onelitefeather.ingot.identity.login.mfa.RecoveryCodesOutcome
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
 import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
@@ -74,7 +78,8 @@ class LoginFacade internal constructor(
         if (!factors.requiresSecondFactor(outcome.principal.id)) {
             return outcome
         }
-        return LoginOutcome.SecondFactorRequired(challenge = factors.startChallenge(outcome.principal.id))
+        val challenge = factors.startChallenge(outcome.principal.id)
+        return LoginOutcome.SecondFactorRequired(challenge = challenge, methods = factors.methodsOf(outcome.principal.id))
     }
 
     /** Records the login of a user whose session started after the second factor, see [LoginService.recordLoginSucceeded]. */
@@ -85,6 +90,30 @@ class LoginFacade internal constructor(
     /** Completes a sign-in that waits for its second factor. The caller starts the session only on [ChallengeCompletion.Verified]. */
     fun completeSecondFactor(challenge: String, code: String, ip: String): ChallengeCompletion =
         secondFactor?.completeChallenge(challenge, code, ip) ?: ChallengeCompletion.Gone
+
+    /** Starts the passkey step of the sign-in that [challenge] names, see [SecondFactorService.startPasskeyAssertion]. */
+    fun startPasskeySignIn(challenge: String): PasskeyStart =
+        secondFactor?.startPasskeyAssertion(challenge) ?: PasskeyStart.NoPasskey
+
+    /** Completes the sign-in that [challenge] names with a passkey assertion, see [SecondFactorService.completePasskeyChallenge]. */
+    fun completePasskeySecondFactor(challenge: String, proof: PasskeyProof, rpId: String, origin: String, ip: String): ChallengeCompletion =
+        secondFactor?.completePasskeyChallenge(challenge, proof, rpId, origin, ip) ?: ChallengeCompletion.Gone
+
+    /** Starts a passkey registration for a user, see [SecondFactorService.startPasskeyRegistration]. */
+    fun startPasskeyRegistration(principalId: Int): PasskeyChallenge? =
+        secondFactor?.startPasskeyRegistration(principalId)
+
+    /** Completes a passkey registration for a user, see [SecondFactorService.finishPasskeyRegistration]. */
+    fun finishPasskeyRegistration(
+        principalId: Int,
+        challengeId: String,
+        clientDataJson: ByteArray,
+        attestationObject: ByteArray,
+        rpId: String,
+        origin: String,
+    ): PasskeyRegistration =
+        secondFactor?.finishPasskeyRegistration(principalId, challengeId, clientDataJson, attestationObject, rpId, origin)
+            ?: PasskeyRegistration.Refused
 
     /** Whether a principal has a second factor, which an external sign-in must not skip. */
     fun hasSecondFactor(principalId: Int): Boolean =

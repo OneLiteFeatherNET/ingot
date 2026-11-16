@@ -39,7 +39,12 @@ import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginOutcome
 import net.onelitefeather.ingot.identity.login.SetupOutcome
 import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
+import net.onelitefeather.ingot.identity.login.mfa.NO_RELYING_PARTY_MESSAGE
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyProof
+import net.onelitefeather.ingot.identity.login.mfa.PasskeyStart
+import net.onelitefeather.ingot.identity.login.mfa.RelyingParty
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorCookie
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorMethod
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.session.SessionCookies
 import net.onelitefeather.ingot.identity.session.SessionTokens
@@ -54,6 +59,8 @@ import panda.std.reactive.Reference
 internal class AuthLoginEndpoints(
     private val facade: LoginFacade,
     private val basePath: Reference<String>,
+    /** `login.publicUrl`, which the relying party of a passkey is taken from when it is set. */
+    private val publicUrl: () -> String,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -100,7 +107,7 @@ internal class AuthLoginEndpoints(
         } else {
             when (val outcome = facade.login(provider, username, password, ctx.ip(), ctx.header(Header.USER_AGENT))) {
                 is LoginOutcome.Succeeded -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, outcome.mustChangePassword)
-                is LoginOutcome.SecondFactorRequired -> secondFactorChallenge(ctx, basePath.get(), outcome.challenge)
+                is LoginOutcome.SecondFactorRequired -> secondFactorChallenge(ctx, basePath.get(), outcome.challenge, outcome.methods)
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
                 is LoginOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed login attempts, try again later")
@@ -115,35 +122,62 @@ internal class AuthLoginEndpoints(
         path = "/api/auth/mfa/verify",
         methods = [HttpMethod.POST],
         summary = "Complete a sign-in with a second factor",
-        description = "Completes the sign-in that the login route started for a user with an authenticator. Takes the code from the authenticator app or a recovery code, and needs the challenge cookie. The challenge is single use and expires after five minutes. Starts the browser session on success",
+        description = "Completes the sign-in that the login route started for a user with a second factor. Takes the code from the authenticator app or a recovery code, or a passkey assertion of the options that /api/auth/mfa/passkey/options returned. Needs the challenge cookie. The challenge is single use and expires after five minutes. A wrong code or assertion keeps it open. Starts the browser session on success. A body with a passkey takes it before a code",
         tags = ["Auth"],
         requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = SecondFactorRequest::class) ]),
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = LoginResponse::class) ]),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ]
     )
     private val verifySecondFactor = ReposiliteRoute<LoginResponse>("/api/auth/mfa/verify", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         val challenge = ctx.cookie(SecondFactorCookie.NAME)
-        val code = runCatching { body<SecondFactorRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
+        val request = runCatching { body<SecondFactorRequest>() }.getOrNull()
+        val code = request?.code?.takeIf { it.isNotBlank() }
 
         response = when {
             challenge == null -> unauthorizedError("Sign in with your password first")
+            request?.passkey != null -> verifyWithPasskey(ctx, challenge, request.passkey)
             code == null -> badRequestError("Verification requires code")
-            else -> when (val outcome = facade.completeSecondFactor(challenge, code, ctx.ip())) {
-                is ChallengeCompletion.Verified -> {
-                    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
-                    startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id))
-                        .also { if (it.isOk) facade.recordSessionIssued(outcome.principal.name, ctx.ip()) }
+            else -> finishSecondFactor(ctx, facade.completeSecondFactor(challenge, code, ctx.ip()), rejected = "Invalid code")
+        }
+    }
+
+    @OpenApi(
+        path = "/api/auth/mfa/passkey/options",
+        methods = [HttpMethod.POST],
+        summary = "Start a passkey sign-in",
+        description = "Starts the passkey step of the sign-in that the login route started, and returns the assertion options: the challenge the authenticator signs and the passkeys that may answer. Needs the challenge cookie. The relying party is the public address of the instance, or the request host when login.publicUrl is blank. The options are completed at /api/auth/mfa/verify",
+        tags = ["Auth"],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyOptionsDto::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ]
+    )
+    private val passkeyOptions = ReposiliteRoute<PasskeyOptionsDto>("/api/auth/mfa/passkey/options", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        val challenge = ctx.cookie(SecondFactorCookie.NAME)
+
+        response = when {
+            challenge == null -> unauthorizedError("Sign in with your password first")
+            else -> {
+                val relyingParty = RelyingParty.of(publicUrl(), secure(ctx), ctx.host())
+                when {
+                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                    else -> when (val started = facade.startPasskeySignIn(challenge)) {
+                        is PasskeyStart.Started -> PasskeyOptionsDto(
+                            challengeId = started.challenge.challengeId,
+                            challenge = started.challenge.challenge,
+                            rpId = relyingParty.id,
+                            allowCredentials = started.challenge.allowedCredentialIds,
+                        ).asSuccess()
+                        PasskeyStart.Gone -> unauthorizedError("The sign-in expired, start again")
+                        PasskeyStart.NoPasskey -> errorResponse(CONFLICT, "No passkey is registered for this account")
+                    }
                 }
-                ChallengeCompletion.WrongCode -> unauthorizedError("Invalid code")
-                ChallengeCompletion.Gone -> {
-                    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
-                    unauthorizedError("The sign-in expired, start again")
-                }
-                is ChallengeCompletion.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
             }
         }
     }
@@ -240,7 +274,38 @@ internal class AuthLoginEndpoints(
         response = Unit.asSuccess()
     }
 
-    override val routes = routes(providers, login, verifySecondFactor, setupStatus, setup, refresh, logout)
+    /**
+     * Completes the sign-in with the assertion of a passkey. The relying party is the public address of the instance, so an
+     * instance without one refuses the passkey with 409 and the reason.
+     */
+    private fun verifyWithPasskey(ctx: Context, challenge: String, passkey: PasskeyAssertionDto): Result<LoginResponse, ErrorResponse> {
+        val proof = passkey.toProof()
+            ?: return badRequestError("Passkey sign-in requires challengeId, credentialId, clientDataJSON, authenticatorData and signature in base64url")
+        val relyingParty = RelyingParty.of(publicUrl(), secure(ctx), ctx.host())
+            ?: return errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+        return finishSecondFactor(ctx, facade.completePasskeySecondFactor(challenge, proof, relyingParty.id, relyingParty.origin, ctx.ip()), rejected = PASSKEY_REJECTED)
+    }
+
+    /**
+     * The answer of a completed second factor: the session on success, the cookie cleared when the challenge is over, and the
+     * refusal otherwise. [rejected] is the message of a wrong code or assertion.
+     */
+    private fun finishSecondFactor(ctx: Context, outcome: ChallengeCompletion, rejected: String): Result<LoginResponse, ErrorResponse> =
+        when (outcome) {
+            is ChallengeCompletion.Verified -> {
+                ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
+                startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id))
+                    .also { if (it.isOk) facade.recordSessionIssued(outcome.principal.name, ctx.ip()) }
+            }
+            ChallengeCompletion.WrongCode -> unauthorizedError(rejected)
+            ChallengeCompletion.Gone -> {
+                ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
+                unauthorizedError("The sign-in expired, start again")
+            }
+            is ChallengeCompletion.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+        }
+
+    override val routes = routes(providers, login, verifySecondFactor, passkeyOptions, setupStatus, setup, refresh, logout)
 
 }
 
@@ -260,9 +325,31 @@ internal fun <V> serviceUnavailable(ctx: Context, retryAfterSeconds: Long, messa
 internal const val BREACH_CHECK_UNAVAILABLE = "The breached password check is not reachable, try again later"
 
 /** The answer of a password login that needs a second factor: no session, and the challenge cookie for the verification. */
-private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: String): Result<Any, ErrorResponse> {
+private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: String, methods: List<SecondFactorMethod>): Result<Any, ErrorResponse> {
     ctx.res().addHeader("Set-Cookie", SecondFactorCookie.set(challenge, basePath, secure(ctx)))
-    return SecondFactorRequiredResponse(mfaRequired = true, methods = listOf(METHOD_AUTHENTICATOR, METHOD_RECOVERY_CODE)).asSuccess()
+    return SecondFactorRequiredResponse(mfaRequired = true, methods = methods.map { it.wireName() }).asSuccess()
+}
+
+private fun SecondFactorMethod.wireName(): String = when (this) {
+    SecondFactorMethod.AUTHENTICATOR -> METHOD_AUTHENTICATOR
+    SecondFactorMethod.PASSKEY -> METHOD_PASSKEY
+    SecondFactorMethod.RECOVERY_CODE -> METHOD_RECOVERY_CODE
+}
+
+/** The message of a passkey that the sign-in did not accept. A wrong assertion keeps the challenge open, as a wrong code does. */
+private const val PASSKEY_REJECTED = "The passkey was not accepted"
+
+/** The passkey proof of a request, `null` when a field is missing or not base64url. */
+private fun PasskeyAssertionDto.toProof(): PasskeyProof? {
+    val ceremony = challengeId?.takeIf { it.isNotBlank() } ?: return null
+    val credential = credentialId?.takeIf { decodeBase64Url(it) != null } ?: return null
+    return PasskeyProof(
+        ceremonyId = ceremony,
+        credentialId = credential,
+        clientDataJson = decodeBase64Url(clientDataJSON) ?: return null,
+        authenticatorData = decodeBase64Url(authenticatorData) ?: return null,
+        signature = decodeBase64Url(signature) ?: return null,
+    )
 }
 
 private fun startLoginSession(
