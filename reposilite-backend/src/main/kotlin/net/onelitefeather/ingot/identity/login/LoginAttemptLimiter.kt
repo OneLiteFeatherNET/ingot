@@ -69,7 +69,10 @@ internal class LoginAttemptLimiter(
         write(key) { state -> LoginAttemptPolicy.onFailure(state, now, maxFailedAttempts, lockout) }
     }
 
-    /** Applies [next] to the state of [key] under the version it was read at, and retries a lost race against the winner. */
+    /**
+     * Applies [next] to the state of [key] under the version it was read at, and retries a lost race against the winner.
+     * After [MAX_WRITE_ATTEMPTS] lost races the failure is still counted, in one atomic increment.
+     */
     private fun write(key: String, next: (AttemptState) -> AttemptState) {
         repeat(MAX_WRITE_ATTEMPTS) {
             val existing = store.findAttempt(key)
@@ -83,6 +86,7 @@ internal class LoginAttemptLimiter(
                 return
             }
         }
+        store.incrementAttempt(key, Instant.now(clock))
     }
 
     /**
