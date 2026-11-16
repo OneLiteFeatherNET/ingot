@@ -467,6 +467,23 @@ dependencies {
     )
 }
 
+// Splits the integration suite over CI shards: `-PintegrationShard=<index> -PintegrationShards=<count>`, both or neither.
+// Each top-level test class gets a position in the list of all of them sorted by class path, and a shard runs the classes
+// whose position modulo the count equals its index. A nested class (Outer$Inner.class) follows its outer class, so the
+// two never land on different shards. The assignment reads the class paths only, never the machine or the scan order.
+val integrationShardIndex = providers.gradleProperty("integrationShard")
+val integrationShardCount = providers.gradleProperty("integrationShards")
+
+fun integrationShardKey(classPath: String): String = classPath.substringBefore('$').removeSuffix(".class")
+
+fun integrationShardAssignment(classesDirs: FileCollection, count: Int): Map<String, Int> {
+    val keys = sortedSetOf<String>()
+    classesDirs.asFileTree.visit {
+        if (!isDirectory && path.endsWith(".class")) keys += integrationShardKey(path)
+    }
+    return keys.withIndex().associate { (position, key) -> key to position % count }
+}
+
 tasks.named<Test>("integration") {
     // Never replayed from the build cache. The suite starts containers that Gradle cannot see, so a cached pass would
     // say nothing about the images and services of this run. CI reads the cache with --build-cache for the unit suite.
@@ -494,6 +511,30 @@ tasks.named<Test>("integration") {
         systemProperty("reposilite.canary.plugins", pluginCanary.files.joinToString(File.pathSeparator) { it.absolutePath })
         systemProperty("reposilite.nexusImport.plugin", nexusImportPlugin.singleFile.absolutePath)
         systemProperty("ingot.otelAgent", otelAgent.singleFile.absolutePath)
+    }
+
+    // Without the shard properties every class runs, as before. With them, this task runs one shard (see above).
+    val shardIndexValue = integrationShardIndex.orNull
+    val shardCountValue = integrationShardCount.orNull
+    if (shardIndexValue != null || shardCountValue != null) {
+        if (shardIndexValue == null || shardCountValue == null) {
+            throw GradleException("Set both integrationShard and integrationShards, or neither: integrationShard=${shardIndexValue ?: "unset"}, integrationShards=${shardCountValue ?: "unset"}.")
+        }
+        val shardCount = shardCountValue.toIntOrNull()
+        if (shardCount == null || shardCount < 1) {
+            throw GradleException("integrationShards must be a whole number of at least 1, but was '$shardCountValue'.")
+        }
+        val shardIndex = shardIndexValue.toIntOrNull()
+        if (shardIndex == null || shardIndex !in 0 until shardCount) {
+            throw GradleException("integrationShard must be a whole number from 0 to ${shardCount - 1} (integrationShards=$shardCount), but was '$shardIndexValue'.")
+        }
+        // A shard can hold no class of a partial selection, which is not a failure of the suite.
+        failOnNoDiscoveredTests = false
+        val assignment by lazy { integrationShardAssignment(testClassesDirs, shardCount) }
+        exclude { element ->
+            !element.isDirectory && element.relativePath.pathString.endsWith(".class") &&
+                assignment[integrationShardKey(element.relativePath.pathString)] != shardIndex
+        }
     }
 }
 
