@@ -48,7 +48,9 @@ internal class GcsStorageOptionsTest {
     @Test
     fun `should use the http transport and never the grpc transport`() {
         // when: the options of an adc repository are built
-        val options = storageOptionsOf(GcsStorageProviderSettings(bucket = "repositories"))
+        val options = storageOptionsOf(
+            GcsStorageProviderSettings(bucket = "repositories", projectId = "project-1", endpoint = "http://localhost:4443"),
+        ).build()
 
         // then: the transport is the HTTP transport
         assertThat(options.transportOptions).`as`("transport").isInstanceOf(HttpTransportOptions::class.java)
@@ -57,7 +59,7 @@ internal class GcsStorageOptionsTest {
     @Test
     fun `should use the service account key of the settings with service-account-key`() {
         // when: the options of a repository with a key are built
-        val options = storageOptionsOf(
+        val credentials = credentialsOf(
             GcsStorageProviderSettings(
                 bucket = "repositories",
                 authentication = "service-account-key",
@@ -66,17 +68,17 @@ internal class GcsStorageOptionsTest {
         )
 
         // then: the credentials are the service account of the key
-        assertThat(options.credentials).`as`("credentials").isInstanceOf(ServiceAccountCredentials::class.java)
-        assertThat((options.credentials as ServiceAccountCredentials).clientEmail).`as`("client email").isEqualTo(clientEmail)
+        assertThat(credentials).`as`("credentials").isInstanceOf(ServiceAccountCredentials::class.java)
+        assertThat((credentials as ServiceAccountCredentials).clientEmail).`as`("client email").isEqualTo(clientEmail)
     }
 
     @Test
     fun `should leave the credentials to the environment with adc without reading the key`() {
         // when: the options of an adc repository are built with a key that is not valid JSON
-        val options = storageOptionsOf(GcsStorageProviderSettings(bucket = "repositories", credentialsJson = "not json"))
+        val credentials = credentialsOf(GcsStorageProviderSettings(bucket = "repositories", credentialsJson = "not json"))
 
         // then: no credential is set on the options, so the client uses the environment, and the key was never parsed
-        assertThat(options.credentials).`as`("explicit credentials").isNull()
+        assertThat(credentials).`as`("explicit credentials").isNull()
     }
 
 }
