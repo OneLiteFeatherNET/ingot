@@ -97,9 +97,10 @@ const ROUTES: AppRoute[] = [
   // The generic settings route takes /settings/maven itself, and the guard in create.ts moves that one, with its query.
   { name: 'settings-maven-repositories', path: '/settings/maven/repositories', redirect: { name: 'settings-repositories' } },
   { name: 'settings-repository', path: '/settings/repositories/:id', meta: routeMeta('settings') },
-  // The support pages are listed before the generic settings route, which would otherwise take their names as domains.
+  // The system information and the support bundle are one page. Both names are listed before the generic settings route,
+  // which would otherwise take them as domains. The old support address keeps its name and redirects, with query and fragment.
   { name: 'system-info', path: '/settings/system-info', meta: adminRouteMeta('system-info') },
-  { name: 'support', path: '/settings/support', meta: adminRouteMeta('support') },
+  { name: 'support', path: '/settings/support', redirect: { name: 'system-info' } },
   // Overview opens for either node; a settings domain page needs the settings node, which the page checks (IndexPage).
   { name: 'settings', path: '/settings/:domain?', meta: { section: 'settings', manager: true, anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] } },
   {
