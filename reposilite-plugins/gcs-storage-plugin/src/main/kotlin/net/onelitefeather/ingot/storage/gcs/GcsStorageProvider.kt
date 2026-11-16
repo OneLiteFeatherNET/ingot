@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.storage.gcs
 
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequestError
+import com.reposilite.shared.errorResponse
 import com.reposilite.shared.internalServerError
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
@@ -32,6 +33,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.SimpleDirectoryInfo
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import io.javalin.http.HttpStatus.NOT_FOUND
 import panda.std.Result
@@ -50,6 +52,8 @@ class GcsStorageProvider internal constructor(
     private val client: GcsObjectClient,
     private val objectPrefix: String,
     private val chunkSize: Int,
+    /** The bucket of the repository. It is named in the message of a refused request, so the operator knows where to grant the role. */
+    private val bucket: String = "",
 ) : StorageProvider, StorageEntrySource {
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
@@ -108,8 +112,15 @@ class GcsStorageProvider internal constructor(
     private fun contentTypeOf(location: Location): String =
         ContentType.mimeTypeByExtension(location.getExtension()) ?: OCTET_STREAM
 
-    /** Logs an unexpected failure with its exception and answers it as a server error. */
+    /**
+     * Logs a failure with its exception. A refused identity (401 or 403) is answered as forbidden and names the bucket and the role, and
+     * any other failure is an internal server error. The answer never carries the text of the service error.
+     */
     private fun <T> failed(operation: String, exception: Exception): Result<T, ErrorResponse> {
+        if (exception is GcsServiceException && exception.statusCode in REFUSED_STATUSES) {
+            failureFacade.throwException("Google Cloud Storage refused to $operation in bucket '$bucket'", exception)
+            return errorResponse(FORBIDDEN, "Google Cloud Storage refused to $operation: the identity needs the role $REQUIRED_ROLE on bucket '$bucket'")
+        }
         failureFacade.throwException("Google Cloud Storage provider failed to $operation", exception)
         return internalServerError("Failed to $operation")
     }
@@ -290,6 +301,12 @@ class GcsStorageProvider internal constructor(
     private companion object {
         /** The most objects that one listing of a removal asks for. */
         const val MAX_DELETE_PAGE = 1000
+
+        /** The statuses of a request that the identity may not make. */
+        val REFUSED_STATUSES = setOf(401, 403)
+
+        /** The predefined role that grants the object operations of the provider at bucket scope (design D2, open question 3). */
+        const val REQUIRED_ROLE = "roles/storage.objectUser"
     }
 
 }

@@ -72,6 +72,9 @@ internal data class GcsPrefix(override val name: String) : GcsEntry
 /** The service has no object of this name. */
 internal class GcsNotFoundException(name: String) : RuntimeException("Object not found: $name")
 
+/** The service answered a request with an HTTP status that is not a missing object, for example 401, 403 or 503. */
+internal class GcsServiceException(val statusCode: Int, message: String) : RuntimeException(message)
+
 /** A resumable upload of one object. */
 internal interface GcsUpload {
 
