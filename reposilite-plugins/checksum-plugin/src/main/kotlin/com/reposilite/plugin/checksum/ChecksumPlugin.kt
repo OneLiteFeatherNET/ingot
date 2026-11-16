@@ -5,6 +5,7 @@ import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.PreResolveEvent
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.checksum.ChecksumPlugin.ChecksumType.MD5
 import com.reposilite.plugin.checksum.ChecksumPlugin.ChecksumType.SHA1
@@ -15,7 +16,7 @@ import com.reposilite.plugin.facade
 import com.reposilite.storage.api.Location
 import org.apache.commons.codec.digest.DigestUtils
 
-@Plugin(name = "checksum", dependencies = ["maven"])
+@Plugin(name = "checksum", dependencies = ["maven"], tier = PluginTier.OFFICIAL)
 class ChecksumPlugin : ReposilitePlugin() {
 
     enum class ChecksumType(val extension: String) {

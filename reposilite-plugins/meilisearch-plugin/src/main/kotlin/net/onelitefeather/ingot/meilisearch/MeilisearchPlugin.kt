@@ -20,6 +20,7 @@ package net.onelitefeather.ingot.meilisearch
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendFactory
@@ -33,7 +34,7 @@ import java.nio.file.Path
  * backend takes the local `searchEngine` setting as well. It registers the factory `meilisearch` on the registration event of the
  * search plugin.
  */
-@Plugin(name = "meilisearch-search", dependencies = ["search"])
+@Plugin(name = "meilisearch-search", dependencies = ["search"], tier = PluginTier.EXPERIMENTAL)
 class MeilisearchPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {

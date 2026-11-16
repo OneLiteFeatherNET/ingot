@@ -21,6 +21,7 @@ package net.onelitefeather.ingot.opensearch
 import com.reposilite.plugin.PluginLoader
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendFactory
@@ -34,7 +35,7 @@ import java.nio.file.Path
  * `REPOSILITE_` fallback). It registers the factory `opensearch` on the registration event of the search plugin. Selecting it
  * takes the local `searchEngine` setting as well, so an instance that loads the plugin keeps the database until it is switched.
  */
-@Plugin(name = "opensearch-search", dependencies = ["search"])
+@Plugin(name = "opensearch-search", dependencies = ["search"], tier = PluginTier.EXPERIMENTAL)
 class OpenSearchPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {

@@ -21,6 +21,7 @@ import com.reposilite.configuration.shared.SettingsSecretReferences
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
@@ -41,7 +42,7 @@ import java.time.Duration
  * fallback). Invalid settings fail the start, and the message names the variable. The job tables are created here, so an
  * instance without the plugin has none of them.
  */
-@Plugin(name = "nexus-import", dependencies = ["failure", "shared-configuration", "maven", "audit", "read-only"])
+@Plugin(name = "nexus-import", dependencies = ["failure", "shared-configuration", "maven", "audit", "read-only"], tier = PluginTier.CORE)
 class NexusImportPlugin : ReposilitePlugin() {
 
     override fun initialize(): NexusImportFacade {

@@ -5,12 +5,13 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.web.api.HttpServerConfigurationEvent
 
-@Plugin(name = "swagger", dependencies = ["shared-configuration", "frontend"])
+@Plugin(name = "swagger", dependencies = ["shared-configuration", "frontend"], tier = PluginTier.COMMUNITY)
 class SwaggerPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {

@@ -19,12 +19,13 @@ package com.reposilite.plugin.groovy
 import com.reposilite.plugin.PluginLoader
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import groovy.lang.GroovyClassLoader
 import kotlin.io.path.extension
 import kotlin.io.path.useDirectoryEntries
 
-@Plugin(name = "groovy")
+@Plugin(name = "groovy", tier = PluginTier.COMMUNITY)
 class GroovyPlugin : ReposilitePlugin() {
 
     override fun load(loader: PluginLoader) {
