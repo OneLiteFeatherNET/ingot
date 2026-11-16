@@ -13,8 +13,9 @@ The page on high availability support lists the topology that the project tests 
 Some setups have no test. Do not rely on them for more than one replica:
 
 * SQLite, which is one file inside one pod.
-* PostgreSQL with several replicas. The project tests PostgreSQL with one instance.
 * A filesystem volume that several replicas mount. No test mounts one volume on two replicas.
+
+PostgreSQL with several replicas is tested, but those tests run in the heavy CI jobs. On a pull request they run only with the label `ci:ha`, `ci:images` or `ci:integration`, or `ci:heavy` for all of them, and on every release pull request. The [high availability page](../../references/architecture/high-availability-support.md) names each test.
 
 ## The values
 
