@@ -11,14 +11,14 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPrivateKeySpec
 import java.util.Base64
 
-internal const val RP_ID = "ingot.example.test"
-internal const val ORIGIN = "https://ingot.example.test"
+const val RP_ID = "ingot.example.test"
+const val ORIGIN = "https://ingot.example.test"
 
 /**
  * A software authenticator for the passkey tests. The key is the fixed P-256 pair of RFC 6979 appendix A.2.5, so every run
  * signs with the same key. The WebAuthn structures are written by hand here, so the tests do not depend on the code under test.
  */
-internal class SoftwarePasskey(
+class SoftwarePasskey(
     val credentialId: ByteArray = ByteArray(CREDENTIAL_ID_BYTES) { (0xA0 + it).toByte() },
 ) {
 
@@ -108,7 +108,7 @@ internal class SoftwarePasskey(
 }
 
 /** The minimal CBOR encoder the passkey test data needs: integers, byte and text strings, arrays and maps. */
-internal object CborWriter {
+object CborWriter {
 
     private const val MAJOR_UNSIGNED = 0
     private const val MAJOR_NEGATIVE = 1

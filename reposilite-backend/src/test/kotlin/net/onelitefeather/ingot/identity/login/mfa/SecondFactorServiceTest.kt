@@ -217,7 +217,7 @@ internal class SecondFactorServiceTest {
     }
 
     @Test
-    fun `a user whose only factor is a passkey needs no authenticator code at sign-in`() {
+    fun `a user whose only factor is a passkey needs a second factor at sign-in`() {
         withFixture { fixture ->
             fixture.store.insertPasskey(
                 principalId = fixture.principalId,
@@ -229,7 +229,7 @@ internal class SecondFactorServiceTest {
                 at = clock.instant(),
             )
 
-            assertThat(fixture.service.requiresSecondFactor(fixture.principalId)).`as`("passkey only").isFalse()
+            assertThat(fixture.service.requiresSecondFactor(fixture.principalId)).`as`("passkey only").isTrue()
         }
     }
 
