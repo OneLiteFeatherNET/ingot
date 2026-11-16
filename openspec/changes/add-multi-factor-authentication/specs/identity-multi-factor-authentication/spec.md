@@ -104,13 +104,30 @@ A passkey SHALL be usable as a first factor only when `login.mfa.passkeyFirstFac
 
 ### Requirement: Signature counter
 
-An assertion whose signature counter does not exceed the stored counter SHALL be refused, and the stored counter SHALL
-then stay unchanged.
+The signature counter SHALL be checked as WebAuthn specifies: only when the stored counter or the presented counter is
+non-zero. In that case an assertion whose counter does not increase SHALL be refused and audited, and the stored counter
+SHALL then stay unchanged. When both counters are zero, the assertion SHALL pass, because the authenticator does not
+count.
 
 #### Scenario: A lower signature counter is refused
 
-- **WHEN** an assertion arrives with a counter that is not greater than the stored counter
-- **THEN** the assertion is refused and the stored counter is unchanged
+- **WHEN** an assertion arrives with a non-zero counter that is lower than the stored counter
+- **THEN** the assertion is refused and audited, and the stored counter is unchanged
+
+#### Scenario: An equal non-zero signature counter is refused
+
+- **WHEN** an assertion arrives with a non-zero counter equal to the stored non-zero counter
+- **THEN** the assertion is refused and audited, and the stored counter is unchanged
+
+#### Scenario: An increasing signature counter passes
+
+- **WHEN** an assertion arrives with a counter greater than the stored counter, and either one is non-zero
+- **THEN** the assertion passes and the stored counter is replaced by the presented one
+
+#### Scenario: A zero signature counter on both sides passes
+
+- **WHEN** an assertion arrives with a counter of zero and the stored counter is zero
+- **THEN** the assertion passes and the stored counter stays zero
 
 #### Scenario: A passkey is a second factor
 
