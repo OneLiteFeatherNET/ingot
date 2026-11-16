@@ -538,6 +538,18 @@ tasks.named<Test>("integration") {
     }
 }
 
+// Builds and resolves what the integration task needs, without running a test. CI runs it once before the shards
+// (.github/workflows/heavy.yml, integration-prepare), so the shards restore the dependencies and the build cache it leaves.
+tasks.register("prepareIntegration") {
+    group = "verification"
+    description = "Compiles the integration suite and downloads the plugin jars it loads, without running a test"
+    dependsOn("integrationClasses", pluginCanary, nexusImportPlugin, otelAgent)
+    doLast {
+        // The integration task resolves these in its own execution. Resolving them here fetches the jars in this run.
+        listOf(pluginCanary, nexusImportPlugin, otelAgent).forEach { it.resolve() }
+    }
+}
+
 // The packages that plugins link against: the surface docs/gitbook/references/plugins/plugin-api.md documents and the bundled plugins
 // use. japicmp matches a name together with its subpackages. Widening this list is a reviewed one-line change.
 // com.reposilite.journalist is a separate third-party artifact and never belongs here.
