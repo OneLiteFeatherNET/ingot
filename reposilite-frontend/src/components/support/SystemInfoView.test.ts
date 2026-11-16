@@ -51,8 +51,8 @@ const FIXTURE = {
 
 // The page reads its tab and its fragment from the address, so every mount gets a memory router at the given address.
 // The address is resolved before the mount: installing a router starts its own navigation, which would replace a pending one.
-const mountView = async (client: unknown, address = '/settings/system-info') => {
-  session.client = { ...client, support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })), ...(client as { support: object }).support } }
+const mountView = async (client: { support?: Record<string, unknown> }, address = '/settings/system-info') => {
+  session.client = { support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })), ...client.support } }
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -154,7 +154,8 @@ describe('SystemInfoView tabs', () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
 
-    const disclosure = wrapper.find('details')
+    // The Overview holds the only disclosure of the cards; the note of the header is a disclosure too, and comes first.
+    const disclosure = panelsOf(wrapper)[0].find('details')
     expect(disclosure.find('summary').text()).toBe('Input arguments')
     expect(disclosure.attributes('open'), 'the disclosure is closed by default').toBeUndefined()
     expect(disclosure.text()).toContain('-Xmx512m')
@@ -222,10 +223,21 @@ describe('SystemInfoView tabs', () => {
   })
 
   it('lets a section anchor win over a tab parameter that disagrees with it', async () => {
-    const wrapper = await mountView(withInfo(), '/settings/system-info?tab=plugins#support-cluster')
-    await flushPromises()
+    const scrolled: string[] = []
+    const prototype = Element.prototype as { scrollIntoView?: unknown }
+    const original = prototype.scrollIntoView
+    prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id)
+    }
+    try {
+      const wrapper = await mountView(withInfo(), '/settings/system-info?tab=plugins#support-cluster')
+      await flushPromises()
 
-    expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
+      expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
+      expect(scrolled).toEqual(['support-cluster'])
+    } finally {
+      prototype.scrollIntoView = original
+    }
   })
 
   it('shows the failure of the system information in the Overview, and keeps the tabs', async () => {
@@ -241,7 +253,7 @@ const DOWNLOAD = 'Download support bundle'
 const withAvailability = (availability: () => Promise<unknown>) => ({
   support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn(availability) },
 })
-const partsIn = (wrapper: Page) => [...wrapper.element.querySelectorAll('*')].map((element) => element.getAttribute('data-ingot-part')).filter(Boolean)
+const partsIn = (wrapper: Page) => Array.from((wrapper.element as Element).querySelectorAll('*'), (element) => element.getAttribute('data-ingot-part')).filter(Boolean)
 const buttonNamed = (wrapper: Page, name: string) => wrapper.findAll('button').find((button) => button.text().includes(name))
 
 describe('SystemInfoView support action', () => {
