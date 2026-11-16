@@ -121,18 +121,18 @@ the pending ones. Tiers are the values the declarations of task 5.2 will carry.
 | Built-in plugins of the backend (about thirty `@Plugin` classes in `reposilite-backend`) | in `ingot.jar` | shipped | Core | Built into the server image, covered by the drop-in contract. |
 | `prometheus-plugin` | bundled in the image, switch `INGOT_METRICS_ENABLED` | shipped | Core | Copied into `/app/bundled-plugins` by the `Dockerfile`, and it has its own switch. |
 | `nexus-import-plugin` | bundled in the image, switch `INGOT_NEXUS_IMPORT_ENABLED` | shipped | Core | Copied into `/app/bundled-plugins` by the `Dockerfile`. Its dashboard page is part of the image. |
-| `opensearch-plugin` | bundled in the image, switch `INGOT_OPENSEARCH_ENABLED`, off by default | shipped, switched off | Experimental | Opts in to `ExperimentalIngotSearchApi`. Sticky rule (question 2). Only Experimental jar in the image. |
-| `elasticsearch-plugin` | separate jar, not in the image | shipped as a jar | Experimental | Opts in to `ExperimentalIngotSearchApi`. CI runs its contract suites in `search-backends.yml`, but Official is not reachable while the API is experimental (question 2). |
+| `opensearch-plugin` | bundled in the image, switch `INGOT_OPENSEARCH_ENABLED`, off by default | shipped, switched off | Experimental | Opts in to `ExperimentalIngotSearchApi`. Sticky rule (decision 2). Only Experimental jar in the image. |
+| `elasticsearch-plugin` | separate jar, not in the image | shipped as a jar | Experimental | Opts in to `ExperimentalIngotSearchApi`. CI runs its contract suites in `search-backends.yml`, but Official is not reachable while the API is experimental (decision 2). |
 | `meilisearch-plugin` | separate jar, not in the image | shipped as a jar | Experimental | Same as Elasticsearch. Contract suite in `search-backends.yml`. |
 | `checksum-plugin` | separate jar, not in the image | shipped as a jar | Official | CI job test in `ci.yml` and the bundled compile canary. The upstream contract test is specified by `plugin-abi-gate`. Confirm it runs before the declaration (task 5.2). |
 | `migration-plugin` | separate jar, not in the image | shipped as a jar | Official | CI job test in `ci.yml`, the canary, and the upstream contract test specified by `plugin-abi-gate` (same confirmation). |
-| `swagger-plugin` | separate jar, not in the image | shipped as a jar | Community | Maintained with core, but no contract test yet. Promote by a one-line change once one exists (question 3). |
-| `groovy-plugin` | separate jar, not in the image | shipped as a jar | Community | Maintained with core, no contract test. Scripting is not an experimental API. Question 3. |
+| `swagger-plugin` | separate jar, not in the image | shipped as a jar | Community | Maintained with core, but no contract test yet. Promote by a one-line change once one exists (decision 3). |
+| `groovy-plugin` | separate jar, not in the image | shipped as a jar | Community | Maintained with core, no contract test. Scripting is not an experimental API. Decision 3. |
 | `example-plugin` | template, not listed in the catalogue | not shipped | Community | A template for plugin authors. It is not installed by operators. |
-| `azure-storage-plugin` (`add-azure-blob-storage-plugin`, PRs #403 to #424) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi`, and its proposal says the surface stays experimental until it has a user (question 4). |
-| `gcs-storage-plugin` (`add-gcs-storage-plugin`, PRs #426 to #455) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi` (question 4). |
-| `storage-cache-plugin` (`add-storage-cache-plugin`, PRs #406 to #448) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi` as its proposal states (question 4). |
-| `lucene-plugin` (`add-lucene-search-plugin`, PRs #431 to #449) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotSearchApi` as its design states (question 4). |
+| `azure-storage-plugin` (`add-azure-blob-storage-plugin`, PRs #403 to #424) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi`, and its proposal says the surface stays experimental until it has a user (decision 4). |
+| `gcs-storage-plugin` (`add-gcs-storage-plugin`, PRs #426 to #455) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi` (decision 4). |
+| `storage-cache-plugin` (`add-storage-cache-plugin`, PRs #406 to #448) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotStorageApi` as its proposal states (decision 4). |
+| `lucene-plugin` (`add-lucene-search-plugin`, PRs #431 to #449) | separate jar, not in the image | open, not built | Experimental | Opts in to `ExperimentalIngotSearchApi` as its design states (decision 4). |
 | Gradle plugin portal (`add-gradle-plugin-portal-plugin`) | own repository, built against the published API | change only, no pull request | Undecided: Official or Experimental | Official if it uses only stable API and ships with CI and contract tests in its own repository. Experimental if its design needs one of the new hooks, which its proposal says it does. Decide when it is built. |
 | Minecraft plugin portal (`add-minecraft-plugin-portal-plugin`) | own repository, built against the published API | change only, no pull request | Undecided: Official or Experimental | Same rule as the Gradle portal, and the same open hook question. |
 
@@ -152,8 +152,7 @@ registration, so the check passes on its pull request. That is a follow-up in th
 - **Official claims that CI does not back.** The check exists so that an unbacked claim fails. The check reads the workflow files
   by name, so a renamed job can make it fail. That is intended, and the failure names the module and the missing evidence.
 - **Experimental pressure.** Marking three search plugins and four cloud plugins Experimental puts a warning in the start log
-  of every installation that enables them. This is the point of the tier, and the wording of the warning is reviewed with the
-  maintainer before the code pull request.
+  of every installation that enables them. This is the point of the tier.
 - **Spoofed tiers.** A plugin from outside the image cannot be Core (D2). A plugin from outside can still claim Official in its
   own jar. The dashboard shows the claim as the jar's declaration, and only the signed catalogue entry of OneLiteFeather is
   evidence.

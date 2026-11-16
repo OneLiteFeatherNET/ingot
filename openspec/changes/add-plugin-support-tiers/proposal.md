@@ -1,33 +1,25 @@
 # Proposal
 
-## Open maintainer questions
+## Maintainer decisions
 
-Each question has the default this proposal already builds in. A maintainer who answers differently changes the matching
-requirement and task before the code pull requests are opened.
+The maintainer decided each question below. The requirements and tasks already follow these decisions.
 
-1. **Two changes or one.** The house rule says a change that mixes Conventional Commits types is two changes. This proposal
-   keeps one change, as the maintainer asked, and ships the runtime work under `feat(plugin)`. The `ci`, `docs` and `feat(ui)`
-   groups are separate commits and pull requests of the same feature. Default: one change. Alternative: split it into
-   `add-plugin-support-tiers` (runtime, `feat(plugin)`) and `add-plugin-tier-evidence` (CI check and docs).
-2. **Experimental is sticky.** A plugin module that opts in to an `@ExperimentalIngot*` API is Experimental, whatever its
-   shipping status. Default: applied strictly. That makes `elasticsearch-plugin` and `meilisearch-plugin` Experimental, although
-   both have contract suites in CI, and it makes `opensearch-plugin` the one Experimental jar inside the image. It stays
-   switched off by default, so the drop-in contract holds. Alternative: stabilise `ExperimentalIngotSearchApi` first, or add a
-   recorded exception for the image.
-3. **Maintainer-owned plugins without a contract test.** `swagger-plugin`, `groovy-plugin` and `example-plugin` are maintained
-   with core but have no contract tests, so they are Community by the evidence rule. Default: Community until a contract test
-   exists, then a one-line promotion. Alternative: a lighter Official rule for in-tree plugins.
-4. **Tier of the four pending plugins.** `azure-storage-plugin`, `gcs-storage-plugin`, `storage-cache-plugin` and
-   `lucene-plugin` opt in to experimental APIs and are Experimental by question 2. Their open pull requests have no tier
-   declaration yet. Default: each of them adds `tier = EXPERIMENTAL` in its registration commit, after the annotation and check
-   pull requests of this change are merged. Alternative: this change adds the declaration to them.
-5. **Support promises and the release-branch change.** Core and Official are fixed on the release lines that
-   `SUPPORT.md` lists as supported, on a best effort basis, not for the latest release only. `SUPPORT.md` is the single list. The parallel proposal
-   `add-release-branches-and-backports` adds release branches and backports, and LTS lines may follow later. It is not on
-   `main` yet. Default: this proposal names the dependency, and Core and Official follow whatever lines `SUPPORT.md` lists at
-   the time. Alternative: wait for that proposal to merge before the support wording in `SUPPORT.md` changes.
-6. **Log line format.** Decided by the maintainer: the existing startup line of loaded plugins stays byte for byte unchanged. The
-   tiers go on one additional INFO line after it, so the drop-in contract holds for operators who parse the existing line.
+1. **One change, split by type.** The change stays one change. The runtime work ships under `feat(plugin)`. The `ci`, `docs` and
+   `feat(ui)` groups are separate commits and pull requests of the same feature.
+2. **Experimental is sticky, applied strictly.** A plugin module that opts in to an `@ExperimentalIngot*` API is Experimental,
+   whatever its shipping status. `elasticsearch-plugin` and `meilisearch-plugin` are Experimental. `opensearch-plugin` is the one
+   Experimental jar in the image, and it stays switched off by default. These plugins move to Official once the search API is
+   stabilised.
+3. **Maintainer-owned plugins without a contract test stay Community.** `swagger-plugin`, `groovy-plugin` and `example-plugin` are
+   Community until a contract test exists. Promotion is then a one-line change.
+4. **The four pending plugins are Experimental.** `azure-storage-plugin`, `gcs-storage-plugin`, `storage-cache-plugin` and
+   `lucene-plugin` each add `tier = EXPERIMENTAL` in their own small follow-up pull request. Each one follows the annotation and
+   check pull requests of this change.
+5. **The support wording changes now.** Core and Official are fixed on the release lines that `SUPPORT.md` lists, on a best effort
+   basis. Release lines added later (release branches, LTS) are covered automatically. `add-release-branches-and-backports` is not
+   a blocker for this change.
+6. **Log line format.** The existing startup line of loaded plugins stays byte for byte unchanged. The tiers go on one additional
+   INFO line after it, so the drop-in contract holds for operators who parse the existing line.
 
 ## Why
 
@@ -93,7 +85,7 @@ would break that. So the tier is information and a warning, and nothing else.
 - A tier filter or a tier column in a plugin browser. The plugin store and the GitBook pages show the tier, and nothing filters on it.
 - Tier-specific behaviour of the plugin API, such as different timeouts or resource limits per tier.
 - Any change to the plugin packages. They stay `com.reposilite.*`, and the new enum is in `com.reposilite.plugin.api`.
-- The four pending plugin changes themselves. Their own changes add their declaration (question 4).
+- The four pending plugin changes themselves. Their own changes add their declaration (decision 4).
 
 ## Capabilities
 
@@ -112,14 +104,14 @@ would break that. So the tier is information and a warning, and nothing else.
 ## Impact
 
 - **Type and scope.** The runtime change ships under `feat(plugin)`. The change also contains `ci(plugin)`, `feat(ui)`,
-  `docs(gitbook)` and `docs(support)` commits (question 1). The pull request titles are the ones listed in `tasks.md`. The
+  `docs(gitbook)` and `docs(support)` commits (decision 1). The pull request titles are the ones listed in `tasks.md`. The
   proposal pull request is:
 
   `docs(openspec): propose add-plugin-support-tiers`
 
 - **Breaking marker.** No breaking change. The tier is an optional annotation element with a default that equals the current
   behaviour, and an optional catalogue field. No environment variable, configuration key, volume, manifest, image or plugin that an
-  existing installation uses has to change. The existing startup log line is unchanged byte for byte (question 6), and the tier
+  existing installation uses has to change. The existing startup log line is unchanged byte for byte (decision 6), and the tier
   information is one additional line, so an operator who parses the existing line sees no difference. No plugin is refused, skipped
   or started in a different order because of its tier.
 - **Binary surface.** One new public enum and one new annotation element in `com.reposilite.plugin.api`. The plugin API dump of
