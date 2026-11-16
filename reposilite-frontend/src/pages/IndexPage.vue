@@ -36,7 +36,6 @@ import AdministrationFrame from '../components/layout/AdministrationFrame.vue'
 import { useSettingsDomains } from '../components/settings/useSettingsDomains'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import SearchIcon from '../components/icons/SearchIcon.vue'
-import DashboardIcon from '../components/icons/DashboardIcon.vue'
 import AnalyticsIcon from '../components/icons/AnalyticsIcon.vue'
 import AccessIcon from '../components/icons/AccessIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
@@ -67,7 +66,6 @@ const lazyView = <T extends Component>(loader: () => Promise<{ default: T }>): T
 
 const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
 const MaintenanceView = lazyView(() => import('../components/maintenance/MaintenanceView.vue'))
-const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
 const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsView.vue'))
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 // The tab names AccessView takes, read from its own props so the two cannot drift apart.
@@ -84,7 +82,6 @@ const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
 const SECTION_ICONS: Record<string, Component> = {
   overview: OverviewIcon,
   search: SearchIcon,
-  dashboard: DashboardIcon,
   analytics: AnalyticsIcon,
   access: AccessIcon,
   console: ConsoleIcon,
@@ -483,7 +480,6 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
         </AdministrationFrame>
         <SearchView v-else-if="section === 'search'" />
         <AccountView v-else-if="section === 'account'" />
-        <DashboardView v-else-if="section === 'dashboard'" />
         <AccessView
           v-else-if="section === 'access'"
           :tab="accessTab"

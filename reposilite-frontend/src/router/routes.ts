@@ -48,7 +48,9 @@ const ROUTES: AppRoute[] = [
   { name: 'search', path: '/search', meta: routeMeta('search') },
   // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
   { name: 'account', path: '/account', meta: routeMeta('account') },
-  { name: 'dashboard', path: '/dashboard', meta: routeMeta('dashboard') },
+  // The retired Dashboard page: its address shows Overview, which holds the instance status. The query and the hash
+  // stay, and the redirect replaces the history entry (create.ts), so the back button skips the old address.
+  { name: 'dashboard', path: '/dashboard', redirect: to => ({ name: 'settings', query: to.query, hash: to.hash }) },
   // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
   { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
