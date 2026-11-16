@@ -34,6 +34,8 @@ change.
   Storage, Cluster); the Java card keeps the input arguments in an expandable part. Plugins keeps the tier labels.
   Environment holds the environment variables and the system properties, Configuration the local and the shared
   configuration.
+- **Tabs component.** A general accessible tabs component (WAI-ARIA tablist, tab and tabpanel roles, arrow keys, Home and End, focus
+  management and the active tab in the query) is built in `src/components/tabs/` before the page, and is designed for reuse.
 - **Filter.** The Environment and Configuration tabs get a filter field that narrows rows by key or by value. The filter
   works on the values the server already sent and redacted. It cannot show a value that is not on the page.
 - **Tab in the address.** The active tab is the query parameter `tab` (`overview`, `plugins`, `environment`,
@@ -69,7 +71,7 @@ No file under `reposilite-backend/` changes. No file under `openspec/` is part o
   or stored data changes. The new address form is the optional `tab` query on `/settings/system-info`.
 - **Plugin authors:** `system-info-view` and `plugin-tier` keep their names. `support-view` keeps working as an alias
   until the release named in the registry. The reference page lists it.
-- **Code:** `reposilite-frontend/src/components/support/SystemInfoView.vue` (tabs, cards, filter, anchors),
+- **Code:** `reposilite-frontend/src/components/tabs/` (the new tabs component), `src/components/support/SystemInfoView.vue` (tabs, cards, filter, anchors),
   `SupportView.vue` (its content moves into the page header and is then removed), the router entry in
   `src/router/routes.ts`, the navigation registry in `src/navigation/registry.ts` and its tests, and
   `src/anchors/registry.json`.
@@ -86,8 +88,9 @@ No file under `reposilite-backend/` changes. No file under `openspec/` is part o
   attached to the code pull request.
 - `npx -y @fission-ai/openspec validate structure-system-and-support-page --strict` passes.
 
-## Dependencies and open questions
+## Dependencies and decisions
 
-The tab list is the one from `rework-admin-header-and-repository-tabs`, which is not yet merged. This change reuses it
-and does not build a second one. If that change has not merged when the code pull request starts, the code pull request
-waits for it. See `design.md` D3 and the open questions there, each with a default that the tasks implement.
+This change does not depend on another open change. It builds a general accessible tabs component (`src/components/tabs/`), in its
+own task group before the page. `rework-admin-header-and-repository-tabs` task 4.6 is planned to reuse that component for the repository
+page. The maintainer decided the open questions of the first version on pull request 572; they are recorded as decisions in
+`design.md` D11 and are not open.

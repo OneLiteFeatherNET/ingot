@@ -143,8 +143,8 @@ support page in place of the tabs and the download action.
 
 ### Requirement: Keyboard operation of the tabs
 
-The tabs SHALL follow the WAI-ARIA tabs pattern of `rework-admin-header-and-repository-tabs`: each tab is a `tab` with `aria-selected` and
-`aria-controls`, each panel is a `tabpanel` labelled by its tab, and only the selected tab is in the tab order. Right and Left SHALL move to
+The tabs SHALL be the general tabs component of this change (`src/components/tabs/`), which follows the WAI-ARIA tabs pattern: each tab
+is a `tab` with `aria-selected` and `aria-controls`, each panel is a `tabpanel` labelled by its tab, and only the selected tab is in the tab order. Right and Left SHALL move to
 the next and the previous tab, Home and End to the first and the last, and the arrow keys SHALL select the tab they move to.
 
 #### Scenario: Arrow keys select
