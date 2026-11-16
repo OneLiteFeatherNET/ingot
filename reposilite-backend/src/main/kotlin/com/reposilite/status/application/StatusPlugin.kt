@@ -20,6 +20,7 @@ import com.reposilite.VERSION
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.console.ConsoleFacade
 import com.reposilite.maven.MavenFacade
+import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
@@ -100,6 +101,7 @@ internal class StatusPlugin : ReposilitePlugin() {
                 }
             },
             readinessChecks = readinessChecks,
+            signInObserver = { facade<AuthenticationFacade>().signInObserver() },
         ).statusFacade()
 
         val statusSnapshotScheduler = StatusSnapshotScheduler(reposilite().scheduler, statusFacade)

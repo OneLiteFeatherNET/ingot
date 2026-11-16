@@ -32,7 +32,25 @@ data class InstanceStatusResponse(
     val readOnly: Boolean = false,
     val readOnlySource: String = "stored",
     /** Present only when a cluster bus is configured, so that a response without a bus keeps its shape */
-    val cluster: ClusterStatusResponse? = null
+    val cluster: ClusterStatusResponse? = null,
+    /** Sign-in counts since the start of this instance. Present only while the account throttle switch is on. */
+    val signIn: SignInStatusResponse? = null,
+)
+
+/** The sign-in outcomes of this instance per path. Holds no name and no address. */
+data class SignInStatusResponse(
+    val dashboard: SignInOutcomeCounts,
+    val basic: SignInOutcomeCounts,
+    val bearer: SignInOutcomeCounts,
+    val console: SignInOutcomeCounts,
+    val mfa: SignInOutcomeCounts,
+)
+
+data class SignInOutcomeCounts(
+    val succeeded: Long,
+    val failed: Long,
+    /** Requests answered with a delay (429) */
+    val throttled: Long,
 )
 
 data class ClusterStatusResponse(

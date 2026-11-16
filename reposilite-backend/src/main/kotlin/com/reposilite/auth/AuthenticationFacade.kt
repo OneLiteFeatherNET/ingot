@@ -121,7 +121,7 @@ class AuthenticationFacade(
 
     /** The sign-in observer of the login plugin. Until one is installed, nothing is counted, audited or announced. */
     @Volatile
-    private var signInObserver: SignInObserver = SignInObserver.OFF
+    private var installedSignInObserver: SignInObserver = SignInObserver.OFF
 
     /**
      * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
@@ -177,8 +177,12 @@ class AuthenticationFacade(
 
     /** Installs the sign-in observer of the login plugin. Read on every request, so an installed observer applies at once. */
     fun installSignInObserver(observer: SignInObserver) {
-        signInObserver = observer
+        installedSignInObserver = observer
     }
+
+    /** The sign-in observer currently installed, which the status endpoint reads its counters from. */
+    fun signInObserver(): SignInObserver =
+        installedSignInObserver
 
     /**
      * Authenticates a Basic, Bearer or console credential. A [guarded] request is first checked against the account guard,
@@ -193,7 +197,7 @@ class AuthenticationFacade(
         userAgent: String? = null,
         onThrottled: (retryAfterSeconds: Long) -> Unit = {},
     ): Result<out AccessTokenDto, ErrorResponse> {
-        val observer = if (guarded) signInObserver else SignInObserver.OFF
+        val observer = if (guarded) installedSignInObserver else SignInObserver.OFF
 
         if (isBruteForceBlocked(credentials.ip)) {
             recordRejectedLogin(credentials)

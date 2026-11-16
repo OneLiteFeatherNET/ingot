@@ -16,6 +16,7 @@
 
 package com.reposilite.status.application
 
+import com.reposilite.auth.SignInObserver
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
 import com.reposilite.status.ReadinessCheck
@@ -32,6 +33,7 @@ class StatusComponents(
     private val maxThreads: Reference<Int>,
     private val readinessChecks: List<ReadinessCheck> = emptyList(),
     private val readOnly: () -> ReadOnlyState = { ReadOnlyState(enabled = false, source = ReadOnlySource.STORED) },
+    private val signInObserver: () -> SignInObserver = { SignInObserver.OFF },
 ) : PluginComponents {
 
     fun statusFacade(): StatusFacade =
@@ -43,6 +45,7 @@ class StatusComponents(
             maxThreads = maxThreads,
             readinessChecks = readinessChecks,
             readOnly = readOnly,
+            signInObserver = signInObserver,
         )
 
 }
