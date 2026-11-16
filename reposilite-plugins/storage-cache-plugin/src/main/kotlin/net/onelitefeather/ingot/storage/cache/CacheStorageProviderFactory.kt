@@ -43,6 +43,7 @@ class CacheStorageProviderFactory : IngotStorageProviderFactory<StorageProvider,
             maxFileSize = parseOptionalCacheSize("maxFileSize", checked.maxFileSize),
             maxSize = parseCacheSize("maxSize", checked.maxSize),
             cacheOnUpload = checked.cacheOnUpload,
+            repositoryName = context.repositoryName,
             onFailure = { context.failureFacade.logger.error("Storage cache of '${context.repositoryName}': $it") },
         )
     }

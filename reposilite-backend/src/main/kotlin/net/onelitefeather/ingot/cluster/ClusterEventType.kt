@@ -23,6 +23,7 @@ package net.onelitefeather.ingot.cluster
 enum class ClusterEventType(val wireName: String, val payloadFields: Set<String>) {
 
     RESOLUTION_INVALIDATED("resolution.invalidated", setOf("repository", "path")),
+    STORAGE_INVALIDATED("storage.invalidated", setOf("repository", "path")),
     TOKEN_CHANGED("token.changed", setOf("name")),
     SESSION_REVOKED("session.revoked", setOf("family")),
     CONFIG_CHANGED("config.changed", setOf("domain")),

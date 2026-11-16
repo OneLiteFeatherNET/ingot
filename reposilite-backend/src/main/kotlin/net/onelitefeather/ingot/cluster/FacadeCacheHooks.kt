@@ -50,10 +50,29 @@ internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterC
         plugin.facade<RepositoryCacheCoordinator>().bindToClusterBus(ClusterBusPort)
     }
 
+    override fun clusterBusOpened(bus: ClusterBus) {
+        plugin.facade<RepositoryCacheCoordinator>().bindToClusterBus(bus)
+    }
+
+    override fun storageInvalidated(repository: String, path: String) {
+        plugin.facade<RepositoryCacheCoordinator>().invalidateStorage(repository, path)
+    }
+
     override fun readOnlyChanged() {
         plugin.facade<ReadOnlyFacade>().refresh()
     }
 }
 
-/** The cluster bus of this instance, as the storage capabilities see it. The bus has no members yet, so the port only identifies it. */
+/** The cluster bus of this instance for a caller that publishes nothing: it only identifies the bus. */
 internal object ClusterBusPort : ClusterBus
+
+/** The cluster bus of this instance, as the storage caches publish their invalidations through [publish]. */
+internal class PublishingClusterBus(
+    private val publish: (ClusterEventType, Map<String, String>) -> Unit,
+) : ClusterBus {
+
+    override fun publishInvalidation(repository: String, keys: Collection<String>) {
+        keys.forEach { publish(ClusterEventType.STORAGE_INVALIDATED, mapOf("repository" to repository, "path" to it)) }
+    }
+
+}

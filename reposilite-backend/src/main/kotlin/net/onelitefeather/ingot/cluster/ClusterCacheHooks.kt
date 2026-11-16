@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.cluster
+
+import net.onelitefeather.ingot.storage.capability.ClusterBus
 
 /**
  * What the cluster plugin asks of the local caches and of the shared configuration when a cache event arrives or the bus opens.
@@ -33,6 +37,12 @@ interface ClusterCacheHooks {
 
     /** The server has started with a bus configured, so resolution entries are bounded from now on. */
     fun clusterBusOpened()
+
+    /** The bus is open and [bus] publishes the invalidations of the storage caches. By default the open is the one without a bus. */
+    fun clusterBusOpened(bus: ClusterBus) = clusterBusOpened()
+
+    /** A storage cache of [repository] dropped its copy of [path] on another instance, so the copy is dropped here as well. */
+    fun storageInvalidated(repository: String, path: String) {}
 
     /** The read-only state was stored on another instance, so it is read again at once instead of after its five-second limit. */
     fun readOnlyChanged() {}
