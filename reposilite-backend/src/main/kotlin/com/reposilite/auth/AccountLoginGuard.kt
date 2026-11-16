@@ -33,6 +33,12 @@ interface AccountLoginGuard {
     /** Reports a successful credential of [name] from [address]. */
     fun recordSuccess(name: String, address: String)
 
+    /**
+     * Whether [address] is new for [name], so that a successful sign-in from it is announced. Asked before [recordSuccess]
+     * records the address. A guard that keeps no known addresses answers `false`.
+     */
+    fun isNewAddress(name: String, address: String): Boolean = false
+
     companion object {
 
         /** The guard before one is installed: it delays nothing and records nothing. */

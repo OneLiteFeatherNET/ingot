@@ -7,6 +7,7 @@ import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.auth.AuthenticationFacade
+import com.reposilite.auth.SignInObserver
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -107,6 +108,18 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // The per-account delay is read from the environment once, at start: it is a deployment decision, not a page setting.
+        // Its guard is handed to the authentication facade, so that Basic and Bearer requests follow the same rule. The
+        // observer of the sign-ins follows the same switch, so that nothing is counted or announced while it is off.
+        val accountThrottleOn = AccountThrottle.enabledIn()
+        val signInObserver = SignInObserver(
+            enabled = accountThrottleOn,
+            audit = { auditExtensions.emitEvent(it) },
+            publish = { auditExtensions.emitEvent(it) },
+            warn = { logger.warn(it) },
+        )
+        facade<AuthenticationFacade>().installSignInObserver(signInObserver)
+
         // Second factors of password logins. Authenticator seeds are sealed with the settings key, read on every use, so a key
         // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
         val secondFactors = database?.let { database ->
@@ -119,17 +132,16 @@ class LoginPlugin : ReposilitePlugin() {
                 clock = clock,
                 audit = audit,
                 hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
+                signInObserver = signInObserver,
             )
         }
 
-        // The per-account delay is read from the environment once, at start: it is a deployment decision, not a page setting.
-        // Its guard is handed to the authentication facade, so that Basic and Bearer requests follow the same rule.
         val accountThrottle = database?.let { database ->
             AccountThrottle(
                 store = LoginStore(database, clock),
                 settings = loginSettings,
                 clock = clock,
-                enabled = AccountThrottle.enabledIn(),
+                enabled = accountThrottleOn,
             )
         }
         accountThrottle?.let { facade<AuthenticationFacade>().installAccountGuard(it) }
@@ -150,6 +162,7 @@ class LoginPlugin : ReposilitePlugin() {
                 secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
                 accountThrottle = accountThrottle,
                 breachCheck = breachCheck,
+                signInObserver = signInObserver,
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {

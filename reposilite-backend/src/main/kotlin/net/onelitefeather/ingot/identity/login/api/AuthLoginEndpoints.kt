@@ -28,6 +28,7 @@ import io.javalin.http.Context
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
+import io.javalin.http.Header
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
@@ -97,7 +98,7 @@ internal class AuthLoginEndpoints(
         response = if (provider == null || username == null || password == null) {
             badRequestError("Login requires provider, username and password")
         } else {
-            when (val outcome = facade.login(provider, username, password, ctx.ip())) {
+            when (val outcome = facade.login(provider, username, password, ctx.ip(), ctx.header(Header.USER_AGENT))) {
                 is LoginOutcome.Succeeded -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, outcome.mustChangePassword)
                 is LoginOutcome.SecondFactorRequired -> secondFactorChallenge(ctx, basePath.get(), outcome.challenge)
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")

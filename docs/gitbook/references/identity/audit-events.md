@@ -117,6 +117,7 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | --- | --- | --- |
 | `LOGIN_SUCCEEDED` | A password login succeeds (`LoginService.login`), or an OIDC or GitHub login succeeds (`OidcLoginService`). The actor is the principal name with the client address. | None. |
 | `LOGIN_FAILED` | A login is rejected. See the list below the table. `success` is `false`. | None. |
+| `LOGIN_THROTTLED` | A sign-in is answered with a delay (`429`) while the [account throttle](../settings/login-providers.md) is on. Written once per answered request, in place of `LOGIN_FAILED` for that request. The actor is the attempted name with the client address, and the secret, the password and the second-factor code are never recorded. `success` is `false`. | `path` (`dashboard`, `basic`, `bearer` or `console`) |
 | `LOGOUT` | A user logs out with a known refresh token (`SessionService.logout`). Unknown or missing tokens write nothing. | None. |
 | `SESSION_REFRESH_REUSE_DETECTED` | A refresh token that was already used is presented again. The whole token family is revoked (`SessionService.refresh`). `success` is `false`. | None. |
 | `SETUP_COMPLETED` | The first administrator is created with the setup code (`LoginService.completeSetup`). The actor is the new user. | `principal` |

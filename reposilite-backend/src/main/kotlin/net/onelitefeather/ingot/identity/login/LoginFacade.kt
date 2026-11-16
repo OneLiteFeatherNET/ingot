@@ -65,8 +65,8 @@ class LoginFacade internal constructor(
      * A password login. When the password is right and the user has an authenticator, no session starts: the outcome is
      * [LoginOutcome.SecondFactorRequired], and [completeSecondFactor] finishes the sign-in.
      */
-    fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome {
-        val outcome = service?.login(providerId, username, password, ip) ?: return LoginOutcome.UnknownProvider
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome {
+        val outcome = service?.login(providerId, username, password, ip, userAgent) ?: return LoginOutcome.UnknownProvider
         if (outcome !is LoginOutcome.Succeeded) {
             return outcome
         }
