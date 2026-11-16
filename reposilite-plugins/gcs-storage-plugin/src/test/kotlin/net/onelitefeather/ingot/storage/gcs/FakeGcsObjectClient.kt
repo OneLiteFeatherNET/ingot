@@ -102,7 +102,7 @@ internal class FakeGcsObjectClient : GcsObjectClient {
     }
 
     /** When set, the bucket answers with this failure, or, when null, with an answer of an existing bucket. */
-    var bucketFailure: RuntimeException? = null
+    var bucketFailure: Exception? = null
 
     override fun checkBucket() {
         bucketFailure?.let { throw it }
