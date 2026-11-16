@@ -27,6 +27,21 @@ Key names are the JSON names of the `login` domain.
 
 The lockout keys apply to the password login of the dashboard. They are independent of the brute force protection of Basic and token authentication.
 
+### Account throttle
+
+The account throttle delays guesses against one user name from every address, for the dashboard login, Basic, Bearer and console tokens. It is off by default, and nothing changes until the environment variable `INGOT_LOGIN_ACCOUNT_THROTTLE` is set to `true`. The variable `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` is read when `INGOT_` is unset or blank. The switch is read once at start, so it is a deployment choice and not a setting of the admin page.
+
+With the switch on, a name that has failed `threshold` times (default 10) within `quietMinutes` (default 60) gets `429` with `Retry-After` for its next guess from an address it has not signed in from. The first delay is one second, each further failure doubles it, and `maxDelaySeconds` (default 300) caps it. The delay ends by itself and a success clears it. The answer is the same for an existing and an unknown name. A request from an address the name signed in from within `knownAddressDays` (default 30) is not held back by this rule. A delayed request does not count as a failure.
+
+| Key in `accountThrottle` | Default | Meaning |
+| --- | --- | --- |
+| `threshold` | `10` | Failed credentials of one name, from any address, before a new address is delayed. |
+| `quietMinutes` | `60` | Minutes without a failure after which the count starts again. |
+| `maxDelaySeconds` | `300` | Longest delay of one request. |
+| `knownAddressDays` | `30` | Days an address stays known after its last successful sign-in. |
+
+Upgrade note: the table of known addresses starts empty when the switch is turned on. Until an owner has signed in once from an address, that address counts as new. An owner whose name is already delayed by an attack waits out the delay from such an address, so turn the switch on and let the owners sign in. A Maven client that retries a stale token sees `429` for at most `maxDelaySeconds`. Gradle 9 does not wait for `Retry-After` (Maven 3.9 does), so a Gradle build that meets the delay fails at once and has to be started again after the delay.
+
 ### Local login
 
 The local provider has the id `local` and the label "Username and password". It has no settings of its own. It is announced once a user exists or the first administrator has been claimed. Users with a password sign in with `POST /api/auth/login` and the provider `local`.
