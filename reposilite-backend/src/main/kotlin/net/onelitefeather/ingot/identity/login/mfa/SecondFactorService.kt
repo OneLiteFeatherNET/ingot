@@ -19,6 +19,9 @@ package net.onelitefeather.ingot.identity.login.mfa
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
+import com.reposilite.auth.SignInObserver
+import com.reposilite.auth.SignInOutcome
+import com.reposilite.auth.SignInPath
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Clock
@@ -153,6 +156,8 @@ internal class SecondFactorService(
      * account signs in through the directory's own Basic authentication too, which a factor does not cover yet.
      */
     private val hasLocalPassword: (Int) -> Boolean = { true },
+    /** Counts the outcomes of the second factor at sign-in. Nothing is counted while the account throttle switch is off. */
+    private val signInObserver: SignInObserver = SignInObserver.OFF,
 ) {
 
     /**
@@ -245,13 +250,20 @@ internal class SecondFactorService(
             ?: return ChallengeCompletion.Gone
 
         return when (val check = checkCode(principal.id, principal.name, code, ip, context = "sign-in")) {
-            CodeCheck.Rejected -> ChallengeCompletion.WrongCode
-            is CodeCheck.Blocked -> ChallengeCompletion.Blocked(check.retryAfterSeconds)
+            CodeCheck.Rejected -> {
+                signInObserver.record(SignInPath.MFA, SignInOutcome.FAILED)
+                ChallengeCompletion.WrongCode
+            }
+            is CodeCheck.Blocked -> {
+                signInObserver.record(SignInPath.MFA, SignInOutcome.THROTTLED)
+                ChallengeCompletion.Blocked(check.retryAfterSeconds)
+            }
             is CodeCheck.Accepted ->
                 if (store.claimChallenge(idHash, now)) {
                     if (check.recovery) {
                         audit(AuditEvent(action = AuditAction.MFA_RECOVERY_CODE_USED, actor = AuditActor.named(principal.name, ip), details = mapOf("principal" to principal.name)))
                     }
+                    signInObserver.record(SignInPath.MFA, SignInOutcome.SUCCEEDED)
                     ChallengeCompletion.Verified(principal, recoveryCodeUsed = check.recovery)
                 } else {
                     ChallengeCompletion.Gone

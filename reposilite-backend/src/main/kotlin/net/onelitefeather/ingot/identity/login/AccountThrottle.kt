@@ -71,6 +71,14 @@ internal class AccountThrottle(
         store.deleteKnownAddressesBefore(now.minus(Duration.ofDays(settings.get().accountThrottle.knownAddressDays)))
     }
 
+    /** Whether [address] is outside the known addresses of [name]. Always `false` while the switch is off. */
+    override fun isNewAddress(name: String, address: String): Boolean {
+        if (!enabled || name.isBlank()) {
+            return false
+        }
+        return !isKnown(name, address, Instant.now(clock))
+    }
+
     private fun isKnown(name: String, address: String, now: Instant): Boolean =
         store.isKnownAddress(name.lowercase(), addressDigest(address), now.minus(Duration.ofDays(settings.get().accountThrottle.knownAddressDays)))
 

@@ -119,6 +119,10 @@ class AuthenticationFacade(
     @Volatile
     private var accountGuard: AccountLoginGuard = AccountLoginGuard.NONE
 
+    /** The sign-in observer of the login plugin. Until one is installed, nothing is counted, audited or announced. */
+    @Volatile
+    private var signInObserver: SignInObserver = SignInObserver.OFF
+
     /**
      * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
      * forgotten while the ban it started is still running, also when the ban duration is changed at runtime.
@@ -171,25 +175,41 @@ class AuthenticationFacade(
         accountGuard = guard
     }
 
+    /** Installs the sign-in observer of the login plugin. Read on every request, so an installed observer applies at once. */
+    fun installSignInObserver(observer: SignInObserver) {
+        signInObserver = observer
+    }
+
     /**
      * Authenticates a Basic, Bearer or console credential. A [guarded] request is first checked against the account guard,
      * and a delayed name is answered `429` without its secret being checked. [onThrottled] receives the seconds to wait, so
-     * that the caller can send them as `Retry-After`. The loopback mirror is not guarded.
+     * that the caller can send them as `Retry-After`. The loopback mirror is not guarded, and is neither counted nor announced.
+     * [path] and [userAgent] only describe the request to the sign-in observer.
      */
     fun authenticateByCredentials(
         credentials: Credentials,
         guarded: Boolean = true,
+        path: SignInPath = SignInPath.BASIC,
+        userAgent: String? = null,
         onThrottled: (retryAfterSeconds: Long) -> Unit = {},
     ): Result<out AccessTokenDto, ErrorResponse> {
+        val observer = if (guarded) signInObserver else SignInObserver.OFF
+
         if (isBruteForceBlocked(credentials.ip)) {
             recordRejectedLogin(credentials)
+            observer.record(path, SignInOutcome.FAILED)
             return unauthorizedError("Invalid authorization credentials")
         }
 
         val guard = if (guarded) accountGuard else AccountLoginGuard.NONE
         guard.retryAfter(credentials.name, credentials.ip)?.let { wait ->
-            onThrottled(((wait.toMillis() + 999) / 1000).coerceAtLeast(1))
-            recordRejectedLogin(credentials)
+            val retryAfterSeconds = ((wait.toMillis() + 999) / 1000).coerceAtLeast(1)
+            onThrottled(retryAfterSeconds)
+            if (observer.enabled) {
+                observer.throttled(credentials.name, credentials.ip, path, retryAfterSeconds)
+            } else {
+                recordRejectedLogin(credentials)
+            }
             return errorResponse(HttpStatus.TOO_MANY_REQUESTS, "Too many failed login attempts, try again later")
         }
 
@@ -210,11 +230,18 @@ class AuthenticationFacade(
                     ?.peek { cacheAuthentication(credentials, it, generation, revisionAtStart) }
                 ?: unauthorizedError("Invalid authorization credentials")
 
+        // Asked before recordSuccess, which records the address as known
+        val newAddress = result.isOk && guard.isNewAddress(credentials.name, credentials.ip)
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
         if (result.isErr) {
             recordRejectedLogin(credentials)
+            observer.record(path, SignInOutcome.FAILED)
             guard.recordFailure(credentials.name)
         } else {
+            observer.record(path, SignInOutcome.SUCCEEDED)
+            if (newAddress) {
+                observer.newSignIn(credentials.name, credentials.ip, path, userAgent)
+            }
             guard.recordSuccess(credentials.name, credentials.ip)
         }
         // Cache hits count as use too: the facade throttles the write, so a busy cache does not write more often.

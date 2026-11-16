@@ -25,6 +25,9 @@ import com.reposilite.audit.api.AuditAction.PASSWORD_RESET
 import com.reposilite.audit.api.AuditAction.SETUP_COMPLETED
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
+import com.reposilite.auth.SignInObserver
+import com.reposilite.auth.SignInOutcome
+import com.reposilite.auth.SignInPath
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Blocked
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Disabled
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
@@ -68,6 +71,8 @@ class LoginService internal constructor(
     private val accountThrottle: AccountThrottle? = null,
     /** The breached-password check of new passwords. `null` leaves the check out, as the default mode does. */
     private val breachCheck: PasswordBreachCheck? = null,
+    /** Counts and announces the outcomes of the dashboard logins. Nothing is observed while the account throttle switch is off. */
+    private val signInObserver: SignInObserver = SignInObserver.OFF,
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -94,25 +99,25 @@ class LoginService internal constructor(
         return local + externalAnnouncements()
     }
 
-    fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome {
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome {
         val provider = passwordProviders().firstOrNull { it.id == providerId } ?: return UnknownProvider
         val userKey = LoginAttemptLimiter.userKey(username, ip)
         val keys = listOf(userKey, LoginAttemptLimiter.addressKey(ip))
 
-        limiter.retryAfter(keys)?.let { wait ->
-            recordRejected(username, ip)
-            return Blocked(retryAfterSeconds = ceilSeconds(wait))
-        }
-        accountThrottle?.retryAfter(username, ip)?.let { wait ->
-            recordRejected(username, ip)
-            return Blocked(retryAfterSeconds = ceilSeconds(wait))
-        }
+        limiter.retryAfter(keys)?.let { wait -> return delayed(username, ip, wait) }
+        accountThrottle?.retryAfter(username, ip)?.let { wait -> return delayed(username, ip, wait) }
 
         val outcome = provider.authenticate(username, password)
         when (outcome) {
             is Succeeded -> {
                 limiter.forget(userKey)
+                // Asked before the address is recorded as known for the name
+                val newAddress = accountThrottle?.isNewAddress(username, ip) == true
                 accountThrottle?.recordSuccess(username, ip)
+                signInObserver.record(SignInPath.DASHBOARD, SignInOutcome.SUCCEEDED)
+                if (newAddress) {
+                    signInObserver.newSignIn(username, ip, SignInPath.DASHBOARD, userAgent)
+                }
                 // A login is recorded when its session starts. A user who owes a second factor has only passed the first one.
                 val action = if (secondFactorRequired(outcome.principal)) MFA_FIRST_FACTOR_ACCEPTED else LOGIN_SUCCEEDED
                 audit(AuditEvent(action = action, actor = AuditActor.named(outcome.principal.name, ip)))
@@ -120,12 +125,19 @@ class LoginService internal constructor(
             Rejected -> {
                 limiter.recordFailure(keys)
                 accountThrottle?.recordFailure(username)
+                signInObserver.record(SignInPath.DASHBOARD, SignInOutcome.FAILED)
                 recordRejected(username, ip)
             }
             // The password was right, so this is not guessing and does not count towards the limit.
-            Disabled -> recordRejected(username, ip)
+            Disabled -> {
+                signInObserver.record(SignInPath.DASHBOARD, SignInOutcome.FAILED)
+                recordRejected(username, ip)
+            }
             // The password was judged to be wrong for this account: counted like a rejection by the audit trail.
-            is LoginOutcome.Refused -> recordRejected(username, ip)
+            is LoginOutcome.Refused -> {
+                signInObserver.record(SignInPath.DASHBOARD, SignInOutcome.FAILED)
+                recordRejected(username, ip)
+            }
             // The directory did not answer, so nothing was judged and nothing counts towards the limit.
             LoginOutcome.Unavailable, is Blocked, UnknownProvider, is LoginOutcome.SecondFactorRequired -> Unit
         }
@@ -307,6 +319,20 @@ class LoginService internal constructor(
 
     private fun recordRejected(username: String, ip: String) {
         audit(AuditEvent(action = LOGIN_FAILED, actor = AuditActor.named(username, ip), success = false))
+    }
+
+    /**
+     * A login answered with a delay. While the account throttle is on it is audited once as `LOGIN_THROTTLED` and announced;
+     * while it is off the rejection is audited as before.
+     */
+    private fun delayed(username: String, ip: String, wait: Duration): LoginOutcome {
+        val retryAfterSeconds = ceilSeconds(wait)
+        if (signInObserver.enabled) {
+            signInObserver.throttled(username, ip, SignInPath.DASHBOARD, retryAfterSeconds)
+        } else {
+            recordRejected(username, ip)
+        }
+        return Blocked(retryAfterSeconds = retryAfterSeconds)
     }
 
     companion object {

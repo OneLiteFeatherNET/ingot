@@ -17,6 +17,7 @@
 package com.reposilite.console.infrastructure
 
 import com.reposilite.auth.AuthenticationFacade
+import com.reposilite.auth.SignInPath
 import com.reposilite.auth.api.Credentials
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.unauthorizedError
@@ -38,7 +39,7 @@ internal class ConsoleAuthenticator(
 ) {
 
     fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
-        authenticationFacade.authenticateByCredentials(credentials)
+        authenticationFacade.authenticateByCredentials(credentials, path = SignInPath.CONSOLE)
             .flatMap { requireConsoleArea(it, credentials.ip) }
 
     /** A session token from a browser login. Fails like a wrong secret when the session is not valid or has no user. */

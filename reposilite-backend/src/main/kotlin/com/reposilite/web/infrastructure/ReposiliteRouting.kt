@@ -1,6 +1,7 @@
 package com.reposilite.web.infrastructure
 
 import com.reposilite.auth.AuthenticationFacade
+import com.reposilite.auth.SignInPath
 import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.Journalist
 import com.reposilite.shared.ContextDsl
@@ -105,7 +106,11 @@ fun createReposiliteDsl(
             // wrong secret counts towards the failure limit whether or not it names a token.
             val secret = authorization.substring("Bearer ".length).trim()
             val name = loginFacade.bearerTokenName(secret).orEmpty()
-            return authenticationFacade.authenticateByCredentials(Credentials(ip = ip(), name = name, secret = secret)) { seconds ->
+            return authenticationFacade.authenticateByCredentials(
+                Credentials(ip = ip(), name = name, secret = secret),
+                path = SignInPath.BEARER,
+                userAgent = header(Header.USER_AGENT),
+            ) { seconds ->
                 header("Retry-After", seconds.toString())
             }
         }
@@ -117,7 +122,7 @@ fun createReposiliteDsl(
         }
         return extractFromHeader(authorization)
             .map { (name, secret) -> Credentials(ip = ip(), name = name, secret = secret) }
-            .flatMap { authenticationFacade.authenticateByCredentials(it) { seconds -> header("Retry-After", seconds.toString()) } }
+            .flatMap { authenticationFacade.authenticateByCredentials(it, userAgent = header(Header.USER_AGENT)) { seconds -> header("Retry-After", seconds.toString()) } }
     }
 
     fun Context.toDslContext(): ContextDsl<Any> =
