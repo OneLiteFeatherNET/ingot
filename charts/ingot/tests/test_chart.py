@@ -1079,6 +1079,44 @@ class ScalableCiValuesTest(unittest.TestCase):
                          "the cluster bus must name the NATS Service of the dependencies in ingot-scalable")
 
 
+def scalable_ci_repositories():
+    shared = yaml.safe_load(scalable_ci_values()["sharedConfiguration"]["content"])
+    return shared["maven"]["repositories"]
+
+
+class ScalableCiRepositoriesTest(unittest.TestCase):
+
+    def test_scalable_ci_repositories_are_on_s3_from_the_first_start(self):
+        self.assertEqual(
+            {"releases", "snapshots", "private"},
+            {repository["id"] for repository in scalable_ci_repositories()},
+            "the scalable CI values must put every maven repository on object storage",
+        )
+        for repository in scalable_ci_repositories():
+            self.assertEqual("s3", repository["storageProvider"]["type"],
+                             f"repository {repository['id']} must not be on the local file system")
+
+    def test_scalable_ci_repositories_use_the_floci_service_of_the_dependencies(self):
+        floci = next(doc for doc in ha_dependency_documents()
+                     if doc.get("kind") == "Service" and doc["metadata"]["name"] == "floci")
+        port = floci["spec"]["ports"][0]["port"]
+        for repository in scalable_ci_repositories():
+            self.assertEqual(f"http://floci.ingot-scalable.svc.cluster.local:{port}",
+                             repository["storageProvider"]["endpoint"],
+                             f"repository {repository['id']} must name the Floci Service in ingot-scalable")
+
+    def test_scalable_ci_shared_settings_hold_no_static_keys(self):
+        for repository in scalable_ci_repositories():
+            storage = repository["storageProvider"]
+            self.assertEqual("", storage["accessKey"] + storage["secretKey"],
+                             f"repository {repository['id']} must take its keys from the objectStorage Secret")
+
+    def test_scalable_ci_does_not_allow_repositories_on_the_shared_filesystem(self):
+        names = [entry.get("name") for entry in scalable_ci_values().get("env", [])]
+        self.assertNotIn("INGOT_ALLOW_SHARED_FILESYSTEM", names,
+                         "the scalable CI install must start with repositories on object storage, not the escape hatch")
+
+
 def scalable_ci_values():
     with open(os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")) as handle:
         return yaml.safe_load(handle)
