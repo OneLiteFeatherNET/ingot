@@ -13,11 +13,12 @@ Incident reviews ask which credential sent a request, and which rule decided it.
 
 ## What Changes
 
-- Each denial, each write (allowed or refused) and each refused admin operation produces one decision record. Allowed reads produce none.
+- Each denial, each write (allowed or refused) and each refused admin operation produces one decision record while the log is on. Allowed reads produce none.
 - A record holds: a decision identifier, the time, the principal, the credential identifier (the token name, never the secret), the action, the canonical resource and, where it differs, the raw resource, the outcome, the deciding stage of the chain, the matched rule identifiers, the policy revision (null until `add-policy-revision` is merged) and the obligations (empty until phase C).
-- In `async` mode (default), records are queued and written by a background writer. A full queue drops the record and increments a counter. The request is never delayed by the writer.
-- In `sync` mode, the write happens before the answer. A failed write refuses the request with 503 and the reason, and the decision is not applied.
-- The switch is `INGOT_DECISION_LOG`, with values `off`, `async` and `sync`, and the `REPOSILITE_DECISION_LOG` fallback.
+- The log is off by default. Nothing is recorded until an operator sets `INGOT_DECISION_LOG` to `async` or `sync`.
+- In `async` mode (opt-in), records are queued and written by a background writer. A full queue drops the record and increments a counter. The request is never delayed by the writer.
+- In `sync` mode (opt-in), the write happens before the answer. A failed write refuses the request with 503 and the reason, and the decision is not applied.
+- The switch is `INGOT_DECISION_LOG`, with values `off` (default), `async` and `sync`, and the `REPOSILITE_DECISION_LOG` fallback. An unset, blank or unknown value gives `off`.
 
 ### Out of scope
 
@@ -33,7 +34,8 @@ Incident reviews ask which credential sent a request, and which rule decided it.
 
 ## Impact
 
-- **Operators, default (`async`):** the audit table gains one row per denial and per write. A scanner that probes an instance produces many rows, so the table grows faster. Operators who need the old volume set `INGOT_DECISION_LOG=off`. No configuration is needed to upgrade.
+- **Operators, default (`off`):** an upgrade adds no rows to the audit table, and no configuration is needed. The audit table stays as it is until an operator turns the log on.
+- **Operators, `async` (opt-in, `INGOT_DECISION_LOG=async`):** the audit table gains one row per denial and per write. A scanner that probes an instance produces many rows, so the table grows faster. Setting `INGOT_DECISION_LOG=off` stops the new rows again.
 - **Operators, `sync` (opt-in):** a database failure during a denial or write refuses that request with 503. This is intended for regulated installations, and the operator chooses it.
 - **Operators, retention:** the existing audit cleanup (`CLEANUP_RUN`) must be verified to cover the new rows. Until then, the rows are kept as audit rows are kept today.
 - **Configuration:** one new optional key, `INGOT_DECISION_LOG`, with the `REPOSILITE_` fallback. Docs: `docs/gitbook/explanation/permission-evaluation.md` (the audit section) and `docs/gitbook/explanation/drop-in-compatibility.md`.
