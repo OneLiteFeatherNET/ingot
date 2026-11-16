@@ -21,9 +21,73 @@ Rules for the remote entry points:
 * The check is the instance admin role. It is the same for every command. No command has a permission of its own.
 * The admin area `ingot.admin.console` exists in the node grammar, but the three remote entry points do not check it.
 * `POST /api/console/execute` answers `400` for an empty command and for a command longer than 1024 characters, and `401` when the caller is not an instance admin.
-* The response has a `status` (`SUCCEEDED` or `FAILED`) and the output lines of the command.
+* The response has a `status` (`SUCCEEDED` or `FAILED`) and the output lines of the command. Add `?structured=true` to get an exit code and the output with its streams instead. See [Structured answers](#structured-answers).
+* Every command that reaches execution through these two remote entry points is recorded in the audit log as `CONSOLE_COMMAND_EXECUTED`, with the token as the actor. See [Audit events](identity/audit-events.md).
 
 The local console starts with the server unless you disable it with `--disable-interactive-console`. If the process has no standard input, the server logs `Interactive CLI is not available in current environment.` and the local console stays off. After the start, the server runs `status` once and prints a hint to use `help` or `?`.
+
+## Structured answers
+
+Scripts and the [command line client](cli.md) need an exit code and the output with its streams. Both come from `POST /api/console/execute?structured=true`. The request body is the same command line as before, and a request without the parameter gets the answer it always got.
+
+```json
+{
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "output": [{"stream": "stdout", "text": "Ingot <version> Status"}],
+  "data": null,
+  "node": "ingot-0"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `SUCCEEDED` or `FAILED`, as in the plain answer. |
+| `exitCode` | `0` success, `1` the command failed, `2` a parse error or an unknown command. `3` is the answer of a dangerous command that was not confirmed, see below. |
+| `output` | The output lines in order. `stream` is `stdout`, or `stderr` for every line of a failed command. Colour sequences are removed. |
+| `data` | The same information as a structured value, for `tokens`, `status` and `stats`. It is `null` for every other command. The text lines are still in `output`. The token secrets and identifiers never appear in `data`. |
+| `node` | The instance that ran the command. `level`, `status` and `failures` answer for one node, so this field tells you which one. |
+
+The `data` of `tokens` is a list with one entry per token: `name`, `permissions` and `routes` (each with a `path` and its `permissions`). The `data` of `status` holds the version, whether the instance is alive, the uptime in milliseconds, the memory use, the thread count and the number of recorded failures. The `data` of `stats` holds the unique and all record counts and the matched requests of the search.
+
+### Command listing
+
+`GET /api/console/commands` returns the registered commands, for help and completion:
+
+```json
+{
+  "version": 1,
+  "commands": [
+    {
+      "name": "token-generate",
+      "aliases": [],
+      "description": "Generate a new access token",
+      "dangerous": false,
+      "sensitive": true,
+      "parameters": [{"label": "<name>", "index": "0", "required": true, "description": "Access token name"}],
+      "options": [{"names": ["--secret", "-s"], "description": "Override generated token with custom secret", "arity": "1"}],
+      "subcommands": []
+    }
+  ]
+}
+```
+
+`sensitive` is true for a command that can hide its arguments in the log, such as `token-generate`. `dangerous` is true for a command that asks for confirmation in some form. The version is `1`. A client that does not know a version should refuse the listing.
+
+### Confirmation of dangerous commands
+
+A structured request for a dangerous command runs only with `confirm=true`. Without it the server answers `409` with the body `{"error": "confirmationRequired", "command": "<name>", "reason": "<description of the command>"}` and runs nothing. These are the dangerous commands:
+
+* `stop`
+* `token-revoke`
+* `token-regenerate`
+* `settings-reencrypt`
+* `settings-decrypt`
+* `cache` with the action `purge` (the `stats` action is not dangerous)
+
+A command from a plugin is not dangerous unless the plugin says so. The confirmation is a guard against a mistake in a script, not a permission. The token that calls the command decides whether it may run at all.
+
+A plain request (without `structured=true`) never asks, as before.
 
 ## How commands are parsed
 

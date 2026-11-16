@@ -91,6 +91,25 @@ The server process reads these variables itself, not the entrypoint.
 | `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies). |
 | `INGOT_FETCH_METADATA` | `-Dingot.fetchMetadata` | `on` | `off` lets a request to the API that comes from another site or a sibling subdomain through when it carries the session or refresh cookie. By default such a request is refused with `403`, unless it is a top-level navigation. The value is matched without regard to case, and any other value keeps the refusal on. The variable wins over the property. There is no `REPOSILITE_` spelling because the cookie sessions are Ingot's own. See [Cross-site requests](../architecture/sessions-and-login.md#cross-site-requests). |
 
+## Command line client variables
+
+The [command line client](../cli.md) reads these variables. It is a separate program, so the server does not read them. Every name is new, so no `REPOSILITE_` spelling exists.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `INGOT_URL` | none, required | Base URL of the server. A context path is kept. |
+| `INGOT_TOKEN` | none | The token as `name:secret`. The first source of the token. |
+| `INGOT_TOKEN_FILE` | none | A file whose first line is the token. Restrict it to its owner. |
+| `INGOT_CREDENTIAL_HELPER` | none | A program that prints the token on its first line. It runs without arguments and without a shell. |
+| `INGOT_CONTEXT` | the current context of the config file | The context of the config file to select. |
+| `INGOT_CONFIG` | `$XDG_CONFIG_HOME/ingot/config.yaml`, then `~/.config/ingot/config.yaml` | The config file to read. |
+| `INGOT_CA_CERT` | none | A PEM CA certificate that is trusted in addition to the default store. |
+| `INGOT_INSECURE` | `false` | `true` turns off certificate verification, with a warning on every run. |
+| `INGOT_OUTPUT` | `text` | `text` or `json`. |
+| `INGOT_TIMEOUT` | `30` | Seconds to wait for the server. |
+
+The order of precedence and the config file are described in [Command line client](../cli.md#order-of-precedence).
+
 ## Shutdown variables
 
 The server reads these variables once at start. Both are optional, and with their default the stop sequence is the same as in earlier versions. Each has a `REPOSILITE_` fallback that is read when the `INGOT_` name is unset or empty. A value that is not a whole number of seconds from `0` upwards stops the start, and the message names the variable.

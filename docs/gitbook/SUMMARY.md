@@ -107,6 +107,7 @@
   * [Collect a support bundle](manage/operate/collect-a-support-bundle.md)
   * [Encrypt the settings secrets](manage/operate/encrypt-settings-secrets.md)
   * [Limit concurrent requests](manage/operate/limit-concurrent-requests.md)
+  * [Run the command line client](manage/operate/run-the-cli.md)
 * [Upgrade](manage/upgrade/README.md)
   * [Upgrade Ingot](manage/upgrade/upgrade-ingot.md)
   * [Upgrade from Reposilite 2.x](manage/upgrade/upgrade-from-reposilite-2.md)
@@ -176,6 +177,7 @@
   * [Plugin store](references/plugins/plugin-store.md)
   * [Dashboard anchors](references/plugins/dashboard-anchors.md)
 * [Console commands](references/console-commands.md)
+* [Command line client](references/cli.md)
 * [Glossary](references/glossary.md)
 * [Frequently asked questions](references/faq.md)
 
