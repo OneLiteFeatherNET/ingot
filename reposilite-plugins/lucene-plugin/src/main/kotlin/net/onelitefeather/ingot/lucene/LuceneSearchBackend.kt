@@ -76,6 +76,8 @@ import kotlin.random.Random
 internal class LuceneSearchBackend(
     private val settings: LuceneSettings,
     private val openDirectory: (Path) -> Directory = { FSDirectory.open(it) },
+    /** The usable bytes of the volume that holds [LuceneSettings.directory]. Production asks the file store; the tests inject it. */
+    private val usableSpace: (Path) -> Long = { Files.getFileStore(it).usableSpace },
 ) : ArtifactSearchBackend {
 
     override val id: String = ID
@@ -167,8 +169,11 @@ internal class LuceneSearchBackend(
         store = null
     }
 
-    override fun health(): BackendHealth =
-        if (writer != null) BackendHealth.Up else BackendHealth.Down("the index is not open")
+    override fun health(): BackendHealth = when {
+        writer == null -> BackendHealth.Down("the index is not open")
+        usableSpace(settings.directory) < settings.minFreeBytes -> BackendHealth.Down(LOW_SPACE)
+        else -> BackendHealth.Up
+    }
 
     override fun indexIdentity(): String? = identity
 
@@ -312,6 +317,9 @@ internal class LuceneSearchBackend(
      */
     private fun <T> transaction(block: (IndexWriter) -> T): T {
         val current = checkNotNull(writer) { "the index is not open" }
+        if (usableSpace(settings.directory) < settings.minFreeBytes) {
+            throw BackendBusyException(LOW_SPACE, DISK_FULL_RETRY)
+        }
         return try {
             val result = block(current)
             current.commit()
@@ -388,6 +396,9 @@ internal class LuceneSearchBackend(
         val DISK_FULL_RETRY: Duration = Duration.ofSeconds(60)
 
         private const val NO_SPACE = "No space left on device"
+
+        /** The reason of a batch that waits for the free space to return, and of the health while it is short. */
+        const val LOW_SPACE = "low disk space"
     }
 
 }
