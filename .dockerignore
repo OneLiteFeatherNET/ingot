@@ -38,8 +38,8 @@ docker-compose.split.yml
 # Not used in running application
 reposilite-test
 # Only the metrics, Nexus import and OpenSearch plugins are built into the image, see /app/bundled-plugins in the Dockerfile.
-# The Meilisearch and Elasticsearch plugins are not built into it either, but the backend build script names their projects
-# for its integration tests, so Gradle cannot configure the backend without their directories.
+# The Meilisearch, Elasticsearch and storage cache plugins are not built into it either, but the backend build script names
+# their projects for its integration tests, so Gradle cannot configure the backend without their directories.
 reposilite-plugins/*
 !reposilite-plugins/build.gradle.kts
 !reposilite-plugins/elasticsearch-plugin
@@ -48,6 +48,7 @@ reposilite-plugins/*
 !reposilite-plugins/nexus-import-plugin
 !reposilite-plugins/opensearch-plugin
 !reposilite-plugins/prometheus-plugin
+!reposilite-plugins/storage-cache-plugin
 .github/
 .codecov.yml
 
