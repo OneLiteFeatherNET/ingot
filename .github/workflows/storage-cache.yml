@@ -1,0 +1,81 @@
+# Tests of the storage cache plugin: its unit suite and its integration test over the S3 container, two replicas on one bucket.
+#
+# A pull request runs the job only when it touches the cache plugin or the storage provider API. The job itself always finishes, and the
+# steps that do the work are skipped otherwise, so the check is never left pending on a pull request the change does not concern. The
+# nightly run always runs, so that a change of the server or of the container image shows up on the next night.
+name: "Storage cache"
+
+on:
+  pull_request:
+  schedule:
+    # Nightly, 03:41 UTC.
+    - cron: "41 3 * * *"
+
+# Read-only. The job needs no write scope: it neither publishes results nor comments on the pull request.
+permissions:
+  contents: read
+
+concurrency:
+  group: "storage-cache-${{ github.workflow }}-${{ github.ref }}"
+  # A newer push to a pull request makes an older run of the same branch obsolete.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  storage-cache:
+    name: "Storage cache"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # The base commit has to be present for the comparison of the changed paths below.
+          fetch-depth: 0
+
+      # A nightly run and a manual run always test. A pull request tests when a changed path belongs to the cache plugin, to the storage
+      # provider API, or to the integration test of the cache.
+      - name: "Decide whether the change concerns the storage cache"
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          if printf '%s\n' "$changed" | grep -Eq '^(reposilite-plugins/storage-cache-plugin/|reposilite-backend/src/main/kotlin/(com/reposilite|net/onelitefeather/ingot)/storage/|reposilite-backend/src/integration/kotlin/net/onelitefeather/ingot/storage/cache/|reposilite-backend/build\.gradle\.kts$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No change touches the storage cache, the steps below are skipped."
+          fi
+
+      - name: "Validate Gradle wrapper"
+        if: steps.scope.outputs.run == 'true'
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # Restores and saves the Gradle caches of the job, as the other backend jobs of this repository do.
+      - name: "Set up Gradle"
+        if: steps.scope.outputs.run == 'true'
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # The unit suite of the plugin, which needs no container.
+      - name: "Run the storage cache unit tests"
+        if: steps.scope.outputs.run == 'true'
+        run: ./gradlew :reposilite-plugins:storage-cache-plugin:test --max-workers=2
+
+      # The filter selects the cache over the S3 container in the integration source set of the backend.
+      - name: "Run the storage cache integration test"
+        if: steps.scope.outputs.run == 'true'
+        run: ./gradlew :reposilite-backend:integration --tests '*CacheOverS3IntegrationTest*' --max-workers=2
