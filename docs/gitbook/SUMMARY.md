@@ -64,6 +64,7 @@
   * [Configure Microsoft Entra ID login](configure/authentication/configure-entra-id-login.md)
   * [Configure GitHub login](configure/authentication/configure-github-login.md)
   * [Configure LDAP login](configure/authentication/configure-ldap-login.md)
+  * [Configure second factors](configure/authentication/configure-second-factors.md)
   * [Map provider groups to teams](configure/authentication/map-provider-groups-to-teams.md)
   * [Troubleshoot external login](configure/authentication/troubleshoot-external-login.md)
 * [Repositories](configure/repositories/README.md)

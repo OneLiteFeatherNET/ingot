@@ -157,6 +157,14 @@ For Maven, use the same two variables with the `settings.xml` from the Maven tab
 {% endtab %}
 {% endtabs %}
 
+## Tokens of users with a second factor
+
+The tokens of a machine account are unaffected. A machine account has no second factor, so a build that uses its token keeps working, and the creation of its token is not asked for one.
+
+A person's own tokens are different. When the user holds a second factor, creating, rotating or deleting an own token needs a browser session with a fresh second factor, see [Configure second factors](../configure/authentication/configure-second-factors.md#step-up). A build that calls the API with a token, Basic or Bearer, gets `403` with `step_up_required` for those calls. Tokens that already exist keep working, and CI pipelines that only use them change nothing.
+
+The rule does not cover every administrator token. An access token with the administrator rights (`ingot_admin.*` or the instance admin flag) is not affected by the policy `requiredForAdmins`, because a pipeline that uses such a token would stop. Such a token is a secret of its own. Keep it only in the secret store of the pipeline that needs it, limit who can read that store, and rotate it on a schedule.
+
 ## Legacy tokens
 
 Tokens from Reposilite 3.x, and tokens created before the `ingot_` format, have no prefix. They keep their name and their secret, and they work over Basic authentication only. A Bearer header does not accept them. Keep their name and secret in the CI secrets, and change nothing else in the build. For the migration, see [Token migration](../references/architecture/token-migration.md).

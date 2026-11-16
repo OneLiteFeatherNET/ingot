@@ -13,6 +13,7 @@ Use this guide when nobody can sign in as an instance administrator: the passwor
 | The instance is new and has no user yet | [Use the setup code](#use-the-setup-code) |
 | An administrator's password is lost, or every administrator is locked out of the dashboard | [Start with a temporary admin token](#start-with-a-temporary-admin-token) |
 | The last instance admin was removed by an SSO or LDAP group sync | [After a provider removed the last admin](#after-a-provider-removed-the-last-admin) |
+| A second factor policy covers the administrators, and none of them can finish a sign-in | [A policy locks out every administrator](#a-policy-locks-out-every-administrator) |
 | Sign-in is refused with a lock message after failed attempts | [Wait out a lockout](#wait-out-a-lockout) |
 
 ## Use the setup code
@@ -90,6 +91,38 @@ The call is idempotent. Granting the right to someone who already has it changes
 1. Sign in to the dashboard with the user that you repaired. If you reset a password, the dashboard asks for a new one.
 2. Restart Ingot without `--token`. Remove the flag from `INGOT_OPTS`, `REPOSILITE_OPTS` or the command line, or the temporary token comes back at the next start.
 3. Check that the admin account signs in and can open **Access**.
+
+## A policy locks out every administrator
+
+The second factor policy covers the administrators when `login.mfa.requiredForAdmins` is on, or when a team in `login.mfa.requiredForTeams` holds them. An administrator who has no factor keeps signing in during the grace period. After it, the session is restricted to enrolment. A lockout happens when no covered administrator can finish a sign-in: the factor is lost and no recovery code is left, the passkey is bound to an address that has changed, or the authenticator app is needed but the settings key is not set.
+
+Try these steps first:
+
+1. **Enrol at once.** Sign in with the password and start the enrolment inside the step-up window, five minutes by default. A restricted session may enrol. Authenticator codes need the settings key, and passkeys need the public address in `login.publicUrl`. The calls are in [Configure second factors](../../configure/authentication/configure-second-factors.md#enrol-a-factor).
+2. **Ask another administrator** who can still sign in to reset the factors of the locked user, see the next section. Their own step-up applies.
+
+If no administrator can sign in, start with the temporary token:
+
+3. Start Ingot with the `--token` flag, as in [Start with a temporary admin token](#start-with-a-temporary-admin-token).
+4. Switch the policy off, or reset the factors of the locked user, using the token as the Basic credential. The token bypasses the login gate, the policy and the step-up, as it did before this release.
+
+   ```bash
+   curl -u recovery:<long-random-secret> -X DELETE \
+     https://repo.example.org/api/identity/principals/<user-name>/factors
+   ```
+
+5. Restart Ingot without `--token`, and check that the policy is set the way you want it.
+
+## Reset the factors of a user
+
+An instance admin removes all factors and recovery codes of a user, or one factor. The sessions of the user end at once. The policy then applies as before: a covered user keeps the grace period that already began, or is restricted to enrolment once it has ended.
+
+```bash
+curl -u recovery:<long-random-secret> -X DELETE \
+  https://repo.example.org/api/identity/principals/<user-name>/factors
+```
+
+The answer is `{"removed": <count>}`. To remove one factor, list the ids with `GET /api/identity/principals/<user-name>/factors`, then send `DELETE` to `.../factors/<factor-id>`. The reset is audited as `MFA_FACTORS_RESET` with the user name and the number of removed factors. It never holds a code or a secret.
 
 ## After a provider removed the last admin
 

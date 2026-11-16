@@ -111,9 +111,50 @@ After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`
 | `invalid_username` | The username claim is not a valid user name. |
 | `user_disabled` | The linked account is disabled. |
 | `email_domain_not_allowed` | The email is missing or not in an allowed domain. |
+| `second_factor_required` | The user is covered by the second factor policy and holds a factor, and the provider did not verify a second factor. The sign-in continues with the API, see [Second factors and the policy](#second-factors-and-the-policy). |
+
+## Second factors and the policy
+
+The second factor policy of [Configure second factors](configure-second-factors.md) applies to external sign-ins as well. Ingot decides at the callback, with the answer of the provider:
+
+| User | Result at the callback |
+| --- | --- |
+| Not covered by the policy | The sign-in completes, whatever factors the user holds. Ingot asks for no second factor. |
+| Covered, and holds a factor | Ingot asks for the factor, unless the ID token carries a value the provider is trusted for (below). |
+| Covered, and holds no factor | The sign-in completes. The grace period applies, then the session is restricted until a factor is enrolled. |
+
+A covered user with a factor is challenged. Ingot then sets the `ingot_mfa` cookie and redirects with `?loginError=second_factor_required`.
+
+### Trust a second factor of the provider
+
+When the provider has already checked a second factor, the ID token says so in its `acr` (authentication context class) or `amr` (authentication methods) claim. You can name those values per provider, so that the user is not asked for a second Ingot factor:
+
+* `mfaAcrValues`: the `acr` values that count as a second factor. Set them on the provider entry in `login.oidcProviders`.
+* `mfaAmrValues`: the `amr` values that count as a second factor, for example `mfa` or `otp`, as the provider sends them.
+
+Both lists are empty by default, and an empty list trusts nothing. Name only values that your provider sends when it has checked a second factor, and check them with a test login before you rely on them. Keep the list short. A value in the list skips the Ingot factor for every covered user of this provider who signs in with it.
+
+The settings are written through the settings API, because the provider form does not have these fields in this release:
+
+```bash
+jq '(.oidcProviders[] | select(.id == "corp") | .mfaAmrValues) = ["mfa"]' login.json > login-new.json
+curl -u "$ADMIN_TOKEN" -X PUT -H "Content-Type: application/json" \
+  --data-binary @login-new.json "$BASE/api/settings/domain/login"
+```
+
+Read `login.json` first with `GET /api/settings/domain/login`, as shown in [Configure second factors](configure-second-factors.md#set-the-policy).
+
+### GitHub
+
+GitHub issues no ID token, so no trust list applies to a GitHub login. A covered GitHub user with a factor is challenged at every sign-in. A covered GitHub user without a factor signs in during the grace period and enrols a factor there. The next sign-in is then challenged.
+
+### Finish the sign-in
+
+The dashboard does not handle `loginError=second_factor_required` yet. Until the dashboard change lands, a covered user finishes the sign-in through the API: the cookie `ingot_mfa` from the redirect is in the browser, so `POST /api/auth/mfa/verify` with `{"code": "..."}` or `{"passkey": {...}}` completes it, and the response starts the session. The sign-in does not complete on the dashboard page itself until then.
 
 ## Related
 
+* [Configure second factors](configure-second-factors.md)
 * [Configure Microsoft Entra ID login](configure-entra-id-login.md)
 * [Configure GitHub login](configure-github-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
