@@ -20,7 +20,7 @@
  * builds the `meta` of each route from it), the Access and Settings side navigation, the settings
  * hub, the document title and the route guard, which reads that meta.
  *
- * The rail holds four entries: Browse (overview), Search, Dashboard and Administration. Administration
+ * The rail holds three entries: Browse (overview), Search and Administration. Administration
  * opens the hub at /settings and is the group of every page an operator uses to run the instance; ADMIN_TREE
  * lists those pages in four groups. A group has an id, the value a plugin manifest names (Repository, Security,
  * System, Support), and a display heading (GROUP_HEADINGS: Artifacts, Access, Instance, Monitoring and support).
@@ -290,7 +290,7 @@ const pluginEnabled = (name: string) => enabledPlugins().includes(name)
 // An entry with `requires` is listed only while the predicate holds, on top of its permission.
 const entryAvailable = (entry: { requires?: () => boolean }) => entry.requires === undefined || entry.requires()
 
-// The groups of the rail. The four entries of the rail form one unlabelled block, so the group has no heading.
+// The groups of the rail. The entries of the rail form one unlabelled block, so the group has no heading.
 const AREAS: { area: string; heading: string | undefined }[] = [{ area: 'rail', heading: undefined }]
 const BAR_SIZE = 4
 
@@ -393,7 +393,6 @@ const definedNames = (names: (string | undefined)[]): string[] => names.filter((
 const PAGES: Page[] = [
   { key: 'overview', route: 'overview', label: 'Browse', area: 'rail', permission: { manager: false }, barOrder: 1 },
   { key: 'search', route: 'search', label: 'Search', area: 'rail', permission: { manager: false }, barOrder: 2 },
-  { key: 'dashboard', route: 'dashboard', label: 'Dashboard', area: 'rail', permission: { node: ADMIN_NODES.dashboard }, barOrder: 3 },
   {
     key: 'settings',
     route: 'settings',
@@ -433,7 +432,7 @@ const PAGES: Page[] = [
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
 // the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES: readonly string[] = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
+const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
 
 const pageByKey = (key: string): Page | undefined => PAGES.find(page => page.key === key)
 

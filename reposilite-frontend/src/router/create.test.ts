@@ -49,7 +49,8 @@ describe('route to section mapping', () => {
     ['/search', 'search'],
     ['/search?q=commons&origin=mirror', 'search'],
     ['/account', 'account'],
-    ['/dashboard', 'dashboard'],
+    // The retired dashboard address redirects to Overview, so the section is the one of its target.
+    ['/dashboard', 'settings'],
     ['/analytics', 'analytics'],
     ['/access/users', 'access'],
     ['/access/users/alice', 'access'],
@@ -142,12 +143,11 @@ describe('route names and parameters', () => {
 })
 
 describe('analytics route', () => {
-  it('carries the same guard meta as the dashboard, so the same people see both', () => {
-    const dashboard = ROUTES.find(route => route.name === 'dashboard')
+  it('gives analytics the dashboard node, so the same people see the traffic page', () => {
     const analytics = ROUTES.find(route => route.name === 'analytics')
 
     expect(analytics?.path).toBe('/analytics')
-    expect(analytics?.meta).toEqual({ ...dashboard!.meta, section: 'analytics' })
+    expect(analytics?.meta).toEqual({ section: 'analytics', manager: true, node: 'ingot.admin.dashboard' })
   })
 
   it('keeps a signed in user without the manager permission on the analytics address', async () => {
@@ -291,7 +291,7 @@ describe('manager routes', () => {
     expect(notify).not.toHaveBeenCalled()
   })
 
-  it('keeps a signed in user without the manager permission on the dashboard address', async () => {
+  it('sends a signed in user without a node from the dashboard address on to Overview, with no notice', async () => {
     const notify = vi.fn()
     const router = makeRouter({
       isManager: () => false,
@@ -302,7 +302,7 @@ describe('manager routes', () => {
 
     await router.push('/dashboard')
 
-    expect(router.currentRoute.value.name).toBe('dashboard')
+    expect(router.currentRoute.value.path, 'the address is no longer the dashboard').not.toBe('/dashboard')
     expect(notify).not.toHaveBeenCalled()
   })
 
@@ -487,6 +487,43 @@ describe('routes gated by permission nodes', () => {
     await router.push('/audit')
 
     expect(router.currentRoute.value.name).toBe('audit')
+  })
+})
+
+describe('the retired /dashboard address', () => {
+  const sessionWith = (...nodes: string[]) => ({
+    isManager: () => true,
+    isLogged: () => true,
+    can: (node: string) => nodes.includes(node),
+    whenSessionKnown: () => Promise.resolve()
+  })
+
+  it('redirects /dashboard to Overview, keeping the query and the hash', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.dashboard'), narrow: () => false })
+
+    await router.push('/dashboard?from=email#status')
+
+    expect(router.currentRoute.value.fullPath, 'the status is on Overview').toBe('/settings?from=email#status')
+  })
+
+  it('replaces the history entry, so the back button does not return to /dashboard', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.dashboard'), narrow: () => false })
+    await router.push('/search')
+    await router.push('/dashboard')
+
+    router.back()
+
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath, 'the back button goes to the page before the redirect').toBe('/search'))
+  })
+
+  it('ends an old tab link on Overview', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.dashboard'), narrow: () => false })
+
+    const target = legacyLocation('#/?tab=dashboard')
+    expect(target, 'the old tab link is recognised').not.toBeNull()
+    await router.push(target!)
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings')
   })
 })
 

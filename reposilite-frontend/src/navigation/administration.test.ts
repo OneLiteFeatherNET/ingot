@@ -51,8 +51,8 @@ describe('the breadcrumb of an Administration page', () => {
 })
 
 describe('the four entries of the rail', () => {
-  it('shows Browse, Search, Dashboard and Administration to an administrator, in that order', () => {
-    expect(railLabels(everything)).toEqual(['Browse', 'Search', 'Dashboard', 'Administration'])
+  it('shows Browse, Search and Administration to an administrator, in that order, with no Dashboard entry', () => {
+    expect(railLabels(everything)).toEqual(['Browse', 'Search', 'Administration'])
   })
 
   it('names the browse page Browse, and keeps its route name', () => {
@@ -73,15 +73,15 @@ describe('the four entries of the rail', () => {
     expect(administrationLocation(everything)).toEqual({ name: 'settings' })
   })
 
-  it('hides Dashboard from a visitor without the dashboard node', () => {
+  it('shows the same three entries to a visitor with the settings node alone', () => {
     expect(railLabels(only(ADMIN_NODES.settings))).toEqual(['Browse', 'Search', 'Administration'])
   })
 })
 
 describe('the bottom bar', () => {
-  it('holds the four entries and no More item for an administrator', () => {
+  it('holds the three entries and no More item for an administrator', () => {
     const layout = barLayout(everything)
-    expect(layout.bar.map(page => page.label)).toEqual(['Browse', 'Search', 'Dashboard', 'Administration'])
+    expect(layout.bar.map(page => page.label)).toEqual(['Browse', 'Search', 'Administration'])
     expect(layout.more).toEqual([])
   })
 })

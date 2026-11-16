@@ -36,7 +36,6 @@ const COVERED_PAGES = [
     knownFault: 'issue #160: color-contrast and label-content-name-mismatch',
   },
   { name: 'the search', path: '/search' },
-  { name: 'the dashboard', path: '/dashboard', signedIn: true },
   { name: 'the access users page', path: '/access/users', signedIn: true },
   // The repositories table is the settle marker: its region is named for a screen reader, and the rows arrive with the page.
   { name: 'the repositories page', path: '/settings/repositories', signedIn: true, settledRegion: 'Repositories table' },

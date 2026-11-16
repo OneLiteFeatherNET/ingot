@@ -74,7 +74,6 @@ describe('registry entries', () => {
     )
 
     expect(nodes).toMatchObject({
-      dashboard: 'ingot.admin.dashboard',
       analytics: 'ingot.admin.dashboard',
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
@@ -225,8 +224,16 @@ describe('routeMeta', () => {
     expect(routeMeta('search')).toEqual({ section: 'search' })
   })
 
+  it('gives the retired dashboard address no page, because it redirects to Overview', () => {
+    const dashboard = ROUTES.find(route => route.name === 'dashboard')!
+
+    expect(dashboard.redirect, 'the address redirects').toBeDefined()
+    expect(dashboard.meta, 'the redirect has no meta of a page').toBeUndefined()
+    expect(PAGES.map(page => page.key), 'no rail page keeps the dashboard key').not.toContain('dashboard')
+  })
+
   it('gives a manager page its node and the manager flag', () => {
-    expect(routeMeta('dashboard')).toEqual({ section: 'dashboard', manager: true, node: 'ingot.admin.dashboard' })
+    expect(routeMeta('settings')).toEqual(expect.objectContaining({ section: 'settings', manager: true }))
   })
 
   it('gives the Access page its alternative nodes', () => {

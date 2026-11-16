@@ -164,9 +164,9 @@ const chooseLink = async (wrapper: DOMWrapper<Element>, label: string) => {
 const navigations = (wrapper: VueWrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
 // The four entries of the rail, which the bottom bar shows too for an administrator. Administration holds the rest.
-const SECTION_LABELS = ['Browse', 'Search', 'Dashboard', 'Administration']
+const SECTION_LABELS = ['Browse', 'Search', 'Administration']
 // The bottom bar shows the short label of Administration, so its four equal shares fit the label on a 320 px window.
-const BAR_LABELS = ['Browse', 'Search', 'Dashboard', 'Admin']
+const BAR_LABELS = ['Browse', 'Search', 'Admin']
 
 // The content sheet has no class of its own for a test to find, so it is found by its top-start corner rounding.
 const SHEET = '.medium\\:rounded-tl-corner-extra-large'
@@ -209,7 +209,8 @@ describe('IndexPage section from the route', () => {
   })
 
   it.each([
-    ['/dashboard', 'dashboard'],
+    // The retired dashboard address redirects to Overview.
+    ['/dashboard', 'settings'],
     ['/analytics', 'analytics'],
     ['/access/users', 'access'],
     ['/access/machines/ci-bot', 'access'],
@@ -444,10 +445,10 @@ describe('IndexPage navigation', () => {
   const barLabels = (wrapper: VueWrapper) => navigations(wrapper)[0].findAll('a').map(link => link.text())
   const barButtons = (wrapper: VueWrapper) => navigations(wrapper)[0].findAll('button')
 
-  it('offers the rail with the four entries, in order, to a manager', async () => {
+  it('offers the rail with the three entries, in order, to a manager, and no Dashboard entry', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    expect(railLabels(wrapper), 'Browse, Search, Dashboard and Administration').toEqual(SECTION_LABELS)
+    expect(railLabels(wrapper), 'Browse, Search and Administration').toEqual(SECTION_LABELS)
   })
 
   it('draws the rail without group headings, since the four entries form one block', async () => {
@@ -456,7 +457,7 @@ describe('IndexPage navigation', () => {
     expect(navigations(wrapper)[1].findAll('[role="group"]')).toHaveLength(0)
   })
 
-  it('hides Dashboard from a user without ingot.admin.dashboard and keeps Administration for maintenance', async () => {
+  it('keeps Administration for a user with the maintenance node, and no Dashboard entry', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.maintenance'] })
 
     expect(railLabels(wrapper)).toEqual(['Browse', 'Search', 'Administration'])
@@ -496,7 +497,7 @@ describe('IndexPage navigation', () => {
 
     const shown = navigations(wrapper).flatMap(nav => nav.findAll('a').map(link => link.text()))
 
-    for (const label of ['Dashboard', 'Administration', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit log']) {
+    for (const label of ['Administration', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit log']) {
       expect(shown, `${label} needs a sign in`).not.toContain(label)
     }
   })
@@ -513,7 +514,7 @@ describe('IndexPage navigation', () => {
 
     expect(barLabels(wrapper), 'the bar has the short label').toContain('Admin')
     expect(railLabels(wrapper), 'the rail keeps the full label').toContain('Administration')
-    const barAdministration = navigations(wrapper)[0].findAll('a')[3]
+    const barAdministration = navigations(wrapper)[0].findAll('a')[2]
     expect(barAdministration.attributes('title'), 'the full label is the description of the bar entry').toBe('Administration')
     expect(barAdministration.attributes('aria-label'), 'the name is the visible text').toBeUndefined()
   })
@@ -560,10 +561,10 @@ describe('IndexPage navigation', () => {
   it('switches the section through the router when a rail item is chosen', async () => {
     const { wrapper, router } = await mountAt('/', { manager: true })
 
-    await chooseLink(navigations(wrapper)[1], 'Dashboard')
+    await chooseLink(navigations(wrapper)[1], 'Administration')
 
-    expect(router.currentRoute.value.fullPath).toBe('/dashboard')
-    expect(shownSection(wrapper)).toBe('dashboard')
+    expect(router.currentRoute.value.fullPath).toBe('/settings')
+    expect(shownSection(wrapper)).toBe('settings')
   })
 
   it('opens the search page from the rail without a sign in', async () => {
@@ -576,14 +577,14 @@ describe('IndexPage navigation', () => {
   })
 
   it('shows the previous section again when the browser goes back', async () => {
-    const { wrapper, router } = await mountAt('/dashboard', { manager: true })
+    const { wrapper, router } = await mountAt('/audit', { manager: true })
 
     await router.push('/access/users')
     await flushPromises()
     await router.back()
     await flushPromises()
 
-    expect(shownSection(wrapper), 'the back button must restore the section from the URL').toBe('dashboard')
+    expect(shownSection(wrapper), 'the back button must restore the section from the URL').toBe('audit')
   })
 })
 
@@ -783,7 +784,7 @@ describe('IndexPage main landmark', () => {
   })
 
   it('wraps the page content in exactly one main landmark that takes focus programmatically', async () => {
-    const { wrapper } = await mountAt('/dashboard', { manager: true })
+    const { wrapper } = await mountAt('/audit', { manager: true })
 
     expect(wrapper.findAll('main#main[tabindex="-1"]'), 'one main element with the skip link target').toHaveLength(1)
   })
@@ -796,15 +797,15 @@ describe('IndexPage main landmark', () => {
   })
 
   it('keeps the page header outside the main landmark', async () => {
-    const { wrapper } = await mountAt('/dashboard', { manager: true })
+    const { wrapper } = await mountAt('/audit', { manager: true })
     const main = wrapper.find('main')
 
     expect(wrapper.find('header').exists(), 'the header is on the page').toBe(true)
-    expect(main.find('header').exists(), 'the header is not inside main').toBe(false)
+    expect(main.element.contains(wrapper.find('header').element), 'the page header is not inside main').toBe(false)
   })
 
   it('keeps the shown section inside the main landmark', async () => {
-    const { wrapper } = await mountAt('/dashboard', { manager: true })
+    const { wrapper } = await mountAt('/audit', { manager: true })
 
     expect(wrapper.find('main [data-test="section"]').exists(), 'the content is inside main').toBe(true)
   })

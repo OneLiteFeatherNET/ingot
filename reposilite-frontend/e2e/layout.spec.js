@@ -349,17 +349,17 @@ test.describe('the administration page header', () => {
   })
 })
 
-// The bottom navigation bar below 600 pixels: its four destinations share the width equally, and every label fits its
+// The bottom navigation bar below 600 pixels: its three destinations share the width equally, and every label fits its
 // share whole, so none is cut with an ellipsis. At 320 pixels the Administration destination shows its short label.
 test.describe('the bottom navigation bar at phone width', () => {
   test('shares the width equally and keeps every label whole at 320 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
-    await page.goto(siteUrl('/dashboard'))
+    await page.goto(siteUrl('/settings'))
 
     const bar = page.locator('[data-ingot-component="md-navigation-bar"]')
     await expect(bar).toBeVisible()
     const labels = bar.locator('li span.md-label-medium')
-    await expect(labels, 'the bar has its four destinations').toHaveCount(4)
+    await expect(labels, 'the bar has its three destinations, with no Dashboard').toHaveCount(3)
 
     const labelFits = await labels.evaluateAll(elements => elements.map(element => ({
       text: element.textContent.trim(),
@@ -369,15 +369,15 @@ test.describe('the bottom navigation bar at phone width', () => {
     for (const { text, scrollWidth, clientWidth } of labelFits) {
       expect(scrollWidth, `the label "${text}" fits its item in px`).toBeLessThanOrEqual(clientWidth)
     }
-    expect(labelFits.map(({ text }) => text), 'the destinations, in order').toEqual(['Browse', 'Search', 'Dashboard', 'Admin'])
+    expect(labelFits.map(({ text }) => text), 'the destinations, in order').toEqual(['Browse', 'Search', 'Admin'])
 
     const widths = await bar.locator('li').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
-    expect(Math.max(...widths) - Math.min(...widths), 'the four destinations have equal widths in px').toBeLessThanOrEqual(1)
+    expect(Math.max(...widths) - Math.min(...widths), 'the three destinations have equal widths in px').toBeLessThanOrEqual(1)
   })
 
   test('names the short Admin destination by its visible label without an accessibility violation at 320 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
-    await page.goto(siteUrl('/dashboard'))
+    await page.goto(siteUrl('/settings'))
 
     const bar = page.locator('[data-ingot-component="md-navigation-bar"]')
     await expect(bar).toBeVisible()
