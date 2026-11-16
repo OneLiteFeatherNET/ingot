@@ -50,6 +50,10 @@ Rotation takes three rolling restarts.
 2. Make the new key active and the old key the previous key on every instance. Restart each instance. New writes now use the new key.
 3. On one instance, run the console command `settings-reencrypt`. It seals every stored value with the new key, including the seeds of authenticator codes, and moves the key record. A seed that neither key opens is left unchanged and named in the output: its owner has to enrol the authenticator again. Then remove `INGOT_SETTINGS_KEY_PREVIOUS` from every instance and restart them.
 
+{% hint style="warning" %}
+The command `settings-reencrypt` does not re-seal the authenticator seeds of [second factors](../../configure/authentication/configure-second-factors.md). Keep `INGOT_SETTINGS_KEY_PREVIOUS` set on every instance for as long as users hold authenticator codes that were enrolled before the rotation. Removing it earlier makes those codes fail, and the affected users need an administrator reset of their factor. Recovery codes and passkeys are not affected.
+{% endhint %}
+
 A restart that happens between steps is safe. An instance that still holds only the old key stops at start once the record names the new key, and that is the signal to finish step 2 for it.
 
 ## 5. Go back to a build without encryption
@@ -66,6 +70,8 @@ A start with the key still set would seal the values again, so the key comes out
 ## Settings that hold a secret
 
 The secrets are the S3 access and secret keys, the mirror credentials and proxy URLs, the LDAP bind password, the OIDC client secret and the search user password. A reference such as `${env:NAME}` is not sealed, because it names a secret without holding one. See [Settings domains](../../references/settings/settings-domains.md).
+
+The seeds of authenticator apps for [second factors](../../configure/authentication/configure-second-factors.md) are not settings values, but they are sealed with the same key. An instance without a key refuses to enrol an authenticator app and says why. Passkeys and recovery codes need no key. Without the key, an enrolled authenticator app cannot check its codes, so the key must be kept for as long as those codes are in use.
 
 ## Troubleshooting
 

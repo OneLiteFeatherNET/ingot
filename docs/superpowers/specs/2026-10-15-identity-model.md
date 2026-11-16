@@ -1315,3 +1315,162 @@ Open points:
   its own outcome, with the address of the request. The account service audits only the creation of a user.
 - O-29 A blank password is a missing field (`400`) for every provider, as the existing login route already answers. The directory
   is not asked in that case. A wrong password is `401`.
+
+## 15. Second factors and the sign-in policy (phase 4)
+
+Decision record: `openspec/changes/add-multi-factor-authentication/design.md` (D1 to D21). This section is the contract as implemented. Where the design and the code differ, section 15.13 names the difference and the code wins. The contract comes from two branches: `feat/identity-external-enrolment` (#561) carries the factors, the login gate, the policy and the external rules, and `feat/identity-own-token-step-up` (#560) adds the token rule, the security status and the step-up of the account routes. A route that exists only in #560 is marked in 15.9.
+
+### 15.1 Factor kinds
+
+| Kind (`kind` in the factor list) | Method name in the login and step-up answers | Storage | Rules |
+| --- | --- | --- | --- |
+| `TOTP` (authenticator app) | `AUTHENTICATOR` | `mfa_factor`, the seed sealed with the settings envelope codec in domain `login` | RFC 6238 with HMAC-SHA1, six digits, a thirty second step and one step of drift either side. A code is accepted once per step (`last_used_step`). Needs the settings key, see 15.11. |
+| `PASSKEY` (WebAuthn) | `PASSKEY` | `mfa_factor`, the public key, `credential_id` and `sign_count` | WebAuthn4J 0.32.0.RELEASE. An assertion whose signature counter does not exceed the stored value is refused. |
+| Recovery codes | `RECOVERY_CODE` | `mfa_recovery_code`, the SHA-256 of the normalised code | Ten codes per set, single use. A set is issued when the first factor is confirmed, and a new set replaces the old one. |
+
+Nothing is enabled for anyone by default. A user may hold several factors of each kind. The factor list of a user never contains a secret.
+
+### 15.2 Sign-in with a second factor
+
+- A password or LDAP sign-in of a user with at least one factor creates no session. `POST /api/auth/login` answers `200` with `{"mfaRequired": true, "methods": [...]}` and sets the cookie `ingot_mfa` (HttpOnly, SameSite=Lax, five minutes). The cookie names a row of `auth_challenge`, which lives five minutes and is spent once.
+- `POST /api/auth/mfa/verify` takes `{"code": "..."}` for an authenticator or recovery code, or `{"passkey": {...}}` for a passkey assertion. Success starts the session and clears the cookie. A wrong code answers `401` with `Invalid code` and keeps the challenge until it expires. An expired or spent challenge answers `401` and clears the cookie.
+- `POST /api/auth/mfa/passkey/options` starts the assertion of the pending sign-in. It reads the challenge cookie and takes no body.
+- Failed verifications count through `LoginAttemptLimiter` with the keys `mfa|user|<name>|<address>`, `mfa|address|<address>` and `mfa|account|<name>`. A blocked attempt answers `429` with `Retry-After` and is audited as `MFA_CHALLENGE_FAILED`.
+- A password that is accepted while the user has a factor is audited as `MFA_FIRST_FACTOR_ACCEPTED`, so the first factor is visible in the log even when the second one fails.
+- `CsrfPolicy` exempts `/api/auth/mfa/verify` and `/api/auth/passkey/login`, because both create cookies.
+
+### 15.3 Passkeys as the first factor
+
+Only when `login.mfa.passkeyFirstFactor` is `true`. While it is off, both routes answer `404`.
+
+- `POST /api/auth/passkey/options` takes `{"username": "..."}` and answers the options.
+- `POST /api/auth/passkey/login` takes the assertion and starts the browser session.
+
+### 15.4 Step-up and the session claims
+
+- A session token carries `ath` (the time of the last authentication), `mfa` (a second factor completed in this session family) and `scope` (`full` or `enrol`, see 15.6).
+- `POST /api/identity/me/step-up` takes `{"code": "..."}` or `{"passkey": {...}}` from a browser session and answers `{"authenticatedAt", "stepUpUntil"}`. The session is reissued with the new `ath` and `mfa` set. The window is `login.mfa.stepUpMinutes`, five minutes by default.
+- A sensitive action in a browser session of a user with a factor needs a second factor inside the window. Otherwise it answers `403` with `step_up_required`, and `problems` lists the methods of the user, each with its method name as `node`.
+- The first factor is different: the enrolment needs the password entry itself to be inside the window.
+- A Basic or Bearer caller passes the step-up gate unchanged, so the break-glass token and CI pipelines keep working. Access tokens get their own rule, see 15.5.
+- Sensitive actions in #561: enrolling and removing a factor, regenerating recovery codes, and the administrator reset of factors. #560 adds the password change of the own account, creating, rotating and deleting own tokens (15.5), the administrator password reset of another user, and the grant or revoke of instance admin, for principals and teams.
+
+### 15.5 Access tokens, directory Basic and the factor routes
+
+- The factor routes of an account refuse a Basic or Bearer caller with `403` and the message `Second factors are managed from a browser session, not with an access token`.
+- #560: a Basic or Bearer request that creates, rotates or deletes an own token of a user with a factor is refused with `403` and `step_up_required`. A browser session with a fresh step-up is allowed. Machine accounts have no factor and are not affected.
+- Directory Basic (`authentication.ldap`, `LdapAuthenticator`): a login with the directory password is refused when the token of that name belongs to a user who has a factor (`DirectoryTokenMatch`). The client gets `401` with `Invalid authorization credentials`. The reason is written to the server log as a warning and is not sent to the client.
+- The policy `requiredForAdmins` does not cover access tokens, see the open point O-30.
+
+### 15.6 Policy, grace period and restricted sessions
+
+Settings domain `login`, object `mfa` (`MfaSettings` in `LoginSettings.kt`):
+
+| Key | Default | Rule |
+| --- | --- | --- |
+| `login.mfa.requiredForAdmins` | `false` | Instance admins, directly or through a team, are covered. |
+| `login.mfa.requiredForTeams` | `[]` | Direct members of these team names are covered. Names are compared without case. |
+| `login.mfa.graceDays` | `14` | Between 0 and 365. |
+| `login.mfa.stepUpMinutes` | `5` | Between 1 and 60. |
+| `login.mfa.passkeyFirstFactor` | `false` | Enables the passkey routes of 15.3. |
+
+- `requiredSince` is not a setting. It is stored per principal in `principal.required_since`. The first sign-in after the policy covers a user writes it, once, and nothing clears it. Switching the policy off and on does not restart the grace period.
+- A covered user without a factor keeps a `full` session until `requiredSince + graceDays`. From that instant, the next refresh issues a session with `scope` `enrol`. A live session keeps its scope until it is renewed, which is within `login.sessionLifetimeMinutes`. No session is revoked by the policy.
+- A covered user with a factor is challenged at every password or LDAP sign-in, and at every external sign-in unless 15.7 says otherwise.
+- A restricted session may call only: `GET /api/identity/me/factors`, `POST /api/identity/me/factors/totp`, `POST /api/identity/me/factors/totp/confirm`, `POST /api/identity/me/factors/passkey/options`, `POST /api/identity/me/factors/passkey`, `DELETE /api/identity/me/factors/{id}`, `POST /api/identity/me/recovery-codes`, `POST /api/auth/refresh` and `POST /api/auth/logout`. #560 adds `GET /api/identity/me/security`. Every other route answers `403` with `mfa_enrolment_required`.
+- Saving `requiredForAdmins` as `true` carries a warning for the administrator who saves it. The warning does not refuse the save.
+
+### 15.7 External logins
+
+The decision is `LoginFacade.externalSecondFactor`, taken at the callback of OpenID Connect and GitHub with the answer of the provider:
+
+| User | Result at the callback |
+| --- | --- |
+| Not covered by the policy | The session starts, whatever factors the user has. No Ingot factor is asked. |
+| Covered, with a factor, OpenID Connect, and the ID token has an `acr` in `mfaAcrValues` or an `amr` in `mfaAmrValues` | The session starts. The provider has verified a second factor. |
+| Covered, with a factor, OpenID Connect, no trusted value | Ingot challenge: the `ingot_mfa` cookie, then the redirect to `/?loginError=second_factor_required`. |
+| Covered, with a factor, GitHub | Ingot challenge, as above. GitHub issues no ID token, so no trust list applies. |
+| Covered, without a factor | The session starts with the grace scope of 15.6. |
+
+- `mfaAcrValues` and `mfaAmrValues` are lists on each entry of `login.oidcProviders`. They are empty by default, which trusts nothing.
+- A covered GitHub user without a factor is not challenged at the callback. Such a user signs in during the grace period, enrols a factor inside it, and is challenged at the next sign-in.
+- The callback also answers `loginError=second_factor_required` when the second factor service is not available, which happens without a database.
+- The dashboard does not handle `loginError=second_factor_required` yet, see the open point O-32. Until it does, a covered OpenID Connect or GitHub user completes the sign-in with `POST /api/auth/mfa/verify`.
+
+### 15.8 Administrative reset
+
+- `GET /api/identity/principals/{name}/factors` lists the factors of a user: kind, name, creation time and last use. It never returns a secret.
+- `DELETE /api/identity/principals/{name}/factors` removes all factors and the recovery codes of the user. `DELETE /api/identity/principals/{name}/factors/{id}` removes one factor. Both answer `{"removed": n}`.
+- Both need a fresh step-up of the caller's browser session. A Basic caller, such as the break-glass `--token`, passes the gate unchanged. A restricted administrator session is refused by the route list of 15.6.
+- Every session of the user ends (`revokeAllSessions`). The audit event `MFA_FACTORS_RESET` names the principal and the number of removed factors, and is written only when something was removed.
+
+### 15.9 REST contract
+
+All paths are relative to the base path. Errors use `{"status", "message"}`, with `problems` where the answer names more than one cause.
+
+| Method and path | Purpose | Caller | Branch |
+| --- | --- | --- | --- |
+| `POST /api/auth/login` | Password sign-in. Answers `{mfaRequired, methods}` and the cookie `ingot_mfa` when a factor is needed. | anyone | #561 |
+| `POST /api/auth/mfa/verify` | Second factor of a pending sign-in. | challenge cookie | #561 |
+| `POST /api/auth/mfa/passkey/options` | Assertion options of a pending sign-in. | challenge cookie | #561 |
+| `POST /api/auth/passkey/options` | First-factor passkey options. `404` while `passkeyFirstFactor` is off. | anyone | #561 |
+| `POST /api/auth/passkey/login` | First-factor passkey sign-in. `404` while `passkeyFirstFactor` is off. | anyone | #561 |
+| `GET /api/identity/me/factors` | Own factors. | browser session | #561 |
+| `POST /api/identity/me/factors/totp` | Start an authenticator enrolment. Returns `otpauthUri` once. A user with a factor sends `{"code"}` of one of them. | browser session | #561 |
+| `POST /api/identity/me/factors/totp/confirm` | Confirm with `{"code"}`. The first factor returns `recoveryCodes`. | browser session | #561 |
+| `POST /api/identity/me/factors/passkey/options` | Registration options. | browser session, step-up | #561 |
+| `POST /api/identity/me/factors/passkey` | Complete the registration. | browser session, step-up | #561 |
+| `DELETE /api/identity/me/factors/{id}` | Remove a factor. The body holds a current `{"code"}`. | browser session, step-up | #561 |
+| `POST /api/identity/me/recovery-codes` | Regenerate the recovery codes, returned once. | browser session, step-up | #561 |
+| `POST /api/identity/me/step-up` | Fresh second factor for the session. | browser session | #561 |
+| `GET /api/identity/me/security` | Factor counts, recovery codes left, policy, `graceUntil`, `scope` and `stepUpUntil`. | browser session, Basic or Bearer | #560 |
+| `GET /api/identity/principals/{name}/factors` | Administrator view, without secrets. | instance admin | #561 |
+| `DELETE /api/identity/principals/{name}/factors` | Administrator reset of all factors. | instance admin, step-up | #561 |
+| `DELETE /api/identity/principals/{name}/factors/{id}` | Administrator reset of one factor. | instance admin, step-up | #561 |
+
+Not implemented: the rename `PATCH /api/identity/me/factors/{id}` of design D14, see 15.13.
+
+### 15.10 Audit
+
+`AuditAction` gains these values, appended in this order: `MFA_FACTOR_ENROLLED`, `MFA_FACTOR_REMOVED`, `MFA_CHALLENGE_FAILED`, `MFA_RECOVERY_CODE_USED`, `MFA_RECOVERY_CODES_REGENERATED`, `MFA_FACTORS_RESET` and `MFA_FIRST_FACTOR_ACCEPTED`. Names are stored, so they are never renamed. An event carries the user name and the address, never a code, a seed, a recovery code or a session id.
+
+### 15.11 Settings key and stored secrets
+
+- Authenticator codes need the settings key, `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`. Without it, `POST /api/identity/me/factors/totp` answers `409` with the reason, and no seed is stored.
+- Passkeys and recovery codes need no key.
+- The seed is sealed with `SettingsEnvelopeCodec` in domain `login`, and bound to the path of its factor row, so a sealed seed does not open under another factor.
+- `settings-reencrypt` and `settings-decrypt` handle the settings secrets only. They do not re-seal the authenticator seeds, see O-34.
+- Recovery codes and challenge ids are stored as SHA-256. A passkey row holds the public key only.
+
+### 15.12 Passkey relying party
+
+- The relying party id is the host of `login.publicUrl`, and the expected origin is its scheme, host and port.
+- Without `publicUrl`, the `Host` header and `X-Forwarded-Proto` of the request are used, as for the redirect URIs. When neither gives an address, the passkey routes answer `409` with the message `Passkeys need the public address of the dashboard: set login.publicUrl, or open the dashboard through its address`.
+- A passkey is bound to its host. A change of host makes the passkeys unusable, and the administrator reset of 15.8 removes them.
+
+### 15.13 Differences from the design
+
+- The design's table lists a rename route `PATCH /api/identity/me/factors/{id}`. It is not implemented, and the docs do not describe it.
+- The second factor login has an additional route, `POST /api/auth/mfa/passkey/options`, which the design does not name.
+- The login answer is the body `{mfaRequired, methods}` of a separate type (`SecondFactorRequiredResponse`). `LoginResponse` is unchanged.
+- `requiredSince` is stored on the principal (`principal.required_since`), not in `login.mfa`.
+- The failure limiter has a third key, `mfa|account|<name>`.
+- The audit action `MFA_FIRST_FACTOR_ACCEPTED` is not in design D15. It records the accepted password of a user with a factor.
+- D9 names creating and rotating tokens. The code also refuses deleting an own token for a user with a factor (#560).
+- Factor routes refuse Basic and Bearer callers, also for reads. D14 allowed them for reads.
+- A covered GitHub user without a factor is not challenged at the callback, see 15.7. D12 said that GitHub users always need an Ingot factor under a policy.
+
+### 15.14 Open points
+
+- O-30 (D9): an administrator's access token with `ingot_admin.*`, or the legacy instance admin flag, is not covered by `requiredForAdmins`. Covering it would break every pipeline that uses such a token. The policy covers browser sessions only.
+- O-31 (D12): the trust lists are empty by default, so a covered OpenID Connect user with a factor is challenged. Whether a covered user without a factor should be sent to enrolment at the callback, instead of after the grace period, is open.
+- O-32: this release has no second factor screen in the dashboard, and the dashboard does not handle `loginError=second_factor_required`. The change `add-multi-factor-dashboard` adds both. Until it lands, enrolment and the second factor are done through the API.
+- O-33: the factor rename of design D14 is not implemented.
+- O-34: the key rotation of the settings (`settings-reencrypt`) does not re-seal the authenticator seeds. A seed sealed with the previous key opens only while that key is still configured, so removing `INGOT_SETTINGS_KEY_PREVIOUS` before the seeds are re-enrolled locks those users out of authenticator codes. Recovery codes, passkeys and the administrator reset still work. The operator guide says so until this is fixed.
+
+### 15.15 Downgrade
+
+- The first start of this version adds `principal.required_since`, `mfa_factor`, `mfa_recovery_code` and `auth_challenge`. An older version does not read them.
+- An older version signs in with the password alone. The second factor and the restricted scope are not enforced after a downgrade, and the factors stay in the database until this version starts again.
+- The older version reads the `login` domain with an object mapper that ignores unknown properties, so the `mfa` object is ignored.
+- Changes made after the upgrade (enrolments, removals, resets) are not seen by the older version. This is the same limit as in 4.6.

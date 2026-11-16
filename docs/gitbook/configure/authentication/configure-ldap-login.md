@@ -68,6 +68,12 @@ Ingot 1.1 used the `authentication.ldap` settings for the dashboard sign-in too.
 
 The legacy settings are not copied to `login.ldap`. Enter the directory again in **Access**, then **LDAP**, test it, and then enable it. Keep `authentication.ldap` for the Maven clients if you use them. A legacy dashboard login signs in as the machine account of the directory user and does not create a person account. The `login.ldap` login creates a person account.
 
+## Second factors
+
+A directory user signs in with the directory password, like a local user, and then passes the same second factor check. Enrolment works the same way, with one difference: a directory user has no local password to confirm, so the enrolment needs a fresh sign-in. Sign in with the directory password and start the enrolment inside the step-up window, five minutes by default. The steps are in [Configure second factors](configure-second-factors.md#enrol-a-factor), and the policy applies to directory users as it does to local users.
+
+The directory password does not replace the factor for Maven and Gradle. The Basic authentication of `authentication.ldap` refuses the directory password for a user who holds a second factor. The client gets `401` with `Invalid authorization credentials`, and the server log names the reason. Use an access token for the build instead. The token of a machine account is not affected, see [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md).
+
 ## When a login fails
 
 The login is subject to the same failure limit as the local password. A wrong password counts towards the lock of the user name and of the address, see [Configure generic OIDC login](configure-oidc-login.md#when-a-login-fails) for the shared codes.
