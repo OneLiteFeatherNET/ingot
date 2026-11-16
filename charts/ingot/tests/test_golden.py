@@ -54,6 +54,13 @@ class GoldenRenderTest(unittest.TestCase):
             "the all-in-one defaults changed; regenerate the golden only when the change is intended",
         )
 
+    def test_explicit_all_in_one_mode_matches_the_golden(self):
+        rendered = render(["ingot", CHART_DIR, "--namespace", "reposilite-staging", "--set", "mode=allInOne"])
+        self.assertEqual(
+            load_golden("allinone.yaml"), rendered,
+            "the explicit allInOne mode differs from the all-in-one defaults; regenerate the golden only when intended",
+        )
+
     def test_split_mode_defaults_match_the_golden(self):
         rendered = render(["ingot", CHART_DIR, "--namespace", "reposilite-staging", "--set", "mode=split"])
         self.assertEqual(
