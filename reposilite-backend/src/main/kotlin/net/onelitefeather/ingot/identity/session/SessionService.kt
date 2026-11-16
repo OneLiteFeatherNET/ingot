@@ -161,7 +161,7 @@ class SessionService internal constructor(
 
     /**
      * Issues a session in [familyId]. The refresh token lives for the refresh lifetime, but never beyond [familyEnd], the
-     * absolute end of the login.
+     * absolute end of the login. With an idle timeout set, it also ends the timeout after this issue.
      */
     private fun issue(principal: PrincipalRecord, familyId: String, ip: String?, userAgent: String?, familyEnd: Instant): SessionTokens {
         val now = Instant.now(clock)
@@ -170,7 +170,12 @@ class SessionService internal constructor(
         val refreshLifetime = Duration.ofHours(lifetimes.refreshLifetimeHours)
 
         val refreshToken = RandomTokens.generate()
-        val refreshExpiresAt = minOf(now.plus(refreshLifetime), familyEnd)
+        val refreshEnd = minOf(now.plus(refreshLifetime), familyEnd)
+        val refreshExpiresAt = if (lifetimes.idleTimeoutMinutes > 0) {
+            minOf(refreshEnd, now.plus(Duration.ofMinutes(lifetimes.idleTimeoutMinutes)))
+        } else {
+            refreshEnd
+        }
         store.insertRefreshToken(
             familyId = familyId,
             principalId = principal.id,
