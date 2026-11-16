@@ -21,7 +21,7 @@ way its answers change.
 
 ## What Changes
 
-The change ships as five code pull requests, each one an area that can be reviewed and merged on its own. All of them
+The change ships as four code pull requests, each one an area that can be reviewed and merged on its own. All of them
 are `feat(identity)`. Every item is off by default: with no switch set, each request is answered as it is today. The
 switches and their effects are listed under Impact.
 
@@ -40,12 +40,13 @@ switches and their effects are listed under Impact.
    and counters on the status endpoint. Two plugin events, `LoginThrottledEvent` and `NewSignInEvent`, let a plugin send a
    webhook or a mail; they are published only while the account throttle is on. Ingot has no mail component, so a user
    notification on a sign-in from a new address exists only as that event.
-4. **Login challenge extension point.** A plugin can register a challenge (a CAPTCHA, a proof of work, or a verification
-   by another service). The challenge is asked only after the throttle has started delaying a name. Ingot ships no
-   challenge provider and calls no third-party service by default.
-5. **Optional idle timeout.** A browser session can end after a configurable idle time, shorter than the refresh lifetime.
+4. **Optional idle timeout.** A browser session can end after a configurable idle time, shorter than the refresh lifetime.
    It is off by default, so the existing seven-day idle time stays. The cookie flags and the rotation rules are verified
    by tests and not changed.
+
+The login challenge extension point (a plugin offers a challenge to a delayed dashboard login) is deferred to
+`add-login-challenge-extension` by maintainer decision. It is not part of this change, and no code is planned for it until a
+plugin needs it.
 
 Administrator enforcement of a second factor is not a part of this change: `add-multi-factor-authentication` (D10) already
 owns the policy and its grace period, and its default stays off.
@@ -87,8 +88,7 @@ pull request. They are listed here so that the reviewer sees them, and they are 
   uniform answers and timing, and the per-address counter in the shared store.
 - `identity-password-policy`: minimum and maximum length, the absence of composition rules, and the breached-password check
   with its modes and failure behaviour.
-- `identity-sign-in-events`: the audit action of a throttled request, the counters, the plugin events, and the login
-  challenge extension point.
+- `identity-sign-in-events`: the audit action of a throttled request, the counters, and the plugin events.
 - `identity-session-policy`: the optional idle timeout and the verified cookie and rotation rules.
 
 ## Impact
@@ -112,7 +112,7 @@ pull request. They are listed here so that the reviewer sees them, and they are 
   - The audit action `LOGIN_THROTTLED` exists in the enum. Only a delayed request writes it, and a delay exists only while
     the account throttle is on.
   - The dashboard's dummy hash for an unknown user is created at startup, not on the first unknown user. It changes the
-    timing of one answer and no content. It is kept on, and it is open question 10 for the maintainer.
+    timing of one answer and no content. It is kept on, and it is open question 9 for the maintainer.
 
   What each switch changes once it is on:
   - `INGOT_LOGIN_ACCOUNT_THROTTLE=true` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`; the thresholds are in the
@@ -134,8 +134,7 @@ pull request. They are listed here so that the reviewer sees them, and they are 
   - `login.passwordPolicy.breachCheck.mode` (unset: `OFF`): `RANGE` sends a five character hash prefix to the range URL
     when a password is set, changed, reset or created. `OFFLINE` requires its file, and the startup fails without it.
   - `login.idleTimeoutMinutes` (unset: 0): a browser session ends after this much idle time.
-  - A `LoginChallengeProvider`: Ingot ships none. A challenge exists only when a plugin registers one, and only for a
-    delayed dashboard login.
+  - Deferred, not a switch: the `LoginChallengeProvider` is not part of this change. See `add-login-challenge-extension`.
   - The second factor keys (`mfa|...`, merged through #320 and #321) are not changed by any of these switches.
 
 ## Verification

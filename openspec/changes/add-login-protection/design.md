@@ -113,7 +113,7 @@ its own group, and its identity is the instance's own, taken from configuration,
 - **Dashboard timing.** `LocalLoginProvider.kt:53-61` makes `unusedHash` lazy. The first unknown-user request pays one extra
   hash. The fix is an eager dummy hash created in the constructor. Included in the first code pull request. It is the one
   change that is not behind a switch: it changes the timing of one answer and no answer content, and gating a timing fix
-  would keep the difference on by default. Open question 10 asks the maintainer to confirm this.
+  would keep the difference on by default. Open question 9 asks the maintainer to confirm this.
 - **LDAP.** `LdapAuthenticator.kt:84` answers "User not found" before any bind, while a wrong password needs a bind. The
   time difference is network-bound and cannot be padded without sleeping on the request thread. Default: not changed,
   recorded as a residual risk; the operator can turn LDAP off or use the local directory for admins.
@@ -168,17 +168,9 @@ its own group, and its identity is the instance's own, taken from configuration,
 - Events are published after the state is stored, so a listener that fails does not change the answer.
 - Event payloads do not contain the password, the token secret or the raw user agent (the hash only).
 
-### D6. Login challenge extension point
+### D6. Login challenge extension point (deferred)
 
-- A plugin interface `LoginChallengeProvider` with `fun challengeFor(name: String, address: String): ChallengeRequest?` and
-  `fun verify(response: ChallengeResponse, address: String): Boolean`. Both default methods return "no challenge" and
-  "verified" respectively when no provider is registered; the registry in `PluginLoader` picks at most one provider.
-- The challenge is asked only for a name the throttle has delayed, and only on the dashboard login form. Basic and Bearer
-  clients cannot answer a challenge, so they keep the delay and the `429`.
-- The interface is additive and default-methods only, so existing plugins compile unchanged. `gate-plugin-abi` checks the
-  binary surface; the change adds to the list it covers.
-- **No default provider** and no call to a third-party service. Default: none registered.
-- A proof of work is a provider, not core code.
+Moved to `add-login-challenge-extension` by maintainer decision; not part of this change.
 
 ### D7. Sessions: idle timeout (opt-in) and the verified rules
 
@@ -318,11 +310,9 @@ installation changes nothing until an operator opts in.
    operator sets mode `RANGE`, the default for an outage is fail-open with an audit event (D4).
 6. **Idle timeout default.** Default: off (`0`), as today. The recommended value is 30 for instances with administrators,
    set by the operator.
-7. **Challenge provider selection.** Default: none, and Ingot ships none. If several are registered, the first by plugin
-   load order is used and a warning is logged.
-8. **Admin machine tokens and MFA.** Default: unchanged, single factor (MFA D9). This is a deliberate residual risk and is
+7. **Admin machine tokens and MFA.** Default: unchanged, single factor (MFA D9). This is a deliberate residual risk and is
    the first thing to revisit after `add-multi-factor-authentication` is merged.
-9. **Standards mapping.** ASVS 4.0 V2 and V3 correspond to ASVS 5.0 V6 and V7. The OWASP and NIST minimums are cited from
+8. **Standards mapping.** ASVS 4.0 V2 and V3 correspond to ASVS 5.0 V6 and V7. The OWASP and NIST minimums are cited from
    the versions known at the time of writing; verify the current text before the code pull request for D4.
-10. **Dashboard dummy hash timing.** Default: the eager dummy hash (D3) is kept on without a switch, because it changes
+9. **Dashboard dummy hash timing.** Default: the eager dummy hash (D3) is kept on without a switch, because it changes
     the timing of one answer and no content. The maintainer confirms it, or asks for it to be gated behind a switch.
