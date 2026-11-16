@@ -27,6 +27,8 @@ internal class LocalLoginProvider(
     private val identities: IdentityStore,
     private val credentials: LoginStore,
     private val hasher: PasswordHasher,
+    /** The hash an unknown user is verified against. It is computed once, when the provider is created. */
+    dummyHash: () -> String = { hasher.hash(Base64.getEncoder().encodeToString(ByteArray(24).also { SecureRandom().nextBytes(it) })) },
 ) : LoginProvider {
 
     override val id: String = ID
@@ -50,10 +52,7 @@ internal class LocalLoginProvider(
         return LoginOutcome.Succeeded(principal, credential.mustChangePassword)
     }
 
-    private val unusedHash: String by lazy {
-        val random = ByteArray(24).also { SecureRandom().nextBytes(it) }
-        hasher.hash(Base64.getEncoder().encodeToString(random))
-    }
+    private val unusedHash: String = dummyHash()
 
     companion object {
         const val ID = "local"
