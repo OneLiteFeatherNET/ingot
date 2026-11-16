@@ -34,6 +34,7 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -52,12 +53,29 @@ data class FactorRow(
     val lastUsedAt: Instant?,
 )
 
-/** A sign-in challenge as stored. Only its hash is kept. */
+/** A sign-in challenge as stored. Only its hash is kept. [challenge] holds the bytes of a WebAuthn ceremony and is null otherwise. */
 data class ChallengeRow(
     val idHash: String,
+    val kind: String,
     val principalId: Int,
     val expiresAt: Instant,
     val usedAt: Instant?,
+    val challenge: ByteArray?,
+)
+
+/**
+ * A passkey as stored. [credentialId] is the base64url form the client sends, [publicKey] the attested credential data of the
+ * authenticator (its public key included, no secret), and [signCount] the last signature counter that was accepted.
+ */
+data class PasskeyRow(
+    val id: Int,
+    val principalId: Int,
+    val name: String,
+    val credentialId: String,
+    val publicKey: ByteArray,
+    val signCount: Long,
+    val createdAt: Instant,
+    val lastUsedAt: Instant?,
 )
 
 /**
@@ -226,14 +244,23 @@ class SecondFactorStore(
             ) > 0
         }
 
-    fun insertChallenge(idHash: String, principalId: Int, createdAt: Instant, expiresAt: Instant) {
+    /** Stores a challenge of [kind]. Sign-in challenges keep the default kind; WebAuthn ceremonies pass their [challenge] bytes. */
+    fun insertChallenge(
+        idHash: String,
+        principalId: Int,
+        createdAt: Instant,
+        expiresAt: Instant,
+        kind: String = KIND_MFA_LOGIN,
+        challenge: ByteArray? = null,
+    ) {
         transaction(database) {
             AuthChallengeTable.insert {
                 it[AuthChallengeTable.idHash] = idHash
-                it[AuthChallengeTable.kind] = KIND_MFA_LOGIN
+                it[AuthChallengeTable.kind] = kind
                 it[AuthChallengeTable.principalId] = EntityID(principalId, PrincipalTable)
                 it[AuthChallengeTable.createdAt] = createdAt
                 it[AuthChallengeTable.expiresAt] = expiresAt
+                it[AuthChallengeTable.challenge] = challenge
             }
             // Challenges that can no longer be spent are removed, so the table does not grow with abandoned sign-ins.
             AuthChallengeTable.deleteWhere { AuthChallengeTable.expiresAt less createdAt }
@@ -247,9 +274,11 @@ class SecondFactorStore(
                 .map { row ->
                     ChallengeRow(
                         idHash = row[AuthChallengeTable.idHash],
+                        kind = row[AuthChallengeTable.kind],
                         principalId = row[AuthChallengeTable.principalId].value,
                         expiresAt = row[AuthChallengeTable.expiresAt],
                         usedAt = row[AuthChallengeTable.usedAt],
+                        challenge = row[AuthChallengeTable.challenge],
                     )
                 }
                 .firstOrNull()
@@ -266,6 +295,74 @@ class SecondFactorStore(
             ) > 0
         }
 
+    /** Stores a passkey of [principalId]. A passkey is confirmed at once, so it has no pending state. Returns the factor id. */
+    fun insertPasskey(
+        principalId: Int,
+        factorKey: String,
+        name: String,
+        credentialId: String,
+        publicKey: ByteArray,
+        signCount: Long,
+        at: Instant,
+    ): Int =
+        identityWrite(database) {
+            MfaFactorTable.insertAndGetId {
+                it[MfaFactorTable.principalId] = EntityID(principalId, PrincipalTable)
+                it[MfaFactorTable.kind] = KIND_PASSKEY
+                it[MfaFactorTable.name] = name
+                it[MfaFactorTable.factorKey] = factorKey
+                it[MfaFactorTable.confirmedAt] = at
+                it[MfaFactorTable.createdAt] = at
+                it[MfaFactorTable.credentialId] = credentialId
+                it[MfaFactorTable.publicKey] = publicKey
+                it[MfaFactorTable.signCount] = signCount
+            }.value
+        }
+
+    /** The confirmed passkeys of a principal, oldest first. */
+    fun findPasskeys(principalId: Int): List<PasskeyRow> =
+        transaction(database) {
+            MfaFactorTable.selectAll()
+                .where { (MfaFactorTable.principalId eq principalId) and (MfaFactorTable.kind eq KIND_PASSKEY) and MfaFactorTable.confirmedAt.isNotNull() }
+                .orderBy(MfaFactorTable.id, SortOrder.ASC)
+                .map { it.toPasskey() }
+        }
+
+    /** The passkey with [credentialId], `null` when no passkey has it. */
+    fun findPasskey(credentialId: String): PasskeyRow? =
+        transaction(database) {
+            MfaFactorTable.selectAll()
+                .where { (MfaFactorTable.credentialId eq credentialId) and (MfaFactorTable.kind eq KIND_PASSKEY) }
+                .map { it.toPasskey() }
+                .firstOrNull()
+        }
+
+    /**
+     * Records a signature counter of a passkey. The write happens only while the stored counter is still [expected], so of two
+     * assertions that were checked against the same counter, exactly one gets `true`.
+     */
+    fun claimSignCount(id: Int, expected: Long, presented: Long, at: Instant): Boolean =
+        transaction(database) {
+            MfaFactorTable.update(
+                where = { (MfaFactorTable.id eq id) and (MfaFactorTable.signCount eq expected) },
+                body = {
+                    it[MfaFactorTable.signCount] = presented
+                    it[MfaFactorTable.lastUsedAt] = at
+                },
+            ) > 0
+        }
+
+    private fun ResultRow.toPasskey() = PasskeyRow(
+        id = this[MfaFactorTable.id].value,
+        principalId = this[MfaFactorTable.principalId].value,
+        name = this[MfaFactorTable.name],
+        credentialId = checkNotNull(this[MfaFactorTable.credentialId]),
+        publicKey = checkNotNull(this[MfaFactorTable.publicKey]),
+        signCount = this[MfaFactorTable.signCount] ?: 0L,
+        createdAt = this[MfaFactorTable.createdAt],
+        lastUsedAt = this[MfaFactorTable.lastUsedAt],
+    )
+
     private fun ResultRow.toFactor() = FactorRow(
         id = this[MfaFactorTable.id].value,
         principalId = this[MfaFactorTable.principalId].value,
@@ -281,7 +378,10 @@ class SecondFactorStore(
 
     companion object {
         const val KIND_TOTP = "TOTP"
+        const val KIND_PASSKEY = "PASSKEY"
         const val KIND_MFA_LOGIN = "MFA_LOGIN"
+        const val KIND_WEBAUTHN_REGISTER = "WEBAUTHN_REGISTER"
+        const val KIND_WEBAUTHN_LOGIN = "WEBAUTHN_LOGIN"
     }
 
 }
