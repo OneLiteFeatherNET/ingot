@@ -540,6 +540,8 @@ tasks.named<Test>("integration") {
         }
         // A shard can hold no class of a partial selection, which is not a failure of the suite.
         failOnNoDiscoveredTests = false
+        // The same holds for a --tests filter: its classes can all sit on other shards.
+        filter.isFailOnNoMatchingTests = false
         val assignment by lazy { integrationShardAssignment(testClassesDirs, shardCount) }
         exclude { element ->
             !element.isDirectory && element.relativePath.pathString.endsWith(".class") &&
