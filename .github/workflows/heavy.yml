@@ -640,15 +640,23 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The Testcontainers integration suite, about 108 minutes in full. A labelled pull request runs the integration tests
-  # its change can reach (select_backend_tests.py), and a release pull request or a manual run on main runs the whole
-  # suite. A selection that names no integration filter, or a failing script, runs the whole suite as well.
-  integration:
-    name: "Integration tests (backend)"
+  # The Testcontainers integration suite, about 108 minutes in full, split into four shards that run in parallel. Each shard
+  # takes every fourth top-level class of the suite (build.gradle.kts, integrationShard). A labelled pull request runs the
+  # integration tests its change can reach (select_backend_tests.py) in every shard, and a release pull request or a manual
+  # run on main runs the whole suite. A selection that names no integration filter, or a failing script, runs the whole
+  # suite as well. The aggregate below keeps the check name that branch protection and the judge read.
+  #
+  # Free plan: four shards take four of the twenty jobs that run at once. Each shard starts its own containers.
+  integration-shards:
+    name: "Integration tests shard ${{ matrix.shard }} of 4"
     needs: [ gate ]
     if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 0, 1, 2, 3 ]
     permissions:
       contents: read
     env:
@@ -677,7 +685,8 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       # Only a labelled pull request on a normal branch gets a partial run. A release pull request, a dispatch, a
-      # failed gate, a missing diff and a failing script all give mode=full.
+      # failed gate, a missing diff and a failing script all give mode=full. Every shard computes the same selection
+      # from the same diff, so the shards agree on it without sharing a file.
       - name: "Select the integration tests"
         id: select
         env:
@@ -701,33 +710,53 @@ jobs:
           fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           {
-            echo "## Integration test selection"
+            echo "## Integration test selection (shard ${{ matrix.shard }} of 4)"
             echo
             echo "- Mode: \`$mode\`"
             sed -n 's/^reason=/- Reason: /p' "$selection"
             sed -n 's/^integration=\(.*\)$/- Filter: `\1`/p' "$selection"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # A partial selection can leave a shard with no class to run. Gradle then has nothing to execute, which the
+      # integration task allows for a shard (failOnNoDiscoveredTests is off there) and the other shards still run.
       - name: "Run the selected integration tests"
         if: ${{ steps.select.outputs.mode == 'partial' }}
         run: |
           selection="$RUNNER_TEMP/integration-selection.txt"
           test_args=()
           while IFS= read -r pattern; do test_args+=(--tests "$pattern"); done < <(sed -n 's/^integration=//p' "$selection")
-          ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration "${test_args[@]}"
+          ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration "${test_args[@]}" -PintegrationShard=${{ matrix.shard }} -PintegrationShards=4
 
       - name: "Run the full integration suite"
         if: ${{ steps.select.outputs.mode != 'partial' }}
-        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration
+        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration -PintegrationShard=${{ matrix.shard }} -PintegrationShards=4
 
       - name: "Publish the integration test report"
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
-          name: integration-test-report
+          name: integration-test-report-shard-${{ matrix.shard }}
           path: reposilite-backend/build/reports/tests/integration
           retention-days: 7
           if-no-files-found: ignore
+
+  # The aggregate under the check name "Integration tests (backend)". It passes only when every shard succeeded. It
+  # has the same condition as the shards, so it is skipped together with them when the gate did not ask for this suite.
+  integration:
+    name: "Integration tests (backend)"
+    needs: [ gate, integration-shards ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: "Check the integration shards"
+        env:
+          SHARDS: ${{ needs.integration-shards.result }}
+        run: |
+          echo "Integration shards: $SHARDS."
+          test "$SHARDS" = success
 
   # The search backend container tests. The workflow keeps its nightly schedule and is called here for a label.
   search:

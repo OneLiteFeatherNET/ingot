@@ -54,7 +54,9 @@ HELPERS = {
     "images-build": ("images", "helm", "ha"),
     "images-arm64": ("images",),
     "container-tests": ("images",),
+    "integration-shards": ("integration",),
 }
+SHARD_COUNT = 4
 
 
 def all_job_ids():
@@ -140,14 +142,56 @@ class ConcurrencyTest(unittest.TestCase):
 
 
 class IntegrationJobTest(unittest.TestCase):
+    """The aggregate keeps the check name; the matrix of shards does the work."""
+
     def job(self):
         return load()["jobs"]["integration"]
+
+    def shards(self):
+        return load()["jobs"]["integration-shards"]
+
+    def shard_steps(self):
+        return {step["name"]: step for step in self.shards()["steps"]}
 
     def test_the_check_name_is_the_one_the_design_names(self):
         self.assertEqual("Integration tests (backend)", self.job()["name"])
 
-    def test_the_job_runs_with_four_forks(self):
-        self.assertEqual("4", str(self.job()["env"]["INGOT_TEST_FORKS"]))
+    def test_the_aggregate_waits_for_the_shards(self):
+        self.assertIn("integration-shards", self.job()["needs"])
+
+    def test_the_aggregate_has_the_same_gate_condition_as_the_shards(self):
+        self.assertEqual(self.shards()["if"], self.job()["if"])
+
+    def test_the_aggregate_fails_unless_every_shard_succeeded(self):
+        steps = self.job()["steps"]
+        self.assertEqual(1, len(steps))
+        self.assertEqual("${{ needs.integration-shards.result }}", steps[0]["env"]["SHARDS"])
+        self.assertIn('test "$SHARDS" = success', steps[0]["run"])
+
+    def test_the_aggregate_does_not_run_gradle(self):
+        self.assertNotIn("gradlew", str(self.job()["steps"]))
+
+    def test_the_shards_are_indexed_zero_to_three_and_never_fail_fast(self):
+        strategy = self.shards()["strategy"]
+        self.assertIs(False, strategy["fail-fast"])
+        self.assertEqual([0, 1, 2, 3], strategy["matrix"]["shard"])
+        self.assertEqual(SHARD_COUNT, len(strategy["matrix"]["shard"]))
+
+    def test_each_shard_has_a_time_limit_of_ninety_minutes(self):
+        self.assertEqual(90, self.shards()["timeout-minutes"])
+
+    def test_the_shard_job_runs_with_four_forks(self):
+        self.assertEqual("4", str(self.shards()["env"]["INGOT_TEST_FORKS"]))
+
+    def test_the_gradle_runs_pass_the_shard_index_and_the_count(self):
+        for name in ("Run the selected integration tests", "Run the full integration suite"):
+            with self.subTest(step=name):
+                self.assertIn("-PintegrationShard=${{ matrix.shard }} -PintegrationShards=4",
+                              self.shard_steps()[name]["run"])
+
+    def test_each_shard_publishes_its_own_report(self):
+        step = self.shard_steps()["Publish the integration test report"]
+        self.assertEqual("integration-test-report-shard-${{ matrix.shard }}", step["with"]["name"])
 
     def test_a_run_that_asked_for_full_ignores_the_selection(self):
         text = read_text()
@@ -158,7 +202,7 @@ class IntegrationJobTest(unittest.TestCase):
         self.assertIn("grep -q '^integration='", read_text())
 
     def test_the_full_suite_step_runs_unless_the_selection_is_partial(self):
-        steps = {step["name"]: step for step in self.job()["steps"]}
+        steps = self.shard_steps()
         self.assertIn("!= 'partial'", steps["Run the full integration suite"]["if"])
         self.assertIn("== 'partial'", steps["Run the selected integration tests"]["if"])
 
