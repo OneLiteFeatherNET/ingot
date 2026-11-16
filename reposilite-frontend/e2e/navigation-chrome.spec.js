@@ -181,14 +181,13 @@ test.describe('page headings', () => {
     })
   }
 
-  // The old Dashboard address still shows the status, which Overview names. The page has no heading of its own now,
-  // so the level one heading is Overview's, and the status is a region of the page.
-  test('draws the instance status at /dashboard without a level one heading of its own', async ({ adminPage: page }) => {
+  // The retired Dashboard address redirects to Overview, whose level one heading names the page.
+  test('opens Overview at /settings from the old Dashboard address, with the Overview heading', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1280, height: 1080 })
     await page.goto(siteUrl('/dashboard'))
 
-    await expect(page.getByRole('region', { name: 'Instance status' })).toBeVisible()
-    await expect(page.getByRole('heading', { level: 1 }), 'no level one heading of the retired page').toHaveCount(0)
+    await expect(page).toHaveURL(siteUrl('/settings'))
+    await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
   })
 })
 
