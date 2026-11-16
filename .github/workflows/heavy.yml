@@ -162,9 +162,22 @@ jobs:
           cache-from: type=gha,scope=ci-dashboard
           cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-dashboard' || '' }}
 
-      # The jobs below load these into their own Docker stores. Both tags are kept by the save.
+      # The command line client ships as its own image. Its build stage is pinned to the builder, like the server's.
+      - name: "Build the CLI image"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: ingot-cli/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ingot-cli:ci
+          cache-from: type=gha,scope=ci-cli
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-cli' || '' }}
+
+      # The jobs below load these into their own Docker stores. All tags are kept by the save.
       - name: "Save the container images"
-        run: docker save ingot:ci ingot-dashboard:ci --output "$RUNNER_TEMP/ingot-images.tar"
+        run: docker save ingot:ci ingot-dashboard:ci ingot-cli:ci --output "$RUNNER_TEMP/ingot-images.tar"
 
       # The archive holds compressed layers already, so the upload stores it without compressing it again.
       - name: "Publish the container images"
@@ -219,6 +232,15 @@ jobs:
           platforms: linux/arm64
           push: false
 
+      - name: "Build the CLI image for arm64"
+        if: github.event_name != 'push'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: ingot-cli/Dockerfile
+          platforms: linux/arm64
+          push: false
+
   # Runs the server image and the dashboard image the way a deployment does. It needs an image that
   # already exists, which is why it cannot be part of the normal build.
   container-tests:
@@ -244,6 +266,23 @@ jobs:
 
       - name: "Load the container images"
         run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
+
+      # The CLI image runs as the fixed user and reaches the server code path. A server is not started here, so
+      # these checks cover the image itself: its user, the exit code of an unreachable server, and the usage exit code.
+      - name: "Check the CLI image runs as uid 10001 and exits as documented"
+        run: |
+          set -euo pipefail
+          uid="$(docker run --rm --label ingot-agent=ci-cli --entrypoint id ingot-cli:ci -u)"
+          test "$uid" = 10001
+          set +e
+          docker run --rm --label ingot-agent=ci-cli -e INGOT_URL=http://127.0.0.1:9 -e INGOT_TOKEN=ci:unused ingot-cli:ci exec status
+          unreachable=$?
+          docker run --rm --label ingot-agent=ci-cli ingot-cli:ci exec
+          usage=$?
+          set -e
+          echo "Unreachable server: exit $unreachable. Missing command: exit $usage."
+          test "$unreachable" = 5
+          test "$usage" = 2
 
       # The suite lives in reposilite-backend/src/containerTest and runs both images the way
       # a deployment does, including an upgrade rehearsal against the real upstream image,
