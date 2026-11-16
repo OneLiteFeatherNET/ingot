@@ -58,6 +58,7 @@ Some things work differently, while the outside stays the same.
 * **The dashboard has a login.** Users sign in with a password or an external login provider. The dashboard then keeps a browser session in cookies. See [Sessions, login and CSRF](../references/architecture/sessions-and-login.md).
 * **Settings are written back.** In the default mode, Ingot rewrites `configuration.cdn` at every start. Settings that come from environment variables or system properties are not written into the file.
 * **Unknown environment settings are reported.** An `INGOT_LOCAL_` or `REPOSILITE_LOCAL_` variable that Ingot does not know is logged as a warning and ignored. It does not stop the start.
+* **Decisions can be written to the audit table.** The decision log is off unless `INGOT_DECISION_LOG` is set to `async` or `sync`. With the default an upgrade adds no audit rows. Turning it on adds one row per denial and per write. See [Decision log variables](../references/configuration/environment-variables.md#decision-log-variables).
 * **Some new features are on by default.** Artifact search, for example, is enabled by default. Check the defaults before you assume a feature is off.
 
 Ingot adds to Reposilite. New environment variables get the `INGOT_` prefix, new deployment shapes are opt-in, and a change that breaks an existing installation without a good reason is treated as a bug.

@@ -214,6 +214,16 @@ The audit plugin reads these variables at start. Without either of them the sink
 
 Both can be set at once. When a variable is set under both names, the `INGOT_` name is used. For the standard output switch, `true` in any case turns it on, and every other value turns it off.
 
+## Decision log variables
+
+The decision log keeps one audit row for each denied check, each write decision and each refused admin operation, so that a review can name the credential and the rule behind it. Allowed reads are not recorded. The rows use the actions `AUTHORIZATION_DENIED` and `AUTHORIZATION_WRITE`, see [Audit events](../identity/audit-events.md#authorization-decisions).
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_DECISION_LOG` | `REPOSILITE_DECISION_LOG` | `off` | `off` records no decisions. `async` queues each record for a background writer, so the request is never delayed by the writer; when the queue is full the record is dropped and counted, and the drop is logged as a warning at most once a minute. `sync` stores each record before the answer is sent. An unset, blank or unknown value is `off`. |
+
+The variable is read when the access token plugin starts, so a change takes effect after a restart. Records hold names and rule identifiers, never a token secret. Retention is the one of the audit log, see [Retention](../identity/audit-events.md#retention).
+
 ## Identity variables
 
 The guard of external references decides whether linking a team to a provider group needs the admin area `ingot.admin.idp`, see [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md#the-external-reference-of-a-team).

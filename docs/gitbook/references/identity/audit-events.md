@@ -49,6 +49,15 @@ The list is the enum `AuditAction` in `reposilite-backend/src/main/kotlin/com/re
 
 Nothing is written for a mirror with `checksumPolicy` `ignore`, or for metadata and checksum files. See [Check checksums](../../configure/repositories/create-proxy-repositories.md#check-checksums).
 
+### Authorization decisions
+
+These rows exist only when the decision log is on. The default `off` writes none. See [Decision log variables](../configuration/environment-variables.md#decision-log-variables).
+
+| Action | Written when | Details keys |
+| --- | --- | --- |
+| `AUTHORIZATION_DENIED` | A check of the authorization chain is denied, or an admin area check is refused. The actor is the principal of the check, with the client address when it is known. `success` is `false`. `repository` and `path` are not set. Allowed reads and allowed admin checks are never recorded. | `decisionId`, `decidedAt`, `credentialId` (the token name, never the secret), `action`, `resource`, `rawResource` (only when it differs from `resource`), `outcome` (`DENY`), `stage` (`disabled`, `built-in`, `default` or `extension`), `ruleIds` (the matched rules as `source:node`), `revision` (null until the policy revision exists), `obligations` (empty) |
+| `AUTHORIZATION_WRITE` | A write, delete or manage check is decided, allowed or refused. Same actor and fields as `AUTHORIZATION_DENIED`, with `outcome` `ALLOW` or `DENY`. `success` is `true` for an allowed write. | Same keys as `AUTHORIZATION_DENIED` |
+
 ### Settings
 
 | Action | Written when | Details keys |

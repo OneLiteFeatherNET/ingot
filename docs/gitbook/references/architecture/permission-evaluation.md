@@ -95,6 +95,10 @@ The access check (`GET /api/identity/check`, and the access check page of the da
 
 The check can name one token of the principal. Its node list is then applied as well, as it is for a request made with that token. The answer lists the entries that were considered, and names the one that decided. An operator can therefore see why a request is allowed or denied, and the answer will not differ from what a client gets.
 
+## Decisions in the decision log
+
+The chain records a decision for each denial, each write and each refused admin operation, and nothing for an allowed read. The record names the stage that decided (`disabled`, `built-in`, `default`), the matched rules and the token name. Recording never changes an answer: with the log off nothing is built, and a failing log does not fail the request. The switch and the fields are described in [Decision log variables](../configuration/environment-variables.md#decision-log-variables) and [Audit events](../identity/audit-events.md#authorization-decisions).
+
 ## Related pages
 
 * [Identity model](identity-model.md) explains the objects that the decision uses.
