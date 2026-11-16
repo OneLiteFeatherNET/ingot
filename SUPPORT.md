@@ -32,3 +32,21 @@ issues to the upstream project.
 
 Support terms do not restrict any feature of Ingot. No feature depends on a support arrangement, and this file describes
 community support only. There is no paid tier and no service level agreement.
+
+## Plugin tiers
+
+Every plugin of Ingot has one of four tiers. The tier says what the OneLiteFeather maintainers stand behind. It never decides
+whether a plugin loads, and no feature depends on it. The support described in this file stays community support: there is
+no paid tier, no service level agreement, and no fix date is promised for any tier.
+
+- **Core**: built into the server, or bundled in the image. Core plugins are fixed on the release lines listed above, not only
+  on the latest release, on a best effort basis.
+- **Official**: maintained and tested by the OneLiteFeather maintainers, fixed on the supported release lines, on a best effort
+  community basis. Official plugins are fixed on the release lines listed above, not only on the latest release.
+- **Community**: any other plugin, including plugins that are maintained with the server but have no contract test yet. Community
+  plugins receive community support only, through [GitHub Discussions](https://github.com/OneLiteFeatherNET/ingot/discussions).
+- **Experimental**: a plugin that builds on an API that may still change. Its API carries no promise, and the plugin is fixed on
+  the same best effort basis as any other plugin.
+
+The definitions, and the evidence each tier needs, are on the page [Plugin tiers](docs/gitbook/references/plugins/plugin-tiers.md)
+in the documentation.
