@@ -71,6 +71,9 @@ internal class KeygenCommand(private val accessTokenFacade: AccessTokenFacade) :
     override val sensitiveInput: Boolean
         get() = secret != null
 
+    override val mayHideInput: Boolean
+        get() = true
+
     override fun execute(context: CommandContext) {
         val mappedPermissions = mapPermissions(context, permissions) ?: return
 
@@ -170,6 +173,9 @@ internal class ChNameCommand(private val accessTokenFacade: AccessTokenFacade) :
 @Command(name = "token-revoke", description = ["Revoke token"])
 internal class RevokeCommand(private val accessTokenFacade: AccessTokenFacade) : ReposiliteCommand {
 
+    override val dangerous: Boolean
+        get() = true
+
     @Parameters(index = "0", paramLabel = "<name>", description = ["Name of token to revoke"])
     private lateinit var name: String
 
@@ -183,6 +189,9 @@ internal class RevokeCommand(private val accessTokenFacade: AccessTokenFacade) :
 @Command(name = "token-regenerate", description = ["Regenerate token secret"])
 internal class RegenerateCommand(private val accessTokenFacade: AccessTokenFacade) : ReposiliteCommand {
 
+    override val dangerous: Boolean
+        get() = true
+
     @Parameters(index = "0", paramLabel = "<name>", description = ["Name of token to revoke"])
     private lateinit var name: String
 
@@ -194,6 +203,9 @@ internal class RegenerateCommand(private val accessTokenFacade: AccessTokenFacad
 
     override val sensitiveInput: Boolean
         get() = secret != null
+
+    override val mayHideInput: Boolean
+        get() = true
 
     override fun execute(context: CommandContext) {
         accessTokenFacade.getAccessToken(name)

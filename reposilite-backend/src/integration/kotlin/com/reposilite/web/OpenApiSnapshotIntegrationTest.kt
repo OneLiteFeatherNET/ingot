@@ -64,6 +64,24 @@ internal class OpenApiSnapshotIntegrationTest : ReposiliteSpecification() {
             .isEqualTo(committed)
     }
 
+    @Test
+    fun `console execute keeps the plain answer schema and describes the structured answer`() {
+        // given: the OpenAPI document the server serves
+        val document = MAPPER.readTree(Unirest.get("$base/openapi").asString().body)
+
+        // when: the 200 response of the execute route is read
+        val ok = document.path("paths").path("/api/console/execute").path("post").path("responses").path("200")
+
+        // then: the plain schema is still the one of the 200 response, and the description names the structured answer
+        assertThat(ok.path("content").path("application/json").path("schema").path("\$ref").asText())
+            .describedAs("schema of the 200 response of POST /api/console/execute")
+            .isEqualTo("#/components/schemas/ExecutionResponse")
+        assertThat(ok.path("description").asText())
+            .describedAs("description of the 200 response of POST /api/console/execute")
+            .contains("structured=true")
+            .contains("exit code")
+    }
+
     private fun refreshRequested(): Boolean = System.getProperty(REFRESH_PROPERTY) == "true"
 
     private fun canonical(document: String): String {

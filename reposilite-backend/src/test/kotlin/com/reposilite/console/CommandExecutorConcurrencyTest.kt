@@ -52,16 +52,18 @@ internal class CommandExecutorConcurrencyTest {
                 .`as`("first call reached the parked execution")
                 .isTrue()
 
-            // when: a second call is started while the first one is parked
-            val second = pool.submit<ExecutionResponse> { executor.execute("probe --value second") }
-
-            // then: the second call has not run, and the first call holds the command lock, so no other call can enter
-            assertThat(secondRan.count)
-                .`as`("second call ran while the first one was parked")
-                .isEqualTo(1)
+            // then: the first call holds the command lock, so no other call can enter while it is parked
             assertThat(executor.commandLock.isFreeNow())
                 .`as`("command lock is free while the first call is parked")
                 .isFalse()
+
+            // when: a second call is started while the first one is parked
+            val second = pool.submit<ExecutionResponse> { executor.execute("probe --value second") }
+
+            // then: the second call has not run, and its latch is still unreleased
+            assertThat(secondRan.count)
+                .`as`("second call ran while the first one was parked")
+                .isEqualTo(1)
 
             // when: the first call is released
             release.countDown()
@@ -73,6 +75,58 @@ internal class CommandExecutorConcurrencyTest {
             assertThat(second.get(FIXTURE_TIMEOUT_SECONDS, SECONDS).response)
                 .`as`("output of the second call, which was parsed with the value 'second'")
                 .containsExactly("second")
+        } finally {
+            release.countDown()
+            pool.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `should keep a second structured call out of the command lock between the check and the run of the first`() {
+        // given: a first structured call parked between its check and its run, and a second call prepared behind it
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val secondChecked = CountDownLatch(1)
+        val executor = commandExecutor()
+        executor.registerCommand(ClassificationProbe())
+        val first = executor.prepare("probe --value safe")
+        first.onClassified = {
+            entered.countDown()
+            release.await()
+        }
+        val second = executor.prepare("probe --value dangerous")
+        second.onClassified = { secondChecked.countDown() }
+        val pool = Executors.newFixedThreadPool(2)
+
+        try {
+            val firstAnswer = pool.submit<StructuredAnswer> { first.executeStructured(confirmed = false) }
+            assertThat(entered.await(FIXTURE_TIMEOUT_SECONDS, SECONDS))
+                .`as`("first call reached the gap between its check and its run")
+                .isTrue()
+
+            // then: the first call still holds the command lock in the gap, so no other call can enter it
+            assertThat(executor.commandLock.isFreeNow())
+                .`as`("command lock is free between the check and the run of the first call")
+                .isFalse()
+
+            // when: the dangerous call is started while the first one is parked in that gap
+            val secondAnswer = pool.submit<StructuredAnswer> { second.executeStructured(confirmed = false) }
+
+            // then: the second call has not been checked, and its latch is still unreleased
+            assertThat(secondChecked.count)
+                .`as`("second call was checked while the first one was parked")
+                .isEqualTo(1)
+
+            // when: the first call is released
+            release.countDown()
+
+            // then: the first call runs with its own argument, and the second one is held for confirmation
+            assertThat(firstAnswer.get(FIXTURE_TIMEOUT_SECONDS, SECONDS))
+                .`as`("answer to the safe call, which must not be held for the dangerous call's arguments")
+                .isInstanceOf(StructuredRun::class.java)
+            assertThat(secondAnswer.get(FIXTURE_TIMEOUT_SECONDS, SECONDS))
+                .`as`("answer to the dangerous call")
+                .isInstanceOf(ConfirmationNeeded::class.java)
         } finally {
             release.countDown()
             pool.shutdownNow()
@@ -119,6 +173,21 @@ private class ValueProbe(
         } else {
             secondRan.countDown()
         }
+        context.append(value.orEmpty())
+    }
+
+}
+
+@Command(name = "probe", description = ["Dangerous only when given the value 'dangerous'"])
+private class ClassificationProbe : ReposiliteCommand {
+
+    @Option(names = ["-v", "--value"], description = ["Value to classify"], required = true)
+    var value: String? = null
+
+    override fun isDangerous(arguments: List<String>): Boolean =
+        value == "dangerous"
+
+    override fun execute(context: CommandContext) {
         context.append(value.orEmpty())
     }
 

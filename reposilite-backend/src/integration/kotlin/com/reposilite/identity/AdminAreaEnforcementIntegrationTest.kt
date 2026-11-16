@@ -240,6 +240,7 @@ internal class AdminAreaEnforcementIntegrationTest : ReposiliteSpecification() {
             arguments("dashboard", "GET", "/api/statistics/resolved/unique", null),
             arguments("dashboard", "GET", "/api/statistics/resolved/all", null),
             arguments("console", "POST", "/api/console/execute", "help"),
+            arguments("console", "GET", "/api/console/commands", null),
             arguments("users", "GET", "/api/identity/principals", null),
             arguments("users", "POST", "/api/identity/principals", "{\"kind\":\"MACHINE\",\"name\":\"made-by-test\"}"),
             arguments("users", "GET", "/api/identity/principals/bare-bot", null),

@@ -16,6 +16,7 @@
 
 package com.reposilite.console
 
+import com.reposilite.console.api.CommandListing
 import com.reposilite.console.api.ExecutionResponse
 import com.reposilite.console.api.ReposiliteCommand
 import com.reposilite.journalist.Journalist
@@ -58,6 +59,9 @@ class ConsoleFacade internal constructor(
 
     fun getCommands(): Map<String, CommandLine> =
         commandExecutor.getCommands()
+
+    internal fun listCommands(): CommandListing =
+        commandExecutor.listCommands()
 
     override fun getLogger(): Logger =
         journalist.logger

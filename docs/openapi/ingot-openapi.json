@@ -448,6 +448,64 @@
         },
         "type" : "object"
       },
+      "CommandDescriptor" : {
+        "properties" : {
+          "aliases" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "dangerous" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OptionDescriptor"
+            },
+            "type" : "array"
+          },
+          "parameters" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ParameterDescriptor"
+            },
+            "type" : "array"
+          },
+          "sensitive" : {
+            "type" : "boolean"
+          },
+          "subcommands" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "name", "aliases", "description", "dangerous", "sensitive", "parameters", "options", "subcommands" ],
+        "type" : "object"
+      },
+      "CommandListing" : {
+        "properties" : {
+          "commands" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CommandDescriptor"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version", "commands" ],
+        "type" : "object"
+      },
       "CommandStatus" : {
         "enum" : [ "SUCCEEDED", "FAILED" ],
         "type" : "string"
@@ -468,6 +526,21 @@
           }
         },
         "required" : [ "local", "shared" ],
+        "type" : "object"
+      },
+      "ConfirmationRequiredResponse" : {
+        "properties" : {
+          "command" : {
+            "type" : "string"
+          },
+          "error" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "error", "command", "reason" ],
         "type" : "object"
       },
       "ConfirmedEnrolmentDto" : {
@@ -1312,6 +1385,24 @@
         "required" : [ "name", "version", "architecture", "container" ],
         "type" : "object"
       },
+      "OptionDescriptor" : {
+        "properties" : {
+          "arity" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "names" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "names", "description", "arity" ],
+        "type" : "object"
+      },
       "Origin" : {
         "enum" : [ "HOSTED", "MIRROR" ],
         "type" : "string"
@@ -1444,6 +1535,24 @@
           }
         },
         "required" : [ "name", "parents" ],
+        "type" : "object"
+      },
+      "ParameterDescriptor" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "index" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "label", "index", "required", "description" ],
         "type" : "object"
       },
       "PlannedDeletion" : {
@@ -3199,9 +3308,9 @@
         "tags" : [ "Cleanup" ]
       }
     },
-    "/api/console/execute" : {
-      "post" : {
-        "description" : "Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command.",
+    "/api/console/commands" : {
+      "get" : {
+        "description" : "The registered console commands with their aliases, options, parameters, and the 'dangerous' and 'sensitive' flags. Used for help and completion.",
         "parameters" : [ {
           "description" : "Name and secret provided as basic auth credentials",
           "in" : "header",
@@ -3216,11 +3325,80 @@
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "$ref" : "#/components/schemas/CommandListing"
+                }
+              }
+            },
+            "description" : "Command listing of the given version"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message related to the unauthorized access"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message when the token has no console area (ingot.admin.console)"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Console command listing",
+        "tags" : [ "Cli" ]
+      }
+    },
+    "/api/console/execute" : {
+      "post" : {
+        "description" : "Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command or '/api/console/commands'. With 'structured=true' the answer carries an exit code and the output with its streams, and a dangerous command waits for 'confirm=true' (409 until then).",
+        "parameters" : [ {
+          "description" : "Name and secret provided as basic auth credentials",
+          "in" : "header",
+          "name" : "Authorization",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Answer with exit code, output streams and node instead of the plain status and response lines",
+          "in" : "query",
+          "name" : "structured",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Confirms a dangerous command in structured mode",
+          "in" : "query",
+          "name" : "confirm",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
                   "$ref" : "#/components/schemas/ExecutionResponse"
                 }
               }
             },
-            "description" : "Status of the executed command"
+            "description" : "Status of the executed command (plain), or the structured answer when 'structured=true': exit code, node, and the output lines with their stream (stdout or stderr)"
           },
           "400" : {
             "content" : {
@@ -3251,6 +3429,16 @@
               }
             },
             "description" : "Error message when the token has no console area (ingot.admin.console)"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmationRequiredResponse"
+                }
+              }
+            },
+            "description" : "Structured call of a dangerous command without 'confirm=true'. Nothing ran. Body: error 'confirmationRequired', command, reason"
           }
         },
         "security" : [ {
