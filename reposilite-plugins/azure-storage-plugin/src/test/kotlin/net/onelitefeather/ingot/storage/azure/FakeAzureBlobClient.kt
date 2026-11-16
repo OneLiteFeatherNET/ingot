@@ -61,13 +61,17 @@ internal class FakeAzureBlobClient : AzureBlobClient {
     /** When set, every range is refused as the service refuses a range that starts past the end (416), whatever the size. */
     var refuseEveryRange = false
 
+    /** When set, every call fails with this exception, as a service failure does. */
+    var forcedFailure: RuntimeException? = null
+
     override fun properties(name: String): AzureBlobProperties =
-        committed[name]
+        forcedFailure?.let { throw it } ?: committed[name]
             ?.let { AzureBlobProperties(contentLength = it.size.toLong(), lastModified = modifiedAt) }
             ?: throw AzureBlobNotFoundException(name)
 
     override fun download(name: String, offset: Long, count: Long?): InputStream {
         downloads += Triple(name, offset, count)
+        forcedFailure?.let { throw it }
         val content = committed[name] ?: throw AzureBlobNotFoundException(name)
         if (refuseEveryRange) throw AzureRangeNotSatisfiableException(name)
         val end = count?.let { minOf(content.size.toLong(), offset + it) } ?: content.size.toLong()
@@ -83,6 +87,7 @@ internal class FakeAzureBlobClient : AzureBlobClient {
      */
     override fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild> {
         listCalls += prefix to maxResults
+        forcedFailure?.let { throw it }
         val children = linkedMapOf<String, AzureBlobChild>()
         committed.keys.filter { it.startsWith(prefix) }.sorted().forEach { key ->
             val rest = key.removePrefix(prefix)

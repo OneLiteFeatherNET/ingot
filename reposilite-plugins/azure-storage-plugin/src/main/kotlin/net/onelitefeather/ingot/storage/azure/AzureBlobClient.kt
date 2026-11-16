@@ -70,5 +70,12 @@ internal data class AzureBlobChild(val name: String, val properties: AzureBlobPr
 /** The blob, or its container, does not exist (404). */
 internal class AzureBlobNotFoundException(name: String) : RuntimeException("Azure blob '$name' does not exist")
 
+/**
+ * The service answered with a failure that is neither a missing blob nor a refused range. Only the status and the error code of the
+ * answer are kept, never the request, so a SAS token or an account key cannot reach a log through this exception.
+ */
+internal class AzureServiceException(name: String, val statusCode: Int, val errorCode: String?) :
+    RuntimeException("Azure blob '$name' answered HTTP $statusCode" + (errorCode?.let { " ($it)" } ?: ""))
+
 /** The service refused a range that starts at or after the end of the blob (416). */
 internal class AzureRangeNotSatisfiableException(name: String) : RuntimeException("Azure blob '$name' refused the requested range")
