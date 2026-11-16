@@ -73,7 +73,6 @@ type AccessTab = NonNullable<InstanceType<typeof import('../components/access/Ac
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const MigrationView = lazyView(() => import('../components/migration/MigrationView.vue'))
 const SystemInfoView = lazyView(() => import('../components/support/SystemInfoView.vue'))
-const SupportView = lazyView(() => import('../components/support/SupportView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
 const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
@@ -98,8 +97,8 @@ defineProps<{
 // The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
 // Migration is the System page of the tree; it exists only while the nexus-import plugin is enabled (see migrationMissing).
 const ADMIN_SIDE_PAGES: readonly string[] = ['audit', 'console', 'maintenance', 'analytics', 'migration']
-// The support pages are children of Settings: they share its section, and draw the same tree as the ADMIN_SIDE_PAGES.
-const SUPPORT_ROUTES: readonly string[] = ['system-info', 'support']
+// The system information page, which holds the support bundle, is a child of Settings: it shares its section, and draws the same tree as the ADMIN_SIDE_PAGES.
+const SUPPORT_ROUTES: readonly string[] = ['system-info']
 // The pages that the Administration entry of the rail and the bar stands for.
 const ADMINISTRATION_SECTIONS: readonly string[] = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 // Whether a name is one of the listed names. A route without a name, or a page without a section, is none of them.
@@ -515,7 +514,6 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
             @update:query="setAuditQuery"
           />
           <SystemInfoView v-else-if="route.name === 'system-info'" />
-          <SupportView v-else-if="route.name === 'support'" />
         </AdministrationFrame>
         <SettingsView
           v-else-if="section === 'settings'"
