@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.plugin.store
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.reposilite.plugin.api.PluginTier
 import panda.std.Result
 
 /** The Ingot versions an entry works with, `min` inclusive and `below` exclusive, and the store's plugin API integer. */
@@ -37,6 +38,8 @@ data class PluginCatalogueEntry(
     /** Null when the entry has no usable compatibility block, which the compatibility rule refuses. */
     val compatibility: Compatibility?,
     val yanked: Boolean,
+    /** The tier the catalogue states. A missing field reads as Community, and null means an unknown value, which the store refuses. */
+    val tier: PluginTier? = PluginTier.COMMUNITY,
 ) {
 
     /** A yanked entry stays visible, but a new selection of it is refused. A jar already cached still loads. */
@@ -92,7 +95,19 @@ class PluginCatalogue(val entries: List<PluginCatalogueEntry>) {
                 sha256 = text(node, "sha256"),
                 compatibility = parseCompatibility(node.get("compatibility")),
                 yanked = node.get("yanked")?.asBoolean(false) ?: false,
+                tier = parseTier(node.get("tier")),
             )
+        }
+
+        /** The tier names are lower case, as the generator writes them. Any other value is null, and the store refuses that entry only. */
+        private fun parseTier(node: JsonNode?): PluginTier? {
+            if (node == null || node.isNull) {
+                return PluginTier.COMMUNITY
+            }
+            if (!node.isTextual) {
+                return null
+            }
+            return PluginTier.values().firstOrNull { it.name.lowercase() == node.asText() }
         }
 
         private fun parseCompatibility(node: JsonNode?): Compatibility? {

@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.plugin.store
 
+import com.reposilite.plugin.api.PluginTier
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -124,6 +125,46 @@ internal class PluginCatalogueTest {
         // then: the catalogue is refused with a reason
         assertThat(result.isOk).describedAs("a page that is not JSON must be refused").isFalse()
         assertThat(result.error).describedAs("the reason must say the catalogue is unreadable").contains("catalogue")
+    }
+
+    @Test
+    fun `should read a missing tier as community`() {
+        // given: an entry without a tier field
+        val bytes = catalogue(entry())
+
+        // when: the catalogue is parsed
+        val first = PluginCatalogue.parse(bytes).get().entries.single()
+
+        // then: the entry reads as community
+        assertThat(first.tier).describedAs("a missing tier must read as community").isEqualTo(PluginTier.COMMUNITY)
+    }
+
+    @Test
+    fun `should read the tier official as official`() {
+        // given: an entry that declares the tier official
+        val bytes = catalogue(entry(extra = """"tier": "official","""))
+
+        // when: the catalogue is parsed
+        val first = PluginCatalogue.parse(bytes).get().entries.single()
+
+        // then: the entry reads as official
+        assertThat(first.tier).describedAs("the tier official must read as official").isEqualTo(PluginTier.OFFICIAL)
+    }
+
+    @Test
+    fun `should refuse only the entry with an unknown tier and keep the other entries usable`() {
+        // given: one entry with the tier gold, which is not a tier, and one entry without a tier
+        val bytes = catalogue(entry(extra = """"tier": "gold","""), entry().replace("opensearch-plugin", "other-plugin"))
+
+        // when: the catalogue is parsed
+        val result = PluginCatalogue.parse(bytes)
+
+        // then: the catalogue is read, the unknown entry has no tier, and the other entry stays usable
+        assertThat(result.isOk).describedAs("an unknown tier must not refuse the whole catalogue").isTrue()
+        val (unknown, usable) = result.get().entries
+        assertThat(unknown.tier).describedAs("an unknown tier must leave the entry without a tier").isNull()
+        assertThat(usable.id).isEqualTo("other-plugin")
+        assertThat(usable.tier).describedAs("the other entry keeps its tier").isEqualTo(PluginTier.COMMUNITY)
     }
 
 }

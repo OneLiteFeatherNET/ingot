@@ -223,6 +223,20 @@ internal class PluginStoreTest {
     }
 
     @Test
+    fun `should refuse only the entry whose tier is not a tier name and never download its jar`() {
+        // given: an entry whose tier is gold
+        val transport = FakeSourceTransport(mapOf(CATALOGUE_URL to found(catalogue(tier = "gold")), JAR_URL to found(jarBytes())))
+
+        // when: the store resolves
+        val entry = store(settings = settings(allowUnsigned = true), transport = transport).resolve().single()
+
+        // then: the entry is refused with a reason that names the field, and its jar is not requested
+        assertThat(entry.state).isEqualTo(StoreState.REFUSED)
+        assertThat(entry.reason).describedAs("the reason must name the tier field").contains("tier")
+        assertThat(transport.requested).describedAs("a refused tier must not download the jar").doesNotContain(JAR_URL)
+    }
+
+    @Test
     fun `should load an unsigned plugin as unverified when unsigned content is allowed`() {
         // given: an unsigned catalogue and jar, with unsigned content allowed
         val transport = FakeSourceTransport(mapOf(CATALOGUE_URL to found(catalogue()), JAR_URL to found(jarBytes())))
@@ -375,8 +389,10 @@ internal class PluginStoreTest {
         sha256: String = PluginDigest.sha256Hex(jarBytes()),
         compatibility: String? = COMPAT_1_2_TO_2_0,
         yanked: Boolean = false,
+        tier: String? = null,
     ): ByteArray {
         val compat = compatibility?.let { "\"compatibility\": $it," } ?: ""
+        val tierField = tier?.let { "\"tier\": \"$it\"," } ?: ""
         return """
             {
               "schema": 1,
@@ -387,6 +403,7 @@ internal class PluginStoreTest {
                 "coordinates": "$COORDINATE",
                 "sha256": "$sha256",
                 $compat
+                $tierField
                 "yanked": $yanked
               } ]
             }

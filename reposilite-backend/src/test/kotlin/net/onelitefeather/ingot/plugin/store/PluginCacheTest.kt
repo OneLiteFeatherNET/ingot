@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.plugin.store
 
+import com.reposilite.plugin.api.PluginTier
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -67,6 +68,19 @@ internal class PluginCacheTest {
 
         // then: the record is the one that was written
         assertThat(cached?.record).describedAs("the record must survive the round trip").isEqualTo(record)
+    }
+
+    @Test
+    fun `should keep the catalogue tier of a verified jar in its record`() {
+        // given: a verified plugin whose catalogue entry states the tier official
+        val cache = PluginCache(root.resolve("plugin-cache"))
+        cache.write(coordinate, jar, signature, record.copy(tier = PluginTier.OFFICIAL))
+
+        // when: the plugin is read from the cache
+        val cached = cache.read(coordinate)
+
+        // then: the tier survives, so that a cached start compares it like a download
+        assertThat(cached?.record?.tier).describedAs("the tier must survive the round trip").isEqualTo(PluginTier.OFFICIAL)
     }
 
     @Test

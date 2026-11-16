@@ -221,7 +221,23 @@ class PluginLoader(
 
         extensions.registerPlugin(plugin, PluginOrigin.PLUGIN_STORE)
         storePluginIds += name
+        warnOnTierMismatch(name, entry.catalogueTier)
         return entry
+    }
+
+    /**
+     * The tier of the catalogue entry is information. When it differs from the effective tier of the loaded jar, one warning
+     * names both, the plugin still loads, and the tier of the jar is the one that is shown.
+     */
+    private fun warnOnTierMismatch(name: String, catalogueTier: PluginTier?) {
+        val listed = catalogueTier ?: return
+        val loaded = extensions.effectiveTierOf(name)
+        if (listed != loaded) {
+            extensions.logger.warn(
+                "Plugin store: $name is listed as ${listed.name.lowercase()} in its catalogue entry, but the loaded jar is " +
+                    "${loaded.name.lowercase()}. The tier of the jar is shown."
+            )
+        }
     }
 
     /**
