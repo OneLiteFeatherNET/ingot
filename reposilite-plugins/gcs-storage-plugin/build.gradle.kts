@@ -67,6 +67,36 @@ tasks.withType<ShadowJar> {
     }
 }
 
+// The release unit is the shaded jar, which is self-contained, so the publication carries that jar and none of the SDK's dependencies.
+// The coordinates are net.onelitefeather.ingot:gcs-storage-plugin, the group of the Ingot libraries rather than of the plugin API.
+group = "net.onelitefeather.ingot"
+
+publishing {
+    publications {
+        named<MavenPublication>("library") {
+            setArtifacts(emptyList<Any>())
+            artifact(tasks.named("shadowJar")) {
+                classifier = null
+                extension = "jar"
+            }
+            pom {
+                name.set("gcs-storage-plugin")
+                description.set("Ingot storage plugin that keeps repository files in a Google Cloud Storage bucket")
+            }
+            pom.withXml {
+                val root = asNode()
+                root.children()
+                    .filterIsInstance<groovy.util.Node>()
+                    .filter { it.name().toString().substringAfterLast("}") in setOf("dependencies", "dependencyManagement") }
+                    .forEach { root.remove(it) }
+            }
+        }
+    }
+}
+
+// The module metadata of the java component lists the SDK, which the shaded jar already holds. Only the POM is published.
+tasks.matching { it.name.startsWith("generateMetadataFileFor") }.configureEach { enabled = false }
+
 // The integration suite reads the shaded jar as an artifact, so the jar is built first and its path is handed to the tests.
 tasks.named<Test>("integration") {
     val shadedJar = tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }
