@@ -21,9 +21,14 @@ resources:
   limits:
     cpu: 2.0
     memory: 1024Mi
+# The repositories stay on the local file system, because the CI release has no object storage configured for them, and
+# the server refuses to start in scalable mode unless the escape hatch allows it. The job checks the probes and the
+# wiring, not repository storage. A real installation keeps the repositories in object storage.
 env:
   - name: JAVA_OPTS
     value: "-Xmx512M -Dreposilite.s3.pathStyleAccessEnabled=true"
+  - name: INGOT_ALLOW_SHARED_FILESYSTEM
+    value: "true"
 database:
   existingSecret: ingot-database
   secretKey: database
