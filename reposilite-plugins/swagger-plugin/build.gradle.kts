@@ -27,6 +27,7 @@ application {
 
 dependencies {
     compileOnly(project(":reposilite-backend"))
+    testImplementation(project(":reposilite-backend"))
     implementation("io.javalin.community.openapi:javalin-swagger-plugin:7.2.2")
 }
 

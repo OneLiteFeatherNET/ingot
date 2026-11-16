@@ -29,6 +29,7 @@ application {
 dependencies {
     // compileOnly("net.onelitefeather.ingot:ingot:version") for external plugins
     compileOnly(project(":reposilite-backend"))
+    testImplementation(project(":reposilite-backend"))
 }
 
 tasks.withType<ShadowJar> {
