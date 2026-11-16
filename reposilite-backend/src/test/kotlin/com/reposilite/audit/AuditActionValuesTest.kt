@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.reposilite.audit
+
+import com.reposilite.audit.api.AuditAction
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+
+/**
+ * The names are stored in the database, so every earlier constant keeps its name and its place. A new action is only
+ * appended, and the list below is the enum as it was before the throttled sign-in action was added.
+ */
+internal class AuditActionValuesTest {
+
+    @Test
+    fun `earlier audit actions keep their names and their order`() {
+        assertThat(AuditAction.entries.map { it.name }.dropLast(1)).containsExactly(
+            "ARTIFACT_DEPLOYED",
+            "ARTIFACT_DELETED",
+            "SETTINGS_CHANGED",
+            "TOKEN_CREATED",
+            "TOKEN_DELETED",
+            "TOKEN_SECRET_REGENERATED",
+            "TOKEN_ROUTES_CHANGED",
+            "LOGIN_FAILED",
+            "CLEANUP_RUN",
+            "PRINCIPAL_CREATED",
+            "PRINCIPAL_UPDATED",
+            "PRINCIPAL_DISABLED",
+            "PRINCIPAL_DELETED",
+            "TEAM_CREATED",
+            "TEAM_UPDATED",
+            "TEAM_DELETED",
+            "TEAM_MEMBERSHIP_CHANGED",
+            "TEAM_GRANTS_CHANGED",
+            "INSTANCE_ADMIN_GRANTED",
+            "INSTANCE_ADMIN_REVOKED",
+            "LOGIN_SUCCEEDED",
+            "LOGOUT",
+            "SESSION_REFRESH_REUSE_DETECTED",
+            "SETUP_COMPLETED",
+            "PASSWORD_CHANGED",
+            "PASSWORD_RESET",
+            "NODES_CHANGED",
+            "LAST_ADMIN_REVOKED_BY_PROVIDER",
+            "READ_ONLY_CHANGED",
+            "DATABASE_SNAPSHOT_CREATED",
+            "NAMESPACE_PROXY_REFUSED",
+            "MIRROR_CHECKSUM_MISMATCH",
+            "MIRROR_CHECKSUM_MISSING",
+            "NEXUS_IMPORT_RUN",
+            "REPOSITORY_CREATED",
+            "REPOSITORY_DELETED",
+            "UPLOAD_CHECKSUM_MISMATCH",
+            "SUPPORT_BUNDLE_DOWNLOADED",
+            "SETTINGS_EXPORTED",
+            "SETTINGS_IMPORT_DECRYPTED",
+            "SETTINGS_IMPORT_REFUSED",
+            "SETTINGS_SECRETS_REENCRYPTED",
+            "EXTERNAL_REF_UNGUARDED",
+            "IDP_SETTINGS_UNGUARDED",
+            "MFA_FACTOR_ENROLLED",
+            "MFA_FACTOR_REMOVED",
+            "MFA_CHALLENGE_FAILED",
+            "MFA_RECOVERY_CODE_USED",
+            "MFA_RECOVERY_CODES_REGENERATED",
+            "MFA_FACTORS_RESET",
+            "MFA_FIRST_FACTOR_ACCEPTED",
+            "CONSOLE_COMMAND_EXECUTED",
+            "AUTHORIZATION_DENIED",
+            "AUTHORIZATION_WRITE",
+            "PASSWORD_BREACH_CHECK_UNAVAILABLE",
+        )
+    }
+
+    @Test
+    fun `the throttled sign-in action is appended after the earlier ones`() {
+        assertThat(AuditAction.entries.last()).isEqualTo(AuditAction.LOGIN_THROTTLED)
+    }
+
+}
