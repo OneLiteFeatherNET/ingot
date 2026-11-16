@@ -73,7 +73,7 @@ data class AzureBlobStorageProviderSettings(
         if (container.isBlank()) {
             return null
         }
-        return "azure:${accountName.trim()}/${container.trim()}/${normalisedPrefix()}"
+        return "azure:${accountName.trim()}/${container.trim()}/${blobPrefix()}"
     }
 
     /** Two namespaces collide when they are in the same container of the same account, and one prefix equals or nests under the other. */
@@ -95,7 +95,8 @@ data class AzureBlobStorageProviderSettings(
             "authentication" to authentication,
         )
 
-    private fun normalisedPrefix(): String =
+    /** The prefix of the blobs of this repository, with one trailing slash, or empty for the root of the container. */
+    internal fun blobPrefix(): String =
         prefix.trim().trim('/').let { if (it.isEmpty()) "" else "$it/" }
 
     /** The endpoint of the account: the configured one when set, otherwise the public Blob endpoint of [accountName]. */
