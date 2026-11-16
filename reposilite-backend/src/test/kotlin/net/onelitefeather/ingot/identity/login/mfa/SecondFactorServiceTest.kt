@@ -119,7 +119,7 @@ internal class SecondFactorServiceTest {
     }
 
     @Test
-    fun `refuses an authenticator for an account without a local password`() {
+    fun `starts an authenticator enrolment for an account without a local password`() {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
             val principal = identities.createPrincipal(PrincipalKind.USER, "dana", "Dana", false, clock.instant())!!
@@ -135,7 +135,7 @@ internal class SecondFactorServiceTest {
 
             val outcome = service.enrolmentStart(principal.id, "dana")
 
-            assertThat(outcome).`as`("enrolment of a directory account").isInstanceOf(TotpEnrolmentStart.Unavailable::class.java)
+            assertThat(outcome).`as`("enrolment of a directory account").isInstanceOf(TotpEnrolmentStart.Started::class.java)
         }
     }
 

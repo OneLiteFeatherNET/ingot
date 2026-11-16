@@ -256,14 +256,14 @@ internal class SecondFactorLoginGateTest {
     }
 
     @Test
-    fun `an account without a local password cannot enrol an authenticator through the facade`() {
+    fun `an account without a local password can start an authenticator enrolment through the facade`() {
         withGate { gate ->
             // A directory account has a principal but no local password, so it has no credential row.
             val directoryAccount = checkNotNull(gate.identities.createPrincipal(PrincipalKind.USER, "bob", "bob", false, clock.instant())).id
 
             val outcome = gate.facade.startAuthenticatorEnrolment(directoryAccount, "bob", code = null, ip = IP)
 
-            assertThat(outcome).`as`("enrolment of a directory account").isInstanceOf(TotpEnrolmentStart.Unavailable::class.java)
+            assertThat(outcome).`as`("enrolment of a directory account").isInstanceOf(TotpEnrolmentStart.Started::class.java)
         }
     }
 

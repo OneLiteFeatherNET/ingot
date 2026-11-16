@@ -127,7 +127,7 @@ internal class MfaLoginGateTest {
     }
 
     @Test
-    fun `a covered github user is challenged even without a factor`() {
+    fun `a covered github user without a factor passes the gate during the grace period`() {
         withMfaFixture(workingDirectory, clock) { fixture ->
             fixture.settings = LoginSettings(mfa = MfaSettings(requiredForAdmins = true))
             val admin = fixture.user()
@@ -135,7 +135,7 @@ internal class MfaLoginGateTest {
 
             val gate = fixture.facade.externalSecondFactor(admin, providerMfa = false, github = true)
 
-            assertThat(gate).describedAs("gate of a covered github login").isInstanceOf(ExternalSecondFactor.Challenge::class.java)
+            assertThat(gate).describedAs("gate of a covered github login without a factor").isEqualTo(ExternalSecondFactor.Pass)
         }
     }
 
