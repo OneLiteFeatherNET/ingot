@@ -45,7 +45,7 @@ internal class ElasticsearchContainer(image: String) : GenericContainer<Elastics
         DockerClientFactory.instance().client().stopContainerCmd(containerId).exec()
     }
 
-    /** Starts a stopped container again and waits until the cluster answers, through the readiness check of the first start. */
+    /** Starts a stopped container again and waits until [readiness] passes. */
     fun startAgain(readiness: HttpWaitStrategy) {
         DockerClientFactory.instance().client().startContainerCmd(containerId).exec()
         readiness.waitUntilReady(this)
@@ -71,6 +71,21 @@ internal class StartedElasticsearch(val container: ElasticsearchContainer, val r
         return SSLContext.getInstance("TLS").apply { init(null, managers.trustManagers, null) }
     }
 
+}
+
+/**
+ * The readiness of a restarted cluster for the API key [apiKey]: the key must be accepted at `GET /`. The `elastic` check of the first
+ * start passes while the key lookup still fails, because API keys live in the security index, which recovers after the restart.
+ */
+internal fun apiKeyReadiness(apiKey: String): HttpWaitStrategy {
+    val readiness = HttpWaitStrategy()
+        .forPort(HTTPS_PORT)
+        .usingTls()
+        .allowInsecure()
+        .withHeader("Authorization", "ApiKey $apiKey")
+        .forStatusCode(200)
+    readiness.withStartupTimeout(Duration.ofMinutes(4))
+    return readiness
 }
 
 /**
