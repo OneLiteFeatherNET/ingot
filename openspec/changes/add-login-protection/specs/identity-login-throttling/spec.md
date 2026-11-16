@@ -158,7 +158,7 @@ key. A failure SHALL still be added with an atomic increment when the conditiona
 
 A request for a name that does not exist, a wrong secret for an existing name, and a disabled or expired token SHALL receive the
 same status and message, whatever the switch. The verification SHALL run its hash for every request that reaches it, and the
-dummy hash SHALL be created before the first request, whatever the switch (open question 10 of `design.md`). While the account
+dummy hash SHALL be created before the first request, whatever the switch (open question 9 of `design.md`). While the account
 throttle is on, a delayed name SHALL get the same `429` whether or not it exists.
 
 #### Scenario: An unknown dashboard user takes as long as a wrong password

@@ -5,8 +5,8 @@ Every commit of a code pull request follows its own Conventional Commits type. T
 no `Thread.sleep`, the clock is an injected `java.time.Clock`, a temporary directory per test, no shared mutable static state,
 and waits through latches only. The proposal pull request carries only this change directory and leaves every task unchecked.
 
-Five code pull requests come from this change, in the order of section 7. Pull requests 3 and 4 depend on pull request 1.
-Pull request 2 and pull request 5 are independent of the others. Each code pull request is opened from the remote main branch
+Four code pull requests come from this change, in the order of section 6. Pull request 3 depends on pull request 1.
+Pull request 2 and pull request 4 are independent of the others. Each code pull request is opened from the remote main branch
 that contains the merged proposal, and contains no file under `openspec/`.
 
 ## 1. Proposal and verification
@@ -16,8 +16,8 @@ that contains the merged proposal, and contains no file under `openspec/`.
 - [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 8 on a `429` with `Retry-After` from a remote repository, with a Basic
   credential, and record the result in the description of pull request 1 (design open question 2). Verify: both clients are run
   against a local stub server in a temporary directory, and the exit code and the retry count are recorded.
-- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 10 before pull request 1 is opened. Verify: the
-  answer, or the silence that the defaults stand, is noted in the description of pull request 1. Open question 10 (the
+- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 9 before pull request 1 is opened. Verify: the
+  answer, or the silence that the defaults stand, is noted in the description of pull request 1. Open question 9 (the
   dummy hash timing) is the one default that is not behind a switch.
 
 ## 2. Pull request 1: per-account throttling
@@ -47,7 +47,7 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
   `LoginStore`, the account key in `LoginService` and in the authenticate path of `AuthenticationFacade`, the `429` with
   `Retry-After` for Basic and Bearer, and the eager dummy hash. Every delay and every write of the account key sits behind
   `INGOT_LOGIN_ACCOUNT_THROTTLE` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`), default off. The eager dummy hash is not behind
-  it (design open question 10). Verify: 2.1 to 2.5 pass, the default tests of 2.4 pass, and
+  it (design open question 9). Verify: 2.1 to 2.5 pass, the default tests of 2.4 pass, and
   `:reposilite-backend:test --tests 'net.onelitefeather.ingot.identity.*'` stays green.
 - [ ] 2.7 `feat(identity)`: move the per-address counter of `authentication.bruteForceProtection` from the Guava cache of
   `AuthenticationFacade` into `login_attempt` under `basic-address|<ip>` (not `address|<ip>`, which the dashboard uses), keep its
@@ -104,50 +104,32 @@ Depends on pull request 1.
 - [ ] 4.3 `docs(identity)`: document the new audit action, the counters on the status endpoint and the two events for plugin
   authors in `docs/gitbook/`. Verify: the page lists the fields of each event and states that no secret is carried.
 
-## 5. Pull request 4: login challenge extension point
-
-Title: `feat(identity): add a login challenge extension point for plugins`
-
-Depends on pull request 1.
-
-- [ ] 5.1 `test(identity)`: failing tests: with no provider registered, a delayed dashboard login is answered `429` with no
-  challenge; with a provider registered, it is asked only for a delayed dashboard login and never for Basic or Bearer; a
-  verified challenge lets one password check through, and a wrong password continues the delay; a plugin compiled against the
-  previous plugin API still loads (the default methods). Verify: the tests fail before 5.2.
-- [ ] 5.2 `feat(identity)`: add `LoginChallengeProvider` to the plugin API with default methods, the selection in `PluginLoader`
-  (at most one, the first by load order, with a warning when several are registered), and the branch in `LoginService.login`.
-  Verify: 5.1 passes and `gate-plugin-abi` reports only additive changes.
-- [ ] 5.3 `docs(identity)`: document the interface for plugin authors in `docs/gitbook/`, with the statement that Ingot ships no
-  provider and calls no third-party service. Verify: the page says so in its first paragraph.
-
-## 6. Pull request 5: optional idle timeout
+## 5. Pull request 4: optional idle timeout
 
 Title: `feat(identity): add an optional idle timeout for browser sessions`
 
-- [ ] 6.1 `test(identity)`: failing tests, written first and passing on main for the pinned rules: the cookie flags of
+- [ ] 5.1 `test(identity)`: failing tests, written first and passing on main for the pinned rules: the cookie flags of
   `SessionCookies` (`HttpOnly`, `SameSite=Lax`, `Secure` on a secure request, refresh path limited, CSRF not `HttpOnly`); reuse of
   a spent refresh token revokes the family and audits `SESSION_REFRESH_REUSE_DETECTED`; a password change revokes every family;
   an anonymous request sets no cookie. Verify: these tests pass on main before any change, so they are a characterisation.
-- [ ] 6.2 `test(identity)`: failing tests for the idle timeout on an injected clock: the default leaves the 168 hour idle
+- [ ] 5.2 `test(identity)`: failing tests for the idle timeout on an injected clock: the default leaves the 168 hour idle
   limit; a 30 minute timeout refuses a refresh at minute 31; the value 2 is a violation; the value above the refresh lifetime
   is a violation; the absolute end still wins. Verify: the tests fail before 6.3.
-- [ ] 6.3 `feat(identity)`: add `login.idleTimeoutMinutes` to `LoginSettings` with the validation, and the expiry rule in
+- [ ] 5.3 `feat(identity)`: add `login.idleTimeoutMinutes` to `LoginSettings` with the validation, and the expiry rule in
   `SessionService.issue`. Verify: 6.1 and 6.2 pass and `SessionServiceTest` is unchanged and green.
-- [ ] 6.4 `docs(identity)`: document the timeout and the recommended value of 30 for instances with administrators in
+- [ ] 5.4 `docs(identity)`: document the timeout and the recommended value of 30 for instances with administrators in
   `docs/gitbook/`, as an opt-in. Verify: the default stated on the page is `0`.
 
-## 7. Open the pull requests
+## 6. Open the pull requests
 
-- [ ] 7.1 Open the pull request for section 2 against `main` with the title `feat(identity): throttle sign-in attempts per account
+- [ ] 6.1 Open the pull request for section 2 against `main` with the title `feat(identity): throttle sign-in attempts per account
   across every credential path`, with the sections of `.github/PULL_REQUEST_TEMPLATE.md` filled in. Verify: `gh pr view` shows the
   title and the template sections, and the `Container images` check runs.
-- [ ] 7.2 Open the pull request for section 3 against `main` with the title `feat(identity): check new passwords against breached
+- [ ] 6.2 Open the pull request for section 3 against `main` with the title `feat(identity): check new passwords against breached
   password lists`. Verify: `gh pr view` shows the title.
-- [ ] 7.3 Open the pull request for section 4 after pull request 1 is merged, with the title `feat(identity): record throttled
+- [ ] 6.3 Open the pull request for section 4 after pull request 1 is merged, with the title `feat(identity): record throttled
   sign-ins in the audit trail and plugin events`. Verify: `gh pr view` shows the title and the base is `main`.
-- [ ] 7.4 Open the pull request for section 5 after pull request 1 is merged, with the title `feat(identity): add a login challenge
-  extension point for plugins`. Verify: `gh pr view` shows the title and the base is `main`.
-- [ ] 7.5 Open the pull request for section 6 with the title `feat(identity): add an optional idle timeout for browser sessions`.
+- [ ] 6.4 Open the pull request for section 5 with the title `feat(identity): add an optional idle timeout for browser sessions`.
   Verify: `gh pr view` shows the title, and the pull request description contains no session link or attribution line.
 
 ## 8. Follow-up changes (not part of this proposal)
@@ -157,4 +139,5 @@ Title: `feat(identity): add an optional idle timeout for browser sessions`
 - `fix-legacy-brute-force-ban-window` (`fix(auth)`), `fix-basic-token-timing` (`fix(auth)`) and `fix-setup-code-oracle`
   (`fix(identity)`): the defects named in the proposal. Each is proposed separately, and the first of them can merge before
   pull request 1.
+- `add-login-challenge-extension` (deferred): the login challenge extension point, moved out of this change by maintainer decision.
 - `docs(openspec): archive add-login-protection`: only when the maintainer asks for the follow-up that ticks these tasks.
