@@ -71,7 +71,6 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
         clock = clock,
         audit = audit::add,
         random = SecureRandom(),
-        hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
         passkeys = PasskeyService(store = factorStore, identities = identities, clock = clock, audit = audit::add),
     )
 
@@ -80,7 +79,6 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
         settings = { settings },
         clock = clock,
         secondFactorRequired = { principalId -> factors.requiresSecondFactor(principalId) },
-        hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
     )
 
     private val login = LoginService(

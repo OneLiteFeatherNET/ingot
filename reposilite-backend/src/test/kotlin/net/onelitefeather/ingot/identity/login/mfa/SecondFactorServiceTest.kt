@@ -130,7 +130,6 @@ internal class SecondFactorServiceTest {
                 seeds = SettingsSeedCipher(codecs = { listOf(SettingsEnvelopeCodec(key = key)) }),
                 clock = clock,
                 audit = {},
-                hasLocalPassword = { false },
             )
 
             val outcome = service.enrolmentStart(principal.id, "dana")

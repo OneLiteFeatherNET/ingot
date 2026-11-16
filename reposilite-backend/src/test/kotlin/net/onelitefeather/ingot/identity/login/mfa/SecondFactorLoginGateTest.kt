@@ -91,7 +91,6 @@ internal class SecondFactorLoginGateTest {
                 clock = clock,
                 audit = audit::add,
                 random = SecureRandom(),
-                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
             )
             val facade = LoginFacade(
                 login,

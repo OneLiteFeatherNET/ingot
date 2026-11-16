@@ -252,15 +252,16 @@ class LoginFacade internal constructor(
      * trusted `acr` or `amr` value, see `OidcFinish.LoggedIn`. [github] tells that the provider is GitHub, which has no ID token.
      *
      * An uncovered user keeps the rule of before: a user with a factor is refused, a user without one passes. A covered GitHub user is
-     * always challenged. A covered user passes when the provider verified a factor, is challenged when a factor exists, and passes
-     * otherwise, where the grace rule applies to the session.
+     * challenged when a factor exists, and passes otherwise: a challenge without a factor could never be completed. A covered user
+     * passes when the provider verified a factor, is challenged when a factor exists, and passes otherwise, where the grace rule
+     * applies to the session.
      */
     fun externalSecondFactor(principal: PrincipalRecord, providerMfa: Boolean, github: Boolean): ExternalSecondFactor {
         val covered = policy?.covers(principal) ?: false
         val hasFactor = hasSecondFactor(principal.id)
         return when {
             !covered -> if (hasFactor) ExternalSecondFactor.Refused else ExternalSecondFactor.Pass
-            github -> challengeOf(principal)
+            github -> if (hasFactor) challengeOf(principal) else ExternalSecondFactor.Pass
             providerMfa -> ExternalSecondFactor.Pass
             hasFactor -> challengeOf(principal)
             else -> ExternalSecondFactor.Pass
