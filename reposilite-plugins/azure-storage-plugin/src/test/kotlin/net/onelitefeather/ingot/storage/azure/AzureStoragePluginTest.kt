@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.storage.azure
 
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -33,6 +34,15 @@ internal class AzureStoragePluginTest {
         // then: the plugin is named azure-storage
         assertThat(annotation).`as`("plugin annotation").isNotNull()
         assertThat(annotation.name).`as`("plugin name").isEqualTo("azure-storage")
+    }
+
+    @Test
+    fun `should declare the azure-storage plugin as experimental`() {
+        // when: the plugin annotation is read by reflection
+        val annotation = AzureStoragePlugin::class.java.getAnnotation(Plugin::class.java)
+
+        // then: the plugin declares the experimental tier, because its factory opts in to the storage API
+        assertThat(annotation.tier).`as`("tier of azure-storage").isEqualTo(PluginTier.EXPERIMENTAL)
     }
 
     @Test
