@@ -11,6 +11,7 @@ A storage provider holds the files of one repository. Each repository chooses it
 | File system | `fs` | A directory on the disk of the server. |
 | S3 | `s3` | A bucket of an S3-compatible object store. |
 | Cache | `cache` | A local copy of immutable files in front of another provider. Installed as the storage cache plugin, see [Cache provider](#cache-provider). |
+| Azure Blob | `azure-blob` | A container of an Azure storage account. This is the optional `azure-storage` plugin, see [Use Azure Blob storage](../../set-up/cluster/use-azure-blob-storage.md). |
 
 When a stored `storageProvider` has no `type`, Ingot uses `s3` if the document contains `bucketName` and `fs` otherwise. A repository without a `storageProvider` uses the file system provider with its defaults.
 
