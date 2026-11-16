@@ -199,3 +199,11 @@ See [Elasticsearch search backend](../references/settings/elasticsearch-search-b
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](../references/settings/settings-domains.md)). No configuration file, environment variable, volume or plugin changes.
+
+### Lucene search backend is optional and not bundled (unreleased)
+
+The Lucene plugin is not part of the image. It is installed by hand, or from the plugin store, by copying `lucene-plugin.jar` into the plugins directory. Without the jar nothing is loaded and no index is written, so an existing installation behaves as before. No configuration, environment variable, volume, manifest or existing plugin changes for existing deployments.
+
+* The search backend stays `database` until `searchEngine` is set to `lucene` on the one replica. The backend serves exactly one replica; more than one replica must not use it. Read [Use Lucene for search](../configure/search/use-lucene-for-search.md) before you switch.
+
+See [Lucene search backend](../references/settings/lucene-search-backend.md) for the variables and the single-writer rule.

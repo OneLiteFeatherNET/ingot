@@ -484,6 +484,15 @@ The variables compare the value without regard to case, and an empty value count
 `reposilite.ldap.disable-user-password-authentication=true` accepts an LDAP user without verifying the password that the client sent. Use it only when something else in front of Ingot already verified the user.
 {% endhint %}
 
+### Lucene search backend
+
+The Lucene plugin is not part of the image. Its jar, `lucene-plugin.jar`, is installed in the plugins directory, as described in [Install a plugin](../../manage/plugins/install-a-plugin.md), and the jar is its switch. Each variable falls back to its `REPOSILITE_LUCENE_` spelling when the `INGOT_` name is unset or blank. The rules and the single-writer obligation are in the [Lucene search backend](../settings/lucene-search-backend.md) reference.
+
+| Environment variable | Legacy environment variable | Default | Range or values | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_LUCENE_DIRECTORY` | `REPOSILITE_LUCENE_DIRECTORY` | `search/lucene` below the data directory | Absolute path of a directory | Where the index lives. A file at that path is refused. |
+| `INGOT_LUCENE_MIN_FREE_BYTES` | `REPOSILITE_LUCENE_MIN_FREE_BYTES` | `1073741824` | Whole number of bytes, zero or more | Free space the index volume keeps. Below it the index stops growing. |
+
 ## Related pages
 
 * [Configuration file and startup parameters](configuration-and-startup.md)
