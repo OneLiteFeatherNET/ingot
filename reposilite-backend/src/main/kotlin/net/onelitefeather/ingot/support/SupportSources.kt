@@ -69,7 +69,8 @@ data class OperatingSystemFacts(
     val container: Boolean,
 )
 
-data class PluginFact(val name: String, val version: String, val dependencies: List<String>)
+/** A loaded plugin. The tier is the effective one, in lower case, and a plugin fact without one reads as community. */
+data class PluginFact(val name: String, val version: String, val dependencies: List<String>, val tier: String = "community")
 
 /** The storage of one repository: its kind, and the region for an S3 bucket. Keys are never part of it. */
 data class RepositoryStorage(val repository: String, val kind: String, val region: String?)

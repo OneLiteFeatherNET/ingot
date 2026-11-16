@@ -58,7 +58,7 @@ data class DatabaseInformation(val kind: String, val endpoint: String?)
 
 data class StorageInformation(val repository: String, val kind: String, val region: String?, val details: Map<String, String> = emptyMap())
 
-data class PluginInformation(val name: String, val version: String, val dependencies: List<String>)
+data class PluginInformation(val name: String, val version: String, val dependencies: List<String>, val tier: String = "community")
 
 data class ConfigurationInformation(val local: Map<String, String>, val shared: Map<String, JsonNode>)
 
