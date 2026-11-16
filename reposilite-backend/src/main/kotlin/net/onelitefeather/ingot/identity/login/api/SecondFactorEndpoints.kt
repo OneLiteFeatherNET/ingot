@@ -44,6 +44,9 @@ import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
 import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
 import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.FactorRename
+import net.onelitefeather.ingot.identity.login.mfa.MAX_FACTOR_NAME_LENGTH
+import net.onelitefeather.ingot.identity.login.mfa.validFactorName
 import net.onelitefeather.ingot.identity.login.mfa.NO_RELYING_PARTY_MESSAGE
 import net.onelitefeather.ingot.identity.login.mfa.PASSKEY_NAME
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyRegistration
@@ -216,6 +219,42 @@ internal class SecondFactorEndpoints(
                             FactorRemoval.NotFound -> notFoundError("Factor not found")
                             FactorRemoval.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
                             is FactorRemoval.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @OpenApi(
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/me/factors/{id}",
+        methods = [HttpMethod.PATCH],
+        summary = "Rename an own second factor",
+        description = "Gives one factor of the signed-in user a new name of 1 to 64 characters, without control characters. Needs a second factor completed inside the step-up window. A factor of another user answers 404, like an unknown id",
+        tags = ["Identity"],
+        pathParams = [OpenApiParam(name = "id", description = "Id of the factor", required = true)],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = FactorNameRequest::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = SecondFactorDto::class) ]),
+            OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val renameOwn = ReposiliteRoute<SecondFactorDto>("/api/identity/me/factors/{id}", Route.PATCH, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        authenticated {
+            val caller = callerOf(identifier)
+            val factorId = requireParameter("id").toIntOrNull()
+            val label = validFactorName(runCatching { body<FactorNameRequest>() }.getOrNull()?.name)
+            response = caller.flatMap { user ->
+                requireStepUp(facade).flatMap {
+                    when {
+                        factorId == null -> notFoundError("Factor not found")
+                        label == null -> badRequestError("Rename requires a name of 1 to $MAX_FACTOR_NAME_LENGTH characters without control characters")
+                        else -> when (val outcome = facade.renameSecondFactor(user.principalId, user.name, factorId, label, auditActor())) {
+                            is FactorRename.Renamed -> outcome.factor.toDto().asSuccess()
+                            FactorRename.NotFound -> notFoundError("Factor not found")
                         }
                     }
                 }
@@ -449,7 +488,7 @@ internal class SecondFactorEndpoints(
         }
     }
 
-    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne, startPasskey, finishPasskey, stepUp)
+    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, renameOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne, startPasskey, finishPasskey, stepUp)
 
     private fun FactorRecord.toDto() = SecondFactorDto(id = id, kind = kind, name = name, createdAt = createdAt, lastUsedAt = lastUsedAt)
 

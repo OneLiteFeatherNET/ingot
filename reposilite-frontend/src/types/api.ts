@@ -2265,7 +2265,64 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename an own second factor
+         * @description Gives one factor of the signed-in user a new name of 1 to 64 characters, without control characters. Needs a second factor completed inside the step-up window. A factor of another user answers 404, like an unknown id
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the factor */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["FactorNameRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SecondFactorDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description step_up_required when a recent second factor is needed first, see /api/identity/me/step-up */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/identity/me/password": {
@@ -5742,6 +5799,9 @@ export interface components {
             count: number;
             value: string;
         };
+        FactorNameRequest: {
+            name?: string | null;
+        };
         FactorResetDto: {
             /** Format: int32 */
             removed?: number;
@@ -6242,6 +6302,16 @@ export interface components {
             startedAt: string;
             status: components["schemas"]["RunStatus"];
             trigger: components["schemas"]["RunTrigger"];
+        };
+        SecondFactorDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            id?: number;
+            kind?: string;
+            /** Format: date-time */
+            lastUsedAt?: string | null;
+            name?: string;
         };
         SecondFactorRequest: {
             code?: string | null;

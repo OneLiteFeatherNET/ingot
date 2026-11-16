@@ -790,6 +790,14 @@
         "required" : [ "value", "count" ],
         "type" : "object"
       },
+      "FactorNameRequest" : {
+        "properties" : {
+          "name" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "FactorResetDto" : {
         "properties" : {
           "removed" : {
@@ -2271,6 +2279,29 @@
           }
         },
         "required" : [ "id", "kind", "trigger", "status", "startedAt", "counters" ],
+        "type" : "object"
+      },
+      "SecondFactorDto" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "lastUsedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "SecondFactorRequest" : {
@@ -4290,6 +4321,74 @@
           "sessionCookie" : [ ]
         } ],
         "summary" : "Remove an own second factor",
+        "tags" : [ "Identity" ]
+      },
+      "patch" : {
+        "description" : "Gives one factor of the signed-in user a new name of 1 to 64 characters, without control characters. Needs a second factor completed inside the step-up window. A factor of another user answers 404, like an unknown id",
+        "parameters" : [ {
+          "description" : "Id of the factor",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FactorNameRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SecondFactorDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Rename an own second factor",
         "tags" : [ "Identity" ]
       }
     },

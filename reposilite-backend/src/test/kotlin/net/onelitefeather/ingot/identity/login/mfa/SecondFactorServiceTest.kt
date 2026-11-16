@@ -485,6 +485,50 @@ internal class SecondFactorServiceTest {
         }
     }
 
+    @Test
+    fun `renames an own factor and audits the rename with the factor id but not the name`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val factorId = fixture.service.factorsOf(fixture.principalId).single().id
+            fixture.audit.clear()
+
+            val outcome = fixture.service.renameFactor(fixture.principalId, "alice", factorId, "Work phone", AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("rename of an own factor").isInstanceOf(FactorRename.Renamed::class.java)
+            assertThat(fixture.service.factorsOf(fixture.principalId).single().name).`as`("name after the rename").isEqualTo("Work phone")
+            val events = fixture.audit.filter { it.action == AuditAction.MFA_FACTOR_RENAMED }
+            assertThat(events).`as`("rename audit events").hasSize(1)
+            assertThat(events.single().details).`as`("details of the rename audit event").containsEntry("factor", factorId).doesNotContainValue("Work phone")
+        }
+    }
+
+    @Test
+    fun `a factor of another user is not found for the caller and keeps its name`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val factorId = fixture.service.factorsOf(fixture.principalId).single().id
+            val bob = fixture.identities.createPrincipal(PrincipalKind.USER, "bob", "Bob", false, clock.instant())!!
+            fixture.audit.clear()
+
+            val outcome = fixture.service.renameFactor(bob.id, "bob", factorId, "Hijacked", AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("rename of a factor of another user").isEqualTo(FactorRename.NotFound)
+            assertThat(fixture.service.factorsOf(fixture.principalId).single().name).`as`("name of the owner").isEqualTo(AUTHENTICATOR_NAME)
+            assertThat(fixture.audit.none { it.action == AuditAction.MFA_FACTOR_RENAMED }).`as`("no rename audit event").isTrue()
+        }
+    }
+
+    @Test
+    fun `renaming an id that names no factor is not found`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+
+            val outcome = fixture.service.renameFactor(fixture.principalId, "alice", 999_999, "Work phone", AuditActor.SYSTEM_ACTOR)
+
+            assertThat(outcome).`as`("rename of an unknown factor").isEqualTo(FactorRename.NotFound)
+        }
+    }
+
     /** Regenerates the recovery codes with a fresh authenticator code and returns the first of the new set. */
     private fun regenerate(fixture: Fixture): String {
         clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))

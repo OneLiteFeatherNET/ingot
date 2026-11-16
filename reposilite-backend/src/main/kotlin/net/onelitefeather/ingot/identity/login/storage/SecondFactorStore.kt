@@ -231,6 +231,17 @@ class SecondFactorStore(
             MfaFactorTable.deleteWhere { (MfaFactorTable.principalId eq principalId) and (MfaFactorTable.id eq id) } > 0
         }
 
+    /** Gives a confirmed factor of a principal a new name. `true` when it existed. */
+    fun renameFactor(principalId: Int, id: Int, name: String): Boolean =
+        identityWrite(database) {
+            MfaFactorTable.update(
+                where = {
+                    (MfaFactorTable.principalId eq principalId) and (MfaFactorTable.id eq id) and MfaFactorTable.confirmedAt.isNotNull()
+                },
+                body = { it[MfaFactorTable.name] = name },
+            ) > 0
+        }
+
     /** Removes every factor of a principal, pending enrolments included. Returns how many confirmed factors were removed. */
     fun deleteAllFactors(principalId: Int): Int =
         identityWrite(database) {

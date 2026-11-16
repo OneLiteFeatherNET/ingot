@@ -117,6 +117,12 @@ data class CodeRequest(
     val code: String? = null,
 )
 
+/** `PATCH /api/identity/me/factors/{id}`: the new name of a factor, up to 64 characters, see [validFactorName]. */
+@JsonSchema(requireNonNulls = false)
+data class FactorNameRequest(
+    val name: String? = null,
+)
+
 /** The factor that the confirmation created. [recoveryCodes] is set for the first factor only, and shown once. */
 @JsonSchema(requireNonNulls = false)
 data class ConfirmedEnrolmentDto(
