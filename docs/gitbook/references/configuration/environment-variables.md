@@ -85,7 +85,9 @@ The deploy target is read once at start. See [Deploy targets](deploy-targets.md)
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `INGOT_TARGET` | unset, which means `all` | Deploy target of the instance. `all` serves the dashboard, the API and the repositories. `server` serves the API and the repositories only. An empty value counts as unset. Any other value stops the start. The command line option `--target` and the system property `ingot.target` take precedence over it. |
+| `INGOT_TARGET` | unset, which means `all` | Deploy target of the instance. `all` serves the dashboard, the API and the repositories. `server` serves the API and the repositories only. `worker` serves only the status probes and the metrics route, and runs the singleton background jobs. An empty value counts as unset. Any other value stops the start. The command line option `--target` and the system property `ingot.target` take precedence over it. |
+| `INGOT_BACKGROUND_JOBS` | `true` | On target `server`, `false` stops the instance from starting the cleanup runs, the audit retention purge, the search index rebuild, verify and token sweep, and the search outbox drain, so a worker runs them. Only `true` and `false` are accepted, and `false` on target `all` or `worker` stops the start. A blank value counts as unset. It has no `REPOSILITE_` spelling. The command line option `--background-jobs` and the system property `ingot.background-jobs` take precedence over it. See [Background jobs switch](deploy-targets.md#background-jobs-switch). |
+| `INGOT_ALLOW_SHARED_FILESYSTEM` | `false` | `true` lets a worker, or a `server` with the background jobs switch off, start with a repository stored on the local file system. Any other value keeps that refusal. See [Shared state](deploy-targets.md#shared-state). |
 
 ## Server variables
 
