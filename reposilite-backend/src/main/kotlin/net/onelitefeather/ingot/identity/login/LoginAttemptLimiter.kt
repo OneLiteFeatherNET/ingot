@@ -59,14 +59,25 @@ internal class LoginAttemptLimiter(
         store.deleteAttempt(key)
     }
 
+    /** Counts one failure of [key] under the per-account delay rule. The delay is read back by [retryAfter]. */
+    fun recordDelayedFailure(key: String, rule: DelayRule) {
+        val now = Instant.now(clock)
+        write(key) { state -> LoginDelayPolicy.onFailure(state, now, rule) }
+    }
+
     private fun recordFailure(key: String, now: Instant, maxFailedAttempts: Int, lockout: Duration) {
+        write(key) { state -> LoginAttemptPolicy.onFailure(state, now, maxFailedAttempts, lockout) }
+    }
+
+    /** Applies [next] to the state of [key] under the version it was read at, and retries a lost race against the winner. */
+    private fun write(key: String, next: (AttemptState) -> AttemptState) {
         repeat(MAX_WRITE_ATTEMPTS) {
             val existing = store.findAttempt(key)
-            val next = LoginAttemptPolicy.onFailure(existing?.state ?: AttemptState.NONE, now, maxFailedAttempts, lockout)
+            val state = next(existing?.state ?: AttemptState.NONE)
             val written = if (existing == null) {
-                store.insertAttempt(key, next)
+                store.insertAttempt(key, state)
             } else {
-                store.updateAttempt(key, expectedVersion = existing.version, state = next)
+                store.updateAttempt(key, expectedVersion = existing.version, state = state)
             }
             if (written) {
                 return
@@ -94,6 +105,13 @@ internal class LoginAttemptLimiter(
         /** The key of an address, across all user names. */
         fun addressKey(address: String): String =
             digest("address|$address")
+
+        /**
+         * The key of a user name across every address. It delays guesses from addresses the name never signed in from, and
+         * is kept apart from [userKey] and [addressKey].
+         */
+        fun accountKey(username: String): String =
+            digest("account|${username.lowercase()}")
 
         /**
          * The keys of failed second factor codes. They are kept apart from the password keys, so a password login that

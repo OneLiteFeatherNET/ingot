@@ -41,9 +41,33 @@ data class LoginSettings(
     val ldap: LdapLoginSettings = LdapLoginSettings(),
     @get:Doc(title = "Public URL", description = "Public address of the dashboard, for example https://repo.example.org/ (http:// only for localhost). The redirect URIs of the OpenID Connect providers and the callback URL shown to admins are built from it. Blank: built from the Host header and X-Forwarded-Proto of the request")
     val publicUrl: String = "",
+    @get:Doc(title = "Account Throttle", description = "Delay of password and token guesses for one user name from addresses the name has not signed in from. Only applies while the switch INGOT_LOGIN_ACCOUNT_THROTTLE is on; the thresholds here have no effect without it")
+    val accountThrottle: AccountThrottleSettings = AccountThrottleSettings(),
 ) : ValidatedSettings {
 
     override fun violations(): List<String> =
-        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" })
+        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }) + accountThrottle.violations()
+
+}
+
+@JsonSchema(requireNonNulls = false)
+@Doc(title = "Account Throttle", description = "Thresholds of the per-account delay")
+data class AccountThrottleSettings(
+    @get:Doc(title = "Threshold", description = "Failed credentials for one user name, from any address, after which the next guess from a new address is delayed. The first delay is one second")
+    val threshold: Int = 10,
+    @get:Doc(title = "Quiet Minutes", description = "Minutes without a failure after which the count of failures of a user name starts again at zero")
+    val quietMinutes: Long = 60,
+    @get:Doc(title = "Maximum Delay Seconds", description = "Longest delay of one request. The delay doubles with every failure beyond the threshold and ends by itself; a success clears it")
+    val maxDelaySeconds: Long = 300,
+    @get:Doc(title = "Known Address Days", description = "Days after its last sign-in during which an address counts as known for a user name. A known address is not delayed by the account key")
+    val knownAddressDays: Long = 30,
+) {
+
+    fun violations(): List<String> = listOfNotNull(
+        "accountThrottle.threshold: must be at least 1".takeIf { threshold < 1 },
+        "accountThrottle.quietMinutes: must be at least 1".takeIf { quietMinutes < 1 },
+        "accountThrottle.maxDelaySeconds: must be between 1 and 86400".takeIf { maxDelaySeconds !in 1..86_400 },
+        "accountThrottle.knownAddressDays: must be at least 1".takeIf { knownAddressDays < 1 },
+    )
 
 }

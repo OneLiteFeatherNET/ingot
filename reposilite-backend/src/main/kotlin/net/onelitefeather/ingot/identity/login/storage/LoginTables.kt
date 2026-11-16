@@ -61,6 +61,21 @@ object LoginSetupMarkerTable : Table("login_setup_marker") {
 }
 
 /**
+ * The addresses a name signed in from, for the per-account delay. [subject] is the lower case name of the account, a user
+ * name or a token name, and [addressHash] is the SHA-256 of the address, so the table holds no plain address. A row is
+ * written by a successful sign-in only while the account throttle is on, and [lastSuccessAt] decides whether the address is
+ * known.
+ */
+object LoginKnownAddressTable : Table("login_known_address") {
+    val subject = varchar("subject", 128)
+    val addressHash = varchar("address_hash", 64)
+    val firstSeenAt = timestamp("first_seen_at")
+    val lastSuccessAt = timestamp("last_success_at").index()
+
+    override val primaryKey = PrimaryKey(subject, addressHash)
+}
+
+/**
  * Failed password logins, one row per key: a user name with an address, and an address on its own. The keys are hashes,
  * so the table holds no plain user name. [version] changes with every write, which makes concurrent updates from
  * several instances of the database conditional: the loser of a race retries against the state it finds.
