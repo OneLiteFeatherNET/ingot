@@ -64,7 +64,8 @@ object Redaction {
     val LOCAL_ALLOWLIST: Set<String> = setOf(
         "hostname", "port", "sslEnabled", "sslPort", "enforceSsl", "webThreadPool", "ioThreadPool", "databaseThreadPool",
         "compressionStrategy", "idleTimeout", "bypassExternalCache", "cachedLogSize", "defaultFrontend", "basePath",
-        "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "debugEnabled", "pluginUi", "pluginStyles",
+        "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "databaseMaxLifetime",
+        "databaseConnectionTimeout", "databaseKeepalive", "debugEnabled", "pluginUi", "pluginStyles",
         "plugins",
     )
 

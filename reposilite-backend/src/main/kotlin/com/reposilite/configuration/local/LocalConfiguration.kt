@@ -64,6 +64,23 @@ class LocalConfiguration : Facade {
     @Description("# A replica that waits longer does not bind its port, so check the instance that holds the lock first.")
     val schemaLockTimeout = reference(300L)
 
+    @Description("")
+    @Description("# Seconds after which a pooled database connection is closed and replaced. 0 means no limit.")
+    @Description("# A negative value, or one from 1 to 29, is replaced by Hikari with 1800 and a warning is logged.")
+    @Description("# Applies to MariaDB, MySQL and PostgreSQL only.")
+    val databaseMaxLifetime = reference(1800)
+
+    @Description("# Seconds a request waits for a free pooled database connection before it fails.")
+    @Description("# A negative value stops the start. 0 means the longest wait Hikari supports.")
+    @Description("# Applies to MariaDB, MySQL and PostgreSQL only.")
+    val databaseConnectionTimeout = reference(30)
+
+    @Description("# Seconds between keepalive queries on idle pooled database connections. 0 means off.")
+    @Description("# Hikari turns the keepalive off for a negative value, for one from 1 to 29, and for one at or above the")
+    @Description("# maximum lifetime. The default of 120 is the interval the pool uses without this key.")
+    @Description("# Applies to MariaDB, MySQL and PostgreSQL only.")
+    val databaseKeepalive = reference(120)
+
     @Command(name = "embedded")
     internal class EmbeddedSQLDatabaseSettings : Validator() {
         @Parameters(index = "0", paramLabel = "<file-name>", defaultValue = "")
