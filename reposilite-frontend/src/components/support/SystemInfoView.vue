@@ -233,7 +233,7 @@ onMounted(load)
             {{ plugin.name }} {{ plugin.version }}
             <span
               class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
-              data-ingot-component="plugin-tier"
+              data-ingot-part="plugin-tier"
             >{{ tierLabel(plugin.tier) }}</span>
           </li>
         </ul>
