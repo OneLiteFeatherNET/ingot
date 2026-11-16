@@ -100,8 +100,8 @@ internal class AuthOidcEndpoints(
         clearCookie(ctx, OidcStateCookie.COOKIE)
 
         when (outcome) {
-            // The second factor policy decides first (design D12): an uncovered user with a factor is refused as before, a covered user
-            // is challenged for an Ingot factor unless the provider verified one, and the rest start a session.
+            // The second factor policy decides first (design D12): an uncovered user starts a session whatever factors it has, a covered
+            // user is challenged for an Ingot factor unless the provider verified one, and the rest start a session.
             is OidcFinish.LoggedIn -> when (val gate = facade.externalSecondFactor(outcome.principal, outcome.providerMfa, outcome.github)) {
                 is ExternalSecondFactor.Challenge -> {
                     ctx.res().addHeader("Set-Cookie", SecondFactorCookie.set(gate.challenge, base, SessionCookies.isSecure(ctx)))

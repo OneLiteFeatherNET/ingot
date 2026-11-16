@@ -140,14 +140,14 @@ internal class MfaLoginGateTest {
     }
 
     @Test
-    fun `an uncovered external user with a factor is refused as before`() {
+    fun `an uncovered external user with a factor passes, because the provider authenticated the user`() {
         withMfaFixture(workingDirectory, clock) { fixture ->
             val user = fixture.user()
             fixture.addPasskey(user.id)
 
             val gate = fixture.facade.externalSecondFactor(user, providerMfa = false, github = false)
 
-            assertThat(gate).describedAs("gate of an uncovered external user with a factor").isEqualTo(ExternalSecondFactor.Refused)
+            assertThat(gate).describedAs("gate of an uncovered external user with a factor").isEqualTo(ExternalSecondFactor.Pass)
         }
     }
 
