@@ -36,8 +36,10 @@ import com.reposilite.journalist.Logger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.unauthorizedError
+import io.javalin.http.HttpStatus
 import com.reposilite.token.AccessTokenFacade
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import com.reposilite.token.AccessTokenIdentifier
@@ -113,6 +115,10 @@ class AuthenticationFacade(
     private val cacheLock = Any()
     private val tokenGeneration = AtomicLong()
 
+    /** The account guard of the login plugin. Read on every request, so an installed guard applies at once. */
+    @Volatile
+    private var accountGuard: AccountLoginGuard = AccountLoginGuard.NONE
+
     /**
      * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
      * forgotten while the ban it started is still running, also when the ban duration is changed at runtime.
@@ -158,10 +164,33 @@ class AuthenticationFacade(
         this.authenticators.add(authenticator)
     }
 
-    fun authenticateByCredentials(credentials: Credentials): Result<out AccessTokenDto, ErrorResponse> {
+    /**
+     * Installs the account guard of the login plugin. Until one is installed, no name is delayed.
+     */
+    fun installAccountGuard(guard: AccountLoginGuard) {
+        accountGuard = guard
+    }
+
+    /**
+     * Authenticates a Basic, Bearer or console credential. A [guarded] request is first checked against the account guard,
+     * and a delayed name is answered `429` without its secret being checked. [onThrottled] receives the seconds to wait, so
+     * that the caller can send them as `Retry-After`. The loopback mirror is not guarded.
+     */
+    fun authenticateByCredentials(
+        credentials: Credentials,
+        guarded: Boolean = true,
+        onThrottled: (retryAfterSeconds: Long) -> Unit = {},
+    ): Result<out AccessTokenDto, ErrorResponse> {
         if (isBruteForceBlocked(credentials.ip)) {
             recordRejectedLogin(credentials)
             return unauthorizedError("Invalid authorization credentials")
+        }
+
+        val guard = if (guarded) accountGuard else AccountLoginGuard.NONE
+        guard.retryAfter(credentials.name, credentials.ip)?.let { wait ->
+            onThrottled(((wait.toMillis() + 999) / 1000).coerceAtLeast(1))
+            recordRejectedLogin(credentials)
+            return errorResponse(HttpStatus.TOO_MANY_REQUESTS, "Too many failed login attempts, try again later")
         }
 
         val generation = tokenGeneration.get()
@@ -184,6 +213,9 @@ class AuthenticationFacade(
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
         if (result.isErr) {
             recordRejectedLogin(credentials)
+            guard.recordFailure(credentials.name)
+        } else {
+            guard.recordSuccess(credentials.name, credentials.ip)
         }
         // Cache hits count as use too: the facade throttles the write, so a busy cache does not write more often.
         result.peek { accessTokenFacade.recordTokenUsage(it.identifier, credentials.ip) }

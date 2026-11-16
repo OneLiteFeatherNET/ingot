@@ -120,6 +120,18 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // The per-account delay is read from the environment once, at start: it is a deployment decision, not a page setting.
+        // Its guard is handed to the authentication facade, so that Basic and Bearer requests follow the same rule.
+        val accountThrottle = database?.let { database ->
+            AccountThrottle(
+                store = LoginStore(database, clock),
+                settings = loginSettings,
+                clock = clock,
+                enabled = AccountThrottle.enabledIn(),
+            )
+        }
+        accountThrottle?.let { facade<AuthenticationFacade>().installAccountGuard(it) }
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -129,12 +141,7 @@ class LoginPlugin : ReposilitePlugin() {
                 clock = clock,
                 audit = audit,
                 secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
-                accountThrottle = AccountThrottle(
-                    store = LoginStore(database, clock),
-                    settings = loginSettings,
-                    clock = clock,
-                    enabled = AccountThrottle.enabledIn(),
-                ),
+                accountThrottle = accountThrottle,
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {
