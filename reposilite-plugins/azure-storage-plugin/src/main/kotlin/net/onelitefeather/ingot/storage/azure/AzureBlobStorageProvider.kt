@@ -22,11 +22,14 @@ import com.reposilite.shared.internalServerError
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
+import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import com.reposilite.storage.api.SimpleDirectoryInfo
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
+import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import panda.std.Result
 import panda.std.Result.ok
@@ -154,10 +157,59 @@ internal class AzureBlobStorageProvider(
         }
     }
 
+    /**
+     * A blob answers with its details. A location without a blob is a directory when a listing with one result finds a child, as
+     * design D6 describes. The repository root is always a directory.
+     */
     override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
-        answer<FileDetails>(location, "read the details of") {
-            ok(client.properties(blobName(location)).toDocumentInfo(location))
+        if (location.toString().isEmpty()) {
+            listDirectoryDetails(location)
+        } else {
+            answer<FileDetails>(location, "read the details of") {
+                ok(client.properties(blobName(location)).toDocumentInfo(location))
+            }.flatMapErr { error ->
+                if (error.status == NOT_FOUND.code) listDirectoryDetails(location) else Result.error(error)
+            }
         }
+
+    private fun listDirectoryDetails(location: Location): Result<FileDetails, ErrorResponse> =
+        answer<FileDetails>(location, "list") {
+            val probe = children(location, maxResults = 1)
+            if (probe.isEmpty()) {
+                notFoundError("Directory not found or is empty")
+            } else {
+                ok(DirectoryInfo(name = location.getSimpleName(), files = children(location).mapNotNull { it.toFileDetails() }))
+            }
+        }
+
+    /** The entries that a listing of [location] shows: its directories and its blobs, without the folder markers of blobs. */
+    private fun children(location: Location, maxResults: Int? = null): List<AzureBlobChild> =
+        client.listChildren(directoryPrefix(location), maxResults)
+            .filter { it.isDirectory || !it.name.endsWith("/") }
+
+    /** The prefix of the blobs under [location], with the repository prefix and the trailing slash. */
+    private fun directoryPrefix(location: Location): String {
+        val path = location.toString().replace('\\', '/')
+        return blobPrefix + if (path.isEmpty()) "" else "$path/"
+    }
+
+    /** The location of an entry relative to the repository, without its trailing slash. */
+    private fun AzureBlobChild.toLocation(): Location? =
+        Location.ofRequest(name.removePrefix(blobPrefix).trimEnd('/')).orNull()
+
+    private fun AzureBlobChild.toFileDetails(): FileDetails? {
+        val entry = toLocation() ?: return null
+        val properties = properties ?: return SimpleDirectoryInfo(name = entry.getSimpleName())
+        return entry.toDocumentInfo(properties)
+    }
+
+    private fun Location.toDocumentInfo(properties: AzureBlobProperties): DocumentInfo =
+        DocumentInfo(
+            name = getSimpleName(),
+            contentType = ContentType.contentTypeByExtension(getExtension()) ?: APPLICATION_OCTET_STREAM,
+            contentLength = properties.contentLength,
+            lastModifiedTime = properties.lastModified,
+        )
 
     private fun AzureBlobProperties.toDocumentInfo(location: Location): DocumentInfo =
         DocumentInfo(
@@ -171,7 +223,10 @@ internal class AzureBlobStorageProvider(
         throw UnsupportedOperationException("removal is added by a later change")
 
     override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> =
-        throw UnsupportedOperationException("listings are added by a later change")
+        answer(location, "list") {
+            val entries = children(location).mapNotNull { it.toLocation() }
+            if (entries.isEmpty()) notFoundError("Directory not found or is empty") else ok(entries)
+        }
 
     override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> =
         answer(location, "read the time of") {
@@ -183,12 +238,13 @@ internal class AzureBlobStorageProvider(
             ok(client.properties(blobName(location)).contentLength)
         }
 
+    /** A blob exists, and so does a location with a child under it. */
     override fun exists(location: Location): Boolean =
         try {
             client.properties(blobName(location))
             true
         } catch (_: AzureBlobNotFoundException) {
-            false
+            client.listChildren(directoryPrefix(location), maxResults = 1).isNotEmpty()
         } catch (exception: Exception) {
             failureFacade.throwException("Azure Blob storage provider failed to check $location", exception)
             false

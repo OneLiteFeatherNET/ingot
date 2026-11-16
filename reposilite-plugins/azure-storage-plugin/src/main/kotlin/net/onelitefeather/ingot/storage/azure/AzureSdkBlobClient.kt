@@ -21,6 +21,7 @@ import com.azure.storage.blob.BlobContainerClient
 import com.azure.storage.blob.models.BlobHttpHeaders
 import com.azure.storage.blob.models.BlobRange
 import com.azure.storage.blob.models.BlobStorageException
+import com.azure.storage.blob.models.ListBlobsOptions
 import com.azure.storage.blob.options.BlockBlobCommitBlockListOptions
 import com.azure.storage.blob.options.BlockBlobSimpleUploadOptions
 import java.io.InputStream
@@ -55,6 +56,25 @@ internal class AzureSdkBlobClient(private val container: BlobContainerClient) : 
 
     override fun download(name: String, offset: Long, count: Long?): InputStream = translating(name) {
         container.getBlobClient(name).openInputStream(BlobRange(offset, count), null)
+    }
+
+    override fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild> {
+        val options = ListBlobsOptions().setPrefix(prefix).also { options -> maxResults?.let { options.setMaxResultsPerPage(it) } }
+        return translating(prefix) {
+            container.listBlobsByHierarchy("/", options, null)
+                .let { items -> maxResults?.let { items.take(it) } ?: items.toList() }
+                .map { item ->
+                    val properties = item.properties
+                    if (item.isPrefix == true || properties == null) {
+                        AzureBlobChild(item.name, null)
+                    } else {
+                        AzureBlobChild(
+                            item.name,
+                            AzureBlobProperties(properties.contentLength ?: 0L, properties.lastModified.toInstant()),
+                        )
+                    }
+                }
+        }
     }
 
     /** Maps the status codes that the provider answers to the exceptions of [AzureBlobClient], and rethrows every other failure. */
