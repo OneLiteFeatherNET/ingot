@@ -135,6 +135,36 @@ data class FactorResetDto(
 )
 
 /**
+ * `GET /api/identity/me/security`: the second factor status of the signed-in user. It carries counts, instants and the policy,
+ * never a secret. [graceUntil] is set for a covered user without a factor, [stepUpUntil] for a browser session only, and
+ * [scope] is `full` or `enrol`, `full` for a caller that is not a session.
+ */
+@JsonSchema(requireNonNulls = false)
+data class SecurityStatusDto(
+    val factorCounts: FactorCountsDto,
+    val recoveryCodesLeft: Int,
+    val policy: PolicyStatusDto,
+    val graceUntil: Instant? = null,
+    val scope: String,
+    val stepUpUntil: Instant? = null,
+)
+
+/** The factors of the signed-in user by kind. */
+@JsonSchema(requireNonNulls = false)
+data class FactorCountsDto(
+    val authenticator: Int,
+    val passkey: Int,
+)
+
+/** The policy that covers the user. The flags are the configured ones, [covered] tells whether the policy covers this user. */
+@JsonSchema(requireNonNulls = false)
+data class PolicyStatusDto(
+    val covered: Boolean,
+    val requiredForAdmins: Boolean,
+    val requiredForTeams: List<String>,
+)
+
+/**
  * The answer of a step-up: the authentication time of the renewed session and the end of its step-up window. The session
  * cookies of the answer carry the renewed session.
  */

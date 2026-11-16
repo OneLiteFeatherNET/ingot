@@ -42,6 +42,9 @@ import net.onelitefeather.ingot.identity.login.mfa.SecondFactorMethod
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
 import net.onelitefeather.ingot.identity.login.mfa.StepUpOutcome
 import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_PASSKEY
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_TOTP
+import net.onelitefeather.ingot.identity.session.SessionScope
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionTokens
 import net.onelitefeather.ingot.identity.session.VerifiedSession
@@ -295,6 +298,27 @@ class LoginFacade internal constructor(
     /** The ways a user can complete a second factor, for the answer of a refused sensitive action. */
     fun secondFactorMethodsOf(principalId: Int): List<SecondFactorMethod> =
         secondFactor?.methodsOf(principalId).orEmpty()
+
+    /**
+     * The security status of a user, see design D14. [session] is the verified session that made the read, `null` for a Basic or Bearer
+     * caller. The read writes nothing: a covered user whose grace the policy has not recorded yet has no grace end.
+     */
+    fun securityStatusOf(principalId: Int, session: VerifiedSession?): SecurityStatus {
+        val factors = secondFactorsOf(principalId)
+        val mfa = settings().mfa
+        val covered = policy?.isCoveredById(principalId) ?: false
+        return SecurityStatus(
+            authenticators = factors.count { it.kind == KIND_TOTP },
+            passkeys = factors.count { it.kind == KIND_PASSKEY },
+            recoveryCodesLeft = secondFactor?.recoveryCodesLeft(principalId) ?: 0,
+            covered = covered,
+            requiredForAdmins = mfa.requiredForAdmins,
+            requiredForTeams = mfa.requiredForTeams,
+            graceUntil = if (covered && factors.isEmpty()) policy?.graceEndOf(principalId) else null,
+            scope = session?.scope ?: SessionScope.FULL,
+            stepUpUntil = session?.authenticatedAt?.plus(Duration.ofMinutes(mfa.stepUpMinutes)),
+        )
+    }
 
     /** Renews a session with its refresh token, see [SessionService.refresh]. `null` when the token is not usable. */
     fun refreshSession(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? =

@@ -247,6 +247,15 @@ class SecondFactorStore(
             MfaRecoveryCodeTable.selectAll().where { MfaRecoveryCodeTable.principalId eq principalId }.any()
         }
 
+    /** The recovery codes of a principal that were not spent yet. */
+    fun countUnusedRecoveryCodes(principalId: Int): Int =
+        transaction(database) {
+            MfaRecoveryCodeTable.selectAll()
+                .where { (MfaRecoveryCodeTable.principalId eq principalId) and MfaRecoveryCodeTable.usedAt.isNull() }
+                .count()
+                .toInt()
+        }
+
     /** Replaces the whole set of recovery codes of a principal. Codes of an earlier set stop working at once. */
     fun replaceRecoveryCodes(principalId: Int, hashes: List<String>, at: Instant) {
         identityWrite(database) {
