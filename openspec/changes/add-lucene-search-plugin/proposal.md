@@ -20,7 +20,8 @@
    added there. The alternative is the `ingot_lock` lease of the HA design, which is a schema-lock primitive and would need its own
    key space. The choice must be made before the code pull request starts.
 7. **Lucene version pin.** Default: the latest 10.x minor at code time, and at least two weeks old, pinned by Renovate. Lucene 9 is
-   not supported.
+   not supported. Lucene 10 requires Java 21. The plugin's tests run on a Java 21 toolchain, and on a Java 17 server the plugin logs that it
+   needs Java 21 and stays inactive. The server itself stays on Java 17.
 
 ## Why
 

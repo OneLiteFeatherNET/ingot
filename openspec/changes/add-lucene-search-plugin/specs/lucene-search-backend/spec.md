@@ -23,6 +23,12 @@ when `searchEngine` is `lucene` as well. The plugin SHALL NOT be part of the ima
 - **WHEN** the jar is installed and `searchEngine` is `database`
 - **THEN** the database serves search and the plugin does not open the index
 
+#### Scenario: Server on Java 17
+
+- **WHEN** the jar is installed on a server that runs Java 17
+- **THEN** the plugin logs one error line that names Java 21 as the required release and the running release, and it registers no
+  factory `lucene`; the server keeps starting
+
 ### Requirement: Index location and configuration
 
 The plugin SHALL keep its index in `INGOT_LUCENE_DIRECTORY` or, when that variable is unset, in `search/lucene` below the data
