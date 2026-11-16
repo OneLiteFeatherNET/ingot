@@ -106,6 +106,7 @@ import net.onelitefeather.ingot.identity.model.Role
 import net.onelitefeather.ingot.identity.model.TeamMemberSource
 import net.onelitefeather.ingot.identity.model.TeamRecord
 import net.onelitefeather.ingot.identity.model.TokenRecord
+import net.onelitefeather.ingot.identity.storage.AuthorizationRevision
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import panda.std.Result
 import panda.std.asSuccess
@@ -150,6 +151,8 @@ class IdentityFacade(
     private val idpGuard: IdpGuardMode = IdpGuardMode.ENFORCE,
     /** Receives the warning of an unguarded link in warn mode. */
     private val warnings: (String) -> Unit = {},
+    /** The view of the policy revision of this replica. A guarded write reads it before it decides, see [adminGuard]. */
+    private val revision: AuthorizationRevision = AuthorizationRevision(store),
 ) {
 
     /** The chain that takes the decisions of the permission check. */
@@ -739,12 +742,15 @@ class IdentityFacade(
     }
 
     /** The refusal of a change of rights the caller does not hold, null when the caller holds them all or no caller acts. */
-    private fun <T> notHeld(caller: AccessTokenIdentifier?, rights: Rights, what: String): IdentityResult<T>? =
-        if (caller == null || callerHolds(caller, rights)) {
+    private fun <T> notHeld(caller: AccessTokenIdentifier?, rights: Rights, what: String): IdentityResult<T>? {
+        // Read the revision before the escalation decision, as the last-admin guard does.
+        revision.refreshOnce()
+        return if (caller == null || callerHolds(caller, rights)) {
             null
         } else {
             errorResponse(FORBIDDEN, "The caller does not hold $what, so it cannot change them. A principal may only give rights it holds itself.")
         }
+    }
 
     // catalog, templates and the permission check
 
@@ -1151,6 +1157,9 @@ class IdentityFacade(
      * one usable admin exists before it, so a system without any admin is not locked further.
      */
     private fun <T> adminGuard(change: AdminChange): IdentityResult<T>? {
+        // The decision reads the revision first and the admins from the store afterwards, so it never rests on a view of
+        // an older revision than the one this replica has recorded.
+        revision.refreshOnce()
         val before = usableInstanceAdmins(AdminChange())
         val after = usableInstanceAdmins(change)
         return if (before > 0 && after == 0) {
