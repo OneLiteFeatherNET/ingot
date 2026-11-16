@@ -80,6 +80,6 @@ describe('filterRows', () => {
   })
 
   it('keeps the rows in the order given', () => {
-    expect(filterRows(rows, 'i').map(([key]) => key)).toEqual(['JAVA_HOME', 'INGOT_TOKEN'])
+    expect(filterRows(rows, 'i').map(([key]) => key)).toEqual(['JAVA_HOME', 'PUID', 'INGOT_TOKEN'])
   })
 })
