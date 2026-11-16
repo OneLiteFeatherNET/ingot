@@ -54,13 +54,19 @@ test shows the header missing.
   an S3 repository, and requested without a `Range`, `If-None-Match`, `If-Modified-Since` or `If-Range` header. Every other
   answer is served by the instance exactly as before. `HEAD` is not redirected. Metadata and snapshots are never redirected,
   so their freshness rules stay in the instance.
+- **Public scope only.** A redirect is made only for a file whose scope is `public`. A file of a private repository, and a
+  file that a credentialed mirror serves (D1), is always served by the instance, even with
+  `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC=true`. A presigned URL is a bearer link for its lifetime, so no caller who can read a
+  private file may receive one. This narrows the first draft of this decision, which allowed a redirect to an authorized
+  caller for a private file.
 - **After the access check.** The redirect is produced only after the normal read check of the request, so the presigned URL
-  is given only to a caller who could read the file. The URL is a bearer for its lifetime, and this is the reason for the
-  next rule.
-- **Cache-Control of the redirect.** The `302` carries the scope value of the file, `public` or `private`, with
+  is given only to a caller who could read the file, and only for a public file that anyone may read.
+- **Cache-Control of the redirect.** The `302` carries `public`, the only scope that is redirected, with
   `max-age = min(maxAge, TTL / 2)`. A shared cache that stores the redirect must drop it before the presigned URL expires.
-  The halved value keeps a margin for clock skew. A private scope is never stored by a shared cache, so the URL is not
-  stored there either.
+  The halved value keeps a margin for clock skew.
+- **Usage bookkeeping.** A redirect counts as a served copy. The proxy cache moves the usage record of the mirror copy forward,
+  as it does for a streamed answer, so a copy that is served only through redirects is not evicted as unused. A `HEAD` does
+  not move the record.
 - **Lifetime.** `INGOT_S3_PRESIGN_TTL_SECONDS`, default 300, accepted range 60 to 3600. A value outside the range or not a
   number stops the start, naming the variable.
 - **Endpoint.** The presigner uses the configured S3 endpoint. Many S3-compatible servers are reachable only inside the

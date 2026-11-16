@@ -36,9 +36,10 @@ group is named as a fix.
 
 ### Feature groups
 
-- **S1 Presigned redirects for cacheable S3 downloads (opt-in).** With `INGOT_S3_PRESIGNED_REDIRECTS=true`, a plain `GET` of a
-  cacheable file stored in S3 answers `302` with a presigned `Location`. Ranges, conditional requests, `HEAD`, metadata and
-  non-cacheable answers are served by the instance as before.
+- **S1 Presigned redirects for cacheable public S3 downloads (opt-in).** With `INGOT_S3_PRESIGNED_REDIRECTS=true`, a plain `GET`
+  of a cacheable public file stored in S3 answers `302` with a presigned `Location`. Private files, files served through a
+  credentialed mirror, ranges, conditional requests, `HEAD`, metadata and non-cacheable answers are served by the instance as
+  before. A redirect still moves the usage record of the mirror copy.
   Conventional Commits type and scope: `feat(storage)`. Pull request title:
   `feat(storage): redirect cacheable s3 downloads to presigned urls`.
 - **P1 Purge webhook (opt-in plugin).** A new plugin module, `reposilite-plugins/cdn-purge-plugin`, listens to the existing

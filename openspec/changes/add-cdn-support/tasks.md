@@ -48,12 +48,13 @@ messages. Environment values are read from a map argument, so no test depends on
   `false`, a value other than `true` or `false` in any case refuses the start and names the variable), for the TTL reader (default
   300, 60 to 3600 accepted, anything else refuses the start), and for the redirect decision as a pure function: a cacheable GET
   without range or conditional headers in an S3 repository with the switch on redirects; a `Range` request, an `If-None-Match`
-  request, a `HEAD`, a non-cacheable file and a switch that is off each do not; the `Cache-Control` of the redirect has
+  request, a `HEAD`, a non-cacheable file, a file with private scope and a switch that is off each do not; the `Cache-Control` of the redirect has
   `max-age` equal to the smaller of `maxAge` and half the TTL. The presigned URL test asserts the bucket, the key, the endpoint
   and `X-Amz-Expires`, and never the signing date. Verify: they fail on the missing symbols.
 - [ ] 3.2 `test(storage)`: write failing integration tests with the S3 setup that the existing storage integration tests use: with
-  the switch on, an authorized GET of a cacheable file answers `302` with a `Location` that names the bucket and the key; the same
-  GET with a `Range` header answers `206` from the instance; an anonymous GET of a private file answers `401` and no `Location`.
+  the switch on, a GET of a cacheable public file answers `302` with a `Location` that names the bucket and the key; the same
+  GET with a `Range` header answers `206` from the instance; an anonymous GET of a private file answers `401` and no `Location`;
+  an authorized GET of a private file answers `200` from the instance and no `Location`.
   The test runs through `heavy`, because it starts the container the existing S3 tests start. Verify: the redirect assertion fails
   on the current code.
 - [ ] 3.3 `feat(storage)`: add `presignedGetUrl(location, ttl): String? = null` to the storage provider interface, implement it in
