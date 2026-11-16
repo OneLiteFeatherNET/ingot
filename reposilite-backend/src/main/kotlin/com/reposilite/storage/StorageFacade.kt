@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package com.reposilite.storage
 
 import com.reposilite.ReposiliteObjectMapper
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.api.Facade
 import com.reposilite.status.FailureFacade
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.IngotStorageProviderFactory
+import net.onelitefeather.ingot.storage.StorageProviderContext
+import net.onelitefeather.ingot.storage.StorageProviderNotInstalledException
 import java.nio.file.Path
 
 open class StorageFacade internal constructor(
@@ -29,24 +35,57 @@ open class StorageFacade internal constructor(
     /** A facade that knows the built-in providers only, for callers outside the plugin start-up. */
     constructor() : this(StorageProviderRegistry.applicationClassPath())
 
-    @Suppress("UNCHECKED_CAST")
     open fun createStorageProvider(
         journalist: Journalist,
         failureFacade: FailureFacade,
         workingDirectory: Path,
         repository: String,
         storageSettings: StorageProviderSettings,
+    ): StorageProvider? =
+        buildStorageProvider(journalist, failureFacade, workingDirectory, repository, storageSettings, chain = emptyList())
+
+    /**
+     * Builds a provider through its registered factory. A factory of the Ingot API builds its delegates through the context, which calls
+     * this function again with the types that are being built, so a cycle is refused before any provider is created.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun buildStorageProvider(
+        journalist: Journalist,
+        failureFacade: FailureFacade,
+        workingDirectory: Path,
+        repository: String,
+        storageSettings: StorageProviderSettings,
+        chain: List<String>,
     ): StorageProvider? {
         val factory = storageProviders.resolve(storageSettings.type) as StorageProviderFactory<*, StorageProviderSettings>?
             ?: return null
+        check(storageSettings.type !in chain) {
+            "storage provider cycle refused: ${(chain + storageSettings.type).joinToString(" -> ")}"
+        }
+        val settings = storageSettings.boundTo(factory.settingsType)
+        val path = chain + storageSettings.type
 
-        return factory.create(
-            journalist = journalist,
-            failureFacade = failureFacade,
-            workingDirectory = workingDirectory,
-            repositoryName = repository,
-            settings = storageSettings.boundTo(factory.settingsType)
-        )
+        if (factory !is IngotStorageProviderFactory<*, *>) {
+            return factory.create(journalist, failureFacade, workingDirectory, repository, settings)
+        }
+        val nested = mutableListOf<StorageProvider>()
+        val context = StorageProviderContext.of(journalist, failureFacade, workingDirectory, repository) { nestedSettings ->
+            buildStorageProvider(journalist, failureFacade, workingDirectory, repository, nestedSettings, path)
+                ?.also { nested += it }
+                ?: throw StorageProviderNotInstalledException(nestedSettings.type)
+        }
+        return try {
+            (factory as IngotStorageProviderFactory<StorageProvider, StorageProviderSettings>).create(context, settings)
+        } catch (failure: Throwable) {
+            nested.asReversed().forEach { provider ->
+                try {
+                    provider.shutdown()
+                } catch (shutdownFailure: Throwable) {
+                    failure.addSuppressed(shutdownFailure)
+                }
+            }
+            throw failure
+        }
     }
 
     private fun StorageProviderSettings.boundTo(settingsType: Class<out StorageProviderSettings>): StorageProviderSettings =
