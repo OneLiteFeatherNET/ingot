@@ -1,5 +1,6 @@
 package com.reposilite.web.infrastructure
 
+import com.reposilite.audit.decision.DecisionLogUnavailableException
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.SignInPath
 import com.reposilite.auth.api.Credentials
@@ -30,6 +31,7 @@ import io.javalin.http.ExceptionHandler
 import io.javalin.http.Handler
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.util.javalinLazy
 import com.reposilite.shared.internalServer
 import com.reposilite.shared.extensions.error
@@ -161,6 +163,9 @@ fun createReposiliteDsl(
                     val dsl = ctx.toDslContext()
                     route.handler(dsl)
                     dsl.consumeResponse()
+                } catch (unavailable: DecisionLogUnavailableException) {
+                    // A sync decision record that could not be stored: the request is retried once the store is back
+                    ctx.error(SERVICE_UNAVAILABLE.toErrorResponse(unavailable.message))
                 } catch (throwable: Throwable) {
                     failureFacade.throwException(ctx.uri(), throwable)
                     ctx.error(internalServer("Internal server error"))

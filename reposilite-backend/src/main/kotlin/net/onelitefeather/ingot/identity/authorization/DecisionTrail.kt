@@ -17,8 +17,10 @@
 package net.onelitefeather.ingot.identity.authorization
 
 import com.reposilite.audit.decision.DecisionLog
+import com.reposilite.audit.decision.DecisionLogUnavailableException
 import com.reposilite.audit.decision.DecisionOutcome
 import com.reposilite.audit.decision.DecisionRecord
+import com.reposilite.audit.decision.RecordOutcome
 import net.onelitefeather.ingot.identity.model.Action
 import java.time.Clock
 import java.util.UUID
@@ -26,7 +28,8 @@ import java.util.UUID
 /**
  * Hands the decisions of the chain to a [DecisionLog]. A record is built only when the log is enabled, so the mode `off`
  * builds none. A denial and a write are recorded; an allowed read and an allowed admin check are not. A log that throws
- * never changes the answer of a check.
+ * never changes the answer of a check. A record that the log reports as [RecordOutcome.FAILED] (the mode `sync` with a
+ * failing store) refuses the request with [DecisionLogUnavailableException], so the decision is not applied.
  */
 class DecisionTrail(
     private val log: DecisionLog,
@@ -42,10 +45,15 @@ class DecisionTrail(
         val write = request.isWrite()
         if (outcome.allowed && !write) return
 
-        try {
+        val recorded = try {
             log.record(recordOf(request, outcome, stage, write))
         } catch (exception: Exception) {
-            // The record is lost, the answer is not: a failing log never fails a check.
+            // The record is lost, the answer is not: a log that throws never fails a check.
+            return
+        }
+
+        if (recorded == RecordOutcome.FAILED) {
+            throw DecisionLogUnavailableException("The decision record could not be stored, so the request is refused")
         }
     }
 

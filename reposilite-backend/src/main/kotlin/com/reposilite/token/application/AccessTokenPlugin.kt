@@ -17,7 +17,6 @@
 package com.reposilite.token.application
 
 import com.reposilite.audit.decision.DecisionLogMode
-import com.reposilite.audit.decision.DecisionLogSettings
 import com.reposilite.audit.decision.DecisionRecorder
 import com.reposilite.audit.decision.DecisionSink
 import com.reposilite.configuration.ConfigurationFacade
@@ -66,7 +65,7 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
         val pluginExtensions = extensions()
 
         // The decision log is built only when an operator turns it on, so the default mode starts no writer and no queue.
-        val decisionMode = DecisionLogSettings.read().mode
+        val decisionMode = reposilite().decisionLogSettings.mode
         val decisions = if (decisionMode == DecisionLogMode.OFF) {
             DecisionTrail.OFF
         } else {
