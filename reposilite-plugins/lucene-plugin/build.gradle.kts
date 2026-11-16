@@ -1,4 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import java.util.zip.ZipFile
+import org.gradle.api.file.RelativePath
 
 plugins {
     kotlin("jvm")
@@ -24,9 +26,35 @@ tasks.withType<Test>().configureEach {
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
 }
 
+// Lucene's license and notice, kept under their own directory so that the files of another bundled dependency cannot replace them.
+val luceneJars = configurations.getByName("runtimeClasspath").filter { it.name.startsWith("lucene-core-") }
+
 // Not part of the image. The jar is installed by the operator, and its presence in the plugins directory is its own switch.
 tasks.withType<ShadowJar> {
     archiveFileName.set("lucene-plugin.jar")
     destinationDirectory.set(file("$rootDir/reposilite-test/workspace/plugins"))
     mergeServiceFiles()
+    from(luceneJars.files.map { zipTree(it) }) {
+        include("META-INF/LICENSE.txt", "META-INF/NOTICE.txt")
+        eachFile { relativePath = RelativePath(true, "META-INF", "licenses", "lucene", name) }
+        includeEmptyDirs = false
+    }
+}
+
+// The server must never carry Lucene: the plugin is installed beside it, and a Lucene class in the server would load a second copy.
+val verifyServerJarHasNoLucene = tasks.register("verifyServerJarHasNoLucene") {
+    val serverJar = project(":reposilite-backend").tasks.named("shadowJar")
+    dependsOn(serverJar)
+    val archive = serverJar.map { (it as org.gradle.api.tasks.bundling.AbstractArchiveTask).archiveFile.get().asFile }
+    inputs.files(serverJar)
+    doLast {
+        ZipFile(archive.get()).use { zip ->
+            val leaked = zip.entries().asSequence().map { it.name }.filter { it.startsWith("org/apache/lucene/") }.toList()
+            check(leaked.isEmpty()) { "the server jar contains Lucene classes, the first are ${leaked.take(5)}" }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(verifyServerJarHasNoLucene)
 }
