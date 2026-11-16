@@ -43,6 +43,7 @@ import com.reposilite.audit.api.auditActor
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.OwnTokenOutcome
 import net.onelitefeather.ingot.identity.login.PasswordOutcome
+import net.onelitefeather.ingot.identity.login.SecurityStatus
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import panda.std.Result
 import panda.std.asSuccess
@@ -113,10 +114,29 @@ internal class SelfServiceEndpoints(
 
     @OpenApi(
         security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/me/security",
+        methods = [HttpMethod.GET],
+        summary = "Own security status",
+        description = "The second factors of the signed-in user by kind, the recovery codes left, the policy that covers the user, the end of " +
+            "the grace period, the session scope and the end of the step-up window. A read, answered for a session and for a Basic or " +
+            "Bearer access token. The step-up end is set for a session only",
+        tags = ["Identity"],
+    )
+    private val securityStatus = ReposiliteRoute<SecurityStatusDto>("/api/identity/me/security", Route.GET) {
+        authenticated {
+            response = callerOf(identifier).flatMap { user ->
+                facade.securityStatusOf(user.principalId, sessionClaims()).toDto().asSuccess()
+            }
+        }
+    }
+
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/tokens",
         methods = [HttpMethod.POST],
         summary = "Create an own token",
-        description = "Creates a token for the signed-in user. The secret is returned once, in this response",
+        description = "Creates a token for the signed-in user. The secret is returned once, in this response. A user with a second factor " +
+            "needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required",
         tags = ["Identity"],
     )
     private val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/me/tokens", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
@@ -124,7 +144,7 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val request = runCatching { body<SelfTokenRequest>() }.getOrNull() ?: SelfTokenRequest()
             response = caller.flatMap { user ->
-                requireStepUp(facade).flatMap {
+                requireTokenStepUp(facade, user.principalId).flatMap {
                     tokenResponse(facade.issueOwnToken(user.principalId, AuditActor.named(user.name, ctx.ip()), request), "Token '${request.name}' already exists")
                 }
             }
@@ -136,7 +156,8 @@ internal class SelfServiceEndpoints(
         path = "/api/identity/me/tokens/{name}/rotate",
         methods = [HttpMethod.POST],
         summary = "Rotate an own token",
-        description = "Replaces the secret of an own token. The new secret is returned once, the old one stops working at once",
+        description = "Replaces the secret of an own token. The new secret is returned once, the old one stops working at once. A user with " +
+            "a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required",
         tags = ["Identity"],
     )
     private val rotateToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/me/tokens/{name}/rotate", Route.POST) {
@@ -144,7 +165,7 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val name = requireParameter("name")
             response = caller.flatMap { user ->
-                requireStepUp(facade).flatMap {
+                requireTokenStepUp(facade, user.principalId).flatMap {
                     tokenResponse(facade.rotateOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip())), "")
                 }
             }
@@ -156,7 +177,8 @@ internal class SelfServiceEndpoints(
         path = "/api/identity/me/tokens/{name}",
         methods = [HttpMethod.DELETE],
         summary = "Delete an own token",
-        description = "Deletes an own token. It stops working at once",
+        description = "Deletes an own token. It stops working at once. A user with a second factor needs a browser session with a recent " +
+            "second factor, so a Basic or Bearer caller gets 403 step_up_required",
         tags = ["Identity"],
     )
     private val deleteToken = ReposiliteRoute<Unit>("/api/identity/me/tokens/{name}", Route.DELETE) {
@@ -164,7 +186,7 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val name = requireParameter("name")
             response = caller.flatMap { user ->
-                requireStepUp(facade).flatMap {
+                requireTokenStepUp(facade, user.principalId).flatMap {
                     when (facade.deleteOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip()))) {
                         OwnTokenOutcome.Deleted -> Unit.asSuccess()
                         else -> notFoundError("Token not found")
@@ -208,6 +230,7 @@ internal class SelfServiceEndpoints(
     override val routes = routes(
         changePassword,
         listTokens,
+        securityStatus,
         createToken,
         rotateToken,
         deleteToken,
@@ -225,6 +248,15 @@ private fun passwordResponse(ctx: Context, outcome: PasswordOutcome): Result<Uni
         PasswordOutcome.NotFound -> notFoundError("Account not found")
         PasswordOutcome.NotAUser -> errorResponse(FORBIDDEN, "Only a user has a password")
     }
+
+private fun SecurityStatus.toDto() = SecurityStatusDto(
+    factorCounts = FactorCountsDto(authenticator = authenticators, passkey = passkeys),
+    recoveryCodesLeft = recoveryCodesLeft,
+    policy = PolicyStatusDto(covered = covered, requiredForAdmins = requiredForAdmins, requiredForTeams = requiredForTeams),
+    graceUntil = graceUntil,
+    scope = scope.claim,
+    stepUpUntil = stepUpUntil,
+)
 
 private fun tokenResponse(outcome: OwnTokenOutcome, nameTakenMessage: String): Result<CreatedTokenDto, ErrorResponse> =
     when (outcome) {

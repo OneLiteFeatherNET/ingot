@@ -215,4 +215,16 @@ internal class SecondFactorPolicyTest {
                 .isEqualTo(SessionScope.FULL)
         }
     }
+
+    @Test
+    fun `checking the coverage of a user does not record the required since`() {
+        withMfaFixture(workingDirectory, clock) { fixture ->
+            fixture.adminsRequired()
+            val admin = fixture.user()
+            fixture.identities.grantInstanceRole(admin.id, null)
+
+            assertThat(fixture.policy.isCovered(admin)).describedAs("coverage checked without a write").isTrue()
+            assertThat(fixture.identities.requiredSinceOf(admin.id)).describedAs("requiredSince after a plain check").isNull()
+        }
+    }
 }

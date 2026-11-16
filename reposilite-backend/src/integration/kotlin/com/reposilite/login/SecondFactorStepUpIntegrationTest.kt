@@ -213,11 +213,17 @@ internal class SecondFactorStepUpIntegrationTest : ReposiliteSpecification() {
         assertThat(response.body).contains("step_up_required")
     }
 
+    /** A Basic token of a user, issued through the facade, as a pipeline keeps it. */
+    private fun ownTokenOf(principalId: Int, name: String): OwnTokenOutcome.Issued {
+        val outcome = loginFacade.issueOwnToken(principalId, AuditActor.named(name, "127.0.0.1"), SelfTokenRequest(name = name))
+        return outcome as OwnTokenOutcome.Issued
+    }
+
     @Test
-    fun `creating an own token with a basic credential is not prompted, even outside the window`() {
-        // given: a user with a factor and a Basic token of their own, long after any second factor
+    fun `creating an own token with a basic credential is refused with step_up_required when the user has a factor`() {
+        // given: a user with a factor and a Basic token of their own
         val (principalId, _) = userWithAuthenticator("step-token-basic")
-        val token = (loginFacade.issueOwnToken(principalId, AuditActor.named("step-token-basic", "127.0.0.1"), SelfTokenRequest(name = "step-basic-ci")) as OwnTokenOutcome.Issued).dto
+        val token = ownTokenOf(principalId, "step-basic-ci").dto
         clock.advance(Duration.ofHours(1))
 
         // when: a token is created with the Basic credential
@@ -227,9 +233,116 @@ internal class SecondFactorStepUpIntegrationTest : ReposiliteSpecification() {
             .body("""{"name":"step-basic-second"}""")
             .asString()
 
-        // then: no step-up is asked of a Basic caller
-        assertThat(response.body).`as`("body of a Basic request").doesNotContain("step_up_required")
-        assertThat(response.status).`as`("status of a Basic request").isEqualTo(OK.code)
+        // then: the creation is refused, and no token was created
+        assertThat(response.status).`as`("status of a Basic creation for a user with a factor").isEqualTo(FORBIDDEN.code)
+        assertThat(response.body).`as`("problem of the refusal").contains("step_up_required")
+        assertThat(loginFacade.listOwnTokens(principalId).map { it.name })
+            .`as`("tokens of the user after the refusal")
+            .doesNotContain("step-basic-second")
+    }
+
+    @Test
+    fun `creating an own token with a bearer secret is refused with step_up_required when the user has a factor`() {
+        // given: a user with a factor and a token of their own, used as a Bearer secret
+        val (principalId, _) = userWithAuthenticator("step-token-bearer")
+        val token = ownTokenOf(principalId, "step-bearer-ci").dto
+
+        // when: a token is created with the Bearer secret
+        val response = http.post("$base/api/identity/me/tokens")
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer ${token.secret}")
+            .body("""{"name":"step-bearer-second"}""")
+            .asString()
+
+        // then: the creation is refused, and no token was created
+        assertThat(response.status).`as`("status of a Bearer creation for a user with a factor").isEqualTo(FORBIDDEN.code)
+        assertThat(response.body).`as`("problem of the refusal").contains("step_up_required")
+        assertThat(loginFacade.listOwnTokens(principalId).map { it.name })
+            .`as`("tokens of the user after the refusal")
+            .doesNotContain("step-bearer-second")
+    }
+
+    @Test
+    fun `creating an own token with a basic credential is unchanged for a user without a factor`() {
+        // given: a user without a factor and a Basic token of their own
+        val principalId = checkNotNull(loginFacade.createUser("step-token-plain", "step-token-plain", password)).id
+        val token = ownTokenOf(principalId, "step-plain-ci").dto
+
+        // when: a token is created with the Basic credential
+        val response = http.post("$base/api/identity/me/tokens")
+            .header("Content-Type", "application/json")
+            .basicAuth(token.token.name, token.secret)
+            .body("""{"name":"step-plain-second"}""")
+            .asString()
+
+        // then: the token is created as before
+        assertThat(response.status).`as`("status of a Basic creation without a factor").isEqualTo(OK.code)
+        assertThat(loginFacade.listOwnTokens(principalId).map { it.name }).contains("step-plain-second")
+    }
+
+    @Test
+    fun `rotating an own token with a basic credential is refused with step_up_required when the user has a factor`() {
+        // given: a user with a factor and a Basic token of their own
+        val (principalId, _) = userWithAuthenticator("step-rotate-basic")
+        val token = ownTokenOf(principalId, "step-rotate-ci").dto
+
+        // when: the token is rotated with its own Basic credential
+        val response = http.post("$base/api/identity/me/tokens/step-rotate-ci/rotate")
+            .basicAuth(token.token.name, token.secret)
+            .asString()
+
+        // then: the rotation is refused, and the old secret still works
+        assertThat(response.status).`as`("status of a Basic rotation for a user with a factor").isEqualTo(FORBIDDEN.code)
+        assertThat(response.body).contains("step_up_required")
+        val stillWorks = http.get("$base/api/identity/me/tokens")
+            .basicAuth(token.token.name, token.secret)
+            .asString()
+        assertThat(stillWorks.status).`as`("status with the unchanged secret").isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `deleting an own token with a basic credential is refused with step_up_required when the user has a factor`() {
+        // given: a user with a factor and a Basic token of their own
+        val (principalId, _) = userWithAuthenticator("step-delete-basic")
+        val token = ownTokenOf(principalId, "step-delete-ci").dto
+
+        // when: the token is deleted with its own Basic credential
+        val response = http.delete("$base/api/identity/me/tokens/step-delete-ci")
+            .basicAuth(token.token.name, token.secret)
+            .asString()
+
+        // then: the deletion is refused, and the token is still there
+        assertThat(response.status).`as`("status of a Basic deletion for a user with a factor").isEqualTo(FORBIDDEN.code)
+        assertThat(response.body).contains("step_up_required")
+        assertThat(loginFacade.listOwnTokens(principalId).map { it.name }).contains("step-delete-ci")
+    }
+
+    @Test
+    fun `listing own tokens with a basic credential is unchanged for a user with a factor`() {
+        // given: a user with a factor and a Basic token of their own
+        val (principalId, _) = userWithAuthenticator("step-list-basic")
+        val token = ownTokenOf(principalId, "step-list-ci").dto
+
+        // when: the tokens are listed with the Basic credential
+        val response = http.get("$base/api/identity/me/tokens")
+            .basicAuth(token.token.name, token.secret)
+            .asString()
+
+        // then: a read is answered, because reads are not token management
+        assertThat(response.status).`as`("status of a Basic read for a user with a factor").isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `creating an own token with a fresh session is accepted when the user has a factor`() {
+        // given: a session whose second factor was completed just now
+        val (_, seed) = userWithAuthenticator("step-token-fresh")
+        val session = sessionWithFactor("step-token-fresh", seed)
+
+        // when: a token is created from the session
+        val response = sessionPost(session, "/api/identity/me/tokens", """{"name":"step-token-fresh-ci"}""")
+
+        // then: the creation is accepted
+        assertThat(response.status).`as`("status inside the window").isEqualTo(OK.code)
     }
 
     @Test

@@ -70,8 +70,8 @@ internal class EnrolmentRoutesTest {
     }
 
     @Test
-    fun `a restricted session may not read the security status of this change yet`() {
-        assertThat(refused("GET", "/api/identity/me/security")).isTrue()
+    fun `a restricted session may read the security status`() {
+        assertThat(refused("GET", "/api/identity/me/security")).isFalse()
     }
 
     @Test

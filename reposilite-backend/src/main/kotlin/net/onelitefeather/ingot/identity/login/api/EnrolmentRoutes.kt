@@ -39,6 +39,7 @@ internal object EnrolmentRoutes {
         "PATCH" to "/api/identity/me/factors/[^/]+",
         "DELETE" to "/api/identity/me/factors/[^/]+",
         "POST" to "/api/identity/me/recovery-codes",
+        "GET" to "/api/identity/me/security",
         "POST" to "/api/auth/refresh",
         "POST" to "/api/auth/logout",
     ).map { (method, template) -> method to Regex(template) }

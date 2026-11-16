@@ -2433,6 +2433,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/identity/me/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Own security status
+         * @description The second factors of the signed-in user by kind, the recovery codes left, the policy that covers the user, the end of the grace period, the session scope and the end of the step-up window. A read, answered for a session and for a Basic or Bearer access token. The step-up end is set for a session only
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: never;
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/identity/me/step-up": {
         parameters: {
             query?: never;
@@ -2545,7 +2574,7 @@ export interface paths {
         put?: never;
         /**
          * Create an own token
-         * @description Creates a token for the signed-in user. The secret is returned once, in this response
+         * @description Creates a token for the signed-in user. The secret is returned once, in this response. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required
          */
         post: {
             parameters: {
@@ -2575,7 +2604,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an own token
-         * @description Deletes an own token. It stops working at once
+         * @description Deletes an own token. It stops working at once. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required
          */
         delete: {
             parameters: {
@@ -2603,7 +2632,7 @@ export interface paths {
         put?: never;
         /**
          * Rotate an own token
-         * @description Replaces the secret of an own token. The new secret is returned once, the old one stops working at once
+         * @description Replaces the secret of an own token. The new secret is returned once, the old one stops working at once. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required
          */
         post: {
             parameters: {

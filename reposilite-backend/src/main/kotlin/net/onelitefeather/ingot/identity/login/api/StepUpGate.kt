@@ -45,7 +45,27 @@ internal fun ContextDsl<*>.requireStepUp(facade: LoginFacade?, enrolment: Boolea
     if (factors.stepUpAllowed(session, enrolment)) {
         return Unit.asSuccess()
     }
-    val methods = factors.secondFactorMethodsOf(session.principalId)
+    return stepUpRefusal(factors, session.principalId)
+}
+
+/**
+ * The gate of a change to the access tokens of [principalId], see design D9. A browser session passes the gate of [requireStepUp]. A Basic or
+ * Bearer caller passes only when the user has no second factor: a token of a user with a factor must not mint, rotate or delete tokens.
+ * Reads of the tokens are not gated here.
+ */
+internal fun ContextDsl<*>.requireTokenStepUp(facade: LoginFacade, principalId: Int): Result<Unit, ErrorResponse> {
+    if (sessionClaims() != null) {
+        return requireStepUp(facade)
+    }
+    if (!facade.hasSecondFactor(principalId)) {
+        return Unit.asSuccess()
+    }
+    return stepUpRefusal(facade, principalId)
+}
+
+/** The 403 of a refused sensitive action, with the second factor methods of the user. */
+private fun stepUpRefusal(facade: LoginFacade, principalId: Int): Result<Unit, ErrorResponse> {
+    val methods = facade.secondFactorMethodsOf(principalId)
     return ErrorResponse(
         FORBIDDEN.code,
         STEP_UP_REQUIRED,

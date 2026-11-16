@@ -326,6 +326,10 @@ internal class SecondFactorService(
     fun factorsOf(principalId: Int): List<FactorRecord> =
         store.findFactors(principalId).map { it.toRecord() }
 
+    /** The recovery codes of a principal that were not spent yet. The codes themselves are never read back. */
+    fun recoveryCodesLeft(principalId: Int): Int =
+        store.countUnusedRecoveryCodes(principalId)
+
     /**
      * Starts a sign-in challenge after a password was accepted, and returns its id. The browser keeps the id in a cookie; only
      * its hash is stored.

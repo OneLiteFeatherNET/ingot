@@ -52,18 +52,34 @@ internal class SecondFactorPolicy(
      * time. Without a covering rule the answer is `false` and nothing is read from the database.
      */
     fun covers(principal: PrincipalRecord, at: Instant = clock.instant()): Boolean {
-        val policy = settings().mfa
-        if (!policy.requiredForAdmins && policy.requiredForTeams.isEmpty()) {
-            return false
-        }
-        val subject = identities.loadAccess(principal, tokenNodes = null)
-        val covered = (policy.requiredForAdmins && PermissionEvaluator.isInstanceAdmin(subject)) ||
-            subject.teams.any { team -> policy.requiredForTeams.any { it.equals(team, ignoreCase = true) } }
+        val covered = isCovered(principal)
         if (covered) {
             identities.markRequiredSince(principal.id, at)
         }
         return covered
     }
+
+    /** Whether the policy covers [principal] now. Unlike [covers], this writes nothing, so a read of the status may use it. */
+    fun isCovered(principal: PrincipalRecord): Boolean {
+        val policy = settings().mfa
+        if (!policy.requiredForAdmins && policy.requiredForTeams.isEmpty()) {
+            return false
+        }
+        val subject = identities.loadAccess(principal, tokenNodes = null)
+        return (policy.requiredForAdmins && PermissionEvaluator.isInstanceAdmin(subject)) ||
+            subject.teams.any { team -> policy.requiredForTeams.any { it.equals(team, ignoreCase = true) } }
+    }
+
+    /** [isCovered] for a principal addressed by its id. A principal that does not exist is not covered. */
+    fun isCoveredById(principalId: Int): Boolean =
+        identities.findPrincipalById(principalId)?.let { isCovered(it) } ?: false
+
+    /**
+     * The end of the grace period of a principal, `requiredSince` plus `login.mfa.graceDays`. `null` while the policy has never
+     * recorded the principal as covered, because the grace period starts with that record.
+     */
+    fun graceEndOf(principalId: Int): Instant? =
+        identities.requiredSinceOf(principalId)?.plus(Duration.ofDays(settings().mfa.graceDays))
 
     /**
      * The scope of a session of [principal] issued at [now]. The coverage is recorded at [now] too, so that a grace of zero days

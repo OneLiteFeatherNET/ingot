@@ -4478,6 +4478,21 @@
         "tags" : [ "Identity" ]
       }
     },
+    "/api/identity/me/security" : {
+      "get" : {
+        "description" : "The second factors of the signed-in user by kind, the recovery codes left, the policy that covers the user, the end of the grace period, the session scope and the end of the step-up window. A read, answered for a session and for a Basic or Bearer access token. The step-up end is set for a session only",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Own security status",
+        "tags" : [ "Identity" ]
+      }
+    },
     "/api/identity/me/step-up" : {
       "post" : {
         "description" : "Completes a second factor for the signed-in browser session, with a current authenticator code or a recovery code in the body. The session of the same family is reissued with the authentication time now, which opens the step-up window of five minutes for the sensitive actions. Only a browser session may step up, and an access token gets 403. A user without a factor gets 409, since there is nothing to step up with",
@@ -4574,7 +4589,7 @@
         "tags" : [ "Identity" ]
       },
       "post" : {
-        "description" : "Creates a token for the signed-in user. The secret is returned once, in this response",
+        "description" : "Creates a token for the signed-in user. The secret is returned once, in this response. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required",
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
@@ -4589,7 +4604,7 @@
     },
     "/api/identity/me/tokens/{name}" : {
       "delete" : {
-        "description" : "Deletes an own token. It stops working at once",
+        "description" : "Deletes an own token. It stops working at once. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required",
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
@@ -4604,7 +4619,7 @@
     },
     "/api/identity/me/tokens/{name}/rotate" : {
       "post" : {
-        "description" : "Replaces the secret of an own token. The new secret is returned once, the old one stops working at once",
+        "description" : "Replaces the secret of an own token. The new secret is returned once, the old one stops working at once. A user with a second factor needs a browser session with a recent second factor, so a Basic or Bearer caller gets 403 step_up_required",
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
