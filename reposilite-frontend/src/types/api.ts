@@ -536,6 +536,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/mfa/passkey/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a passkey sign-in
+         * @description Starts the passkey step of the sign-in that the login route started, and returns the assertion options: the challenge the authenticator signs and the passkeys that may answer. Needs the challenge cookie. The relying party is the public address of the instance, or the request host when login.publicUrl is blank. The options are completed at /api/auth/mfa/verify
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PasskeyOptionsDto"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/mfa/verify": {
         parameters: {
             query?: never;
@@ -547,7 +604,7 @@ export interface paths {
         put?: never;
         /**
          * Complete a sign-in with a second factor
-         * @description Completes the sign-in that the login route started for a user with an authenticator. Takes the code from the authenticator app or a recovery code, and needs the challenge cookie. The challenge is single use and expires after five minutes. Starts the browser session on success
+         * @description Completes the sign-in that the login route started for a user with a second factor. Takes the code from the authenticator app or a recovery code, or a passkey assertion of the options that /api/auth/mfa/passkey/options returned. Needs the challenge cookie. The challenge is single use and expires after five minutes. A wrong code or assertion keeps it open. Starts the browser session on success. A body with a passkey takes it before a code
          */
         post: {
             parameters: {
@@ -582,6 +639,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1677,6 +1743,151 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/identity/me/factors/passkey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a passkey registration
+         * @description Completes the registration that /api/identity/me/factors/passkey/options started, with the attestation of the browser, both in base64url. Stores the passkey with its public key. A registration whose origin, challenge or attestation does not match is refused with 400, and the challenge cannot be used twice
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PasskeyRegistrationDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PasskeyRegisteredDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/identity/me/factors/passkey/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a passkey registration
+         * @description Starts the registration of a passkey for the signed-in user and returns the challenge the browser signs. The relying party is the public address of the instance (login.publicUrl), or the request host when that is blank. Without an address the answer is 409 with the reason. The registration is completed at /api/identity/me/factors/passkey
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PasskeyOptionsDto"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -5528,6 +5739,29 @@ export interface components {
             label: string;
             required: boolean;
         };
+        PasskeyAssertionDto: {
+            authenticatorData?: string | null;
+            challengeId?: string | null;
+            clientDataJSON?: string | null;
+            credentialId?: string | null;
+            signature?: string | null;
+        };
+        PasskeyOptionsDto: {
+            allowCredentials?: string[];
+            challenge?: string;
+            challengeId?: string;
+            rpId?: string;
+        };
+        PasskeyRegisteredDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+        };
+        PasskeyRegistrationDto: {
+            attestationObject?: string | null;
+            challengeId?: string | null;
+            clientDataJSON?: string | null;
+        };
         PlannedDeletion: {
             path: string;
             reason: string;
@@ -5735,6 +5969,7 @@ export interface components {
         };
         SecondFactorRequest: {
             code?: string | null;
+            passkey?: components["schemas"]["PasskeyAssertionDto"] | null;
         };
         /** @enum {string} */
         SecretType: "RAW" | "ENCRYPTED";
