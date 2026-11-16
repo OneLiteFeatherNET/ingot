@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.storage.azure
 
 import com.reposilite.shared.ErrorResponse
@@ -29,7 +31,12 @@ import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.SimpleDirectoryInfo
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.NOT_FOUND
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
+import net.onelitefeather.ingot.storage.capability.ReadinessProbe
+import net.onelitefeather.ingot.storage.capability.UsageCapability
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import panda.std.Result
 import panda.std.Result.ok
@@ -51,7 +58,29 @@ internal class AzureBlobStorageProvider(
     private val blockSize: Int,
     /** A new identifier for every upload. Its length must be the same for every upload, so the block ids of one blob have one length. */
     private val newUploadId: () -> String = { UUID.randomUUID().toString() },
-) : StorageProvider {
+) : StorageProvider, ReadinessProbe, UsageCapability {
+
+    /** Azure reports neither the usage nor a quota of a container without Azure Monitor, so the dashboard shows the repository as unlimited. */
+    override val reportsUsage: Boolean = false
+
+    override val supportsQuota: Boolean = false
+
+    /** The container answers its properties for a healthy identity, and an empty container is healthy too. */
+    override fun probe(): ReadinessOutcome =
+        try {
+            client.checkContainer()
+            ReadinessOutcome.Ok
+        } catch (_: AzureBlobNotFoundException) {
+            ReadinessOutcome.Failed("container missing")
+        } catch (exception: AzureServiceException) {
+            when (exception.statusCode) {
+                FORBIDDEN.code -> ReadinessOutcome.Failed(AUTHORIZATION_REASON)
+                else -> ReadinessOutcome.Failed("the service answered HTTP ${exception.statusCode}")
+            }
+        } catch (_: Exception) {
+            ReadinessOutcome.Failed("the container could not be reached")
+        }
+
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
@@ -111,6 +140,11 @@ internal class AzureBlobStorageProvider(
      */
     private fun blockIdOf(uploadId: String, index: Int): String =
         Base64.getEncoder().encodeToString("$uploadId-%06d".format(index).toByteArray(Charsets.UTF_8))
+
+    private companion object {
+        const val AUTHORIZATION_REASON =
+            "authorization: the identity needs the role Storage Blob Data Contributor on the container"
+    }
 
     /** Logs an unexpected failure with its exception and answers it as a server error. */
     private fun <T> failed(operation: String, exception: Exception): Result<T, ErrorResponse> {
