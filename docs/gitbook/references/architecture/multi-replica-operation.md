@@ -35,7 +35,7 @@ Each replica should have its own data directory. The local configuration file an
 
 Everything in this list lives in the database, so every replica reads the same value.
 
-* **Identity data**: users, machine accounts, tokens, teams, grants and permission nodes. Permission decisions read these tables from the database. A change made on one replica is therefore seen by the others without a delay, with one exception described under [Shared and local state](#shared-and-local-state).
+* **Identity data**: users, machine accounts, tokens, teams, grants and permission nodes. Permission decisions read these tables from the database. A change made on one replica is therefore seen by the others without a delay in permission decisions. Successful token logins are the exception, see [Shared and local state](#shared-and-local-state).
 * **Browser sessions**: the refresh tokens and their families. A login on one replica can be renewed on another.
 * **The signing key of session tokens**. Every replica verifies session tokens with the same key.
 * **Login failures**. A lockout set by one replica holds on the others.
@@ -95,7 +95,7 @@ Some state is kept by each replica for itself. Plan for it when you run more tha
 | Temporary tokens from `--token` | memory of each replica | Not shared. They exist only on the replica that was started with them. |
 | Console stream | memory of each replica | A live console connection is held by one replica. |
 | S3 metadata cache | memory of each replica | Each replica caches object metadata on its own, until the entry expires. It can show metadata that another replica has already changed. |
-| Successful token authentication | memory of each replica, up to one minute | A token that is changed or revoked on one replica can still be accepted by another replica for up to one minute. |
+| Successful token authentication | memory of each replica, dropped when the policy revision moves, and at the latest after one minute | Every identity write advances a shared policy revision. Each replica reads it every `INGOT_AUTHORIZATION_REFRESH` seconds (default 2, `REPOSILITE_AUTHORIZATION_REFRESH` is read as fallback) and drops the cached logins of an older revision. A token that is changed or revoked on one replica is therefore refused by the others within one refresh interval. The one-minute bound still applies to every cached login. |
 | Failed Basic and token attempts (brute force protection) | memory of each replica | Each replica counts failures on its own. The dashboard login lockout is shared, see [Sessions, login and CSRF](sessions-and-login.md).
 
 Repository content is outside the database. Its location decides what replicas can share. Filesystem storage needs a volume that every replica can reach, and S3 storage needs a bucket that every replica can reach.
