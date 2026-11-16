@@ -63,7 +63,8 @@ internal class RepositoryLoopbackClient(
         Option.of(this)
             .toResult(UNAUTHORIZED.toErrorResponse("Missing credentials"))
             .filter({ it.method == LOOPBACK_LINK }, { UNAUTHORIZED.toErrorResponse() })
-            .flatMap { authenticationFacade.authenticateByCredentials(Credentials(ip = "loopback", name = it.login, secret = it.password)) }
+            // The mirror identity is the instance's own, so it is neither counted nor delayed by the account guard.
+            .flatMap { authenticationFacade.authenticateByCredentials(Credentials(ip = "loopback", name = it.login, secret = it.password), guarded = false) }
             .fold(
                 { it.identifier },
                 { null }

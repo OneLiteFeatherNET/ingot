@@ -105,7 +105,9 @@ fun createReposiliteDsl(
             // wrong secret counts towards the failure limit whether or not it names a token.
             val secret = authorization.substring("Bearer ".length).trim()
             val name = loginFacade.bearerTokenName(secret).orEmpty()
-            return authenticationFacade.authenticateByCredentials(Credentials(ip = ip(), name = name, secret = secret))
+            return authenticationFacade.authenticateByCredentials(Credentials(ip = ip(), name = name, secret = secret)) { seconds ->
+                header("Retry-After", seconds.toString())
+            }
         }
         if (authorization == null && sessionToken != null) {
             return loginFacade.authenticateSession(sessionToken)
@@ -115,7 +117,7 @@ fun createReposiliteDsl(
         }
         return extractFromHeader(authorization)
             .map { (name, secret) -> Credentials(ip = ip(), name = name, secret = secret) }
-            .flatMap { authenticationFacade.authenticateByCredentials(it) }
+            .flatMap { authenticationFacade.authenticateByCredentials(it) { seconds -> header("Retry-After", seconds.toString()) } }
     }
 
     fun Context.toDslContext(): ContextDsl<Any> =

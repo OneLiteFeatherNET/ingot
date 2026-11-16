@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.identity.login
 
+import com.reposilite.auth.AccountLoginGuard
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import panda.std.reactive.Reference
 import java.security.MessageDigest
@@ -36,12 +37,12 @@ internal class AccountThrottle(
     private val settings: Reference<LoginSettings>,
     private val clock: Clock,
     private val enabled: Boolean,
-) {
+) : AccountLoginGuard {
 
     private val limiter = LoginAttemptLimiter(store, settings, clock)
 
     /** The time left of the delay that applies to [name] from [address], or `null` when the request may go on. */
-    fun retryAfter(name: String, address: String): Duration? {
+    override fun retryAfter(name: String, address: String): Duration? {
         if (!enabled || name.isBlank()) {
             return null
         }
@@ -51,7 +52,7 @@ internal class AccountThrottle(
     }
 
     /** Counts one failed credential of [name], whatever address it came from. */
-    fun recordFailure(name: String) {
+    override fun recordFailure(name: String) {
         if (!enabled || name.isBlank()) {
             return
         }
@@ -59,7 +60,7 @@ internal class AccountThrottle(
     }
 
     /** Clears the delay of [name] and remembers [address] as one it signed in from. */
-    fun recordSuccess(name: String, address: String) {
+    override fun recordSuccess(name: String, address: String) {
         if (!enabled || name.isBlank()) {
             return
         }
