@@ -162,6 +162,26 @@ internal class PluginTierLogTest {
             .contains("bravo (core)")
     }
 
+    @Test
+    fun `should log a plugin registered without a loader origin as community`() {
+        // given: a plugin registered directly through the extensions, so the loader has no origin for it
+        extensions.registerPlugin(Alpha())
+        val loader = PluginLoader(
+            pluginsDirectory = pluginsDirectory,
+            extensions = extensions,
+            bundledPluginsDirectory = root.resolve("no-bundled-plugins"),
+            environment = emptyMap(),
+        )
+
+        // when: the start log is written for it
+        loader.logPluginList(listOf(extensions.getPlugins().getValue("alpha")))
+
+        // then: the server does not fail, and the plugin reads as community
+        assertThat(captured.lines)
+            .describedAs("start log of a plugin without a loader origin")
+            .contains("alpha (community)")
+    }
+
     /** Writes one jar per class into the plugins directory, loads them and writes the start log for exactly those plugins. */
     private fun startWith(vararg classes: KClass<out ReposilitePlugin>): List<String> {
         classes.forEach { PluginJarFixture.write(pluginsDirectory, "${it.simpleName}.jar", it) }
