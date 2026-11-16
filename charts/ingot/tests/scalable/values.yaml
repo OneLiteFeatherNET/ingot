@@ -21,14 +21,25 @@ resources:
   limits:
     cpu: 2.0
     memory: 1024Mi
-# The repositories stay on the local file system, because the CI release has no object storage configured for them, and
-# the server refuses to start in scalable mode unless the escape hatch allows it. The job checks the probes and the
-# wiring, not repository storage. A real installation keeps the repositories in object storage.
+# The scalable server refuses to start while a repository is on the local file system, so the repositories are on S3
+# from the first start. The shared settings file holds the maven domain, which the server reads before it checks the
+# shared state. The keys are empty, so the S3 client takes them from objectStorage.existingSecret, and the file holds
+# no key. The endpoint is the Floci service of the dependencies.
 env:
   - name: JAVA_OPTS
     value: "-Xmx512M -Dreposilite.s3.pathStyleAccessEnabled=true"
-  - name: INGOT_ALLOW_SHARED_FILESYSTEM
-    value: "true"
+sharedConfiguration:
+  enabled: true
+  content: |
+    {
+      "maven": {
+        "repositories": [
+          {"id": "releases", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+          {"id": "snapshots", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+          {"id": "private", "visibility": "PRIVATE", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}}
+        ]
+      }
+    }
 database:
   existingSecret: ingot-database
   secretKey: database
