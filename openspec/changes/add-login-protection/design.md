@@ -21,20 +21,26 @@ Two limiters run side by side, and they do not cover the same paths.
 - **Enumeration.** The dashboard path is uniform: `LocalLoginProvider.kt:43` verifies a password against a dummy hash for
   an unknown user, and the answer is "Invalid username or password" in both cases (`AuthLoginEndpoints.kt:100`).
   The Basic path is not (see D3).
-- **Passwords.** `LoginService.kt:249-250`: minimum 12, maximum 256 characters, no composition rule. No breach check exists
-  (no reference to a breached-password list or service in the backend).
+- **Passwords.** The minimum is 12 and the maximum 256 characters, both in `LoginService.kt:263-264`
+  (`MIN_PASSWORD_LENGTH`, `MAX_PASSWORD_LENGTH`), checked by `passwordProblem` at `LoginService.kt:172-173` with
+  `password.length`, which counts UTF-16 code units. No composition rule. No breach check exists (no reference to a
+  breached-password list or service in the backend). Line numbers re-checked on origin/main c0447e4c3; the earlier
+  `LoginService.kt:249-250` reference is stale.
 - **Audit.** `LOGIN_FAILED` and `LOGIN_SUCCEEDED` exist (`com/reposilite/audit/api/AuditAction.kt:31,44`). A throttled
-  request is audited as `LOGIN_FAILED` (`LoginService.kt:245`). `SESSION_REFRESH_REUSE_DETECTED` exists (`:46`). No mail
-  component exists in the backend build.
+  request is audited as `LOGIN_FAILED` (`LoginService.kt:259`, `recordRejected`). `SESSION_REFRESH_REUSE_DETECTED` exists
+  (`:46`). No mail component exists in the backend build.
 - **Sessions.** Cookies are `HttpOnly` for the session and the refresh token, the refresh cookie is limited to
   `/api/auth`, the CSRF cookie is readable by the page, all with `SameSite=Lax` and `Secure` when the request is secure
   (`identity/session/SessionCookies.kt:36-39,71-75`). The session token lives 15 minutes (`LoginSettings.kt:17`). The
   refresh token rotates in a family; reuse revokes the family (`session/SessionService.kt:82-100`). Logout revokes the
   family. A password change or reset revokes every session of the user (`login/LoginFacade.kt:69-71,79-81`). The refresh
   lifetime of 168 hours is the idle time (`LoginSettings.kt:19`), and 30 days is the absolute time (`:21`).
-- **The MFA branch (PR #231, `feat/multi-factor-authentication`, open).** It adds the keys `mfa|user|<name>|<address>`,
-  `mfa|address|<address>` and `mfa|account|<name>` to the same limiter (`LoginAttemptLimiter.kt:103-110`). This change uses the
-  same key style and the same table, so that both changes can be merged in either order.
+- **The second factor (merged, not PR #231).** PR #231 is closed without a merge. The second factor is on main through
+  #320 (users manage their factors) and #321 (administrators reset them). Its keys `mfa|user|<name>|<address>`,
+  `mfa|address|<address>` and `mfa|account|<name>` are defined in `LoginAttemptLimiter.kt:102-110` (digested like the
+  other keys, the name lower case) and used by `mfa/SecondFactorService.kt:393`. Checked on origin/main c0447e4c3: the
+  `mfa|` namespace is the one this change assumes, and no key of this change uses the `mfa|` prefix. The `account|` key
+  does not collide with any existing key.
 
 ## Decisions
 
@@ -58,12 +64,16 @@ at home is not delayed by the global key.
 
 The known addresses live in a new table `login_known_address` (`principal_id`, `address_hash`, `first_seen_at`,
 `last_success_at`, primary key `(principal_id, address_hash)`), written on every successful login and every successful
-token authentication. Addresses are stored as SHA-256 digests, as the existing keys are. For a Basic or Bearer name that is
+token authentication while the switch is on. While it is off the table is neither read nor written. Addresses are stored as SHA-256 digests, as the existing keys are. For a Basic or Bearer name that is
 not a principal, the table is keyed by the token identifier.
 
 **Why not a hard lock.** OWASP's guidance is that a lock turns a password guess into a lock of the owner. Here the
 progressive delay is bounded (five minutes), it ends without action, and the exemption keeps the owner out of it.
-**Default:** on, with the values above.
+
+**Switch and default.** The whole rule is off by default. It is turned on by `INGOT_LOGIN_ACCOUNT_THROTTLE=true`, with
+`REPOSILITE_LOGIN_ACCOUNT_THROTTLE` as the fallback (D10). While it is off: no `account|` key is read or written, no delay
+is applied, no `429` is sent for it, and `login_known_address` is neither read nor written. Known addresses are recorded
+only while the switch is on, so the table starts empty when it is turned on (the upgrade caveat in D10 and in the proposal).
 
 ### D2. Coverage of every credential path
 
@@ -83,7 +93,9 @@ guess of passwords must not lock the second factor. Both are delays, so neither 
 from reaching the other counter.
 
 A throttled request never reaches the password or token check, so it costs no hash. A request that is refused by the
-delay is audited as `LOGIN_THROTTLED` (D6) and does not increase the failure count.
+delay is audited as `LOGIN_THROTTLED` (D5) and does not increase the failure count. With the switch off, every row of
+this table keeps its present check and answer: the dashboard keeps its own limit of `LoginService.kt:91-99`, and Basic and
+Bearer keep `401` unless `authentication.bruteForceProtection` is on.
 
 **Mirror identity.** The loopback credentials are neither counted nor delayed. A misconfigured mirror would otherwise delay
 its own group, and its identity is the instance's own, taken from configuration, so an outside attacker cannot use it.
@@ -99,22 +111,26 @@ its own group, and its identity is the instance's own, taken from configuration,
   token. The time of a reply therefore shows whether a name exists. This is a defect with its own change
   (`fix-basic-token-timing`). This change does not depend on it, and the throttle does not add a shortcut.
 - **Dashboard timing.** `LocalLoginProvider.kt:53-61` makes `unusedHash` lazy. The first unknown-user request pays one extra
-  hash. The fix is an eager dummy hash created in the constructor. Included in the first code pull request.
+  hash. The fix is an eager dummy hash created in the constructor. Included in the first code pull request. It is the one
+  change that is not behind a switch: it changes the timing of one answer and no answer content, and gating a timing fix
+  would keep the difference on by default. Open question 10 asks the maintainer to confirm this.
 - **LDAP.** `LdapAuthenticator.kt:84` answers "User not found" before any bind, while a wrong password needs a bind. The
   time difference is network-bound and cannot be padded without sleeping on the request thread. Default: not changed,
   recorded as a residual risk; the operator can turn LDAP off or use the local directory for admins.
 
 ### D4. Password policy
 
-- **Length.** Minimum 12, as today, configurable with `login.passwordPolicy.minLength`, validated to be between 8 and
-  256. The OWASP Authentication Cheat Sheet asks for at least 8, and recommends 15 when the password is the only factor;
-  NIST SP 800-63B-4 sets the same minimums. The default stays 12: a higher default would apply to the next password
-  change of every existing user, and the 15 characters are a documented recommendation that operators set. Maximum 256,
-  not configurable below 64.
+- **Length.** The default minimum is 12, the value Reposilite and Ingot enforce today (`LoginService.kt:263`). It is
+  configurable with `login.passwordPolicy.minLength`, validated to be between 8 and 256, and an unset value means 12. The
+  OWASP Authentication Cheat Sheet asks for at least 8, and recommends 15 when the password is the only factor; NIST SP
+  800-63B-4 sets the same minimums. The docs recommend 12 to 15 for new installations. The default stays 12, because a
+  higher default would refuse what the default install accepts today. The maximum is 256, as today.
+- **Length measure.** Measured as today, with `password.length` in UTF-16 code units (`LoginService.kt:172`). The earlier
+  draft counted code points. That changes which passwords a default install accepts in both directions (a short run of
+  characters outside the Basic Multilingual Plane is refused, and a long one is accepted), so it is dropped from this
+  change. Counting code points is a separate, later change.
 - **No composition rules.** Nothing requires symbols, digits or mixed case. Nothing expires. Existing passwords are not
-  checked again. The length is counted in code points: the code today counts UTF-16 units (`LoginService.kt:249`), which
-  differs only for characters outside the Basic Multilingual Plane, and a new password of such characters may be refused
-  that the old count accepted. No stored password is affected.
+  checked again. No stored password is affected.
 - **Breached passwords.** `login.passwordPolicy.breachCheck.mode` is one of `OFF` (default), `RANGE`, `OFFLINE`.
   - `RANGE` computes the SHA-1 of the password, sends the first five hex characters to
     `https://api.pwnedpasswords.com/range/{prefix}` with `Add-Padding: true`, and compares the suffixes locally. Only the
@@ -134,16 +150,21 @@ its own group, and its identity is the instance's own, taken from configuration,
 ### D5. Sign-in events and counters
 
 - A new audit action `LOGIN_THROTTLED` marks a request answered with a delay, with the name and the address. Dashboard
-  and Basic requests both use it. `LOGIN_FAILED` keeps its meaning for the wrong credential itself. The action is
-  additive; the audit JSON sink writes its name as text.
+  and Basic requests both use it. It is written only while the account throttle is on, because a delay exists only then.
+  `LOGIN_FAILED` keeps its meaning for the wrong credential itself. The enum constant is additive; the audit JSON sink
+  writes its name as text.
 - A counter per path and outcome (`throttled`, `failed`, `succeeded`) is kept in memory per instance and exposed through the
   status facility, as the Maven operation counters are (`com/reposilite/maven/MavenOperationCounters.kt`). Counters are
-  per instance by design: a cluster total is the sum that a dashboard computes. Verify the status facility before the code
+  per instance by design: a cluster total is the sum that a dashboard computes. While the switch is off the counters are
+  not kept and the status response is unchanged, so no new field appears. Verify the status facility before the code
   pull request.
 - Plugin events in `com.reposilite.plugin.api`, following the pattern of `SessionFamilyRevokedEvent`:
-  - `LoginThrottledEvent(name, address, path, retryAfterSeconds)` when a delay answers a request.
+  - `LoginThrottledEvent(name, address, path, retryAfterSeconds)` when a delay answers a request. Published only while the
+    switch is on, as the delay is.
   - `NewSignInEvent(principal, address, userAgentHash, path)` when a successful login comes from an address outside the known
-    list of D1. A user notification is built by a plugin from this event. Ingot does not send mail.
+    list of D1. Published only while the switch is on: while it is off, nothing records the known addresses, so every
+    sign-in would look new and every plugin would receive an event by default. A user notification is built by a plugin
+    from this event. Ingot does not send mail.
 - Events are published after the state is stored, so a listener that fails does not change the answer.
 - Event payloads do not contain the password, the token secret or the raw user agent (the hash only).
 
@@ -185,8 +206,11 @@ change adds no switch. Two gaps remain and are recorded, not fixed here:
 - All counters live in `login_attempt` (`LoginAttemptLimiter`), so replicas count together. The `login_known_address` table is
   shared too. No Redis, no NATS for counting: NATS remains an optional fan-out for events only, as the HA design says.
 - The legacy per-address switch (`authentication.bruteForceProtection`) keeps its keys and its default (off), and its
-  counting moves from the in-memory cache to `address|<ip>` in `login_attempt` when the switch is on. The memory cache
-  is removed in the same code pull request.
+  counting moves from the in-memory cache to `basic-address|<ip>` in `login_attempt` when the switch is on. The memory cache
+  is removed in the same code pull request. The key is not `address|<ip>`: the dashboard's per-address counter already
+  digests exactly that string (`LoginAttemptLimiter.addressKey`, `LoginService.kt:97`), so sharing it would let Basic
+  failures lock dashboard logins. The answer when this switch refuses a request stays `401` (`AuthenticationFacade.kt:152-154`).
+  With the switch off nothing is counted, as today.
 - **Contention.** `LoginAttemptLimiter.recordFailure` tries five compare-and-set writes and then drops the failure
   (`LoginAttemptLimiter.kt:62-73`). Under a burst from one address, a failure can be lost. The code pull request replaces
   the drop with an atomic increment (`failures = failures + 1` in one statement) after the fifth conflict, so a failure is
@@ -203,9 +227,18 @@ change adds no switch. Two gaps remain and are recorded, not fixed here:
 - New settings live in the existing blocks: `login.passwordPolicy`, `login.accountThrottle`, `login.idleTimeoutMinutes`,
   and `login.knownAddressDays`. The existing keys `login.maxFailedAttempts`, `login.lockoutMinutes` and
   `authentication.bruteForceProtection.*` keep their names and defaults.
-- Every new key has a default equal to today's behaviour, except the account throttle (on, with thresholds that a typo
-  does not reach) and the audit action (additive). No environment variable is added. If one is needed later, it takes
-  `INGOT_` and the `REPOSILITE_` spelling stays valid as the fallback.
+- Every new key has a default equal to today's behaviour. Nothing is on by default. The account throttle has one switch,
+  the environment variable `INGOT_LOGIN_ACCOUNT_THROTTLE` (`true` turns it on; unset, blank or `false` leaves it off), with
+  `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` as the fallback, in the style of `INGOT_AUDIT_SINK_STDOUT`
+  (`audit/sink/AuditSinkSettings.kt:28`). Its thresholds are in the settings block `login.accountThrottle` with the keys
+  `threshold` (10), `quietMinutes` (60), `maxDelaySeconds` (300) and `knownAddressDays` (30); they have no effect while the
+  switch is off. The switch is a deployment decision, not an admin page toggle, so it is not in the shared settings.
+- The audit action is additive code, not a default; it is written only by a delayed request.
+- **Upgrade caveat for the switch.** `login_known_address` is empty when the switch is turned on. An owner who has never
+  signed in from an address counts that address as new, which matters only while the name is already delayed. Warm-up:
+  the owner's next successful sign-in from each address records it. The operator's step is: turn the switch on, then let
+  the owners sign in. A grace period is not built in, because it would need the known-address table written while the
+  switch is off, and the default must not write it (Alternatives).
 - Settings are read through `Reference` on every use, so changes apply without a restart, as the login settings are today.
 
 ### D11. The dashboard and the page (follow-up)
@@ -219,8 +252,8 @@ name from addresses it has never signed in from. The delay ends by itself, and a
 
 | Table | Change | Notes |
 | --- | --- | --- |
-| `login_attempt` | none in schema | new keys `account\|<name>`, `address\|<ip>` (legacy, when on), `mfa\|...` (#231) |
-| `login_known_address` | new | `principal_id` (or token id), `address_hash` (SHA-256 hex), `first_seen_at`, `last_success_at`; primary key on the first two |
+| `login_attempt` | none in schema | new keys `account\|<name>` (switch on), `basic-address\|<ip>` (legacy switch on), `mfa\|...` (merged, #320, #321) |
+| `login_known_address` | new | `principal_id` (or token id), `address_hash` (SHA-256 hex), `first_seen_at`, `last_success_at`; primary key on the first two. Created always, written only while the account throttle is on |
 
 The new table is created by `SchemaUtils.createMissingTablesAndColumns` in `LoginStore`, as `login_attempt` was. It is
 added to `IdentityTables.kt`. Retention: rows whose `last_success_at` is older than `knownAddressDays` are deleted by the
@@ -248,6 +281,13 @@ existing cleanup job.
   service against the owner.
 - **Raising the minimum length to 15 by default.** Rejected for this change: it changes what existing users can set at their
   next change, and the default is a documented recommendation instead. Operators set `minLength: 15`.
+- **Account throttle on by default.** Rejected: it answers a correct credential from a new address with `429`, and its
+  known-address table starts empty on upgrade. An installation that upgrades must answer as Reposilite does until the
+  operator opts in.
+- **Grace period (record known addresses while the switch is off, enforce later).** Rejected: it writes a table on every
+  login of an installation that did not ask for it, and it needs a third mode between off and on. The smallest option is
+  the one chosen: the table is warmed by the sign-ins that follow the switch.
+- **Code point length.** Rejected for this change: it changes what a default install accepts. It is a separate change.
 - **Composition rules.** Rejected: NIST SP 800-63B-4 and the OWASP cheat sheet advise against them.
 
 ## Risks
@@ -262,22 +302,27 @@ existing cleanup job.
 ## Open questions
 
 The defaults are the design. Each question below has a default, which the code pull requests implement unless the
-maintainer changes it before they are opened.
+maintainer changes it before they are opened. Every default keeps the answers of Reposilite today, so an upgraded
+installation changes nothing until an operator opts in.
 
 1. **Known addresses for Basic and Bearer.** Default: a token counts as known from its addresses of the last 30 days,
-   not from a separate enrolment.
+   not from a separate enrolment. Recorded only while the account throttle is on.
 2. **Maven and Gradle behaviour on `429`.** Not verified in this proposal. Default: the server answers `429` with
-   `Retry-After` regardless, because it is the standard answer. Task 2.1 records what Maven 3.9 and Gradle 8 do before the
-   first code pull request is merged.
-3. **Legacy per-address switch default.** Default: stays off. Turning it on is a documented choice, because it can ban an
-   office behind one address.
-4. **Minimum password length.** Default: 12 in code, 15 recommended in the docs. Raising the default later needs its own
-   change.
-5. **Breached-password fail mode.** Default: fail-open with an audit event (D4).
-6. **Idle timeout default.** Default: off (`0`). The recommended value is 30 for instances with administrators.
-7. **Challenge provider selection.** Default: none. If several are registered, the first by plugin load order is used and
-   a warning is logged.
+   `Retry-After` regardless, because it is the standard answer, and this applies only while the account throttle is on.
+   Task 2.1 records what Maven 3.9 and Gradle 8 do before the first code pull request is merged.
+3. **Legacy per-address switch default.** Default: off, as today. Turning it on is a documented choice, because it can ban
+   an office behind one address. Its counter is shared across replicas once it is on (D9).
+4. **Minimum password length.** Default: 12 in code (`LoginService.kt:263`), the value enforced today, measured as today.
+   The docs recommend 12 to 15. Raising the default later needs its own change.
+5. **Breached-password fail mode.** Default: the check is off (mode `OFF`), so there is no outage to fail on. When an
+   operator sets mode `RANGE`, the default for an outage is fail-open with an audit event (D4).
+6. **Idle timeout default.** Default: off (`0`), as today. The recommended value is 30 for instances with administrators,
+   set by the operator.
+7. **Challenge provider selection.** Default: none, and Ingot ships none. If several are registered, the first by plugin
+   load order is used and a warning is logged.
 8. **Admin machine tokens and MFA.** Default: unchanged, single factor (MFA D9). This is a deliberate residual risk and is
    the first thing to revisit after `add-multi-factor-authentication` is merged.
 9. **Standards mapping.** ASVS 4.0 V2 and V3 correspond to ASVS 5.0 V6 and V7. The OWASP and NIST minimums are cited from
    the versions known at the time of writing; verify the current text before the code pull request for D4.
+10. **Dashboard dummy hash timing.** Default: the eager dummy hash (D3) is kept on without a switch, because it changes
+    the timing of one answer and no content. The maintainer confirms it, or asks for it to be gated behind a switch.

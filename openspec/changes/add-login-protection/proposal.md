@@ -15,26 +15,31 @@ for limits per account, not only per address, and for a check of new passwords a
 the same chapters V6 and V7. The gaps found while reading the code are listed in `design.md` and in the Related defects
 section below.
 
-This change closes the gaps in one umbrella, with defaults that keep every existing installation working unchanged.
+This change closes the gaps in one umbrella. Every new behaviour is off until an operator switches it on, so an existing
+installation answers every request as Reposilite does today. Ingot is a drop-in replacement, and the switches are the only
+way its answers change.
 
 ## What Changes
 
 The change ships as five code pull requests, each one an area that can be reviewed and merged on its own. All of them
-are `feat(identity)`. Each keeps the defaults of today unless the row says otherwise.
+are `feat(identity)`. Every item is off by default: with no switch set, each request is answered as it is today. The
+switches and their effects are listed under Impact.
 
 1. **Per-account throttling for every credential path.** A name that gets too many failed credentials, from any address,
    is answered with `429` and `Retry-After` for a delay that doubles with every further failure, up to five minutes. The
    delay is never a lockout: it ends by itself, a success clears it, and it applies to requests from addresses the account
-   has never signed in from. The same limiter covers the dashboard password, Basic and Bearer tokens, LDAP binds, and the
-   legacy per-address counter, which moves from memory into the `login_attempt` table so that replicas count together.
-   On by default.
-2. **Password policy.** The minimum length stays at 12 characters and can be raised, never lowered below 8. The
-   maximum stays at 256. No composition rules are added. A new breached-password check, off by default, queries the
-   Pwned Passwords range API with the k-anonymity prefix, or a local list the operator provides, and runs when a password
-   is set, changed, reset or created during setup. It never runs at login.
-3. **Sign-in events.** Throttled requests get their own audit action, `LOGIN_THROTTLED`, and counters on the status
-   endpoint. Two plugin events, `LoginThrottledEvent` and `NewSignInEvent`, let a plugin send a webhook or a mail. Ingot
-   has no mail component, so a user notification on a sign-in from a new address exists only as that event.
+   has never signed in from. The same limiter covers the dashboard password, Basic and Bearer tokens and LDAP binds. The
+   legacy per-address counter, once its own switch is on, moves from memory into the `login_attempt` table so that
+   replicas count together. Off by default. It is turned on with `INGOT_LOGIN_ACCOUNT_THROTTLE=true` (fallback
+   `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`).
+2. **Password policy.** The minimum length stays at 12 characters, measured as today, and can be raised, never lowered
+   below 8. The maximum stays at 256. No composition rules are added. A new breached-password check, off by default,
+   queries the Pwned Passwords range API with the k-anonymity prefix, or a local list the operator provides, and runs when
+   a password is set, changed, reset or created during setup. It never runs at login.
+3. **Sign-in events.** While the account throttle is on, throttled requests get their own audit action, `LOGIN_THROTTLED`,
+   and counters on the status endpoint. Two plugin events, `LoginThrottledEvent` and `NewSignInEvent`, let a plugin send a
+   webhook or a mail; they are published only while the account throttle is on. Ingot has no mail component, so a user
+   notification on a sign-in from a new address exists only as that event.
 4. **Login challenge extension point.** A plugin can register a challenge (a CAPTCHA, a proof of work, or a verification
    by another service). The challenge is asked only after the throttle has started delaying a name. Ingot ships no
    challenge provider and calls no third-party service by default.
@@ -100,21 +105,43 @@ pull request. They are listed here so that the reviewer sees them, and they are 
   2. An existing `/app/data` is adopted without a migration step. Existing `login_attempt` rows keep their meaning; the new
      keys and the new table start empty.
   3. `PUID`, `PGID` and `REPOSILITE_OPTS` are not read by any of the new code.
-  Observable changes for existing installations, all without a lockout of a person:
-  - A Basic or Bearer client that fails more than `accountThrottle.threshold` times (default 10) within an hour for one
-    token name from an address that never signed in with it receives `429` with `Retry-After` instead of `401`. A correct
-    secret from a known address is not delayed by the account key. A Maven or Gradle client that retries a stale token
-    sees `429` for up to five minutes at the most.
-  - The per-address counter of Basic authentication, when `authentication.bruteForceProtection.enabled` is `true`, is shared
-    across replicas. A deployment with several replicas that had enabled it sees the limit take effect as written, instead of
-    `replicas` times the limit.
-  - One audit action is added (`LOGIN_THROTTLED`). Consumers of the audit JSON sink that match on known actions must accept
-    a new value. Throttled requests were audited as `LOGIN_FAILED` before.
-  - `401` for a wrong password is unchanged. The `429` answer for the dashboard login was already in place.
+  Observable changes for existing installations: none without an opt-in. With no switch set, a wrong password or token
+  gets `401` as today, and the dashboard keeps its existing limit (`login.maxFailedAttempts`, `login.lockoutMinutes`)
+  unchanged. Three additions run by default, and none of them changes an answer:
+  - The table `login_known_address` is created empty. It is neither read nor written while the account throttle is off.
+  - The audit action `LOGIN_THROTTLED` exists in the enum. Only a delayed request writes it, and a delay exists only while
+    the account throttle is on.
+  - The dashboard's dummy hash for an unknown user is created at startup, not on the first unknown user. It changes the
+    timing of one answer and no content. It is kept on, and it is open question 10 for the maintainer.
+
+  What each switch changes once it is on:
+  - `INGOT_LOGIN_ACCOUNT_THROTTLE=true` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`; the thresholds are in the
+    `login.accountThrottle` block). From the tenth failure for one name within an hour, a Basic, Bearer or dashboard request
+    for that name from an address the name has not signed in from within 30 days receives `429` with `Retry-After` instead
+    of `401`. A correct credential from a known address is not delayed by the account key. The delay lasts at most five
+    minutes. A Maven or Gradle client that retries a stale token sees `429` for that long at most. The plugin events,
+    the `LOGIN_THROTTLED` audit entries and the status counters start with the switch.
+    Upgrade caveat: `login_known_address` starts empty. Until an owner has signed in once from an address, that address
+    counts as new. An owner whose name is already delayed by an attack waits out the delay from such an address. The table
+    is warmed by the owner's next successful sign-in from each address, so the operator enables the switch and lets the
+    owners sign in. No grace period is built in: a grace period would need writes while the switch is off, which the
+    default must not do (design D1 and D9).
+  - `authentication.bruteForceProtection.enabled=true` (the existing switch, still off by default): the per-address counter
+    of Basic authentication is kept in the `login_attempt` table under `basic-address|<ip>` instead of memory, so replicas
+    count together. The answer stays `401`.
+  - `login.passwordPolicy.minLength` (unset: 12): a higher value applies to the next password a user sets. No stored
+    password is checked again.
+  - `login.passwordPolicy.breachCheck.mode` (unset: `OFF`): `RANGE` sends a five character hash prefix to the range URL
+    when a password is set, changed, reset or created. `OFFLINE` requires its file, and the startup fails without it.
+  - `login.idleTimeoutMinutes` (unset: 0): a browser session ends after this much idle time.
+  - A `LoginChallengeProvider`: Ingot ships none. A challenge exists only when a plugin registers one, and only for a
+    delayed dashboard login.
+  - The second factor keys (`mfa|...`, merged through #320 and #321) are not changed by any of these switches.
 
 ## Verification
 
 - `openspec validate add-login-protection --strict` passes.
 - `grep -nP '[\x{2013}\x{2014}]' -r openspec/changes/add-login-protection` prints nothing.
+- The default-off tests of tasks 2.4, 3.1 and 4.1 run with no switch set and show the answers of Reposilite today.
 - Every code pull request runs the tests named in its section of `tasks.md` red before green, and the container job
   (upgrade rehearsal against the upstream image) stays green, because the drop-in contract is checked there.

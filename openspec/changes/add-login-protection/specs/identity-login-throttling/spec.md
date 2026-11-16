@@ -5,12 +5,52 @@
 Limits on guessing credentials on every path that accepts a password or a token: the dashboard login, Basic and Bearer
 authentication, LDAP over Basic, the console, the second factor. The limits delay a guess and never lock an owner out.
 
+The account throttle is off by default. Every requirement below except "Off by default and the switch" and the dummy hash
+of "Uniform answers and timing" applies only while the account throttle switch is on. While it is off, each path answers
+as Reposilite answers it today, and no request is delayed by the account key.
+
 ## ADDED Requirements
+
+### Requirement: Off by default and the switch
+
+The account throttle SHALL be off unless the environment variable `INGOT_LOGIN_ACCOUNT_THROTTLE` is `true`, with
+`REPOSILITE_LOGIN_ACCOUNT_THROTTLE` as the fallback when the `INGOT_` name is unset or blank. The dashboard limits and the
+per-address switch keep their names and defaults whatever the account throttle is set to.
+
+#### Scenario: The settings of the switch default as stated
+
+- **WHEN** the switch is on and no value of the `login.accountThrottle` block is set
+- **THEN** the threshold is 10 failures (`threshold`), the quiet period 60 minutes (`quietMinutes`), the maximum delay 300
+  seconds (`maxDelaySeconds`) and the known-address window 30 days (`knownAddressDays`)
+
+#### Scenario: No login protection setting is given
+
+- **WHEN** no login protection setting is given, and neither `INGOT_LOGIN_ACCOUNT_THROTTLE` nor
+  `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` is set
+- **THEN** a wrong password or token is answered `401` with the message it has today (`Invalid username or password` for the
+  dashboard, `Invalid authorization credentials` for Basic and Bearer), no request is delayed by the account key, no
+  `LOGIN_THROTTLED` event is written, and the dashboard limit applies as before
+
+#### Scenario: The switch turns the throttle on
+
+- **WHEN** `INGOT_LOGIN_ACCOUNT_THROTTLE` is `true`
+- **THEN** the requirements of this capability apply, with the defaults above
+
+#### Scenario: The fallback name is read
+
+- **WHEN** only `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` is `true`
+- **THEN** the account throttle is on
+
+#### Scenario: An existing installation starts with the same defaults
+
+- **WHEN** an instance starts with a configuration file written before this change and no switch is set
+- **THEN** the account throttle is off, the settings read back are the old keys with their old values, and the new keys have
+  the defaults above
 
 ### Requirement: Per-account counting across addresses
 
-The system SHALL count failed credentials per account name, across all addresses, under the key `account|<name>` (name
-lower case). A failure SHALL be counted only when the credential was verified and was wrong.
+While the account throttle is on, the system SHALL count failed credentials per account name, across all addresses, under
+the key `account|<name>` (name lower case). A failure SHALL be counted only when the credential was verified and was wrong.
 
 #### Scenario: Failures from different addresses add up
 
@@ -19,7 +59,7 @@ lower case). A failure SHALL be counted only when the credential was verified an
 
 ### Requirement: Progressive delay of a delayed account
 
-From the failure that reaches the threshold on, each further failure within the quiet period SHALL set a delay that doubles,
+While the account throttle is on, from the failure that reaches the threshold on, each further failure within the quiet period SHALL set a delay that doubles,
 starting at one second and capped at the configured maximum. A delayed request SHALL be answered with `429` and a
 `Retry-After` header, and SHALL NOT be verified against the credential. The delay SHALL end by itself when its time has passed.
 
@@ -46,10 +86,10 @@ starting at one second and capped at the configured maximum. A delayed request S
 
 ### Requirement: Known addresses are exempt from the account delay
 
-A request from an address that the account has signed in from within the last `knownAddressDays` (30 by default) SHALL NOT be
-delayed by the `account|<name>` key. It SHALL still be subject to the per-address and per-name keys. A successful
-authentication SHALL record its address as known for its principal, or for its token identifier when the name is not a
-principal.
+While the account throttle is on, a request from an address the account has signed in from within `knownAddressDays` (30 by
+default) SHALL NOT be delayed by the `account|<name>` key, and SHALL still be subject to the per-address and per-name keys. A
+successful authentication SHALL record its address as known for its principal, or for its token identifier when the name is
+not a principal. While the switch is off, the known-address table is neither read nor written.
 
 #### Scenario: The owner at a known address is not delayed by the account key
 
@@ -70,9 +110,9 @@ principal.
 
 ### Requirement: Credential paths share the limiter
 
-Every path that verifies a password or a token SHALL check the limit before the verification, and SHALL count a failure
-after it, under the same key namespace: the dashboard password login, Basic authentication, Bearer authentication, LDAP over
-Basic, the console login and the setup code.
+While the account throttle is on, every path that verifies a password or a token SHALL check the limit before the
+verification, and SHALL count a failure after it, under the same key namespace: the dashboard password login, Basic
+authentication, Bearer authentication, LDAP over Basic, the console login and the setup code.
 
 #### Scenario: A Bearer token is delayed like a Basic credential
 
@@ -88,7 +128,9 @@ Basic, the console login and the setup code.
 ### Requirement: Second factor keys are separate
 
 The second factor SHALL count only under `mfa|user|<name>|<address>`, `mfa|address|<address>` and `mfa|account|<name>`, and a
-second factor failure SHALL NOT increase the password keys.
+second factor failure SHALL NOT increase the password keys. This is the second factor counting already on main (merged
+through #320 and #321, `LoginAttemptLimiter.kt:102-110`, `mfa/SecondFactorService.kt:393`), and it applies whatever the
+account throttle switch is set to.
 
 #### Scenario: Second factor failures do not delay the password
 
@@ -97,10 +139,10 @@ second factor failure SHALL NOT increase the password keys.
 
 ### Requirement: Shared counters across replicas
 
-The counters and the delays SHALL be stored in the `login_attempt` table, so that failures on one replica count on every
-other replica. The per-address counter of Basic authentication, when `authentication.bruteForceProtection.enabled` is true,
-SHALL be stored there too, under `address|<ip>`, and SHALL NOT be held in the memory of one instance. When the conditional
-write of a counter fails the maximum number of times, the failure SHALL still be added with an atomic increment.
+While the account throttle is on, the counters and the delays SHALL be stored in the `login_attempt` table, so failures on one
+replica count on every other. The per-address counter of Basic authentication, when `authentication.bruteForceProtection`
+is enabled, SHALL be stored there too under `basic-address|<ip>`, not in memory and not under `address|<ip>`, the dashboard's
+key. A failure SHALL still be added with an atomic increment when the conditional write fails the maximum number of times.
 
 #### Scenario: A failure on one replica delays the next request on another
 
@@ -115,9 +157,9 @@ write of a counter fails the maximum number of times, the failure SHALL still be
 ### Requirement: Uniform answers and timing for unknown and existing names
 
 A request for a name that does not exist, a wrong secret for an existing name, and a disabled or expired token SHALL receive the
-same status and the same message. The verification SHALL run its hash for every request that reaches it, including a name
-that does not exist or has no secret, so that the time of the answer does not depend on existence. The lazily created dummy
-hash SHALL be created before the first request.
+same status and message, whatever the switch. The verification SHALL run its hash for every request that reaches it, and the
+dummy hash SHALL be created before the first request, whatever the switch (open question 10 of `design.md`). While the account
+throttle is on, a delayed name SHALL get the same `429` whether or not it exists.
 
 #### Scenario: An unknown dashboard user takes as long as a wrong password
 
@@ -131,7 +173,8 @@ hash SHALL be created before the first request.
 
 ### Requirement: Retry-After and client behaviour
 
-Every `429` of this capability SHALL carry `Retry-After` in whole seconds, rounded up, and at least one. The response body
+Every `429` of this capability, which exists only while the account throttle is on, SHALL carry `Retry-After` in whole seconds,
+rounded up, and at least one. The response body
 SHALL use the problem format of the endpoint family and SHALL NOT contain the name, the existence of the name or the
 remaining count.
 
@@ -142,22 +185,11 @@ remaining count.
 
 ### Requirement: Audit of throttled requests
 
-A request answered with a delay SHALL be audited as `LOGIN_THROTTLED` with the attempted name and the address, and SHALL NOT be
-audited as `LOGIN_FAILED`. The secret and the password SHALL NOT appear in the audit event.
+While the account throttle is on, a request answered with a delay SHALL be audited as `LOGIN_THROTTLED` with the attempted name
+and the address, and SHALL NOT be audited as `LOGIN_FAILED`. While it is off, no `LOGIN_THROTTLED` event is written. The
+secret and the password SHALL NOT appear in the audit event.
 
 #### Scenario: A throttled request is audited once
 
 - **WHEN** a request is answered `429` by the account delay
 - **THEN** exactly one `LOGIN_THROTTLED` event is written, and no `LOGIN_FAILED` event for that request
-
-### Requirement: Default values and the existing switches
-
-The account throttle SHALL be enabled by default with a threshold of 10 failures, a quiet period of 60 minutes, a maximum delay
-of 300 seconds and a known-address window of 30 days. The existing dashboard limits `login.maxFailedAttempts` (5) and
-`login.lockoutMinutes` (15) SHALL keep their names and defaults. The per-address switch `authentication.bruteForceProtection`
-SHALL keep its default of disabled.
-
-#### Scenario: An existing installation starts with the same defaults
-
-- **WHEN** an instance starts with a configuration file written before this change
-- **THEN** the settings read back are the old keys with their old values, and the new keys have the defaults above
