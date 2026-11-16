@@ -76,6 +76,7 @@ internal class CommandExecutor(
         return StructuredExecution(
             status = outcome.status,
             exitCode = outcome.exitCode(),
+            data = outcome.data,
             output = outcome.lines
                 .flatMap { splitLines(it) }
                 .map { OutputLine(stream = stream, text = it.replace(ANSI_SEQUENCE, "")) },
@@ -148,7 +149,7 @@ internal class CommandExecutor(
      * What a command line produced: [usageError] is set for a line that named no command, did not parse or named an
      * unknown command, which the structured answer reports with exit code 2 apart from a failed command (exit code 1).
      */
-    private class CommandOutcome(val status: CommandStatus, val lines: List<String>, val usageError: Boolean) {
+    private class CommandOutcome(val status: CommandStatus, val lines: List<String>, val usageError: Boolean, val data: Any? = null) {
 
         fun exitCode(): Int =
             when {
@@ -175,7 +176,7 @@ internal class CommandExecutor(
                 ?.let {
                     val context = CommandContext(journalist)
                     commandObject.execute(context)
-                    CommandOutcome(context.status, context.output(), usageError = false)
+                    CommandOutcome(context.status, context.output(), usageError = false, data = context.data)
                 }
                 ?: CommandOutcome(FAILED, listOf(commandLine.usageMessage), usageError = true)
         } catch (_: UnmatchedArgumentException) {

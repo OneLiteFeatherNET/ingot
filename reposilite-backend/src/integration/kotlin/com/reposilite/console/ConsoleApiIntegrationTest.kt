@@ -119,6 +119,69 @@ internal class ConsoleApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should answer the tokens as structured data next to the text lines`() {
+        // given: an instance admin and a token with a route
+        val (name, secret) = useDefaultManagementToken()
+        useAuth("data-ci", "data-secret", routes = mapOf("/" to READ))
+
+        // when: tokens runs in structured mode
+        val body = json.readTree(
+            Unirest.post("$base/api/console/execute?structured=true").header("Authorization", basic(name, secret)).body("tokens").asString().body
+        )
+
+        // then: the data lists the token by name with its routes, and the output keeps its text lines
+        val token = body.get("data").single { it.get("name").asText() == "data-ci" }
+        assertThat(token.get("routes").single().get("path").asText()).isEqualTo("/")
+        assertThat(body.get("output").first().get("text").asText()).startsWith("Tokens (")
+    }
+
+    @Test
+    fun `should answer the status as structured data with the failure count`() {
+        // given: an instance admin
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: status runs in structured mode
+        val body = json.readTree(
+            Unirest.post("$base/api/console/execute?structured=true").header("Authorization", basic(name, secret)).body("status").asString().body
+        )
+
+        // then: the data holds the status fields as numbers and booleans
+        assertThat(body.get("data").get("failures").isInt).`as`("failures is a number").isTrue
+        assertThat(body.get("data").get("active").isBoolean).`as`("active is a boolean").isTrue
+    }
+
+    @Test
+    fun `should answer the statistics as structured data with the record counts`() {
+        // given: an instance admin
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: stats runs in structured mode
+        val body = json.readTree(
+            Unirest.post("$base/api/console/execute?structured=true").header("Authorization", basic(name, secret)).body("stats").asString().body
+        )
+
+        // then: the data holds the unique and all record counts and the matched requests
+        assertThat(body.get("data").get("uniqueRecords").isNumber).isTrue
+        assertThat(body.get("data").get("allRecords").isNumber).isTrue
+        assertThat(body.get("data").get("requests").isArray).isTrue
+    }
+
+    @Test
+    fun `should answer null data for a command that provides none`() {
+        // given: an instance admin
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: help runs in structured mode
+        val body = json.readTree(
+            Unirest.post("$base/api/console/execute?structured=true").header("Authorization", basic(name, secret)).body("help").asString().body
+        )
+
+        // then: data is null and the text lines are there
+        assertThat(body.path("data").isNull).isTrue
+        assertThat(body.get("output").size()).isGreaterThan(0)
+    }
+
+    @Test
     fun `should answer plain executions with the exact JSON body they always had`() {
         // given: an instance admin
         val (name, secret) = useDefaultManagementToken()

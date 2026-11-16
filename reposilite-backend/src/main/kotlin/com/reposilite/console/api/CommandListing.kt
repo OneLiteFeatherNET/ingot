@@ -15,6 +15,8 @@
  */
 package com.reposilite.console.api
 
+import com.fasterxml.jackson.annotation.JsonInclude
+
 /** The command tree a remote client needs for help and completion. */
 data class CommandListing(
     val version: Int,
@@ -45,11 +47,12 @@ data class OptionDescriptor(
     val arity: String,
 )
 
-/** Answer of a structured execution. [data] is null until a command provides structured data. */
+/** Answer of a structured execution. [data] is null until a command provides structured data, and is always sent. */
 data class StructuredExecutionResponse(
     val status: com.reposilite.console.CommandStatus,
     val exitCode: Int,
     val output: List<com.reposilite.console.OutputLine>,
+    @field:JsonInclude(JsonInclude.Include.ALWAYS)
     val data: Any?,
     val node: String,
 )

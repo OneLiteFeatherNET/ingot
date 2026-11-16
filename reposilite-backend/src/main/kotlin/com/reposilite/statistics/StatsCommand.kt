@@ -35,9 +35,17 @@ internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : Re
     private lateinit var filter: String
 
     override fun execute(context: CommandContext) {
+        val uniqueRecords = statisticsFacade.countUniqueRecords()
+        val allRecords = statisticsFacade.countRecords()
         context.append("Statistics: ")
-        context.append("  Unique resolved requests: ${statisticsFacade.countUniqueRecords()}")
-        context.append("  All resolved requests: ${statisticsFacade.countRecords()}")
+        context.append("  Unique resolved requests: $uniqueRecords")
+        context.append("  All resolved requests: $allRecords")
+        val data = StatsData(
+            uniqueRecords = uniqueRecords,
+            allRecords = allRecords,
+            requests = emptyList(),
+        )
+        context.data = data
 
         val limiter = supplyThrowing(NumberFormatException::class.java) { filter.toInt() }.orElseGet(DEFAULT_TOP_LIMIT)
         val phrase = take(limiter != DEFAULT_TOP_LIMIT, "", filter)
@@ -48,6 +56,7 @@ internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : Re
                 context.append("  Filter: '${context.highlight(phrase)}' / Limit: $limiter")
                 if (repository.isNotEmpty()) context.append("  In repository: $repository")
                 context.append("  Sum of matched requests: ${response.sum}")
+                context.data = data.copy(requests = response.requests.map { StatsRequestData(gav = it.gav, count = it.count) })
                 context.append("  Records:")
                 response.requests.forEachIndexed { order, request -> context.append("    ${order + 1}. /${request.gav} (${request.count})") }
                 if (response.requests.isEmpty()) context.append("    ~ Matching records not found ~")
@@ -62,3 +71,8 @@ internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : Re
         effect { BLACK_BOLD } + value.toString() + effect { RESET }
 
 }
+
+/** The structured `stats` answer: the record counts, and the matched requests of the search when it succeeds. */
+internal data class StatsData(val uniqueRecords: Long, val allRecords: Long, val requests: List<StatsRequestData>)
+
+internal data class StatsRequestData(val gav: String, val count: Long)

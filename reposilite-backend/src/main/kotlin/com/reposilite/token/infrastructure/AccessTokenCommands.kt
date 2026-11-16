@@ -32,10 +32,20 @@ internal class TokensCommand(private val accessTokenFacade: AccessTokenFacade) :
 
     override fun execute(context: CommandContext) {
         context.append("Tokens (${accessTokenFacade.count()})")
+        val tokens = mutableListOf<TokenData>()
 
         accessTokenFacade.getAccessTokens().forEach { token ->
             context.append("- ${token.name}: ${accessTokenFacade.getPermissions(token.identifier)}")
             val routes = accessTokenFacade.getRoutes(token.identifier)
+            tokens.add(
+                TokenData(
+                    name = token.name,
+                    permissions = accessTokenFacade.getPermissions(token.identifier).map { it.name },
+                    routes = routes.groupBy { it.path }.map { (path, permissions) ->
+                        RouteData(path = path, permissions = permissions.map { it.permission.name })
+                    },
+                )
+            )
 
             routes.groupBy { it.path }
                 .forEach { (route, permissions) ->
@@ -46,9 +56,16 @@ internal class TokensCommand(private val accessTokenFacade: AccessTokenFacade) :
                 context.append("  > ~ no routes ~")
             }
         }
+
+        context.data = tokens
     }
 
 }
+
+/** A token of the structured `tokens` answer. The secret and the identifier are never part of it. */
+internal data class TokenData(val name: String, val permissions: List<String>, val routes: List<RouteData>)
+
+internal data class RouteData(val path: String, val permissions: List<String>)
 
 @Command(name = "token-generate", description = ["Generate a new access token"])
 internal class KeygenCommand(private val accessTokenFacade: AccessTokenFacade) : ReposiliteCommand {
