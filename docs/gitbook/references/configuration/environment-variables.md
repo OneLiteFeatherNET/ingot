@@ -386,6 +386,16 @@ The system information page and the support bundle are on by default, because bo
 | `INGOT_S3_PRESIGN_TTL_SECONDS` | `REPOSILITE_S3_PRESIGN_TTL_SECONDS`, read when the `INGOT_` variable is not set | `300` | The lifetime of a presigned URL in seconds, from 60 to 3600. The `max-age` of the redirect is half of it or `maxAge`, whichever is smaller. A value outside the range, or not a whole number, stops the start with a message that names the variable. |
 | `INGOT_S3_PRESIGN_ENDPOINT` | `REPOSILITE_S3_PRESIGN_ENDPOINT`, read when the `INGOT_` variable is not set | empty | The address in the presigned URL, for a bucket that clients reach under another name than Ingot does. Empty means the configured S3 `endpoint`. |
 
+### CDN purge variables
+
+The purge webhook is an optional plugin, not part of the image. Install its jar in the plugins directory to use these variables.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_CDN_PURGE_URL` | `REPOSILITE_CDN_PURGE_URL`, read when the `INGOT_` variable is not set | empty | The endpoint that receives one `POST` per deploy or delete, with the body `{"urls": ["<public url>"]}`. Empty means the plugin sends nothing. |
+| `INGOT_CDN_PURGE_BASE_URL` | `REPOSILITE_CDN_PURGE_BASE_URL`, read when the `INGOT_` variable is not set | empty | The public address of the instance, from which the purged URLs are built. Required when `INGOT_CDN_PURGE_URL` is set. Without it the plugin does not start, and the message names this variable. |
+| `INGOT_CDN_PURGE_TOKEN` | `REPOSILITE_CDN_PURGE_TOKEN`, read when the `INGOT_` variable is not set | empty | A secret. When set, every purge request carries `Authorization: Bearer` with this token. It is never written to the log. |
+
 ### S3 storage system properties
 
 These are JVM system properties. There is no environment variable form. Pass them in `JAVA_OPTS`, for example `JAVA_OPTS=-Dreposilite.s3.pathStyleAccessEnabled=true`. Set them before the server starts. Only the exact value `true` turns a property on.
