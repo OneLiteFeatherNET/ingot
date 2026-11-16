@@ -18,9 +18,11 @@ package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.ValidatedSettings
+import com.reposilite.configuration.shared.api.WarnedSettings
 import io.javalin.openapi.JsonSchema
 import net.onelitefeather.ingot.identity.login.ldap.LdapLoginSettings
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderSettings
+import net.onelitefeather.ingot.identity.session.STEP_UP_MINUTES
 
 @JsonSchema(requireNonNulls = false)
 @Doc(title = "Login", description = "Browser login settings")
@@ -47,11 +49,22 @@ data class LoginSettings(
     val passwordPolicy: PasswordPolicySettings = PasswordPolicySettings(),
     @get:Doc(title = "Idle Timeout Minutes", description = "Minutes a browser session may stay idle before its refresh token expires. 0 keeps the refresh lifetime as the only idle limit. Otherwise at least 5, and at most the refresh lifetime in minutes")
     val idleTimeoutMinutes: Long = 0,
-) : ValidatedSettings {
+    @get:Doc(title = "Second Factor Policy", description = "Which browser sessions must hold a second factor, and the grace period of the users it covers. Everything is off by default")
+    val mfa: MfaSettings = MfaSettings(),
+) : ValidatedSettings, WarnedSettings {
 
     override fun violations(): List<String> =
         listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }, idleTimeoutViolation()) + accountThrottle.violations() +
-            passwordPolicy.violations()
+            passwordPolicy.violations() + mfa.violations() + trustViolations()
+
+    override fun warnings(): List<String> = mfa.warnings()
+
+    private fun trustViolations(): List<String> = oidcProviders.flatMapIndexed { index, provider ->
+        listOfNotNull(
+            "oidcProviders[$index].mfaAcrValues: values must not be blank".takeIf { provider.mfaAcrValues.any { it.isBlank() } },
+            "oidcProviders[$index].mfaAmrValues: values must not be blank".takeIf { provider.mfaAmrValues.any { it.isBlank() } },
+        )
+    }
 
     private fun idleTimeoutViolation(): String? {
         if (idleTimeoutMinutes == 0L) {
@@ -119,3 +132,31 @@ data class BreachCheckSettings(
 
 /** How a new password is compared with breached passwords. See [BreachCheckSettings.mode]. */
 enum class BreachCheckMode { OFF, RANGE, OFFLINE }
+
+@JsonSchema(requireNonNulls = false)
+@Doc(title = "Second Factor Policy", description = "Browser sessions that must hold a second factor. A covered user without a factor keeps the grace period, then gets a restricted session until a factor is enrolled. The covered user is recorded at the first sign-in after the policy covers them, so the grace is per user")
+data class MfaSettings(
+    @get:Doc(title = "Required For Administrators", description = "Instance administrators, directly or through a team, must hold a second factor. Access tokens are not covered")
+    val requiredForAdmins: Boolean = false,
+    @get:Doc(title = "Required For Teams", description = "Members of these teams must hold a second factor. Names are team names, and direct membership counts")
+    val requiredForTeams: List<String> = emptyList(),
+    @get:Doc(title = "Grace Days", description = "Days after a policy first covers a user during which that user may sign in without a second factor. Between 0 and 365")
+    val graceDays: Long = 14,
+    @get:Doc(title = "Step-Up Minutes", description = "Minutes a second factor stays recent for sensitive actions. Between 1 and 60. The default is 5")
+    val stepUpMinutes: Long = STEP_UP_MINUTES,
+    @get:Doc(title = "Passkey First Factor", description = "Lets a passkey sign a user in without a password. Off by default; the passkey routes answer 404 while it is off")
+    val passkeyFirstFactor: Boolean = false,
+) {
+
+    fun violations(): List<String> = listOfNotNull(
+        "mfa.graceDays: must be between 0 and 365".takeIf { graceDays !in 0..365 },
+        "mfa.stepUpMinutes: must be between 1 and 60".takeIf { stepUpMinutes !in 1..60 },
+        "mfa.requiredForTeams: team names must not be blank".takeIf { requiredForTeams.any { it.isBlank() } },
+    )
+
+    /** Notices to the one who saves the policy. They never refuse the save. */
+    fun warnings(): List<String> = listOfNotNull(
+        "login.mfa.requiredForAdmins is on: an administrator without a second factor keeps the grace period and is then restricted. If the last administrator cannot enrol, start the instance with the break-glass token (--token) and reset the factors".takeIf { requiredForAdmins },
+    )
+
+}

@@ -27,6 +27,7 @@ import io.javalin.community.routing.Route
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
@@ -39,6 +40,7 @@ import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginOutcome
 import net.onelitefeather.ingot.identity.login.SetupOutcome
 import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
+import net.onelitefeather.ingot.identity.login.mfa.FirstFactorPasskey
 import net.onelitefeather.ingot.identity.login.mfa.NO_RELYING_PARTY_MESSAGE
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyProof
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyStart
@@ -183,6 +185,81 @@ internal class AuthLoginEndpoints(
     }
 
     @OpenApi(
+        path = "/api/auth/passkey/options",
+        methods = [HttpMethod.POST],
+        summary = "Start a passkey sign-in without a password",
+        description = "Only while login.mfa.passkeyFirstFactor is on, otherwise 404. Takes the user name and answers the assertion options of the passkeys of that user. An unknown user, a disabled user and a user without a passkey get the same 401, and nothing is stored for them. The options are completed at /api/auth/passkey/login",
+        tags = ["Auth"],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = PasskeyFirstFactorRequest::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyOptionsDto::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ]
+    )
+    private val firstFactorPasskeyOptions = ReposiliteRoute<PasskeyOptionsDto>("/api/auth/passkey/options", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        val username = runCatching { body<PasskeyFirstFactorRequest>() }.getOrNull()?.username?.takeIf { it.isNotBlank() }
+
+        response = when {
+            !facade.passkeyFirstFactorEnabled() -> errorResponse(NOT_FOUND, PASSKEY_FIRST_FACTOR_OFF)
+            else -> {
+                val relyingParty = RelyingParty.of(publicUrl(), secure(ctx), ctx.host())
+                when {
+                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                    username == null -> unauthorizedError(INVALID_CREDENTIALS)
+                    else -> when (val started = facade.startPasskeyFirstFactor(username)) {
+                        is FirstFactorPasskey.Started -> PasskeyOptionsDto(
+                            challengeId = started.challenge.challengeId,
+                            challenge = started.challenge.challenge,
+                            rpId = relyingParty.id,
+                            allowCredentials = started.challenge.allowedCredentialIds,
+                        ).asSuccess()
+                        FirstFactorPasskey.Disabled, FirstFactorPasskey.Unavailable -> unauthorizedError(INVALID_CREDENTIALS)
+                    }
+                }
+            }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/auth/passkey/login",
+        methods = [HttpMethod.POST],
+        summary = "Complete a passkey sign-in without a password",
+        description = "Completes the sign-in that /api/auth/passkey/options started, and starts the browser session with the second factor recorded. A wrong assertion keeps the challenge open. Only while login.mfa.passkeyFirstFactor is on, otherwise 404",
+        tags = ["Auth"],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = PasskeyAssertionDto::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = LoginResponse::class) ]),
+            OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ]
+    )
+    private val firstFactorPasskeyLogin = ReposiliteRoute<LoginResponse>("/api/auth/passkey/login", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        val proof = runCatching { body<PasskeyAssertionDto>() }.getOrNull()?.toProof()
+
+        response = when {
+            !facade.passkeyFirstFactorEnabled() -> errorResponse(NOT_FOUND, PASSKEY_FIRST_FACTOR_OFF)
+            proof == null -> badRequestError(PASSKEY_FIELDS)
+            else -> {
+                val relyingParty = RelyingParty.of(publicUrl(), secure(ctx), ctx.host())
+                if (relyingParty == null) {
+                    errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                } else {
+                    finishSecondFactor(
+                        ctx,
+                        facade.completePasskeyFirstFactor(proof.ceremonyId, proof, relyingParty.id, relyingParty.origin, ctx.ip()),
+                        rejected = PASSKEY_REJECTED,
+                    )
+                }
+            }
+        }
+    }
+
+    @OpenApi(
         path = "/api/auth/setup",
         methods = [HttpMethod.GET],
         summary = "Setup status",
@@ -305,7 +382,9 @@ internal class AuthLoginEndpoints(
             is ChallengeCompletion.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
         }
 
-    override val routes = routes(providers, login, verifySecondFactor, passkeyOptions, setupStatus, setup, refresh, logout)
+    override val routes = routes(
+        providers, login, verifySecondFactor, passkeyOptions, firstFactorPasskeyOptions, firstFactorPasskeyLogin, setupStatus, setup, refresh, logout,
+    )
 
 }
 
@@ -332,6 +411,14 @@ private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: Str
 
 /** The message of a passkey that the sign-in did not accept. A wrong assertion keeps the challenge open, as a wrong code does. */
 private const val PASSKEY_REJECTED = "The passkey was not accepted"
+
+/** The answer of a first factor passkey route while `login.mfa.passkeyFirstFactor` is off. */
+private const val PASSKEY_FIRST_FACTOR_OFF = "Passkey sign-in as a first factor is not enabled, see login.mfa.passkeyFirstFactor"
+
+/** The answer of a first factor passkey start for a user that is unknown, disabled or has no passkey. The same for all three. */
+private const val INVALID_CREDENTIALS = "Invalid username or password"
+
+private const val PASSKEY_FIELDS = "Passkey sign-in requires challengeId, credentialId, clientDataJSON, authenticatorData and signature in base64url"
 
 /** The passkey proof of a request, `null` when a field is missing or not base64url. */
 private fun PasskeyAssertionDto.toProof(): PasskeyProof? {

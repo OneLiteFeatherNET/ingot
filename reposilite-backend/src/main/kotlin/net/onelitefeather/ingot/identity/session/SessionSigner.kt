@@ -42,7 +42,17 @@ data class VerifiedSession(
     val expiresAt: Instant,
     val authenticatedAt: Instant? = null,
     val mfa: Boolean = false,
+    val scope: SessionScope = SessionScope.FULL,
 )
+
+/**
+ * What a browser session may call. [FULL] is the whole API. [ENROL] is the restricted session of a user the second factor policy
+ * covers without a factor after the grace period: it may only manage its own factors and log out, see `EnrolmentRoutes`.
+ */
+enum class SessionScope(val claim: String) {
+    FULL("full"),
+    ENROL("enrol"),
+}
 
 /**
  * Signs and verifies the short-lived browser session tokens (JWT, HS256). The key is shared by every instance of a
@@ -62,13 +72,14 @@ class SessionSigner internal constructor(
         expiresAt: Instant,
         authenticatedAt: Instant? = null,
         mfa: Boolean = false,
+        scope: SessionScope = SessionScope.FULL,
     ): String {
         val claims = JWTClaimsSet.Builder()
             .subject(principalId.toString())
             .claim(CLAIM_NAME, name)
             .claim(CLAIM_KIND, kind)
             .claim(CLAIM_FAMILY, familyId)
-            .claim(CLAIM_SCOPE, SCOPE_FULL)
+            .claim(CLAIM_SCOPE, scope.claim)
             .claim(CLAIM_MFA, mfa)
             .apply { authenticatedAt?.let { claim(CLAIM_AUTH_TIME, it.epochSecond) } }
             .issueTime(Date.from(Instant.now(clock)))
@@ -107,6 +118,7 @@ class SessionSigner internal constructor(
             expiresAt = expiresAt,
             authenticatedAt = claims.getLongClaim(CLAIM_AUTH_TIME)?.let { Instant.ofEpochSecond(it) },
             mfa = claims.getBooleanClaim(CLAIM_MFA) ?: false,
+            scope = if (claims.getStringClaim(CLAIM_SCOPE) == SessionScope.ENROL.claim) SessionScope.ENROL else SessionScope.FULL,
         )
     }
 
@@ -121,9 +133,6 @@ class SessionSigner internal constructor(
         private const val CLAIM_AUTH_TIME = "ath"
         private const val CLAIM_MFA = "mfa"
         private const val CLAIM_SCOPE = "scope"
-
-        /** The scope of a session that may use the whole API. The restricted scope comes with the enrolment policy. */
-        private const val SCOPE_FULL = "full"
 
     }
 

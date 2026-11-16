@@ -154,6 +154,26 @@ class IdentityStore(
                 .sortedBy { it.name.lowercase(Locale.ROOT) }
         }
 
+    /** When the second factor policy first covered the principal, `null` while it never has. */
+    fun requiredSinceOf(principalId: Int): Instant? =
+        transaction(database) {
+            PrincipalTable.select(PrincipalTable.requiredSince).where { PrincipalTable.id eq principalId }
+                .map { it[PrincipalTable.requiredSince] }
+                .firstOrNull()
+        }
+
+    /**
+     * Records the instant the policy first covers the principal. A conditional update: a principal that already has a
+     * `requiredSince` keeps it, so a later sign-in or a change of the policy never restarts the grace period. Returns whether
+     * this call wrote it.
+     */
+    fun markRequiredSince(principalId: Int, at: Instant): Boolean =
+        transaction(database) {
+            PrincipalTable.update(where = { (PrincipalTable.id eq principalId) and PrincipalTable.requiredSince.isNull() }) {
+                it[PrincipalTable.requiredSince] = at
+            } > 0
+        }
+
     fun updatePrincipal(id: Int, displayName: String?, disabled: Boolean?) {
         identityWrite {
             PrincipalTable.update(where = { PrincipalTable.id eq id }, body = {

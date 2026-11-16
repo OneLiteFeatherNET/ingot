@@ -28,6 +28,8 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.identity.login.mfa.ExternalSecondFactor
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorCookie
 import net.onelitefeather.ingot.identity.session.SessionCookies
 import net.onelitefeather.ingot.identity.session.SessionTokens
 import panda.std.reactive.Reference
@@ -98,11 +100,15 @@ internal class AuthOidcEndpoints(
         clearCookie(ctx, OidcStateCookie.COOKIE)
 
         when (outcome) {
-            // A user with an authenticator signs in with the password and the code. An external login would skip the code, so it
-            // is refused until the external provider's own second factor is trusted (identity model 15, open point).
-            is OidcFinish.LoggedIn -> when {
-                facade.hasSecondFactor(outcome.principal.id) -> ctx.redirect(loginErrorLocation(base, "second_factor_required"))
-                else -> {
+            // The second factor policy decides first (design D12): an uncovered user with a factor is refused as before, a covered user
+            // is challenged for an Ingot factor unless the provider verified one, and the rest start a session.
+            is OidcFinish.LoggedIn -> when (val gate = facade.externalSecondFactor(outcome.principal, outcome.providerMfa, outcome.github)) {
+                is ExternalSecondFactor.Challenge -> {
+                    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.set(gate.challenge, base, SessionCookies.isSecure(ctx)))
+                    ctx.redirect(loginErrorLocation(base, "second_factor_required"))
+                }
+                ExternalSecondFactor.Refused -> ctx.redirect(loginErrorLocation(base, "second_factor_required"))
+                ExternalSecondFactor.Pass -> {
                     val session = facade.startSession(outcome.principal, ctx.ip(), ctx.header("User-Agent"))
                     if (session == null) {
                         ctx.redirect(loginErrorLocation(base, "no_database"))

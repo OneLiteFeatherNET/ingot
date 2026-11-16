@@ -54,8 +54,17 @@ sealed interface OidcBegin {
 /** The result of the callback. */
 sealed interface OidcFinish {
 
-    /** The subject is known or was just created. The caller starts the browser session and redirects to [redirect]. */
-    data class LoggedIn(val principal: PrincipalRecord, val redirect: String) : OidcFinish
+    /**
+     * The subject is known or was just created. The caller starts the browser session and redirects to [redirect], once the second
+     * factor policy allows it. [providerMfa] tells that the ID token carries an `acr` or `amr` the provider trusts, see
+     * [OidcProviderSettings.mfaAcrValues]. [github] tells that the login went through GitHub, which has no ID token.
+     */
+    data class LoggedIn(
+        val principal: PrincipalRecord,
+        val redirect: String,
+        val providerMfa: Boolean = false,
+        val github: Boolean = false,
+    ) : OidcFinish
 
     /** The login failed. [code] is one of the login codes of the identity specification, section 14.4. */
     data class Failed(val code: String) : OidcFinish
@@ -64,6 +73,19 @@ sealed interface OidcFinish {
 
 /** Thrown inside the callback when the login must fail with [code]. */
 internal class LoginFailure(val code: String) : RuntimeException(code)
+
+/** An external identity with what the provider verified about the login, see [OidcFinish.LoggedIn.providerMfa]. */
+private class ResolvedLogin(val identity: ExternalIdentity, val providerMfa: Boolean)
+
+/**
+ * Whether the ID token carries an `acr` or an `amr` value that the provider trusts as a second factor (design D12). Empty trusted lists
+ * trust nothing, so a provider that is not configured for it never skips the Ingot factor.
+ */
+internal fun trustedByProvider(claims: JWTClaimsSet, provider: OidcProviderSettings): Boolean {
+    val acr = claims.getClaim("acr") as? String
+    val amr = (claims.getClaim("amr") as? List<*>)?.filterIsInstance<String>().orEmpty()
+    return (acr != null && acr in provider.mfaAcrValues) || amr.any { it in provider.mfaAmrValues }
+}
 
 /**
  * The redirect login flow of the OpenID Connect and GitHub providers: the authorization redirect with PKCE, state and nonce,
@@ -132,15 +154,20 @@ internal class OidcLoginService(
         }
 
         return try {
-            val identity = if (provider.usesGitHubEndpoints()) {
-                githubIdentity(provider, expected, code, redirectUri)
+            val login = if (provider.usesGitHubEndpoints()) {
+                ResolvedLogin(githubIdentity(provider, expected, code, redirectUri), providerMfa = false)
             } else {
                 oidcIdentity(provider, expected, code, redirectUri)
             }
-            when (val outcome = accounts.resolve(identity)) {
+            when (val outcome = accounts.resolve(login.identity)) {
                 is ExternalOutcome.Succeeded -> {
                     audit(AuditEvent(action = AuditAction.LOGIN_SUCCEEDED, actor = AuditActor.named(outcome.principal.name, ip)))
-                    OidcFinish.LoggedIn(outcome.principal, expected.redirect)
+                    OidcFinish.LoggedIn(
+                        principal = outcome.principal,
+                        redirect = expected.redirect,
+                        providerMfa = login.providerMfa,
+                        github = provider.usesGitHubEndpoints(),
+                    )
                 }
                 is ExternalOutcome.Refused -> protocolFailure(providerId, ip, outcome.reason.code)
             }
@@ -154,7 +181,7 @@ internal class OidcLoginService(
     }
 
     /** The identity of an OpenID Connect login: the ID token, validated, and the claims the provider configured. */
-    private fun oidcIdentity(provider: OidcProviderSettings, expected: AuthorizationState, code: String, redirectUri: String): ExternalIdentity {
+    private fun oidcIdentity(provider: OidcProviderSettings, expected: AuthorizationState, code: String, redirectUri: String): ResolvedLogin {
         val endpoints = metadata.discovery(provider.issuerUrl)
         val idToken = exchangeCode(provider, endpoints.token, code, expected.verifier, redirectUri)
         val claims = validateIdToken(idToken, endpoints, provider.clientId, expected.nonce)
@@ -164,7 +191,7 @@ internal class OidcLoginService(
         if (username.isNullOrBlank() && provider.autoCreateUsers) {
             throw LoginFailure("invalid_id_token")
         }
-        return ExternalIdentity(
+        val identity = ExternalIdentity(
             provider = "oidc:${provider.id}",
             subject = subject,
             username = username.orEmpty(),
@@ -176,6 +203,7 @@ internal class OidcLoginService(
             adminGroups = provider.adminGroups,
             groupPrefix = "oidc:${provider.id}:",
         )
+        return ResolvedLogin(identity, providerMfa = trustedByProvider(claims, provider))
     }
 
     /** The groups of a claim that is a list of names or a single name. Anything else gives no groups. */

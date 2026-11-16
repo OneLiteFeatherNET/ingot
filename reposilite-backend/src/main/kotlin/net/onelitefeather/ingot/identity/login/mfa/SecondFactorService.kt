@@ -35,6 +35,8 @@ import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_MFA_LOGIN
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_PASSKEY
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_TOTP
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_WEBAUTHN_LOGIN
+import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 
@@ -381,6 +383,58 @@ internal class SecondFactorService(
                 } else {
                     ChallengeCompletion.Gone
                 }
+            // A refused counter is audited by the passkey service, so only a wrong assertion is audited here.
+            PasskeyAssertion.WrongAssertion -> {
+                audit(failure(principal.name, ip, "passkey"))
+                signInObserver.record(SignInPath.MFA, SignInOutcome.FAILED)
+                ChallengeCompletion.WrongCode
+            }
+            PasskeyAssertion.CounterRefused, PasskeyAssertion.Gone -> {
+                signInObserver.record(SignInPath.MFA, SignInOutcome.FAILED)
+                ChallengeCompletion.WrongCode
+            }
+        }
+    }
+
+    /**
+     * Starts a passkey sign-in without a password, design D14. An unknown or disabled user and a user without a passkey get the
+     * same [PasskeyStart.NoPasskey], so the answer does not tell them apart.
+     */
+    fun startPasskeyFirstFactor(principalName: String): PasskeyStart {
+        val principal = identities.findPrincipal(principalName)
+            ?.takeIf { it.kind == PrincipalKind.USER && !it.disabled }
+            ?: return PasskeyStart.NoPasskey
+        val service = passkeys ?: return PasskeyStart.NoPasskey
+        if (store.findPasskeys(principal.id).isEmpty()) {
+            return PasskeyStart.NoPasskey
+        }
+        return PasskeyStart.Started(service.startAssertion(principal.id))
+    }
+
+    /**
+     * Completes a passkey sign-in without a password. The challenge names its user, and the assertion must be of a passkey of that
+     * user. A verified passkey is the whole sign-in: the passkey is the second factor of its own device, so the session starts with
+     * the second factor recorded. A lock of the user or the address refuses it, as for the other factors.
+     */
+    fun completePasskeyFirstFactor(ceremonyId: String, proof: PasskeyProof, rpId: String, origin: String, ip: String): ChallengeCompletion {
+        val service = passkeys ?: return ChallengeCompletion.Gone
+        val now = clock.instant()
+        val row = store.findChallenge(hashOf(ceremonyId))
+            ?.takeIf { it.kind == KIND_WEBAUTHN_LOGIN && it.usedAt == null && it.expiresAt.isAfter(now) }
+            ?: return ChallengeCompletion.Gone
+        val principal = identities.findPrincipalById(row.principalId)
+            ?.takeIf { it.kind == PrincipalKind.USER && !it.disabled }
+            ?: return ChallengeCompletion.Gone
+        limiter.retryAfter(keysOf(principal.name, ip))?.let { wait ->
+            audit(failure(principal.name, ip, "passkey"))
+            signInObserver.record(SignInPath.MFA, SignInOutcome.THROTTLED)
+            return ChallengeCompletion.Blocked(ceilSeconds(wait))
+        }
+        return when (service.finishAssertion(principal.id, ceremonyId, proof.credentialId, proof.clientDataJson, proof.authenticatorData, proof.signature, rpId, origin)) {
+            is PasskeyAssertion.Verified -> {
+                signInObserver.record(SignInPath.MFA, SignInOutcome.SUCCEEDED)
+                ChallengeCompletion.Verified(principal, recoveryCodeUsed = false)
+            }
             // A refused counter is audited by the passkey service, so only a wrong assertion is audited here.
             PasskeyAssertion.WrongAssertion -> {
                 audit(failure(principal.name, ip, "passkey"))

@@ -23,6 +23,7 @@ import com.reposilite.configuration.shared.SettingsSecrets
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedSettingsReference
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.WarnedSettings
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.badRequestError
@@ -182,6 +183,8 @@ internal class SettingsEndpoints(
                     }
                     ?.map { snapshot ->
                         ctx.header(Header.ETAG, snapshot.etag)
+                        // A notice of a saved value comes back as a Warning header; the body and the status stay as they were.
+                        (snapshot.settings as? WarnedSettings)?.warnings()?.forEach { ctx.res().addHeader("Warning", "299 ingot \"$it\"") }
                         snapshot.settings
                     }
                     ?: badRequestError("Body is empty")

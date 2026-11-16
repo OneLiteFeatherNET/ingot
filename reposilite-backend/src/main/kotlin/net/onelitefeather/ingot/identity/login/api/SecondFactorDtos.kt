@@ -48,6 +48,12 @@ data class PasskeyAssertionDto(
     val signature: String? = null,
 )
 
+/** `POST /api/auth/passkey/options`: the user whose passkey signs the sign-in in, see design D14. */
+@JsonSchema(requireNonNulls = false)
+data class PasskeyFirstFactorRequest(
+    val username: String? = null,
+)
+
 /**
  * The options of a passkey ceremony. [challengeId] is the handle to send back, [challenge] the bytes to sign, and [rpId] the
  * relying party. [allowCredentials] lists the passkeys that may answer an assertion, and is empty for a registration.

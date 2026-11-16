@@ -1582,6 +1582,14 @@
         },
         "type" : "object"
       },
+      "PasskeyFirstFactorRequest" : {
+        "properties" : {
+          "username" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "PasskeyOptionsDto" : {
         "properties" : {
           "allowCredentials" : {
@@ -3153,6 +3161,142 @@
           }
         },
         "summary" : "Start a login with an OpenID Connect provider",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/passkey/login" : {
+      "post" : {
+        "description" : "Completes the sign-in that /api/auth/passkey/options started, and starts the browser session with the second factor recorded. A wrong assertion keeps the challenge open. Only while login.mfa.passkeyFirstFactor is on, otherwise 404",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasskeyAssertionDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "summary" : "Complete a passkey sign-in without a password",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/passkey/options" : {
+      "post" : {
+        "description" : "Only while login.mfa.passkeyFirstFactor is on, otherwise 404. Takes the user name and answers the assertion options of the passkeys of that user. An unknown user, a disabled user and a user without a passkey get the same 401, and nothing is stored for them. The options are completed at /api/auth/passkey/login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasskeyFirstFactorRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyOptionsDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "Start a passkey sign-in without a password",
         "tags" : [ "Auth" ]
       }
     },

@@ -23,6 +23,7 @@ import com.reposilite.plugin.api.Event
 import com.reposilite.plugin.api.SessionFamilyRevokedEvent
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorPolicy
 import net.onelitefeather.ingot.identity.login.storage.RefreshTokenRecord
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
@@ -65,6 +66,8 @@ class SessionService internal constructor(
     private val clock: Clock,
     private val audit: (AuditEvent) -> Unit,
     private val publish: (Event) -> Unit = {},
+    /** The second factor policy, which sets the scope of every session it issues. `null` issues full sessions only. */
+    private val policy: SecondFactorPolicy? = null,
 ) {
 
     /** Families revoked elsewhere, each mapped to the instant until which its session tokens are refused here. */
@@ -266,9 +269,10 @@ class SessionService internal constructor(
         )
 
         val sessionExpiresAt = now.plus(sessionLifetime)
+        val scope = policy?.scopeOf(principal, now) ?: SessionScope.FULL
         return SessionTokens(
             principal = principal,
-            sessionJwt = signer.issue(principal.id, principal.name, principal.kind.name, familyId, sessionExpiresAt, authenticatedAt, mfa),
+            sessionJwt = signer.issue(principal.id, principal.name, principal.kind.name, familyId, sessionExpiresAt, authenticatedAt, mfa, scope),
             sessionExpiresAt = sessionExpiresAt,
             sessionMaxAgeSeconds = sessionLifetime.seconds,
             refreshToken = refreshToken,
