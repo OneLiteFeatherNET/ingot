@@ -149,6 +149,58 @@ internal class MariaDb private constructor(
     }
 }
 
+/**
+ * A PostgreSQL server on [network] with one empty database for the case, in the same shape as [MariaDb]. Replicas reach it
+ * by IP, because the container name does not resolve on the test network. The query helper runs as the service database
+ * user over the local socket of the container, which the image accepts without a password.
+ */
+internal class Postgres private constructor(
+    private val container: GenericContainer<*>,
+    private val address: String,
+) : AutoCloseable {
+
+    /** The value of the database setting that points a replica at this database. */
+    val connection: String
+        get() = connectionFor("$address:$POSTGRES_PORT")
+
+    /** Runs [sql] and returns its rows, each row split into its tab-separated columns. The output has no header. */
+    fun query(sql: String): List<List<String>> {
+        val result = container.execInContainer("psql", "-X", "-At", "-F", "\t", "-U", DB_USER, "-d", DB_NAME, "-c", sql)
+        check(result.exitCode == 0) { "query failed with exit code ${result.exitCode}: ${result.stderr}" }
+        return result.stdout.lines().filter { it.isNotEmpty() }.map { it.split("\t") }
+    }
+
+    override fun close() {
+        container.stop()
+    }
+
+    companion object {
+        /** The value of the database setting for a server at [hostAndPort]: the server, then database, user and password. */
+        internal fun connectionFor(hostAndPort: String): String = "postgresql $hostAndPort $DB_NAME $DB_USER $DB_PASSWORD"
+
+        fun start(network: Network): Postgres {
+            val container = GenericContainer(DockerImageName.parse(POSTGRES_IMAGE))
+                .withNetwork(network)
+                .withEnv(
+                    mapOf(
+                        "POSTGRES_USER" to DB_USER,
+                        "POSTGRES_PASSWORD" to DB_PASSWORD,
+                        "POSTGRES_DB" to DB_NAME,
+                    )
+                )
+                // The image starts a server that listens on its socket only, to run the initialisation, and then restarts it.
+                // A query over TCP with the password is the answer that means the final server accepts the connection.
+                .waitingFor(Wait.forSuccessfulCommand("PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -d $DB_NAME -tAc 'SELECT 1'"))
+                .withStartupTimeout(Duration.ofMinutes(3))
+            container.start()
+            val address = checkNotNull(container.containerInfo.networkSettings.networks.values.single().ipAddress) {
+                "the PostgreSQL container has no address on the test network"
+            }
+            return Postgres(container, address)
+        }
+    }
+}
+
 /** One column as `information_schema` lists it. [default] is null when the column has no default. */
 internal data class SchemaColumn(
     val table: String,
@@ -168,6 +220,7 @@ internal data class SchemaColumn(
 
 private const val NO_DEFAULT = "<none>"
 private const val MARIADB_IMAGE = "mariadb:11.4"
+private const val POSTGRES_PORT = 5432
 private const val DB_NAME = "ingot"
 private const val DB_USER = "ingot"
 private const val DB_PASSWORD = "database-password-for-the-mixed-version-test"
