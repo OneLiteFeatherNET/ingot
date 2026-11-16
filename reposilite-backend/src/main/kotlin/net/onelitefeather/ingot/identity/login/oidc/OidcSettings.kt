@@ -64,6 +64,10 @@ data class OidcProviderSettings(
     val autoCreateUsers: Boolean = true,
     @get:Doc(title = "Admin Groups", description = "Groups whose members become instance administrators through a synchronised team")
     val adminGroups: List<String> = emptyList(),
+    @get:Doc(title = "Trusted Context Classes", description = "acr values of the ID token that count as a second factor for a user under the second factor policy. Empty trusts nothing")
+    val mfaAcrValues: List<String> = emptyList(),
+    @get:Doc(title = "Trusted Methods", description = "amr values of the ID token that count as a second factor for a user under the second factor policy. Empty trusts nothing")
+    val mfaAmrValues: List<String> = emptyList(),
 ) {
 
     /**

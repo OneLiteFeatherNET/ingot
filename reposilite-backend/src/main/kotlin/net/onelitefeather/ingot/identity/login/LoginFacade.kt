@@ -21,14 +21,18 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenType.PRINCIPAL
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.login.api.SelfTokenRequest
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
 import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
+import net.onelitefeather.ingot.identity.login.mfa.ExternalSecondFactor
 import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
 import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.FirstFactorPasskey
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorPolicy
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyChallenge
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyProof
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyRegistration
@@ -57,6 +61,10 @@ class LoginFacade internal constructor(
     private val onSecondFactorChanged: () -> Unit = {},
     /** The clock of the step-up window, read at every sensitive action. */
     private val clock: Clock = Clock.systemUTC(),
+    /** The second factor policy, which covers users at every sign-in. `null` leaves every user as before. */
+    private val policy: SecondFactorPolicy? = null,
+    /** The login settings, read on every use: the step-up window and the passkey first factor switch. */
+    private val settings: () -> LoginSettings = { LoginSettings() },
 ) : Facade {
 
     /** The providers the login page shows, see [LoginService.announcements]. */
@@ -82,6 +90,8 @@ class LoginFacade internal constructor(
         if (outcome !is LoginOutcome.Succeeded) {
             return outcome
         }
+        // A covered user is recorded at every sign-in, so the grace period starts at the first one after the policy covers them.
+        policy?.covers(outcome.principal)
         val factors = secondFactor ?: return outcome
         if (!factors.requiresSecondFactor(outcome.principal.id)) {
             return outcome
@@ -222,7 +232,65 @@ class LoginFacade internal constructor(
      * [enrolment] flag is set for the first factor enrolment, which needs a recent password entry even without a factor.
      */
     fun stepUpAllowed(session: VerifiedSession?, enrolment: Boolean): Boolean =
-        stepUpAllows(session, hasFactor = session != null && hasSecondFactor(session.principalId), enrolment = enrolment, now = Instant.now(clock))
+        stepUpAllows(
+            session,
+            hasFactor = session != null && hasSecondFactor(session.principalId),
+            enrolment = enrolment,
+            now = Instant.now(clock),
+            window = Duration.ofMinutes(settings().mfa.stepUpMinutes),
+        )
+
+    /**
+     * The login gate of a sign-in through an external provider, see design D12. [providerMfa] tells that the provider's ID token carries a
+     * trusted `acr` or `amr` value, see `OidcFinish.LoggedIn`. [github] tells that the provider is GitHub, which has no ID token.
+     *
+     * An uncovered user keeps the rule of before: a user with a factor is refused, a user without one passes. A covered GitHub user is
+     * always challenged. A covered user passes when the provider verified a factor, is challenged when a factor exists, and passes
+     * otherwise, where the grace rule applies to the session.
+     */
+    fun externalSecondFactor(principal: PrincipalRecord, providerMfa: Boolean, github: Boolean): ExternalSecondFactor {
+        val covered = policy?.covers(principal) ?: false
+        val hasFactor = hasSecondFactor(principal.id)
+        return when {
+            !covered -> if (hasFactor) ExternalSecondFactor.Refused else ExternalSecondFactor.Pass
+            github -> challengeOf(principal)
+            providerMfa -> ExternalSecondFactor.Pass
+            hasFactor -> challengeOf(principal)
+            else -> ExternalSecondFactor.Pass
+        }
+    }
+
+    private fun challengeOf(principal: PrincipalRecord): ExternalSecondFactor =
+        secondFactor?.let { ExternalSecondFactor.Challenge(it.startChallenge(principal.id)) } ?: ExternalSecondFactor.Refused
+
+    /** Whether `login.mfa.passkeyFirstFactor` allows a passkey to sign a user in without a password. */
+    fun passkeyFirstFactorEnabled(): Boolean =
+        settings().mfa.passkeyFirstFactor
+
+    /**
+     * Starts a passkey sign-in without a password for the user [username]. Nothing is stored while the switch is off, see
+     * [FirstFactorPasskey.Disabled].
+     */
+    fun startPasskeyFirstFactor(username: String): FirstFactorPasskey {
+        if (!passkeyFirstFactorEnabled()) {
+            return FirstFactorPasskey.Disabled
+        }
+        return when (val start = secondFactor?.startPasskeyFirstFactor(username) ?: PasskeyStart.NoPasskey) {
+            is PasskeyStart.Started -> FirstFactorPasskey.Started(start.challenge)
+            else -> FirstFactorPasskey.Unavailable
+        }
+    }
+
+    /**
+     * Completes a passkey sign-in without a password. The caller starts the session on [ChallengeCompletion.Verified] with the second
+     * factor recorded. Refused while the switch is off.
+     */
+    fun completePasskeyFirstFactor(ceremonyId: String, proof: PasskeyProof, rpId: String, origin: String, ip: String): ChallengeCompletion =
+        if (!passkeyFirstFactorEnabled()) {
+            ChallengeCompletion.Gone
+        } else {
+            secondFactor?.completePasskeyFirstFactor(ceremonyId, proof, rpId, origin, ip) ?: ChallengeCompletion.Gone
+        }
 
     /** The ways a user can complete a second factor, for the answer of a refused sensitive action. */
     fun secondFactorMethodsOf(principalId: Int): List<SecondFactorMethod> =

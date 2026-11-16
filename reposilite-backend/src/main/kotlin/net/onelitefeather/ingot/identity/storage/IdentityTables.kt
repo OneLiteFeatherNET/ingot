@@ -38,6 +38,8 @@ object PrincipalTable : IntIdTable("principal") {
     val disabled = bool("disabled").default(false)
     val createdAt = timestamp("created_at")
     val lastSeenAt = timestamp("last_seen_at").nullable()
+    /** When the second factor policy first covered the user. Written once, never cleared, see SecondFactorPolicy. */
+    val requiredSince = timestamp("required_since").nullable()
 }
 
 object TeamTable : IntIdTable("team") {

@@ -29,7 +29,7 @@ import java.security.MessageDigest
 internal object CsrfPolicy {
 
     private val SAFE_METHODS = setOf("GET", "HEAD", "OPTIONS", "TRACE")
-    private val EXEMPT_ROUTES = listOf("/api/auth/login", "/api/auth/setup", "/api/auth/mfa/verify")
+    private val EXEMPT_ROUTES = listOf("/api/auth/login", "/api/auth/setup", "/api/auth/mfa/verify", "/api/auth/passkey/login")
 
     /**
      * The exempt routes, at the root and below the configured base path. The root is kept because a reverse proxy may

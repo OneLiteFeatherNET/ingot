@@ -37,6 +37,7 @@ import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyService
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorPolicy
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
 import net.onelitefeather.ingot.identity.login.mfa.SettingsSeedCipher
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
@@ -140,6 +141,18 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // The second factor policy: who it covers, and the scope of every session. Read from the settings on each use, so a change applies
+        // at once. Without a database there are no sessions to scope.
+        val secondFactorPolicy = database?.let { database ->
+            SecondFactorPolicy(
+                identities = IdentityStore(database),
+                settings = { loginSettings.get() },
+                clock = clock,
+                secondFactorRequired = { principalId -> secondFactors?.requiresSecondFactor(principalId) ?: false },
+                hasLocalPassword = { principalId -> LoginStore(database, clock).findCredential(principalId) != null },
+            )
+        }
+
         val accountThrottle = database?.let { database ->
             AccountThrottle(
                 store = LoginStore(database, clock),
@@ -210,6 +223,7 @@ class LoginPlugin : ReposilitePlugin() {
                 clock = clock,
                 audit = audit,
                 publish = { auditExtensions.emitEvent(it) },
+                policy = secondFactorPolicy,
             )
         } else {
             null
@@ -232,6 +246,8 @@ class LoginPlugin : ReposilitePlugin() {
             secondFactors,
             onSecondFactorChanged = { authenticationFacade.forgetAllCachedCredentials() },
             clock = clock,
+            policy = secondFactorPolicy,
+            settings = { loginSettings.get() },
         )
         accessTokenFacade.secondFactorGuard = { principalId -> loginFacade.hasSecondFactor(principalId) }
         val basePath = facade<LocalConfiguration>().basePath

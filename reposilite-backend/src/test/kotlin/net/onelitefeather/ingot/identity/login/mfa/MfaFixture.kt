@@ -39,6 +39,7 @@ import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import panda.std.reactive.Reference
 

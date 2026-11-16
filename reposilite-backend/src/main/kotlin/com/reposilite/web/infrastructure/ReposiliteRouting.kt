@@ -18,8 +18,11 @@ import com.reposilite.token.AccessTokenType.PRINCIPAL
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.web.infrastructure.ReposiliteDsl.ReposiliteConfiguration
 import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.identity.login.api.EnrolmentRoutes
+import net.onelitefeather.ingot.identity.login.api.MFA_ENROLMENT_REQUIRED
 import net.onelitefeather.ingot.logging.AccessLogHandler
 import net.onelitefeather.ingot.identity.session.SessionCookies
+import net.onelitefeather.ingot.identity.session.VerifiedSession
 import panda.std.reactive.Reference
 import panda.std.asSuccess
 import panda.std.Result
@@ -78,6 +81,20 @@ private fun Context.fetchMetadataRequest(): FetchMetadataPolicy.Request =
         secFetchDest = header("Sec-Fetch-Dest"),
     )
 
+/**
+ * The refusal of a restricted browser session (scope `enrol`) that calls a route outside its set, see [EnrolmentRoutes]. A request with
+ * an Authorization header is not a browser session, so it passes. The verified session is kept on the request, so that the
+ * authentication of the route reads it instead of verifying the token again.
+ */
+private fun enrolmentRefusal(ctx: Context, loginFacade: LoginFacade, basePath: String): ErrorResponse? {
+    if (ctx.header(Header.AUTHORIZATION) != null) return null
+    val token = ctx.cookie(SessionCookies.SESSION) ?: return null
+    val session = loginFacade.verifySession(token)?.also { ctx.attribute(SESSION_CLAIMS_ATTRIBUTE, it) } ?: return null
+    return ErrorResponse(FORBIDDEN.code, MFA_ENROLMENT_REQUIRED).takeIf {
+        EnrolmentRoutes.refused(session.scope, ctx.method().name, ctx.path(), basePath)
+    }
+}
+
 private fun Context.csrfRequest(): CsrfPolicy.Request =
     CsrfPolicy.Request(
         method = method().name,
@@ -121,7 +138,8 @@ fun createReposiliteDsl(
         }
         if (authorization == null && sessionToken != null) {
             // The verified claims travel with the request, so that a sensitive action can check the age of the second factor.
-            val session = loginFacade.verifySession(sessionToken)
+            val session = attribute<VerifiedSession>(SESSION_CLAIMS_ATTRIBUTE)
+                ?: loginFacade.verifySession(sessionToken)
                 ?: return unauthorizedError<AccessTokenDto>("Invalid or expired session")
             return accessTokenFacade.getAccessTokenById(AccessTokenIdentifier(type = PRINCIPAL, value = session.principalId))
                 ?.also { attribute(SESSION_CLAIMS_ATTRIBUTE, session) }
@@ -164,6 +182,11 @@ fun createReposiliteDsl(
                     if (CsrfPolicy.violation(ctx.csrfRequest(), basePath.get())) {
                         ctx.status(FORBIDDEN)
                         ctx.response(FORBIDDEN.toErrorResponse("Cookie request refused: the X-CSRF-Token header does not match the session"))
+                        return@Handler
+                    }
+                    enrolmentRefusal(ctx, loginFacade, basePath.get())?.let { refusal ->
+                        ctx.status(FORBIDDEN)
+                        ctx.response(refusal)
                         return@Handler
                     }
                     val dsl = ctx.toDslContext()
