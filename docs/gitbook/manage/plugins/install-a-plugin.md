@@ -39,7 +39,7 @@ Use the store when a publisher lists the plugin in a catalogue you trust. Use a 
    docker compose restart ingot
    ```
 
-4. Check the startup log. After the `--- Loading plugins:` section, Ingot prints the names of the loaded plugins. Each name is the value of the `name` in the plugin's `@Plugin` annotation.
+4. Check the startup log. After the `--- Loading plugins:` section, Ingot prints the names of the loaded plugins. Each name is the value of the `name` in the plugin's `@Plugin` annotation. The line after the names lists each plugin with its tier, for example `checksum (official)`. An Experimental plugin also logs a `WARN` line, and so does a plugin that declares `CORE` without being part of the image.
 
    ```bash
    docker compose logs ingot | grep -A 20 "Loading plugins"
