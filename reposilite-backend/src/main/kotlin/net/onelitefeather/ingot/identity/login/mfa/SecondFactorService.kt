@@ -175,7 +175,7 @@ internal class SecondFactorService(
                 "Authenticator codes are offered for accounts with a local password in this version. Directory accounts follow in a later change."
             )
         }
-        if (store.findFactors(principalId).isNotEmpty()) {
+        if (authenticatorFactors(principalId).isNotEmpty()) {
             if (code == null) {
                 return TotpEnrolmentStart.ProofRequired
             }
@@ -221,7 +221,14 @@ internal class SecondFactorService(
 
     /** Whether a password login of [principalId] needs a second factor before a session starts. */
     fun requiresSecondFactor(principalId: Int): Boolean =
-        store.findFactors(principalId).isNotEmpty()
+        authenticatorFactors(principalId).isNotEmpty()
+
+    /**
+     * The authenticator code factors of a principal. The sign-in challenge and the enrolment proof accept only codes, so a
+     * passkey alone must not start a challenge that the user cannot complete. Passkeys join these checks with their own routes.
+     */
+    private fun authenticatorFactors(principalId: Int): List<FactorRow> =
+        store.findFactors(principalId).filter { it.kind == KIND_TOTP }
 
     /** The factors of a principal: names and kinds, never secrets. */
     fun factorsOf(principalId: Int): List<FactorRecord> =
