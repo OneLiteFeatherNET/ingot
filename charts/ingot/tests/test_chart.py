@@ -695,8 +695,7 @@ WORKER = "ingot-worker"
 
 
 def scalable_values(**overrides):
-    """Scalable values with the typed requirements set. The refusals of missing values come in a later change, so the
-    tests pass them here and leave persistence off, which scalable mode requires."""
+    """Scalable values with every typed requirement set and persistence off, so that a test changes one value at a time."""
     values = {
         "mode": "scalable",
         "database": {"existingSecret": "ingot-database"},
@@ -823,11 +822,6 @@ class ScalableWorkloadTest(unittest.TestCase):
     def test_no_pod_disruption_budget_by_default(self):
         self.assertEqual([], of_kind(render(scalable_values()), "PodDisruptionBudget"),
                          "scalable mode renders no budget unless one is enabled")
-
-    def test_top_level_pod_disruption_budget_covers_only_the_dashboard(self):
-        values = scalable_values(podDisruptionBudget={"enabled": True})
-        names = sorted(budget["metadata"]["name"] for budget in of_kind(render(values), "PodDisruptionBudget"))
-        self.assertEqual([DASHBOARD], names, "the top-level budget must not select the server pods in scalable mode")
 
     def test_every_scalable_workload_reaches_the_cluster_bus(self):
         manifests = render(scalable_values())
@@ -1003,6 +997,51 @@ class ScalableNotesTest(unittest.TestCase):
     def test_scalable_http_route_notes_omit_the_ingress_limitation(self):
         text = " ".join(notes(scalable_routing_values("httpRoute")).split())
         self.assertNotIn("cannot match an HTTP method", text, "the limitation applies to ingress.enabled only")
+
+
+NEEDS_DATABASE = "scalable mode needs database.existingSecret: pods share one database"
+NEEDS_OBJECT_STORAGE = "scalable mode needs objectStorage.existingSecret: pods cannot share a local volume"
+NEEDS_CLUSTER_BUS = ("scalable mode needs clusterBus.url: a write or a cleanup on one pod has to reach the caches "
+                     "of the others")
+NO_PERSISTENCE = "scalable mode does not use persistence: unset persistence.enabled"
+ROUTING_FORMS = ("ingress.enabled and httpRoute.enabled cannot both be true: enable one routing form, either ingress "
+                 "or httpRoute")
+IGNORED_AUTOSCALING = "scalable mode ignores the top-level autoscaling: set scalable.read.autoscaling instead"
+IGNORED_BUDGET = ("scalable mode ignores the top-level podDisruptionBudget: set scalable.<role>.podDisruptionBudget "
+                  "for the read, write or worker workload instead")
+
+
+class ScalableRefusalTest(unittest.TestCase):
+
+    def assert_refused(self, values, message):
+        code, _, stderr = helm(["template", RELEASE, CHART_DIR], values)
+        self.assertNotEqual(0, code, f"scalable mode must refuse these values with: {message}")
+        self.assertIn(message, stderr, "the render must fail with the message of the design, naming the value to set")
+
+    def test_missing_database_secret_is_refused(self):
+        self.assert_refused(scalable_values(database={"existingSecret": ""}), NEEDS_DATABASE)
+
+    def test_missing_object_storage_secret_is_refused(self):
+        self.assert_refused(scalable_values(objectStorage={"existingSecret": ""}), NEEDS_OBJECT_STORAGE)
+
+    def test_missing_cluster_bus_url_is_refused(self):
+        self.assert_refused(scalable_values(clusterBus={"url": ""}), NEEDS_CLUSTER_BUS)
+
+    def test_persistence_is_refused(self):
+        self.assert_refused(scalable_values(persistence={"enabled": True}), NO_PERSISTENCE)
+
+    def test_both_routing_forms_are_refused(self):
+        self.assert_refused(scalable_values(ingress={"enabled": True}, httpRoute={"enabled": True}), ROUTING_FORMS)
+
+    def test_top_level_autoscaling_is_refused_in_favour_of_the_read_role(self):
+        self.assert_refused(scalable_values(autoscaling={"enabled": True}), IGNORED_AUTOSCALING)
+
+    def test_top_level_pod_disruption_budget_is_refused_in_favour_of_the_role_values(self):
+        self.assert_refused(scalable_values(podDisruptionBudget={"enabled": True}), IGNORED_BUDGET)
+
+    def test_disabled_top_level_pod_disruption_budget_is_not_refused(self):
+        manifests = render(scalable_values(podDisruptionBudget={"enabled": False}))
+        self.assertTrue(manifests, "the default of the top-level budget, enabled false, must keep rendering")
 
 
 if __name__ == "__main__":

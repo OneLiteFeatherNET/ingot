@@ -569,6 +569,32 @@ Fails when sharedConfiguration is enabled without exactly one source. Both keys 
 {{- end }}
 
 {{/*
+Fails when scalable mode lacks a value it needs or sets a value that scalable mode ignores. Each message names the value to set.
+*/}}
+{{- define "ingot.scalableCheck" -}}
+{{- if eq .Values.mode "scalable" -}}
+{{- if not .Values.database.existingSecret -}}
+{{- fail "scalable mode needs database.existingSecret: pods share one database" -}}
+{{- end -}}
+{{- if not .Values.objectStorage.existingSecret -}}
+{{- fail "scalable mode needs objectStorage.existingSecret: pods cannot share a local volume" -}}
+{{- end -}}
+{{- if not .Values.clusterBus.url -}}
+{{- fail "scalable mode needs clusterBus.url: a write or a cleanup on one pod has to reach the caches of the others" -}}
+{{- end -}}
+{{- if .Values.persistence.enabled -}}
+{{- fail "scalable mode does not use persistence: unset persistence.enabled" -}}
+{{- end -}}
+{{- if .Values.autoscaling.enabled -}}
+{{- fail "scalable mode ignores the top-level autoscaling: set scalable.read.autoscaling instead" -}}
+{{- end -}}
+{{- if .Values.podDisruptionBudget.enabled -}}
+{{- fail "scalable mode ignores the top-level podDisruptionBudget: set scalable.<role>.podDisruptionBudget for the read, write or worker workload instead" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Checksum of the content that the chart renders. Empty for an existing ConfigMap, because the reload applies a change to it
 without a restart.
 */}}
