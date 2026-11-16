@@ -57,7 +57,7 @@ internal class LuceneFreeSpaceTest {
             ),
             root.resolve("unused"),
         )
-        return LuceneSearchBackend(settings, usableSpace = { free }).also {
+        return testBackend(settings, usableSpace = { free }).also {
             opened += it
             it.open()
         }
