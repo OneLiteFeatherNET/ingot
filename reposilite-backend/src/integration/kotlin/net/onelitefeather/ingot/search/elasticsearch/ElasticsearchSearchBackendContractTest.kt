@@ -127,7 +127,7 @@ internal class ElasticsearchRestartIntegrationTest {
                 .`as`("the batch sent while the cluster is down")
                 .isInstanceOf(IOException::class.java)
 
-            cluster.container.startAgain(cluster.readiness)
+            cluster.container.startAgain(apiKeyReadiness(apiKey))
             val after = createElasticsearchBackend(elasticsearchTestEnvironment(cluster.url(), index, apiKey, BATCH_SIZE), clock, sslContext)
             after.open()
             after.apply(batches[2])
