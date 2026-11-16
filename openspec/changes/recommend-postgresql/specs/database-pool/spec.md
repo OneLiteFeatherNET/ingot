@@ -26,14 +26,19 @@ with `REPOSILITE_LOCAL_DATABASETHREADPOOL` as the fallback. No second key SHALL 
 ### Requirement: Lifetime, timeout and keepalive keys
 
 The server SHALL read `databaseMaxLifetime` (seconds, default `1800`), `databaseConnectionTimeout` (seconds, default `30`) and
-`databaseKeepalive` (seconds, default `0`, which means off) from `INGOT_LOCAL_<KEY>` with `REPOSILITE_LOCAL_<KEY>` as the
+`databaseKeepalive` (seconds, default `120`; `0` turns the keepalive off) from `INGOT_LOCAL_<KEY>` with `REPOSILITE_LOCAL_<KEY>` as the
 fallback. They SHALL map to the Hikari `maxLifetime`, `connectionTimeout` and `keepaliveTime` of the pool, in milliseconds.
 A value that is not a whole number SHALL stop the start, as every `Int` key does.
 
 #### Scenario: Defaults are the pool's current values
 
 - **WHEN** none of the three variables is set
-- **THEN** the pool is created with a maximum lifetime of 1800000 milliseconds, a connection timeout of 30000 milliseconds and a keepalive time of 0, the values the pool uses before this change
+- **THEN** the pool is created with a maximum lifetime of 1800000 milliseconds, a connection timeout of 30000 milliseconds and a keepalive time of 120000 milliseconds, the values the pool uses before this change
+
+#### Scenario: Keepalive turned off
+
+- **WHEN** `INGOT_LOCAL_DATABASEKEEPALIVE` is `0`
+- **THEN** the pool is created with a keepalive time of 0 milliseconds, which turns the keepalive off
 
 #### Scenario: Keepalive set in seconds
 

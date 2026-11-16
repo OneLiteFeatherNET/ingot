@@ -23,7 +23,7 @@ Verified on origin/main (`189012696`):
 - `LocalConfiguration.kt:124` sets `databaseThreadPool` to 1. The keys `INGOT_LOCAL_DATABASETHREADPOOL` and
   `REPOSILITE_LOCAL_DATABASETHREADPOOL` already exist. `DatabaseConnection.kt` passes the value to `maximumPoolSize`, and no
   test asserts that mapping.
-- Hikari keeps its own defaults for lifetime (1800 seconds), connection timeout (30 seconds) and keepalive (off). None of them
+- Hikari keeps its own defaults for lifetime (1800 seconds), connection timeout (30 seconds) and keepalive (120 seconds). None of them
   is configurable in Ingot today.
 - The `ha-smoke` job (`.github/workflows/ci.yml`, driver `charts/ingot/tests/ha_smoke.py`) installs `ha/values.yaml` against
   the MariaDB manifest `charts/ingot/tests/ha/dependencies.yaml`. Its images are pinned by tag and digest.
@@ -65,9 +65,11 @@ settings that the operator needs to keep a PostgreSQL connection healthy behind 
 | --- | --- | --- | --- |
 | `databaseMaxLifetime` | `INGOT_LOCAL_DATABASEMAXLIFETIME` (fallback `REPOSILITE_LOCAL_`) | `1800` seconds | Hikari `maxLifetime`, the age after which a connection is replaced. |
 | `databaseConnectionTimeout` | `INGOT_LOCAL_DATABASECONNECTIONTIMEOUT` (fallback `REPOSILITE_LOCAL_`) | `30` seconds | Hikari `connectionTimeout`, how long a request waits for a free connection. |
-| `databaseKeepalive` | `INGOT_LOCAL_DATABASEKEEPALIVE` (fallback `REPOSILITE_LOCAL_`) | `0`, off | Hikari `keepaliveTime`, a ping for idle connections. |
+| `databaseKeepalive` | `INGOT_LOCAL_DATABASEKEEPALIVE` (fallback `REPOSILITE_LOCAL_`) | `120` seconds | Hikari `keepaliveTime`, a ping for idle connections. `0` turns it off. |
 
-The defaults are the Hikari defaults that the pool uses today, so no installation changes. The keys apply to MariaDB,
+The defaults are the values the pool uses today, so no installation changes. The keepalive default is 120 seconds, not off:
+the pool keeps a 120-second keepalive when no value is set, and turning it off by default would change every existing
+installation. The keys apply to MariaDB,
 MySQL and PostgreSQL. SQLite and H2 keep one connection and ignore them. The pool budget is written down in the database
 page: a replica needs `databaseThreadPool` connections, plus one more while it starts for the PostgreSQL schema lock, so the
 server's connection limit has to be at least the replica count times that number.
