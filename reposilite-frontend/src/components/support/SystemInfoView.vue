@@ -126,7 +126,7 @@ onMounted(load)
       <template #default="{ tab }">
         <div
           v-if="tab === 'overview'"
-          class="grid grid-cols-1 gap-4 min-[600px]:grid-cols-2 min-[1240px]:grid-cols-3"
+          class="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3"
         >
           <article
             aria-labelledby="support-ingot"
