@@ -50,6 +50,11 @@ internal class EnrolmentRoutesTest {
     }
 
     @Test
+    fun `a restricted session may rename a factor`() {
+        assertThat(refused("PATCH", "/api/identity/me/factors/{id}")).isFalse()
+    }
+
+    @Test
     fun `a restricted session may log out`() {
         assertThat(refused("POST", "/api/auth/logout")).isFalse()
     }
