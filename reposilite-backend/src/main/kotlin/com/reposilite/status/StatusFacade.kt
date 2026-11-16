@@ -22,10 +22,16 @@ import com.google.common.base.Supplier
 import com.google.common.base.Suppliers
 import com.google.common.collect.EvictingQueue
 import com.reposilite.VERSION
+import com.reposilite.auth.SignInCounters
+import com.reposilite.auth.SignInObserver
+import com.reposilite.auth.SignInOutcome
+import com.reposilite.auth.SignInPath
 import com.reposilite.plugin.api.Facade
 import com.reposilite.status.api.ClusterBusResponse
 import com.reposilite.status.api.ClusterStatusResponse
 import com.reposilite.status.api.InstanceStatusResponse
+import com.reposilite.status.api.SignInOutcomeCounts
+import com.reposilite.status.api.SignInStatusResponse
 import com.reposilite.status.api.StatusSnapshot
 import panda.std.Result
 import panda.std.reactive.Reference
@@ -52,6 +58,8 @@ class StatusFacade(
     private val readOnly: () -> ReadOnlyState = { ReadOnlyState(enabled = false, source = ReadOnlySource.STORED) },
     /** Whether the hourly check for a newer version is on. Read on each refresh of the latest version. */
     private val remoteVersionCheck: () -> Boolean = { RemoteVersionCheckSetting.read(warn = { failureFacade.logger.warn(it) }) },
+    /** The sign-in observer of the login plugin. Its counters are reported only while it is enabled. */
+    private val signInObserver: () -> SignInObserver = { SignInObserver.OFF },
 ) : Facade {
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
@@ -152,9 +160,26 @@ class StatusFacade(
             failuresCount = failureFacade.getFailures().size,
             readOnly = readOnlyState.enabled,
             readOnlySource = readOnlyState.source.name.lowercase(),
-            cluster = clusterStatusSource?.let { it.clusterStatus(instanceFigures()) }
+            cluster = clusterStatusSource?.let { it.clusterStatus(instanceFigures()) },
+            signIn = signInObserver().takeIf { it.enabled }?.let { signInStatus(it.counters) },
         )
     }
+
+    private fun signInStatus(counters: SignInCounters): SignInStatusResponse =
+        SignInStatusResponse(
+            dashboard = outcomesOf(counters, SignInPath.DASHBOARD),
+            basic = outcomesOf(counters, SignInPath.BASIC),
+            bearer = outcomesOf(counters, SignInPath.BEARER),
+            console = outcomesOf(counters, SignInPath.CONSOLE),
+            mfa = outcomesOf(counters, SignInPath.MFA),
+        )
+
+    private fun outcomesOf(counters: SignInCounters, path: SignInPath): SignInOutcomeCounts =
+        SignInOutcomeCounts(
+            succeeded = counters.count(path, SignInOutcome.SUCCEEDED),
+            failed = counters.count(path, SignInOutcome.FAILED),
+            throttled = counters.count(path, SignInOutcome.THROTTLED),
+        )
 
     /**
      * The cluster section of the status as this instance sees it, or null when no bus is attached. Unlike [fetchInstanceStatus] it

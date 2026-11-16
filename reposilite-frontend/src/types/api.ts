@@ -5336,6 +5336,7 @@ export interface components {
             maxThreads: number;
             readOnly: boolean;
             readOnlySource: string;
+            signIn?: components["schemas"]["SignInStatusResponse"] | null;
             /** Format: int64 */
             uptime: number;
             /** Format: double */
@@ -5778,6 +5779,21 @@ export interface components {
         };
         SetupStatusResponse: {
             required?: boolean;
+        };
+        SignInOutcomeCounts: {
+            /** Format: int64 */
+            failed: number;
+            /** Format: int64 */
+            succeeded: number;
+            /** Format: int64 */
+            throttled: number;
+        };
+        SignInStatusResponse: {
+            basic: components["schemas"]["SignInOutcomeCounts"];
+            bearer: components["schemas"]["SignInOutcomeCounts"];
+            console: components["schemas"]["SignInOutcomeCounts"];
+            dashboard: components["schemas"]["SignInOutcomeCounts"];
+            mfa: components["schemas"]["SignInOutcomeCounts"];
         };
         StartedRunResponse: {
             /** Format: int64 */

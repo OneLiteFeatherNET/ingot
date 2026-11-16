@@ -59,6 +59,7 @@ The container image has its own health check. It reads the address that Ingot wr
 | `usedThreads` | The number of live threads of this JVM. No limit applies to it. |
 | `maxThreads` | The sum of the sizes of the web, I/O and database thread pools. It counts pool slots, not the threads of the JVM, so it is not comparable with `usedThreads`. The dashboard does not show the two side by side. |
 | `failuresCount` | The number of distinct failure records of this instance since its last restart. The list is in memory. On a cluster the dashboard adds the instances' counts, so one error seen by two instances is counted twice. Read the list in the next section. |
+| `signIn` | Present only while the account throttle is on (`INGOT_LOGIN_ACCOUNT_THROTTLE=true`). It holds the number of sign-ins since the instance started, per path (`dashboard`, `basic`, `bearer`, `console` and `mfa`), each with `succeeded`, `failed` and `throttled`. A throttled sign-in is one answered with `429`. The counts are in memory and hold no names or addresses. While the switch is off the field is absent. |
 
 The console command `status` prints the same values, plus whether the instance is active.
 
