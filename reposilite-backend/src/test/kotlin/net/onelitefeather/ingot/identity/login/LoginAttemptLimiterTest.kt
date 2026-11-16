@@ -17,12 +17,15 @@
 package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import net.onelitefeather.ingot.identity.login.storage.AttemptRecord
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import org.assertj.core.api.Assertions.assertThat
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import panda.std.reactive.Reference
 import java.nio.file.Path
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -142,6 +145,34 @@ internal class LoginAttemptLimiterTest {
                 .describedAs("a quiet key must not keep a row forever, which would let the table grow without bound")
                 .isNull()
         }
+    }
+
+    @Test
+    fun `counts a failure that loses all five write races with an atomic increment`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            val key = LoginAttemptLimiter.basicAddressKey("10.0.0.1")
+            val store = StaleReadLoginStore(connection.database, clock)
+            val limiter = LoginAttemptLimiter(store, Reference.reference(LoginSettings()), clock)
+            limiter.recordLimitedFailure(key, maxFailedAttempts = 10, lockout = Duration.ofMinutes(5))
+
+            // every conditional write from now on is based on a stale version, so all five of them conflict
+            store.staleReads = true
+            limiter.recordLimitedFailure(key, maxFailedAttempts = 10, lockout = Duration.ofMinutes(5))
+
+            assertThat(LoginStore(connection.database, clock).findAttempt(key)?.state?.failures)
+                .describedAs("a failure that loses every compare-and-set write must still be counted")
+                .isEqualTo(2)
+        }
+    }
+
+    /** A store whose reads can be made stale, so that every conditional write of the limiter conflicts. */
+    private class StaleReadLoginStore(database: Database, clock: Clock) : LoginStore(database, clock) {
+
+        var staleReads = false
+
+        override fun findAttempt(attemptKey: String): AttemptRecord? =
+            super.findAttempt(attemptKey)?.let { if (staleReads) it.copy(version = it.version - 1) else it }
+
     }
 
 }
