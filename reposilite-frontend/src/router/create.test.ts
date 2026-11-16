@@ -490,6 +490,33 @@ describe('routes gated by permission nodes', () => {
   })
 })
 
+describe('the /settings address for the dashboard node', () => {
+  const sessionWith = (...nodes: string[]) => ({
+    isManager: () => true,
+    isLogged: () => true,
+    can: (node: string) => nodes.includes(node),
+    whenSessionKnown: () => Promise.resolve()
+  })
+
+  it('keeps a visitor with the dashboard node alone on Overview, where the status is', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.dashboard'), narrow: () => false })
+
+    await router.push('/settings')
+
+    expect(router.currentRoute.value.name, 'the dashboard node opens /settings').toBe('settings')
+    expect(router.currentRoute.value.fullPath).toBe('/settings')
+  })
+
+  it('keeps the address of a settings domain for a dashboard-only visitor, so the page can answer with no access', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.dashboard'), narrow: () => false })
+
+    await router.push('/settings/javadoc')
+
+    expect(router.currentRoute.value.name).toBe('settings')
+    expect(router.currentRoute.value.params.domain).toBe('javadoc')
+  })
+})
+
 describe('the /access address forwards or shows the index', () => {
   // The width is injected, as the session is: the router reads no window.
   const sessionWith = (...nodes: string[]) => ({
