@@ -3,6 +3,7 @@ package com.reposilite.plugin.prometheus
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.ResolvedFileEvent
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
@@ -24,7 +25,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool
 import java.util.function.LongSupplier
 
 
-@Plugin(name = "prometheus", dependencies = ["failure", "statistics", "status"])
+@Plugin(name = "prometheus", dependencies = ["failure", "statistics", "status"], tier = PluginTier.CORE)
 class PrometheusPlugin : ReposilitePlugin() {
 
     override fun initialize(): PrometheusFacade {

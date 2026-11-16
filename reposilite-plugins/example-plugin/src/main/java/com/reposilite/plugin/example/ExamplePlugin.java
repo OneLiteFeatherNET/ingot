@@ -18,6 +18,7 @@ package com.reposilite.plugin.example;
 
 import com.reposilite.plugin.api.Facade;
 import com.reposilite.plugin.api.Plugin;
+import com.reposilite.plugin.api.PluginTier;
 import com.reposilite.plugin.api.ReposiliteInitializeEvent;
 import com.reposilite.plugin.api.ReposilitePlugin;
 import org.jetbrains.annotations.Nullable;
@@ -25,7 +26,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Example plugin
  */
-@Plugin(name = "example")
+@Plugin(name = "example", tier = PluginTier.COMMUNITY)
 public final class ExamplePlugin extends ReposilitePlugin {
 
     @Override

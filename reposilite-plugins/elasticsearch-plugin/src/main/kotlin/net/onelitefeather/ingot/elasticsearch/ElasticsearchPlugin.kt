@@ -20,6 +20,7 @@ package net.onelitefeather.ingot.elasticsearch
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendFactory
@@ -32,7 +33,7 @@ import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
  * the search plugin. Selecting it takes the local `searchEngine` setting as well, so an instance that loads the jar keeps the
  * database until it is switched.
  */
-@Plugin(name = "elasticsearch-search", dependencies = ["search"])
+@Plugin(name = "elasticsearch-search", dependencies = ["search"], tier = PluginTier.EXPERIMENTAL)
 class ElasticsearchPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {

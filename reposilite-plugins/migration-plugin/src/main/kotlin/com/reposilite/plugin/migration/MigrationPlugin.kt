@@ -5,6 +5,7 @@ import com.charleskorn.kaml.decodeFromStream
 import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
@@ -20,7 +21,7 @@ import java.nio.file.Path
 import kotlin.io.path.notExists
 import kotlin.io.path.readBytes
 
-@Plugin(name = "migration", dependencies = ["maven"])
+@Plugin(name = "migration", dependencies = ["maven"], tier = PluginTier.OFFICIAL)
 class MigrationPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? {
