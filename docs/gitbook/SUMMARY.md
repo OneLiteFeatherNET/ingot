@@ -37,6 +37,7 @@
   * [Terminate TLS at the gateway](set-up/kubernetes/terminate-tls-at-the-gateway.md)
 * [Network](set-up/network/README.md)
   * [Run behind a reverse proxy](set-up/network/run-behind-reverse-proxy.md)
+  * [Put a CDN in front](set-up/network/put-a-cdn-in-front.md)
   * [Configure the edge for large uploads](set-up/network/configure-the-edge-for-large-uploads.md)
   * [Enable TLS](set-up/network/enable-tls.md)
   * [Restrict network traffic with a NetworkPolicy](set-up/network/restrict-network-traffic.md)
