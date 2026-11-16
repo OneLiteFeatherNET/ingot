@@ -4,8 +4,17 @@
   "properties": {
     "mode": {
       "type": "string",
-      "enum": ["allInOne", "split"],
-      "description": "Deploy mode: allInOne renders one workload, split renders the server and the dashboard."
+      "enum": ["allInOne", "split", "scalable"],
+      "description": "Deploy mode: allInOne renders one workload, split renders the server and the dashboard, scalable renders read, write and worker workloads and the dashboard."
+    },
+    "scalable": {
+      "type": "object",
+      "description": "Replicas, resources and budgets of the read, write and worker workloads in scalable mode.",
+      "properties": {
+        "read": {"$ref": "#/definitions/scalableWorkload"},
+        "write": {"$ref": "#/definitions/scalableWorkload"},
+        "worker": {"$ref": "#/definitions/scalableWorkload"}
+      }
     },
     "image": {
       "type": "object",
@@ -148,6 +157,17 @@
       "type": "object",
       "properties": {
         "enabled": {"type": "boolean"}
+      }
+    }
+  },
+  "definitions": {
+    "scalableWorkload": {
+      "type": "object",
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object"},
+        "autoscaling": {"type": "object", "properties": {"enabled": {"type": "boolean"}}},
+        "podDisruptionBudget": {"type": "object", "properties": {"enabled": {"type": "boolean"}}}
       }
     }
   }

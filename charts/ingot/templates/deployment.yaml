@@ -1,7 +1,19 @@
+{{- $roles := list "" -}}
+{{- if eq .Values.mode "scalable" -}}
+{{- $roles = list "read" "write" "worker" -}}
+{{- end -}}
+{{- range $index, $role := $roles -}}
+{{- if $index }}{{ "\n---\n" }}{{ end -}}
+{{- with $ -}}
+{{- $name := include "ingot.workloadFullname" (dict "root" . "role" $role) -}}
+{{- $cfg := dict -}}
+{{- if $role -}}
+{{- $cfg = index .Values.scalable $role -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "ingot.fullname" . }}
+  name: {{ $name }}
   namespace: {{ .Release.Namespace }}
   annotations:
   {{- with .Values.deployment.annotations }}
@@ -13,12 +25,23 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ default 1 .Values.deployment.replicas }}
+  {{- $autoscaled := .Values.autoscaling.enabled }}
+  {{- if $role }}
+  {{- $autoscaled = and (eq $role "read") (dig "autoscaling" "enabled" false $cfg) }}
+  {{- end }}
+  {{- if not $autoscaled }}
+  {{- $replicas := .Values.deployment.replicas }}
+  {{- if $role }}
+  {{- $replicas = $cfg.replicas }}
+  {{- end }}
+  replicas: {{ default 1 $replicas }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "ingot.selectorLabels" . | nindent 6 }}
+      {{- with $role }}
+      app.kubernetes.io/component: {{ . }}
+      {{- end }}
   strategy:
     type: RollingUpdate
     {{- with .Values.rollingUpdate }}
@@ -37,6 +60,10 @@ spec:
       {{- end }}
       labels:
       {{- include "ingot.labels" . | nindent 8 }}
+      {{- with $role }}
+        app.kubernetes.io/component: {{ . }}
+        ingot.onelitefeather.net/target: {{ ternary "worker" "server" (eq . "worker") }}
+      {{- end }}
       {{- with .Values.deployment.podLabels }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -73,7 +100,11 @@ spec:
         image: {{ include "ingot.serverImage" . | quote }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         stdin: true
-        {{- with .Values.resources }}
+        {{- $resources := .Values.resources }}
+        {{- if $role }}
+        {{- $resources = default .Values.resources $cfg.resources }}
+        {{- end }}
+        {{- with $resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -82,7 +113,7 @@ spec:
             path: {{ include "ingot.readinessProbePath" . }}
             port: {{ include "ingot.probePort" . }}
             scheme: {{ .Values.probes.scheme }}
-          {{- toYaml (ternary .Values.probes.split.readiness .Values.probes.readiness (eq .Values.mode "split")) | nindent 10 }}
+          {{- toYaml (ternary .Values.probes.split.readiness .Values.probes.readiness (has .Values.mode (list "split" "scalable"))) | nindent 10 }}
         livenessProbe:
           httpGet:
             path: {{ include "ingot.serverProbePath" . }}
@@ -113,12 +144,14 @@ spec:
           containerPort: {{ .Values.service.port }}
           protocol: TCP
         volumeMounts:
+          {{- if ne .Values.mode "scalable" }}
           - name: {{ .Values.persistence.name }}
             mountPath: {{ .Values.persistence.path }}
             {{- if .Values.persistence.subPath }}
             subPath: {{ .Values.persistence.subPath }}
             {{- end }}
-          {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled }}
+          {{- end }}
+          {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled (eq .Values.mode "scalable") }}
           - name: ingot-tmp
             mountPath: /tmp
           {{- end }}
@@ -163,16 +196,21 @@ spec:
         {{- end }}
         {{- end }}
         {{- $renderShutdownTimeout := and (gt $drain 0) (not $shutdownTimeoutSet) }}
-        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout $generatedEnv .Values.extraCaCerts.enabled }}
+        {{- $serverEnv := has .Values.mode (list "split" "scalable") }}
+        {{- if or $serverEnv .Values.env $renderShutdownTimeout $generatedEnv .Values.extraCaCerts.enabled }}
         env:
-          {{- if eq .Values.mode "split" }}
+          {{- if $serverEnv }}
           - name: INGOT_TARGET
-            value: "server"
+            value: {{ ternary "worker" "server" (eq $role "worker") | quote }}
           {{- if not $instanceIdSet }}
           - name: INGOT_CLUSTER_INSTANCE_ID
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          {{- end }}
+          {{- if and (eq .Values.mode "scalable") (ne $role "worker") }}
+          - name: INGOT_BACKGROUND_JOBS
+            value: "false"
           {{- end }}
           {{- end }}
           {{- if $renderShutdownTimeout }}
@@ -207,6 +245,7 @@ spec:
         {{- toYaml .Values.deployment.additionalContainers | nindent 6 }}
       {{- end }}
       volumes:
+        {{- if ne .Values.mode "scalable" }}
         - name: {{ .Values.persistence.name }}
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
@@ -214,7 +253,8 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
-        {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled }}
+        {{- end }}
+        {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled (eq .Values.mode "scalable") }}
         - name: ingot-tmp
           emptyDir: {}
         {{- end }}
@@ -265,3 +305,5 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- end }}
+{{- end }}

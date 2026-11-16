@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "split" }}
+{{- if has .Values.mode (list "split" "scalable") }}
 apiVersion: v1
 kind: Service
 metadata:

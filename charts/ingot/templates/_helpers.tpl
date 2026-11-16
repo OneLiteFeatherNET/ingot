@@ -76,6 +76,19 @@ used, so a release migrated with nameOverride and fullnameOverride keeps the nam
 {{- end }}
 
 {{/*
+Name of a server workload. It is the fullname for the one server workload of allInOne and split mode, and the fullname
+with the role appended in scalable mode: read, write or worker. Expects the dictionary keys root and role.
+*/}}
+{{- define "ingot.workloadFullname" -}}
+{{- $name := include "ingot.fullname" .root -}}
+{{- if .role -}}
+{{- printf "%s-%s" $name .role | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Name of the dashboard workload and its Service in split mode.
 */}}
 {{- define "ingot.dashboardFullname" -}}
@@ -169,7 +182,7 @@ Port of the server probes: probes.port when it is set, otherwise service.port, t
 Probe path of the server workload: the server root in allInOne mode, the health endpoint in split mode.
 */}}
 {{- define "ingot.serverProbePath" -}}
-{{- if eq .Values.mode "split" }}
+{{- if has .Values.mode (list "split" "scalable") }}
 {{- .Values.probes.serverPath }}
 {{- else }}
 {{- .Values.probes.path }}
@@ -196,7 +209,7 @@ Otherwise the probe is on in split mode and off in allInOne mode.
 {{- if hasKey .Values.probes.startup "enabled" }}
 {{- .Values.probes.startup.enabled }}
 {{- else }}
-{{- eq .Values.mode "split" }}
+{{- has .Values.mode (list "split" "scalable") }}
 {{- end }}
 {{- end }}
 

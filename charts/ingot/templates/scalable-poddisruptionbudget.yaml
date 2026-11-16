@@ -1,0 +1,21 @@
+{{- if eq .Values.mode "scalable" }}
+{{- range $role := list "read" "write" "worker" }}
+{{- if dig "podDisruptionBudget" "enabled" false (index $.Values.scalable $role) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ingot.workloadFullname" (dict "root" $ "role" $role) }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $role }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "ingot.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $role }}
+{{- end }}
+{{- end }}
+{{- end }}

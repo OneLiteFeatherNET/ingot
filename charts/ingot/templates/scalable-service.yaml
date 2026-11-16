@@ -1,0 +1,23 @@
+{{- if eq .Values.mode "scalable" }}
+{{- range $role := list "read" "write" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ingot.workloadFullname" (dict "root" $ "role" $role) }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $role }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - port: {{ $.Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "ingot.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $role }}
+{{- end }}
+{{- end }}
