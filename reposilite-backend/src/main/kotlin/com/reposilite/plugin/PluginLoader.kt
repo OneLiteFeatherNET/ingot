@@ -17,10 +17,13 @@
 package com.reposilite.plugin
 
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import net.onelitefeather.ingot.plugin.store.PluginStore
 import net.onelitefeather.ingot.plugin.store.StoreEntry
 import net.onelitefeather.ingot.plugin.store.StoreState
+import net.onelitefeather.ingot.plugin.tier.PluginOrigin
+import net.onelitefeather.ingot.plugin.tier.PluginTierResolver
 import kotlin.reflect.full.findAnnotation
 import panda.std.Result.supplyThrowing
 import java.io.File
@@ -49,6 +52,9 @@ class PluginLoader(
     private val storeStates: MutableList<StoreEntry> = mutableListOf()
     private val storePluginIds: MutableSet<String> = mutableSetOf()
 
+    /** The origin of every registered plugin, by plugin id. It decides the effective tier, see [PluginTierResolver]. */
+    private val pluginOrigins: MutableMap<String, PluginOrigin> = mutableMapOf()
+
     /** The outcome of every plugin that the store selected, in selection order, as the status of the store shows it. */
     val storeEntries: List<StoreEntry>
         get() = storeStates.toList()
@@ -58,11 +64,46 @@ class PluginLoader(
 
         val plugins = sortPlugins()
 
+        logPluginList(plugins)
+
+        initializePlugins(plugins)
+    }
+
+    /**
+     * Writes the start log of the loaded plugins. The line of names in chunks of five is unchanged. One INFO line with the
+     * effective tier of each plugin follows it, and then one warning per Experimental plugin and one per Core claim from outside
+     * the image. A tier never changes which plugins load.
+     */
+    internal fun logPluginList(plugins: List<PluginEntry>) {
         plugins.chunked(5).forEach {
             extensions.logger.info(it.joinToString(", ", transform = { (metadata, _) -> metadata.name }))
         }
+        if (plugins.isEmpty()) {
+            return
+        }
 
-        initializePlugins(plugins)
+        val effective = plugins.map { it to effectiveTierOf(it) }
+        extensions.logger.info(effective.joinToString(", ") { (entry, tier) -> "${entry.metadata.name} (${tier.name.lowercase()})" })
+        effective.forEach { (entry, tier) ->
+            val name = entry.metadata.name
+            if (tier == PluginTier.EXPERIMENTAL) {
+                extensions.logger.warn("Plugin $name is EXPERIMENTAL: its API may change or be removed without a major release, and it has no support beyond the public issues.")
+            }
+            if (entry.metadata.tier == PluginTier.CORE && tier == PluginTier.COMMUNITY) {
+                extensions.logger.warn("Plugin $name declares CORE, but it is loaded from outside the image and is shown as COMMUNITY. The plugin is not shipped in the image.")
+            }
+        }
+    }
+
+    private fun effectiveTierOf(entry: PluginEntry): PluginTier {
+        val origin = checkNotNull(pluginOrigins[entry.metadata.name]) { "Plugin ${entry.metadata.name} was not registered by the loader" }
+        return PluginTierResolver.resolve(origin, entry.metadata.tier)
+    }
+
+    /** Registers a plugin and remembers where it came from, so that its effective tier can be computed. */
+    private fun register(plugin: ReposilitePlugin, origin: PluginOrigin) {
+        extensions.registerPlugin(plugin)
+        pluginOrigins[requireNotNull(plugin::class.findAnnotation<Plugin>()).name] = origin
     }
 
     /**
@@ -116,6 +157,10 @@ class PluginLoader(
         check(pluginsDirectory.isDirectory()) { "The path is not a directory" }
         extensions.logger.debug("Plugins directory: ${pluginsDirectory.absolute()}")
 
+        // A service lookup also returns the built-in plugins of the parent loader, so a plugin counts as declared by the
+        // plugins directory only when one of its jars names the class in its own service file.
+        val declaredByPluginJars = declaredByJarsIn(pluginsDirectory)
+
         pluginsDirectory.useDirectoryEntries { pluginDirectoryStream ->
             pluginDirectoryStream
                 .filter { it.extension == "jar" }
@@ -126,7 +171,10 @@ class PluginLoader(
                 .let { URLClassLoader(it.toTypedArray()).also(pluginClassLoaders::add) }
                 .let { ServiceLoader.load(ReposilitePlugin::class.java, it) }
                 .onEach { extensions.logger.debug("Plugin class: $it") }
-                .forEach { extensions.registerPlugin(it) }
+                .forEach {
+                    val origin = if (it::class.java.name in declaredByPluginJars) PluginOrigin.PLUGINS_DIRECTORY else PluginOrigin.BUILT_IN
+                    register(it, origin)
+                }
         }
 
         loadStorePlugins()
@@ -186,7 +234,7 @@ class PluginLoader(
             )
         }
 
-        extensions.registerPlugin(plugin)
+        register(plugin, PluginOrigin.PLUGIN_STORE)
         storePluginIds += name
         return entry
     }
@@ -263,10 +311,30 @@ class PluginLoader(
                 if (extensions.getPlugins().containsKey(name)) {
                     extensions.logger.debug("Bundled plugin $name is not loaded, a plugin with the same id is already registered")
                 } else {
-                    extensions.registerPlugin(plugin)
+                    register(plugin, PluginOrigin.BUNDLED_IMAGE)
                 }
             }
     }
+
+    /** The plugin class names that the jars of [directory] declare in their own service files. */
+    private fun declaredByJarsIn(directory: Path): Set<String> =
+        directory.useDirectoryEntries { entries ->
+            entries
+                .filter { it.extension == "jar" }
+                .flatMap { serviceNamesOf(it) }
+                .toList()
+        }.toSet()
+
+    /** The class names of the plugin service file of [jar], or nothing when the jar has none or cannot be read. */
+    private fun serviceNamesOf(jar: Path): List<String> =
+        runCatching {
+            JarFile(jar.toFile()).use { jarFile ->
+                val service = jarFile.getEntry("META-INF/services/${ReposilitePlugin::class.java.name}") ?: return@use emptyList()
+                jarFile.getInputStream(service).bufferedReader().use { reader ->
+                    reader.readLines().map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
+                }
+            }
+        }.getOrDefault(emptyList())
 
     private fun isBundledJarSwitchedOn(fileName: String): Boolean =
         (BUNDLED_SWITCHES[fileName] ?: METRICS_SWITCH_OF_JAR).isOn(environment)
