@@ -175,10 +175,12 @@ S3, or the storage cache) is a further dimension that is optional and selected b
 
 ## Run budget
 
-One plateau series takes at least 80 minutes (the breakpoint plus five steps of 15 minutes), and a soak adds 2 hours. Six overlays,
-nine scenarios (eight functions and `mix`) and five sizes give 270 series, more than 350 hours of cluster time before any soak.
-Reference values are published only from reference runs. The maintainer chooses the subset with `--topology`, `--scenario` and
-`--size`, and the full sweep runs as a planned batch, not by default.
+One plateau series takes at least 80 minutes (the breakpoint plus five steps of 15 minutes), and a soak adds 2 hours. The published
+reference matrix is the core matrix only: the scenarios `mix`, `resolve` and `deploy`, in every topology overlay (6) and every size
+(5). That is 6 x 3 x 5 = 90 series, about 120 hours of cluster time before any soak. The other scenarios (`resolve-miss`, `metadata`,
+`mirror`, `auth`, `search-browse` and `dashboard`) stay in the suite and run on demand, but their results are never published on the
+reference page. Reference values are published only from reference runs. The maintainer chooses the subset with `--topology`,
+`--scenario` and `--size`.
 
 ## Risks and trade-offs
 

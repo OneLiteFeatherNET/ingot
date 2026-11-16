@@ -178,6 +178,21 @@ taint. The runner SHALL refuse such a run before the install when too few matchi
 - **WHEN** a run without the reference tag is started on shared nodes
 - **THEN** its result record carries `reference: false`
 
+### Requirement: Core reference matrix
+
+The published reference page SHALL cover the core matrix only: the scenarios `mix`, `resolve` and `deploy` in every topology overlay and
+every reference size, 90 series in total. The other scenarios SHALL remain runnable on demand and SHALL NOT be published on the page.
+
+#### Scenario: Core cell published
+
+- **WHEN** a reference record exists for scenario `resolve`, topology `ha` and size `M`
+- **THEN** the reference page has a cell for that topology, size and scenario
+
+#### Scenario: Non-core scenario not published
+
+- **WHEN** a reference record exists for scenario `metadata`
+- **THEN** the reference page contains no cell for `metadata`
+
 ### Requirement: Result records and reference capacities page
 
 Each reference run SHALL write one JSON record under `loadtest/results/<ingot_version>/` with the Ingot version, topology, pod size, storage

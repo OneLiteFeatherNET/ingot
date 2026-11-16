@@ -38,7 +38,8 @@ and the server metrics behind them are read side by side.
 - **Metrics.** k6 writes to Mimir through the `experimental-prometheus-rw` output with native histograms. Server metrics come from
   the existing Prometheus plugin, labelled by pod.
 - **Reference runs and published values.** A reference run needs nodes labelled for load tests and writes a result record checked
-  in under `loadtest/results/`. A non-reference run may share nodes and is never published.
+  in under `loadtest/results/`. A non-reference run may share nodes and is never published. The published reference matrix is the core matrix only:
+  `mix`, `resolve` and `deploy` in every topology and every size. The other scenarios run on demand and are never published.
 - **A Grafana dashboard** `loadtest/grafana/ingot-load-tests.json`, checked in, with the variables `testid`, `topology`, `scenario` and
   `size`.
 - **Documentation.** A how-to `docs/gitbook/contributing/run-the-load-tests.md` and a generated page
@@ -69,15 +70,23 @@ tests sees no difference.
 
 ## Conventional Commits and pull requests
 
-The change ships under one type and scope, `test(load)`, so it is one change and not two.
+The change ships under one type and scope, `test(load)`, so it is one change and not two. The code is split into a stack of small
+pull requests, about 400 lines each, all under `test(load)`. Each one is based on the branch of the one before it and is retargeted to
+`main` when its predecessor is merged. In order:
 
 1. Proposal pull request `docs(openspec): propose add-load-tests`: only the files under `openspec/changes/add-load-tests/`, tasks
    unchecked, branched from the remote main branch.
-2. Code pull request `test(load): add k6 load tests for every deployment shape`: the `loadtest/` directory and the documentation
-   page, no file under `openspec/`, branched from the remote main branch after the proposal is merged.
+2. `test(load): add the typescript scaffolding for k6 load tests`
+3. `test(load): add the resolve, deploy and mix scenarios`
+4. `test(load): add the remaining function scenarios`
+5. `test(load): add the capacity search profiles`
+6. `test(load): add the topology overlays and the upstream mock`
+7. `test(load): add the k6-operator runner`
+8. `test(load): add the load test grafana dashboard`
+9. `test(load): add result records and the reference capacities page`
 
-The `scalable` topology depends on the `scalable` chart mode of the change `add-worker-target`. That dependency is named in
-design.md and tasks.md. The other topologies do not wait for it.
+No pull request in the stack touches a file under `openspec/`. The `scalable` topology depends on the `scalable` chart mode of the change
+`add-worker-target`. Its overlays follow that change, see task 5.2 of tasks.md. The other topologies do not wait for it.
 
 ## Impact
 
