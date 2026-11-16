@@ -4,6 +4,8 @@ description: Set up the Meilisearch search backend of an Ingot cluster step by s
 
 # Use Meilisearch for search
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 This guide moves the artifact search of an Ingot cluster from the database to a Meilisearch server. The image does not contain the plugin. You install `meilisearch-plugin.jar` yourself, and the server then offers the id `meilisearch`. The settings and the named exceptions of the backend are in the [Meilisearch reference](../../references/settings/meilisearch-search-backend.md). The way the backends are chosen and switched is in [Choose a search backend](choose-a-search-backend.md).
 
 {% hint style="warning" %}

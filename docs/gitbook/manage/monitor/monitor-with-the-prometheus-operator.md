@@ -4,6 +4,8 @@ description: Scrape the metrics of Ingot with a Prometheus Operator ServiceMonit
 
 # Monitor with the Prometheus Operator
 
+Tier: [Core](../../references/plugins/plugin-tiers.md#core)
+
 The Helm chart can render three monitoring objects for the server: a ServiceMonitor that scrapes the metrics, a PrometheusRule with six base alerts, and three Grafana dashboards. All three are off by default. The metrics come from the Prometheus plugin, which the image ships. This page turns the objects on in the order they depend on each other. The metric names and the meaning of each one are in [Monitor status and failures](monitor-status-and-failures.md#scrape-prometheus-metrics-optional).
 
 ## Before you begin

@@ -4,6 +4,8 @@ description: Set up the OpenSearch search backend of an Ingot cluster step by st
 
 # Use OpenSearch for search
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 This guide moves the artifact search of an Ingot cluster from the database to an OpenSearch cluster. It assumes the server image, which ships the plugin, and an OpenSearch 2.x cluster that you run. The settings of the plugin are in the [OpenSearch reference](../../references/settings/opensearch-search-backend.md). The way the backends are chosen and switched is in [Choose a search backend](choose-a-search-backend.md).
 
 {% hint style="warning" %}

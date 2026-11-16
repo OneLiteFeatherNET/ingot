@@ -4,6 +4,8 @@ description: Reference for the Meilisearch search backend of Ingot, the variable
 
 # Meilisearch search backend
 
+Tier: [Experimental](../plugins/plugin-tiers.md#experimental)
+
 The Meilisearch backend answers artifact search from a Meilisearch server. It is an experimental plugin. It is not part of the image: install `meilisearch-plugin.jar` into the plugins directory, or from the plugin store once it exists, and set `searchEngine` to `meilisearch`. Without the jar, nothing of this backend runs.
 
 ## Known differences from the database backend
