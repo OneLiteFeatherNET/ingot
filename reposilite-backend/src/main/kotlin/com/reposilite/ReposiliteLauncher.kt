@@ -18,6 +18,7 @@ package com.reposilite
 import com.reposilite.configuration.generateRequestedConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFileException
 import net.onelitefeather.ingot.backup.runDatabaseSnapshot
+import net.onelitefeather.ingot.deploy.BackgroundJobsSettingException
 import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
 import net.onelitefeather.ingot.deploy.toStartupRefusal
 import net.onelitefeather.ingot.logging.LogSettingsRefusal
@@ -35,6 +36,11 @@ fun main(args: Array<String>) {
         createFromParameters(parameters)?.launch()
     } catch (exception: UnknownDeployTargetException) {
         // A refused target is an operator error, so it ends the process with one line and no stack trace.
+        val refusal = exception.toStartupRefusal()
+        System.err.println(refusal.line)
+        exitProcess(refusal.exitCode)
+    } catch (exception: BackgroundJobsSettingException) {
+        // An invalid background jobs switch is an operator error too: one line and exit code 1, like the target.
         val refusal = exception.toStartupRefusal()
         System.err.println(refusal.line)
         exitProcess(refusal.exitCode)

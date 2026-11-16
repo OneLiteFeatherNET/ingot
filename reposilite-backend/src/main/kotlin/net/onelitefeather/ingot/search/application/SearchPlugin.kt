@@ -29,8 +29,11 @@ import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposilitePostInitializeEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import com.reposilite.plugin.reposilite
+import net.onelitefeather.ingot.deploy.BackgroundJobGate
+import net.onelitefeather.ingot.deploy.SingletonJob
 import com.reposilite.status.FailureFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.token.AccessTokenFacade
@@ -181,8 +184,11 @@ internal class SearchPlugin : ReposilitePlugin() {
         }, BACKEND_TICK_SECONDS, BACKEND_TICK_SECONDS, SECONDS)
         event { _: ReposiliteDisposeEvent -> tick.cancel(false) }
         if (live != null) {
-            schedulePolling(live.worker, runtime, stopped, live.paused)
-            scheduleRuns(live.rebuild, live.verify, live.sweep, runtime)
+            // Only an instance that runs the background jobs drains the outbox and ticks the schedulers. The one tick of
+            // scheduleRuns also runs verify and the token sweep, so the rebuild job names the whole tick.
+            val gate = BackgroundJobGate(parameters().backgroundJobsEnabled)
+            gate.submit(SingletonJob.SEARCH_OUTBOX) { schedulePolling(live.worker, runtime, stopped, live.paused) }
+            gate.submit(SingletonJob.SEARCH_REBUILD) { scheduleRuns(live.rebuild, live.verify, live.sweep, runtime) }
         }
         return Started(runtime, live?.handle)
     }
