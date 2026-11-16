@@ -24,10 +24,12 @@ import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.CreateAccessTokenRequest
 import net.onelitefeather.ingot.deploy.DeployTarget
+import net.onelitefeather.ingot.deploy.SingletonJob
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 
 @Command(name = "ingot", version = ["Ingot $VERSION"])
 class ReposiliteParameters : Runnable {
@@ -148,6 +150,9 @@ class ReposiliteParameters : Runnable {
      * property and the environment. See [net.onelitefeather.ingot.deploy.BackgroundJobsSetting].
      */
     var backgroundJobsEnabled: Boolean = true
+
+    /** The singleton jobs this instance submitted through its [net.onelitefeather.ingot.deploy.BackgroundJobGate]s. */
+    val submittedSingletonJobs: MutableSet<SingletonJob> = ConcurrentHashMap.newKeySet()
 
     @Option(names = ["--disable-interactive-console", "--disable-it"], description = ["Disable interactive console"])
     var disableInteractiveConsole = false
