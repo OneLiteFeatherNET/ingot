@@ -72,11 +72,11 @@ no shared mutable state, assertions with messages. Test runs are targeted and us
   implemented (nodes, parents, catalog, templates, check, DTO summaries, `/api/auth/me`, token `nodes`), the migration 002
   behaviour and the downgrade note, and mark O-4 and O-8 as changed where they are. Verify: every path and field in the
   section matches a route in `IdentityApiEndpoints.kt`.
-- [ ] 7.2 `docs(identity)`: note in the upgrade notes that a downgrade to a build without this change does not see node rights.
+- [x] 7.2 `docs(identity)`: note in the upgrade notes that a downgrade to a build without this change does not see node rights.
   Verify: the note is in the same place as the migration 001 downgrade note. Operator-facing text only, no internal details.
 
 ## 8. Pull request
 
-- [ ] 8.1 Open the pull request with the title `feat(identity): add permission nodes` and a body that names the spec section
+- [x] 8.1 Open the pull request with the title `feat(identity): add permission nodes` and a body that names the spec section
   7.6 and the login provider changes listed in `design.md`. Verify: the title passes the commit-style hook and contains no
   attribution line.
