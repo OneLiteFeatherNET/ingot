@@ -999,6 +999,13 @@
           "readOnlySource" : {
             "type" : "string"
           },
+          "signIn" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/SignInStatusResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "uptime" : {
             "format" : "int64",
             "type" : "integer"
@@ -2338,6 +2345,45 @@
             "type" : "boolean"
           }
         },
+        "type" : "object"
+      },
+      "SignInOutcomeCounts" : {
+        "properties" : {
+          "failed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "succeeded" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "throttled" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "succeeded", "failed", "throttled" ],
+        "type" : "object"
+      },
+      "SignInStatusResponse" : {
+        "properties" : {
+          "basic" : {
+            "$ref" : "#/components/schemas/SignInOutcomeCounts"
+          },
+          "bearer" : {
+            "$ref" : "#/components/schemas/SignInOutcomeCounts"
+          },
+          "console" : {
+            "$ref" : "#/components/schemas/SignInOutcomeCounts"
+          },
+          "dashboard" : {
+            "$ref" : "#/components/schemas/SignInOutcomeCounts"
+          },
+          "mfa" : {
+            "$ref" : "#/components/schemas/SignInOutcomeCounts"
+          }
+        },
+        "required" : [ "dashboard", "basic", "bearer", "console", "mfa" ],
         "type" : "object"
       },
       "StartedRunResponse" : {
