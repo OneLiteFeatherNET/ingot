@@ -1048,9 +1048,9 @@ class ScalableCiValuesTest(unittest.TestCase):
 
     def test_ci_scalable_values_render_the_read_write_and_worker_deployments(self):
         code, stdout, stderr = helm(
-            ["template", RELEASE, CHART_DIR, "--namespace", NAMESPACE, "-f", os.path.join(CHART_DIR, "ci", "scalable-values.yaml")]
+            ["template", RELEASE, CHART_DIR, "--namespace", NAMESPACE, "-f", os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")]
         )
-        self.assertEqual(0, code, f"ci/scalable-values.yaml must render with the refusals passing: {stderr}")
+        self.assertEqual(0, code, f"tests/scalable/values.yaml must render with the refusals passing: {stderr}")
         names = {doc["metadata"]["name"] for doc in yaml.safe_load_all(stdout) if doc and doc.get("kind") == "Deployment"}
         self.assertLessEqual({"ingot-read", "ingot-write", "ingot-worker"}, names,
                              "the scalable CI values must render the three server workloads")
