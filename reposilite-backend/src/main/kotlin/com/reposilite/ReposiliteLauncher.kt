@@ -19,6 +19,7 @@ import com.reposilite.configuration.generateRequestedConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFileException
 import net.onelitefeather.ingot.backup.runDatabaseSnapshot
 import net.onelitefeather.ingot.deploy.BackgroundJobsSettingException
+import net.onelitefeather.ingot.deploy.SharedStateRefusalException
 import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
 import net.onelitefeather.ingot.deploy.toStartupRefusal
 import net.onelitefeather.ingot.logging.LogSettingsRefusal
@@ -44,6 +45,10 @@ fun main(args: Array<String>) {
         val refusal = exception.toStartupRefusal()
         System.err.println(refusal.line)
         exitProcess(refusal.exitCode)
+    } catch (exception: SharedStateRefusalException) {
+        // A worker or a server without its jobs needs shared state: one line naming every missing requirement, exit code 1.
+        System.err.println(exception.refusal.line)
+        exitProcess(exception.refusal.exitCode)
     } catch (exception: LocalConfigurationFileException) {
         // An unreadable secret file is an operator error too: one line naming the variable and the path, and the same exit code.
         System.err.println("Ingot did not start: ${exception.message}")

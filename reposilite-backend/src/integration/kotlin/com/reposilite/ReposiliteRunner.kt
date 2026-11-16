@@ -121,6 +121,44 @@ internal abstract class ReposiliteRunner {
     /** Runs once the instance is built and before it launches, for listeners and routes the test adds. */
     protected open fun beforeLaunch(reposilite: Reposilite) { }
 
+    /**
+     * Whether the shared database gets the object storage of this test before the instance starts. The start check of a worker
+     * reads the repositories while the instance is created, before a test can change them, so the storage is written first.
+     * The default is off, so every other test starts exactly the instance it asks for.
+     */
+    protected open fun seedsSharedStorage(): Boolean = false
+
+    /**
+     * Writes the storage of this test into the shared configuration of the database, through a server of the default target
+     * on the same database, the way the operator's configuration reaches the database. That server is stopped before the
+     * instance under test is created.
+     */
+    private fun seedSharedStorage(logger: Logger) {
+        val parameters = ReposiliteParameters()
+        parameters.tokenEntries = arrayOf("${DEFAULT_TOKEN.first}:${DEFAULT_TOKEN.second}")
+        parameters.workingDirectoryName = reposiliteWorkingDirectory.absolutePath
+        parameters.testEnv = true
+        parameters.port = 0
+        parameters.database = _database
+        parameters.tokenHashStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH
+        parameters.run()
+
+        val storage = requireNotNull(_storageProvider) { "Missing storage provider for the seeded shared configuration" }
+        val seeding = ReposiliteFactory.createReposilite(parameters, logger)
+        try {
+            assertOk(seeding.launch())
+            val configuration = seeding.extensions.facade<SharedConfigurationFacade>()
+            val current = configuration.getDomainSettings<MavenSettings>().get()
+            val stored = configuration.updateSharedSettings(
+                "maven",
+                current.copy(repositories = current.repositories.map { it.copy(storageProvider = storage) }),
+            )
+            check(stored?.isOk == true) { "The seeded storage was not stored in the shared configuration: ${stored?.error}" }
+        } finally {
+            seeding.shutdown()
+        }
+    }
+
     private fun prepareInstance(logger: Logger): Result<Reposilite, Exception> {
         val parameters = ReposiliteParameters()
         parameters.tokenEntries = arrayOf("${DEFAULT_TOKEN.first}:${DEFAULT_TOKEN.second}")
@@ -139,6 +177,10 @@ internal abstract class ReposiliteRunner {
 
         overrideLocalConfiguration(localConfiguration)
         KCdnFactory.createStandard().render(localConfiguration, Source.of(reposiliteWorkingDirectory.resolve(LOCAL_CONFIGURATION_FILE)))
+
+        if (seedsSharedStorage()) {
+            seedSharedStorage(logger)
+        }
 
         reposilite = ReposiliteFactory.createReposilite(
             parameters,

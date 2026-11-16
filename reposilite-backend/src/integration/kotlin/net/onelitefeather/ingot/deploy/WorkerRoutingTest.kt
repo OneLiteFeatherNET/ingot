@@ -18,37 +18,46 @@
 
 package net.onelitefeather.ingot.deploy
 
-import com.reposilite.RecommendedLocalSpecificationJunitExtension
-import com.reposilite.Reposilite
+import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteParameters
 import com.reposilite.ReposiliteSpecification
+import com.reposilite.SharedContainers
+import com.reposilite.maven.api.LookupRequest
+import com.reposilite.storage.api.toLocation
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.AfterEachCallback
+import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtendWith
-import java.io.File
+import org.junit.jupiter.api.extension.Extension
+import org.junit.jupiter.api.extension.ExtensionContext
 import kong.unirest.core.Unirest.get
 import kong.unirest.core.Unirest.put
 
 /**
  * An instance started with the deploy target `worker` answers the probes and nothing else that serves repositories or the
- * dashboard. Each test boots an instance of its own, so no test depends on another one.
+ * dashboard. A worker only starts with shared state, so the test runs on MariaDB, on S3 storage and on the Valkey cluster bus.
+ * Each test boots an instance of its own, so no test depends on another one.
  */
-@ExtendWith(RecommendedLocalSpecificationJunitExtension::class)
+@ExtendWith(RecommendedRemoteSpecificationJunitExtension::class, ValkeyClusterBusJunitExtension::class)
 internal class WorkerRoutingTest : ReposiliteSpecification() {
 
     private val artifactPath = "/releases/org/example/lib/1.0/lib-1.0.jar"
+    private val artifactGav = "org/example/lib/1.0/lib-1.0.jar"
 
     override fun overrideParameters(parameters: ReposiliteParameters) {
         parameters.target = "worker"
     }
 
-    /** The artifact exists before the instance starts, so a download that is served would answer 200. */
-    override fun beforeLaunch(reposilite: Reposilite) {
-        File(reposiliteWorkingDirectory, "repositories$artifactPath").apply {
-            parentFile.mkdirs()
-            writeText(ORIGINAL_CONTENT)
-        }
+    /** The worker check reads the repositories while the instance is created, so they are on object storage from the start. */
+    override fun seedsSharedStorage(): Boolean = true
+
+    /** The artifact exists before each test, so a download that is served would answer 200. */
+    @BeforeEach
+    fun storeArtifact() {
+        useDocument("releases", "org/example/lib/1.0", "lib-1.0.jar", ORIGINAL_CONTENT, store = true)
     }
 
     @Test
@@ -88,7 +97,7 @@ internal class WorkerRoutingTest : ReposiliteSpecification() {
         val response = put("$base$artifactPath").basicAuth(name, secret).body("artifact").asString()
 
         assertThat(response.status).describedAs("status of PUT $artifactPath on target worker").isEqualTo(404)
-        assertThat(File(reposiliteWorkingDirectory, "repositories$artifactPath").readText())
+        assertThat(storedArtifact())
             .describedAs("the stored artifact is left as it was on target worker")
             .isEqualTo(ORIGINAL_CONTENT)
     }
@@ -109,8 +118,36 @@ internal class WorkerRoutingTest : ReposiliteSpecification() {
         assertThat(response.status).describedAs("status of GET / on target worker").isEqualTo(404)
     }
 
+    /** Reads the artifact through the facade, because the worker serves no repository over HTTP to read it back. */
+    private fun storedArtifact(): String =
+        mavenFacade.findFile(LookupRequest(accessToken = null, repository = "releases", gav = artifactGav.toLocation()))
+            .also { assertThat(it.isOk).describedAs("the artifact is stored on the shared storage").isTrue }
+            .get()
+            .content
+            .readAllBytes()
+            .decodeToString()
+
     private companion object {
         const val ORIGINAL_CONTENT = "original artifact"
+    }
+
+}
+
+/**
+ * Points the cluster bus of the instance at the shared Valkey broker, because a worker refuses to start without a bus. The
+ * bus URL is read from the system property `ingot.cluster.url` when the instance starts, so the property is set for the
+ * length of the test only. The cluster integration test reads the same property, and the tests of one JVM run one after
+ * another.
+ */
+internal class ValkeyClusterBusJunitExtension : Extension, BeforeEachCallback, AfterEachCallback {
+
+    override fun beforeEach(context: ExtensionContext) {
+        val valkey = SharedContainers.valkey
+        System.setProperty("ingot.cluster.url", "valkey://${valkey.host}:${valkey.getMappedPort(SharedContainers.VALKEY_PORT)}")
+    }
+
+    override fun afterEach(context: ExtensionContext) {
+        System.clearProperty("ingot.cluster.url")
     }
 
 }
