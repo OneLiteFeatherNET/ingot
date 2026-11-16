@@ -191,3 +191,13 @@ describe('reduced motion rule in the stylesheets', () => {
     expect(count, 'the prefers-reduced-motion rule appears once, in the base layer of src/style.css').toBe(1)
   })
 })
+
+describe('scrollbar gutter of the root element', () => {
+  // Every rule whose selector is the root element, `html`. Its declarations decide whether a page that gains a
+  // vertical scrollbar moves the layout beside it.
+  const rootRules = [...stylesheet.matchAll(/^\s*html\s*\{/gm)].map((match) => blockAt(stylesheet, match.index))
+
+  it('sets scrollbar-gutter to stable on the root element', () => {
+    expect(rootRules.join('\n'), 'a declaration scrollbar-gutter: stable in a rule for html').toContain('scrollbar-gutter: stable')
+  })
+})

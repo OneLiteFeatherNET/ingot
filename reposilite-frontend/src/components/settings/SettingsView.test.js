@@ -444,3 +444,21 @@ describe('SettingsView driven by the router', () => {
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
   })
 })
+
+describe('SettingsView while the configuration loads', () => {
+  it('reserves the height of the first row of the page on the loading line, so the page does not jump when it loads', () => {
+    // Mounted without waiting for the fetch, so the first render is the one the visitor sees while the settings load.
+    wrapper = mount(SettingsView, {
+      props: { selectedTab: 'Settings' },
+      global: {
+        plugins: [namedRouter()],
+        provide: { [configurationStoreKey]: createConfigurationStore(ref(fakeClient())) }
+      },
+      attachTo: document.body
+    })
+
+    const loading = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Loading configuration')
+    expect(loading, 'the loading line is drawn before the configuration is loaded').toBeDefined()
+    expect(loading.classes(), 'a 48 pixel minimum height, the height of the first row of the frame').toContain('min-h-12')
+  })
+})

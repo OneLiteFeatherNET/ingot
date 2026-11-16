@@ -391,3 +391,71 @@ test.describe('the bottom navigation bar at phone width', () => {
     expect(results.violations.map(violation => violation.id), 'no label-in-name violation in the bar').toEqual([])
   })
 })
+
+// The header of the administration pages keeps its height and the frame keeps its left edge when the page changes, so
+// the side navigation and the heading do not jump between an Overview, an entry page, a list and a detail page.
+test.describe('the administration header does not move between pages', () => {
+  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] > header')
+  const boxOf = (locator) => locator.evaluate(element => {
+    const { top, left, height } = element.getBoundingClientRect()
+    return { top, left, height }
+  })
+
+  for (const width of [600, 1440]) {
+    test(`keeps the header the same height on Overview, an entry, a list and a detail page at ${width} pixels`, async ({ adminPage: page, seed }) => {
+      const detail = await seed.repository('header-detail')
+      await page.setViewportSize({ width, height: 900 })
+
+      const heights = {}
+      for (const [name, path] of [
+        ['Overview', '/settings'],
+        ['entry', '/settings/audit'],
+        ['list', '/settings/repositories'],
+        ['detail', `/settings/repositories/${detail}`]
+      ]) {
+        await page.goto(siteUrl(path))
+        await expect(page.getByRole('heading', { level: 1 }), `the ${name} page has its heading`).toBeVisible()
+        heights[name] = (await boxOf(frameHeader(page))).height
+      }
+
+      const overviewHeight = heights.Overview
+      for (const [name, height] of Object.entries(heights)) {
+        expect(Math.abs(height - overviewHeight), `the header of the ${name} page is as high as the Overview header`).toBeLessThanOrEqual(0.5)
+      }
+    })
+  }
+
+  test('draws the side navigation at the top edge of the page content at 1440 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/settings/audit'))
+    const navigation = page.getByRole('navigation', { name: 'Administration', exact: true })
+    const content = page.locator('[data-ingot-part="page"]')
+    await expect(content).toBeVisible()
+
+    const navTop = (await boxOf(navigation)).top
+    const contentTop = (await boxOf(content)).top
+    expect(Math.abs(navTop - contentTop), 'the side navigation and the page content start on one line').toBeLessThanOrEqual(0.5)
+  })
+
+  test('keeps the left edge of the frame the same with and without a vertical scrollbar at 1440 pixels', async ({ adminPage: page, seed }) => {
+    for (let index = 0; index < FILLER_REPOSITORIES; index++) {
+      await seed.repository(`gutter-filler-${index}`)
+    }
+    await page.setViewportSize({ width: 1440, height: 600 })
+
+    await page.goto(siteUrl('/settings/repositories'))
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    const withScrollbar = await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight)
+    expect(withScrollbar, 'the precondition: the repositories page scrolls').toBe(true)
+    const leftWith = (await boxOf(frameHeader(page))).left
+
+    await page.setViewportSize({ width: 1440, height: 2000 })
+    await page.goto(siteUrl('/settings/audit'))
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    const withoutScrollbar = await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight)
+    expect(withoutScrollbar, 'the precondition: the audit settings page does not scroll').toBe(false)
+    const leftWithout = (await boxOf(frameHeader(page))).left
+
+    expect(Math.abs(leftWith - leftWithout), 'the frame does not shift when the scrollbar appears or goes').toBeLessThanOrEqual(0.5)
+  })
+})
