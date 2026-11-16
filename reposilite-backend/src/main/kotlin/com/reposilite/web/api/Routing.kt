@@ -45,6 +45,8 @@ class ReposiliteRoute<R>(
     vararg val methods: Route,
     /** Largest request body the route reads; a larger one is answered with 413 before the handler runs. */
     val bodyLimit: Long? = null,
+    /** Kept on the worker deploy target, which serves only the status probes and the metrics. */
+    val servesWorker: Boolean = false,
     val handler: ContextDsl<R>.() -> Unit
 ) {
 

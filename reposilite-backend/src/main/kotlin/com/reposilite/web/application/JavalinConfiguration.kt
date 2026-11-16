@@ -28,6 +28,8 @@ import com.reposilite.web.api.HttpServerConfigurationEvent
 import io.javalin.http.Header
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.deploy.DeployTarget
+import net.onelitefeather.ingot.deploy.WorkerRoutes
 import net.onelitefeather.ingot.logging.AccessLogHandler
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
@@ -96,7 +98,10 @@ internal object JavalinConfiguration {
         configureSSL(reposilite, localConfiguration, config)
         configureCors(config)
         configureSecurityHeaders(config)
-        configureOpenApi(config, frontendSettings.get())
+        // The worker serves no API documentation either, so the OpenAPI route is not registered there
+        if (reposilite.parameters.deployTarget != DeployTarget.WORKER) {
+            configureOpenApi(config, frontendSettings.get())
+        }
         configureDebug(reposilite, localConfiguration, config)
         configureRoutingPlugin(config, reposilite)
         configureRequestLimit(reposilite, localConfiguration, config)
@@ -151,6 +156,7 @@ internal object JavalinConfiguration {
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))
             .getRoutes()
+            .let { WorkerRoutes.restrict(it, reposilite.parameters.deployTarget) }
             .asSequence()
             .flatMap { it.toDslRoutes() }
             .distinctBy { "${it.method.name}:${it.path}" }

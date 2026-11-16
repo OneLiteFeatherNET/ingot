@@ -42,6 +42,7 @@ import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
 import net.onelitefeather.ingot.cluster.ClusterSettings
 import net.onelitefeather.ingot.cluster.ClusterSources
+import net.onelitefeather.ingot.deploy.DeployTarget
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.web.TrustedProxies
 
@@ -97,6 +98,8 @@ internal class ConsolePlugin : ReposilitePlugin() {
         }
 
         event { event: HttpServerInitializationEvent ->
+            // The worker serves no console, so its socket and log stream are not registered there
+            if (parameters().deployTarget == DeployTarget.WORKER) return@event
             event.config.routes.ws(
                 "/api/console/sock",
                 ConsoleWebSocketHandler(
