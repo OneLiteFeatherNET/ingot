@@ -44,6 +44,28 @@ class AuditDecisionSink(private val facade: AuditFacade) : DecisionSink {
 enum class RecordOutcome { OFF, QUEUED, DROPPED, STORED, FAILED }
 
 /**
+ * Where the authorization chain hands its decision records. [enabled] is checked before a record is built, so that the
+ * mode `off` builds none. [record] reports a failed store as [RecordOutcome.FAILED] instead of throwing it.
+ */
+interface DecisionLog {
+
+    val enabled: Boolean
+
+    fun record(record: DecisionRecord): RecordOutcome
+
+    companion object {
+
+        /** The log of the mode `off`: it is never enabled and stores nothing. */
+        val Off: DecisionLog = object : DecisionLog {
+            override val enabled: Boolean = false
+            override fun record(record: DecisionRecord): RecordOutcome = RecordOutcome.OFF
+        }
+
+    }
+
+}
+
+/**
  * Keeps decision records in the mode of [DecisionLogSettings]. In `async` mode, [record] only offers the record to a
  * bounded queue and a single daemon writer stores it, so the request is never delayed by the writer. A full queue drops
  * the record and counts it. The counts are logged at most once per minute while they change.
@@ -54,7 +76,7 @@ class DecisionRecorder(
     private val logger: Logger,
     private val clock: Clock,
     capacity: Int = DEFAULT_CAPACITY,
-) : AutoCloseable {
+) : AutoCloseable, DecisionLog {
 
     private val queue = ArrayBlockingQueue<DecisionRecord>(capacity)
     private val dropped = AtomicLong()
@@ -79,14 +101,14 @@ class DecisionRecorder(
         }
 
     /** False in `off` mode. The caller checks it before it builds a record, so that `off` allocates none. */
-    val enabled: Boolean
+    override val enabled: Boolean
         get() = mode != DecisionLogMode.OFF
 
     /** Records that did not fit into the queue since the start. */
     fun droppedCount(): Long =
         dropped.get()
 
-    fun record(record: DecisionRecord): RecordOutcome =
+    override fun record(record: DecisionRecord): RecordOutcome =
         when (mode) {
             DecisionLogMode.OFF -> RecordOutcome.OFF
             DecisionLogMode.SYNC -> storeNow(record)

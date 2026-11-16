@@ -27,24 +27,46 @@ internal class AuthorizationChain(
     private val builtIn: Authorizer,
     private val bindings: List<Authorizer> = emptyList(),
     private val plugins: List<Authorizer> = emptyList(),
+    /** Receives every denial and every write decision. The mode off makes it a no-op that builds nothing. */
+    private val decisions: DecisionTrail = DecisionTrail.OFF,
 ) {
 
     fun decide(request: AuthorizationRequest): AuthorizationOutcome {
-        if (request.subject.disabled) return AuthorizationOutcome(allowed = false, decision = request.refusal())
+        if (request.subject.disabled) {
+            return observed(request, AuthorizationOutcome(allowed = false, decision = request.refusal()), STAGE_DISABLED)
+        }
 
         var lastOpinion = request.refusal()
         for (stage in restrictions + builtIn + bindings + plugins) {
             when (val answer = stage.decide(request)) {
-                is AuthorizerDecision.Allow -> return AuthorizationOutcome(allowed = true, decision = answer.decision)
-                is AuthorizerDecision.Deny -> return AuthorizationOutcome(allowed = false, decision = answer.decision)
+                is AuthorizerDecision.Allow ->
+                    return observed(request, AuthorizationOutcome(allowed = true, decision = answer.decision), stageName(stage))
+                is AuthorizerDecision.Deny ->
+                    return observed(request, AuthorizationOutcome(allowed = false, decision = answer.decision), stageName(stage))
                 is AuthorizerDecision.NoOpinion -> answer.decision?.let { lastOpinion = it }
             }
         }
-        return AuthorizationOutcome(allowed = false, decision = lastOpinion)
+        return observed(request, AuthorizationOutcome(allowed = false, decision = lastOpinion), STAGE_DEFAULT)
     }
 
+    private fun observed(request: AuthorizationRequest, outcome: AuthorizationOutcome, stage: String): AuthorizationOutcome {
+        if (decisions.enabled) {
+            decisions.observe(request, outcome, stage)
+        }
+        return outcome
+    }
+
+    private fun stageName(stage: Authorizer): String =
+        if (stage === builtIn) STAGE_BUILT_IN else STAGE_EXTENSION
+
     companion object {
+        private const val STAGE_DISABLED = "disabled"
+        private const val STAGE_BUILT_IN = "built-in"
+        private const val STAGE_EXTENSION = "extension"
+        private const val STAGE_DEFAULT = "default"
+
         /** The chain of the running system: no restrictions, bindings or plugins yet, and the built-in evaluator. */
-        fun standard(): AuthorizationChain = AuthorizationChain(builtIn = BuiltInAuthorizer)
+        fun standard(decisions: DecisionTrail = DecisionTrail.OFF): AuthorizationChain =
+            AuthorizationChain(builtIn = BuiltInAuthorizer, decisions = decisions)
     }
 }

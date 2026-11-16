@@ -156,4 +156,6 @@ data class AccessSubject(
     /** The node list of the token; null when the token does not narrow its owner. */
     val tokenRules: List<SourcedRule>?,
     val teams: List<String> = emptyList(),
+    /** The name of the token that carries the request, never its secret. Null for a session or an unnamed token. */
+    val credentialName: String? = null,
 )
