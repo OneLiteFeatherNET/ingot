@@ -23,7 +23,7 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/browse` and `/browse/<path>` | `browse` | Repositories section. Shows the folder listing of the repository path. `/browse` alone shows the repository list. | Everyone, no sign-in needed. | Router (`/browse/:qualifier(.*)*`) and Backend (`/browse`, `/browse/<path>`) |
 | `/search` | `search` | Search. The artifact search. The query is kept in the address. | Everyone, no sign-in needed. | Router and Backend |
 | `/account` | `account` | My account. Profile, password and the tokens the user created. | Signed-in principals. Client-side only: the page shows a sign-in prompt to a visitor. | Router and Backend |
-| `/dashboard` | `dashboard` | Dashboard. Sections **Instance status** and **Resources**, and a getting started card. A banner names read-only mode while it is on. The switch is on the Maintenance page, not here. | Node `ingot.admin.dashboard`. | Router and Backend |
+| `/dashboard` | `dashboard` | Retired. Redirects to Overview (`/settings`), keeping the query and the hash, and replaces the history entry. The instance status, the resources and the getting started card are on Overview; a banner names read-only mode while it is on. | None of its own: Overview asks for the node `ingot.admin.dashboard` for the status. | Router (redirect). The server still answers the path with the app shell, since the segment stays reserved. |
 | `/analytics` | `analytics` | Analytics. Section **Traffic**: the resolved requests per repository over time. | Node `ingot.admin.dashboard`. | Router and Backend |
 | `/access` | `access` | No page of its own. When the user may open exactly one Access page, the address is replaced with that page. Otherwise a screen of 600px or more is forwarded to the first of **Users**, **Machine accounts** or **Teams** that the user may open (or to **Users** if none matches), and a narrower screen shows the index of the Access pages. | Any one of `ingot.admin.users`, `ingot.admin.tokens`, `ingot.admin.teams`. | Router and Backend (`/access`) |
 | `/access/users` | `access-users` | Access, tab **Users**. | Node `ingot.admin.users`. | Router. Backend (`/access/<path>`) |
@@ -59,7 +59,7 @@ Rules for the "Who can open it" column:
 * A node is allowed when an entry of the session's node list equals it, or matches it with `*` in place of a segment. A lone `*` entry allows every node. The check is in `reposilite-frontend/src/store/nodeAccess.js`.
 * A session that has no node list falls back to the instance admin flag.
 * The labels of the navigation are defined in `reposilite-frontend/src/navigation/registry.js`. The route names do not change: `overview` is labelled **Browse** and `audit` is labelled **Audit log**. The title of `/account` is **My account**.
-* The rail and the bottom bar show four entries, each only when the visitor may open it: **Browse** (`/`), **Search**, **Dashboard** and **Administration** (`/settings`). An anonymous visitor sees **Browse** and **Search** only. **Administration** is shown when the visitor may open any Administration page. The bottom bar on a narrow screen has no **More** item.
+* The rail and the bottom bar show three entries, each only when the visitor may open it: **Browse** (`/`), **Search** and **Administration** (`/settings`). An anonymous visitor sees **Browse** and **Search** only. **Administration** is shown when the visitor may open any Administration page. The bottom bar on a narrow screen has no **More** item.
 
 ### Administration tree
 
@@ -75,7 +75,7 @@ An entry whose settings page has an unsaved draft shows **Unsaved** with an icon
 
 The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index; its rows show the description of each page under its name. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, between the top bar and the save bar, when the whole tree fits in that space. When it is taller than the space, it scrolls with the page, so no list inside the page scrolls on its own.
 
-The pages are of two kinds. A **wide** page is a list or a table, such as Repositories, Access, Audit and the file browser listing. It takes the full width after the side navigation at every width, and the table shows more columns as the window grows: Version policy and Visibility from 1920 pixels, and Storage from 2560 pixels. A **reading** page is text or a form, such as the settings domains, Maintenance, Account, the migration steps and the system information. It keeps a measure of at most 960 pixels, at the start of the content column, so a long line does not stretch across a large monitor. The dashboard lays its two resource charts out side by side from 1024 pixels, and its getting started checklist takes the full width of the content column. The repository overview puts the browse list beside the snippet card, the list taking two thirds of the width, from 1920 pixels.
+The pages are of two kinds. A **wide** page is a list or a table, such as Repositories, Access, Audit and the file browser listing. It takes the full width after the side navigation at every width, and the table shows more columns as the window grows: Version policy and Visibility from 1920 pixels, and Storage from 2560 pixels. A **reading** page is text or a form, such as the settings domains, Maintenance, Account, the migration steps and the system information. It keeps a measure of at most 960 pixels, at the start of the content column, so a long line does not stretch across a large monitor. Overview is a wide page: its instance status lays the two resource charts out side by side from 1024 pixels, its getting started checklist takes the full width of the content column, and the status meters fill each row. The repository overview puts the browse list beside the snippet card, the list taking two thirds of the width, from 1920 pixels.
 
 The heading and the page actions form one row above the columns from 600 pixels. The row is not sticky: it scrolls away with the page, and the top bar stays at the top of the window.
 
@@ -109,17 +109,17 @@ The name `repositories` is a page under `/settings`, not a settings domain. A se
 
 ### Overview
 
-Opened without a domain, `/settings` is **Overview**: its heading is **Overview**, its line reads "Shared configuration for all instances.", and its entry in the Administration tree is the current one. The Administration pages are listed in the tree only, so the page does not repeat them. It shows what the tree cannot:
+Opened without a domain, `/settings` is **Overview**: its heading is **Overview**, and its entry in the Administration tree is the current one. Its line reads "Status of this instance and its shared configuration." for a visitor who sees both halves, "Status of this instance." for a visitor who sees the status only, and "Shared configuration for all instances." for a visitor who sees the settings only. The Administration pages are listed in the tree only, so the page does not repeat them. It shows what the tree cannot:
 
 * **Needs attention** has one row for each settings page with an unsaved draft. The row links to that page and is named "Javadoc, Unsaved changes", for example. **Review changes** opens the review of all drafts, where nothing is saved until Save. A save conflict has its own row with **Review conflict**. With no draft and no conflict the section reads "Nothing needs attention."
 * **At a glance** counts the entries of every settings collection, from the saved settings, for example Repositories 7 and Cleanup policies 0. A zero is shown as 0. The page makes no request beyond the ones the settings page made before, so the counts come from what is already loaded.
-* A link to the **Dashboard**, where the instance status and the resources are, when the visitor may open it.
+* The instance status, with the resources and the getting started checklist, for a visitor who holds the node `ingot.admin.dashboard`. A visitor without the settings node sees only this part, and the page makes no settings request for it.
 
 The root of the content keeps the anchor `settings-hub` (see [Dashboard anchors](../plugins/dashboard-anchors.md)). The card grid of the earlier settings hub is gone, and so is the line that sent sign in and security to Access, which the tree lists.
 
 **Import settings** and **Download as JSON** are in the page header of Overview only, since they act on the whole configuration. Import loads a settings file into the draft and asks for no confirmation; nothing is stored until Save. Download saves the saved state, or the draft when asked for it. The settings domain pages and the Repositories page do not show these two actions.
 
-Below 1240 pixels the order is the page header, Needs attention (only when it has a row or a conflict), the Administration index with Overview marked current, At a glance and the Dashboard link. Overview has no back arrow there, because the index is on the same page. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
+Below 1240 pixels the order is the page header, Needs attention (only when it has a row or a conflict), the Administration index with Overview marked current, the instance status, At a glance and the Danger zone. Overview has no back arrow there, because the index is on the same page. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
 
 ### Client-side guards
 
@@ -156,7 +156,7 @@ With `defaultFrontend` on, `ResourcesFrontendHandler` (`reposilite-backend/src/m
 | `/browse` | The repository list. |
 | `/browse/<path>` | Any path below `/browse`. |
 | `/search` | The search page. |
-| `/dashboard` | The dashboard page. |
+| `/dashboard` | Redirects to Overview (`/settings`). |
 | `/analytics` | The analytics page. Only this exact path, no sub-paths. |
 | `/tokens` | The old token page. |
 | `/tokens/{name}` | One segment below `/tokens`, for example `/tokens/new`. |
@@ -211,7 +211,7 @@ A page route returns the same file to everyone. The data on each page comes from
 | --- | --- | --- |
 | Repositories, Search | Public maven and search endpoints | Repository visibility decides what the caller sees. |
 | My account | `/api/identity/me/*` | The caller must be authenticated. |
-| Dashboard | `/api/status/instance`, `/api/status/snapshots`, `/api/status/failures` | Instance admin (`managerOnly`). |
+| Overview, instance status | `/api/status/instance`, `/api/status/snapshots`, `/api/status/failures` | Instance admin (`managerOnly`). |
 | Analytics | `/api/statistics/resolved/unique`, `/api/statistics/resolved/all` | Instance admin (`managerOnly`). |
 | Access, tab **Users** | `/api/identity/principals` (list, create) and the other `users` endpoints | Node `ingot.admin.users`. |
 | Access, tab **Machine accounts** | `/api/identity/principals` (list), and `/api/identity/principals/{name}/tokens` (list, create, delete) | The principal list checks `ingot.admin.users`. The token endpoints check `ingot.admin.tokens`. |
