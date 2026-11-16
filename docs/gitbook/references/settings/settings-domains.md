@@ -144,12 +144,13 @@ Fields of `appearance`:
 
 ## login
 
-Validated: `publicUrl` must be valid.
+Validated: `publicUrl` must be valid, and `idleTimeoutMinutes` must be `0` or between 5 and the refresh lifetime in minutes.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `sessionLifetimeMinutes` | Long | `15` | Lifetime of a browser session token. |
 | `refreshLifetimeHours` | Long | `168` | Lifetime of a refresh token. Every renewal issues a new one, so this limits the idle time of a browser session. |
+| `idleTimeoutMinutes` | Long | `0` | Minutes a browser session may stay idle. `0` keeps the refresh lifetime as the idle limit. Recommended: `30` for instances with administrators. |
 | `refreshAbsoluteDays` | Long | `30` | Longest time a login stays renewable, counted from the login. |
 | `maxFailedAttempts` | Int | `5` | Failed password logins that lock a user name from one address. The same number of failures locks an address. |
 | `lockoutMinutes` | Long | `15` | Duration of the first lockout. Each further lockout without a quiet period doubles it, up to 24 hours. |
