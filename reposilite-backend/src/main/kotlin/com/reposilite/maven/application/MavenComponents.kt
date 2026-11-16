@@ -50,6 +50,7 @@ import com.reposilite.token.AccessTokenFacade
 import panda.std.reactive.Reference
 import java.nio.file.Path
 import java.time.Clock
+import java.time.Duration
 import java.util.concurrent.ExecutorService
 
 internal class MavenComponents(
@@ -73,6 +74,7 @@ internal class MavenComponents(
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
     private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
     private val repositoryFormats: RepositoryFormats = RepositoryFormats.installed(),
+    private val presignedRedirectTtl: Duration? = null,
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -144,6 +146,7 @@ internal class MavenComponents(
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
             cachePrivateAsPublic = cachePrivateAsPublic,
+            presignedRedirectTtl = presignedRedirectTtl,
             operationCounters = operationCounters,
         )
 
