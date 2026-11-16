@@ -32,6 +32,8 @@ import java.util.UUID
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.storage.FactorRow
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_MFA_LOGIN
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_PASSKEY
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore.Companion.KIND_TOTP
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -44,6 +46,34 @@ internal const val AUTHENTICATOR_ISSUER = "Ingot"
 
 /** A sign-in challenge lives this long, and is spent by one successful completion. */
 internal val CHALLENGE_LIFETIME: Duration = Duration.ofMinutes(5)
+
+/** The ways a sign-in can be completed, in the order the login answer lists them. */
+enum class SecondFactorMethod { AUTHENTICATOR, PASSKEY, RECOVERY_CODE }
+
+/**
+ * The passkey assertion that completes a sign-in. [ceremonyId] is the id of the assertion options, [credentialId] the base64url
+ * id of the passkey, and the other fields are the bytes of the authenticator.
+ */
+class PasskeyProof(
+    val ceremonyId: String,
+    val credentialId: String,
+    val clientDataJson: ByteArray,
+    val authenticatorData: ByteArray,
+    val signature: ByteArray,
+)
+
+/** The result of starting the passkey step of a sign-in. */
+sealed interface PasskeyStart {
+
+    data class Started(val challenge: PasskeyChallenge) : PasskeyStart
+
+    /** The sign-in challenge is unknown, expired, spent, or its user is disabled. */
+    data object Gone : PasskeyStart
+
+    /** The user of the sign-in has no passkey, so there is nothing to assert. */
+    data object NoPasskey : PasskeyStart
+
+}
 
 /** The result of starting an authenticator enrolment. */
 sealed interface TotpEnrolmentStart {
@@ -158,6 +188,8 @@ internal class SecondFactorService(
     private val hasLocalPassword: (Int) -> Boolean = { true },
     /** Counts the outcomes of the second factor at sign-in. Nothing is counted while the account throttle switch is off. */
     private val signInObserver: SignInObserver = SignInObserver.OFF,
+    /** The passkey ceremonies. Without it no passkey can be registered or asserted, and a sign-in never completes with one. */
+    private val passkeys: PasskeyService? = null,
 ) {
 
     /**
@@ -219,16 +251,29 @@ internal class SecondFactorService(
         return EnrolmentConfirmation.Confirmed(codes)
     }
 
-    /** Whether a password login of [principalId] needs a second factor before a session starts. */
+    /**
+     * Whether a password login of [principalId] needs a second factor before a session starts. An authenticator and a passkey
+     * are both second factors, so either one is enough to be challenged.
+     */
     fun requiresSecondFactor(principalId: Int): Boolean =
-        authenticatorFactors(principalId).isNotEmpty()
+        store.findFactors(principalId).isNotEmpty()
 
     /**
-     * The authenticator code factors of a principal. The sign-in challenge and the enrolment proof accept only codes, so a
-     * passkey alone must not start a challenge that the user cannot complete. Passkeys join these checks with their own routes.
+     * The authenticator code factors of a principal. The enrolment proof accepts only codes, so it looks at these factors alone:
+     * a user whose only factor is a passkey enrols an authenticator with the session, as a user without any factor does.
      */
     private fun authenticatorFactors(principalId: Int): List<FactorRow> =
         store.findFactors(principalId).filter { it.kind == KIND_TOTP }
+
+    /** The ways the sign-in of [principalId] can be completed, in the order the login answer lists them. */
+    fun methodsOf(principalId: Int): List<SecondFactorMethod> {
+        val kinds = store.findFactors(principalId).map { it.kind }.toSet()
+        return buildList {
+            if (KIND_TOTP in kinds) add(SecondFactorMethod.AUTHENTICATOR)
+            if (KIND_PASSKEY in kinds) add(SecondFactorMethod.PASSKEY)
+            if (store.hasRecoveryCodes(principalId)) add(SecondFactorMethod.RECOVERY_CODE)
+        }
+    }
 
     /** The factors of a principal: names and kinds, never secrets. */
     fun factorsOf(principalId: Int): List<FactorRecord> =
@@ -250,11 +295,7 @@ internal class SecondFactorService(
     fun completeChallenge(challengeId: String, code: String, ip: String): ChallengeCompletion {
         val now = clock.instant()
         val idHash = hashOf(challengeId)
-        val challenge = store.findChallenge(idHash)
-            ?.takeIf { it.usedAt == null && it.expiresAt.isAfter(now) }
-            ?: return ChallengeCompletion.Gone
-        val principal = identities.findPrincipalById(challenge.principalId)?.takeIf { !it.disabled }
-            ?: return ChallengeCompletion.Gone
+        val principal = signInPrincipal(challengeId, now) ?: return ChallengeCompletion.Gone
 
         return when (val check = checkCode(principal.id, principal.name, code, ip, context = "sign-in")) {
             CodeCheck.Rejected -> {
@@ -277,6 +318,82 @@ internal class SecondFactorService(
                 }
         }
     }
+
+    /**
+     * Starts the passkey step of the sign-in that [challengeId] names: the assertion options of the passkeys of its user. The
+     * assertion is a WebAuthn ceremony of its own, so the sign-in challenge is not spent here.
+     */
+    fun startPasskeyAssertion(challengeId: String): PasskeyStart {
+        val principal = signInPrincipal(challengeId, clock.instant()) ?: return PasskeyStart.Gone
+        val service = passkeys ?: return PasskeyStart.NoPasskey
+        if (store.findPasskeys(principal.id).isEmpty()) {
+            return PasskeyStart.NoPasskey
+        }
+        return PasskeyStart.Started(service.startAssertion(principal.id))
+    }
+
+    /**
+     * Completes the sign-in that [challengeId] names with a passkey assertion. A wrong assertion counts as a wrong code: the
+     * sign-in challenge stays open, and the answer is [ChallengeCompletion.WrongCode]. Passkey assertions do not count through the
+     * failure limit, because each one needs the authenticator and a fresh ceremony. A lock of the user or the address still
+     * refuses them.
+     */
+    fun completePasskeyChallenge(challengeId: String, proof: PasskeyProof, rpId: String, origin: String, ip: String): ChallengeCompletion {
+        val now = clock.instant()
+        val idHash = hashOf(challengeId)
+        val principal = signInPrincipal(challengeId, now) ?: return ChallengeCompletion.Gone
+        val service = passkeys ?: return ChallengeCompletion.Gone
+        limiter.retryAfter(keysOf(principal.name, ip))?.let { wait ->
+            audit(failure(principal.name, ip, "passkey"))
+            signInObserver.record(SignInPath.MFA, SignInOutcome.THROTTLED)
+            return ChallengeCompletion.Blocked(ceilSeconds(wait))
+        }
+        val assertion = service.finishAssertion(
+            principalId = principal.id,
+            challengeId = proof.ceremonyId,
+            credentialId = proof.credentialId,
+            clientDataJson = proof.clientDataJson,
+            authenticatorData = proof.authenticatorData,
+            signature = proof.signature,
+            rpId = rpId,
+            origin = origin,
+        )
+        return when (assertion) {
+            is PasskeyAssertion.Verified ->
+                if (store.claimChallenge(idHash, now)) {
+                    signInObserver.record(SignInPath.MFA, SignInOutcome.SUCCEEDED)
+                    ChallengeCompletion.Verified(principal, recoveryCodeUsed = false)
+                } else {
+                    ChallengeCompletion.Gone
+                }
+            // A refused counter is audited by the passkey service, so only a wrong assertion is audited here.
+            PasskeyAssertion.WrongAssertion -> {
+                audit(failure(principal.name, ip, "passkey"))
+                signInObserver.record(SignInPath.MFA, SignInOutcome.FAILED)
+                ChallengeCompletion.WrongCode
+            }
+            PasskeyAssertion.CounterRefused, PasskeyAssertion.Gone -> {
+                signInObserver.record(SignInPath.MFA, SignInOutcome.FAILED)
+                ChallengeCompletion.WrongCode
+            }
+        }
+    }
+
+    /** Starts a passkey registration for [principalId]. `null` without the passkey service. */
+    fun startPasskeyRegistration(principalId: Int): PasskeyChallenge? =
+        passkeys?.startRegistration(principalId)
+
+    /** Completes a passkey registration for [principalId], see [PasskeyService.finishRegistration]. */
+    fun finishPasskeyRegistration(
+        principalId: Int,
+        challengeId: String,
+        clientDataJson: ByteArray,
+        attestationObject: ByteArray,
+        rpId: String,
+        origin: String,
+    ): PasskeyRegistration =
+        passkeys?.finishRegistration(principalId, challengeId, clientDataJson, attestationObject, rpId, origin)
+            ?: PasskeyRegistration.Refused
 
     /**
      * Removes one factor. The current code of the user must be given, so that a session alone cannot weaken the second factor.
@@ -414,6 +531,18 @@ internal class SecondFactorService(
     /** The whole seconds until the lock on the keys of this account and address ends. */
     private fun retryAfterOf(account: String, ip: String): Long =
         limiter.retryAfter(keysOf(account, ip))?.let { ceilSeconds(it) } ?: 1L
+
+    /**
+     * The user of an open sign-in challenge. Only a challenge of the sign-in kind counts: a WebAuthn ceremony id that the browser
+     * holds is not a sign-in challenge, even though both are rows of the same table. `null` when the challenge is unknown,
+     * spent, expired, or its user is disabled.
+     */
+    private fun signInPrincipal(challengeId: String, now: Instant): PrincipalRecord? {
+        val challenge = store.findChallenge(hashOf(challengeId))
+            ?.takeIf { it.kind == KIND_MFA_LOGIN && it.usedAt == null && it.expiresAt.isAfter(now) }
+            ?: return null
+        return identities.findPrincipalById(challenge.principalId)?.takeIf { !it.disabled }
+    }
 
     private fun isSixDigits(value: String): Boolean =
         value.length == TotpAlgorithm.DIGITS && value.all { it in '0'..'9' }

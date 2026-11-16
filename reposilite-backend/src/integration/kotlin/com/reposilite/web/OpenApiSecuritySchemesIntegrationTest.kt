@@ -155,6 +155,8 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
             "POST /api/identity/me/factors/totp/confirm",
             "DELETE /api/identity/me/factors/{id}",
             "POST /api/identity/me/recovery-codes",
+            "POST /api/identity/me/factors/passkey/options",
+            "POST /api/identity/me/factors/passkey",
         )
     }
 
