@@ -249,10 +249,10 @@ internal class SecondFactorStepUpIntegrationTest : ReposiliteSpecification() {
 
     @Test
     fun `changing the password with a session of a user without a factor is not gated by its age`() {
-        // given: a user without a factor and a session an hour old
+        // given: a user without a factor and a session older than the window, inside the session lifetime
         checkNotNull(loginFacade.createUser("step-plain-old", "step-plain-old", password))
         val session = sessionWithoutFactor("step-plain-old")
-        clock.advance(Duration.ofHours(1))
+        clock.advance(Duration.ofSeconds(301))
 
         // when: the password is changed
         val response = sessionPost(session, "/api/identity/me/password", """{"currentPassword":"$password","newPassword":"$newPassword"}""")
@@ -263,10 +263,10 @@ internal class SecondFactorStepUpIntegrationTest : ReposiliteSpecification() {
 
     @Test
     fun `listing the own factors is never gated by the age of the session`() {
-        // given: a session of a user with a factor, an hour after its second factor
+        // given: a session of a user with a factor, older than the window, inside the session lifetime
         val (_, seed) = userWithAuthenticator("step-read-old")
         val session = sessionWithFactor("step-read-old", seed)
-        clock.advance(Duration.ofHours(1))
+        clock.advance(Duration.ofSeconds(301))
 
         // when: the factors are listed
         val response = http.get("$base/api/identity/me/factors")
