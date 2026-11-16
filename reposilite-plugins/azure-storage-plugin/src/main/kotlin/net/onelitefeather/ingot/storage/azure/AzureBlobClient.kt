@@ -49,6 +49,9 @@ internal interface AzureBlobClient : AutoCloseable {
      */
     fun listChildren(prefix: String, maxResults: Int?): List<AzureBlobChild>
 
+    /** Deletes the blob [name], with its snapshots. Throws [AzureBlobNotFoundException] when it is absent. */
+    fun delete(name: String)
+
     override fun close() {}
 
 }
