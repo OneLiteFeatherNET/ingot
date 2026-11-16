@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+plugins {
+    // Lets Gradle provision a JDK 21 for the Lucene plugin tests when the build itself runs on 17.
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 // Module directories keep their reposilite- names so upstream merges stay mechanical, and so
 // plugins that depend on reposilite-backend only have to swap the group id. Only the product
 // itself is branded: the server bundle publishes as net.onelitefeather.ingot:ingot.
@@ -33,7 +38,7 @@ include(
 // The image keeps only the bundled metrics plugin, so each plugin is included when its directory is present.
 if (rootDir.resolve("reposilite-plugins").isDirectory) {
     include("reposilite-plugins")
-    listOf("checksum-plugin", "elasticsearch-plugin", "example-plugin", "groovy-plugin", "meilisearch-plugin", "migration-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "storage-cache-plugin", "swagger-plugin")
+    listOf("checksum-plugin", "elasticsearch-plugin", "example-plugin", "groovy-plugin", "lucene-plugin", "meilisearch-plugin", "migration-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "storage-cache-plugin", "swagger-plugin")
         .filter { rootDir.resolve("reposilite-plugins/$it").isDirectory }
         .forEach { include("reposilite-plugins:$it") }
 }
