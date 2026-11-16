@@ -5538,6 +5538,7 @@ export interface components {
         PluginInformation: {
             dependencies: string[];
             name: string;
+            tier: string;
             version: string;
         };
         PluginUiBlock: {
