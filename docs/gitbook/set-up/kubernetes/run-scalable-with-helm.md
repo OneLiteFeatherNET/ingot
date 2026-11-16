@@ -35,6 +35,10 @@ objectStorage:
 clusterBus:
   url: nats://nats.ingot.svc.cluster.local:4222
 
+sharedConfiguration:
+  enabled: true
+  existingConfigMap: ingot-shared-settings   # key: configuration.shared.json, see the next section
+
 persistence:
   enabled: false
 
@@ -60,6 +64,41 @@ scalable:
 The top-level keys of the chart, such as `image`, `env`, `probes` and `jvm`, apply to every workload. The `scalable` block sets the replicas, the resources and the budget of each workload. A workload with empty `resources` takes the top-level `resources`.
 
 The top-level `autoscaling` and the top-level `podDisruptionBudget` are refused in this mode. Set `scalable.read.autoscaling` for the read pods, and `scalable.<role>.podDisruptionBudget` for each workload instead.
+
+## Put the repositories on object storage before the first start
+
+A scalable server, and every worker, refuses to start while a repository is stored on the local file system. The check runs on the first start too, when the database holds no repository settings yet. The repositories must therefore be on S3 in the settings the server reads at start, not switched to S3 later in the dashboard.
+
+1. Create the Secret of the object storage in the release namespace, or give the pods a workload identity, see [Credentials from the workload identity](../cluster/use-s3-storage.md#credentials-from-the-workload-identity):
+
+   ```bash
+   kubectl -n ingot create secret generic ingot-object-storage \
+     --from-literal=AWS_ACCESS_KEY_ID='<access-key-id>' \
+     --from-literal=AWS_SECRET_ACCESS_KEY='<secret-access-key>' \
+     --from-literal=AWS_REGION='us-east-1'
+   ```
+
+2. Write the `maven` domain of the shared settings file. It names the three repositories `releases`, `snapshots` and `private`, each with an S3 `storageProvider`. Leave `accessKey` and `secretKey` empty, so the pods take the keys from the Secret of step 1. The bucket and the endpoint are the ones of your object storage:
+
+   ```json
+   {
+     "maven": {
+       "repositories": [
+         {"id": "releases", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-releases", "endpoint": "http://minio.storage.svc.cluster.local:9000", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+         {"id": "snapshots", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-releases", "endpoint": "http://minio.storage.svc.cluster.local:9000", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+         {"id": "private", "visibility": "PRIVATE", "storageProvider": {"type": "s3", "bucketName": "ingot-releases", "endpoint": "http://minio.storage.svc.cluster.local:9000", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}}
+       ]
+     }
+   }
+   ```
+
+   `sharedBucket` puts each repository under its own name in the bucket, so the three share one bucket. Set `pathStyleAccessEnabled` in `JAVA_OPTS` for MinIO, as in [Use S3 for repositories](run-on-kubernetes.md#use-s3-for-repositories).
+
+3. Put the file in a ConfigMap that you manage, with the key `configuration.shared.json`, and name it in `sharedConfiguration.existingConfigMap` as in the values above. Or set `sharedConfiguration.content` to the same JSON, and the chart renders the ConfigMap for you.
+
+While a file is the source, the database is not read for the shared settings. A setting that the file does not hold is not taken from the database, so write every domain the instance needs into the file, not only `maven`. The server answers `409` to a save from the dashboard or the API for a domain that the file holds, so change the repositories in the file and not in the dashboard. See [Keep the shared settings in Git](run-on-kubernetes.md#keep-the-shared-settings-in-git).
+
+If the file does not hold `maven` with S3 repositories, the pods stop at start with a message such as `repositories 'releases', 'snapshots', and 'private' are stored on the local file system (use object storage)`.
 
 ## The values the chart requires
 
