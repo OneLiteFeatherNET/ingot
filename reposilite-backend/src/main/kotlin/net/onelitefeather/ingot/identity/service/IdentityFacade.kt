@@ -81,6 +81,8 @@ import net.onelitefeather.ingot.identity.api.CheckTraceDto
 import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.TemplateDto
 import net.onelitefeather.ingot.identity.api.TemplatesDto
+import net.onelitefeather.ingot.identity.authorization.AuthorizationChain
+import net.onelitefeather.ingot.identity.authorization.AuthorizationRequest
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.evaluation.Decision
 import net.onelitefeather.ingot.identity.evaluation.GRANT_KIND
@@ -149,6 +151,9 @@ class IdentityFacade(
     /** Receives the warning of an unguarded link in warn mode. */
     private val warnings: (String) -> Unit = {},
 ) {
+
+    /** The chain that takes the decisions of the permission check. */
+    private val authorization = AuthorizationChain.standard()
 
     private companion object {
         /** The repository actions a path check decides, the ones a request for a path makes. */
@@ -821,7 +826,7 @@ class IdentityFacade(
 
         val parsed = NodePattern.of(node)
         return answerPermissionCheck(caller, principal, token, node = node, repository = null, path = null, action = null) { access ->
-            PermissionEvaluator.decide(access, parsed)
+            authorization.decide(AuthorizationRequest.Node(access, parsed)).decision
         }
     }
 
@@ -859,7 +864,7 @@ class IdentityFacade(
             return badRequestError("The action '$chosen' of a path check is read, deploy or delete")
         }
         return answerPermissionCheck(caller, principal, token, node = null, repository = repository, path = path, action = chosen) { access ->
-            PermissionEvaluator.decidePath(access, repository, path, chosen)
+            authorization.decide(AuthorizationRequest.RepositoryPath(access, repository, path, chosen)).decision
         }
     }
 
@@ -875,7 +880,8 @@ class IdentityFacade(
         decide: (AccessSubject) -> Decision,
     ): IdentityResult<PermissionCheckDto> {
         val callerSubject = accessTokens.subjectOf(caller)
-        if (!PermissionEvaluator.isInstanceAdmin(callerSubject) && callerSubject.principalName != principal) {
+        val callerIsAdmin = authorization.decide(AuthorizationRequest.AdminArea(callerSubject, area = null)).allowed
+        if (!callerIsAdmin && callerSubject.principalName != principal) {
             return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
         }
         val subject = principalNamed(principal) ?: return notFoundError("Principal not found")
