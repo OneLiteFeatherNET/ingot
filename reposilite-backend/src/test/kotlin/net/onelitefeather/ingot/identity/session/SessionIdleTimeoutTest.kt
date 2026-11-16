@@ -17,6 +17,8 @@
 package net.onelitefeather.ingot.identity.session
 
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import com.reposilite.plugin.api.Event
+import com.reposilite.plugin.api.SessionFamilyRevokedEvent
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
@@ -39,19 +41,64 @@ internal class SessionIdleTimeoutTest {
     @TempDir
     lateinit var workingDirectory: Path
 
-    private fun withSessions(settings: LoginSettings, block: (SessionService, PrincipalRecord) -> Unit) {
+    private fun withSessions(settings: LoginSettings, block: (SessionService, PrincipalRecord) -> Unit) =
+        withStore(settings) { sessions, alice, _, _ -> block(sessions, alice) }
+
+    private fun withStore(settings: LoginSettings, block: (SessionService, PrincipalRecord, LoginStore, MutableList<Event>) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
+            val store = LoginStore(connection.database, clock)
+            val events = mutableListOf<Event>()
             val sessions = SessionService(
-                store = LoginStore(connection.database, clock),
+                store = store,
                 identities = identities,
                 signer = SessionSigner(ByteArray(32) { 3 }, clock),
                 settings = Reference.reference(settings),
                 clock = clock,
                 audit = {},
+                publish = { events.add(it) },
             )
             val alice = identities.createPrincipal(PrincipalKind.USER, "alice", "alice", disabled = false, createdAt = clock.instant())!!
-            block(sessions, alice)
+            block(sessions, alice, store, events)
+        }
+    }
+
+    @Test
+    fun `a refresh refused by the idle timeout revokes the family`() {
+        withStore(LoginSettings(idleTimeoutMinutes = 30)) { sessions, alice, store, events ->
+            val first = sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+            val renewed = sessions.refresh(first.refreshToken, ip = "10.0.0.1", userAgent = null)!!
+            val family = sessions.authenticate(renewed.sessionJwt)!!.familyId
+
+            clock.advance(Duration.ofMinutes(31))
+
+            assertThat(sessions.refresh(renewed.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("the idle timeout passed, so the renewal is refused")
+                .isNull()
+            assertThat(store.findRefreshToken(RandomTokens.hash(renewed.refreshToken))?.revokedAt)
+                .describedAs("the family is revoked in the database, not only refused for this request")
+                .isNotNull()
+            assertThat(events)
+                .describedAs("the revocation is announced to the cluster and to plugins")
+                .containsExactly(SessionFamilyRevokedEvent(family))
+            assertThat(sessions.refresh(renewed.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("a later refresh of the family is refused too")
+                .isNull()
+        }
+    }
+
+    @Test
+    fun `an expired refresh token without an idle timeout does not revoke the family`() {
+        withStore(LoginSettings(refreshLifetimeHours = 1)) { sessions, alice, store, events ->
+            val first = sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+
+            clock.advance(Duration.ofMinutes(61))
+
+            assertThat(sessions.refresh(first.refreshToken, ip = "10.0.0.1", userAgent = null)).isNull()
+            assertThat(store.findRefreshToken(RandomTokens.hash(first.refreshToken))?.revokedAt)
+                .describedAs("with the timeout off, an expired token is only refused, as before")
+                .isNull()
+            assertThat(events).describedAs("no revocation is announced").isEmpty()
         }
     }
 
