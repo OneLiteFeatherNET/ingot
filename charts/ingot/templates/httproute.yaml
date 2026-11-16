@@ -1,6 +1,8 @@
 {{- if .Values.httpRoute.enabled }}
 {{- $fullName := include "ingot.fullname" . -}}
 {{- $dashboardName := include "ingot.dashboardFullname" . -}}
+{{- $writeName := $fullName -}}
+{{- if eq .Values.mode "scalable" }}{{- $writeName = include "ingot.workloadFullname" (dict "root" . "role" "write") -}}{{- end }}
 {{- $segments := .Files.Get "files/dashboard-segments.json" | fromJsonArray -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -19,7 +21,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-    {{- if eq .Values.mode "split" }}
+    {{- if or (eq .Values.mode "split") (eq .Values.mode "scalable") }}
     - matches:
         - path: {type: Exact, value: "/"}
         - path: {type: PathPrefix, value: "/assets"}
@@ -31,9 +33,19 @@ spec:
         - name: {{ $dashboardName }}
           port: {{ .Values.dashboard.service.port }}
     {{- end }}
+    {{- if eq .Values.mode "scalable" }}
+    - matches:
+        - path: {type: PathPrefix, value: "/"}
+          method: GET
+        - path: {type: PathPrefix, value: "/"}
+          method: HEAD
+      backendRefs:
+        - name: {{ include "ingot.workloadFullname" (dict "root" . "role" "read") }}
+          port: {{ .Values.service.port }}
+    {{- end }}
     - matches:
         - path: {type: PathPrefix, value: "/"}
       backendRefs:
-        - name: {{ $fullName }}
+        - name: {{ $writeName }}
           port: {{ .Values.service.port }}
 {{- end }}
