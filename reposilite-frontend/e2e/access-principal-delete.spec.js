@@ -27,9 +27,10 @@ test.describe('deleting a principal', () => {
 
     try {
       await page.goto(siteUrl(`/access/users/${encodeURIComponent(username)}`))
-      await expect(page.getByText(displayName, { exact: true }), 'the detail shows the display name').toBeVisible()
-
       const detail = page.locator('[data-ingot-component="principal-detail"]')
+      // The users list next to the detail shows the same display name in its row, so the check reads the detail alone.
+      await expect(detail.locator('[data-test="principal-display-name"]'), 'the detail shows the display name').toHaveText(displayName)
+
       await detail.getByRole('button', { name: `Actions for ${username}`, exact: true }).click()
       await page.getByRole('menuitem', { name: 'Disable', exact: true }).click()
       await expect(detail.locator('[data-test="status"]'), 'the user is disabled').toHaveText('Disabled')
