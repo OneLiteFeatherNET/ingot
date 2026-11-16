@@ -23,6 +23,8 @@ import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.storage.StorageProviderSettings
 import io.javalin.openapi.Custom
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
+import net.onelitefeather.ingot.storage.capability.SupportDetails
 
 /** The storage type that this plugin registers. It is written as this value and is not configurable. */
 internal const val GCS_STORAGE_TYPE = "gcs"
@@ -62,7 +64,7 @@ data class GcsStorageProviderSettings(
     val credentialsJson: String = "",
     @get:Doc(title = "Chunk Size", description = "Bytes per resumable upload chunk: a multiple of 256 KiB, between 256 KiB and 64 MiB")
     val chunkSize: Long = DEFAULT_CHUNK_SIZE,
-) : StorageProviderSettings {
+) : StorageProviderSettings, SharedNamespaceAware, SupportDetails {
 
     @get:Custom(name = "const", value = GCS_STORAGE_TYPE)
     override val type: String = GCS_STORAGE_TYPE
@@ -86,5 +88,39 @@ data class GcsStorageProviderSettings(
             "Google Cloud Storage uses the field 'endpoint' only when $EMULATOR_SWITCH is true"
         else -> null
     }
+
+    /** The namespace of this repository: the bucket and the normalised prefix. A blank bucket has no namespace, so it never collides. */
+    override fun namespaceKey(repositoryName: String): String? {
+        if (bucket.isBlank()) {
+            return null
+        }
+        return "gcs:${bucket.trim()}/${objectPrefix()}"
+    }
+
+    /**
+     * Two namespaces collide when they are in the same bucket and one prefix equals or nests under the other, because the objects of a
+     * nested prefix are also listed under the outer one.
+     */
+    override fun overlaps(key: String, otherKey: String): Boolean {
+        val (bucketName, prefix) = key.removePrefix("gcs:").split('/', limit = 2)
+        val (otherBucket, otherPrefix) = otherKey.removePrefix("gcs:").split('/', limit = 2)
+        return bucketName == otherBucket && (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix))
+    }
+
+    override fun overlapMessage(): String =
+        "Its Google Cloud Storage namespace overlaps another repository in the same bucket. Give each repository a distinct 'prefix'."
+
+    /** The project, the bucket, the prefix and the authentication mode. The key and the endpoint are never part of the description. */
+    override fun describe(): Map<String, String> =
+        mapOf(
+            "bucket" to bucket,
+            "projectId" to projectId,
+            "prefix" to prefix,
+            "authentication" to authentication,
+        )
+
+    /** The prefix of the objects of this repository, with one trailing slash, or empty for the root of the bucket. */
+    internal fun objectPrefix(): String =
+        prefix.trim().trim('/').let { if (it.isEmpty()) "" else "$it/" }
 
 }

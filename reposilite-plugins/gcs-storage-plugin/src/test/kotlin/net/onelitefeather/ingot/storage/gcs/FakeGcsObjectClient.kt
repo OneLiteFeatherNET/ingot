@@ -101,6 +101,13 @@ internal class FakeGcsObjectClient : GcsObjectClient {
         objects.remove(name) ?: throw GcsNotFoundException(name)
     }
 
+    /** When set, the bucket answers with this failure, or, when null, with an answer of an existing bucket. */
+    var bucketFailure: Exception? = null
+
+    override fun checkBucket() {
+        bucketFailure?.let { throw it }
+    }
+
     override fun startUpload(name: String, contentType: String, chunkSize: Int): GcsUpload {
         openedUploads += chunkSize
         val writes = mutableListOf<Int>()
