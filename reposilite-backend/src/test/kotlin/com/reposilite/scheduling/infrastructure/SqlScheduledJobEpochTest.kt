@@ -161,6 +161,49 @@ internal class SqlScheduledJobEpochTest {
     }
 
     @Test
+    fun `an owner that acquires again while its own lease is live keeps the epoch`() {
+        SqliteTestDatabase().use { shared ->
+            val clock = MutableClock()
+            val owner = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a")
+            val first = owner.acquire(key, ttl)!!
+            clock.advance(Duration.ofSeconds(30))
+
+            val again = owner.acquire(key, ttl)
+
+            assertThat(again?.epoch).`as`("epoch of a re-acquire of the own live lease").isEqualTo(first.epoch)
+        }
+    }
+
+    @Test
+    fun `an owner that acquires again while its own lease is live is granted the lease for a full ttl`() {
+        SqliteTestDatabase().use { shared ->
+            val clock = MutableClock()
+            val owner = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a")
+            owner.acquire(key, ttl)
+            clock.advance(Duration.ofSeconds(30))
+            owner.acquire(key, ttl)
+
+            clock.advance(Duration.ofSeconds(45))
+            val other = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").acquire(key, ttl)
+
+            assertThat(other).`as`("acquire of the key while the re-acquired lease is live").isNull()
+        }
+    }
+
+    @Test
+    fun `a second owner is still refused while the lease of the first is live after the own re-acquire`() {
+        SqliteTestDatabase().use { shared ->
+            val clock = MutableClock()
+            SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a").acquire(key, ttl)
+            SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").acquire(key, ttl)
+
+            assertThat(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").acquire(key, ttl))
+                .`as`("acquire by the second owner while the first owns a live lease")
+                .isNull()
+        }
+    }
+
+    @Test
     fun `a key released as done is never granted again`() {
         SqliteTestDatabase().use { shared ->
             val clock = MutableClock()

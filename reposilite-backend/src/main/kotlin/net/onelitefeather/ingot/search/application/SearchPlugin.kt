@@ -146,7 +146,9 @@ internal class SearchPlugin : ReposilitePlugin() {
      */
     private fun startBackend(wiring: SearchWiring): Started {
         reposilite().extensions.emitEvent(ArtifactSearchBackendRegistrationEvent(wiring.registry))
-        val leases = SqlScheduledJobClaims(wiring.database, wiring.clock, wiring.instanceId)
+        // The search lease has its own owner, kept with the data directory, so that a restart keeps the epoch of the index.
+        val leaseOwner = SearchLeaseOwner.of(reposilite().parameters.workingDirectory)
+        val leases = SqlScheduledJobClaims(wiring.database, wiring.clock, leaseOwner)
         val context = CoreSearchBackendContext(wiring.clock, wiring.instanceId, wiring.engine, leases = leases) { level, message ->
             when (level) {
                 "error" -> logger.error(message)
