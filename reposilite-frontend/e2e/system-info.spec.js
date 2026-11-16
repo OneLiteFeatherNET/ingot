@@ -82,6 +82,7 @@ test.describe('system information and support page', () => {
     const columnsAt = async (width) => {
       await page.setViewportSize({ width, height: 900 })
       await page.goto(siteUrl('/settings/system-info'))
+      await expect(page.getByRole('article')).toHaveCount(6)
       const cards = await page.getByRole('article').all()
       const boxes = await Promise.all(cards.map((card) => card.boundingBox()))
       return new Set(boxes.map((box) => Math.round(box.x))).size
