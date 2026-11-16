@@ -226,20 +226,62 @@ SHALL answer `403` with `mfa_enrolment_required`.
 
 ### Requirement: External logins
 
-LDAP users SHALL be able to enrol Ingot factors and SHALL pass the same login challenge as local users. OpenID Connect
-and GitHub users SHALL NOT be challenged for an Ingot factor unless a policy covers them. A covered OpenID Connect user
-SHALL pass without a challenge only when the ID token carries an `acr` value in the provider's `mfaAcrValues` or an `amr`
-value in its `mfaAmrValues`. A GitHub user under a policy SHALL always be challenged for an Ingot factor.
+LDAP users SHALL be able to enrol Ingot factors and SHALL pass the same login challenge as local users. A covered OpenID Connect
+user SHALL pass without a challenge only when the ID token carries an `acr` value in the provider's `mfaAcrValues` or an `amr`
+value in its `mfaAmrValues`.
 
 #### Scenario: An OpenID Connect user with a trusted acr is not challenged
 
 - **WHEN** a covered user signs in through a provider whose `mfaAcrValues` contains the `acr` of the ID token
 - **THEN** the session starts without an Ingot challenge
 
-#### Scenario: A GitHub user under the policy is challenged
+### Requirement: Uncovered external users are not challenged
 
-- **WHEN** a covered GitHub user signs in
+An OpenID Connect or GitHub user that no policy covers SHALL NOT be asked for an Ingot factor at the callback, even when that user
+has one set up. A covered GitHub user who has a factor SHALL be challenged for it at the callback.
+
+#### Scenario: An uncovered external user with a factor is not challenged
+
+- **WHEN** an OpenID Connect or GitHub user that no policy covers, and who has an enrolled factor, signs in
+- **THEN** the session starts without an Ingot challenge
+
+#### Scenario: A covered GitHub user with a factor is challenged
+
+- **WHEN** a covered GitHub user with an enrolled factor signs in
 - **THEN** the login challenge of an Ingot factor is started
+
+### Requirement: Covered GitHub users enrol inside the grace period
+
+A covered GitHub user without a factor SHALL NOT be challenged at the callback. During the grace period that user SHALL enrol a
+factor inside the step-up window of the sign-in, and the next GitHub sign-in SHALL challenge them for that factor.
+
+#### Scenario: A covered GitHub user without a factor enrols inside the window
+
+- **WHEN** a covered GitHub user without a factor signs in during the grace period and enrols a factor within the step-up window
+  of that sign-in
+- **THEN** the sign-in is not challenged, and the enrolment succeeds
+
+#### Scenario: A stale GitHub sign-in cannot enrol
+
+- **WHEN** a covered GitHub user without a factor starts enrolment with a sign-in older than the step-up window
+- **THEN** the request is refused with `step_up_required`
+
+### Requirement: Directory password over Basic
+
+A directory password sent with Basic authentication SHALL be refused for a user who has an enrolled factor, because accepting it
+would let Basic skip the factor. The caller SHALL receive the generic answer `Invalid authorization credentials`. The server log
+SHALL name the account, the address and the reason, and SHALL NOT contain the password.
+
+#### Scenario: Directory password over Basic for a user with a factor
+
+- **WHEN** a Basic request carries the directory password of a user who has an enrolled factor
+- **THEN** the answer is the generic `Invalid authorization credentials`, and the server log names the account and the reason,
+  without the password
+
+#### Scenario: Build with an access token
+
+- **WHEN** a build sends an access token of a user who has an enrolled factor over Basic
+- **THEN** the request is authenticated as before, with no second factor
 
 ### Requirement: Administrative reset
 

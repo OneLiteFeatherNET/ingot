@@ -50,7 +50,8 @@ directory per test, bounded waits through latches, and assertions with messages.
 - [ ] 5.1 `test(identity)`: failing tests for the settings defaults (every policy off), `requiredSince` written once per
   user, the grace period on an injected clock, the restricted session (scope `enrol`) refused outside the allowed routes
   with `mfa_enrolment_required`, and the external rules (an OpenID Connect `acr` or `amr` in the provider's list passes,
-  otherwise a challenge; GitHub always challenged under a policy). Verify: the tests fail before 5.2.
+  otherwise a challenge; an uncovered external user is never challenged at the callback; a covered GitHub user is challenged
+  only with a factor and enrols inside the step-up window without one). Verify: the tests fail before 5.2.
 - [ ] 5.2 `feat(identity)`: add `login.mfa` to `LoginSettings.kt`, `mfaAcrValues` and `mfaAmrValues` to `OidcProviderSettings`,
   the `requiredSince` bookkeeping, the restricted session in refresh, and the external trust rules in `OidcLoginService`
   and the GitHub login. Verify: 5.1 passes, `OidcLoginServiceTest` and `LoginSettingsTest` still pass.
@@ -59,7 +60,8 @@ directory per test, bounded waits through latches, and assertions with messages.
 
 - [ ] 6.1 `test(identity)`: failing endpoint tests for the own factor routes (list, rename, remove, regenerate recovery codes),
   the step-up requirement on each of them, `GET /api/identity/me/security`, the token rule (a Basic or Bearer request that
-  creates a token for a user with a factor is refused with `step_up_required`), the administrator routes (list without
+  creates a token for a user with a factor is refused with `step_up_required`, a directory password over Basic is refused for a
+  user with a factor), the administrator routes (list without
   secrets, reset of all or one factor, sessions ended, `MFA_FACTORS_RESET` written once), and the read-only refusal of
   writes through `ContextDsl.refuseWhileReadOnly`. Verify: the tests fail before 6.2.
 - [ ] 6.2 `feat(identity)`: add the own and administrator factor routes to `SelfServiceEndpoints.kt` and

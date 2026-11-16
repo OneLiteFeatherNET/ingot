@@ -103,7 +103,7 @@ variant of `SettingsSecretReferenceIntegrationTest` (only the Local and Remote s
 Type and scope: `feat(database)`. Prerequisite: `test-server-database-matrix` is on main (#121), which its proposal orders first.
 
 - [ ] 6.1 `feat(database)`: write a failing unit test for a pure mapping function in `DatabaseConnection.kt` that takes the three
-  values and returns the Hikari settings in milliseconds, with a test for the defaults (1800000, 30000, 0), a test that a
+  values and returns the Hikari settings in milliseconds, with a test for the defaults (1800000, 30000, 120000), a test that a
   whole-number value maps to milliseconds, and a test that SQLite and H2 ignore the values. Verify: the tests fail before 6.2
   because the function does not exist.
 - [ ] 6.2 `feat(database)`: add `databaseMaxLifetime`, `databaseConnectionTimeout` and `databaseKeepalive` to

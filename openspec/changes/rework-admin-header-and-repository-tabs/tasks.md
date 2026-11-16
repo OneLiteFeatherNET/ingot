@@ -23,8 +23,8 @@ pushed to the `pr-screenshots` branch and linked from the pull request.
 
 Pull request title: `fix(ui): keep the administration layout still between pages`
 
-- [ ] 2.1 `test(ui)`: in `src/style.test.js`, assert that the root element of the document has `scrollbar-gutter: stable`.
-  Verify: it fails, because no rule in `src/style.css` sets it.
+- [ ] 2.1 `test(ui)`: in `src/style.test.js`, assert that `src/style.css` sets `scrollbar-gutter: auto` on the root element, so the
+  root reserves no gutter. Verify: it fails, because no rule in `src/style.css` sets it.
 - [ ] 2.2 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert on the Overview, a group page, a list page and a
   detail page that the first row of the title block is drawn (with the back arrow below 1240 pixels), that the heading has
   one-line truncation with its full text as `title`, and that the description element is drawn with the one-line class even
@@ -37,7 +37,8 @@ Pull request title: `fix(ui): keep the administration layout still between pages
   group page, a list page and a detail page, within 0.5 pixel; the side navigation's top edge equals the content's top edge; and the
   left edge of the frame is the same on a page with a scrollbar and on a page without one. Verify: they fail against the current
   build, on the header of the Overview and of the entry pages.
-- [ ] 2.5 `fix(ui)`: in `src/style.css`, set `scrollbar-gutter: stable` on the root element next to the `html, body` rule.
+- [ ] 2.5 `fix(ui)`: in `src/style.css`, set `scrollbar-gutter: auto` on the root element next to the `html, body` rule, because a
+  reserved gutter keeps the sticky top bar from the window edge.
   Verify: 2.1 passes.
 - [ ] 2.6 `fix(ui)`: in `AdministrationFrame.vue`, always draw the first row of the title block (minimum height 48 pixels), truncate
   the heading to one line with its full text as `title`, and draw the description element with the one-line class. In

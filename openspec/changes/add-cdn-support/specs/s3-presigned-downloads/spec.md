@@ -33,15 +33,15 @@ that is not a whole number from 60 to 3600 SHALL stop the start with a message t
 - **WHEN** the server starts with `INGOT_S3_PRESIGN_TTL_SECONDS=30`
 - **THEN** the start stops and the message names `INGOT_S3_PRESIGN_TTL_SECONDS`
 
-### Requirement: A cacheable download is redirected to a presigned URL
+### Requirement: A cacheable public download is redirected to a presigned URL
 
-When the switch is on, the server SHALL answer a `GET` of a cacheable file that is stored in an S3 repository, and that carries
-no `Range`, `If-None-Match`, `If-Modified-Since` or `If-Range` header, with `302 Found` and a `Location` that is a presigned
-`GET` URL for the object, valid for the configured TTL.
+When the switch is on, the server SHALL answer a `GET` of a cacheable file with public scope that is stored in an S3 repository,
+and that carries no `Range`, `If-None-Match`, `If-Modified-Since` or `If-Range` header, with `302 Found` and a `Location` that is
+a presigned `GET` URL for the object, valid for the configured TTL.
 
-#### Scenario: Authorized download of a cacheable release
+#### Scenario: Download of a public cacheable release
 
-- **WHEN** an authorized client requests a cacheable release file from an S3 repository with the switch on
+- **WHEN** a client requests a cacheable release file of a PUBLIC S3 repository with the switch on
 - **THEN** the response is `302` with a `Location` that names the bucket and the key
 
 ### Requirement: The redirect is issued after the read check
@@ -54,10 +54,43 @@ to a caller who could read the file.
 - **WHEN** an anonymous client requests a file from a PRIVATE S3 repository while the switch is on
 - **THEN** the response is `401` and carries no `Location` header
 
+### Requirement: Private files are never redirected
+
+The server SHALL NOT redirect a file whose scope is private, even for an authorized caller. A file of a private repository, and a
+file that a repository serves through a mirror with upstream credentials, SHALL be served by the instance, whatever the switch
+and `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC` say. A presigned URL is a bearer link for its lifetime, so it is never given for such a
+file.
+
+#### Scenario: Authorized request for a private file
+
+- **WHEN** an authorized client requests a cacheable file from a PRIVATE S3 repository while the switch is on
+- **THEN** the response is `200` served by the instance, and carries no `Location` header
+
+#### Scenario: Credentialed mirror with the escape hatch
+
+- **WHEN** the switch is on, `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC=true`, and a client requests a cacheable file through a mirror
+  that has upstream credentials
+- **THEN** the response is `200` served by the instance, and carries no `Location` header
+
+### Requirement: A redirect counts as a served copy
+
+A redirect SHALL move the usage record of the proxy cache copy that it points to, as a streamed answer does, so that a copy that is
+served only through redirects is not evicted as unused. A `HEAD` request SHALL NOT move that record.
+
+#### Scenario: Redirect keeps the mirror copy in use
+
+- **WHEN** a public cacheable file is requested through a mirror and answered with a redirect
+- **THEN** the usage record of that mirror copy is moved forward
+
+#### Scenario: HEAD leaves the usage record alone
+
+- **WHEN** a client sends `HEAD` for a public cacheable file of a mirror
+- **THEN** the usage record of that mirror copy is not moved
+
 ### Requirement: The redirect expires before its URL does
 
-The `Cache-Control` of a redirect SHALL carry the scope of the file, and its `max-age` SHALL be the smaller of `maxAge` and half
-the TTL, so that a shared cache drops the redirect before the presigned URL expires.
+The `Cache-Control` of a redirect SHALL carry `public`, the only scope that is redirected, and its `max-age` SHALL be the smaller
+of `maxAge` and half the TTL, so that a shared cache drops the redirect before the presigned URL expires.
 
 #### Scenario: Redirect lifetime
 
@@ -77,7 +110,8 @@ When it is not set, the configured S3 endpoint SHALL be used.
 ### Requirement: Every other answer stays with the instance
 
 The server SHALL serve through the instance, as before, any `HEAD` request, any `GET` with a range or conditional header, any
-file that is not cacheable, any metadata file, and any file of a repository that is not stored in S3, whatever the switch says.
+file that is not cacheable, any file with private scope, any metadata file, and any file of a repository that is not stored in S3,
+whatever the switch says.
 
 #### Scenario: Range request
 

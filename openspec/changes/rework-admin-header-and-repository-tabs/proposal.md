@@ -28,8 +28,9 @@ reserved height.
 
 ### Group 1: the layout stops jumping (`fix(ui)`)
 
-- The root of the document reserves the scrollbar gutter (`scrollbar-gutter: stable`), so a page that becomes taller than
-  the window does not move the frame sideways.
+- The frame does not move sideways when a page becomes taller than the window. The root does not reserve a scrollbar gutter
+  (`scrollbar-gutter: auto`): the frame is laid out from the left edge, and a reserved gutter would stop the sticky top bar
+  and the page sheet 15 pixels short of the window edge.
 - The title block of the Administration frame reserves its rows on every page: the trail row (with the back arrow below
   1240 pixels) is always drawn at its full height, the heading is one line and truncates with its full name as a title,
   and the description line is reserved whether or not the page has one. The header height is then the same on every
@@ -129,7 +130,7 @@ side navigation is specified to stay put, and the frame is specified to keep one
   here is BREAKING.
 - **Plugin authors:** the anchors of the frame and the repository page keep their names (`administration-frame`,
   `side-nav-layout`, `repository-detail` with its `header` part). No plugin API changes.
-- **Code:** `reposilite-frontend/src/style.css` (scrollbar gutter, reserved rows), `components/layout/AdministrationFrame.vue`
+- **Code:** `reposilite-frontend/src/style.css` (`scrollbar-gutter: auto`, reserved rows), `components/layout/AdministrationFrame.vue`
   and `SideNavLayout.vue` (header placement, the page transition key), `styles/md3/shape-elevation-motion.css` (the enter
   animation token), `components/repositories/RepositoryDetail.vue` (tabs, tab state), `components/settings/EntryDetail.vue`
   (one section per tab, the same single entry) and `components/settings/SettingsView.vue` (the outer `role="tabpanel"` of the

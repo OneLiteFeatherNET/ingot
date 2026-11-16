@@ -39,13 +39,19 @@ sticky. Only the side navigation at 1240 pixels and wider, and the top bar and t
 
 ### Requirement: Stable width under a scrollbar
 
-The root of the document SHALL reserve the width of a vertical scrollbar, so that a page which becomes taller than the window
-does not move the Administration frame sideways.
+The root of the document SHALL NOT reserve a scrollbar gutter (`scrollbar-gutter: auto`). The Administration frame is laid out
+from the left edge, so a page which becomes taller than the window does not move the frame sideways. A reserved gutter would keep
+the sticky top bar and the page sheet from painting into it.
 
 #### Scenario: Scrollbar does not move the frame
 
 - **WHEN** a page becomes taller than the window at 1440 pixels wide and a classic scrollbar is drawn
 - **THEN** the left edge of the frame is the same as on a page that has no scrollbar
+
+#### Scenario: Top bar reaches the window edge
+
+- **WHEN** a page becomes taller than the window at 1440 pixels wide and a classic scrollbar is drawn
+- **THEN** the sticky top bar and the page sheet extend to the scrollbar, with no gap at the window edge
 
 ### Requirement: Reserved header rows
 
