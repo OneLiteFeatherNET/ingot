@@ -43,10 +43,12 @@ data class LoginSettings(
     val publicUrl: String = "",
     @get:Doc(title = "Account Throttle", description = "Delay of password and token guesses for one user name from addresses the name has not signed in from. Only applies while the switch INGOT_LOGIN_ACCOUNT_THROTTLE is on; the thresholds here have no effect without it")
     val accountThrottle: AccountThrottleSettings = AccountThrottleSettings(),
+    @get:Doc(title = "Password Policy", description = "Rules for a password that a user or an administrator sets. The default keeps the rules Reposilite has always enforced")
+    val passwordPolicy: PasswordPolicySettings = PasswordPolicySettings(),
 ) : ValidatedSettings {
 
     override fun violations(): List<String> =
-        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }) + accountThrottle.violations()
+        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }) + accountThrottle.violations() + passwordPolicy.violations()
 
 }
 
@@ -69,5 +71,17 @@ data class AccountThrottleSettings(
         "accountThrottle.maxDelaySeconds: must be between 1 and 86400".takeIf { maxDelaySeconds !in 1..86_400 },
         "accountThrottle.knownAddressDays: must be at least 1".takeIf { knownAddressDays < 1 },
     )
+
+}
+
+@JsonSchema(requireNonNulls = false)
+@Doc(title = "Password Policy", description = "Rules for a password that a user or an administrator sets. None of them applies at sign-in")
+data class PasswordPolicySettings(
+    @get:Doc(title = "Minimum Length", description = "Fewest characters of a new password, counted as before in UTF-16 code units. Between 8 and 256. A higher value applies to the next password that is set; stored passwords are not checked again")
+    val minLength: Int = 12,
+) {
+
+    fun violations(): List<String> =
+        listOfNotNull("passwordPolicy.minLength: must be between 8 and 256".takeIf { minLength !in 8..256 })
 
 }
