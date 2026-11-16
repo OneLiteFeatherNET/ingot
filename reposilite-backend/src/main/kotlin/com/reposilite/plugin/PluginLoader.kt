@@ -95,8 +95,12 @@ class PluginLoader(
         }
     }
 
+    /**
+     * A plugin without a loader origin, registered directly through the extensions, reads from the plugins directory. That origin
+     * never grants Core, and a tier never stops the start.
+     */
     private fun effectiveTierOf(entry: PluginEntry): PluginTier {
-        val origin = checkNotNull(pluginOrigins[entry.metadata.name]) { "Plugin ${entry.metadata.name} was not registered by the loader" }
+        val origin = pluginOrigins[entry.metadata.name] ?: PluginOrigin.PLUGINS_DIRECTORY
         return PluginTierResolver.resolve(origin, entry.metadata.tier)
     }
 
