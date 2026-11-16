@@ -16,6 +16,7 @@
 
 package com.reposilite
 
+import com.reposilite.audit.decision.DecisionLogSettings
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFactory
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
@@ -63,6 +64,7 @@ object ReposiliteFactory {
             console,
             logSettings = logSettings,
             accessLogSetting = AccessLogSetting.read(),
+            decisionLogSettings = DecisionLogSettings.read(),
         )
     }
 
@@ -87,6 +89,8 @@ object ReposiliteFactory {
         accessLogSetting: AccessLogSetting = AccessLogSetting(enabled = false),
         // Read before anything binds a port, like the read-only switch
         presignConfig: S3PresignConfig = S3PresignConfig.read(),
+        // The decision log is off unless the caller switches it on, so a start without the setting writes no record
+        decisionLogSettings: DecisionLogSettings = DecisionLogSettings(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -152,6 +156,7 @@ object ReposiliteFactory {
             supportBundleSetting = supportBundleSetting,
             accessLogSetting = accessLogSetting,
             presignConfig = presignConfig,
+            decisionLogSettings = decisionLogSettings,
             awaitDelay = awaitDelay,
         )
 

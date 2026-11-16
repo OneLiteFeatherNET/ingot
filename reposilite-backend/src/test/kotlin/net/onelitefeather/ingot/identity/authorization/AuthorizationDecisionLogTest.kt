@@ -17,9 +17,14 @@
 package net.onelitefeather.ingot.identity.authorization
 
 import com.reposilite.audit.decision.DecisionLog
+import com.reposilite.audit.decision.DecisionLogMode
+import com.reposilite.audit.decision.DecisionLogUnavailableException
 import com.reposilite.audit.decision.DecisionOutcome
 import com.reposilite.audit.decision.DecisionRecord
+import com.reposilite.audit.decision.DecisionRecorder
+import com.reposilite.audit.decision.DecisionSink
 import com.reposilite.audit.decision.RecordOutcome
+import com.reposilite.journalist.backend.InMemoryLogger
 import net.onelitefeather.ingot.identity.evaluation.AccessRequest
 import net.onelitefeather.ingot.identity.evaluation.Candidate
 import net.onelitefeather.ingot.identity.evaluation.Decision
@@ -29,8 +34,11 @@ import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.DecisionSource
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit.SECONDS
 
 /**
  * What the chain hands to the decision log. Every test builds its own fakes, so no test reads state of another one, and
@@ -320,13 +328,61 @@ internal class AuthorizationDecisionLogTest {
     }
 
     @Test
-    fun `a log that reports a failed store does not change the answer`() {
+    fun `a failed store in sync refuses an allowed write and applies no decision`() {
         val failed = FakeLog(outcome = RecordOutcome.FAILED)
         val stage = FixedStage(AuthorizerDecision.Allow(allowance()))
 
-        val outcome = chain(stage, trail(failed)).decide(access(Action.WRITE))
+        val refusal = catchThrowable { chain(stage, trail(failed)).decide(access(Action.WRITE)) }
 
-        assertThat(outcome.allowed).isTrue()
-        assertThat(failed.records).hasSize(1)
+        assertThat(refusal).describedAs("refusal of the write").isInstanceOf(DecisionLogUnavailableException::class.java)
+        assertThat(failed.records).describedAs("records offered to the log").hasSize(1)
+    }
+
+    @Test
+    fun `a failed store in sync refuses a denial as well`() {
+        val failed = FakeLog(outcome = RecordOutcome.FAILED)
+        val stage = FixedStage(AuthorizerDecision.Deny(denial()))
+
+        val refusal = catchThrowable { chain(stage, trail(failed)).decide(access(Action.READ)) }
+
+        assertThat(refusal).describedAs("refusal of the denial").isInstanceOf(DecisionLogUnavailableException::class.java)
+    }
+
+    @Test
+    fun `a sync recorder whose sink fails refuses the write`() {
+        val recorder = DecisionRecorder(
+            mode = DecisionLogMode.SYNC,
+            sink = DecisionSink { throw IllegalStateException("database is down") },
+            logger = InMemoryLogger().logger,
+            clock = clock,
+        )
+        val stage = FixedStage(AuthorizerDecision.Allow(allowance()))
+
+        val refusal = catchThrowable { chain(stage, trail(recorder)).decide(access(Action.WRITE)) }
+
+        recorder.close()
+        assertThat(refusal).describedAs("refusal of the write").isInstanceOf(DecisionLogUnavailableException::class.java)
+    }
+
+    @Test
+    fun `a failed store in async answers the write as before and the writer attempts the record`() {
+        val attempted = CountDownLatch(1)
+        val recorder = DecisionRecorder(
+            mode = DecisionLogMode.ASYNC,
+            sink = DecisionSink {
+                attempted.countDown()
+                throw IllegalStateException("database is down")
+            },
+            logger = InMemoryLogger().logger,
+            clock = clock,
+        )
+        val stage = FixedStage(AuthorizerDecision.Allow(allowance()))
+
+        val outcome = chain(stage, trail(recorder)).decide(access(Action.WRITE))
+        val attemptedInTime = attempted.await(5, SECONDS)
+        recorder.close()
+
+        assertThat(outcome.allowed).describedAs("the write is still allowed").isTrue()
+        assertThat(attemptedInTime).describedAs("the writer attempted the record within the bounded wait").isTrue()
     }
 }

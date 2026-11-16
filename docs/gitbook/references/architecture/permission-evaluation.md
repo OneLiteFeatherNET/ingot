@@ -97,7 +97,7 @@ The check can name one token of the principal. Its node list is then applied as 
 
 ## Decisions in the decision log
 
-The chain records a decision for each denial, each write and each refused admin operation, and nothing for an allowed read. The record names the stage that decided (`disabled`, `built-in`, `default`), the matched rules and the token name. Recording never changes an answer: with the log off nothing is built, and a failing log does not fail the request. The switch and the fields are described in [Decision log variables](../configuration/environment-variables.md#decision-log-variables) and [Audit events](../identity/audit-events.md#authorization-decisions).
+The chain records a decision for each denial, each write and each refused admin operation, and nothing for an allowed read. The record names the stage that decided (`disabled`, `built-in`, `default`), the matched rules and the token name. The service's own internal questions, such as the admin check made before a write is guarded, are answered without a record, so the log holds only decisions about the request itself. Recording never changes an answer: with the log off nothing is built. In `async` mode a failing store does not fail the request. In `sync` mode a record that cannot be stored refuses the request with 503, and the decision is not applied, so a write is not stored. The switch and the fields are described in [Decision log variables](../configuration/environment-variables.md#decision-log-variables) and [Audit events](../identity/audit-events.md#authorization-decisions).
 
 ## Related pages
 

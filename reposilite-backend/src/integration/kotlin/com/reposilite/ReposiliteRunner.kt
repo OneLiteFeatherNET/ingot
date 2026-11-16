@@ -17,6 +17,7 @@
 package com.reposilite
 
 import com.reposilite.storage.s3.S3PresignConfig
+import com.reposilite.audit.decision.DecisionLogSettings
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.infrastructure.LOCAL_CONFIGURATION_FILE
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -100,6 +101,10 @@ internal abstract class ReposiliteRunner {
     protected open fun supportBundleSetting(): SupportBundleSetting =
         SupportBundleSetting(enabled = true)
 
+    /** The decision log switch of the instance. Tests default to off, as the server does without `INGOT_DECISION_LOG`. */
+    protected open fun decisionLogSettings(): DecisionLogSettings =
+        DecisionLogSettings()
+
     /** The access record switch of the instance. Tests default to off, as the server does without `INGOT_ACCESS_LOG`. */
     protected open fun accessLogSetting(): AccessLogSetting =
         AccessLogSetting(enabled = false)
@@ -144,6 +149,7 @@ internal abstract class ReposiliteRunner {
             supportBundleSetting = supportBundleSetting(),
             accessLogSetting = accessLogSetting(),
             presignConfig = presignConfig(),
+            decisionLogSettings = decisionLogSettings(),
             awaitDelay = ::awaitDelay,
         )
         reposilite.journalist.setVisibleThreshold(Channel.WARN)

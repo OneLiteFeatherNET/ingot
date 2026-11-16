@@ -15,6 +15,7 @@
  */
 package com.reposilite
 
+import com.reposilite.audit.decision.DecisionLogSettings
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.infrastructure.DatabaseConnection
 import com.reposilite.journalist.Journalist
@@ -65,6 +66,8 @@ class Reposilite(
     val accessLogSetting: AccessLogSetting = AccessLogSetting(enabled = false),
     /** The S3 presigned redirect switch and lifetime, read before the start. The default keeps the redirects off. */
     val presignConfig: S3PresignConfig = S3PresignConfig(enabled = false, ttl = Duration.ofSeconds(300), endpoint = null),
+    /** The decision log switch read at start. The default is off, so no record is written unless the operator turns it on. */
+    val decisionLogSettings: DecisionLogSettings = DecisionLogSettings(),
     /** Waits out the pre-stop delay. Tests inject a recorder, so no test waits on the wall clock. */
     private val awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
 ) : Facade, Journalist {

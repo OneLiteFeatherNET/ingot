@@ -17,9 +17,11 @@
 package com.reposilite.web
 
 import com.reposilite.Reposilite
+import com.reposilite.audit.decision.DecisionLogUnavailableException
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.extensions.error
+import com.reposilite.shared.toErrorResponse
 import com.reposilite.storage.api.UnsupportedLocationException
 import com.reposilite.web.api.HttpServerDrainingEvent
 import com.reposilite.web.api.HttpServerInitializationEvent
@@ -29,6 +31,7 @@ import com.reposilite.web.application.JavalinConfiguration
 import com.reposilite.web.infrastructure.HttpResponseExceptionHandler
 import io.javalin.Javalin
 import io.javalin.http.HttpResponseException
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.util.ConcurrencyUtil
 import java.time.Duration
 import java.util.concurrent.TimeUnit
@@ -81,6 +84,11 @@ class HttpServer {
 
             config.routes.exception(UnsupportedLocationException::class.java) { exception, ctx ->
                 ctx.error(badRequest(exception.message))
+            }
+
+            // A sync decision record that could not be stored refuses the request, which is retried once the store is back
+            config.routes.exception(DecisionLogUnavailableException::class.java) { exception, ctx ->
+                ctx.error(SERVICE_UNAVAILABLE.toErrorResponse(exception.message))
             }
 
             config.events.serverStopping { reposilite.logger.info("Server stopping...") }
