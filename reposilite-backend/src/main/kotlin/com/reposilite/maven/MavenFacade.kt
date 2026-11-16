@@ -300,6 +300,8 @@ class MavenFacade internal constructor(
             return null
         }
         val url = repository.storageProvider.presignedGetUrl(request.gav, ttl) ?: return null
+        // The redirect serves the copy, so the mirror usage record moves forward as it does for a download from Ingot.
+        touchMirrorCopy(request)
         return PresignedRedirect(url = url, cacheControl = redirectCacheControl(maxAge, ttl))
     }
 

@@ -44,8 +44,8 @@ internal class S3PresignedUrlIntegrationTest {
     private val artifact = "/com/example/app/1.0/app-1.0.jar".toLocation()
     private val content = "the bytes of the release"
 
-    private fun providerWith(enabled: Boolean) = S3StorageProviderFactory(
-        presign = S3PresignConfig(enabled = enabled, ttl = Duration.ofSeconds(60), endpoint = null),
+    private fun providerWith() = S3StorageProviderFactory(
+        presign = S3PresignConfig(enabled = true, ttl = Duration.ofSeconds(60), endpoint = null),
     ).create(
         InMemoryLogger(),
         FailureFacade(InMemoryLogger()),
@@ -63,7 +63,7 @@ internal class S3PresignedUrlIntegrationTest {
     @Test
     fun `should presign a url that serves the stored bytes to a client without credentials`() {
         // given: a stored release file and a provider with the redirects on
-        val provider = providerWith(enabled = true)
+        val provider = providerWith()
         assertOk(provider.putFile(artifact, content.toByteArray().inputStream()))
 
         // when: the presigned url is fetched without any credentials
@@ -75,20 +75,9 @@ internal class S3PresignedUrlIntegrationTest {
     }
 
     @Test
-    fun `should answer no url when the redirects are off`() {
-        // given: a stored release file and a provider with the redirects off
-        val provider = providerWith(enabled = false)
-        assertOk(provider.putFile(artifact, content.toByteArray().inputStream()))
-
-        // when / then: the instance serves the file itself
-        assertThat(provider.presignedGetUrl(artifact, Duration.ofSeconds(60)))
-            .describedAs("presigned url with the redirects off").isNull()
-    }
-
-    @Test
     fun `should answer no url for a file that is not stored`() {
         // given: a provider with the redirects on and no stored file
-        val provider = providerWith(enabled = true)
+        val provider = providerWith()
 
         // when / then: the instance answers the request, so the redirect is not made
         assertThat(provider.presignedGetUrl(artifact, Duration.ofSeconds(60)))

@@ -40,7 +40,8 @@ private val useS3V4Signer = System.getProperty("reposilite.s3.use-s3-v4-signer",
 
 /**
  * [bufferToDisk] and [presign] are read once, when the factory is created at start-up, and are the same for every repository of the process.
- * A presigner is built only when the redirects are on, so a deployment without them makes no presigning call.
+ * The presigner is always built, because signing is local and sends nothing; the redirect switch is read by the instance, which decides
+ * whether a presigned URL is asked for at all. Only the endpoint of [presign] is used here.
  */
 class S3StorageProviderFactory(
     private val bufferToDisk: Boolean = S3BufferToDiskSetting.read(),
@@ -115,16 +116,14 @@ class S3StorageProviderFactory(
 
         // The presigner signs locally with the same credentials, region and path style as the client. The endpoint is the
         // presign endpoint when one is set, and the configured S3 endpoint otherwise.
-        val presigner = presign.takeIf { it.enabled }?.let { config ->
-            S3Presigner.builder()
-                .region(region)
-                .credentialsProvider(credentials ?: DefaultCredentialsProvider.create())
-                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(pathStyleAccessEnabled).build())
-                .also { builder ->
-                    (config.endpoint ?: settings.endpoint).takeIf { it.isNotEmpty() }?.let { builder.endpointOverride(URI.create(it)) }
-                }
-                .build()
-        }
+        val presigner = S3Presigner.builder()
+            .region(region)
+            .credentialsProvider(credentials ?: DefaultCredentialsProvider.create())
+            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(pathStyleAccessEnabled).build())
+            .also { builder ->
+                (presign.endpoint ?: settings.endpoint).takeIf { it.isNotEmpty() }?.let { builder.endpointOverride(URI.create(it)) }
+            }
+            .build()
 
         return try {
             S3StorageProvider(

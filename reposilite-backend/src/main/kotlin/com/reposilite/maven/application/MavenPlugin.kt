@@ -27,7 +27,6 @@ import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.MirrorEnvironment
 import com.reposilite.maven.PreservedBuildsListener
 import com.reposilite.maven.PrivateAsPublicSetting
-import com.reposilite.storage.s3.S3PresignConfig
 import com.reposilite.maven.readInstanceUploadChecksumPolicy
 import com.reposilite.maven.metadataLocksFor
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
@@ -86,7 +85,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 metadataLocks = metadataLocksFor(reposilite().database, clock),
                 mirrorEnvironment = MirrorEnvironment.read(),
                 uploadChecksumDefault = readInstanceUploadChecksumPolicy(),
-                presignedRedirectTtl = S3PresignConfig.read().takeIf { it.enabled }?.ttl,
+                presignedRedirectTtl = reposilite().presignConfig.takeIf { it.enabled }?.ttl,
             ).mavenFacade()
 
         // Consumers that start before this plugin look the registry up lazily, so it only has to exist by then.

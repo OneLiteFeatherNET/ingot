@@ -33,6 +33,7 @@ import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.support.SupportBundleSetting
 import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.web.ShutdownSettings
+import com.reposilite.storage.s3.S3PresignConfig
 import java.time.Duration
 import panda.std.Result
 import panda.std.Result.ok
@@ -62,6 +63,8 @@ class Reposilite(
     val supportBundleSetting: SupportBundleSetting = SupportBundleSetting(enabled = true),
     /** The opt-in access record, one INFO line per request. The default keeps it off, as in earlier versions. */
     val accessLogSetting: AccessLogSetting = AccessLogSetting(enabled = false),
+    /** The S3 presigned redirect switch and lifetime, read before the start. The default keeps the redirects off. */
+    val presignConfig: S3PresignConfig = S3PresignConfig(enabled = false, ttl = Duration.ofSeconds(300), endpoint = null),
     /** Waits out the pre-stop delay. Tests inject a recorder, so no test waits on the wall clock. */
     private val awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
 ) : Facade, Journalist {

@@ -45,12 +45,14 @@ internal const val S3_CONTENT = "the bytes of the release in the bucket"
 
 /** Settings of the two S3 repositories, one bucket of its own per test class instance. */
 internal fun s3RepositorySettings(bucket: String): List<RepositorySettings> = listOf(
-    RepositorySettings(id = S3_PUBLIC_REPOSITORY, visibility = RepositoryVisibility.PUBLIC, storageProvider = s3Storage(bucket)),
-    RepositorySettings(id = S3_PRIVATE_REPOSITORY, visibility = RepositoryVisibility.PRIVATE, storageProvider = s3Storage(bucket)),
+    RepositorySettings(id = S3_PUBLIC_REPOSITORY, visibility = RepositoryVisibility.PUBLIC, storageProvider = s3Storage(bucket, "public")),
+    RepositorySettings(id = S3_PRIVATE_REPOSITORY, visibility = RepositoryVisibility.PRIVATE, storageProvider = s3Storage(bucket, "private")),
 )
 
-private fun s3Storage(bucket: String) = S3StorageProviderSettings(
+/** Two repositories share the bucket, so each has a key prefix of its own: the server refuses overlapping key spaces. */
+private fun s3Storage(bucket: String, prefix: String) = S3StorageProviderSettings(
     bucketName = bucket,
+    prefix = prefix,
     endpoint = SharedContainers.floci.s3Endpoint(),
     accessKey = "test",
     secretKey = "test",
