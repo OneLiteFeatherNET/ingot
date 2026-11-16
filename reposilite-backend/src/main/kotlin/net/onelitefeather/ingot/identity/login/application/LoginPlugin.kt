@@ -38,6 +38,7 @@ import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyService
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorPolicy
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorSeedResealer
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
 import net.onelitefeather.ingot.identity.login.mfa.SettingsSeedCipher
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
@@ -128,16 +129,20 @@ class LoginPlugin : ReposilitePlugin() {
             val credentials = LoginStore(database, clock)
             val factorStore = SecondFactorStore(database, clock)
             val identities = IdentityStore(database)
+            val seedCipher = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() })
+            // settings-reencrypt re-seals the authenticator seeds too, so that a rotated key does not lock their owners out.
+            facade<SharedConfigurationFacade>().registerSealedSecretStore(SecondFactorSeedResealer(store = factorStore, seeds = seedCipher))
             SecondFactorService(
                 store = factorStore,
                 identities = identities,
                 limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
-                seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
+                seeds = seedCipher,
                 clock = clock,
                 audit = audit,
                 hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
                 signInObserver = signInObserver,
                 passkeys = PasskeyService(store = factorStore, identities = identities, clock = clock, audit = audit),
+                logError = { message -> logger.error(message) },
             )
         }
 

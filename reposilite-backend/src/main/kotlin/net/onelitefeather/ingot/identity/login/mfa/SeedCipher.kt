@@ -28,6 +28,9 @@ internal interface SeedCipher {
     /** False while no settings key is active. Then no authenticator can be enrolled. */
     val available: Boolean
 
+    /** The key id that [seal] writes into new envelopes, null while no key is active. */
+    val activeKeyId: String?
+
     /** Seals [seed] for the factor [factorKey]. Only called while [available] is true. */
     fun seal(factorKey: String, seed: ByteArray): String
 
@@ -46,6 +49,9 @@ internal class SettingsSeedCipher(
 
     override val available: Boolean
         get() = codecs().isNotEmpty()
+
+    override val activeKeyId: String?
+        get() = codecs().firstOrNull()?.keyId
 
     override fun seal(factorKey: String, seed: ByteArray): String {
         val codec = checkNotNull(codecs().firstOrNull()) { "No settings key is active" }
