@@ -47,6 +47,9 @@ internal interface GcsObjectClient {
      */
     fun list(prefix: String, startOffset: String?, limit: Int): List<GcsObjectInfo>
 
+    /** Deletes one object, or throws [GcsNotFoundException] when the object does not exist. */
+    fun delete(name: String)
+
     /** A listing with the delimiter `/`: the objects directly under [prefix] and one [GcsPrefix] for each deeper directory. */
     fun listDelimited(prefix: String): List<GcsEntry>
 
