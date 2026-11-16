@@ -53,7 +53,7 @@ class LoginService internal constructor(
     private val identities: IdentityStore,
     private val credentials: LoginStore,
     private val hasher: PasswordHasher,
-    settings: Reference<LoginSettings>,
+    private val settings: Reference<LoginSettings>,
     clock: Clock,
     private val audit: (AuditEvent) -> Unit,
     private val setupCode: SetupCode = SetupCode(),
@@ -176,10 +176,13 @@ class LoginService internal constructor(
     }
 
     /** A user-facing reason why [password] is not acceptable, or `null` when it is. */
-    fun passwordProblem(password: String): String? = when {
-        password.length < MIN_PASSWORD_LENGTH -> "Password must have at least $MIN_PASSWORD_LENGTH characters"
-        password.length > MAX_PASSWORD_LENGTH -> "Password must not have more than $MAX_PASSWORD_LENGTH characters"
-        else -> null
+    fun passwordProblem(password: String): String? {
+        val minimum = settings.get().passwordPolicy.minLength
+        return when {
+            password.length < minimum -> "Password must have at least $minimum characters"
+            password.length > MAX_PASSWORD_LENGTH -> "Password must not have more than $MAX_PASSWORD_LENGTH characters"
+            else -> null
+        }
     }
 
     /** Whether at least one human principal exists. The setup code is needed exactly as long as this is `false`. */
@@ -268,7 +271,6 @@ class LoginService internal constructor(
     }
 
     companion object {
-        const val MIN_PASSWORD_LENGTH = 12
         const val MAX_PASSWORD_LENGTH = 256
         private const val SETUP_ACTOR = "setup"
     }
