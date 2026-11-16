@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.plugin.store
 
+import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.journalist.backend.PrintStreamLogger
@@ -23,6 +24,7 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.PluginLoader
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.fixtures.FixturePluginOne
 import com.reposilite.plugin.fixtures.OtherFixturePlugin
@@ -30,6 +32,9 @@ import com.reposilite.plugin.fixtures.PluginJarFixture
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import java.time.Clock
 import java.time.Instant
@@ -42,6 +47,12 @@ import kotlin.reflect.KClass
 @Plugin(name = "failing-store-fixture")
 class FailingStorePlugin : ReposilitePlugin() {
     override fun initialize(): Facade? = throw IllegalStateException("boom from initialize")
+}
+
+/** A store plugin that declares the tier Official, so that a catalogue entry can agree with it. */
+@Plugin(name = "official-store-fixture", tier = PluginTier.OFFICIAL)
+class OfficialStorePlugin : ReposilitePlugin() {
+    override fun initialize(): Facade? = null
 }
 
 /**
@@ -67,7 +78,9 @@ internal class PluginStoreLoaderTest {
         pluginClass: KClass<out ReposilitePlugin>,
         catalogueId: String,
         reachable: Boolean = true,
+        tier: String? = null,
     ): Pair<PluginStore, FakeSourceTransport> {
+        val tierField = tier?.let { "\"tier\": \"$it\"," } ?: ""
         val jarFile = PluginJarFixture.write(root.resolve("store-source").createDirectories(), "store.jar", pluginClass)
         val jar = jarFile.readBytes()
         val catalogue = """
@@ -80,6 +93,7 @@ internal class PluginStoreLoaderTest {
                 "coordinates": "$COORDINATE",
                 "sha256": "${PluginDigest.sha256Hex(jar)}",
                 "compatibility": { "ingot": { "min": "1.2.0", "below": "2.0.0" }, "pluginApi": 1 },
+                $tierField
                 "yanked": false
               } ]
             }
@@ -103,8 +117,12 @@ internal class PluginStoreLoaderTest {
         ) to transport
     }
 
-    private fun loader(store: PluginStore?, environment: Map<String, String> = emptyMap()): Pair<PluginLoader, Extensions> {
-        val extensions = Extensions(journalist)
+    private fun loader(
+        store: PluginStore?,
+        environment: Map<String, String> = emptyMap(),
+        logging: Journalist = journalist,
+    ): Pair<PluginLoader, Extensions> {
+        val extensions = Extensions(logging)
         val loader = PluginLoader(
             pluginsDirectory = pluginsDirectory,
             extensions = extensions,
@@ -216,6 +234,62 @@ internal class PluginStoreLoaderTest {
         // then: no request was made and no store entry exists
         assertThat(transport.requested).describedAs("the recovery switch must make no request").isEmpty()
         assertThat(loader.storeEntries).isEmpty()
+    }
+
+    @Test
+    fun `should log one warning when the catalogue tier differs from the loaded jar and show the tier of the jar`() {
+        // given: a catalogue that lists the jar as official, while the jar declares no tier and is community
+        val (store, _) = storeServing(FixturePluginOne::class, catalogueId = "fixture", tier = "official")
+        val log = CapturedLog()
+        val (loader, extensions) = loader(store, logging = log.journalist)
+
+        // when: the plugins are loaded
+        loader.loadPluginsByServiceFiles()
+
+        // then: the plugin still loads, one warning names both tiers, and the tier shown is the one of the jar
+        assertThat(extensions.getPlugins()["fixture"]).describedAs("a mismatch must not stop the plugin").isNotNull
+        val mismatch = log.lines.filter { it.contains("catalogue entry") }
+        assertThat(mismatch).describedAs("one warning for the mismatch of the tiers").hasSize(1)
+        assertThat(mismatch.single())
+            .describedAs("the warning names the plugin, the catalogue tier and the tier of the jar")
+            .contains("fixture", "official", "community")
+        assertThat(extensions.effectiveTierOf("fixture"))
+            .describedAs("the tier shown must be the tier of the loaded jar")
+            .isEqualTo(PluginTier.COMMUNITY)
+    }
+
+    @Test
+    fun `should not warn about the tier when the catalogue tier equals the tier of the loaded jar`() {
+        // given: a catalogue that lists the jar as official, and a jar that declares official
+        val (store, _) = storeServing(OfficialStorePlugin::class, catalogueId = "official-store-fixture", tier = "official")
+        val log = CapturedLog()
+        val (loader, extensions) = loader(store, logging = log.journalist)
+
+        // when: the plugins are loaded
+        loader.loadPluginsByServiceFiles()
+
+        // then: no tier warning is logged and the plugin is shown as official
+        assertThat(log.lines.filter { it.contains("catalogue entry") })
+            .describedAs("equal tiers must not produce a warning")
+            .isEmpty()
+        assertThat(extensions.effectiveTierOf("official-store-fixture")).isEqualTo(PluginTier.OFFICIAL)
+    }
+
+    /** A real logger whose output goes to memory, read as lines. Only INFO and above is written, as at start. */
+    private class CapturedLog {
+        private val buffer = ByteArrayOutputStream()
+        private val stream = PrintStream(buffer, true, UTF_8)
+        private val printer: Logger = PrintStreamLogger(stream, stream, Channel.INFO, true)
+
+        val journalist: Journalist = object : Journalist {
+            override fun getLogger(): Logger = printer
+        }
+
+        val lines: List<String>
+            get() {
+                stream.flush()
+                return buffer.toString(UTF_8).lines().filter { it.isNotEmpty() }
+            }
     }
 
     private companion object {

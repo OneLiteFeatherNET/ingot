@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.plugin.store
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.reposilite.plugin.api.PluginTier
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -34,6 +35,8 @@ data class CacheRecord(
     val signed: Boolean,
     val fingerprint: String?,
     val verifiedAt: Instant,
+    /** The tier of the catalogue entry that the jar was verified with. A record without the field reads as Community. */
+    val tier: PluginTier = PluginTier.COMMUNITY,
 )
 
 /** A jar and its signature as the cache holds them. [signature] is null for an unsigned jar. */
@@ -123,6 +126,7 @@ class PluginCache(private val root: Path) {
             }
         }
         node.put("verifiedAt", record.verifiedAt.epochSecond)
+        node.put("tier", record.tier.name.lowercase())
         return mapper.writeValueAsBytes(node)
     }
 
@@ -143,6 +147,7 @@ class PluginCache(private val root: Path) {
             signed = node.get("signed").asBoolean(),
             fingerprint = node.get("fingerprint")?.takeIf { !it.isNull }?.asText(),
             verifiedAt = Instant.ofEpochSecond(node.get("verifiedAt").asLong()),
+            tier = node.get("tier")?.takeIf { it.isTextual }?.let { text -> PluginTier.entries.firstOrNull { it.name.equals(text.asText(), ignoreCase = true) } } ?: PluginTier.COMMUNITY,
         )
     }
 

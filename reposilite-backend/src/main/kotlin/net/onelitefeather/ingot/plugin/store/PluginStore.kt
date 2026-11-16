@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.plugin.store
 
+import com.reposilite.plugin.api.PluginTier
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
@@ -55,6 +56,8 @@ data class StoreEntry(
     val source: String? = null,
     val fingerprint: String? = null,
     val reason: String? = null,
+    /** The tier that the catalogue entry states. The loader compares it with the tier of the loaded jar. */
+    val catalogueTier: PluginTier? = null,
 ) {
 
     val loadable: Boolean
@@ -156,6 +159,7 @@ class PluginStore(
             jar = cached.jar,
             source = cached.record.source,
             fingerprint = fingerprint,
+            catalogueTier = cached.record.tier,
         )
 
     private fun listingOf(source: String): SourceListing =
@@ -200,6 +204,7 @@ class PluginStore(
             return refused("the entry is yanked, so a new selection of it is refused")
         }
         CompatibilityRule.check(entry.compatibility, ingotVersion)?.let { return refused(it) }
+        val tier = entry.tier ?: return refused("the tier field of the entry is not core, official, community or experimental, so the entry is refused")
 
         val jarUrl = "${source.trimEnd('/')}/${jarPath(coordinate)}"
         val jar = when (val fetched = transport.fetch(jarUrl, JAR_LIMIT)) {
@@ -245,6 +250,7 @@ class PluginStore(
                 signed = signature != null,
                 fingerprint = fingerprint,
                 verifiedAt = clock.instant(),
+                tier = tier,
             ),
         )
         return StoreEntry(
@@ -254,6 +260,7 @@ class PluginStore(
             jar = cache.jarFile(coordinate),
             source = source,
             fingerprint = fingerprint,
+            catalogueTier = tier,
         )
     }
 
