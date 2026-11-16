@@ -17,12 +17,15 @@
 package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import net.onelitefeather.ingot.identity.login.storage.AttemptRecord
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import org.assertj.core.api.Assertions.assertThat
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import panda.std.reactive.Reference
 import java.nio.file.Path
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -127,6 +130,28 @@ internal class LoginAttemptLimiterTest {
             assertThat(stored).isNotNull()
             assertThat(LoginAttemptLimiter.userKey("alice", "10.0.0.1")).doesNotContain("alice").doesNotContain("10.0.0.1")
         }
+    }
+
+    @Test
+    fun `counts a failure that loses every write race`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            val store = LoginStore(connection.database, clock)
+            val reference = Reference.reference(LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 15))
+            val key = LoginAttemptLimiter.userKey("alice", "10.0.0.1")
+            LoginAttemptLimiter(store, reference, clock).recordFailure(listOf(key))
+
+            LoginAttemptLimiter(LosingLoginStore(connection.database, clock), reference, clock).recordFailure(listOf(key))
+
+            assertThat(store.findAttempt(key)?.state?.failures)
+                .describedAs("a failure that loses every write race must still be counted")
+                .isEqualTo(2)
+        }
+    }
+
+    /** Reads every row one version behind, so that each conditional write loses its race. */
+    private class LosingLoginStore(database: Database, clock: Clock) : LoginStore(database, clock) {
+        override fun findAttempt(attemptKey: String): AttemptRecord? =
+            super.findAttempt(attemptKey)?.let { it.copy(version = it.version - 1) }
     }
 
     @Test

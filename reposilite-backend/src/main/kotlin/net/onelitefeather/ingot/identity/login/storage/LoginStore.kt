@@ -68,8 +68,8 @@ private const val MAX_IP_LENGTH = 64
 private const val FIRST_ADMINISTRATOR = "first-administrator"
 private val KNOWN_ADDRESS_WRITE_INTERVAL: Duration = Duration.ofHours(1)
 
-/** Reads and writes the login tables. Every method runs in its own transaction. */
-class LoginStore(
+/** Reads and writes the login tables. Every method runs in its own transaction. Open only so that tests can force lost races. */
+open class LoginStore(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -108,7 +108,8 @@ class LoginStore(
             LoginSetupMarkerTable.selectAll().where { LoginSetupMarkerTable.name eq FIRST_ADMINISTRATOR }.any()
         }
 
-    internal fun findAttempt(attemptKey: String): AttemptRecord? =
+    /** Open for tests, which override it to make every conditional write lose its race. */
+    internal open fun findAttempt(attemptKey: String): AttemptRecord? =
         transaction(database) {
             LoginAttemptTable.selectAll()
                 .where { LoginAttemptTable.attemptKey eq attemptKey }
