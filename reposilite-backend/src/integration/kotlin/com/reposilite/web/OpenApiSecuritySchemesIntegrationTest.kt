@@ -92,6 +92,16 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
     }
 
     @Test
+    fun `the security status route lists the token, bearer and cookie alternatives`() {
+        // GET /api/identity/me/security is a read for a session or a Basic or Bearer caller, like the token list
+        val referenced = authenticatedRoutes(openApiDocument())["GET /api/identity/me/security"]
+
+        assertThat(referenced)
+            .describedAs("security schemes listed for GET /api/identity/me/security")
+            .containsExactlyInAnyOrder("tokenBasic", "sessionBearer", "sessionCookie")
+    }
+
+    @Test
     fun `every route that needs a login lists the session cookie`() {
         val routesWithoutCookie = authenticatedRoutes(openApiDocument()).filterValues { "sessionCookie" !in it }.keys
 
