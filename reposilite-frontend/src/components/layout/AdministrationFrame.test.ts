@@ -249,6 +249,14 @@ describe('AdministrationFrame page header', () => {
     expect(wrapper.get('[data-test="title-row"]').classes(), 'the first row of a group page').toContain('min-h-12')
   })
 
+  it('puts the actions on their own row from 600 to 1239 pixels, so every page has the same header height there', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
+
+    const actions = wrapper.get('header > div:last-child').classes()
+    expect(actions, 'a full row below the title in the medium window').toContain('medium:basis-full')
+    expect(actions, 'beside the title again from 1240 pixels').toContain('large:basis-auto')
+  })
+
   it('keeps the actions row 48 pixels high, so the header keeps its height whichever buttons a page has', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
 
