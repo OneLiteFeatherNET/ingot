@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
+import { h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import AppTabs from './AppTabs.vue'
 
@@ -122,10 +123,12 @@ describe('AppTabs keyboard model', () => {
     const { wrapper } = await mountAt('/settings/system-info')
 
     await tabsOf(wrapper)[0].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
     expect(tabsOf(wrapper)[1].attributes('aria-selected'), 'Right selects the next tab').toBe('true')
     expect(document.activeElement, 'Right moves the focus to the next tab').toBe(tabsOf(wrapper)[1].element)
 
     await tabsOf(wrapper)[1].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
     expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'Left selects the previous tab').toBe('true')
     expect(document.activeElement).toBe(tabsOf(wrapper)[0].element)
   })
@@ -134,9 +137,11 @@ describe('AppTabs keyboard model', () => {
     const { wrapper } = await mountAt('/settings/system-info?tab=configuration')
 
     await tabsOf(wrapper)[3].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
     expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'Right on the last tab wraps to the first').toBe('true')
 
     await tabsOf(wrapper)[0].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
     expect(tabsOf(wrapper)[3].attributes('aria-selected'), 'Left on the first tab wraps to the last').toBe('true')
   })
 
@@ -144,10 +149,12 @@ describe('AppTabs keyboard model', () => {
     const { wrapper } = await mountAt('/settings/system-info?tab=plugins')
 
     await tabsOf(wrapper)[1].trigger('keydown', { key: 'End' })
+    await flushPromises()
     expect(tabsOf(wrapper)[3].attributes('aria-selected'), 'End selects the last tab').toBe('true')
     expect(document.activeElement).toBe(tabsOf(wrapper)[3].element)
 
     await tabsOf(wrapper)[3].trigger('keydown', { key: 'Home' })
+    await flushPromises()
     expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'Home selects the first tab').toBe('true')
     expect(document.activeElement).toBe(tabsOf(wrapper)[0].element)
   })
@@ -178,6 +185,7 @@ describe('AppTabs address', () => {
     const replace = vi.spyOn(router, 'replace')
 
     await tabsOf(wrapper)[2].trigger('click')
+    await flushPromises()
 
     expect(push, 'choosing a tab adds no history entry').not.toHaveBeenCalled()
     expect(replace, 'choosing a tab replaces the history entry').toHaveBeenCalledTimes(1)
@@ -207,14 +215,16 @@ describe('AppTabs without the address', () => {
 })
 
 describe('AppTabs ids', () => {
-  it('gives two instances on one page different ids', async () => {
-    const first = await mountAt('/settings/system-info', { queryParam: null })
-    const second = mount(AppTabs, {
-      props: { tabs: TABS, label: 'Other sections', queryParam: null },
-      attachTo: document.body,
-    }) as VueWrapper
-    const ids = [...tabsOf(first.wrapper), ...tabsOf(second)].map((tab) => tab.attributes('id'))
-    second.unmount()
+  it('gives two instances on one page different ids', () => {
+    // One app holds both instances, as one page does, so Vue scopes their ids to the same app.
+    const page = mount({
+      render: () => [
+        h(AppTabs, { tabs: TABS, label: 'First sections', queryParam: null }),
+        h(AppTabs, { tabs: TABS, label: 'Second sections', queryParam: null }),
+      ],
+    }, { attachTo: document.body })
+    const ids = page.findAll('[role="tab"]').map((tab) => tab.attributes('id'))
+    page.unmount()
 
     expect(new Set(ids).size, 'every tab has its own id').toBe(ids.length)
   })
