@@ -385,4 +385,68 @@ internal class OidcLoginServiceTest {
             assertThat(fixture.finish(started)).isInstanceOf(LoggedIn::class.java)
         }
     }
+
+    /** The claims of the test provider, with the nonce of the login and [extra] on top. */
+    private fun Fixture.claimsWith(extra: Map<String, Any?>): () -> Map<String, Any?> = {
+        mapOf(
+            "sub" to "subject-1",
+            "preferred_username" to "alice",
+            "name" to "Alice Example",
+            "email" to "alice@example.org",
+            "groups" to listOf("devs"),
+            "nonce" to provider.nonce,
+        ) + extra
+    }
+
+    @Test
+    fun `an id token whose acr is trusted by the provider marks the login as verified by the provider`() {
+        withFlow(provider = corp().copy(mfaAcrValues = listOf("urn:mfa"))) { fixture, _ ->
+            fixture.localAdmin()
+            val (started, _) = fixture.startAndEchoNonce()
+            fixture.provider.claimsFor = fixture.claimsWith(mapOf("acr" to "urn:mfa"))
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(outcome.providerMfa).describedAs("trusted acr of the id token").isTrue()
+        }
+    }
+
+    @Test
+    fun `an id token whose acr is not in the trusted list does not mark the login`() {
+        withFlow(provider = corp().copy(mfaAcrValues = listOf("urn:mfa"))) { fixture, _ ->
+            fixture.localAdmin()
+            val (started, _) = fixture.startAndEchoNonce()
+            fixture.provider.claimsFor = fixture.claimsWith(mapOf("acr" to "urn:password"))
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(outcome.providerMfa).describedAs("untrusted acr of the id token").isFalse()
+        }
+    }
+
+    @Test
+    fun `an amr value in the trusted list marks the login as verified by the provider`() {
+        withFlow(provider = corp().copy(mfaAmrValues = listOf("mfa"))) { fixture, _ ->
+            fixture.localAdmin()
+            val (started, _) = fixture.startAndEchoNonce()
+            fixture.provider.claimsFor = fixture.claimsWith(mapOf("amr" to listOf("pwd", "mfa")))
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(outcome.providerMfa).describedAs("trusted amr of the id token").isTrue()
+        }
+    }
+
+    @Test
+    fun `an acr is not trusted while the provider trusts no value`() {
+        withFlow(provider = corp()) { fixture, _ ->
+            fixture.localAdmin()
+            val (started, _) = fixture.startAndEchoNonce()
+            fixture.provider.claimsFor = fixture.claimsWith(mapOf("acr" to "urn:mfa"))
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(outcome.providerMfa).describedAs("acr with empty trusted lists").isFalse()
+        }
+    }
 }
