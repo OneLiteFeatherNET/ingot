@@ -16,6 +16,7 @@
 
 package com.reposilite
 
+import com.reposilite.storage.s3.S3PresignConfig
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.infrastructure.LOCAL_CONFIGURATION_FILE
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -103,6 +104,10 @@ internal abstract class ReposiliteRunner {
     protected open fun accessLogSetting(): AccessLogSetting =
         AccessLogSetting(enabled = false)
 
+    /** The S3 presigned redirect switch of the instance. Tests default to off, so no test depends on the environment of the machine. */
+    protected open fun presignConfig(): S3PresignConfig =
+        S3PresignConfig(enabled = false, ttl = Duration.ofSeconds(300), endpoint = null)
+
     /** Waits out the pre-stop delay. Tests replace it with a recorder, so no test waits on the wall clock. */
     protected open fun awaitDelay(duration: Duration) {
         Thread.sleep(duration.toMillis())
@@ -138,6 +143,7 @@ internal abstract class ReposiliteRunner {
             readOnlySetting = readOnlySetting(),
             supportBundleSetting = supportBundleSetting(),
             accessLogSetting = accessLogSetting(),
+            presignConfig = presignConfig(),
             awaitDelay = ::awaitDelay,
         )
         reposilite.journalist.setVisibleThreshold(Channel.WARN)
