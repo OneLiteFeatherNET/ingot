@@ -29,6 +29,10 @@ import net.onelitefeather.ingot.identity.login.LoginService
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.PasswordHasher
+import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
+import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
+import net.onelitefeather.ingot.identity.login.ldap.LdapLoginProvider
+import net.onelitefeather.ingot.identity.login.ldap.LdapLoginSettings
 import net.onelitefeather.ingot.identity.login.storage.AuthChallengeTable
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
@@ -51,7 +55,7 @@ internal const val MFA_TEST_PASSWORD = "correct horse battery"
  * sessions and the facade. [settings] is the policy and the step-up settings of the test, and can be changed between two steps
  * of a test, as an administrator would change them. Every other service reads the default settings.
  */
-internal class MfaFixture(val clock: MutableClock, private val database: Database) {
+internal class MfaFixture(val clock: MutableClock, private val database: Database, private val ldap: LdapLoginSettings? = null) {
 
     var settings: LoginSettings = LoginSettings()
 
@@ -71,7 +75,6 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
         clock = clock,
         audit = audit::add,
         random = SecureRandom(),
-        hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
         passkeys = PasskeyService(store = factorStore, identities = identities, clock = clock, audit = audit::add),
     )
 
@@ -80,8 +83,9 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
         settings = { settings },
         clock = clock,
         secondFactorRequired = { principalId -> factors.requiresSecondFactor(principalId) },
-        hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
     )
+
+    private val accounts = ExternalAccountService(identities, ExternalIdentityStore(database))
 
     private val login = LoginService(
         identities = identities,
@@ -91,6 +95,7 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
         clock = clock,
         audit = audit::add,
         secondFactorRequired = { principal -> factors.requiresSecondFactor(principal.id) },
+        externalPasswordProviders = { ldap?.takeIf { it.enabled }?.let { listOf(LdapLoginProvider(it, accounts)) }.orEmpty() },
     )
 
     val signer = SessionSigner(ByteArray(32) { 5 }, clock)
@@ -150,8 +155,13 @@ internal class MfaFixture(val clock: MutableClock, private val database: Databas
 }
 
 /** Runs [block] on a fresh temporary database, so that no test sees the state of another. */
-internal fun withMfaFixture(workingDirectory: Path, clock: MutableClock, block: (MfaFixture) -> Unit) {
+internal fun withMfaFixture(
+    workingDirectory: Path,
+    clock: MutableClock,
+    ldap: LdapLoginSettings? = null,
+    block: (MfaFixture) -> Unit,
+) {
     DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
-        block(MfaFixture(clock, connection.database))
+        block(MfaFixture(clock, connection.database, ldap))
     }
 }

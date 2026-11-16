@@ -85,7 +85,6 @@ internal class PasskeyLoginGateTest {
                 clock = clock,
                 audit = audit::add,
                 random = SecureRandom(),
-                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
             )
             val facade = LoginFacade(login, sessions = null, ownTokens = null, secondFactor = factors)
             val passkeys = PasskeyService(store = store, identities = identities, clock = clock, audit = audit::add)

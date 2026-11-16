@@ -175,7 +175,7 @@ internal class SecondFactorPolicyTest {
     }
 
     @Test
-    fun `a covered user without a local password keeps the full scope after the grace period`() {
+    fun `a covered user without a local password gets the enrol scope after the grace period`() {
         withMfaFixture(workingDirectory, clock) { fixture ->
             fixture.grace(days = 14)
             val admin = fixture.user()
@@ -183,8 +183,8 @@ internal class SecondFactorPolicyTest {
             fixture.policy.covers(admin)
 
             assertThat(fixture.policy.scopeOf(admin, start.plus(Duration.ofDays(30))))
-                .describedAs("scope of a provider account without a local password (open question)")
-                .isEqualTo(SessionScope.FULL)
+                .describedAs("scope of a provider account without a local password after the grace")
+                .isEqualTo(SessionScope.ENROL)
         }
     }
 

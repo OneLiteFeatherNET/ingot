@@ -139,7 +139,6 @@ class LoginPlugin : ReposilitePlugin() {
                 seeds = seedCipher,
                 clock = clock,
                 audit = audit,
-                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
                 signInObserver = signInObserver,
                 passkeys = PasskeyService(store = factorStore, identities = identities, clock = clock, audit = audit),
                 logError = { message -> logger.error(message) },
@@ -154,7 +153,6 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = { loginSettings.get() },
                 clock = clock,
                 secondFactorRequired = { principalId -> secondFactors?.requiresSecondFactor(principalId) ?: false },
-                hasLocalPassword = { principalId -> LoginStore(database, clock).findCredential(principalId) != null },
             )
         }
 

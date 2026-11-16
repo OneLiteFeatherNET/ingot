@@ -56,9 +56,12 @@ internal class LegacyLdapEnvironment(
 
     val accounts = ExternalAccountService(identities, ExternalIdentityStore(database))
 
-    private val journalist = AggregatedLogger(InMemoryLogger(), PrintStreamLogger(System.out, System.out))
+    /** The server-side log of the directory logins, so that a test can assert the reason of a refusal. */
+    val logs = InMemoryLogger()
 
-    private val accessTokens = AccessTokenFacade(
+    private val journalist = AggregatedLogger(logs, PrintStreamLogger(System.out, System.out))
+
+    val accessTokens = AccessTokenFacade(
         journalist,
         InMemoryAccessTokenRepository(),
         IdentityAccessTokenRepository(identities),

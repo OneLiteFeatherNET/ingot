@@ -223,11 +223,6 @@ internal class SecondFactorService(
     private val clock: Clock,
     private val audit: (AuditEvent) -> Unit,
     private val random: SecureRandom = SecureRandom(),
-    /**
-     * Whether the principal has a local password. Only such accounts may enrol an authenticator in this version: a directory
-     * account signs in through the directory's own Basic authentication too, which a factor does not cover yet.
-     */
-    private val hasLocalPassword: (Int) -> Boolean = { true },
     /** Counts the outcomes of the second factor at sign-in. Nothing is counted while the account throttle switch is off. */
     private val signInObserver: SignInObserver = SignInObserver.OFF,
     /** The passkey ceremonies. Without it no passkey can be registered or asserted, and a sign-in never completes with one. */
@@ -247,11 +242,6 @@ internal class SecondFactorService(
         if (!seeds.available) {
             return TotpEnrolmentStart.Unavailable(
                 "Authenticator codes need the settings key: set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first. Passkeys and recovery codes need no key."
-            )
-        }
-        if (!hasLocalPassword(principalId)) {
-            return TotpEnrolmentStart.Unavailable(
-                "Authenticator codes are offered for accounts with a local password in this version. Directory accounts follow in a later change."
             )
         }
         if (authenticatorFactors(principalId).isNotEmpty()) {

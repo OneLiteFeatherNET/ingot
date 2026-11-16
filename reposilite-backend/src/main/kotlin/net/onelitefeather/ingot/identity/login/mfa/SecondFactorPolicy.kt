@@ -40,11 +40,6 @@ internal class SecondFactorPolicy(
     private val clock: Clock,
     /** Whether the user holds a second factor. */
     private val secondFactorRequired: (Int) -> Boolean,
-    /**
-     * Whether the user has a local password. A covered account without one, such as a provider account, is not restricted after the
-     * grace: it cannot enrol a factor yet, so the restriction would lock it out. This is the open question of the change.
-     */
-    private val hasLocalPassword: (Int) -> Boolean,
 ) {
 
     /**
@@ -83,15 +78,15 @@ internal class SecondFactorPolicy(
 
     /**
      * The scope of a session of [principal] issued at [now]. The coverage is recorded at [now] too, so that a grace of zero days
-     * restricts the session that starts now. A covered user with a factor, or without a local password, keeps the full scope. A
-     * covered user without a factor keeps it until the grace period, which ends at `requiredSince + graceDays`, and gets the
-     * restricted scope from that instant on.
+     * restricts the session that starts now. A covered user with a factor keeps the full scope. A covered user without a factor keeps
+     * it until the grace period, which ends at `requiredSince + graceDays`, and gets the restricted scope from that instant on. This
+     * holds for every covered account, local password or not: a directory or external account enrols a factor with a recent sign-in.
      */
     fun scopeOf(principal: PrincipalRecord, now: Instant): SessionScope {
         if (!covers(principal, now)) {
             return SessionScope.FULL
         }
-        if (secondFactorRequired(principal.id) || !hasLocalPassword(principal.id)) {
+        if (secondFactorRequired(principal.id)) {
             return SessionScope.FULL
         }
         val since = identities.requiredSinceOf(principal.id) ?: return SessionScope.FULL
