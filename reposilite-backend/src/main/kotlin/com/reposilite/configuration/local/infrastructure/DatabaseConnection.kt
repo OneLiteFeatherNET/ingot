@@ -27,6 +27,7 @@ import java.io.Closeable
 import java.io.File
 import java.nio.file.Path
 import java.sql.Connection.TRANSACTION_SERIALIZABLE
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.absolutePathString
 
 data class DatabaseConnection(
@@ -39,6 +40,15 @@ data class DatabaseConnection(
 
 }
 
+/**
+ * The pool timings in the units of Hikari, which are milliseconds.
+ */
+data class HikariTimings(
+    val maxLifetime: Long,
+    val connectionTimeout: Long,
+    val keepaliveTime: Long,
+)
+
 object DatabaseConnectionFactory {
 
     private val DRIVER_MAPPING = mapOf(
@@ -49,26 +59,46 @@ object DatabaseConnectionFactory {
         "jdbc:h2" to "org.h2.Driver",
     )
 
-    fun createConnection(workingDirectory: Path, databaseConfiguration: String, databaseThreadPoolSize: Int): DatabaseConnection =
+    fun createConnection(
+        workingDirectory: Path,
+        databaseConfiguration: String,
+        databaseThreadPoolSize: Int,
+        poolTimings: HikariTimings? = null,
+    ): DatabaseConnection =
         when {
-            databaseConfiguration.startsWith("mariadb") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mariadb", databaseThreadPoolSize)
+            databaseConfiguration.startsWith("mariadb") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mariadb", databaseThreadPoolSize, poolTimings)
             databaseConfiguration.startsWith("sqlite") -> connectWithEmbeddedDatabase(workingDirectory, databaseConfiguration, "jdbc:sqlite:%file%")
-            databaseConfiguration.startsWith("postgresql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:postgresql", databaseThreadPoolSize)
+            databaseConfiguration.startsWith("postgresql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:postgresql", databaseThreadPoolSize, poolTimings)
             /* Experimental implementations (not covered with integration tests) */
-            databaseConfiguration.startsWith("mysql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mysql", databaseThreadPoolSize)
+            databaseConfiguration.startsWith("mysql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mysql", databaseThreadPoolSize, poolTimings)
             databaseConfiguration.startsWith("h2") -> connectWithEmbeddedDatabase(workingDirectory, databaseConfiguration, "jdbc:h2:%file%;MODE=MYSQL")
             /* Raw */
-            databaseConfiguration.startsWith("jdbc:") -> connectWithCustomJdbcUrl(databaseConfiguration, databaseThreadPoolSize)
+            databaseConfiguration.startsWith("jdbc:") -> connectWithCustomJdbcUrl(databaseConfiguration, databaseThreadPoolSize, poolTimings)
             else -> throw RuntimeException("Unknown database: $databaseConfiguration")
         }
 
-    private fun connectWithCustomJdbcUrl(jdbcUrl: String, databaseThreadPoolSize: Int): DatabaseConnection =
-        createDataSource(jdbcUrl, databaseThreadPoolSize)
+    /**
+     * Maps the pool keys of the configuration, which are whole seconds, to the milliseconds of Hikari.
+     */
+    internal fun hikariTimings(maxLifetimeSeconds: Int, connectionTimeoutSeconds: Int, keepaliveSeconds: Int): HikariTimings =
+        HikariTimings(
+            maxLifetime = TimeUnit.SECONDS.toMillis(maxLifetimeSeconds.toLong()),
+            connectionTimeout = TimeUnit.SECONDS.toMillis(connectionTimeoutSeconds.toLong()),
+            keepaliveTime = TimeUnit.SECONDS.toMillis(keepaliveSeconds.toLong()),
+        )
+
+    private fun connectWithCustomJdbcUrl(jdbcUrl: String, databaseThreadPoolSize: Int, poolTimings: HikariTimings?): DatabaseConnection =
+        createDataSource(jdbcUrl, databaseThreadPoolSize, poolTimings = poolTimings)
             .let { DatabaseConnection(it, Database.connect(it)) }
 
-    private fun connectWithStandardDatabase(databaseConfiguration: String, dialect: String, databaseThreadPoolSize: Int): DatabaseConnection =
+    private fun connectWithStandardDatabase(
+        databaseConfiguration: String,
+        dialect: String,
+        databaseThreadPoolSize: Int,
+        poolTimings: HikariTimings?,
+    ): DatabaseConnection =
         with(loadCommandBasedConfiguration(StandardSQLDatabaseSettings(), databaseConfiguration).configuration) {
-            createDataSource("$dialect://$host/$database", databaseThreadPoolSize, user, password)
+            createDataSource("$dialect://$host/$database", databaseThreadPoolSize, user, password, poolTimings)
                 .let { DatabaseConnection(it, Database.connect(it)) }
         }
 
@@ -87,22 +117,45 @@ object DatabaseConnectionFactory {
                 .also { TransactionManager.manager.defaultIsolationLevel = TRANSACTION_SERIALIZABLE }
         }
 
-    private fun createDataSource(url: String, threadPool: Int, username: String? = null, password: String? = null): HikariDataSource =
-        HikariDataSource(
-            HikariConfig().apply {
-                this.jdbcUrl = url
-                this.driverClassName = resolveDriver(url)
-                this.maximumPoolSize = threadPool
-                username?.also { this.username = it }
-                password?.also { this.password = it }
+    private fun createDataSource(
+        url: String,
+        threadPool: Int,
+        username: String? = null,
+        password: String? = null,
+        poolTimings: HikariTimings? = null,
+    ): HikariDataSource =
+        HikariDataSource(hikariConfig(url, threadPool, poolTimings, username, password))
 
-                if (url.startsWith("jdbc:sqlite")) {
-                    // SQLite disables foreign key enforcement per connection by default,
-                    // so declared foreign key constraints (e.g. ON DELETE CASCADE) are not enforced and dependent rows leak on delete.
-                    this.connectionInitSql = "PRAGMA foreign_keys=ON"
-                }
+    /**
+     * The pool configuration for [url]. The timings apply to server databases only: SQLite and H2 keep the single connection
+     * and the timings of Hikari, so they are never changed here, whatever the configuration says.
+     */
+    internal fun hikariConfig(
+        url: String,
+        threadPool: Int,
+        poolTimings: HikariTimings? = null,
+        username: String? = null,
+        password: String? = null,
+    ): HikariConfig =
+        HikariConfig().apply {
+            this.jdbcUrl = url
+            this.driverClassName = resolveDriver(url)
+            this.maximumPoolSize = threadPool
+            username?.also { this.username = it }
+            password?.also { this.password = it }
+
+            if (poolTimings != null && !url.startsWith("jdbc:sqlite") && !url.startsWith("jdbc:h2")) {
+                this.maxLifetime = poolTimings.maxLifetime
+                this.connectionTimeout = poolTimings.connectionTimeout
+                this.keepaliveTime = poolTimings.keepaliveTime
             }
-        )
+
+            if (url.startsWith("jdbc:sqlite")) {
+                // SQLite disables foreign key enforcement per connection by default,
+                // so declared foreign key constraints (e.g. ON DELETE CASCADE) are not enforced and dependent rows leak on delete.
+                this.connectionInitSql = "PRAGMA foreign_keys=ON"
+            }
+        }
 
     private fun resolveDriver(jdbcUrl: String): String =
         DRIVER_MAPPING.entries

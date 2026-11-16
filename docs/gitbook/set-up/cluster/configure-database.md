@@ -139,6 +139,14 @@ An update that cannot get its row within 10 seconds is refused with `503 Service
 
 A replica that waits longer than `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds stops its start. The default is `300`, and `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` is read when the `INGOT_` name is not set. See [Multi-replica operation](../../references/architecture/multi-replica-operation.md#schema-initialisation).
 
+## Connection budget
+
+Each replica opens at most `databaseThreadPool` connections to the database server. The default is `1`. On PostgreSQL, a replica that is starting needs one connection more while it takes the schema lock, so its start needs `databaseThreadPool` plus one. The connection limit of the server must be at least the number of replicas multiplied by that figure. Keep room above that figure for your own tools, such as a backup or an administration session.
+
+For example, three replicas on PostgreSQL with `databaseThreadPool` set to `5` need at least 18 connections during the start (3 × 6). In the steady state they need 15 (3 × 5), because the extra connection of the start is no longer needed.
+
+If a firewall or a load balancer closes idle connections, set `databaseKeepalive` and `databaseMaxLifetime` below the time after which it closes them. The keys are listed in the [configuration reference](../../references/configuration/configuration-and-startup.md#database).
+
 ## Result
 
 The instance starts, and the dashboard opens. The database contains the `settings` table. With SQLite, the file exists in the working directory. Restart the instance once and check that the users and tokens you created are still there. If they are not, the instance uses a different database than you think. Check the value in the list of places above.

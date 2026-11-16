@@ -131,7 +131,12 @@ object ReposiliteFactory {
             databaseConnection = DatabaseConnectionFactory.createConnection(
                 workingDirectory = parameters.workingDirectory,
                 databaseConfiguration = parameters.database,
-                databaseThreadPoolSize = localConfiguration.databaseThreadPool.get()
+                databaseThreadPoolSize = localConfiguration.databaseThreadPool.get(),
+                poolTimings = DatabaseConnectionFactory.hikariTimings(
+                    maxLifetimeSeconds = localConfiguration.databaseMaxLifetime.get(),
+                    connectionTimeoutSeconds = localConfiguration.databaseConnectionTimeout.get(),
+                    keepaliveSeconds = localConfiguration.databaseKeepalive.get(),
+                )
             ),
             webServer = HttpServer(),
             ioService = newFixedThreadPool(

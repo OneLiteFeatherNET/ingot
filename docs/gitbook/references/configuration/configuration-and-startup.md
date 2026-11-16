@@ -68,6 +68,9 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 | --- | --- | --- | --- |
 | `database` | String | `sqlite reposilite.db` | Database connection. See [Database connection](#database-connection). |
 | `databaseThreadPool` | Int | `1` | Size of the database connection pool. The `sqlite` and `h2` connection strings always use 1. |
+| `databaseMaxLifetime` | Int | `1800` | Seconds after which a pooled connection is closed and replaced. `0` means no limit. A value from 1 to 29, or a negative one, becomes 1800 with a warning. MariaDB, MySQL, PostgreSQL and custom JDBC URLs only. |
+| `databaseConnectionTimeout` | Int | `30` | Seconds a request waits for a free pooled connection before it fails. A negative value stops the start. MariaDB, MySQL, PostgreSQL and custom JDBC URLs only. |
+| `databaseKeepalive` | Int | `120` | Seconds between keepalive queries on idle pooled connections. `0` turns the keepalive off. Hikari also turns it off, with a warning, for a value from 1 to 29, a negative value, or a value at or above the lifetime. MariaDB, MySQL, PostgreSQL and custom JDBC URLs only. |
 
 ### TLS
 
