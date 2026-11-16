@@ -483,6 +483,15 @@ jobs:
             -f charts/ingot/tests/scalable/values.yaml --wait --timeout 300s
           kubectl -n ingot-scalable wait --for=condition=Ready pod -l app.kubernetes.io/instance=ingot-scalable --timeout=300s
 
+      # Prints the state of the scalable release and the logs of its pods when the install above fails, because a
+      # release that never becomes ready says nothing else.
+      - name: "Print the scalable pods when their install fails"
+        if: ${{ failure() }}
+        run: |
+          kubectl --namespace ingot-scalable get pods,deployments,events --output wide || true
+          kubectl --namespace ingot-scalable describe pods --selector app.kubernetes.io/instance=ingot-scalable || true
+          kubectl --namespace ingot-scalable logs --selector app.kubernetes.io/instance=ingot-scalable --all-containers --prefix --tail=300 || true
+
       # The restricted profile is installed into a namespace that enforces the Pod Security
       # restricted level, so the API server rejects the pod unless the render meets that level.
       # The Deployment is available only when its pod is ready, and the pod wait checks it again.
