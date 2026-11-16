@@ -56,10 +56,28 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-test="getting-started"]').classes(), 'no 960 pixel cap on the checklist').not.toContain('max-w-[960px]')
   })
 
-  it('names the page with one visible level one heading, Dashboard', () => {
+  it('draws no level one heading, because Overview names the page', () => {
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the page has exactly one level one heading').toEqual(['Dashboard'])
+    expect(wrapper.findAll('h1'), 'the status block is a section of Overview').toEqual([])
+  })
+
+  it('draws the two sections as level two headings, each labelled by its own title', () => {
+    const wrapper = mount(DashboardView)
+
+    const sections = wrapper.findAll('section')
+    expect(sections.map(section => section.attributes('aria-labelledby')), 'each section names its heading').toEqual([
+      'instance-status-heading',
+      'resources-heading'
+    ])
+    expect(wrapper.findAll('h2').map(heading => heading.text())).toEqual(['Instance status', 'Resources'])
+  })
+
+  it('draws the getting started card before the sections', () => {
+    const wrapper = mount(DashboardView)
+
+    const html = wrapper.html()
+    expect(html.indexOf('getting-started'), 'the checklist comes first').toBeLessThan(html.indexOf('instance-status'))
   })
 
   it('no longer renders the resolved requests chart, which moved to analytics', () => {

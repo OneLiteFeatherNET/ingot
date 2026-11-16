@@ -76,7 +76,7 @@ test.describe('wide screens', () => {
       })
 
       test('lays the resource charts out in two columns at this width, with no empty third column', async ({ adminPage: page }) => {
-        await page.goto(siteUrl('/dashboard'))
+        await page.goto(siteUrl('/settings'))
         const memory = page.getByRole('heading', { name: 'Memory', exact: true })
         const threads = page.getByRole('heading', { name: 'Threads', exact: true })
         await expect(memory).toBeVisible()
@@ -97,7 +97,7 @@ test.describe('wide screens', () => {
       })
 
       test('gives the getting started checklist the content width, with no blank block beside it', async ({ adminPage: page }) => {
-        await page.goto(siteUrl('/dashboard'))
+        await page.goto(siteUrl('/settings'))
         // The checklist's own button sits at its right edge, so its right edge shows how wide the card is.
         const hide = page.getByRole('button', { name: 'Hide checklist' })
         await expect(hide).toBeVisible()

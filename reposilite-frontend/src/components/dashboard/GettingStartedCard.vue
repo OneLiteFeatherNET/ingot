@@ -20,6 +20,7 @@ import { useRouter } from 'vue-router'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { tokenStoreKey, useTokens } from '../../store/tokens'
 import { useSession } from '../../store/session'
+import { ADMIN_NODES } from '../../store/nodeAccess'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
@@ -41,7 +42,13 @@ import {
  * and the hiding is remembered in this browser.
  */
 
-const { isManager } = useSession()
+const session = useSession()
+const isManager = session.isManager
+// The checklist is for the instance admin and for the dashboard node. A step that opens a settings page or reads the
+// settings and tokens needs the settings node; a visitor without it sees the steps without their data and without actions.
+const canOf = (node: string): boolean => (typeof session.can === 'function' ? session.can(node) : Boolean(isManager.value))
+const showsCard = computed(() => canOf(ADMIN_NODES.dashboard) || Boolean(isManager.value))
+const editsSettings = computed(() => canOf(ADMIN_NODES.settings))
 const configuration = inject(configurationStoreKey, null) ?? useConfiguration().store
 const tokenStore = inject(tokenStoreKey, null) ?? useTokens()
 const router = useRouter()
@@ -101,7 +108,7 @@ const confirmPublicReview = () => {
 }
 
 onMounted(() => {
-  if (!isManager.value || dismissed.value) return
+  if (!showsCard.value || dismissed.value || !editsSettings.value) return
   // The shared settings are fetched only when nothing is loaded yet, so an edit in progress is never replaced.
   if (configuration.domains.value.length === 0) configuration.fetchConfiguration()
   tokenStore.fetchTokens()
@@ -110,7 +117,7 @@ onMounted(() => {
 
 <template>
   <MdCard
-    v-if="isManager && !dismissed"
+    v-if="showsCard && !dismissed"
     variant="elevated"
     class="flex flex-col gap-4"
   >
@@ -184,6 +191,7 @@ onMounted(() => {
             <span class="md-label-medium text-on-surface-variant">{{ item.done ? 'Done' : 'To do' }}</span>
           </div>
           <MdButton
+            v-if="editsSettings"
             :data-step-action="item.key"
             :variant="item.done ? 'text' : 'tonal'"
             :href="hrefOf(item)"

@@ -38,11 +38,13 @@ interface RepositoryFixture extends MavenRepository {
 
 // Whether the signed-in user manages the instance is set per test; the card reads it through the session.
 // The ref is created inside the mock factory, so it stays null until the factory has run.
-const session: { isManager: Ref<boolean> | null } = vi.hoisted(() => ({ isManager: null }))
+// A visitor with the dashboard node alone holds no instance admin role and no settings node: `dashboardOnly` gives that.
+const session: { isManager: Ref<boolean> | null, dashboardOnly: boolean } = vi.hoisted(() => ({ isManager: null, dashboardOnly: false }))
 vi.mock('../../store/session', async () => {
   const { ref: vueRef } = await import('vue')
   session.isManager = vueRef(true)
-  return { useSession: () => ({ isManager: session.isManager, client: { value: null } }) }
+  const can = (node: string): boolean => session.isManager!.value || (session.dashboardOnly && node === 'ingot.admin.dashboard')
+  return { useSession: () => ({ isManager: session.isManager, can, client: { value: null } }) }
 })
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
@@ -145,6 +147,7 @@ const mountCard = async ({ client = fakeClient() }: { client?: StoreClient } = {
 beforeEach(() => {
   localStorage.clear()
   managerRef().value = true
+  session.dashboardOnly = false
 })
 
 afterEach(() => {
@@ -168,6 +171,40 @@ describe('GettingStartedCard', () => {
 
     expect($('[data-step-action="deploy-token"]')?.getAttribute('href')).toBe('/tokens/new')
     expect($('[data-step-action="repository"]')?.getAttribute('href')).toBe('/settings/repositories?new=repository')
+  })
+
+  it('shows itself to a visitor with the dashboard node alone, who is not an instance administrator', async () => {
+    session.isManager!.value = false
+    session.dashboardOnly = true
+
+    await mountCard()
+
+    expect(wrapper!.find('#getting-started-title').exists(), 'the dashboard node sees the checklist').toBe(true)
+  })
+
+  it('makes no settings or token request for a visitor with the dashboard node alone', async () => {
+    session.isManager!.value = false
+    session.dashboardOnly = true
+    const client = fakeClient()
+    // The requests are counted through their own spies, so the test reads no method off the client.
+    const domains = vi.fn(() => Promise.resolve({ data: ['maven', 'frontend'] }))
+    const tokens = vi.fn(() => Promise.resolve({ data: [] }))
+    client.settings.domains = domains as unknown as typeof client.settings.domains
+    client.tokens.list = tokens as unknown as typeof client.tokens.list
+
+    await mountCard({ client })
+
+    expect(domains, 'the settings are not asked for').not.toHaveBeenCalled()
+    expect(tokens, 'the tokens are not asked for').not.toHaveBeenCalled()
+  })
+
+  it('draws no step action for a visitor with the dashboard node alone, since the steps open settings pages', async () => {
+    session.isManager!.value = false
+    session.dashboardOnly = true
+
+    await mountCard()
+
+    expect(wrapper!.findAll('[data-step-action]'), 'no button that opens a settings page').toEqual([])
   })
 
   it('does not show itself to someone who does not manage the instance', async () => {

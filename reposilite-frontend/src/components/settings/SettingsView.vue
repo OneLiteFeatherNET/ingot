@@ -30,6 +30,7 @@ import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsAttention from './SettingsAttention.vue'
 import SettingsHub from './SettingsHub.vue'
+import DashboardView from '../dashboard/DashboardView.vue'
 import { attentionRows, glanceRows, unsavedTreeKeys } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import { domainFormOf } from './domainForm'
@@ -352,6 +353,14 @@ const canEdit = computed(() => can(ADMIN_NODES.settings))
 const canDashboard = computed(() => can(ADMIN_NODES.dashboard))
 // Overview is the page of /settings without a domain. Its header actions and its content are for a visitor who may edit.
 const overviewPage = computed(() => canEdit.value && settingsCurrent.value === OVERVIEW_TREE_KEY)
+// The instance status is a section of Overview for the dashboard node. A visitor without the settings node sees only that.
+const statusShown = computed(() => canDashboard.value && settingsCurrent.value === OVERVIEW_TREE_KEY)
+// The description of Overview names the halves the visitor sees; the tree description covers the settings half alone.
+const overviewDescription = computed(() => {
+  if (canEdit.value && canDashboard.value) return 'Status of this instance and its shared configuration.'
+  if (canDashboard.value) return 'Status of this instance.'
+  return undefined
+})
 // Needs attention is drawn above the index below 1240 pixels only when it has something to say; wider, it always reads.
 const attentionShown = computed(() => overviewPage.value && (!narrow.value || attentionList.value.length > 0 || Boolean(conflict.value)))
 
@@ -457,7 +466,8 @@ watch(
   () => props.selectedTab,
   (selectedTab, prev) => {
     /* Fetch configuration only when the user opens an Administration page that reads it (any page of the settings section) */
-    if (selectedTab && prev == undefined && domains.value.length == 0)
+    // A visitor without the settings node makes no settings request: Overview shows only the status to that visitor.
+    if (selectedTab && prev == undefined && domains.value.length == 0 && canEdit.value)
       store.fetchConfiguration()
   },
   { immediate: true }
@@ -468,7 +478,7 @@ watch(
   <AdministrationFrame
     class="settings-view"
     :style="pageClearance"
-    :description="settingsCurrent === undefined ? HUB_DESCRIPTION : undefined"
+    :description="settingsCurrent === undefined ? HUB_DESCRIPTION : (settingsCurrent === OVERVIEW_TREE_KEY ? overviewDescription : undefined)"
     :title="detailTitle"
     :detail="repositoryPage || entryPage"
     :label="sideNav.label"
@@ -478,7 +488,7 @@ watch(
     :index-to="sideNav.indexTo"
     :shortcuts="shortcutsOf(settingsCurrent, can)"
     :narrow="narrow"
-    :reading="!repositoriesPage"
+    :reading="!repositoriesPage && settingsCurrent !== OVERVIEW_TREE_KEY"
     :unsaved="unsavedKeys"
     :overview="settingsCurrent === OVERVIEW_TREE_KEY"
     replace
@@ -547,14 +557,15 @@ watch(
       @dismiss="importErrors = []"
     />
 
+    <DashboardView v-if="statusShown" />
+
     <template v-if="hubShown">
       <SettingsHub
         v-if="canEdit"
         :glance="glanceList"
-        :dashboard="canDashboard"
       />
     </template>
-    <template v-else-if="activeDomain">
+    <template v-else-if="activeDomain && canEdit">
       <div>
         <h2
           v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain) && !repositoriesRoute"
@@ -613,7 +624,7 @@ watch(
       </div>
     </template>
     <p
-      v-else-if="!loadError"
+      v-else-if="!loadError && canEdit"
       class="mt-6 min-h-12 md-body-large text-on-surface-variant"
     >
       Loading configuration
@@ -621,7 +632,7 @@ watch(
 
     <!-- The reset sets every setting of every instance back to its default, so it belongs to the settings pages, not to one repository. -->
     <section
-      v-if="!repositoryPage"
+      v-if="!repositoryPage && canEdit"
       aria-labelledby="settings-danger-title"
       class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
     >

@@ -40,6 +40,11 @@ vi.mock('../../store/session', () => ({
     can: (node) => (node === ADMIN_NODES.dashboard ? session.mayDashboard : session.mayEdit)
   })
 }))
+// The status block has its own tests (DashboardView). Here it is a marker, so the view tests do not fetch the status.
+vi.mock('../dashboard/DashboardView.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { render: () => h('div', { 'data-test': 'status-block', 'data-ingot-component': 'dashboard-view' }) } }
+})
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
@@ -131,7 +136,7 @@ describe('the Overview page at /settings', () => {
     await mountAt()
 
     expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card of a page or domain').toBe(false)
-    expect(overview().findAll('a').map(link => link.attributes('href')), 'the only link of the content is the dashboard link').toEqual(['/dashboard'])
+    expect(overview().findAll('a').map(link => link.attributes('href')), 'the hub has no link of its own').toEqual([])
   })
 
   it('marks the Overview entry of the tree as current, and no other entry', async () => {
@@ -150,7 +155,7 @@ describe('the Overview page at /settings', () => {
     await mountAt()
 
     expect(wrapper.get('h1').text()).toBe('Overview')
-    expect(wrapper.text()).toContain('Shared configuration for all instances.')
+    expect(wrapper.text()).toContain('Status of this instance and its shared configuration.')
   })
 
   it('reads "Nothing needs attention." when no domain has a draft', async () => {
@@ -212,18 +217,69 @@ describe('the Overview page at /settings', () => {
     expect(wrapper.text()).toContain('Loading configuration')
   })
 
-  it('draws the dashboard link to a visitor with the dashboard node', async () => {
+  it('draws no link to a Dashboard page, because the status is on this page', async () => {
     await mountAt()
 
-    const link = wrapper.get('[data-test="settings-hub-dashboard"]')
-    expect(link.attributes('href')).toBe('/dashboard')
+    expect(wrapper.findAll('a').filter(link => link.attributes('href') === '/dashboard'), 'no link to /dashboard').toEqual([])
+    expect(wrapper.find('[data-test="settings-hub-dashboard-line"]').exists()).toBe(false)
   })
 
-  it('draws no dashboard link without the dashboard node', async () => {
+  it('draws the status block on Overview for a visitor with the dashboard node', async () => {
+    await mountAt()
+
+    expect(wrapper.find('[data-test="status-block"]').exists(), 'the instance status is part of Overview').toBe(true)
+  })
+
+  it('draws no status block without the dashboard node', async () => {
     session.mayDashboard = false
     await mountAt()
 
-    expect(wrapper.find('[data-test="settings-hub-dashboard"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="status-block"]').exists()).toBe(false)
+  })
+
+  it('draws the status block above the counts of At a glance', async () => {
+    await mountAt()
+
+    const html = wrapper.html()
+    expect(html.indexOf('status-block'), 'the status comes before At a glance').toBeLessThan(html.indexOf('settings-hub'))
+  })
+
+  it('describes Overview as the status and the shared configuration to an administrator', async () => {
+    await mountAt()
+
+    expect(wrapper.text()).toContain('Status of this instance and its shared configuration.')
+  })
+
+  it('describes Overview as the status alone to a visitor with the dashboard node only', async () => {
+    session.mayEdit = false
+    await mountAt({ loaded: false })
+
+    expect(wrapper.text()).toContain('Status of this instance.')
+    expect(wrapper.text(), 'the shared configuration is not described').not.toContain('shared configuration')
+  })
+
+  it('shows the status block and none of the settings sections to a visitor with the dashboard node only', async () => {
+    session.mayEdit = false
+    await mountAt({ loaded: false })
+
+    expect(wrapper.find('[data-test="status-block"]').exists(), 'the status is shown').toBe(true)
+    expect(wrapper.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
+    expect(wrapper.find('[data-test="settings-hub"]').exists(), 'no At a glance').toBe(false)
+    expect(wrapper.find('#settings-danger-title').exists(), 'no Danger zone').toBe(false)
+    expect(wrapper.findAll('button').map(button => button.text()), 'no import or download action').not.toContain('Import settings')
+  })
+
+  it('makes no settings request for a visitor with the dashboard node only', async () => {
+    session.mayEdit = false
+    const { client } = await mountAt({ loaded: false })
+
+    expect(client.calls, 'the settings domains are not asked for').toEqual([])
+  })
+
+  it('still loads the settings for an administrator who opens Overview', async () => {
+    const { client } = await mountAt({ loaded: false })
+
+    expect(client.calls, 'the domains are asked for by an administrator').toContain('domains')
   })
 
   it('ends with no line that sends sign in and security to Access, since the tree lists it', async () => {

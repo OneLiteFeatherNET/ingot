@@ -79,13 +79,18 @@ describe('registry entries', () => {
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
       audit: 'ingot.admin.audit',
-      settings: 'ingot.admin.settings',
       'access-users': 'ingot.admin.users',
       'access-machines': 'ingot.admin.users',
       'access-teams': 'ingot.admin.teams',
       tokens: 'ingot.admin.users',
       token: 'ingot.admin.users'
     })
+  })
+
+  it('lets the settings route open for either the settings node or the dashboard node, the Overview of both', () => {
+    const settings = ROUTES.find(route => route.name === 'settings')!
+
+    expect(settings.meta?.anyNode, 'Overview is open to both nodes').toEqual(['ingot.admin.settings', 'ingot.admin.dashboard'])
   })
 
   it('keeps the manager flag on every route that names a node, for legacy sessions', () => {
@@ -117,13 +122,35 @@ describe('administrationLocation for fixed node lists', () => {
     ['the audit node alone', ['ingot.admin.audit'], { name: 'audit' }],
     ['the console node alone', ['ingot.admin.console'], { name: 'console' }],
     ['the maintenance node alone', ['ingot.admin.maintenance'], { name: 'maintenance' }],
-    ['the dashboard node alone, which opens analytics', ['ingot.admin.dashboard'], { name: 'analytics' }],
-    ['the console and dashboard nodes, which open console and not analytics', ['ingot.admin.console', 'ingot.admin.dashboard'], { name: 'console' }],
+    ['the dashboard node alone, which opens the status on Overview', ['ingot.admin.dashboard'], { name: 'settings' }],
+    ['the console and dashboard nodes, which open Overview first', ['ingot.admin.console', 'ingot.admin.dashboard'], { name: 'settings' }],
     ['the audit and console nodes, which open audit log', ['ingot.admin.audit', 'ingot.admin.console'], { name: 'audit' }],
-    ['the maintenance and dashboard nodes, which open maintenance', ['ingot.admin.maintenance', 'ingot.admin.dashboard'], { name: 'maintenance' }],
+    ['the maintenance and dashboard nodes, which open Overview first', ['ingot.admin.maintenance', 'ingot.admin.dashboard'], { name: 'settings' }],
     ['the users and console nodes, which open the users page', ['ingot.admin.users', 'ingot.admin.console'], { name: 'access-users' }],
   ])('opens the page the same as before for %s', (_description, nodes, expected) => {
     expect(administrationLocation(canUse.bind(null, nodes)), `the location for ${nodes.join(', ') || 'no node'}`).toEqual(expected)
+  })
+
+  it('opens Overview, where the status is, for a visitor who holds the dashboard node alone', () => {
+    expect(administrationLocation(canUse.bind(null, ['ingot.admin.dashboard'])), 'Overview is the first entry of the tree').toEqual({ name: 'settings' })
+  })
+})
+
+describe('the Overview entry of the tree', () => {
+  const keysFor = (nodes: string[]) => adminGroups(canUse.bind(null, nodes))
+    .flatMap(group => group.links)
+    .map(link => link.key)
+
+  it('is listed for a visitor who holds the dashboard node alone', () => {
+    expect(keysFor(['ingot.admin.dashboard']), 'the status is shown on Overview').toContain('page:overview')
+  })
+
+  it('is listed for a visitor who holds the settings node alone', () => {
+    expect(keysFor(['ingot.admin.settings']), 'the shared configuration is shown on Overview').toContain('page:overview')
+  })
+
+  it('is not listed for a visitor who holds neither node', () => {
+    expect(keysFor(['ingot.admin.console']), 'no node, no Overview').not.toContain('page:overview')
   })
 })
 

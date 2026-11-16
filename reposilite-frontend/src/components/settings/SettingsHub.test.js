@@ -23,8 +23,7 @@ const shell = { render: () => null }
 
 const routes = [
   { name: 'settings', path: '/settings/:domain?', component: shell },
-  { name: 'settings-repositories', path: '/settings/repositories', component: shell },
-  { name: 'dashboard', path: '/dashboard', component: shell }
+  { name: 'settings-repositories', path: '/settings/repositories', component: shell }
 ]
 
 // Each test builds its own counts and router, so no test can change what another one reads.
@@ -45,7 +44,7 @@ const mountHub = async (props = {}) => {
   await router.push('/settings')
   await router.isReady()
   wrapper = mount(SettingsHub, {
-    props: { glance: counts(), dashboard: true, ...props },
+    props: { glance: counts(), ...props },
     global: { plugins: [router] },
     attachTo: document.body
   })
@@ -86,19 +85,12 @@ describe('SettingsHub At a glance', () => {
   })
 })
 
-describe('SettingsHub dashboard link', () => {
-  it('links to the Dashboard, which shows the instance status', async () => {
-    await mountHub({ dashboard: true })
+describe('SettingsHub has no link to a Dashboard page', () => {
+  it('draws no link to /dashboard, because the instance status is on Overview', async () => {
+    await mountHub()
 
-    const link = wrapper.get('[data-test="settings-hub-dashboard"]')
-    expect(link.attributes('href')).toBe('/dashboard')
-    expect(wrapper.text()).toContain('Instance status and resources are on the')
-  })
-
-  it('draws no dashboard link to a visitor without the dashboard node', async () => {
-    await mountHub({ dashboard: false })
-
-    expect(wrapper.find('[data-test="settings-hub-dashboard"]').exists()).toBe(false)
+    expect(wrapper.findAll('a').filter(link => link.attributes('href') === '/dashboard'), 'no link to the old page').toEqual([])
+    expect(wrapper.text()).not.toContain('Instance status and resources are on the')
   })
 })
 
@@ -108,7 +100,7 @@ describe('SettingsHub content', () => {
 
     expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card').toBe(false)
     const links = wrapper.findAll('a').map(link => link.attributes('href'))
-    expect(links, 'the only link is the dashboard link').toEqual(['/dashboard'])
+    expect(links, 'the hub has no link of its own').toEqual([])
   })
 
   it('does not repeat the removed line that sent sign in and security to Access', async () => {

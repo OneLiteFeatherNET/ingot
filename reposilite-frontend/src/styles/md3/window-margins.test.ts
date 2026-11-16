@@ -57,7 +57,7 @@ describe('shared container gutter', () => {
 describe('views use the shared window margins', () => {
   const containerFiles = [
     '../../components/header/DefaultHeader.vue',
-    '../../components/dashboard/DashboardView.vue',
+    // DashboardView is a section of Overview now and takes its gutter from the administration frame, not a container of its own.
     '../../components/layout/AdministrationFrame.vue'
   ]
 

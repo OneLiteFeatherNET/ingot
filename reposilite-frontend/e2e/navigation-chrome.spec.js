@@ -171,7 +171,7 @@ test.describe('top bar alignment', () => {
 })
 
 test.describe('page headings', () => {
-  for (const path of ['/', '/search', '/dashboard', '/account', '/settings']) {
+  for (const path of ['/', '/search', '/account', '/settings']) {
     test(`has exactly one level one heading on ${path}, and none in the top bar`, async ({ adminPage: page }) => {
       await page.setViewportSize({ width: 1280, height: 1080 })
       await page.goto(siteUrl(path))
@@ -181,11 +181,14 @@ test.describe('page headings', () => {
     })
   }
 
-  test('names the Dashboard page with a visible level one heading', async ({ adminPage: page }) => {
+  // The old Dashboard address still shows the status, which Overview names. The page has no heading of its own now,
+  // so the level one heading is Overview's, and the status is a region of the page.
+  test('draws the instance status at /dashboard without a level one heading of its own', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1280, height: 1080 })
     await page.goto(siteUrl('/dashboard'))
 
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Instance status' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 }), 'no level one heading of the retired page').toHaveCount(0)
   })
 })
 

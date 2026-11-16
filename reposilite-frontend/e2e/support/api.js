@@ -146,6 +146,31 @@ const deletePrincipal = async (name) => {
   }
 }
 
+// Replaces the nodes a principal holds, each allowed or denied (see IdentityDtos.kt NodeDto).
+const setPrincipalNodes = async (name, nodes) => {
+  const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}/nodes`), {
+    method: 'PUT',
+    headers: { Authorization: authorization(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodes }),
+  })
+  if (!response.ok) {
+    throw new Error(`setting the nodes of ${name} answered ${response.status}: ${await response.text()}`)
+  }
+}
+
+// Creates an access token for a principal and returns its secret, which the server shows once.
+const createPrincipalToken = async (name, tokenName) => {
+  const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}/tokens`), {
+    method: 'POST',
+    headers: { Authorization: authorization(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: tokenName }),
+  })
+  if (!response.ok) {
+    throw new Error(`creating a token for ${name} answered ${response.status}: ${await response.text()}`)
+  }
+  return (await response.json()).secret
+}
+
 const principalStatus = async (name) => {
   const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}`), {
     headers: { Authorization: authorization() },
@@ -163,4 +188,6 @@ export {
   createPrincipal,
   deletePrincipal,
   principalStatus,
+  setPrincipalNodes,
+  createPrincipalToken,
 }

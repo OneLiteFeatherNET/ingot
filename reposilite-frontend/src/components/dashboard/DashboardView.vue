@@ -35,12 +35,9 @@ const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
 -->
 <template>
   <div
-    class="container mx-auto max-w-none pt-7 pb-12"
+    class="min-w-0 max-w-none"
     data-ingot-component="dashboard-view"
   >
-    <h1 class="pb-6 md-headline-small text-on-surface">
-      Dashboard
-    </h1>
     <GettingStartedCard class="mb-6" />
 
     <section aria-labelledby="instance-status-heading">

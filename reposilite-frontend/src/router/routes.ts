@@ -31,6 +31,7 @@
 import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import dashboardSegments from './dashboard-segments.json'
 import { adminRouteMeta, routeMeta, type RouteMeta } from '../navigation/registry'
+import { ADMIN_NODES } from '../store/nodeAccess'
 
 // A route of the table. A redirect carries no meta of its own, and a page route takes its component in create.ts.
 export interface AppRoute {
@@ -97,7 +98,8 @@ const ROUTES: AppRoute[] = [
   // The support pages are listed before the generic settings route, which would otherwise take their names as domains.
   { name: 'system-info', path: '/settings/system-info', meta: adminRouteMeta('system-info') },
   { name: 'support', path: '/settings/support', meta: adminRouteMeta('support') },
-  { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
+  // Overview opens for either node; a settings domain page needs the settings node, which the page checks (IndexPage).
+  { name: 'settings', path: '/settings/:domain?', meta: { section: 'settings', manager: true, anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] } },
   {
     name: 'settings-entry',
     path: '/settings/:domain/:collection/:entry',
