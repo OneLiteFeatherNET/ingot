@@ -33,6 +33,7 @@ import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
@@ -46,6 +47,8 @@ data class SessionTokens(
     val refreshExpiresAt: Instant,
     val refreshMaxAgeSeconds: Long,
     val csrfToken: String,
+    /** The last authentication of the family, the `ath` claim of [sessionJwt]. */
+    val authenticatedAt: Instant? = null,
 )
 
 /**
@@ -67,9 +70,47 @@ class SessionService internal constructor(
     /** Families revoked elsewhere, each mapped to the instant until which its session tokens are refused here. */
     private val deniedFamilies = ConcurrentHashMap<String, Instant>()
 
-    fun start(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens {
+    /**
+     * Starts a family for a login. The authentication time is the clock now, and [mfa] tells whether a second factor completed the
+     * login, see [LoginFacade.startSession].
+     */
+    fun start(principal: PrincipalRecord, ip: String?, userAgent: String?, mfa: Boolean = false): SessionTokens {
         val loginEnd = Instant.now(clock).plus(absoluteLifetime())
-        return issue(principal, familyId = RandomTokens.generate(), ip = ip, userAgent = userAgent, familyEnd = loginEnd)
+        return issue(
+            principal,
+            familyId = RandomTokens.generate(),
+            ip = ip,
+            userAgent = userAgent,
+            familyEnd = loginEnd,
+            authenticatedAt = authenticatedNow(),
+            mfa = mfa,
+        )
+    }
+
+    /**
+     * Renews a session with a second factor that was just completed for it. The new session belongs to the same family, with the
+     * authentication time now and the second factor set. The family keeps its absolute end. `null` when the family was revoked or
+     * has ended, and when its principal is no longer active.
+     */
+    fun stepUp(session: VerifiedSession, ip: String?, userAgent: String?): SessionTokens? {
+        val now = Instant.now(clock)
+        if (store.familyRevoked(session.familyId)) {
+            return null
+        }
+        val principal = activePrincipal(session.principalId) ?: return null
+        val familyEnd = store.familyStartedAt(session.familyId)?.plus(absoluteLifetime()) ?: return null
+        if (!now.isBefore(familyEnd)) {
+            return null
+        }
+        return issue(
+            principal,
+            familyId = session.familyId,
+            ip = ip,
+            userAgent = userAgent,
+            familyEnd = familyEnd,
+            authenticatedAt = authenticatedNow(),
+            mfa = true,
+        )
     }
 
     /**
@@ -102,7 +143,16 @@ class SessionService internal constructor(
             revokeFamily(presented.familyId, now)
             return null
         }
-        return issue(principal, familyId = presented.familyId, ip = ip, userAgent = userAgent, familyEnd = familyEnd)
+        // The renewal carries the authentication time and the second factor of the family, and does not extend the first.
+        return issue(
+            principal,
+            familyId = presented.familyId,
+            ip = ip,
+            userAgent = userAgent,
+            familyEnd = familyEnd,
+            authenticatedAt = presented.authenticatedAt,
+            mfa = presented.mfa,
+        )
     }
 
     /** Revokes the family of the refresh token. Unknown and missing tokens are ignored and not audited. */
@@ -182,7 +232,15 @@ class SessionService internal constructor(
      * Issues a session in [familyId]. The refresh token lives for the refresh lifetime, but never beyond [familyEnd], the
      * absolute end of the login. With an idle timeout set, it also ends the timeout after this issue.
      */
-    private fun issue(principal: PrincipalRecord, familyId: String, ip: String?, userAgent: String?, familyEnd: Instant): SessionTokens {
+    private fun issue(
+        principal: PrincipalRecord,
+        familyId: String,
+        ip: String?,
+        userAgent: String?,
+        familyEnd: Instant,
+        authenticatedAt: Instant?,
+        mfa: Boolean,
+    ): SessionTokens {
         val now = Instant.now(clock)
         val lifetimes = settings.get()
         val sessionLifetime = Duration.ofMinutes(lifetimes.sessionLifetimeMinutes)
@@ -203,20 +261,26 @@ class SessionService internal constructor(
             expiresAt = refreshExpiresAt,
             userAgent = userAgent,
             ip = ip,
+            authenticatedAt = authenticatedAt,
+            mfa = mfa,
         )
 
         val sessionExpiresAt = now.plus(sessionLifetime)
         return SessionTokens(
             principal = principal,
-            sessionJwt = signer.issue(principal.id, principal.name, principal.kind.name, familyId, sessionExpiresAt),
+            sessionJwt = signer.issue(principal.id, principal.name, principal.kind.name, familyId, sessionExpiresAt, authenticatedAt, mfa),
             sessionExpiresAt = sessionExpiresAt,
             sessionMaxAgeSeconds = sessionLifetime.seconds,
             refreshToken = refreshToken,
             refreshExpiresAt = refreshExpiresAt,
             refreshMaxAgeSeconds = Duration.between(now, refreshExpiresAt).seconds,
             csrfToken = RandomTokens.generate(),
+            authenticatedAt = authenticatedAt,
         )
     }
+
+    /** The authentication time of a session that starts now, in whole seconds, as the `ath` claim carries it. */
+    private fun authenticatedNow(): Instant = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS)
 
     /** The user the event is about, by name. The address is the one of the request. */
     private fun actorOf(principalId: Int, ip: String?): AuditActor =

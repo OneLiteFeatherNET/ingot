@@ -47,6 +47,12 @@ object RefreshTokenTable : IntIdTable("refresh_token") {
     val revokedAt = timestamp("revoked_at").nullable()
     val userAgent = varchar("user_agent", 512).nullable()
     val ip = varchar("ip", 64).nullable()
+
+    /** The last authentication of the family, the `ath` of its sessions. Null for a family from before the claim existed. */
+    val authenticatedAt = timestamp("authenticated_at").nullable()
+
+    /** Whether a second factor completed the family, the `mfa` of its sessions. */
+    val mfa = bool("mfa").default(false)
 }
 
 /**

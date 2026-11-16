@@ -157,6 +157,7 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
             "POST /api/identity/me/recovery-codes",
             "POST /api/identity/me/factors/passkey/options",
             "POST /api/identity/me/factors/passkey",
+            "POST /api/identity/me/step-up",
         )
     }
 

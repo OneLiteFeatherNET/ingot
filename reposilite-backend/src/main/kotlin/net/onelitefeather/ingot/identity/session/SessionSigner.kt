@@ -29,13 +29,19 @@ import java.time.Clock
 import java.time.Instant
 import java.util.Date
 
-/** The claims of a browser session that passed verification. */
+/**
+ * The claims of a browser session that passed verification. [authenticatedAt] is the last authentication of the family (`ath`),
+ * `null` for a session issued before that claim existed, which is never fresh. [mfa] is true once a second factor completed the
+ * family.
+ */
 data class VerifiedSession(
     val principalId: Int,
     val name: String,
     val kind: String,
     val familyId: String,
     val expiresAt: Instant,
+    val authenticatedAt: Instant? = null,
+    val mfa: Boolean = false,
 )
 
 /**
@@ -48,12 +54,23 @@ class SessionSigner internal constructor(
     private val clock: Clock,
 ) {
 
-    fun issue(principalId: Int, name: String, kind: String, familyId: String, expiresAt: Instant): String {
+    fun issue(
+        principalId: Int,
+        name: String,
+        kind: String,
+        familyId: String,
+        expiresAt: Instant,
+        authenticatedAt: Instant? = null,
+        mfa: Boolean = false,
+    ): String {
         val claims = JWTClaimsSet.Builder()
             .subject(principalId.toString())
             .claim(CLAIM_NAME, name)
             .claim(CLAIM_KIND, kind)
             .claim(CLAIM_FAMILY, familyId)
+            .claim(CLAIM_SCOPE, SCOPE_FULL)
+            .claim(CLAIM_MFA, mfa)
+            .apply { authenticatedAt?.let { claim(CLAIM_AUTH_TIME, it.epochSecond) } }
             .issueTime(Date.from(Instant.now(clock)))
             .expirationTime(Date.from(expiresAt))
             .build()
@@ -88,6 +105,8 @@ class SessionSigner internal constructor(
             kind = claims.getStringClaim(CLAIM_KIND) ?: return null,
             familyId = claims.getStringClaim(CLAIM_FAMILY) ?: return null,
             expiresAt = expiresAt,
+            authenticatedAt = claims.getLongClaim(CLAIM_AUTH_TIME)?.let { Instant.ofEpochSecond(it) },
+            mfa = claims.getBooleanClaim(CLAIM_MFA) ?: false,
         )
     }
 
@@ -99,6 +118,12 @@ class SessionSigner internal constructor(
         private const val CLAIM_NAME = "name"
         private const val CLAIM_KIND = "kind"
         private const val CLAIM_FAMILY = "sid"
+        private const val CLAIM_AUTH_TIME = "ath"
+        private const val CLAIM_MFA = "mfa"
+        private const val CLAIM_SCOPE = "scope"
+
+        /** The scope of a session that may use the whole API. The restricted scope comes with the enrolment policy. */
+        private const val SCOPE_FULL = "full"
 
     }
 

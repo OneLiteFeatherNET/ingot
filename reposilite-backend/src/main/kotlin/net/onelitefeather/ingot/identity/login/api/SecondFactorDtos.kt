@@ -127,3 +127,13 @@ data class RecoveryCodesDto(
 data class FactorResetDto(
     val removed: Int,
 )
+
+/**
+ * The answer of a step-up: the authentication time of the renewed session and the end of its step-up window. The session
+ * cookies of the answer carry the renewed session.
+ */
+@JsonSchema(requireNonNulls = false)
+data class StepUpDto(
+    val authenticatedAt: Instant,
+    val stepUpUntil: Instant,
+)

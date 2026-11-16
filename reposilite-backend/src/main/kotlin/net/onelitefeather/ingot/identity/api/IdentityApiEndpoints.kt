@@ -39,6 +39,8 @@ import io.javalin.openapi.OpenApiRequestBody
 import io.javalin.openapi.OpenApiResponse
 import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.identity.service.IdentityFacade
+import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.identity.login.api.requireStepUp
 import net.onelitefeather.ingot.identity.service.WriteCaller
 import panda.std.Result
 import panda.std.Result.supplyThrowing
@@ -47,7 +49,11 @@ import panda.std.Result.supplyThrowing
  * The identity administration API. Every route requires an instance admin. Mutations accept If-Match, and reads
  * return the entity tag of the state they read.
  */
-internal class IdentityApiEndpoints(private val identity: IdentityFacade) : ReposiliteRoutes() {
+internal class IdentityApiEndpoints(
+    private val identity: IdentityFacade,
+    /** The login facade of the instance, which answers whether an instance admin session needs a recent second factor. */
+    private val secondFactors: () -> LoginFacade? = { null },
+) : ReposiliteRoutes() {
 
     @OpenApi(
         security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
@@ -314,11 +320,13 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val grantPrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", PUT) {
         managerOnly() {
-            response = identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
-                .map { snapshot ->
-                    ctx.header(Header.ETAG, snapshot.etag)
-                    snapshot.value
-                }
+            response = requireStepUp(secondFactors()).flatMap {
+                identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
+                    .map { snapshot ->
+                        ctx.header(Header.ETAG, snapshot.etag)
+                        snapshot.value
+                    }
+            }
         }
     }
 
@@ -332,11 +340,13 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val revokePrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", DELETE) {
         managerOnly() {
-            response = identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
-                .map { snapshot ->
-                    ctx.header(Header.ETAG, snapshot.etag)
-                    snapshot.value
-                }
+            response = requireStepUp(secondFactors()).flatMap {
+                identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
+                    .map { snapshot ->
+                        ctx.header(Header.ETAG, snapshot.etag)
+                        snapshot.value
+                    }
+            }
         }
     }
 
@@ -350,11 +360,13 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val grantTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", PUT) {
         managerOnly() {
-            response = identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
-                .map { snapshot ->
-                    ctx.header(Header.ETAG, snapshot.etag)
-                    snapshot.value
-                }
+            response = requireStepUp(secondFactors()).flatMap {
+                identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
+                    .map { snapshot ->
+                        ctx.header(Header.ETAG, snapshot.etag)
+                        snapshot.value
+                    }
+            }
         }
     }
 
@@ -368,11 +380,13 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val revokeTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", DELETE) {
         managerOnly() {
-            response = identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
-                .map { snapshot ->
-                    ctx.header(Header.ETAG, snapshot.etag)
-                    snapshot.value
-                }
+            response = requireStepUp(secondFactors()).flatMap {
+                identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
+                    .map { snapshot ->
+                        ctx.header(Header.ETAG, snapshot.etag)
+                        snapshot.value
+                    }
+            }
         }
     }
 

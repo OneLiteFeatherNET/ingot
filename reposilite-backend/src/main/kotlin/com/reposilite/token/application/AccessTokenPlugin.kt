@@ -46,6 +46,7 @@ import com.reposilite.token.infrastructure.TokensCommand
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 import net.onelitefeather.ingot.identity.api.IdentityApiEndpoints
+import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.authorization.DecisionTrail
 import net.onelitefeather.ingot.identity.service.IdentityFacade
 import net.onelitefeather.ingot.identity.service.IdpGuardMode
@@ -130,7 +131,8 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             event.registerRoutes(AccessTokenApiEndpoints(accessTokenFacade))
-            identityFacade?.let { event.registerRoutes(IdentityApiEndpoints(it)) }
+            // The login facade answers the step-up of the instance admin routes. It is resolved per request: the login plugin starts after this one.
+            identityFacade?.let { event.registerRoutes(IdentityApiEndpoints(it, secondFactors = { facade<LoginFacade>() })) }
         }
 
         event { _: ReposiliteInitializeEvent ->

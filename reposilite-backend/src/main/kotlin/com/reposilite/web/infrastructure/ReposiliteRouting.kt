@@ -13,6 +13,8 @@ import com.reposilite.shared.extractFromHeader
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.AccessTokenIdentifier
+import com.reposilite.token.AccessTokenType.PRINCIPAL
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.web.infrastructure.ReposiliteDsl.ReposiliteConfiguration
 import net.onelitefeather.ingot.identity.login.LoginFacade
@@ -37,6 +39,7 @@ import com.reposilite.shared.internalServer
 import com.reposilite.shared.extensions.error
 import com.reposilite.shared.toErrorResponse
 import net.onelitefeather.ingot.identity.session.CsrfPolicy
+import net.onelitefeather.ingot.identity.session.SESSION_CLAIMS_ATTRIBUTE
 import net.onelitefeather.ingot.identity.session.FetchMetadataPolicy
 import net.onelitefeather.ingot.identity.session.FetchMetadataSettings
 
@@ -117,8 +120,11 @@ fun createReposiliteDsl(
             }
         }
         if (authorization == null && sessionToken != null) {
-            return loginFacade.authenticateSession(sessionToken)
-                ?.let { accessTokenFacade.getAccessTokenById(it) }
+            // The verified claims travel with the request, so that a sensitive action can check the age of the second factor.
+            val session = loginFacade.verifySession(sessionToken)
+                ?: return unauthorizedError<AccessTokenDto>("Invalid or expired session")
+            return accessTokenFacade.getAccessTokenById(AccessTokenIdentifier(type = PRINCIPAL, value = session.principalId))
+                ?.also { attribute(SESSION_CLAIMS_ATTRIBUTE, session) }
                 ?.asSuccess()
                 ?: unauthorizedError<AccessTokenDto>("Invalid or expired session")
         }

@@ -24,6 +24,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -56,6 +57,10 @@ data class RefreshTokenRecord(
     val expiresAt: Instant,
     val usedAt: Instant?,
     val revokedAt: Instant?,
+    /** The authentication time of the family, carried over by every renewal. */
+    val authenticatedAt: Instant? = null,
+    /** Whether a second factor completed the family. */
+    val mfa: Boolean = false,
 )
 
 private const val MAX_USER_AGENT_LENGTH = 512
@@ -236,6 +241,8 @@ class LoginStore(
         expiresAt: Instant,
         userAgent: String?,
         ip: String?,
+        authenticatedAt: Instant? = null,
+        mfa: Boolean = false,
     ) {
         transaction(database) {
             RefreshTokenTable.insert {
@@ -246,6 +253,8 @@ class LoginStore(
                 it[RefreshTokenTable.expiresAt] = expiresAt
                 it[RefreshTokenTable.userAgent] = userAgent?.take(MAX_USER_AGENT_LENGTH)
                 it[RefreshTokenTable.ip] = ip?.take(MAX_IP_LENGTH)
+                it[RefreshTokenTable.authenticatedAt] = authenticatedAt
+                it[RefreshTokenTable.mfa] = mfa
             }
         }
     }
@@ -289,6 +298,14 @@ class LoginStore(
         }
     }
 
+    /** Whether a family has been revoked. Revocation marks every token of a family, so one revoked token is enough. */
+    fun familyRevoked(familyId: String): Boolean =
+        transaction(database) {
+            RefreshTokenTable.selectAll()
+                .where { (RefreshTokenTable.familyId eq familyId) and RefreshTokenTable.revokedAt.isNotNull() }
+                .any()
+        }
+
     /** The families of a principal that still hold an unrevoked token, the ones [revokeAllOfPrincipal] is about to revoke. */
     fun activeFamilyIdsOfPrincipal(principalId: Int): Set<String> =
         transaction(database) {
@@ -316,6 +333,8 @@ class LoginStore(
         expiresAt = this[RefreshTokenTable.expiresAt],
         usedAt = this[RefreshTokenTable.usedAt],
         revokedAt = this[RefreshTokenTable.revokedAt],
+        authenticatedAt = this[RefreshTokenTable.authenticatedAt],
+        mfa = this[RefreshTokenTable.mfa],
     )
 
     private fun ResultRow.toCredential() = LocalCredential(

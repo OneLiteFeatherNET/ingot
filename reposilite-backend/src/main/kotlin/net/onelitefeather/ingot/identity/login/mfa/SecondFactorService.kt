@@ -129,6 +129,21 @@ sealed interface ChallengeCompletion {
 
 }
 
+/** The result of a step-up: a second factor completed for an open session, see [SecondFactorService.stepUp]. */
+sealed interface StepUpOutcome {
+
+    /** The code was right. [recovery] tells whether it was a recovery code, which is spent by this step-up. */
+    data class Verified(val recovery: Boolean) : StepUpOutcome
+
+    data object WrongCode : StepUpOutcome
+
+    data class Blocked(val retryAfterSeconds: Long) : StepUpOutcome
+
+    /** A user without a factor has no second factor to step up with. */
+    data object NoFactor : StepUpOutcome
+
+}
+
 sealed interface FactorRemoval {
 
     data object Removed : FactorRemoval
@@ -417,6 +432,27 @@ internal class SecondFactorService(
                 }
                 audit(AuditEvent(action = AuditAction.MFA_FACTOR_REMOVED, actor = actor, details = mapOf("principal" to account, "factor" to factorId)))
                 FactorRemoval.Removed
+            }
+        }
+    }
+
+    /**
+     * Checks a code of the user for a step-up. The code is checked like any other second factor code: a wrong one counts as a
+     * failure and is audited without the code, and a recovery code is spent. A success is not audited here, because a step-up
+     * happens at every sensitive action; a spent recovery code is.
+     */
+    fun stepUp(principalId: Int, account: String, code: String, ip: String): StepUpOutcome {
+        if (store.findFactors(principalId).isEmpty()) {
+            return StepUpOutcome.NoFactor
+        }
+        return when (val check = checkCode(principalId, account, code, ip, context = "step-up")) {
+            CodeCheck.Rejected -> StepUpOutcome.WrongCode
+            is CodeCheck.Blocked -> StepUpOutcome.Blocked(check.retryAfterSeconds)
+            is CodeCheck.Accepted -> {
+                if (check.recovery) {
+                    audit(AuditEvent(action = AuditAction.MFA_RECOVERY_CODE_USED, actor = AuditActor.named(account, ip), details = mapOf("principal" to account)))
+                }
+                StepUpOutcome.Verified(recovery = check.recovery)
             }
         }
     }
