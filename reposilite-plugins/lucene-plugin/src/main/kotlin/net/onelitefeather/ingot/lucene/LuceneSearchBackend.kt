@@ -26,33 +26,56 @@ import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.SearchFacets
 import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.SamplePage
 import net.onelitefeather.ingot.search.backend.StoredRow
+import net.onelitefeather.ingot.search.database.pathHash
 import org.apache.lucene.analysis.standard.StandardAnalyzer
+import org.apache.lucene.document.Document
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
+import org.apache.lucene.index.MultiDocValues
 import org.apache.lucene.index.SegmentInfos
+import org.apache.lucene.index.Term
+import org.apache.lucene.search.BooleanClause
+import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.PrefixQuery
+import org.apache.lucene.search.SearcherManager
+import org.apache.lucene.search.TermInSetQuery
+import org.apache.lucene.search.TermQuery
 import org.apache.lucene.store.Directory
 import org.apache.lucene.store.FSDirectory
+import org.apache.lucene.util.BytesRef
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.util.UUID
 import kotlin.random.Random
 
 /**
  * The `lucene` backend (design D2 to D6): an index of artifact search in one directory on the local disk of this replica. The
- * index is a derived copy of the database. Its commits record the mapping version and the identity of the index, so that
- * [open] can refuse an index it does not write and the core can reset the rebuild cursor of a new index.
+ * index is a derived copy of the database. Its commits record the mapping version and the identity of the index, so that [open]
+ * can refuse an index it does not write and the core can reset the rebuild cursor of a new index.
  *
- * Only [open], [close], [health], [indexIdentity] and [count] are implemented here. The writes and the reads land in the following
- * pull requests of this change; until then the other members stop with a message that says so.
+ * Every write is one batch: it is committed before [apply] returns, and a failed batch rolls the writer back and opens it again from
+ * the last commit. A commit that fails for lack of disk space is busy for [DISK_FULL_RETRY], and any other failure is passed on.
+ *
+ * [openDirectory] opens the directory of the index. Production uses the file system; the tests inject a directory that fails on
+ * demand.
+ *
+ * The reads of the search, the facets and the files, the sample and the status land in the query pull request of this change; until
+ * then those members stop with a message that says so.
  */
-internal class LuceneSearchBackend(private val settings: LuceneSettings) : ArtifactSearchBackend {
+internal class LuceneSearchBackend(
+    private val settings: LuceneSettings,
+    private val openDirectory: (Path) -> Directory = { FSDirectory.open(it) },
+) : ArtifactSearchBackend {
 
     override val id: String = ID
 
@@ -64,6 +87,9 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
 
     @Volatile
     private var writer: IndexWriter? = null
+
+    @Volatile
+    private var searchers: SearcherManager? = null
 
     @Volatile
     private var identity: String? = null
@@ -78,12 +104,18 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
             "${LuceneSettings.DIRECTORY_VARIABLE} names a file, it must name a directory: $directory"
         }
         Files.createDirectories(directory)
-        val index = FSDirectory.open(directory)
+        val index = openDirectory(directory)
         try {
-            val userData = readCommitData(index, directory)
-            val opened = if (userData == null) createIndex(index) else reopenIndex(index, userData)
+            val existing = readCommitData(index, directory)
+            val opened = IndexWriter(index, config())
+            try {
+                identity = if (existing == null) createIdentity(opened) else verifiedIdentity(existing)
+            } catch (failure: Exception) {
+                opened.close()
+                throw failure
+            }
             store = index
-            writer = opened
+            install(opened)
         } catch (failure: Exception) {
             index.close()
             throw failure
@@ -98,29 +130,36 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
         }
     }
 
-    private fun createIndex(index: Directory): IndexWriter {
-        val opened = IndexWriter(index, IndexWriterConfig(StandardAnalyzer()))
+    /** Writes the first commit of a new index: its mapping version and a random identity. */
+    private fun createIdentity(opened: IndexWriter): String {
         val created = UUID.randomUUID().toString()
         opened.setLiveCommitData(
             mapOf(MAPPING_VERSION_KEY to MAPPING_VERSION.toString(), IDENTITY_KEY to created).entries,
         )
         opened.commit()
-        identity = created
-        return opened
+        return created
     }
 
-    private fun reopenIndex(index: Directory, userData: Map<String, String>): IndexWriter {
+    private fun verifiedIdentity(userData: Map<String, String>): String {
         val version = userData[MAPPING_VERSION_KEY]
         check(version == MAPPING_VERSION.toString()) {
             "the index at ${settings.directory} records mapping version $version, this plugin writes mapping version $MAPPING_VERSION"
         }
-        identity = checkNotNull(userData[IDENTITY_KEY]) { "the index at ${settings.directory} records no identity" }
-        return IndexWriter(index, IndexWriterConfig(StandardAnalyzer()))
+        return checkNotNull(userData[IDENTITY_KEY]) { "the index at ${settings.directory} records no identity" }
+    }
+
+    private fun config(): IndexWriterConfig = IndexWriterConfig(StandardAnalyzer())
+
+    private fun install(opened: IndexWriter) {
+        writer = opened
+        searchers = SearcherManager(opened, null)
     }
 
     override fun close() {
-        writer?.close()
-        store?.close()
+        runCatching { searchers?.close() }
+        runCatching { writer?.close() }
+        runCatching { store?.close() }
+        searchers = null
         writer = null
         store = null
     }
@@ -131,26 +170,77 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
     override fun indexIdentity(): String? = identity
 
     override fun count(): Long {
-        val index = checkNotNull(store) { "the index is not open" }
-        return DirectoryReader.open(index).use { reader -> reader.numDocs().toLong() }
+        val manager = checkNotNull(searchers) { "the index is not open" }
+        val searcher = manager.acquire()
+        try {
+            return searcher.indexReader.numDocs().toLong()
+        } finally {
+            manager.release(searcher)
+        }
     }
 
-    override fun apply(actions: List<IndexAction>): Unit = TODO("the writes land in the write pull request")
+    override fun apply(actions: List<IndexAction>) = transaction { current ->
+        actions.forEach { action -> applyAction(current, action) }
+    }
+
+    /** One action of a batch. Removals and reorigins read the rows of the writer's current state, so a batch sees its own writes. */
+    private fun applyAction(current: IndexWriter, action: IndexAction) {
+        when (action) {
+            is IndexAction.Upsert -> current.updateDocument(
+                idTerm(action.row.file.repository, action.row.file.path),
+                LuceneDocument.of(action.row),
+            )
+            is IndexAction.RemovePath -> current.deleteDocuments(idTerm(action.repository, action.path))
+            is IndexAction.RemovePrefix -> {
+                val notAfter = action.notAfter.toEpochMilli()
+                matching(current, action.repository, action.prefix)
+                    .filter { hit -> hit.indexedAt <= notAfter }
+                    .forEach { hit -> current.deleteDocuments(idTerm(action.repository, pathOf(hit))) }
+            }
+            is IndexAction.Reorigin -> matching(current, action.repository, action.directory).forEach { hit ->
+                val row = LuceneDocument.toRow(hit.document, hit.indexedAt).copy(provenance = action.provenance)
+                current.updateDocument(idTerm(row.file.repository, row.file.path), LuceneDocument.of(row))
+            }
+        }
+    }
 
     override fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> =
         TODO("the reads land in the query pull request")
 
-    override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> =
-        TODO("the reads land in the query pull request")
+    /** The stored state of the rows of [paths] in [repository], read from the committed index. */
+    override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
+        if (paths.isEmpty()) return emptyMap()
+        val manager = checkNotNull(searchers) { "the index is not open" }
+        val ids = paths.map { path -> BytesRef(pathHash(repository, path)) }
+        val searcher = manager.acquire()
+        try {
+            val hits = searcher.search(TermInSetQuery(LuceneDocument.ID, ids), ids.size)
+            return hits.scoreDocs.associate { hit ->
+                val document = searcher.storedFields().document(hit.doc)
+                checkNotNull(document.get(LuceneDocument.PATH)) { "a document without a path" } to LuceneDocument.storedRow(document)
+            }
+        } finally {
+            manager.release(searcher)
+        }
+    }
 
-    override fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int =
-        TODO("the writes land in the write pull request")
+    /** Sets the indexed time of the rows that exist, by an update of their doc value: no document is written again. */
+    override fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int {
+        val present = existing(repository, paths).keys
+        if (present.isEmpty()) return 0
+        transaction { current ->
+            present.forEach { path ->
+                current.updateNumericDocValue(idTerm(repository, path), LuceneDocument.INDEXED_AT, indexedAt)
+            }
+        }
+        return present.size
+    }
 
     override fun deleteStale(repository: String, before: Long, limit: Int): Int =
-        TODO("the writes land in the write pull request")
+        TODO("the deletes land in the write pull request of the removals")
 
     override fun deleteRepository(repository: String, limit: Int): Int =
-        TODO("the writes land in the write pull request")
+        TODO("the deletes land in the write pull request of the removals")
 
     override fun repositories(): List<String> = TODO("the reads land in the query pull request")
 
@@ -169,6 +259,67 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
 
     override fun status(): IndexStatus = TODO("the status lands in the query pull request")
 
+    // ---- transactions ---------------------------------------------------------------------------------------------------
+
+    /**
+     * Runs [block] on the writer, commits, and refreshes the searcher before it returns, so a reader sees the batch at once. A failure
+     * reopens the writer from the last commit. A commit that fails for lack of disk space becomes [BackendBusyException].
+     */
+    private fun <T> transaction(block: (IndexWriter) -> T): T {
+        val current = checkNotNull(writer) { "the index is not open" }
+        return try {
+            val result = block(current)
+            current.commit()
+            checkNotNull(searchers).maybeRefreshBlocking()
+            result
+        } catch (failure: Exception) {
+            reopenFromLastCommit()
+            throw failureOf(failure)
+        }
+    }
+
+    private fun reopenFromLastCommit() {
+        runCatching { searchers?.close() }
+        runCatching { writer?.rollback() }
+        install(IndexWriter(checkNotNull(store) { "the index is not open" }, config()))
+    }
+
+    private fun failureOf(failure: Exception): Exception =
+        if (failure is IOException && failure.message?.contains(NO_SPACE) == true) {
+            BackendBusyException("the index volume is full, the batch waits for space", DISK_FULL_RETRY)
+        } else {
+            failure
+        }
+
+    // ---- lookups for writes ---------------------------------------------------------------------------------------------
+
+    /** A stored document with the indexed time of its doc value. */
+    private class Hit(val document: Document, val indexedAt: Long)
+
+    /** The rows of [repository] at [prefix] and below it, read from the writer's current state. */
+    private fun matching(current: IndexWriter, repository: String, prefix: String): List<Hit> =
+        DirectoryReader.open(current).use { reader ->
+            val searcher = IndexSearcher(reader)
+            val below = BooleanQuery.Builder()
+                .add(TermQuery(Term(LuceneDocument.PATH, prefix)), BooleanClause.Occur.SHOULD)
+                .add(PrefixQuery(Term(LuceneDocument.PATH, "$prefix/")), BooleanClause.Occur.SHOULD)
+                .build()
+            val query = BooleanQuery.Builder()
+                .add(TermQuery(Term(LuceneDocument.REPOSITORY, repository)), BooleanClause.Occur.FILTER)
+                .add(below, BooleanClause.Occur.FILTER)
+                .build()
+            val docs = searcher.search(query, maxOf(1, reader.maxDoc())).scoreDocs.sortedBy { it.doc }
+            val indexedAt = MultiDocValues.getNumericValues(reader, LuceneDocument.INDEXED_AT)
+            docs.map { hit ->
+                checkNotNull(indexedAt).advanceExact(hit.doc)
+                Hit(searcher.storedFields().document(hit.doc), indexedAt.longValue())
+            }
+        }
+
+    private fun pathOf(hit: Hit): String = checkNotNull(hit.document.get(LuceneDocument.PATH)) { "a document without a path" }
+
+    private fun idTerm(repository: String, path: String): Term = Term(LuceneDocument.ID, pathHash(repository, path))
+
     companion object {
 
         const val ID: String = "lucene"
@@ -178,6 +329,11 @@ internal class LuceneSearchBackend(private val settings: LuceneSettings) : Artif
 
         const val MAPPING_VERSION_KEY: String = "ingot_mapping_version"
         const val IDENTITY_KEY: String = "ingot_index_identity"
+
+        /** How long a batch waits when the index volume has no space left (design D3 and D9). */
+        val DISK_FULL_RETRY: Duration = Duration.ofSeconds(60)
+
+        private const val NO_SPACE = "No space left on device"
     }
 
 }
