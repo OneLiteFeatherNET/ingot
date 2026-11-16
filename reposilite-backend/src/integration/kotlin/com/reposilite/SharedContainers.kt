@@ -17,15 +17,15 @@ import org.testcontainers.utility.DockerImageName
 internal object SharedContainers {
 
     val mariaDb: MariaDBContainer by lazy {
-        MariaDBContainer(DockerImageName.parse("mariadb:latest")).also { it.start() }
+        MariaDBContainer(DockerImageName.parse(MARIADB_IMAGE).asCompatibleSubstituteFor("mariadb")).also { it.start() }
     }
 
     val postgres: PostgreSQLContainer by lazy {
-        PostgreSQLContainer(DockerImageName.parse("postgres:latest")).also { it.start() }
+        PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE).asCompatibleSubstituteFor("postgres")).also { it.start() }
     }
 
     val floci: GenericContainer<*> by lazy {
-        GenericContainer(DockerImageName.parse("floci/floci:latest"))
+        GenericContainer(DockerImageName.parse(FLOCI_IMAGE))
             .withExposedPorts(FLOCI_PORT)
             .waitingFor(Wait.forListeningPort())
             .also { it.start() }
@@ -54,6 +54,11 @@ internal object SharedContainers {
     const val NATS_PORT = 4222
 
     const val NATS_IMAGE = "nats:2.12-alpine"
+
+    /** Pinned by tag and digest, so that a run on another day uses the same bytes. Renovate raises both together. */
+    const val MARIADB_IMAGE = "mariadb:13.0.2@sha256:54f493ea0d60b621a5bff84e5b20100f8b86b6efa6b79158e04756c5194a5e4d"
+    const val POSTGRES_IMAGE = "postgres:18-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015"
+    const val FLOCI_IMAGE = "floci/floci:2.4.0@sha256:5ee85db604c4aa74ac76e07ea5cc83086f37bb472bf3dbb97e34019e48efae9c"
 
 }
 
