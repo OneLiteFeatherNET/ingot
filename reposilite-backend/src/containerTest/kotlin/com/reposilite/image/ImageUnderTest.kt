@@ -107,6 +107,21 @@ fun GenericContainer<*>.baseUrl(port: Int = DEFAULT_SERVER_PORT): String =
     "http://${host}:${getMappedPort(port)}"
 
 /**
+ * Whether the Docker API that Testcontainers talks to is a rootless Podman socket, judged by the socket's path under the
+ * user's runtime directory. Under rootless Podman the user namespace maps container root to the host user, so an id
+ * that is only the host user's own uid does not reach the host as that user. Docker and rootful Podman keep the ids.
+ */
+internal fun isRootlessPodman(dockerHost: String?): Boolean =
+    dockerHost != null && "podman" in dockerHost && "/run/user/" in dockerHost
+
+/**
+ * The uid:gid to chown to inside the container so that the directory belongs to [hostUid]:[hostGid] on the host. Under
+ * rootless Podman that is root inside the container, which the user namespace maps back to the host user.
+ */
+internal fun containerOwner(hostUid: Int, hostGid: Int, rootless: Boolean): Pair<Int, Int> =
+    if (rootless) 0 to 0 else hostUid to hostGid
+
+/**
  * A data directory on the host that a container writes into.
  *
  * The server runs as a uid that belongs to nobody on this machine, so everything it leaves
@@ -145,7 +160,8 @@ class DataDirectory(val path: Path, private val image: DockerImageName) : AutoCl
         inspect("ls", "-A", "$MOUNT_POINT/$relativeDirectory").lines().map { it.trim() }.filter { it.isNotEmpty() }
 
     override fun close() {
-        runAsRoot("chown", "-R", "$ownUid:$ownGid", MOUNT_POINT)
+        val (uid, gid) = containerOwner(ownUid, ownGid, rootless = isRootlessPodman(System.getenv("DOCKER_HOST")))
+        runAsRoot("chown", "-R", "$uid:$gid", MOUNT_POINT)
     }
 
     /** Runs a command against the directory and returns what it printed. */
