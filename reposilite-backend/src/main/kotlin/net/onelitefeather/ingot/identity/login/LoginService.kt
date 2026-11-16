@@ -63,6 +63,8 @@ class LoginService internal constructor(
     private val externalAnnouncements: () -> List<ProviderAnnouncement> = { emptyList() },
     /** Whether a principal whose password was accepted still owes a second factor. Then no login is recorded yet. */
     private val secondFactorRequired: (PrincipalRecord) -> Boolean = { false },
+    /** The per-account delay of guesses from new addresses. `null` leaves the login as it was before the delay existed. */
+    private val accountThrottle: AccountThrottle? = null,
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -98,17 +100,23 @@ class LoginService internal constructor(
             recordRejected(username, ip)
             return Blocked(retryAfterSeconds = ceilSeconds(wait))
         }
+        accountThrottle?.retryAfter(username, ip)?.let { wait ->
+            recordRejected(username, ip)
+            return Blocked(retryAfterSeconds = ceilSeconds(wait))
+        }
 
         val outcome = provider.authenticate(username, password)
         when (outcome) {
             is Succeeded -> {
                 limiter.forget(userKey)
+                accountThrottle?.recordSuccess(username, ip)
                 // A login is recorded when its session starts. A user who owes a second factor has only passed the first one.
                 val action = if (secondFactorRequired(outcome.principal)) MFA_FIRST_FACTOR_ACCEPTED else LOGIN_SUCCEEDED
                 audit(AuditEvent(action = action, actor = AuditActor.named(outcome.principal.name, ip)))
             }
             Rejected -> {
                 limiter.recordFailure(keys)
+                accountThrottle?.recordFailure(username)
                 recordRejected(username, ip)
             }
             // The password was right, so this is not guessing and does not count towards the limit.
