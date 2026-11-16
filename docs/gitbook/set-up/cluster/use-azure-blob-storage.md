@@ -4,6 +4,8 @@ description: How to keep the files of a repository in an Azure Blob container. I
 
 # Use Azure Blob storage
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 The `azure-blob` storage provider keeps the files of a repository in one container of an Azure storage account. It is an optional plugin: the server image does not contain it, and a repository that names `azure-blob` without the plugin is unavailable until the plugin is installed.
 
 ## Install the plugin
