@@ -153,6 +153,7 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
             "GET /api/identity/me/factors",
             "POST /api/identity/me/factors/totp",
             "POST /api/identity/me/factors/totp/confirm",
+            "PATCH /api/identity/me/factors/{id}",
             "DELETE /api/identity/me/factors/{id}",
             "POST /api/identity/me/recovery-codes",
             "POST /api/identity/me/factors/passkey/options",
