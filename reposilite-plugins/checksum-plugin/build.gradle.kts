@@ -35,3 +35,30 @@ tasks.withType<ShadowJar> {
     destinationDirectory.set(file("$rootDir/reposilite-test/workspace/plugins"))
     mergeServiceFiles()
 }
+
+// The contract test boots a server with the shipped jar of this plugin and checks what the plugin promises. Its source set
+// does not see the classes of this module, or the server would load the plugin twice: the jar is the only copy it gets.
+val contractTest: SourceSet by sourceSets.creating
+configurations.named(contractTest.implementationConfigurationName) {
+    extendsFrom(configurations.getByName("testImplementation"))
+}
+configurations.named(contractTest.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.getByName("testRuntimeOnly"))
+}
+dependencies {
+    // The fixture that boots the server, shared with the other plugin contract tests.
+    add(contractTest.implementationConfigurationName, testFixtures(project(":reposilite-backend")))
+}
+
+val shadowJar = tasks.named<ShadowJar>("shadowJar")
+
+tasks.register<Test>("contractTest") {
+    group = "verification"
+    description = "Boots a fresh server with the shipped checksum-plugin jar and checks the behaviour the plugin promises."
+    testClassesDirs = contractTest.output.classesDirs
+    classpath = contractTest.runtimeClasspath
+    useJUnitPlatform()
+    dependsOn(shadowJar)
+    systemProperty("ingot.contract.plugin", shadowJar.get().archiveFile.get().asFile.absolutePath)
+    shouldRunAfter(tasks.named("test"))
+}
