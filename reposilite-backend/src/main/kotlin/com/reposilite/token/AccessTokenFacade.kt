@@ -33,6 +33,8 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenPermission.MANAGER
+import net.onelitefeather.ingot.identity.authorization.AuthorizationChain
+import net.onelitefeather.ingot.identity.authorization.AuthorizationRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessSubjectSource
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
@@ -95,6 +97,9 @@ class AccessTokenFacade internal constructor(
     private val bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
     private val secretVerifier: (encodedSecret: String, rawSecret: String) -> Boolean = AccessTokenSecurityProvider::matches,
 ) : Facade, Journalist {
+
+    /** The chain that takes the access and admin decisions of this facade. */
+    private val authorization = AuthorizationChain.standard()
 
     /**
      * Serializes the conditional writes of this instance, so a precondition is checked against the state it writes.
@@ -514,7 +519,7 @@ class AccessTokenFacade internal constructor(
 
     fun hasPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission): Boolean =
         when (permission) {
-            MANAGER -> PermissionEvaluator.isInstanceAdmin(subjectOf(identifier))
+            MANAGER -> authorization.decide(AuthorizationRequest.AdminArea(subjectOf(identifier), area = null)).allowed
         }
 
     fun hasPermissionTo(identifier: AccessTokenIdentifier, toPath: String, requiredPermission: RoutePermission): Boolean =
@@ -522,14 +527,14 @@ class AccessTokenFacade internal constructor(
 
     /** Whether the owner of the token may perform [action] on [toPath], a full path such as `/repository/gav`. */
     fun hasAccessTo(identifier: AccessTokenIdentifier, toPath: String, action: Action): Boolean =
-        PermissionEvaluator.allows(subjectOf(identifier), AccessRequest(toPath, action))
+        authorization.decide(AuthorizationRequest.Access(subjectOf(identifier), AccessRequest(toPath, action))).allowed
 
     /**
      * Whether the owner of the token may administer [area], the node `ingot.admin.<area>`, token narrowing included. Null is
      * the instance admin. See [PermissionEvaluator.allowsAdminArea].
      */
     fun hasAdminArea(identifier: AccessTokenIdentifier, area: String?): Boolean =
-        PermissionEvaluator.allowsAdminArea(subjectOf(identifier), area)
+        authorization.decide(AuthorizationRequest.AdminArea(subjectOf(identifier), area)).allowed
 
     fun canSee(identifier: AccessTokenIdentifier, pathFragment: String): Boolean =
         PermissionEvaluator.canSee(subjectOf(identifier), pathFragment)
