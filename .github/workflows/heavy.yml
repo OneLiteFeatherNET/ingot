@@ -678,12 +678,14 @@ jobs:
         run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:prepareIntegration $GRADLE_RETRY
 
       # Saved only after a successful build. The dependencies and the local build cache are the two directories the
-      # shards need; the wrapper distribution comes from setup-gradle as before.
+      # shards need; the wrapper distribution comes from setup-gradle as before. The key names the run, not the attempt:
+      # re-running only the failed shards keeps the prepare job's result, and those shards must still find its cache. A
+      # re-run of the prepare job finds the key taken; the save then only warns, and the first entry stays valid.
       - name: "Save the integration caches for the shards"
         if: ${{ success() }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          key: integration-prepare-${{ github.run_id }}-${{ github.run_attempt }}
+          key: integration-prepare-${{ github.run_id }}
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/caches/build-cache-1
@@ -741,7 +743,7 @@ jobs:
       - name: "Restore the integration caches of the prepare job"
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          key: integration-prepare-${{ github.run_id }}-${{ github.run_attempt }}
+          key: integration-prepare-${{ github.run_id }}
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/caches/build-cache-1

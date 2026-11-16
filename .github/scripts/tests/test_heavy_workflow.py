@@ -273,10 +273,10 @@ class IntegrationPrepareTest(unittest.TestCase):
         restored = self.uses_of(self.shards(), "actions/cache/restore")[0]["with"]["key"]
         self.assertEqual(saved, restored)
 
-    def test_the_key_is_unique_to_the_run_attempt(self):
+    def test_the_key_names_the_run_so_a_rerun_of_failed_shards_finds_it(self):
         key = self.uses_of(self.prepare(), "actions/cache/save")[0]["with"]["key"]
         self.assertIn("github.run_id", key)
-        self.assertIn("github.run_attempt", key)
+        self.assertNotIn("github.run_attempt", key)
 
     def test_the_prepare_job_saves_the_dependency_and_the_build_cache(self):
         path = self.uses_of(self.prepare(), "actions/cache/save")[0]["with"]["path"]
