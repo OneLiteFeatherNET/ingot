@@ -218,7 +218,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 
 | Old name | Replaced by | Removed in |
 | --- | --- | --- |
-| `support-view` | `system-info-view` | 1.3.0 |
+| `support-view` | `system-info-view` | 3.0.0 |
 
 ## Selecting in tests
 

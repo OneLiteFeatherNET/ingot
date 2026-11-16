@@ -1397,7 +1397,7 @@
     {
       "name": "support-view",
       "replacedBy": "system-info-view",
-      "removeIn": "1.3.0"
+      "removeIn": "3.0.0"
     }
   ]
 }
