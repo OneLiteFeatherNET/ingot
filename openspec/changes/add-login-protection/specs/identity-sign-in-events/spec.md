@@ -10,7 +10,7 @@ person whose name is delayed.
 
 ### Requirement: Audit action for throttled requests
 
-The audit trail SHALL record a request answered with a delay as `LOGIN_THROTTLED`, with the attempted name, the address and
+While the account throttle is on, the audit trail SHALL record a request answered with a delay as `LOGIN_THROTTLED`, with the attempted name, the address and
 the path that answered it (`dashboard`, `basic`, `bearer`, `console`, `mfa`). The action SHALL be added to `AuditAction`
 without changing any existing value. The secret, the password and the second-factor code SHALL NOT be recorded.
 
@@ -26,19 +26,25 @@ without changing any existing value. The secret, the password and the second-fac
 
 ### Requirement: Counters per path and outcome
 
-The status of an instance SHALL expose counters of sign-in attempts per path (`dashboard`, `basic`, `bearer`, `console`, `mfa`)
-and outcome (`succeeded`, `failed`, `throttled`). The counters SHALL be kept in memory of the instance and SHALL reset when the
-instance restarts. The counters SHALL NOT carry names or addresses.
+While the account throttle is on, the status of an instance SHALL expose counters of sign-in attempts per path (`dashboard`,
+`basic`, `bearer`, `console`, `mfa`) and outcome (`succeeded`, `failed`, `throttled`). The counters SHALL be kept in memory of
+the instance and SHALL reset when the instance restarts. The counters SHALL NOT carry names or addresses. While the switch is
+off, no counter SHALL be kept and the status response SHALL be unchanged.
 
 #### Scenario: A throttled request increments only its counter
 
 - **WHEN** a dashboard request is answered with a delay
 - **THEN** the counter `dashboard/throttled` increases by one, and `dashboard/failed` does not change
 
+#### Scenario: The status response is unchanged while the switch is off
+
+- **WHEN** the account throttle is off and a user fails a sign-in
+- **THEN** the status response has no sign-in counter field
+
 ### Requirement: Plugin event for a throttled request
 
-A `LoginThrottledEvent` SHALL be published once for each request answered with a delay. It SHALL carry the name, the address, the
-path and the remaining delay in seconds. It SHALL NOT carry the secret. Its publication SHALL happen after the state of the delay
+While the account throttle is on, a `LoginThrottledEvent` SHALL be published once for each request answered with a delay. It
+SHALL carry the name, the address, the path and the remaining delay in seconds. It SHALL NOT carry the secret. Its publication SHALL happen after the state of the delay
 is stored, and a listener that fails SHALL NOT change the answer to the request.
 
 #### Scenario: A failing listener does not change the answer
@@ -48,24 +54,30 @@ is stored, and a listener that fails SHALL NOT change the answer to the request.
 
 ### Requirement: Plugin event for a sign-in from a new address
 
-A `NewSignInEvent` SHALL be published when a successful login or token authentication comes from an address that is not in the
-known-address list of the principal or token. It SHALL carry the principal or token identifier, the address, the path, and the
-hash of the user agent. The raw user agent SHALL NOT be carried. The first sign-in of a principal SHALL publish the event as well.
+While the account throttle is on, a `NewSignInEvent` SHALL be published when a successful login or token authentication comes
+from an address outside the known-address list. It SHALL carry the principal or token identifier, the address, the path and
+the hash of the user agent, never the raw user agent. While the switch is off, no `NewSignInEvent` SHALL be published.
 
 #### Scenario: The first sign-in is announced as a new address
 
-- **WHEN** a user signs in for the first time
+- **WHEN** the account throttle is on and a user signs in for the first time
 - **THEN** a `NewSignInEvent` is published with the address of that sign-in
 
 #### Scenario: A known address publishes nothing
 
-- **WHEN** a user signs in from an address seen within the known-address window
+- **WHEN** the account throttle is on and a user signs in from an address seen within the known-address window
 - **THEN** no `NewSignInEvent` is published
+
+#### Scenario: The switch off publishes no sign-in event
+
+- **WHEN** the account throttle is off and a user signs in from any address
+- **THEN** no `NewSignInEvent` and no `LoginThrottledEvent` is published
 
 ### Requirement: Login challenge extension point
 
 A plugin MAY register one `LoginChallengeProvider`. When no provider is registered, no challenge SHALL ever be asked and the
-behaviour is the one of the throttle alone.
+behaviour is the one of the throttle alone. While the account throttle is off, no provider SHALL be asked, whether one is
+registered or not, because no login is delayed.
 
 #### Scenario: No provider means no challenge
 

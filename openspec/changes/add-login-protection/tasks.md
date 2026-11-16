@@ -16,8 +16,9 @@ that contains the merged proposal, and contains no file under `openspec/`.
 - [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 8 on a `429` with `Retry-After` from a remote repository, with a Basic
   credential, and record the result in the description of pull request 1 (design open question 2). Verify: both clients are run
   against a local stub server in a temporary directory, and the exit code and the retry count are recorded.
-- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 9 before pull request 1 is opened. Verify: the
-  answer, or the silence that the defaults stand, is noted in the description of pull request 1.
+- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 10 before pull request 1 is opened. Verify: the
+  answer, or the silence that the defaults stand, is noted in the description of pull request 1. Open question 10 (the
+  dummy hash timing) is the one default that is not behind a switch.
 
 ## 2. Pull request 1: per-account throttling
 
@@ -31,27 +32,35 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
   a token identifier is recorded for a name that is not a principal. Verify: the tests fail before 2.4.
 - [ ] 2.3 `test(identity)`: failing tests across two `LoginAttemptLimiter` instances on one database (the existing pattern of
   `LoginAttemptLimiterTest`): a failure on one counts on the other; the account key delays a request from a new address and
-  does not delay a request from a known address; a `mfa|account|` failure does not increase `account|`. Verify: the tests
-  fail before 2.4.
+  does not delay a request from a known address; a `mfa|account|` failure does not increase `account|`. The tests run with
+  the switch on. Verify: the tests fail before 2.4.
 - [ ] 2.4 `test(identity)`: failing tests for the paths: a Basic request for a delayed name gets `429` with `Retry-After` and
   its secret is not verified (a stub authenticator counts its calls); the same for a Bearer secret; the dashboard login gets
   the same `429`; a delayed unknown name and an existing name get the same answer; the mirror identity is neither counted nor
-  delayed. Verify: the tests fail on main.
+  delayed. Default tests, with no switch set (`INGOT_LOGIN_ACCOUNT_THROTTLE` unset): 12 wrong secrets for one name from one
+  address give `401` with the message of today on every request, the secret is verified each time, and no `login_known_address`
+  row or `LOGIN_THROTTLED` entry is written. Verify: the tests fail on main for the switch, and pass on main as the
+  characterisation of today's answers.
 - [ ] 2.5 `test(identity)`: failing test for the dummy hash: the first unknown-user verification computes exactly one hash, and
   no hash is computed lazily during it. Verify: the test fails on the lazy `unusedHash` of `LocalLoginProvider.kt`.
 - [ ] 2.6 `feat(identity)`: implement `LoginDelayPolicy`, the `login_known_address` table in `IdentityTables.kt` and
   `LoginStore`, the account key in `LoginService` and in the authenticate path of `AuthenticationFacade`, the `429` with
-  `Retry-After` for Basic and Bearer, and the eager dummy hash. Verify: 2.1 to 2.5 pass, and
+  `Retry-After` for Basic and Bearer, and the eager dummy hash. Every delay and every write of the account key sits behind
+  `INGOT_LOGIN_ACCOUNT_THROTTLE` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`), default off. The eager dummy hash is not behind
+  it (design open question 10). Verify: 2.1 to 2.5 pass, the default tests of 2.4 pass, and
   `:reposilite-backend:test --tests 'net.onelitefeather.ingot.identity.*'` stays green.
 - [ ] 2.7 `feat(identity)`: move the per-address counter of `authentication.bruteForceProtection` from the Guava cache of
-  `AuthenticationFacade` into `login_attempt` under `address|<ip>`, keep its default off, use the injected clock, and add the
+  `AuthenticationFacade` into `login_attempt` under `basic-address|<ip>` (not `address|<ip>`, which the dashboard uses), keep its
+  default off, use the injected clock, and add the
   atomic increment after the fifth conflicting write of `LoginAttemptLimiter.recordFailure`. Verify: a test for a counter that
   conflicts five times (2.3 style) and the existing `AuthenticationFacadeTest` pass.
 - [ ] 2.8 `test(identity)`: an integration test (Testcontainers only here, with the existing harness) that two replicas on one
   PostgreSQL or MariaDB database share the delay. Verify: `heavy` with `HEAVY_SLOTS=8 HEAVY_MIN_MEM_MB=8192` and
   `:reposilite-backend:integration --tests '...LoginThrottle*'` pass.
 - [ ] 2.9 `docs(identity)`: describe the account throttle, the known-address window, the 429 answer and the legacy switch in the
-  matching page under `docs/gitbook/`. Verify: the page names every new key with its default.
+  matching page under `docs/gitbook/`. Verify: the page names the switch `INGOT_LOGIN_ACCOUNT_THROTTLE` with its fallback,
+  every new key with its default, the upgrade caveat (the empty known-address table and how it warms), and states that
+  nothing changes until the switch is on.
 - [ ] 2.10 Container job: the upstream compose file starts with only the image line swapped, adopts an existing `/app/data`, and
   the upgrade rehearsal passes. Verify: the "Container images" CI job is green on the pull request.
 
@@ -59,9 +68,10 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
 
 Title: `feat(identity): check new passwords against breached password lists`
 
-- [ ] 3.1 `test(identity)`: failing tests for the length policy: the default minimum is 12; 11 characters are refused with the
-  message naming 12; `minLength` below 8 or above 256 is a settings violation on the key; the maximum is 256 code points.
-  Verify: the tests fail on main.
+- [ ] 3.1 `test(identity)`: failing tests for the length policy: the default minimum is 12, measured in UTF-16 code units as
+  today (`password.length`); 11 characters are refused with the message naming 12; `minLength` below 8 or above 256 is a
+  settings violation on the key; the maximum is 256 as today. Verify: the tests fail on main for the settings key, and pass
+  on main for the default answers.
 - [ ] 3.2 `test(identity)`: failing tests for the breached-password check with a fake range client behind an interface: the
   request carries the five character prefix only, the suffix match refuses the password, `OFF` makes no call, the `OFFLINE`
   file in a temporary directory refuses a listed hash, a missing offline file fails the startup with the key named, and a
@@ -86,7 +96,8 @@ Depends on pull request 1.
   `LOGIN_FAILED`; the enum values of `AuditAction` keep their serialised values (a golden test over the existing names); the
   counters increase per path and outcome and carry no name; `LoginThrottledEvent` is published after the state is stored and
   a throwing listener does not change the answer; `NewSignInEvent` is published for the first sign-in and for an unknown
-  address, and not for a known one. Verify: the tests fail before 4.2.
+  address, and not for a known one. With the switch off, no `LOGIN_THROTTLED`, no counter, no `NewSignInEvent` and no
+  `LoginThrottledEvent` is produced, and the status response is unchanged. Verify: the tests fail before 4.2.
 - [ ] 4.2 `feat(identity)`: add `LOGIN_THROTTLED` to `AuditAction`, the counters, the two plugin events in
   `com.reposilite.plugin.api` next to `SessionFamilyRevokedEvent`, and the publication. Verify: 4.1 passes and the audit JSON
   sink test (`add-audit-json-sink` if merged, otherwise the existing audit tests) still passes.

@@ -9,9 +9,10 @@ None of the rules applies at login, so an existing user is never locked out by a
 
 ### Requirement: Length limits
 
-A new password SHALL have at least `login.passwordPolicy.minLength` characters, which defaults to 12 and SHALL NOT be set
-below 8. A new password SHALL have at most 256 characters. A value of `minLength` outside 8 to 256 SHALL be refused by the
-settings validation with a message that names the key.
+A new password SHALL have at least `login.passwordPolicy.minLength` characters. The default is 12, the minimum Reposilite and
+Ingot enforce today (`LoginService.kt:263`), and an unset value SHALL behave exactly as today. The value SHALL NOT be set below
+8. A new password SHALL have at most 256 characters, as today. A value outside 8 to 256 SHALL be refused by the settings
+validation with a message that names the key. A value above 12 is an operator's choice; the docs recommend 12 to 15.
 
 #### Scenario: A password of 11 characters is refused under the default
 
@@ -26,13 +27,19 @@ settings validation with a message that names the key.
 ### Requirement: No composition rules and no expiry
 
 The system SHALL NOT require a password to contain particular character classes, SHALL NOT reject a password for containing a
-space or a Unicode character, and SHALL NOT force a periodic change. The length of a password SHALL be measured in Unicode
-code points, and a password that is refused for length SHALL be refused with the same message regardless of its content.
+space or a Unicode character, and SHALL NOT force a periodic change. The length of a password SHALL be measured as today, in
+UTF-16 code units (`password.length`, `LoginService.kt:172`), so that the default accepts and refuses the same passwords as
+Reposilite. A password that is refused for length SHALL be refused with the same message regardless of its content.
 
 #### Scenario: A passphrase of 12 lower case words with spaces is accepted
 
 - **WHEN** a user sets a 30 character password with lower case letters and spaces
 - **THEN** the password is accepted
+
+#### Scenario: The default length is measured as today
+
+- **WHEN** no `minLength` is set and a user sets a password of 12 UTF-16 code units
+- **THEN** the password is accepted, and a password of 11 UTF-16 code units is refused, exactly as Reposilite answers today
 
 ### Requirement: Existing passwords are not affected
 
