@@ -4,6 +4,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import ingot.tiers.CheckPluginTiersTask
 
 /*
  * Copyright (c) 2023 dzikoysk
@@ -204,4 +205,13 @@ subprojects {
 
         useJUnitPlatform()
     }
+}
+
+// Every plugin module declares the tier its sources back up. The file maps each plugin id to its tier and feeds the
+// catalogue generator, which runs after this check in the release job.
+tasks.register<CheckPluginTiersTask>("checkPluginTiers") {
+    group = "verification"
+    description = "Fails when a plugin declares an experimental opt-in or a tier its evidence does not back up."
+    pluginsDirectory.set(layout.projectDirectory.dir("reposilite-plugins"))
+    tierFile.set(layout.buildDirectory.file("plugin-tiers.json"))
 }
