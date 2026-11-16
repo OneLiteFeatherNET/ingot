@@ -82,6 +82,7 @@ import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.TemplateDto
 import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.authorization.AuthorizationChain
+import net.onelitefeather.ingot.identity.authorization.DecisionTrail
 import net.onelitefeather.ingot.identity.authorization.AuthorizationRequest
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.evaluation.Decision
@@ -153,10 +154,12 @@ class IdentityFacade(
     private val warnings: (String) -> Unit = {},
     /** The view of the policy revision of this replica. A guarded write reads it before it decides, see [adminGuard]. */
     private val revision: AuthorizationRevision = AuthorizationRevision(store),
+    /** Receives the decisions of the chain for the decision log. The default records nothing. */
+    private val decisions: DecisionTrail = DecisionTrail.OFF,
 ) {
 
     /** The chain that takes the decisions of the permission check. */
-    private val authorization = AuthorizationChain.standard()
+    private val authorization = AuthorizationChain.standard(decisions)
 
     private companion object {
         /** The repository actions a path check decides, the ones a request for a path makes. */

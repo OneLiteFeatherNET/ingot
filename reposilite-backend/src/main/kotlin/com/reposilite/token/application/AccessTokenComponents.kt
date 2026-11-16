@@ -29,6 +29,7 @@ import com.reposilite.token.infrastructure.SqlAccessTokenRepository
 import net.onelitefeather.ingot.identity.storage.IdentityAccessTokenRepository
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import net.onelitefeather.ingot.identity.storage.LegacyAccessTokenMigration
+import net.onelitefeather.ingot.identity.authorization.DecisionTrail
 import net.onelitefeather.ingot.identity.storage.PermissionNodeMigration
 import net.onelitefeather.ingot.identity.storage.PolicyFeatureFence
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -70,6 +71,7 @@ class AccessTokenComponents(
         extensions: Extensions = Extensions(journalist),
         entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
         bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
+        decisions: DecisionTrail = DecisionTrail.OFF,
     ): AccessTokenFacade =
         AccessTokenFacade(
             journalist = journalist,
@@ -79,6 +81,7 @@ class AccessTokenComponents(
             extensions = extensions,
             entityTags = entityTags,
             bcryptStrength = bcryptStrength,
+            decisions = decisions,
         )
 
 }

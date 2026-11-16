@@ -34,6 +34,7 @@ import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import net.onelitefeather.ingot.identity.authorization.AuthorizationChain
+import net.onelitefeather.ingot.identity.authorization.DecisionTrail
 import net.onelitefeather.ingot.identity.authorization.AuthorizationRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessSubjectSource
@@ -96,10 +97,11 @@ class AccessTokenFacade internal constructor(
     private val usageSource: TokenUsageSource? = persistentRepository as? TokenUsageSource,
     private val bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
     private val secretVerifier: (encodedSecret: String, rawSecret: String) -> Boolean = AccessTokenSecurityProvider::matches,
+    private val decisions: DecisionTrail = DecisionTrail.OFF,
 ) : Facade, Journalist {
 
     /** The chain that takes the access and admin decisions of this facade. */
-    private val authorization = AuthorizationChain.standard()
+    private val authorization = AuthorizationChain.standard(decisions)
 
     /**
      * Serializes the conditional writes of this instance, so a precondition is checked against the state it writes.
@@ -509,6 +511,7 @@ class AccessTokenFacade internal constructor(
             ),
             tokenRules = null,
             teams = listOf(team),
+            credentialName = name,
         )
     }
 
