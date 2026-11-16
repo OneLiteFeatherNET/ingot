@@ -491,7 +491,10 @@ onMounted(() => {
               <p class="md-body-medium text-on-surface-variant">
                 The filter does not apply to the shared configuration.
               </p>
-              <pre class="overflow-x-auto font-mono text-sm">{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
+              <pre
+              tabindex="0"
+              class="overflow-x-auto font-mono text-sm"
+            >{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
             </section>
           </div>
         </template>
