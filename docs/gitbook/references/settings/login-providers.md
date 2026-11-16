@@ -19,6 +19,7 @@ Key names are the JSON names of the `login` domain.
 | `refreshAbsoluteDays` | `30` | Longest time a login stays renewable, counted from the login. Renewals cannot extend it. |
 | `maxFailedAttempts` | `5` | Failed password logins that lock a user name from one address, and the same number of failures that lock an address. |
 | `lockoutMinutes` | `15` | How long a lockout lasts after the first lockout. Every further lockout without a quiet period doubles it, up to 24 hours. |
+| `idleTimeoutMinutes` | `0` | Minutes a browser session may stay idle before it must sign in again. `0` keeps the refresh lifetime as the only idle limit. See the idle timeout section below. |
 | `oidcProviders` | `[]` | The OIDC and GitHub providers. See the next section. |
 | `ldap` | see below | The LDAP directory of the browser login. |
 | `publicUrl` | empty | Public address of the dashboard, for example `https://repo.example.org/`. Empty means the address is built from each request. |
@@ -26,6 +27,14 @@ Key names are the JSON names of the `login` domain.
 `publicUrl` must be an absolute `https://` address, or `http://` for `localhost`. It may not contain a query, a fragment or a user name. Other values are reported as settings violations.
 
 The lockout keys apply to the password login of the dashboard. They are independent of the brute force protection of Basic and token authentication.
+
+### Idle timeout
+
+`idleTimeoutMinutes` ends a browser session after that many minutes without a renewal. The default is `0`, which changes nothing: the refresh lifetime of `refreshLifetimeHours` (168 hours) is the only idle limit, as before. A value from `5` up to the refresh lifetime in minutes shortens it. Any other value is reported as a settings violation.
+
+Every renewal restarts the idle time, and the absolute end of the login (`refreshAbsoluteDays`) still applies first. When the timeout has passed, the next renewal is refused and the browser must sign in again.
+
+For instances with administrators, we recommend `30`. It is an opt-in: Ingot does not set it, and the operator sets it in the `login` settings. The timeout applies to every browser session of the instance, so a dashboard left idle for half an hour asks for a new sign-in.
 
 ### Account throttle
 

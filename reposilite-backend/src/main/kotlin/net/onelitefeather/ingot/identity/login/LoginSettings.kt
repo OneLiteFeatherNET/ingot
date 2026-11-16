@@ -45,10 +45,21 @@ data class LoginSettings(
     val accountThrottle: AccountThrottleSettings = AccountThrottleSettings(),
     @get:Doc(title = "Password Policy", description = "Length of a new password and the check against lists of breached passwords. The defaults keep the rules Reposilite has always enforced: at least 12 characters and no breach check")
     val passwordPolicy: PasswordPolicySettings = PasswordPolicySettings(),
+    @get:Doc(title = "Idle Timeout Minutes", description = "Minutes a browser session may stay idle before its refresh token expires. 0 keeps the refresh lifetime as the only idle limit. Otherwise at least 5, and at most the refresh lifetime in minutes")
+    val idleTimeoutMinutes: Long = 0,
 ) : ValidatedSettings {
 
     override fun violations(): List<String> =
-        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }) + accountThrottle.violations() + passwordPolicy.violations()
+        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" }, idleTimeoutViolation()) + accountThrottle.violations() +
+            passwordPolicy.violations()
+
+    private fun idleTimeoutViolation(): String? {
+        if (idleTimeoutMinutes == 0L) {
+            return null
+        }
+        val maximum = refreshLifetimeHours * 60
+        return "idleTimeoutMinutes: must be 0 or between 5 and $maximum (the refresh lifetime in minutes)".takeIf { idleTimeoutMinutes !in 5..maximum }
+    }
 
 }
 
