@@ -55,9 +55,30 @@ configurations.configureEach {
     exclude(group = "com.azure", module = "azure-core-http-netty")
 }
 
+// The libraries of the Azure SDK that can clash with the server, or with another plugin, live under a package of their own. The
+// server's Jackson is not in this jar at all (it is compileOnly), so relocating the copy of the SDK does not touch it.
+val shadedPackage = "net.onelitefeather.ingot.storage.azure.shaded"
+
 // Not part of the image. The jar is installed by the operator into the plugins directory, the same as the other optional plugins.
 tasks.withType<ShadowJar> {
     archiveFileName.set("azure-storage-plugin.jar")
     destinationDirectory.set(file("$rootDir/reposilite-test/workspace/plugins"))
     mergeServiceFiles()
+    relocate("reactor", "$shadedPackage.reactor")
+    relocate("org.reactivestreams", "$shadedPackage.reactivestreams")
+    relocate("com.fasterxml.jackson", "$shadedPackage.jackson")
+
+    // The size is printed so that the figure in the documentation can be checked on each SDK bump.
+    doLast {
+        logger.lifecycle("azure-storage-plugin.jar: ${archiveFile.get().asFile.length()} bytes")
+    }
+}
+
+// The integration suite reads the shaded jar as an artifact, so the jar is built first and its path is handed to the tests.
+tasks.named<Test>("integration") {
+    val shadedJar = tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }
+    dependsOn("shadowJar")
+    doFirst {
+        systemProperty("ingot.azure.jar", shadedJar.get().asFile.absolutePath)
+    }
 }
