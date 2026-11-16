@@ -591,6 +591,70 @@ internal class SecondFactorServiceTest {
         }
     }
 
+    @Test
+    fun `a step-up with the current authenticator code is verified`() {
+        withFixture { fixture ->
+            val seed = fixture.enrolAuthenticator()
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+
+            val outcome = fixture.service.stepUp(fixture.principalId, "alice", currentCode(seed), IP)
+
+            assertThat(outcome).`as`("step-up with the current code").isEqualTo(StepUpOutcome.Verified(recovery = false))
+        }
+    }
+
+    @Test
+    fun `a step-up with a recovery code is verified and spends the code`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            val recoveryCode = regenerate(fixture)
+
+            val first = fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+            val second = fixture.service.stepUp(fixture.principalId, "alice", recoveryCode, IP)
+
+            assertThat(first).`as`("first use of the recovery code").isEqualTo(StepUpOutcome.Verified(recovery = true))
+            assertThat(second).describedAs("a spent recovery code cannot step up again").isEqualTo(StepUpOutcome.WrongCode)
+        }
+    }
+
+    @Test
+    fun `a wrong code at step-up is refused and audited as a failed challenge`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            fixture.audit.clear()
+
+            val outcome = fixture.service.stepUp(fixture.principalId, "alice", "424242", IP)
+
+            assertThat(outcome).`as`("step-up with a wrong code").isEqualTo(StepUpOutcome.WrongCode)
+            val failure = fixture.audit.single { it.action == AuditAction.MFA_CHALLENGE_FAILED }
+            assertThat(failure.details.values.map { it.toString() }).`as`("audit details").noneMatch { it.contains("424242") }
+        }
+    }
+
+    @Test
+    fun `wrong codes at step-up count towards the failure limit`() {
+        withFixture { fixture ->
+            fixture.enrolAuthenticator()
+            repeat(3) {
+                clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+                fixture.service.stepUp(fixture.principalId, "alice", "424242", IP)
+            }
+
+            val outcome = fixture.service.stepUp(fixture.principalId, "alice", "424242", IP)
+
+            assertThat(outcome).`as`("step-up after the limit of wrong codes").isInstanceOf(StepUpOutcome.Blocked::class.java)
+        }
+    }
+
+    @Test
+    fun `a step-up for a user without any factor has nothing to step up`() {
+        withFixture { fixture ->
+            val outcome = fixture.service.stepUp(fixture.principalId, "alice", "123456", IP)
+
+            assertThat(outcome).`as`("step-up without a factor").isEqualTo(StepUpOutcome.NoFactor)
+        }
+    }
+
     private companion object {
         const val IP = "10.0.0.1"
     }

@@ -2487,6 +2487,19 @@
         "required" : [ "at", "memory", "threads" ],
         "type" : "object"
       },
+      "StepUpDto" : {
+        "properties" : {
+          "authenticatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "stepUpUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "StorageInformation" : {
         "properties" : {
           "details" : {
@@ -3868,7 +3881,7 @@
                 }
               }
             },
-            "description" : "Forbidden"
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "409" : {
             "content" : {
@@ -3920,7 +3933,7 @@
                 }
               }
             },
-            "description" : "Forbidden"
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "409" : {
             "content" : {
@@ -3963,6 +3976,16 @@
               }
             },
             "description" : "OK"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "409" : {
             "content" : {
@@ -4023,7 +4046,7 @@
                 }
               }
             },
-            "description" : "Forbidden"
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "409" : {
             "content" : {
@@ -4096,7 +4119,7 @@
                 }
               }
             },
-            "description" : "Forbidden"
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "404" : {
             "content" : {
@@ -4182,7 +4205,7 @@
                 }
               }
             },
-            "description" : "Forbidden"
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "409" : {
             "content" : {
@@ -4209,6 +4232,87 @@
           "sessionCookie" : [ ]
         } ],
         "summary" : "Regenerate recovery codes",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/step-up" : {
+      "post" : {
+        "description" : "Completes a second factor for the signed-in browser session, with a current authenticator code or a recovery code in the body. The session of the same family is reissued with the authentication time now, which opens the step-up window of five minutes for the sensitive actions. Only a browser session may step up, and an access token gets 403. A user without a factor gets 409, since there is nothing to step up with",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CodeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StepUpDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        } ],
+        "summary" : "Confirm the session with a second factor",
         "tags" : [ "Identity" ]
       }
     },
@@ -4432,6 +4536,16 @@
             },
             "description" : "OK"
           },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
+          },
           "404" : {
             "content" : {
               "application/json" : {
@@ -4520,6 +4634,16 @@
               }
             },
             "description" : "OK"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "step_up_required when a recent second factor is needed first, see /api/identity/me/step-up"
           },
           "404" : {
             "content" : {

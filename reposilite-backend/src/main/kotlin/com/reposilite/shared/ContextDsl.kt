@@ -20,6 +20,8 @@ import com.reposilite.journalist.Logger
 import com.reposilite.shared.extensions.uri
 import com.reposilite.token.AccessTokenFacade
 import net.onelitefeather.ingot.identity.model.Action
+import net.onelitefeather.ingot.identity.session.SESSION_CLAIMS_ATTRIBUTE
+import net.onelitefeather.ingot.identity.session.VerifiedSession
 import net.onelitefeather.ingot.readonly.ReadOnlyRoutes
 import com.reposilite.token.api.AccessTokenDto
 import io.javalin.http.Context
@@ -164,6 +166,10 @@ class ContextDsl<R>(
                 { FORBIDDEN.toErrorResponse(if (area == null) "Only instance admins can access this endpoint" else "Only principals with the $area area can access this endpoint") }
             )
             .mapToUnit()
+
+    /** The verified claims of a browser session that authenticated this request, `null` for a Basic, Bearer or anonymous caller. */
+    fun sessionClaims(): VerifiedSession? =
+        ctx.attribute<VerifiedSession>(SESSION_CLAIMS_ATTRIBUTE)
 
     fun getSessionIdentifier(): String =
         authenticationResult.value.fold({ "${it.name}@${ctx.ip()}" }, { ctx.ip() })

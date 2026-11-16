@@ -294,7 +294,7 @@ internal class AuthLoginEndpoints(
         when (outcome) {
             is ChallengeCompletion.Verified -> {
                 ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
-                startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id))
+                startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id), mfa = true)
                     .also { if (it.isOk) facade.recordSessionIssued(outcome.principal.name, ctx.ip()) }
             }
             ChallengeCompletion.WrongCode -> unauthorizedError(rejected)
@@ -330,12 +330,6 @@ private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: Str
     return SecondFactorRequiredResponse(mfaRequired = true, methods = methods.map { it.wireName() }).asSuccess()
 }
 
-private fun SecondFactorMethod.wireName(): String = when (this) {
-    SecondFactorMethod.AUTHENTICATOR -> METHOD_AUTHENTICATOR
-    SecondFactorMethod.PASSKEY -> METHOD_PASSKEY
-    SecondFactorMethod.RECOVERY_CODE -> METHOD_RECOVERY_CODE
-}
-
 /** The message of a passkey that the sign-in did not accept. A wrong assertion keeps the challenge open, as a wrong code does. */
 private const val PASSKEY_REJECTED = "The passkey was not accepted"
 
@@ -358,8 +352,9 @@ private fun startLoginSession(
     basePath: String,
     principal: PrincipalRecord,
     mustChangePassword: Boolean,
+    mfa: Boolean = false,
 ): Result<LoginResponse, ErrorResponse> {
-    val session = facade.startSession(principal, ctx.ip(), ctx.header("User-Agent"))
+    val session = facade.startSession(principal, ctx.ip(), ctx.header("User-Agent"), mfa)
         ?: return errorResponse(SERVICE_UNAVAILABLE, "Browser sessions need the database")
     writeSessionCookies(ctx, session, basePath)
     return LoginResponse(
@@ -376,7 +371,8 @@ private fun PrincipalRecord.toLoginDto() = LoginPrincipalDto(
     displayName = displayName,
 )
 
-private fun writeSessionCookies(ctx: Context, session: SessionTokens, basePath: String) {
+/** Sets the session, refresh and csrf cookies of a session, in the form the browser keeps them. */
+internal fun writeSessionCookies(ctx: Context, session: SessionTokens, basePath: String) {
     SessionCookies.setCookies(session, basePath, secure(ctx)).forEach { ctx.res().addHeader("Set-Cookie", it) }
 }
 

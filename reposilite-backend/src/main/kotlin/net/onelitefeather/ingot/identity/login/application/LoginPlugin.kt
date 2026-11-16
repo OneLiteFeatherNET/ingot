@@ -231,6 +231,7 @@ class LoginPlugin : ReposilitePlugin() {
             ownTokens,
             secondFactors,
             onSecondFactorChanged = { authenticationFacade.forgetAllCachedCredentials() },
+            clock = clock,
         )
         accessTokenFacade.secondFactorGuard = { principalId -> loginFacade.hasSecondFactor(principalId) }
         val basePath = facade<LocalConfiguration>().basePath
@@ -239,7 +240,7 @@ class LoginPlugin : ReposilitePlugin() {
             if (loginService != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath, publicUrl = { loginSettings.get().publicUrl }))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
-                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade, publicUrl = { loginSettings.get().publicUrl }))
+                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade, publicUrl = { loginSettings.get().publicUrl }, basePath = basePath))
                 event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {

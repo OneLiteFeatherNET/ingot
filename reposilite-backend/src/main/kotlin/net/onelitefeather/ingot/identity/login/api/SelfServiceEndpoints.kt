@@ -86,10 +86,12 @@ internal class SelfServiceEndpoints(
             val replacement = request?.newPassword?.takeIf { it.isNotEmpty() }
 
             response = caller.flatMap { user ->
-                if (current == null || replacement == null) {
-                    badRequestError("Password change requires currentPassword and newPassword")
-                } else {
-                    passwordResponse(ctx, facade.changeOwnPassword(user.principalId, current, replacement, AuditActor.named(user.name, ctx.ip())))
+                requireStepUp(facade).flatMap {
+                    if (current == null || replacement == null) {
+                        badRequestError("Password change requires currentPassword and newPassword")
+                    } else {
+                        passwordResponse(ctx, facade.changeOwnPassword(user.principalId, current, replacement, AuditActor.named(user.name, ctx.ip())))
+                    }
                 }
             }
         }
@@ -122,7 +124,9 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val request = runCatching { body<SelfTokenRequest>() }.getOrNull() ?: SelfTokenRequest()
             response = caller.flatMap { user ->
-                tokenResponse(facade.issueOwnToken(user.principalId, AuditActor.named(user.name, ctx.ip()), request), "Token '${request.name}' already exists")
+                requireStepUp(facade).flatMap {
+                    tokenResponse(facade.issueOwnToken(user.principalId, AuditActor.named(user.name, ctx.ip()), request), "Token '${request.name}' already exists")
+                }
             }
         }
     }
@@ -140,7 +144,9 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val name = requireParameter("name")
             response = caller.flatMap { user ->
-                tokenResponse(facade.rotateOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip())), "")
+                requireStepUp(facade).flatMap {
+                    tokenResponse(facade.rotateOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip())), "")
+                }
             }
         }
     }
@@ -158,9 +164,11 @@ internal class SelfServiceEndpoints(
             val caller = callerOf(identifier)
             val name = requireParameter("name")
             response = caller.flatMap { user ->
-                when (facade.deleteOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip()))) {
-                    OwnTokenOutcome.Deleted -> Unit.asSuccess()
-                    else -> notFoundError("Token not found")
+                requireStepUp(facade).flatMap {
+                    when (facade.deleteOwnToken(user.principalId, name, AuditActor.named(user.name, ctx.ip()))) {
+                        OwnTokenOutcome.Deleted -> Unit.asSuccess()
+                        else -> notFoundError("Token not found")
+                    }
                 }
             }
         }
@@ -180,16 +188,18 @@ internal class SelfServiceEndpoints(
             val request = runCatching { body<PasswordResetRequest>() }.getOrNull()
             val replacement = request?.newPassword?.takeIf { it.isNotEmpty() }
 
-            response = if (replacement == null) {
-                badRequestError("Password reset requires newPassword")
-            } else {
-                when (val outcome = facade.resetPassword(name, replacement, auditActor())) {
-                    PasswordOutcome.Changed -> Unit.asSuccess()
-                    PasswordOutcome.NotFound -> notFoundError("Principal not found")
-                    PasswordOutcome.NotAUser -> badRequestError("Only a user has a password")
-                    is PasswordOutcome.InvalidInput -> badRequestError(outcome.problem)
-                    is PasswordOutcome.BreachCheckUnavailable -> serviceUnavailable(ctx, outcome.retryAfterSeconds, BREACH_CHECK_UNAVAILABLE)
-                    PasswordOutcome.WrongCurrentPassword -> badRequestError("Unexpected outcome of a reset: ${outcome::class.simpleName}")
+            response = requireStepUp(facade).flatMap {
+                if (replacement == null) {
+                    badRequestError("Password reset requires newPassword")
+                } else {
+                    when (val outcome = facade.resetPassword(name, replacement, auditActor())) {
+                        PasswordOutcome.Changed -> Unit.asSuccess()
+                        PasswordOutcome.NotFound -> notFoundError("Principal not found")
+                        PasswordOutcome.NotAUser -> badRequestError("Only a user has a password")
+                        is PasswordOutcome.InvalidInput -> badRequestError(outcome.problem)
+                        is PasswordOutcome.BreachCheckUnavailable -> serviceUnavailable(ctx, outcome.retryAfterSeconds, BREACH_CHECK_UNAVAILABLE)
+                        PasswordOutcome.WrongCurrentPassword -> badRequestError("Unexpected outcome of a reset: ${outcome::class.simpleName}")
+                    }
                 }
             }
         }

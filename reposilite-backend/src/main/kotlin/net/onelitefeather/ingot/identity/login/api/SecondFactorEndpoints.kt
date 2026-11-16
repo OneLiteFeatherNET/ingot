@@ -51,9 +51,13 @@ import net.onelitefeather.ingot.identity.login.mfa.RecoveryCodesOutcome
 import net.onelitefeather.ingot.identity.login.mfa.RelyingParty
 import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
 import net.onelitefeather.ingot.identity.model.PrincipalKind
+import com.reposilite.shared.unauthorizedError
+import net.onelitefeather.ingot.identity.login.mfa.StepUpOutcome
 import net.onelitefeather.ingot.identity.session.SessionCookies
+import net.onelitefeather.ingot.identity.session.STEP_UP_WINDOW
 import panda.std.Result
 import panda.std.asSuccess
+import panda.std.reactive.Reference
 
 /**
  * The second factors of a user: authenticator codes, passkeys and recovery codes. A user manages their own factors, and an
@@ -68,6 +72,8 @@ internal class SecondFactorEndpoints(
     private val accessTokens: AccessTokenFacade,
     /** `login.publicUrl`, which the relying party of a passkey is taken from when it is set. */
     private val publicUrl: () -> String,
+    /** The base path of the instance, which the session cookies of a step-up are scoped to. */
+    private val basePath: Reference<String>,
 ) : ReposiliteRoutes() {
 
     private data class Caller(val principalId: Int, val name: String)
@@ -118,6 +124,7 @@ internal class SecondFactorEndpoints(
         tags = ["Identity"],
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = AuthenticatorEnrolmentDto::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
     )
@@ -128,11 +135,13 @@ internal class SecondFactorEndpoints(
             // for a user without a factor.
             val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
             response = caller.flatMap { user ->
-                when (val started = facade.startAuthenticatorEnrolment(user.principalId, user.name, code, ctx.ip())) {
-                    is TotpEnrolmentStart.Started -> AuthenticatorEnrolmentDto(otpauthUri = started.otpauthUri).asSuccess()
-                    is TotpEnrolmentStart.Unavailable -> errorResponse(CONFLICT, started.reason)
-                    TotpEnrolmentStart.ProofRequired -> errorResponse(FORBIDDEN, "Adding a factor needs a current code of an existing factor")
-                    is TotpEnrolmentStart.Blocked -> tooManyRequests(ctx, started.retryAfterSeconds, "Too many failed codes, try again later")
+                requireStepUp(facade, enrolment = true).flatMap {
+                    when (val started = facade.startAuthenticatorEnrolment(user.principalId, user.name, code, ctx.ip())) {
+                        is TotpEnrolmentStart.Started -> AuthenticatorEnrolmentDto(otpauthUri = started.otpauthUri).asSuccess()
+                        is TotpEnrolmentStart.Unavailable -> errorResponse(CONFLICT, started.reason)
+                        TotpEnrolmentStart.ProofRequired -> errorResponse(FORBIDDEN, "Adding a factor needs a current code of an existing factor")
+                        is TotpEnrolmentStart.Blocked -> tooManyRequests(ctx, started.retryAfterSeconds, "Too many failed codes, try again later")
+                    }
                 }
             }
         }
@@ -149,7 +158,7 @@ internal class SecondFactorEndpoints(
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = ConfirmedEnrolmentDto::class) ]),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
-            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
@@ -159,14 +168,16 @@ internal class SecondFactorEndpoints(
             val caller = callerOf(identifier)
             val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
             response = caller.flatMap { user ->
-                if (code == null) {
-                    badRequestError("Confirmation requires code")
-                } else {
-                    when (val outcome = facade.confirmAuthenticatorEnrolment(user.principalId, user.name, code, ctx.ip())) {
-                        is EnrolmentConfirmation.Confirmed -> ConfirmedEnrolmentDto(recoveryCodes = outcome.recoveryCodes).asSuccess()
-                        EnrolmentConfirmation.NoPendingEnrolment -> errorResponse(CONFLICT, "No authenticator is waiting for a code, start an enrolment first")
-                        EnrolmentConfirmation.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
-                        is EnrolmentConfirmation.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                requireStepUp(facade).flatMap {
+                    if (code == null) {
+                        badRequestError("Confirmation requires code")
+                    } else {
+                        when (val outcome = facade.confirmAuthenticatorEnrolment(user.principalId, user.name, code, ctx.ip())) {
+                            is EnrolmentConfirmation.Confirmed -> ConfirmedEnrolmentDto(recoveryCodes = outcome.recoveryCodes).asSuccess()
+                            EnrolmentConfirmation.NoPendingEnrolment -> errorResponse(CONFLICT, "No authenticator is waiting for a code, start an enrolment first")
+                            EnrolmentConfirmation.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
+                            is EnrolmentConfirmation.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                        }
                     }
                 }
             }
@@ -185,7 +196,7 @@ internal class SecondFactorEndpoints(
         responses = [
             OpenApiResponse(status = "200", description = "Removed"),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
-            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
@@ -196,14 +207,16 @@ internal class SecondFactorEndpoints(
             val factorId = requireParameter("id").toIntOrNull()
             val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
             response = caller.flatMap { user ->
-                when {
-                    factorId == null -> notFoundError("Factor not found")
-                    code == null -> badRequestError("Removal requires code")
-                    else -> when (val outcome = facade.removeSecondFactor(user.principalId, user.name, factorId, code, ctx.ip(), auditActor())) {
-                        FactorRemoval.Removed -> Unit.asSuccess()
-                        FactorRemoval.NotFound -> notFoundError("Factor not found")
-                        FactorRemoval.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
-                        is FactorRemoval.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                requireStepUp(facade).flatMap {
+                    when {
+                        factorId == null -> notFoundError("Factor not found")
+                        code == null -> badRequestError("Removal requires code")
+                        else -> when (val outcome = facade.removeSecondFactor(user.principalId, user.name, factorId, code, ctx.ip(), auditActor())) {
+                            FactorRemoval.Removed -> Unit.asSuccess()
+                            FactorRemoval.NotFound -> notFoundError("Factor not found")
+                            FactorRemoval.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
+                            is FactorRemoval.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                        }
                     }
                 }
             }
@@ -221,7 +234,7 @@ internal class SecondFactorEndpoints(
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = RecoveryCodesDto::class) ]),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
-            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
@@ -231,14 +244,16 @@ internal class SecondFactorEndpoints(
             val caller = callerOf(identifier)
             val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
             response = caller.flatMap { user ->
-                if (code == null) {
-                    badRequestError("Regeneration requires code")
-                } else {
-                    when (val outcome = facade.regenerateRecoveryCodes(user.principalId, user.name, code, ctx.ip(), auditActor())) {
-                        is RecoveryCodesOutcome.Regenerated -> RecoveryCodesDto(recoveryCodes = outcome.codes).asSuccess()
-                        RecoveryCodesOutcome.NoFactor -> errorResponse(CONFLICT, "Recovery codes belong to a second factor, add an authenticator first")
-                        RecoveryCodesOutcome.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
-                        is RecoveryCodesOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                requireStepUp(facade).flatMap {
+                    if (code == null) {
+                        badRequestError("Regeneration requires code")
+                    } else {
+                        when (val outcome = facade.regenerateRecoveryCodes(user.principalId, user.name, code, ctx.ip(), auditActor())) {
+                            is RecoveryCodesOutcome.Regenerated -> RecoveryCodesDto(recoveryCodes = outcome.codes).asSuccess()
+                            RecoveryCodesOutcome.NoFactor -> errorResponse(CONFLICT, "Recovery codes belong to a second factor, add an authenticator first")
+                            RecoveryCodesOutcome.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
+                            is RecoveryCodesOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                        }
                     }
                 }
             }
@@ -277,15 +292,18 @@ internal class SecondFactorEndpoints(
         pathParams = [OpenApiParam(name = "name", description = "Name of the user", required = true)],
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = FactorResetDto::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
     )
     private val resetAll = ReposiliteRoute<FactorResetDto>("/api/identity/principals/{name}/factors", Route.DELETE) {
         managerOnly {
             val name = requireParameter("name")
-            response = facade.resetSecondFactors(name, factorId = null, actor = auditActor())
-                ?.let { FactorResetDto(removed = it).asSuccess() }
-                ?: notFoundError("Principal not found")
+            response = requireStepUp(facade).flatMap {
+                facade.resetSecondFactors(name, factorId = null, actor = auditActor())
+                    ?.let { FactorResetDto(removed = it).asSuccess() }
+                    ?: notFoundError("Principal not found")
+            }
         }
     }
 
@@ -302,6 +320,7 @@ internal class SecondFactorEndpoints(
         ],
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = FactorResetDto::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "404", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
     )
@@ -309,11 +328,13 @@ internal class SecondFactorEndpoints(
         managerOnly {
             val name = requireParameter("name")
             val factorId = requireParameter("id").toIntOrNull()
-            response = factorId
-                ?.let { facade.resetSecondFactors(name, factorId = it, actor = auditActor()) }
-                ?.takeIf { it > 0 }
-                ?.let { FactorResetDto(removed = it).asSuccess() }
-                ?: notFoundError("Factor not found")
+            response = requireStepUp(facade).flatMap {
+                factorId
+                    ?.let { facade.resetSecondFactors(name, factorId = it, actor = auditActor()) }
+                    ?.takeIf { it > 0 }
+                    ?.let { FactorResetDto(removed = it).asSuccess() }
+                    ?: notFoundError("Factor not found")
+            }
         }
     }
 
@@ -326,7 +347,7 @@ internal class SecondFactorEndpoints(
         tags = ["Identity"],
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyOptionsDto::class) ]),
-            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "503", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
@@ -335,12 +356,14 @@ internal class SecondFactorEndpoints(
         authenticated {
             val caller = callerOf(identifier)
             response = caller.flatMap { user ->
-                val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
-                val challenge = relyingParty?.let { facade.startPasskeyRegistration(user.principalId) }
-                when {
-                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
-                    challenge == null -> errorResponse(CONFLICT, "Passkeys need the database")
-                    else -> PasskeyOptionsDto(challengeId = challenge.challengeId, challenge = challenge.challenge, rpId = relyingParty.id).asSuccess()
+                requireStepUp(facade, enrolment = true).flatMap {
+                    val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
+                    val challenge = relyingParty?.let { facade.startPasskeyRegistration(user.principalId) }
+                    when {
+                        relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                        challenge == null -> errorResponse(CONFLICT, "Passkeys need the database")
+                        else -> PasskeyOptionsDto(challengeId = challenge.challengeId, challenge = challenge.challenge, rpId = relyingParty.id).asSuccess()
+                    }
                 }
             }
         }
@@ -357,7 +380,7 @@ internal class SecondFactorEndpoints(
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyRegisteredDto::class) ]),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
-            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", description = STEP_UP_RESPONSE, content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
             OpenApiResponse(status = "503", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ],
@@ -367,24 +390,66 @@ internal class SecondFactorEndpoints(
             val caller = callerOf(identifier)
             val request = runCatching { body<PasskeyRegistrationDto>() }.getOrNull()
             response = caller.flatMap { user ->
-                val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
-                val challengeId = request?.challengeId?.takeIf { it.isNotBlank() }
-                val clientDataJson = decodeBase64Url(request?.clientDataJSON)
-                val attestationObject = decodeBase64Url(request?.attestationObject)
-                when {
-                    relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
-                    challengeId == null || clientDataJson == null || attestationObject == null ->
-                        badRequestError("Registration requires challengeId, clientDataJSON and attestationObject in base64url")
-                    else -> when (val outcome = facade.finishPasskeyRegistration(user.principalId, challengeId, clientDataJson, attestationObject, relyingParty.id, relyingParty.origin)) {
-                        is PasskeyRegistration.Registered -> PasskeyRegisteredDto(id = outcome.factorId, name = PASSKEY_NAME).asSuccess()
-                        PasskeyRegistration.Refused -> badRequestError("The passkey was not accepted, start the registration again")
+                requireStepUp(facade).flatMap {
+                    val relyingParty = RelyingParty.of(publicUrl(), SessionCookies.isSecure(ctx), ctx.host())
+                    val challengeId = request?.challengeId?.takeIf { it.isNotBlank() }
+                    val clientDataJson = decodeBase64Url(request?.clientDataJSON)
+                    val attestationObject = decodeBase64Url(request?.attestationObject)
+                    when {
+                        relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
+                        challengeId == null || clientDataJson == null || attestationObject == null ->
+                            badRequestError("Registration requires challengeId, clientDataJSON and attestationObject in base64url")
+                        else -> when (val outcome = facade.finishPasskeyRegistration(user.principalId, challengeId, clientDataJson, attestationObject, relyingParty.id, relyingParty.origin)) {
+                            is PasskeyRegistration.Registered -> PasskeyRegisteredDto(id = outcome.factorId, name = PASSKEY_NAME).asSuccess()
+                            PasskeyRegistration.Refused -> badRequestError("The passkey was not accepted, start the registration again")
+                        }
                     }
                 }
             }
         }
     }
 
-    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne, startPasskey, finishPasskey)
+    @OpenApi(
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
+        path = "/api/identity/me/step-up",
+        methods = [HttpMethod.POST],
+        summary = "Confirm the session with a second factor",
+        description = "Completes a second factor for the signed-in browser session, with a current authenticator code or a recovery code in the body. The session of the same family is reissued with the authentication time now, which opens the step-up window of five minutes for the sensitive actions. Only a browser session may step up, and an access token gets 403. A user without a factor gets 409, since there is nothing to step up with",
+        tags = ["Identity"],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = CodeRequest::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = StepUpDto::class) ]),
+            OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "403", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "409", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ],
+    )
+    private val stepUp = ReposiliteRoute<StepUpDto>("/api/identity/me/step-up", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        authenticated {
+            val session = sessionClaims()
+            val code = runCatching { body<CodeRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
+            response = when {
+                session == null -> errorResponse(FORBIDDEN, "A step-up is confirmed from a browser session, not with an access token")
+                code == null -> badRequestError("Step-up requires code")
+                else -> when (val outcome = facade.completeStepUp(session.principalId, session.name, code, ctx.ip())) {
+                    StepUpOutcome.NoFactor -> errorResponse(CONFLICT, "No second factor is enrolled, there is nothing to step up")
+                    StepUpOutcome.WrongCode -> errorResponse(FORBIDDEN, "The code is not valid")
+                    is StepUpOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
+                    is StepUpOutcome.Verified -> facade.stepUpSession(session, ctx.ip(), ctx.header("User-Agent"))
+                        ?.let { renewed ->
+                            writeSessionCookies(ctx, renewed, basePath.get())
+                            renewed.authenticatedAt?.let { at -> StepUpDto(authenticatedAt = at, stepUpUntil = at.plus(STEP_UP_WINDOW)).asSuccess() }
+                                ?: unauthorizedError("Invalid or expired session")
+                        }
+                        ?: unauthorizedError("Invalid or expired session")
+                }
+            }
+        }
+    }
+
+    override val routes = routes(listOwn, startTotp, confirmTotp, removeOwn, regenerateRecovery, listOfPrincipal, resetAll, resetOne, startPasskey, finishPasskey, stepUp)
 
     private fun FactorRecord.toDto() = SecondFactorDto(id = id, kind = kind, name = name, createdAt = createdAt, lastUsedAt = lastUsedAt)
 

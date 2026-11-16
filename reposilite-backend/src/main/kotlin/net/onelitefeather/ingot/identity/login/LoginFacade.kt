@@ -20,6 +20,8 @@ import com.reposilite.audit.api.AuditActor
 import com.reposilite.plugin.api.Facade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenType.PRINCIPAL
+import java.time.Clock
+import java.time.Instant
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.login.api.SelfTokenRequest
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
@@ -32,10 +34,14 @@ import net.onelitefeather.ingot.identity.login.mfa.PasskeyProof
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyRegistration
 import net.onelitefeather.ingot.identity.login.mfa.PasskeyStart
 import net.onelitefeather.ingot.identity.login.mfa.RecoveryCodesOutcome
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorMethod
 import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
+import net.onelitefeather.ingot.identity.login.mfa.StepUpOutcome
 import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionTokens
+import net.onelitefeather.ingot.identity.session.VerifiedSession
+import net.onelitefeather.ingot.identity.session.stepUpAllows
 
 /**
  * What the rest of Ingot asks of human login, browser sessions and the credentials a user manages. Without a database
@@ -49,6 +55,8 @@ class LoginFacade internal constructor(
     private val secondFactor: SecondFactorService? = null,
     /** Called when a second factor is confirmed or reset, so that the cached credentials of the instance are checked again. */
     private val onSecondFactorChanged: () -> Unit = {},
+    /** The clock of the step-up window, read at every sensitive action. */
+    private val clock: Clock = Clock.systemUTC(),
 ) : Facade {
 
     /** The providers the login page shows, see [LoginService.announcements]. */
@@ -191,9 +199,34 @@ class LoginFacade internal constructor(
         return outcome
     }
 
-    /** A new browser session for a principal that has just logged in. `null` without a database. */
-    fun startSession(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens? =
-        sessions?.start(principal, ip, userAgent)
+    /**
+     * A new browser session for a principal that has just logged in. [mfa] is set when a second factor completed the login.
+     * `null` without a database.
+     */
+    fun startSession(principal: PrincipalRecord, ip: String?, userAgent: String?, mfa: Boolean = false): SessionTokens? =
+        sessions?.start(principal, ip, userAgent, mfa)
+
+    /** Checks a code of a user for a step-up, see [SecondFactorService.stepUp]. */
+    fun completeStepUp(principalId: Int, account: String, code: String, ip: String): StepUpOutcome =
+        secondFactor?.stepUp(principalId, account, code, ip) ?: StepUpOutcome.NoFactor
+
+    /**
+     * The session of a verified step-up: the same family, with the authentication time now and a second factor. `null` when the
+     * family is no longer usable, see [SessionService.stepUp].
+     */
+    fun stepUpSession(session: VerifiedSession, ip: String?, userAgent: String?): SessionTokens? =
+        sessions?.stepUp(session, ip, userAgent)
+
+    /**
+     * Whether a sensitive action may proceed for [session], see [stepUpAllows]. A caller without a session may always proceed. The
+     * [enrolment] flag is set for the first factor enrolment, which needs a recent password entry even without a factor.
+     */
+    fun stepUpAllowed(session: VerifiedSession?, enrolment: Boolean): Boolean =
+        stepUpAllows(session, hasFactor = session != null && hasSecondFactor(session.principalId), enrolment = enrolment, now = Instant.now(clock))
+
+    /** The ways a user can complete a second factor, for the answer of a refused sensitive action. */
+    fun secondFactorMethodsOf(principalId: Int): List<SecondFactorMethod> =
+        secondFactor?.methodsOf(principalId).orEmpty()
 
     /** Renews a session with its refresh token, see [SessionService.refresh]. `null` when the token is not usable. */
     fun refreshSession(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? =
@@ -202,6 +235,13 @@ class LoginFacade internal constructor(
     fun endSession(refreshToken: String?, ip: String?) {
         sessions?.logout(refreshToken, ip)
     }
+
+    /**
+     * The verified claims of a browser session token of an active user, see [SessionService.authenticate]. `null` when the token is
+     * not a valid, unexpired session.
+     */
+    fun verifySession(sessionJwt: String): VerifiedSession? =
+        sessions?.authenticate(sessionJwt)
 
     /** Refuses the session tokens of a family that another instance revoked, see [SessionService.denyFamily]. */
     internal fun denySessionFamily(familyId: String) {
@@ -213,7 +253,7 @@ class LoginFacade internal constructor(
      * facade resolves it. `null` when the token is not a valid, unexpired session of an active user.
      */
     fun authenticateSession(sessionJwt: String): AccessTokenIdentifier? =
-        sessions?.authenticate(sessionJwt)?.let { AccessTokenIdentifier(type = PRINCIPAL, value = it.principalId) }
+        verifySession(sessionJwt)?.let { AccessTokenIdentifier(type = PRINCIPAL, value = it.principalId) }
 
     fun listOwnTokens(principalId: Int): List<TokenDto> =
         ownTokens?.list(principalId).orEmpty()
