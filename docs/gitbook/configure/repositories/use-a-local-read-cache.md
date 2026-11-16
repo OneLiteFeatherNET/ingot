@@ -4,6 +4,8 @@ description: Put a local read cache in front of a remote storage provider, such 
 
 # Use a local read cache
 
+Tier: [Experimental](../../references/plugins/plugin-tiers.md#experimental)
+
 A repository whose files sit in a remote store, such as an S3 bucket, downloads the same release again for every build that needs it. The storage cache keeps a copy of each immutable file on the disk of the node that serves it. The first download fills the copy, and later downloads read it locally.
 
 The cache is a storage type of its own. It wraps another storage provider, which stays the authority for every file. The cache is not part of the Ingot image. It is installed as a plugin jar.

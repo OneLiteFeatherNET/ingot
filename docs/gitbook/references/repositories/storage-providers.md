@@ -133,6 +133,8 @@ Two S3 repositories with the same endpoint and bucket whose key prefixes are equ
 
 ## Cache provider
 
+Tier: [Experimental](../plugins/plugin-tiers.md#experimental)
+
 The cache provider keeps a copy of immutable files on the disk of the node and serves them from there. It is not part of the server: it is the storage cache plugin, `net.onelitefeather.ingot:storage-cache-plugin`, installed as a jar in the `plugins` folder. Without the jar, the type `cache` is unknown. For when to use it, see [Use a local read cache](../../configure/repositories/use-a-local-read-cache.md).
 
 ### Settings
