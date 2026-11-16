@@ -23,6 +23,7 @@ import com.reposilite.plugin.api.Event
 import com.reposilite.plugin.api.SessionFamilyRevokedEvent
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import net.onelitefeather.ingot.identity.login.storage.RefreshTokenRecord
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -74,15 +75,19 @@ class SessionService internal constructor(
     /**
      * Exchanges a refresh token for a new session. Returns `null` for an unknown, expired, revoked or spent token, for a
      * family that has reached its absolute lifetime, and for a principal that is no longer active. A spent token
-     * revokes its whole family.
+     * revokes its whole family, and so does a token that the idle timeout ended.
      */
     fun refresh(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? {
         val now = Instant.now(clock)
         val presented = store.findRefreshToken(RandomTokens.hash(refreshToken)) ?: return null
+        if (idleTimeoutPassed(presented, now)) {
+            revokeFamily(presented.familyId, now)
+            return null
+        }
         if (presented.revokedAt != null || !now.isBefore(presented.expiresAt)) {
             return null
         }
-        val familyEnd = store.familyStartedAt(presented.familyId)?.plus(absoluteLifetime()) ?: presented.createdAt.plus(absoluteLifetime())
+        val familyEnd = familyEndOf(presented)
         if (!now.isBefore(familyEnd)) {
             revokeFamily(presented.familyId, now)
             return null
@@ -158,6 +163,20 @@ class SessionService internal constructor(
 
     private fun absoluteLifetime(): Duration =
         Duration.ofDays(settings.get().refreshAbsoluteDays)
+
+    private fun familyEndOf(token: RefreshTokenRecord): Instant =
+        store.familyStartedAt(token.familyId)?.plus(absoluteLifetime()) ?: token.createdAt.plus(absoluteLifetime())
+
+    /**
+     * True when the idle timeout ended the session: the current, unspent token of a live family has expired while the
+     * absolute end of the login is still ahead. Always false with the timeout off, so the default writes nothing new.
+     */
+    private fun idleTimeoutPassed(token: RefreshTokenRecord, now: Instant): Boolean =
+        settings.get().idleTimeoutMinutes > 0 &&
+            token.revokedAt == null &&
+            token.usedAt == null &&
+            !now.isBefore(token.expiresAt) &&
+            now.isBefore(familyEndOf(token))
 
     /**
      * Issues a session in [familyId]. The refresh token lives for the refresh lifetime, but never beyond [familyEnd], the
