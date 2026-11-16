@@ -71,7 +71,7 @@ Checked on 2026-11-14:
 | | WebAuthn4J (`com.webauthn4j:webauthn4j-core`) | Yubico java-webauthn-server (`com.yubico:webauthn-server-core`) |
 |---|---|---|
 | Licence | Apache-2.0 (GitHub SPDX) | BSD, "Revised 2-clause" (POM and repository) |
-| Maintenance | pushed 2026-11-11, 11 open issues, release 2.10.1 in Maven Central | pushed 2026-11-10, 28 open issues, release 2.10.1 |
+| Maintenance | pushed 2026-11-11, 11 open issues, release 0.32.0.RELEASE in Maven Central | pushed 2026-11-10, 28 open issues, release 2.10.1 |
 | Runtime dependencies | not verified (the POM path did not resolve; to be checked at apply time) | Jackson, Guava, `com.upokecenter:cbor`, httpclient5, slf4j, yubico-util (all runtime) |
 | Fit | attestation and assertion verification, Bouncy Castle based, same provider family as the pinned `bcprov` | attestation and assertion verification, bundles an HTTP client for metadata that Ingot does not need |
 
