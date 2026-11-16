@@ -21,6 +21,9 @@ import com.reposilite.shared.badRequestError
 import com.reposilite.shared.internalServerError
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.StorageEntry
+import com.reposilite.storage.StorageEntryPage
+import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
@@ -47,7 +50,7 @@ class GcsStorageProvider internal constructor(
     private val client: GcsObjectClient,
     private val objectPrefix: String,
     private val chunkSize: Int,
-) : StorageProvider {
+) : StorageProvider, StorageEntrySource {
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
@@ -89,6 +92,13 @@ class GcsStorageProvider internal constructor(
             }
         }
         upload.finish()
+    }
+
+    /** Takes one page of [limit] entries, and the cursor of its last entry when the sequence holds more. */
+    private fun page(entries: Sequence<StorageEntry>, limit: Int): StorageEntryPage {
+        val window = entries.take(limit + 1).toList()
+        val kept = window.take(limit)
+        return StorageEntryPage(entries = kept, next = if (window.size > limit) kept.last().path.toString() else null)
     }
 
     /** The name of the object of [location] in the bucket, with the prefix of the repository. */
@@ -173,9 +183,13 @@ class GcsStorageProvider internal constructor(
     }
 
     private fun GcsEntry.toFileDetails(): FileDetails = when (this) {
-        is GcsObjectInfo -> toDocumentInfo(Location.of(name.removePrefix(objectPrefix)))
-        is GcsPrefix -> SimpleDirectoryInfo(name = name.removePrefix(objectPrefix).trimEnd('/').substringAfterLast('/'))
+        is GcsObjectInfo -> toDocumentInfo(toLocation())
+        is GcsPrefix -> SimpleDirectoryInfo(name = toLocation().getSimpleName())
     }
+
+    /** The location of an entry relative to the repository, without the trailing slash of a directory. */
+    private fun GcsEntry.toLocation(): Location =
+        Location.of(name.removePrefix(objectPrefix).trimEnd('/'))
 
     private fun GcsObjectInfo.toDocumentInfo(location: Location): DocumentInfo =
         DocumentInfo(
@@ -187,7 +201,29 @@ class GcsStorageProvider internal constructor(
 
     override fun removeFile(location: Location): Result<Unit, ErrorResponse> = TODO("removal lands in a later change of the series")
 
-    override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> = TODO("listing lands in a later change of the series")
+    /** The entries directly below [location]: its objects, and one entry for each deeper directory. An empty directory is not found. */
+    override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> =
+        answer(location, "list") {
+            val entries = client.listDelimited(directoryPrefix(location)).map { it.toLocation() }
+            if (entries.isEmpty()) notFoundError("Directory not found or is empty") else ok(entries)
+        }
+
+    /**
+     * A flat listing of the objects below [prefix], in the order of the object names. The service starts at the cursor and includes it,
+     * so the entry of the cursor is dropped here. Two more objects are requested than the page holds: one for the cursor and one that
+     * shows whether another page follows.
+     */
+    override fun listEntries(prefix: Location, after: String?, limit: Int): Result<StorageEntryPage, ErrorResponse> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return answer(prefix, "list") {
+            val directory = directoryPrefix(prefix)
+            val start = after?.let { objectPrefix + it }
+            val entries = client.list(directory, start ?: directory, limit + 2).asSequence()
+                .filter { start == null || it.name != start }
+                .map { StorageEntry(path = Location.of(it.name.removePrefix(objectPrefix)), size = it.size, lastModified = it.updated) }
+            ok(page(entries, limit))
+        }
+    }
 
     override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> =
         answer(location, "read the time of") {
