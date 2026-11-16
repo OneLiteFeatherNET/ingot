@@ -147,7 +147,7 @@ class PluginCache(private val root: Path) {
             signed = node.get("signed").asBoolean(),
             fingerprint = node.get("fingerprint")?.takeIf { !it.isNull }?.asText(),
             verifiedAt = Instant.ofEpochSecond(node.get("verifiedAt").asLong()),
-            tier = node.get("tier")?.takeIf { it.isTextual }?.let { PluginTier.valueOf(it.asText().uppercase()) } ?: PluginTier.COMMUNITY,
+            tier = node.get("tier")?.takeIf { it.isTextual }?.let { text -> PluginTier.entries.firstOrNull { it.name.equals(text.asText(), ignoreCase = true) } } ?: PluginTier.COMMUNITY,
         )
     }
 
