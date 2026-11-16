@@ -52,6 +52,24 @@ interface StorageProviderContext {
     fun createProvider(settings: StorageProviderSettings): StorageProvider =
         throw UnsupportedOperationException("This server does not build nested storage providers for '${settings.type}'")
 
+    /**
+     * The value of an environment setting of this storage provider, for example `AZURE_ACCOUNT` for the variable `INGOT_AZURE_ACCOUNT`.
+     * The INGOT variable is read first, and the REPOSILITE variable is the fallback when the INGOT one is unset or blank. Null when
+     * neither holds a non-blank value.
+     *
+     * A provider reads only its own namespace: the upper case type followed by an underscore, so the provider `azure` reads `AZURE_*`
+     * names and nothing else. The core settings under `SETTINGS_`, `LOCAL_` and `CLUSTER_` are refused for every provider, even for one
+     * whose type is named after them.
+     *
+     * This is not a secret store. A value is plain text in the environment of the process. The server neither encrypts it nor masks it
+     * in the console or in logs. Credentials belong in the settings, behind the secret references the operator allows.
+     *
+     * @throws IllegalArgumentException when [name] is not made of upper case letters, digits and underscores, lies outside the namespace
+     * of this provider, or is reserved for the server
+     */
+    fun environment(name: String): String? =
+        throw UnsupportedOperationException("This server does not read environment settings for '$name'")
+
     companion object {
 
         internal fun of(
@@ -59,8 +77,11 @@ interface StorageProviderContext {
             failureFacade: FailureFacade,
             workingDirectory: Path,
             repositoryName: String,
+            providerType: String,
+            environment: (String) -> String? = { System.getenv(it) },
             nested: (StorageProviderSettings) -> StorageProvider = { throw StorageProviderNotInstalledException(it.type) },
-        ): StorageProviderContext = DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName, nested)
+        ): StorageProviderContext =
+            DefaultStorageProviderContext(journalist, failureFacade, workingDirectory, repositoryName, providerType, environment, nested)
 
     }
 
@@ -84,7 +105,8 @@ interface IngotStorageProviderFactory<PROVIDER : StorageProvider, SETTINGS : Sto
         workingDirectory: Path,
         repositoryName: String,
         settings: SETTINGS,
-    ): PROVIDER = create(StorageProviderContext.of(journalist, failureFacade, workingDirectory, repositoryName), settings)
+    ): PROVIDER =
+        create(StorageProviderContext.of(journalist, failureFacade, workingDirectory, repositoryName, type), settings)
 
 }
 
@@ -93,10 +115,32 @@ private class DefaultStorageProviderContext(
     override val failureFacade: FailureFacade,
     override val workingDirectory: Path,
     override val repositoryName: String,
+    private val providerType: String,
+    private val variables: (String) -> String?,
     private val nested: (StorageProviderSettings) -> StorageProvider,
 ) : StorageProviderContext {
 
     override fun createProvider(settings: StorageProviderSettings): StorageProvider =
         nested(settings)
 
+    override fun environment(name: String): String? {
+        require(ENVIRONMENT_NAME.matches(name)) {
+            "'$name' is not an environment setting name, use upper case letters, digits and underscores"
+        }
+        require(RESERVED_ENVIRONMENT_PREFIXES.none { name.startsWith(it) }) {
+            "'$name' is reserved for the server and cannot be read by a storage provider"
+        }
+        val namespace = providerType.uppercase().replace('-', '_') + "_"
+        require(name.startsWith(namespace)) {
+            "'$name' is outside the '$namespace' namespace of storage provider '$providerType'"
+        }
+        return variables("INGOT_$name")?.takeIf { it.isNotBlank() }
+            ?: variables("REPOSILITE_$name")?.takeIf { it.isNotBlank() }
+    }
+
 }
+
+private val ENVIRONMENT_NAME = Regex("[A-Z][A-Z0-9_]*")
+
+/** The prefixes of the core settings and the core secrets. No storage provider reads them, whatever its type is named. */
+private val RESERVED_ENVIRONMENT_PREFIXES = listOf("SETTINGS_", "LOCAL_", "CLUSTER_")
