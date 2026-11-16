@@ -146,7 +146,8 @@ internal class SearchPlugin : ReposilitePlugin() {
      */
     private fun startBackend(wiring: SearchWiring): Started {
         reposilite().extensions.emitEvent(ArtifactSearchBackendRegistrationEvent(wiring.registry))
-        val context = CoreSearchBackendContext(wiring.clock, wiring.instanceId, wiring.engine) { level, message ->
+        val leases = SqlScheduledJobClaims(wiring.database, wiring.clock, wiring.instanceId)
+        val context = CoreSearchBackendContext(wiring.clock, wiring.instanceId, wiring.engine, leases = leases) { level, message ->
             when (level) {
                 "error" -> logger.error(message)
                 "warn" -> logger.warn(message)
