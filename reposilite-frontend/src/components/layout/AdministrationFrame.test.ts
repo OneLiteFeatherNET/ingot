@@ -215,10 +215,61 @@ describe('AdministrationFrame page header', () => {
     expect(crumbs[1].find('a').exists(), 'the group is not a link').toBe(false)
   })
 
-  it('draws no empty description element when the description is empty', async () => {
+  it('keeps the description line when the description is empty, so the heading does not move between pages', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', description: '' })
 
-    expect(wrapper.findAll('header p').filter(paragraph => paragraph.text() === ''), 'no empty paragraph in the header').toEqual([])
+    const line = wrapper.findAll('header p')
+    expect(line.length, 'the description element is drawn').toBe(1)
+    expect(line[0].classes(), 'it is one line high, cut at the edge and not wrapped').toEqual(expect.arrayContaining(['truncate', 'min-h-6']))
+    expect(line[0].text(), 'it is empty').toBe('')
+  })
+
+  it('draws the description element with the one-line class when the page has no entry at all', async () => {
+    const wrapper = await mountFrame({ current: undefined, description: undefined, groups: [] }, '/settings')
+
+    const line = wrapper.findAll('header p')
+    expect(line.length, 'the description element is drawn').toBe(1)
+    expect(line[0].classes(), 'the one-line class').toContain('truncate')
+  })
+
+  it('draws the first row of the title block, 48 pixels high at least, on a page without a trail', async () => {
+    const wrapper = await mountFrame({
+      current: 'page:plain',
+      groups: [{ id: 'plain', links: [{ key: 'page:plain', label: 'Plain', to: { name: 'audit' } }] }]
+    })
+
+    const row = wrapper.find('[data-test="title-row"]')
+    expect(row.exists(), 'the first row is drawn').toBe(true)
+    expect(row.classes(), 'the first row is drawn with a 48 pixel minimum').toContain('min-h-12')
+  })
+
+  it('draws the first row of the title block on a page that has a trail as well, at the same height', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(wrapper.get('[data-test="title-row"]').classes(), 'the first row of a group page').toContain('min-h-12')
+  })
+
+  it('puts the actions on their own row from 600 to 1239 pixels, so every page has the same header height there', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
+
+    const actions = wrapper.get('header > div:last-child').classes()
+    expect(actions, 'a full row below the title in the medium window').toContain('medium:basis-full')
+    expect(actions, 'beside the title again from 1240 pixels').toContain('large:basis-auto')
+  })
+
+  it('keeps the actions row 48 pixels high, so the header keeps its height whichever buttons a page has', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
+
+    const actions = wrapper.get('header > div:last-child')
+    expect(actions.classes(), 'the actions row has a 48 pixel minimum, the height of the Sections button').toContain('min-h-12')
+  })
+
+  it('truncates the heading to one line and gives it the full text as its title', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', title: 'Audit log of every administrator action on this instance' })
+
+    const heading = wrapper.get('h1')
+    expect(heading.classes(), 'one line, cut at the edge').toContain('truncate')
+    expect(heading.attributes('title'), 'the full heading is the title of the element').toBe('Audit log of every administrator action on this instance')
   })
 
   it('adds the list page as a link to the trail of a detail page, and names the page by its item', async () => {
