@@ -135,8 +135,8 @@ const sheetOpen = ref(false)
     <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between">
       <div class="flex min-w-0 flex-col gap-1 medium:basis-80 medium:grow">
         <div
-          v-if="showsBack || crumbs.length > 0"
-          class="flex min-w-0 items-center gap-2"
+          data-test="title-row"
+          class="flex min-h-12 min-w-0 items-center gap-2"
         >
           <RouterLink
             v-if="showsBack"
@@ -210,20 +210,20 @@ const sheetOpen = ref(false)
         </div>
         <h1
           id="administration-title"
-          class="md-headline-medium text-on-surface"
+          class="truncate md-headline-medium text-on-surface"
+          :title="heading"
         >
           {{ heading }}
         </h1>
         <p
-          v-if="lineDescription"
-          class="md-body-large text-on-surface-variant"
+          class="min-h-6 truncate md-body-large text-on-surface-variant"
         >
           {{ lineDescription }}
         </p>
       </div>
       <div
         v-if="$slots.actions || shortcuts.length > 0 || showsSections"
-        class="flex max-w-full flex-wrap items-center gap-2"
+        class="flex min-h-12 max-w-full flex-wrap items-center gap-2"
       >
         <button
           v-if="showsSections"

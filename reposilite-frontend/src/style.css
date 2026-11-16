@@ -130,6 +130,11 @@
    */
   html {
     scroll-padding-top: var(--spacing-md-top-bar);
+    /*
+     * The gutter of the vertical scrollbar is kept whether or not the page scrolls, so a page that gains or loses a
+     * scrollbar does not move its frame sideways.
+     */
+    scrollbar-gutter: stable;
   }
 
   /*
