@@ -128,4 +128,22 @@ internal class AccountThrottleTest {
         }
     }
 
+    @Test
+    fun `second factor failures do not delay the password account of the same name`() {
+        withInstances { instances ->
+            val limiter = LoginAttemptLimiter(instances.store, Reference.reference(settings), clock)
+            repeat(3) { limiter.recordFailure(listOf(LoginAttemptLimiter.mfaAccountKey("alice"))) }
+
+            assertThat(instances.store.findAttempt(LoginAttemptLimiter.mfaAccountKey("alice")))
+                .describedAs("the second factor failures are recorded under their own key")
+                .isNotNull()
+            assertThat(instances.second.retryAfter("alice", "10.0.0.9"))
+                .describedAs("a second factor failure does not delay the password of the same name")
+                .isNull()
+            assertThat(instances.store.findAttempt(LoginAttemptLimiter.accountKey("alice")))
+                .describedAs("the password account row is not written by second factor failures")
+                .isNull()
+        }
+    }
+
 }
