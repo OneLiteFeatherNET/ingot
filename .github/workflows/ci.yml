@@ -657,6 +657,33 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The contract tests of the Official plugins boot a server with the shipped jar of each plugin and check what the plugin
+  # promises. They are blocking, unlike the report-only Plugin API job, which watches the upstream 3.5.28 jars.
+  plugin-contracts:
+    name: "Plugin contract tests"
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Run the contract tests of the Official plugins"
+        run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:contractTest :reposilite-plugins:migration-plugin:contractTest
+
   # The workflow script tests used to run only inside the container images job, which is heavy. A change to a workflow
   # or a workflow script is the one that can break them, and the scope step turns the image and chart flags on together
   # only for a path it cannot place, which is what an edit under .github is. They need no Docker and no network.
@@ -714,7 +741,7 @@ jobs:
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, script-tests, docs-tests]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, script-tests, docs-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
