@@ -246,6 +246,9 @@ class LoginService internal constructor(
     fun principalIdOf(principalName: String): Int? =
         identities.findPrincipal(principalName)?.id
 
+    fun principalNamed(principalName: String): PrincipalRecord? =
+        identities.findPrincipal(principalName)
+
     fun isSetupRequired(): Boolean =
         !hasUsers()
 

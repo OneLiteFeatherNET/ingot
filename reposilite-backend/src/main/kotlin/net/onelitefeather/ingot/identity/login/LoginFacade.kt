@@ -145,6 +145,10 @@ class LoginFacade internal constructor(
     fun hasSecondFactor(principalId: Int): Boolean =
         secondFactor?.requiresSecondFactor(principalId) ?: false
 
+    /** The principal of a name, for a directory login. Null when no principal has that name, or without the database. */
+    fun principalNamed(principalName: String): PrincipalRecord? =
+        service?.principalNamed(principalName)
+
     fun secondFactorsOf(principalId: Int): List<FactorRecord> =
         secondFactor?.factorsOf(principalId).orEmpty()
 
