@@ -17,6 +17,6 @@
 // The build leaves one placeholder in the document: the base element that anchors every relative URL of the
 // page. The server fills it in once, at start, from INGOT_BASE_PATH. The other placeholders are replaced at
 // image build time, because they carry no runtime value.
-export function applyBasePath(html, basePath) {
+export function applyBasePath(html: string, basePath: string): string {
   return html.replaceAll('{{REPOSILITE.BASE_PATH}}', basePath)
 }

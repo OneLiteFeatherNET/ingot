@@ -17,29 +17,28 @@
 // Every request comes through here. The route decides the answer: the document, a bundled asset, the health
 // answer, or the server. The WebSocket hooks serve the console upgrade on the same route.
 
-/* global defineEventHandler */
-
-import { dashboardOrNull } from '../lib/state'
+import { defineEventHandler } from 'h3'
+import { dashboardOrNull, type DashboardState } from '../lib/state'
 import { classify } from '../lib/route-classifier'
-import { cacheControlFor, documentHeaders, securityHeaders } from '../lib/security-headers'
+import { cacheControlFor, documentHeaders, securityHeaders, type CacheKind } from '../lib/security-headers'
 import { contentTypeFor } from '../lib/mime'
 import { forwardedHeaders, upstreamUrl } from '../lib/upstream'
 import { outgoingRequestHeaders, proxyRequest } from '../lib/proxy'
 import { socketHooks } from '../lib/console-socket'
 
-function respond(status, body, headers, method) {
+function respond(status: number, body: string | Uint8Array | null, headers: Record<string, string>, method: string): Response {
   return new Response(method === 'HEAD' ? null : body, {
     status,
     headers: { ...securityHeaders(), ...headers },
   })
 }
 
-function unavailable() {
+function unavailable(): Response {
   return respond(503, 'The dashboard server has not started', { 'Content-Type': 'text/plain; charset=utf-8' }, 'GET')
 }
 
-async function asset(state, path, method, kind) {
-  const bytes = await state.storage.getItemRaw(path.slice(1))
+async function asset(state: Readonly<DashboardState>, path: string, method: string, kind: CacheKind): Promise<Response> {
+  const bytes = await state.storage.getItemRaw<Uint8Array>(path.slice(1))
   if (bytes === null) {
     return respond(404, 'Not Found', { 'Content-Type': 'text/plain; charset=utf-8' }, method)
   }
@@ -57,7 +56,8 @@ export default defineEventHandler({
     }
 
     const req = event.node.req
-    const method = req.method
+    // Node sets the method of every request it parses, so the fallback is never used.
+    const method = req.method ?? 'GET'
     const url = new URL(event.path, 'http://dashboard.local')
     const route = classify(url.pathname, { segments: state.segments, basePath: state.config.basePath })
 
@@ -89,8 +89,8 @@ export default defineEventHandler({
     const forwarded = forwardedHeaders({
       host: req.headers.host ?? 'localhost',
       remoteAddress: req.socket.remoteAddress ?? '',
-      forwardedFor: req.headers['x-forwarded-for'] ?? '',
-      protocol: req.headers['x-forwarded-proto'] ?? 'http',
+      forwardedFor: String(req.headers['x-forwarded-for'] ?? ''),
+      protocol: String(req.headers['x-forwarded-proto'] ?? 'http'),
     })
     return proxyRequest({
       req,

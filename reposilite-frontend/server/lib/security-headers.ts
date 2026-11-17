@@ -33,17 +33,19 @@ const CACHE_CONTROL = Object.freeze({
   document: 'no-cache',
 })
 
-export function securityHeaders() {
+export function securityHeaders(): Record<string, string> {
   return { ...SECURITY_HEADERS }
 }
 
 // The dashboard document opens in a browsing context group of its own, so a popup opened from it does not share
 // the group with the opener. The value matches OPENER_POLICY in SecurityHeaders.kt, which sends it on the same
 // response. Assets and api answers keep the shared set, which does not carry it.
-export function documentHeaders() {
+export function documentHeaders(): Record<string, string> {
   return { ...SECURITY_HEADERS, 'Cross-Origin-Opener-Policy': 'same-origin' }
 }
 
-export function cacheControlFor(kind) {
+export type CacheKind = 'asset' | 'favicon' | 'document'
+
+export function cacheControlFor(kind: CacheKind): string {
   return CACHE_CONTROL[kind]
 }

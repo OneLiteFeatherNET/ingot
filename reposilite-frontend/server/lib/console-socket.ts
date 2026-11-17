@@ -19,6 +19,7 @@
 // and every later one is a command or a keep-alive. Messages from the browser are therefore sent upstream as
 // text, and text from the server is sent back as text.
 
+import type { Hooks, Peer } from 'crossws'
 import WebSocket from 'ws'
 import { dashboardOrNull } from './state'
 import { classify } from './route-classifier'
@@ -27,7 +28,14 @@ import { upstreamUrl, forwardedHeaders } from './upstream'
 // The headers of the browser that the server needs to know who is connecting.
 const FORWARDED_BY_CLIENT = ['cookie', 'authorization', 'origin', 'user-agent']
 
-const links = new WeakMap()
+interface Link {
+  // Null only when the upstream socket could not be created; the link then never opens.
+  upstream: WebSocket | null
+  pending: string[]
+  open: boolean
+}
+
+const links = new WeakMap<Peer, Link>()
 
 function dashboardState() {
   const state = dashboardOrNull()
@@ -37,18 +45,24 @@ function dashboardState() {
   return state
 }
 
-function upstreamSocketUrl(peer) {
+function upstreamSocketUrl(peer: Peer): string {
   const { config, segments } = dashboardState()
   const url = new URL(peer.request.url)
   const route = classify(url.pathname, { segments, basePath: config.basePath })
-  return upstreamUrl(config.backend, route.path, url.search).replace(/^http/, 'ws')
+  // The upgrade hook accepts only proxied paths, so a route that reaches this point has a path.
+  const path = 'path' in route ? route.path : ''
+  return upstreamUrl(config.backend, path, url.search).replace(/^http/, 'ws')
 }
 
-function upstreamHeaders(peer) {
+function upstreamHeaders(peer: Peer): Record<string, string> {
   const incoming = peer.request.headers
-  const headers = Object.fromEntries(
-    FORWARDED_BY_CLIENT.filter(name => incoming.has(name)).map(name => [name, incoming.get(name)])
-  )
+  const headers: Record<string, string> = {}
+  for (const name of FORWARDED_BY_CLIENT) {
+    const value = incoming.get(name)
+    if (value !== null) {
+      headers[name] = value
+    }
+  }
   const forwarded = forwardedHeaders({
     host: incoming.get('host') ?? 'localhost',
     remoteAddress: peer.remoteAddress ?? '',
@@ -63,7 +77,7 @@ function upstreamHeaders(peer) {
   return headers
 }
 
-export const socketHooks = {
+export const socketHooks: Partial<Hooks> = {
   // Only the proxied paths upgrade. Every other address is refused with 404, before the socket is accepted.
   upgrade(request) {
     const { config, segments } = dashboardState()
@@ -75,7 +89,7 @@ export const socketHooks = {
   },
 
   open(peer) {
-    const link = { upstream: null, pending: [], open: false }
+    const link: Link = { upstream: null, pending: [], open: false }
     links.set(peer, link)
 
     const upstream = new WebSocket(upstreamSocketUrl(peer), { headers: upstreamHeaders(peer), perMessageDeflate: false })
@@ -87,6 +101,8 @@ export const socketHooks = {
     })
     upstream.on('message', (data, isBinary) => {
       try {
+        // ws delivers the frames as Buffers (its default binary type), so a text frame is read as UTF-8 as it always was.
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the union includes ArrayBuffer, which is never delivered
         peer.send(isBinary ? data : data.toString('utf8'))
       } catch {
         upstream.close(1000)
@@ -115,7 +131,7 @@ export const socketHooks = {
     }
     const text = message.text()
     if (link.open) {
-      link.upstream.send(text)
+      link.upstream?.send(text)
     } else {
       link.pending.push(text)
     }
@@ -127,8 +143,9 @@ export const socketHooks = {
       return
     }
     links.delete(peer)
-    if (link.upstream.readyState === WebSocket.OPEN || link.upstream.readyState === WebSocket.CONNECTING) {
-      link.upstream.close(1000)
+    const upstream = link.upstream
+    if (upstream && (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING)) {
+      upstream.close(1000)
     }
   },
 }
