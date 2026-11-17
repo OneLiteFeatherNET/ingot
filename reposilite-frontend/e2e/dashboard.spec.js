@@ -26,16 +26,16 @@ test.describe('instance status on Overview', () => {
     await expect(page.getByRole('switch', { name: /read-only/i }), 'a switch for the read-only state').toHaveCount(0)
   })
 
-  test('draws the status above At a glance and the Danger zone at 1440 pixels', async ({ adminPage: page }) => {
+  test('draws the status above At a glance at 1440 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(siteUrl('/settings'))
     const status = page.getByRole('region', { name: 'Instance status' })
-    const danger = page.getByRole('heading', { name: 'Danger zone', exact: true })
+    const glance = page.getByRole('heading', { name: 'At a glance', exact: true })
     await expect(status).toBeVisible()
 
     const statusTop = await status.evaluate(element => element.getBoundingClientRect().top)
-    const dangerTop = await danger.evaluate(element => element.getBoundingClientRect().top)
-    expect(statusTop, 'the status comes above the Danger zone, which is the last block').toBeLessThan(dangerTop)
+    const glanceTop = await glance.evaluate(element => element.getBoundingClientRect().top)
+    expect(statusTop, 'the status comes above At a glance').toBeLessThan(glanceTop)
   })
 
   test('shows no used value above its limit', async ({ adminPage: page }) => {

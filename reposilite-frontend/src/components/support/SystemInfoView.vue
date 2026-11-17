@@ -15,18 +15,26 @@
   -->
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import download from 'downloadjs'
 import { useSession } from '../../store/session'
+import { ADMIN_NODES } from '../../store/nodeAccess'
+import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
+import MdButton from '../md/MdButton.vue'
+import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 import { filterRows, tabForFragment } from './systemInfoTabs'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
-const { client } = useSession()
+const session = useSession()
+const { client } = session
+// The factory reset of the settings, and the node that may edit them: the same check the settings pages make.
+const store = inject(configurationStoreKey, null) ?? useConfiguration().store
+const canEdit = computed(() => (typeof session.can === 'function' ? session.can(ADMIN_NODES.settings) : true))
 const route = useRoute()
 const router = useRouter()
 const root = ref<HTMLElement | null>(null)
@@ -100,6 +108,13 @@ const loadSupport = async () => {
   } catch (error) {
     support.value = (error as { response?: { status?: number } } | undefined)?.response?.status === 404 ? 'off' : 'failed'
   }
+}
+
+// The reset writes the settings of every domain. The page may be opened before the settings are read, so they are read first.
+// A failed read stops the reset here; the store reports the failure itself.
+const factoryReset = async () => {
+  if (store.domains.value.length === 0 && !(await store.fetchConfiguration())) return
+  await store.factoryReset()
 }
 
 const downloadBundle = async () => {
@@ -497,6 +512,36 @@ onMounted(() => {
               >{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
             </section>
           </div>
+
+          <section
+            v-if="tab === 'overview' && canEdit"
+            aria-labelledby="system-danger-title"
+            class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
+          >
+            <div class="flex min-w-0 flex-col gap-1">
+              <h2
+                id="system-danger-title"
+                class="md-title-large text-error"
+              >
+                Danger zone
+              </h2>
+              <p class="md-body-medium text-on-surface-variant">
+                A factory reset sets every setting back to its default and saves it to all instances at once.
+              </p>
+            </div>
+            <FactoryResetModal :callback="factoryReset">
+              <template #button>
+                <MdButton
+                  variant="outlined"
+                  type="button"
+                  error
+                  class="shrink-0 whitespace-nowrap"
+                >
+                  Factory reset
+                </MdButton>
+              </template>
+            </FactoryResetModal>
+          </section>
         </template>
       </AppTabs>
     </template>

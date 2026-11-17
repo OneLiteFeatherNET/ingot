@@ -119,7 +119,9 @@ The root of the content keeps the anchor `settings-hub` (see [Dashboard anchors]
 
 **Import settings** and **Download as JSON** are in the page header of Overview only, since they act on the whole configuration. Import loads a settings file into the draft and asks for no confirmation; nothing is stored until Save. Download saves the saved state, or the draft when asked for it. The settings domain pages and the Repositories page do not show these two actions.
 
-Below 1240 pixels the order is the page header, Needs attention (only when it has a row or a conflict), the Administration index with Overview marked current, the instance status, At a glance and the Danger zone. Overview has no back arrow there, because the index is on the same page. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
+The factory reset is not on the settings pages. It resets every instance, so it sits in a Danger zone at the end of the Overview of **System and support** (`system-info`), and only a visitor who may edit settings sees it.
+
+Below 1240 pixels the order is the page header, Needs attention (only when it has a row or a conflict), the Administration index with Overview marked current, the instance status and At a glance. Overview has no back arrow there, because the index is on the same page. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
 
 ### Client-side guards
 

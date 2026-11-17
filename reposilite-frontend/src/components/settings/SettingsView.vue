@@ -24,7 +24,6 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { useSession } from '../../store/session'
 import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import { ADMIN_NODES } from '../../store/nodeAccess'
-import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
@@ -311,7 +310,6 @@ const pageClearance = computed(() => ({
 
 const save = () => store.saveConfiguration()
 const discard = () => store.discardChanges()
-const factoryReset = () => store.factoryReset()
 
 /*
  * The review lists the same changes the bar counts: the saved state against the draft, per domain.
@@ -629,37 +627,6 @@ watch(
     >
       Loading configuration
     </p>
-
-    <!-- The reset sets every setting of every instance back to its default, so it belongs to the settings pages, not to one repository. -->
-    <section
-      v-if="!repositoryPage && canEdit"
-      aria-labelledby="settings-danger-title"
-      class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
-    >
-      <div class="flex min-w-0 flex-col gap-1">
-        <h2
-          id="settings-danger-title"
-          class="md-title-large text-error"
-        >
-          Danger zone
-        </h2>
-        <p class="md-body-medium text-on-surface-variant">
-          A factory reset sets every setting back to its default and saves it to all instances at once.
-        </p>
-      </div>
-      <FactoryResetModal :callback="factoryReset">
-        <template #button>
-          <MdButton
-            variant="outlined"
-            type="button"
-            error
-            class="shrink-0 whitespace-nowrap"
-          >
-            Factory reset
-          </MdButton>
-        </template>
-      </FactoryResetModal>
-    </section>
 
     <div
       v-if="hasUnsavedChanges"

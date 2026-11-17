@@ -26,11 +26,11 @@ const linesOf = (locator) => locator.evaluate((element) => {
   return tops.size
 })
 
-test.describe('the danger zone of Overview', () => {
+test.describe('the danger zone of the system and support page', () => {
   for (const width of [320, 600, 1440]) {
     test(`keeps the factory reset label on one line at ${width} pixels`, async ({ adminPage: page }) => {
       await page.setViewportSize({ width, height: 900 })
-      await page.goto(siteUrl('/settings'))
+      await page.goto(siteUrl('/settings/system-info'))
 
       const reset = page.getByRole('button', { name: 'Factory reset', exact: true })
       await expect(reset).toBeVisible()

@@ -15,19 +15,25 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SystemInfoView from './SystemInfoView.vue'
+import { configurationStoreKey } from '../../store/configuration'
+import { ADMIN_NODES } from '../../store/nodeAccess'
 
 const BLANK = { render: () => null }
 type Page = Awaited<ReturnType<typeof mountView>>
 type PanelOf = ReturnType<Page['findAll']>[number]
 
-// The client is swapped per test through this holder. The view reads it through the session.
-const session = vi.hoisted((): { client: unknown } => ({ client: null }))
+// The client and the permissions are swapped per test through this holder. The view reads them through the session.
+const session = vi.hoisted((): { client: unknown, can: (node: string) => boolean } => ({ client: null, can: () => true }))
 
 vi.mock('../../store/session', () => ({
-  useSession: () => ({ client: { get value() { return session.client } } })
+  useSession: () => ({
+    client: { get value() { return session.client } },
+    can: (node: string) => session.can(node),
+  })
 }))
 
 const FIXTURE = {
@@ -51,7 +57,18 @@ const FIXTURE = {
 
 // The page reads its tab and its fragment from the address, so every mount gets a memory router at the given address.
 // The address is resolved before the mount: installing a router starts its own navigation, which would replace a pending one.
-const mountView = async (client: { support?: Record<string, unknown> }, address = '/settings/system-info') => {
+// The store of the settings is replaced per test: the reset reads the settings when none are read, then resets them.
+const fakeStore = (domains: string[] = ['ingot']) => ({
+  domains: ref(domains),
+  fetchConfiguration: vi.fn(() => Promise.resolve(true)),
+  factoryReset: vi.fn(() => Promise.resolve(true)),
+})
+
+const mountView = async (
+  client: { support?: Record<string, unknown> },
+  address = '/settings/system-info',
+  store = fakeStore(),
+) => {
   session.client = { support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })), ...client.support } }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -62,13 +79,14 @@ const mountView = async (client: { support?: Record<string, unknown> }, address 
   })
   await router.push(address)
   await router.isReady()
-  return mount(SystemInfoView, { global: { plugins: [router] } })
+  return mount(SystemInfoView, { global: { plugins: [router], provide: { [configurationStoreKey]: store } } })
 }
 
 const tabsOf = (wrapper: Page) => wrapper.findAll('[role="tab"]')
 
 afterEach(() => {
   session.client = null
+  session.can = () => true
 })
 
 describe('SystemInfoView', () => {
@@ -308,5 +326,76 @@ describe('SystemInfoView anchors of the merged page', () => {
     await flushPromises()
 
     expect(partsIn(wrapper)).toEqual(expect.arrayContaining(['support-action', 'support-note', 'filter']))
+  })
+})
+
+describe('SystemInfoView factory reset', () => {
+  const RESET = 'Factory reset'
+  const zoneOf = (wrapper: Page) => panelsOf(wrapper)[0].find('section[aria-labelledby="system-danger-title"]')
+  // The dialog is teleported to the body, so its button is looked up in the document, not in the page.
+  const confirmOf = () => Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('Reset all to defaults'))
+
+  it('shows the factory reset at the end of the Overview for a visitor who may edit settings', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const zone = zoneOf(wrapper)
+    expect(zone.exists(), 'the danger zone is in the Overview panel').toBe(true)
+    expect(zone.find('#system-danger-title').text()).toBe('Danger zone')
+    expect(zone.findAll('button').map((button) => button.text())).toContain(RESET)
+    expect(panelsOf(wrapper)[0].element.lastElementChild, 'the zone is the last block of the Overview').toBe(zone.element)
+  })
+
+  it('hides the factory reset from a visitor without the settings node, and keeps the Overview', async () => {
+    session.can = (node) => node !== ADMIN_NODES.settings
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    expect(zoneOf(wrapper).exists(), 'no danger zone without the settings node').toBe(false)
+    expect(buttonNamed(wrapper, RESET), 'no factory reset button').toBeUndefined()
+    expect(wrapper.find('#support-ingot').exists(), 'the system information is still shown').toBe(true)
+  })
+
+  it('opens the reset dialog from the factory reset button', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    await buttonNamed(wrapper, RESET)!.trigger('click')
+    await flushPromises()
+
+    expect(document.getElementById('factory-reset-title')?.textContent?.trim(), 'the dialog asks before it resets').toBe('Reset all to defaults?')
+    expect(confirmOf(), 'the dialog offers the reset').toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('reads the settings first when none are read yet, then resets every setting through the store', async () => {
+    const store = fakeStore([])
+    const wrapper = await mountView(withInfo(), '/settings/system-info', store)
+    await flushPromises()
+
+    await buttonNamed(wrapper, RESET)!.trigger('click')
+    await flushPromises()
+    confirmOf()!.click()
+    await flushPromises()
+
+    expect(store.fetchConfiguration, 'the settings are read before the reset').toHaveBeenCalledOnce()
+    expect(store.factoryReset).toHaveBeenCalledOnce()
+    expect(wrapper.find('#support-ingot').exists(), 'the page stays after the reset').toBe(true)
+    wrapper.unmount()
+  })
+
+  it('does not reset anything when the settings cannot be read', async () => {
+    const store = fakeStore([])
+    store.fetchConfiguration.mockResolvedValueOnce(false)
+    const wrapper = await mountView(withInfo(), '/settings/system-info', store)
+    await flushPromises()
+
+    await buttonNamed(wrapper, RESET)!.trigger('click')
+    await flushPromises()
+    confirmOf()!.click()
+    await flushPromises()
+
+    expect(store.factoryReset, 'no reset without the settings').not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 })
