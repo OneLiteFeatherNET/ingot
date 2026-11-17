@@ -180,6 +180,44 @@ describe('CheckPermissionView', () => {
   })
 
   describe('the verdict', () => {
+    it('shows the verdict word in a title size, not a display size', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      const classes = wrapper.find('[data-test="verdict-text"]').classes()
+
+      expect(classes, 'the verdict is a compact status row').toContain('md-title-large')
+      expect(classes.filter(name => /^md-(display|headline)-/.test(name)), 'no display or headline type on the verdict').toEqual([])
+    })
+
+    it('draws the verdict icon at the standard 24 px size', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      const icon = wrapper.find('[data-test="verdict"] svg')
+
+      expect(icon.classes(), 'the md icon size lg is 24 px').toContain('size-6')
+      expect(icon.classes()).not.toContain('size-12')
+    })
+
+    it('keeps the Allowed word and its icon apart from the Denied ones', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+      const allowedIcon = wrapper.find('[data-test="verdict"] svg').find('path').attributes('d')
+      expect(text('verdict-text')).toBe('Allowed')
+
+      identity.check.mockResolvedValue({ data: DENIED })
+      await submit()
+
+      expect(text('verdict-text'), 'Denied is written out, not signalled by colour alone').toBe('Denied')
+      expect(wrapper.find('[data-test="verdict"] svg').find('path').attributes('d'), 'Denied has its own icon').not.toBe(allowedIcon)
+    })
+
+    it('sizes the Node and Artifact path switch to its content', async () => {
+      await mountView()
+
+      const track = wrapper.find('[data-ingot-component="segmented-control"]')
+
+      expect(track.element.parentElement?.classList, 'the switch is inline, not full width').toContain('w-fit')
+    })
+
     it('shows an Allowed banner for an allowed node', async () => {
       await mountView(`/access/check?principal=alice&node=${NODE}`)
 
