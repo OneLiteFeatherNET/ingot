@@ -150,22 +150,22 @@ const onMenuKeydown = (event: KeyboardEvent) => {
   const index = items.indexOf(document.activeElement as HTMLElement)
   const move = (step: number) => {
     event.preventDefault()
-    items[(index + step + items.length) % items.length]?.focus()
+    items[(index + step + items.length) % items.length]?.focus({ preventScroll: true })
   }
   if (event.key === 'Escape') {
     event.preventDefault()
     closeMenu()
-    triggerElement()?.focus()
+    triggerElement()?.focus({ preventScroll: true })
   } else if (event.key === 'ArrowDown') {
     move(1)
   } else if (event.key === 'ArrowUp') {
     move(-1)
   } else if (event.key === 'Home') {
     event.preventDefault()
-    items[0]?.focus()
+    items[0]?.focus({ preventScroll: true })
   } else if (event.key === 'End') {
     event.preventDefault()
-    items[items.length - 1]?.focus()
+    items[items.length - 1]?.focus({ preventScroll: true })
   }
 }
 

@@ -215,14 +215,75 @@ describe('PrincipalActionsMenu', () => {
       expect(menu()).not.toBeNull()
     })
 
-    it('closes when the page scrolls, because the menu no longer lines up with its trigger', async () => {
+  })
+
+  describe('scrolling and resizing', () => {
+    const openMenu = async () => {
+      await wrapper.find('[data-test="actions"]').trigger('click')
+      await flushPromises()
+    }
+    // The trigger's rect is a fixed box, so a test can move it the way a scroll does.
+    const moveTrigger = (top: number) => {
+      const rect = { top, bottom: top + 40, left: 260, right: 300, width: 40, height: 40 }
+      wrapper.find('[data-test="actions"]').element.getBoundingClientRect = () => rect as DOMRect
+    }
+    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+    it('opens without scrolling the page: every focus call passes preventScroll', async () => {
       await mountMenu()
+      moveTrigger(200)
+      const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+      // jsdom has no scrollIntoView, so the test installs one to see whether anything calls it.
+      const scrollIntoView = vi.fn()
+      Object.defineProperty(Element.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true, writable: true })
+
+      try {
+        await openMenu()
+
+        expect(focus, 'the first item takes the focus').toHaveBeenCalled()
+        expect(focus.mock.calls.every(([options]) => options?.preventScroll === true), 'no focus call scrolls the page').toBe(true)
+        expect(scrollIntoView, 'nothing scrolls an element into view').not.toHaveBeenCalled()
+      } finally {
+        Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+      }
+    })
+
+    it('stays open and follows its trigger when the page scrolls and the trigger stays on screen', async () => {
+      await mountMenu()
+      moveTrigger(200)
+      await openMenu()
+      expect(menu().style.top, 'the menu opens below the trigger').toBe('244px')
+
+      moveTrigger(300)
+      window.dispatchEvent(new Event('scroll'))
+      await nextFrame()
+
+      expect(menu(), 'the menu is still open').not.toBeNull()
+      expect(menu().style.top, 'the menu moved with the trigger').toBe('344px')
+    })
+
+    it('closes when its trigger has scrolled out of the screen', async () => {
+      await mountMenu()
+      moveTrigger(200)
       await openMenu()
 
+      moveTrigger(-80)
       window.dispatchEvent(new Event('scroll'))
-      await flushPromises()
+      await nextFrame()
 
-      expect(menu()).toBeNull()
+      expect(menu(), 'a menu without its trigger on screen closes').toBeNull()
+    })
+
+    it('follows its trigger when the window is resized', async () => {
+      await mountMenu()
+      moveTrigger(200)
+      await openMenu()
+
+      moveTrigger(120)
+      window.dispatchEvent(new Event('resize'))
+      await nextFrame()
+
+      expect(menu().style.top).toBe('164px')
     })
   })
 
