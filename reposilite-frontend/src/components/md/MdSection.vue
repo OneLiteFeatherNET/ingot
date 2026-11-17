@@ -47,7 +47,7 @@ defineSlots<{
       <div class="min-w-0">
         <component
           :is="level === 3 ? 'h3' : 'h2'"
-          :class="level === 3 ? 'md-title-medium' : 'md-title-large'"
+          :class="level === 3 ? 'md-title-small' : 'md-title-medium'"
         >
           {{ title }}
         </component>
