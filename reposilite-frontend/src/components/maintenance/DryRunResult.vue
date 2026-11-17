@@ -31,11 +31,11 @@ const props = defineProps<{
 
 const empty = computed(() => isNothingToDelete(props.preview))
 
-const COLUMNS = [
+const COLUMNS: { key: string, label: string, align?: 'end' }[] = [
   { key: 'repository', label: 'Repository' },
   { key: 'path', label: 'Path' },
   { key: 'version', label: 'Version' },
-  { key: 'size', label: 'Size' },
+  { key: 'size', label: 'Size', align: 'end' },
   { key: 'reason', label: 'Reason' },
 ]
 
@@ -52,7 +52,7 @@ const CELL_CLASS: Record<string, string> = {
   repository: 'block text-on-surface',
   path: 'block font-mono md-body-small break-words text-on-surface',
   version: 'block text-on-surface',
-  size: 'block text-right whitespace-nowrap text-on-surface',
+  size: 'block whitespace-nowrap text-on-surface',
   reason: 'block md-body-small',
 }
 </script>
@@ -95,10 +95,14 @@ const CELL_CLASS: Record<string, string> = {
 
     <div
       v-if="!empty"
-      class="max-h-[60dvh] overflow-auto rounded-corner-small border border-outline-variant"
+      class="rounded-corner-small border border-outline-variant"
     >
+      <!-- The table region is the scroll container, so the height limit goes on it and its header can stick. -->
       <MdDataTable
         caption="Artifacts a run would delete"
+        caption-hidden
+        sticky-header
+        class="max-h-[60dvh]"
         :columns="COLUMNS"
         :rows="rows"
       >

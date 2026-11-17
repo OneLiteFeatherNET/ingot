@@ -66,6 +66,37 @@ describe('DryRunResult', () => {
     expect(rows[0].text()).toContain('beyond the newest 3 versions; older than 30 days')
   })
 
+  it('keeps the table caption in the DOM but visually hidden', () => {
+    mountResult({ preview: preview() })
+
+    const caption = wrapper.find('caption')
+
+    expect(caption.text()).toBe('Artifacts a run would delete')
+    expect(caption.classes(), 'the caption is for screen readers only').toContain('sr-only')
+  })
+
+  it('keeps the table header pinned to the top of the scrolling table', () => {
+    mountResult({ preview: preview() })
+
+    const headers = wrapper.findAll('thead th')
+
+    expect(headers).toHaveLength(5)
+    headers.forEach((header) => {
+      expect(header.classes(), `the ${header.text()} header is sticky`).toContain('sticky')
+      expect(header.classes(), `the ${header.text()} header sticks to the top`).toContain('top-0')
+    })
+  })
+
+  it('aligns the size column to the end, in its header and its cells', () => {
+    mountResult({ preview: preview() })
+
+    const sizeHeader = wrapper.findAll('thead th').find((header) => header.text() === 'Size')
+    const sizeCell = wrapper.find('tbody tr').findAll('td').find((cell) => cell.text() === prettyBytes(1024))
+
+    expect(sizeHeader?.classes(), 'the Size header is end-aligned').toContain('text-end')
+    expect(sizeCell?.classes(), 'the size cell is end-aligned').toContain('text-end')
+  })
+
   it('lists the warnings the server returned', () => {
     mountResult({ preview: preview() })
 
