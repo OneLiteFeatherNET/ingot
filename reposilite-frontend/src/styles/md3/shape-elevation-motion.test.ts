@@ -110,6 +110,7 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     ['--container-md-crumb', '10rem'],
     ['--container-md-key-tree', '24rem'],
     ['--grid-md-key-value', 'auto minmax(0, 1fr)'],
+    ['--spacing-md-node-region', '28rem'],
   ])('declares the layout token %s as %s', (name, value) => {
     expect(shapeTheme, `${name} is a theme token`).toContain(`${name}: ${value};`)
   })
@@ -147,12 +148,13 @@ describe('animation tokens', () => {
     ['--animate-md-linear-slide-reduced', 'md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite'],
     ['--animate-md-snackbar-enter', 'md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both'],
     ['--animate-md-snackbar-leave', 'md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both'],
+    ['--animate-md-node-highlight', 'md-node-highlight var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) both'],
     ['--animate-skeleton-fade-in', 'skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both'],
   ])('declares %s from motion tokens', (name, value) => {
     expect(shapeTheme, `${name} is an animate token built from the motion tokens`).toContain(`${name}: ${value};`)
   })
 
-  it.each(['md-linear-slide', 'md-snackbar-enter', 'md-snackbar-leave', 'skeleton-fade-in'])(
+  it.each(['md-linear-slide', 'md-snackbar-enter', 'md-snackbar-leave', 'md-node-highlight', 'skeleton-fade-in'])(
     'declares the keyframes of %s next to the tokens',
     (name) => {
       expect(shapeCss, `@keyframes ${name} in the token file`).toContain(`@keyframes ${name} {`)

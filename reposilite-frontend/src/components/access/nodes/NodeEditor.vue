@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { computed, ref, type PropType } from 'vue'
+import { computed, nextTick, ref, type PropType } from 'vue'
 import MdTextField from '../../md/MdTextField.vue'
 import ConflictDialog from '../../settings/ConflictDialog.vue'
 import UnsavedChangesBar from '../../settings/UnsavedChangesBar.vue'
@@ -112,16 +112,55 @@ const emit = defineEmits([
 
 const view = ref<'list' | 'tree'>('list')
 const query = ref('')
+const state = ref<'all' | 'allow' | 'deny'>('all')
 const reviewing = ref(false)
+const region = ref<HTMLElement | null>(null)
+// The node that was just added or found again is highlighted, and the groups on its path are opened.
+const highlighted = ref('')
+const revealed = ref('')
 
-const rows = computed(() => filterRows(props.nodes, query.value))
+const matchesState = (entry: NodeEntry): boolean => state.value === 'all' || (state.value === 'allow') === entry.allowed
+const filtering = computed(() => query.value.trim() !== '' || state.value !== 'all')
+const rows = computed(() => filterRows(props.nodes, query.value).filter(matchesState))
 const tree = computed(() => buildTree(rows.value))
+// Above 20 nodes the groups of the tree start collapsed. A filter opens the path to every match.
+const expandAll = computed(() => filtering.value || props.nodes.length <= 20)
+const allowedCount = computed(() => props.nodes.filter(entry => entry.allowed).length)
+const summary = computed(() => {
+  const total = props.nodes.length
+  const text = `${total} ${total === 1 ? 'node' : 'nodes'}: ${allowedCount.value} allow, ${total - allowedCount.value} deny`
+  return filtering.value ? `${text}, showing ${rows.value.length} of ${total}` : text
+})
 const changes = computed(() => diffNodes(props.savedNodes ?? props.nodes, props.nodes))
 const showBar = computed(() => !props.readonly && (changes.value.count > 0 || props.saving))
 
 const update = (next: NodeEntry[]) => emit('update:nodes', next)
 
-const add = (node: string) => update([...props.nodes, { node, allowed: true }])
+const prefersReducedMotion = (): boolean =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+// Brings the row of a node into view, marks it, and focuses it when asked (a node listed already).
+const reveal = async (node: string, focus: boolean) => {
+  revealed.value = node
+  highlighted.value = node
+  await nextTick()
+  const target = [...(region.value?.querySelectorAll<HTMLElement>('[data-node]') ?? [])]
+    .find(element => element.dataset.node === node)
+  if (!target) return
+  target.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  if (focus) target.focus()
+}
+
+const add = (node: string) => {
+  const entry = { node, allowed: true }
+  // A node the filter hides would not show up, so the filter is cleared for it.
+  if (!(filterRows([entry], query.value).length > 0 && matchesState(entry))) {
+    query.value = ''
+    state.value = 'all'
+  }
+  update([...props.nodes, entry])
+  reveal(node, false)
+}
 const addMany = (added: NodeEntry[]) => update([...props.nodes, ...added])
 const remove = (node: string) => update(props.nodes.filter(row => row.node !== node))
 const toggle = (node: string, allowed: boolean) =>
@@ -157,6 +196,7 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
           :nodes="nodes"
           :catalog="catalog"
           @add="add"
+          @reveal="(node) => reveal(node, true)"
         />
         <NodeTemplateMenu
           :templates="templates"
@@ -188,25 +228,63 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
           spellcheck="false"
           class="sm:max-w-sm"
         />
-        <div class="w-full sm:w-48">
-          <SegmentedControl label="View">
-            <SegmentedOption
-              :on="view === 'list'"
-              data-test="view-list"
-              @click="view = 'list'"
-            >
-              List
-            </SegmentedOption>
-            <SegmentedOption
-              :on="view === 'tree'"
-              data-test="view-tree"
-              @click="view = 'tree'"
-            >
-              Tree
-            </SegmentedOption>
-          </SegmentedControl>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div
+            v-if="!readonly"
+            class="w-full sm:w-56"
+          >
+            <SegmentedControl label="Filter by state">
+              <SegmentedOption
+                :on="state === 'all'"
+                data-test="state-all"
+                @click="state = 'all'"
+              >
+                All
+              </SegmentedOption>
+              <SegmentedOption
+                :on="state === 'allow'"
+                data-test="state-allow"
+                @click="state = 'allow'"
+              >
+                Allow
+              </SegmentedOption>
+              <SegmentedOption
+                :on="state === 'deny'"
+                data-test="state-deny"
+                @click="state = 'deny'"
+              >
+                Deny
+              </SegmentedOption>
+            </SegmentedControl>
+          </div>
+          <div class="w-full sm:w-48">
+            <SegmentedControl label="View">
+              <SegmentedOption
+                :on="view === 'list'"
+                data-test="view-list"
+                @click="view = 'list'"
+              >
+                List
+              </SegmentedOption>
+              <SegmentedOption
+                :on="view === 'tree'"
+                data-test="view-tree"
+                @click="view = 'tree'"
+              >
+                Tree
+              </SegmentedOption>
+            </SegmentedControl>
+          </div>
         </div>
       </div>
+
+      <p
+        v-if="nodes.length > 0"
+        class="md-body-small text-on-surface-variant"
+        data-test="node-summary"
+      >
+        {{ summary }}
+      </p>
 
       <div
         v-if="nodes.length === 0"
@@ -227,37 +305,50 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
       >
         No node matches "{{ query }}".
       </p>
-      <ul
-        v-else-if="view === 'list'"
-        class="flex flex-col divide-y divide-outline-variant rounded-corner-medium border border-outline-variant"
-        aria-label="Permission nodes"
-        data-test="node-list"
-      >
-        <li
-          v-for="row in rows"
-          :key="row.node"
-          data-test="node-row"
-        >
-          <NodeRow
-            :entry="row"
-            :readonly="readonly"
-            :error="rowErrors[row.node] ?? ''"
-            @toggle="(allowed) => toggle(row.node, allowed)"
-            @remove="remove(row.node)"
-          />
-        </li>
-      </ul>
-      <NodeTreeView
+      <div
         v-else
-        :items="tree"
-        :readonly="readonly"
-        :row-errors="rowErrors"
-        class="rounded-corner-medium border border-outline-variant"
-        aria-label="Permission nodes as a tree"
-        data-test="node-tree"
-        @toggle="toggle"
-        @remove="remove"
-      />
+        ref="region"
+        role="region"
+        aria-label="Permission nodes"
+        tabindex="0"
+        class="max-h-md-node-region overflow-y-auto rounded-corner-medium border border-outline-variant"
+        data-test="node-region"
+      >
+        <ul
+          v-if="view === 'list'"
+          class="flex flex-col divide-y divide-outline-variant"
+          aria-label="Permission nodes"
+          data-test="node-list"
+        >
+          <li
+            v-for="row in rows"
+            :key="row.node"
+            data-test="node-row"
+          >
+            <NodeRow
+              :entry="row"
+              :readonly="readonly"
+              :error="rowErrors[row.node] ?? ''"
+              :highlighted="highlighted === row.node"
+              @toggle="(allowed) => toggle(row.node, allowed)"
+              @remove="remove(row.node)"
+            />
+          </li>
+        </ul>
+        <NodeTreeView
+          v-else
+          :items="tree"
+          :readonly="readonly"
+          :row-errors="rowErrors"
+          :expand-all="expandAll"
+          :reveal-node="revealed"
+          :highlighted="highlighted"
+          aria-label="Permission nodes as a tree"
+          data-test="node-tree"
+          @toggle="toggle"
+          @remove="remove"
+        />
+      </div>
 
       <NodeInheritedSection
         v-if="inherited.length > 0 || inheritedWarnings.length > 0"

@@ -115,6 +115,8 @@
   --spacing-md-bottom-bar: 5rem;
   --spacing-md-inset-16: 1rem;
   --spacing-md-inset-72: 4.5rem;
+  /* The height of the region that holds the permission nodes: a list or tree of 100 nodes scrolls inside it. */
+  --spacing-md-node-region: 28rem;
 
   --container-md-reading: 60rem;
   /* The page column of a reading page beside the side navigation: the reading measure less the 208 pixel navigation and the 40 pixel gap. */
@@ -140,6 +142,8 @@
   --animate-md-linear-slide-reduced: md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite;
   --animate-md-snackbar-enter: md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
   --animate-md-snackbar-leave: md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
+  /* A node that was just added or found again: its row flashes once. Reduced motion turns it off in the view. */
+  --animate-md-node-highlight: md-node-highlight var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) both;
   --animate-md-page-enter: md-page-enter var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) both;
   --animate-skeleton-fade-in: skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both;
 }
@@ -161,6 +165,15 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes md-node-highlight {
+  from {
+    background-color: var(--md-sys-color-secondary-container);
+  }
+  to {
+    background-color: transparent;
   }
 }
 

@@ -43,6 +43,16 @@ defineProps({
   error: {
     type: String,
     default: ''
+  },
+  /** Names a wildcard as covering everything below it. */
+  wildcardHint: {
+    type: Boolean,
+    default: false
+  },
+  /** The row of a node that was just added or found again: it is briefly marked. */
+  highlighted: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -51,16 +61,24 @@ const emit = defineEmits(['toggle', 'remove'])
 
 <template>
   <div
-    class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2"
+    class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 focus:outline-none"
+    tabindex="-1"
+    :class="highlighted ? 'animate-md-node-highlight motion-reduce:animate-none' : ''"
     :data-node="entry.node"
     :data-allowed="entry.allowed ? 'true' : 'false'"
+    :data-highlighted="highlighted ? 'true' : undefined"
     data-ingot-component="node-row"
   >
-    <div class="min-w-0 flex-1 basis-56">
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 basis-56">
       <code
         class="break-all font-mono md-body-medium text-on-surface"
         :title="entry.node"
       >{{ label || entry.node }}</code>
+      <span
+        v-if="wildcardHint"
+        class="rounded-corner-small bg-secondary-container px-2 py-0.5 md-label-medium text-on-secondary-container"
+        data-test="wildcard-hint"
+      >all below</span>
       <p
         v-if="error"
         data-ingot-state="error"

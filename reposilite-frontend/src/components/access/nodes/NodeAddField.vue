@@ -29,8 +29,9 @@ import type { CatalogItem, NodeEntry } from './permissionNodesApi'
  * continues with '.artifact.', and a groupId or artifactId with the actions read, deploy, delete and
  * '*'. A continuation fills the field and adds nothing. ArrowDown and ArrowUp move through the
  * options, Enter on an option picks it, and Escape closes the list. Free text is accepted when it is
- * a valid node: the grammar is checked live and an invalid or duplicate text shows its error under
- * the field and cannot be added.
+ * a valid node: the grammar is checked live and an invalid text shows its error under
+ * the field and cannot be added. A node that is listed already is not added twice: Add or Enter
+ * moves to its row instead.
  *
  * The suggestions are a plain filter over the catalog the parent loaded once, so typing needs no
  * request and no timer.
@@ -48,7 +49,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['add'])
+const emit = defineEmits(['add', 'reveal'])
 
 const inputId = `node-add-${useId()}`
 const listboxId = `${inputId}-listbox`
@@ -62,15 +63,17 @@ const trimmed = computed(() => text.value.trim())
 const suggestions = computed(() => suggestWithArtifacts(props.catalog, text.value, props.nodes))
 const groups = computed(() => groupSuggestions(suggestions.value))
 const showList = computed(() => open.value && suggestions.value.length > 0)
+// A node that is listed already is not added twice: Add (or Enter) moves to its row instead.
+const isListed = computed(() => trimmed.value !== '' && hasNode(props.nodes, trimmed.value))
 
 const errorText = computed(() => {
   if (trimmed.value === '') return ''
-  if (hasNode(props.nodes, trimmed.value)) return 'Already listed'
+  if (isListed.value) return 'Already listed'
   const parsed = parseNode(trimmed.value)
   return parsed.valid ? '' : parsed.problems[0].message
 })
 
-const canAdd = computed(() => trimmed.value !== '' && errorText.value === '')
+const canAdd = computed(() => trimmed.value !== '' && (isListed.value || errorText.value === ''))
 const activeDescendant = computed(() => (showList.value && active.value >= 0 ? optionId(active.value) : undefined))
 
 const reset = () => {
@@ -96,7 +99,12 @@ const pick = (item: Suggestion) => {
 }
 
 const submit = () => {
-  if (canAdd.value) add(trimmed.value)
+  if (isListed.value) {
+    emit('reveal', trimmed.value)
+    reset()
+  } else if (canAdd.value) {
+    add(trimmed.value)
+  }
 }
 
 const onInput = (value: string) => {

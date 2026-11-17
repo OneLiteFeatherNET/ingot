@@ -32,14 +32,14 @@ describe('buildTree', () => {
     const tree = buildTree(rows())
 
     expect(tree.map(item => item.segment)).toEqual(['ingot'])
-    expect(tree[0].children.map(item => item.segment)).toEqual(['admin', 'repository'])
-    expect(child(tree[0], 'repository').children.map(item => item.segment)).toEqual(['private', 'releases'])
+    expect(tree[0].children.map(item => item.segment)).toEqual(['admin.users', 'repository'])
+    expect(child(tree[0], 'repository').children.map(item => item.segment)).toEqual(['private.read', 'releases'])
   })
 
   it('keeps the allowed value and the full node on each leaf', () => {
     const tree = buildTree(rows())
 
-    const leaf = child(child(child(tree[0], 'repository'), 'private'), 'read')
+    const leaf = child(child(tree[0], 'repository'), 'private.read')
 
     expect(leaf.entry).toEqual({ node: 'ingot.repository.private.read', allowed: false })
     expect(leaf.key).toBe('ingot.repository.private.read')
@@ -62,6 +62,26 @@ describe('buildTree', () => {
 
     expect(tree).toHaveLength(1)
     expect(tree[0].entry).toEqual({ node: '*', allowed: true })
+  })
+
+  it('collapses a chain of single children into the label of one row', () => {
+    const tree = buildTree([{ node: 'ingot.admin.*', allowed: true }])
+
+    expect(tree).toHaveLength(1)
+    expect(tree[0].segment).toBe('ingot.admin.*')
+    expect(tree[0].entry).toEqual({ node: 'ingot.admin.*', allowed: true })
+    expect(tree[0].children, 'the row has no children').toEqual([])
+  })
+
+  it('keeps a level only where the nodes branch', () => {
+    const tree = buildTree([
+      { node: 'ingot.admin.users', allowed: true },
+      { node: 'ingot.admin.teams', allowed: false }
+    ])
+
+    expect(tree.map(item => item.segment)).toEqual(['ingot.admin'])
+    expect(tree[0].entry, 'the admin group is not a node').toBeNull()
+    expect(tree[0].children.map(item => item.segment)).toEqual(['teams', 'users'])
   })
 
   it('returns an empty tree for no nodes', () => {

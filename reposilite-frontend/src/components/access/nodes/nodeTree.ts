@@ -51,16 +51,56 @@ const buildTree = <E extends TreeEntry>(entries?: E[] | null): TreeItem<E>[] => 
       level = item.children
     })
   }
+  // A group with a single child and no node of its own adds no level: its label joins the child's,
+  // so ingot.admin.* with no siblings is one row, and a level only appears where the nodes branch.
+  const collapse = (items: TreeItem<E>[]): TreeItem<E>[] =>
+    items.map((item) => {
+      let current = item
+      while (!current.entry && current.children.length === 1) {
+        const [child] = current.children
+        current = {
+          key: child.key,
+          segment: `${current.segment}.${child.segment}`,
+          entry: child.entry,
+          children: child.children
+        }
+      }
+      current.children = collapse(current.children)
+      return current
+    })
   const sort = (items: TreeItem<E>[]): TreeItem<E>[] => {
     items.sort((left, right) => left.segment.localeCompare(right.segment))
     items.forEach(item => sort(item.children))
     return items
   }
-  return sort(roots)
+  return sort(collapse(roots))
 }
 
-/** How many listed nodes sit at or below a tree item. */
-const leafCount = (item: TreeItem<TreeEntry>): number =>
-  (item.entry ? 1 : 0) + item.children.reduce((sum, child) => sum + leafCount(child), 0)
+/** The listed nodes at or below a tree item, in tree order. */
+const entriesBelow = <E extends TreeEntry>(item: TreeItem<E>): E[] => [
+  ...(item.entry ? [item.entry] : []),
+  ...item.children.flatMap(child => entriesBelow(child))
+]
 
-export { buildTree, leafCount }
+/** How many listed nodes sit at or below a tree item. */
+const leafCount = (item: TreeItem<TreeEntry>): number => entriesBelow(item).length
+
+/** True when the node is listed at or below a tree item. */
+const containsNode = (item: TreeItem<TreeEntry>, node: string): boolean =>
+  entriesBelow(item).some(entry => entry.node === node)
+
+/**
+ * The state of the nodes below a tree item: 'allow' when all of them allow, 'deny' when all of them
+ * deny, 'mixed' otherwise.
+ */
+const stateBelow = (item: TreeItem<TreeEntry>): 'allow' | 'deny' | 'mixed' => {
+  const entries = entriesBelow(item)
+  const allowed = entries.filter(entry => entry.allowed).length
+  if (allowed === entries.length) return 'allow'
+  return allowed === 0 ? 'deny' : 'mixed'
+}
+
+/** A wildcard node such as ingot.admin.* or *, which covers everything below its prefix. */
+const isWildcard = (node: string): boolean => node === '*' || node.endsWith('.*')
+
+export { buildTree, containsNode, entriesBelow, isWildcard, leafCount, stateBelow }
