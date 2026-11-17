@@ -31,7 +31,7 @@ The compatibility rule is the one the pull request check enforces. Removing an e
 | Refresh cookie | The refresh cookie of a browser session is required. |
 | Path permission | A token or session that may perform the action on the path. Instance admins pass. The action is read for GET and HEAD, deploy for PUT and POST, and delete for DELETE. |
 | Instance admin | The caller holds `ingot.admin.*` (or `*`). Token narrowing applies. |
-| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console` and `audit` are checked this way, and the support endpoints use `console`. |
+| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console`, `audit`, `settings`, `maintenance`, `dashboard` and `idp` are checked this way, and the support endpoints use `console`. The `idp` area is checked when a team is linked to an identity provider group while the IdP guard is on. |
 
 Wrong or missing credentials answer with `401`. A valid caller without the right answers with `403`. Read [Permission nodes](../identity/permission-nodes.md) and [Access tokens and routes](../identity/access-tokens-and-routes.md) for what the rights are.
 
@@ -201,7 +201,7 @@ Every write answers `503` while read-only mode is on. No route takes a credentia
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/database/snapshots` | Maintenance area (`ingot.admin.maintenance`) | Writes a consistent snapshot of the SQLite database into `backups/` in the working directory while the instance runs. Answers with `fileName`, `sizeBytes` and `createdAt`, never with a path. Answers `409` for a database that is not SQLite or a name that is already taken. |
+| POST | `/api/database/snapshots` | Admin area `maintenance` | Writes a consistent snapshot of the SQLite database into `backups/` in the working directory while the instance runs. Answers with `fileName`, `sizeBytes` and `createdAt`, never with a path. Answers `409` for a database that is not SQLite or a name that is already taken. |
 
 ## Audit
 
@@ -220,8 +220,8 @@ Every write answers `503` while read-only mode is on. No route takes a credentia
 | PUT | `/api/settings/domain/{name}` | Instance admin | Updates a settings domain. |
 | GET | `/api/settings/domain/{name}?secrets=hidden` | Instance admin | Reads a settings domain with every secret replaced by `********`, whatever `hideSettingsSecrets` says. The dashboard uses this form. |
 | GET | `/api/settings/encryption` | Instance admin | Reports the settings encryption mode, whether a key is active and how many stored secret values are still plain text. No value or key is returned. The System page warns from it. |
-| POST | `/api/settings/export` | Instance admin | Returns the saved settings encrypted with a password of at least 12 characters (Argon2id and AES-256-GCM). Nothing is stored. The response carries `Cache-Control: no-store`. |
-| POST | `/api/settings/import/open` | Instance admin | Decrypts an export with its password and returns the plain settings for review. Nothing is stored. A wrong password, a changed file and an unknown version all answer `400` with the same text. |
+| POST | `/api/settings/export` | Admin area `settings` | Returns the saved settings encrypted with a password of at least 12 characters (Argon2id and AES-256-GCM). Nothing is stored. The response carries `Cache-Control: no-store`. |
+| POST | `/api/settings/import/open` | Admin area `settings` | Decrypts an export with its password and returns the plain settings for review. Nothing is stored. A wrong password, a changed file and an unknown version all answer `400` with the same text. |
 
 While `INGOT_SHARED_CONFIGURATION_RELOAD=true` and the shared settings come from a file, a `PUT` to a domain that the file holds answers `409`. The message names the file, nothing is written and no audit event is recorded. Change the file instead and let the instance pick it up. See [Shared settings reload](../configuration/environment-variables.md#shared-configuration-reload).
 
