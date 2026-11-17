@@ -37,12 +37,13 @@ const TABS = [
 
 const session = useSession()
 const can = (node: string): boolean => (typeof session.can === 'function' ? session.can(node) : true)
-const shownTabs = TABS.filter(tab => tab.node === undefined || can(tab.node))
+// Computed, because the permissions arrive after a direct visit has drawn the page: the backup tab must appear then.
+const shownTabs = computed(() => TABS.filter(tab => tab.node === undefined || can(tab.node)))
 
 const route = useRoute()
 const selected = computed(() => {
   const key = route.query.tab
-  return typeof key === 'string' && shownTabs.some(tab => tab.key === key) ? key : shownTabs[0].key
+  return typeof key === 'string' && shownTabs.value.some(tab => tab.key === key) ? key : shownTabs.value[0].key
 })
 
 // A panel loads its data when its tab is first shown. It stays mounted after that, so switching back shows it as it was.

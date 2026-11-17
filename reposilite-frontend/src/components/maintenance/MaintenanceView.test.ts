@@ -18,9 +18,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import { shallowReactive } from 'vue'
 import MaintenanceView from './MaintenanceView.vue'
 
-const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient>, mayEdit: true }))
+// Reactive, as the store is: a permission that arrives after the page is drawn must change the tabs.
+const session = shallowReactive({ client: null as unknown as ReturnType<typeof fakeClient>, mayEdit: true })
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } }, can: () => session.mayEdit })
@@ -223,6 +225,18 @@ describe('the Settings backup tab', () => {
     await mountAt('/maintenance?tab=backup')
 
     expect(selectedTabOf(wrapper)?.text(), 'the backup tab does not exist for this principal').toBe('Storage usage')
+  })
+
+  it('shows the Settings backup tab once the permission arrives after a direct visit to ?tab=backup', async () => {
+    session.mayEdit = false
+    await mountAt('/maintenance?tab=backup')
+    expect(tabsOf(wrapper).map(tab => tab.text())).not.toContain('Settings backup')
+
+    session.mayEdit = true
+    await flushPromises()
+
+    expect(tabsOf(wrapper).map(tab => tab.text()), 'the backup tab is added').toContain('Settings backup')
+    expect(selectedTabOf(wrapper)?.text(), 'the address opens the backup tab').toBe('Settings backup')
   })
 
   it('opens the Settings backup tab for the address ?tab=backup', async () => {
