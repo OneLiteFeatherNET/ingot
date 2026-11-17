@@ -59,8 +59,8 @@ const emit = defineEmits<{ choose: [value: string] }>()
 
 <template>
   <ul
-    :id="id"
     v-show="open && options.length > 0"
+    :id="id"
     role="listbox"
     :aria-label="label"
     class="z-md-menu max-h-72 overflow-y-auto rounded-corner-extra-small bg-surface-container shadow-elevation-2"
