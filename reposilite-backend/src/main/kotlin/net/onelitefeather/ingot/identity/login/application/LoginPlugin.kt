@@ -253,6 +253,7 @@ class LoginPlugin : ReposilitePlugin() {
             settings = { loginSettings.get() },
         )
         accessTokenFacade.secondFactorGuard = { principalId -> loginFacade.hasSecondFactor(principalId) }
+        accessTokenFacade.directoryPrincipalOf = { principalName -> loginFacade.principalNamed(principalName) }
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->

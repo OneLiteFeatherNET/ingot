@@ -113,9 +113,15 @@ internal class LdapAuthenticator(
                         ).accessToken
                 }
                 .filter({ !it.isExpired() }) { unauthorized("Invalid authorization credentials") }
-                // A token with the name of the directory user is reached with the directory password. That is refused for a
-                // token whose user has a second factor, because the factor would not apply to this login.
-                .filter({ token -> !DirectoryTokenMatch.refused(accessTokenFacade.subjectOf(token.identifier), accessTokenFacade.secondFactorGuard) }) {
+                // A token with the name of the directory user is reached with the directory password. That is refused when the
+                // directory user or the owner of the token has a second factor, because the factor would not apply to this login.
+                .filter({ token ->
+                    !DirectoryTokenMatch.refused(
+                        owner = accessTokenFacade.subjectOf(token.identifier),
+                        directoryUser = accessTokenFacade.directoryPrincipalOf(token.name),
+                        hasSecondFactor = accessTokenFacade.secondFactorGuard,
+                    )
+                }) {
                     // The caller gets the generic answer: naming the factor would tell an unauthenticated caller that it exists.
                     journalist.logger.warn("Directory login of ${credentials.name}@${credentials.ip} refused: a second factor is set up for this account; use an access token instead")
                     unauthorized("Invalid authorization credentials")

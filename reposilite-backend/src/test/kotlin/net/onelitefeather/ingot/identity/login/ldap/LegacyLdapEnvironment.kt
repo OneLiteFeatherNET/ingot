@@ -67,7 +67,9 @@ internal class LegacyLdapEnvironment(
         IdentityAccessTokenRepository(identities),
         ExportService(),
         bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH,
-    )
+    ).also {
+        it.directoryPrincipalOf = { name -> identities.findPrincipal(name) }
+    }
 
     val authenticator = LdapAuthenticator(
         journalist = journalist,

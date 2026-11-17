@@ -46,6 +46,7 @@ import net.onelitefeather.ingot.identity.model.DecisionSource
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.model.PrincipalKind
+import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.Role
 import net.onelitefeather.ingot.identity.model.SourcedRule
 import net.onelitefeather.ingot.identity.model.privateTeamName
@@ -652,6 +653,13 @@ class AccessTokenFacade internal constructor(
      */
     @Volatile
     var secondFactorGuard: (Int) -> Boolean = { false }
+
+    /**
+     * The principal of a user name, for a directory login that names a token by the same name. Its second factor applies
+     * to that login whoever owns the token. Null when no principal has the name, or until the login plugin sets it.
+     */
+    @Volatile
+    var directoryPrincipalOf: (String) -> PrincipalRecord? = { null }
 
     fun getAccessToken(name: String): AccessTokenDto? =
         (temporaryRepository.findAccessTokenByName(name) ?: persistentRepository.findAccessTokenByName(name))?.toDto()
