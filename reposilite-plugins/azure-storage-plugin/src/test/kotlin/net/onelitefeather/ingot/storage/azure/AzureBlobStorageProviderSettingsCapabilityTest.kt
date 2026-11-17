@@ -80,6 +80,26 @@ internal class AzureBlobStorageProviderSettingsCapabilityTest {
     }
 
     @Test
+    fun `should share a namespace when two blank accounts resolve to the same container and prefix`() {
+        // given: two repositories that leave the account blank, so both take the environment account
+        val first = settings(accountName = "", prefix = "team").namespaceKey("a")!!
+        val second = settings(accountName = "", prefix = "team").namespaceKey("b")!!
+
+        // then: the keys overlap, and the refusal is reported
+        assertThat(settings(accountName = "").overlaps(first, second)).`as`("overlap").isTrue()
+    }
+
+    @Test
+    fun `should share a namespace when a blank account may resolve to the explicit account of another repository`() {
+        // given: one repository leaves the account blank, and another names an account in the same container and prefix
+        val blank = settings(accountName = "", prefix = "team").namespaceKey("a")!!
+        val explicit = settings(accountName = "account", prefix = "team").namespaceKey("b")!!
+
+        // then: the keys overlap, because the blank one may take the environment account of the other
+        assertThat(settings(accountName = "").overlaps(blank, explicit)).`as`("overlap").isTrue()
+    }
+
+    @Test
     fun `should not share a namespace between sibling prefixes`() {
         // given: two sibling prefixes of one container
         val first = settings(prefix = "team-a").namespaceKey("a")!!
