@@ -16,11 +16,12 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSwitch from '../md/MdSwitch.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 
 /*
  * Turns read-only mode on or off, on the Maintenance page. Only a principal with the maintenance area
@@ -103,6 +104,11 @@ const cancel = () => {
   focusSwitch()
 }
 
+// The dialog closes on Escape and on a click outside as well, and both count as a cancel.
+const onDialogOpen = (open: boolean) => {
+  if (!open) cancel()
+}
+
 const confirm = () => {
   if (busy.value) return
   confirmOpen.value = false
@@ -146,48 +152,42 @@ const confirm = () => {
       >
         Set by INGOT_READ_ONLY on this instance. Change the variable and restart the instance to change it here.
       </p>
-      <p
+      <MdAlert
         v-if="failure"
+        tone="error"
         data-ingot-state="error"
-        role="alert"
-        class="md-body-small text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </div>
 
-    <VueFinalModal
+    <MdDialog
       :model-value="confirmOpen"
-      teleport-to="body"
-      :overlay-style="SCRIM_STYLE"
-      :esc-to-close="true"
-      class="flex min-h-full items-center justify-center p-4"
-      @update:model-value="(open) => { if (!open) cancel() }"
+      labelledby="read-only-dialog-title"
+      describedby="read-only-dialog-body"
+      @update:model-value="onDialogOpen"
     >
-      <div
-        class="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="read-only-dialog-title"
-        aria-describedby="read-only-dialog-body"
-      >
+      <template #header>
         <h2
           id="read-only-dialog-title"
           class="md-headline-small text-on-surface"
         >
           Turn on read-only mode?
         </h2>
-        <p
-          id="read-only-dialog-body"
-          class="mt-3 md-body-medium text-on-surface-variant"
-        >
-          {{ CONSEQUENCE }}
-        </p>
-        <div class="mt-6 flex flex-wrap justify-end gap-2">
+      </template>
+      <p
+        id="read-only-dialog-body"
+        class="mt-3 md-body-medium text-on-surface-variant"
+      >
+        {{ CONSEQUENCE }}
+      </p>
+      <template #actions>
+        <MdDialogActions class="mt-6">
           <MdButton
             id="read-only-cancel"
             variant="text"
             type="button"
+            data-autofocus
             @click="cancel"
           >
             Cancel
@@ -201,8 +201,8 @@ const confirm = () => {
           >
             Turn on read-only mode
           </MdButton>
-        </div>
-      </div>
-    </VueFinalModal>
+        </MdDialogActions>
+      </template>
+    </MdDialog>
   </section>
 </template>

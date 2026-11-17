@@ -17,8 +17,9 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 /*
  * The review behind the "Review public repositories" step. It lists the public repositories and asks
@@ -65,21 +66,17 @@ const follow = (repository: PublicRepository) => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     v-model="open"
-    teleport-to="body"
-    :overlay-class="'vfm__overlay bg-scrim/md-scrim!'"
-    class="flex items-center justify-center p-4"
+    size="md"
+    :labelledby="titleId"
+    :describedby="explanationId"
   >
-    <section
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="titleId"
-      :aria-describedby="explanationId"
-      class="flex w-full max-w-md flex-col gap-4 rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      data-ingot-component="public-repositories-dialog"
-    >
-      <div class="flex flex-col gap-2">
+    <template #header>
+      <div
+        class="flex flex-col gap-2"
+        data-ingot-component="public-repositories-dialog"
+      >
         <h2
           :id="titleId"
           class="md-headline-small"
@@ -93,11 +90,13 @@ const follow = (repository: PublicRepository) => {
           Anyone can read these repositories without signing in.
         </p>
       </div>
+    </template>
 
+    <div class="mt-4 flex flex-col gap-2">
       <ul
         v-if="repositories.length > 0"
         aria-label="Public repositories"
-        class="flex max-h-[50vh] flex-col gap-2 overflow-y-auto"
+        class="flex flex-col gap-2"
       >
         <li
           v-for="repository in repositories"
@@ -124,11 +123,13 @@ const follow = (repository: PublicRepository) => {
       >
         No repository is public.
       </p>
+    </div>
 
-      <div
-        v-if="repositories.length > 0"
-        class="flex justify-end"
-      >
+    <template
+      v-if="repositories.length > 0"
+      #actions
+    >
+      <MdDialogActions class="mt-6">
         <MdButton
           variant="filled"
           type="button"
@@ -136,7 +137,7 @@ const follow = (repository: PublicRepository) => {
         >
           Looks right
         </MdButton>
-      </div>
-    </section>
-  </VueFinalModal>
+      </MdDialogActions>
+    </template>
+  </MdDialog>
 </template>
