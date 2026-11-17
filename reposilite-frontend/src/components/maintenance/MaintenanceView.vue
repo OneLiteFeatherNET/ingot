@@ -15,11 +15,30 @@
   -->
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import StorageUsagePanel from './StorageUsagePanel.vue'
 import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'
 import IndexPanel from './IndexPanel.vue'
 import ReadOnlyToggle from '../dashboard/ReadOnlyToggle.vue'
+import AppTabs from '../tabs/AppTabs.vue'
+
+// The sections of the page, one tab each, in this order. The tab in the address opens one; an unknown or missing one opens the first.
+const TABS = [
+  { key: 'storage', label: 'Storage usage' },
+  { key: 'index', label: 'Search index' },
+  { key: 'cleanup', label: 'Cleanup policies' },
+]
+
+const route = useRoute()
+const selected = computed(() => {
+  const key = route.query.tab
+  return typeof key === 'string' && TABS.some(tab => tab.key === key) ? key : TABS[0].key
+})
+
+// A panel loads its data when its tab is first shown. It stays mounted after that, so switching back shows it as it was.
+const opened = reactive(new Set<string>())
+watch(selected, key => opened.add(key), { immediate: true })
 
 // A finished run changes the storage figures, so the storage panel is asked to reload.
 const storageRevision = ref(0)
@@ -31,8 +50,23 @@ const storageRevision = ref(0)
     data-ingot-component="maintenance-view"
   >
     <ReadOnlyToggle />
-    <StorageUsagePanel :revision="storageRevision" />
-    <IndexPanel />
-    <CleanupPoliciesPanel @ran="storageRevision += 1" />
+    <AppTabs
+      :tabs="TABS"
+      label="Maintenance sections"
+    >
+      <template #default="{ tab }">
+        <template v-if="opened.has(tab)">
+          <StorageUsagePanel
+            v-if="tab === 'storage'"
+            :revision="storageRevision"
+          />
+          <IndexPanel v-else-if="tab === 'index'" />
+          <CleanupPoliciesPanel
+            v-else-if="tab === 'cleanup'"
+            @ran="storageRevision += 1"
+          />
+        </template>
+      </template>
+    </AppTabs>
   </div>
 </template>

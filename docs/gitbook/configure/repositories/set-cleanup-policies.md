@@ -14,7 +14,7 @@ A cleanup policy deletes old versions of artifacts from the repositories you cho
 
 ## Create the policy in the dashboard
 
-1. Open **Maintenance** in the navigation, or go to `/maintenance` on your instance. Find the **Cleanup policies** card.
+1. Open **Maintenance** in the navigation, or go to `/maintenance` on your instance. Select the **Cleanup policies** tab and find the card.
 2. Select **New policy**.
 3. Enter an **Id**, for example `old-snapshots`. You cannot change the id later.
 4. Leave **Enabled** off for now. A disabled policy can still be previewed and run by hand.
