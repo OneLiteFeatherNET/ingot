@@ -92,6 +92,20 @@ test.describe('system information and support page', () => {
     expect(await columnsAt(320), 'one column at 320 pixels').toBe(1)
   })
 
+  test('uses the full width at 1440 pixels, and no card is wider than its box', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/settings/system-info'))
+    await expect(page.getByRole('article')).toHaveCount(6)
+
+    const tabList = await page.getByRole('tablist').boundingBox()
+    expect(tabList.width, 'the tab bar runs past the 960 pixel reading measure').toBeGreaterThan(960)
+
+    const overflowing = await page.getByRole('article').evaluateAll((cards) => cards
+      .filter((card) => card.scrollWidth > card.clientWidth)
+      .map((card) => card.getAttribute('aria-labelledby')))
+    expect(overflowing, 'cards whose content is wider than the card').toEqual([])
+  })
+
   test('does not scroll the page sideways at phone width', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 })
     await page.goto(siteUrl('/settings/system-info'))
