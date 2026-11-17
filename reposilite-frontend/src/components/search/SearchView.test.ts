@@ -787,3 +787,22 @@ describe('SearchView keyboard', () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   })
 })
+
+describe('SearchView cards', () => {
+  it('draws the results list as a low md-card without padding', async () => {
+    await mountAt('/search')
+
+    const list = wrapper.find('[data-test="results"]')
+    expect(list.attributes('data-ingot-component'), 'the results sit on a shared card').toBe('md-card')
+    expect(list.attributes('data-variant'), 'the results lie flat on the page').toBe('low')
+  })
+
+  it('draws the skeleton list as a low md-card while the answer is on its way', async () => {
+    const client = clientAnswering({ search: () => new Promise(() => {}) })
+    await mountAt('/search', { client })
+
+    const skeleton = wrapper.find('[data-test="skeleton"]')
+    expect(skeleton.attributes('data-ingot-component'), 'the skeleton sits on a shared card').toBe('md-card')
+    expect(skeleton.attributes('data-variant'), 'the skeleton lies flat on the page').toBe('low')
+  })
+})
