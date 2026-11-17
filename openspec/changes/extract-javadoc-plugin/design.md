@@ -87,7 +87,7 @@ There are three cases, and each one hides the Javadoc action in the file browser
    show links to routes that do not exist. The fallback for `REPOSILITE.JAVADOC_SUFFIXES` becomes empty.
 3. **An older server.** It always registers the placeholder, so the empty fallback does not affect it.
 
-The operator's switch is `javadoc.enabled`. Removing the embedded copy is a build decision (question 1). A stored `javadoc` row that no
+The operator's switch is `javadoc.enabled`. No embedded copy is removed in this change (question 1, settled 2026-11-17). A stored `javadoc` row that no
 loaded domain claims is kept by the shared configuration (task 0.1 verifies it) and is inert.
 
 ### D6. Routes, events and the cache directory do not change

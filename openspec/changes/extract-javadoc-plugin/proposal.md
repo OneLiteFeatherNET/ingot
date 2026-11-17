@@ -43,30 +43,29 @@ before any code pull request of this change:
 The prerequisite is not a `refactor`, so it is not a group of this change (the rule "one type per change" applies). Its proposal is
 written separately. Until it has merged, the code pull requests of this change do not start.
 
-## Maintainer questions still open
+## Maintainer decisions
 
-Each question has the default that this proposal builds in. A maintainer who answers differently changes the matching requirement
-and task before the first code pull request is opened.
+Settled on 2026-11-17: the maintainer accepted the recommended default of each question below. The default is the answer this proposal builds in, and the viewer stays embedded and active by default. A later change of answer updates the matching requirement and task before the first code pull request is opened.
 
-1. **Disable and remove.** Default: an operator disables the viewer with the existing `javadoc.enabled` setting. There is no new
-   environment variable, because a switch is a `feat` change. Removing the embedded copy is a build decision. Both cases hide the
+1. **Disable and remove.** Settled 2026-11-17, default: an operator disables the viewer with the existing `javadoc.enabled` setting. There is no new
+   environment variable, because a switch is a `feat` change. No embedded copy is removed in this change. Both cases hide the
    Javadoc links (design D5).
-2. **Received cache events.** Default: the cluster package declares a public interface for "evict this received javadoc path", and
+2. **Received cache events.** Settled 2026-11-17, default: the cluster package declares a public interface for "evict this received javadoc path", and
    `JavadocFacade` implements it. The core looks it up when an event arrives. No new plugin API is added. The alternative is a public
    receiver in `com.reposilite.plugin.api`, which is a `feat(plugin)` change of its own.
-3. **Stored `javadoc` row without the viewer.** Default: a build without the viewer leaves the stored `javadoc` domain untouched, and
+3. **Stored `javadoc` row without the viewer.** Settled 2026-11-17, default: a build without the viewer leaves the stored `javadoc` domain untouched, and
    nothing deletes it. Task 0.1 verifies that the shared configuration keeps domains it does not know.
-4. **Settings deep link without the domain.** Default: `/settings/javadoc` on a server without the domain redirects to `/settings`.
+4. **Settings deep link without the domain.** Settled 2026-11-17, default: `/settings/javadoc` on a server without the domain redirects to `/settings`.
    Task 0.2 records what the dashboard does today.
-5. **Dashboard icon.** `reposilite-frontend/src/components/icons/JavaDocsIcon.vue` is not imported anywhere. Default: it stays.
+5. **Dashboard icon.** `reposilite-frontend/src/components/icons/JavaDocsIcon.vue` is not imported anywhere. Settled 2026-11-17, default: it stays.
 6. **Dev run configuration.** `.run/Build javadoc-plugin to test workspace` builds a workspace jar that the new module no longer
-   produces. Default: it is removed in the move pull request.
+   produces. Settled 2026-11-17, default: it is removed in the move pull request.
 7. **Release of the viewer jar.** The plugin release job (`publish_plugins.sh`, the `plugins` job of `release-please.yml`) publishes one
    hard-coded plugin, `opensearch-plugin`, and its `check-bundled` step compares the published jar with the jar in the image. Neither
-   fits the viewer yet. Default: this change ends with a published Maven artifact built locally, and the release wiring (a
+   fits the viewer yet. Settled 2026-11-17, default: this change ends with a published Maven artifact built locally, and the release wiring (a
    release-please component with its own tag, the catalogue entry, and a `check-bundled` that compares with the embedded copy) is the
    follow-up change `add-javadoc-plugin-release` (`ci(plugin)`).
-8. **Extraction directory.** Default: the prerequisite extracts into `<workingDirectory>/embedded-plugins/`, and the directory is
+8. **Extraction directory.** Settled 2026-11-17, default: the prerequisite extracts into `<workingDirectory>/embedded-plugins/`, and the directory is
    rewritten at every start. The prerequisite proposal confirms it.
 
 ## Why
