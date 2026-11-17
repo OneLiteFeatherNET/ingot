@@ -795,6 +795,27 @@
       "states": []
     },
     {
+      "name": "md-code",
+      "file": "src/components/md/MdCode.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-code-block",
+      "file": "src/components/md/MdCodeBlock.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-copyable-code",
+      "file": "src/components/md/MdCopyableCode.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-data-table",
       "file": "src/components/md/MdDataTable.vue",
       "stability": "experimental",
