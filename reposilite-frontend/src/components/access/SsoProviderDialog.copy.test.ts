@@ -78,7 +78,7 @@ describe('SsoProviderDialog copy of the callback URL', () => {
 
     expect(createSuccessToast, 'no copied message is shown when nothing reached the clipboard').not.toHaveBeenCalled()
     expect(createErrorToast, 'the user is told the copy failed').toHaveBeenCalledWith(
-      expect.stringMatching(/could not be copied/i)
+      expect.stringMatching(/could not copy the callback url/i)
     )
   })
 
