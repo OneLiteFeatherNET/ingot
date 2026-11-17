@@ -31,7 +31,8 @@ afterEach(() => {
   document.body.querySelectorAll('.vfm').forEach(element => element.remove())
 })
 
-const frame = () => document.querySelector<HTMLElement>('[role$="dialog"]')!
+const frame = () => document.querySelector<HTMLElement>('.vfm__content > div')!
+const dialogRoot = () => document.querySelector<HTMLElement>('.vfm')!
 const focusables = () => [...frame().querySelectorAll<HTMLElement>('button')]
 
 interface DialogOptions {
@@ -79,7 +80,7 @@ describe('MdDialog', () => {
     const { wrapper } = await mountDialog()
 
     expect(frame(), 'the dialog frame is in the document').not.toBeNull()
-    expect(wrapper.find('[role$="dialog"]').exists(), 'the frame is not inside the mounted wrapper').toBe(false)
+    expect(wrapper.find('.vfm').exists(), 'the frame is not inside the mounted wrapper').toBe(false)
   })
 
   it('carries the dialog-shell anchor on the frame', async () => {
@@ -121,7 +122,7 @@ describe('MdDialog', () => {
   it('names the dialog by the heading of the header slot through the labelledby id', async () => {
     await mountDialog({ labelledby: 'token-title' })
 
-    const name = document.getElementById(frame().getAttribute('aria-labelledby')!)
+    const name = document.getElementById(dialogRoot().getAttribute('aria-labelledby')!)
     expect(name?.textContent.trim(), 'the accessible name is the header heading').toBe('Create token')
   })
 
@@ -129,7 +130,7 @@ describe('MdDialog', () => {
     await mountDialog({ labelledby: 'first-title' })
     await mountDialog({ labelledby: 'second-title' })
 
-    const names = [...document.querySelectorAll<HTMLElement>('[role$="dialog"]')]
+    const names = [...document.querySelectorAll<HTMLElement>('.vfm')]
       .map(element => element.getAttribute('aria-labelledby'))
     expect(names, 'each dialog points at its own heading').toEqual(['first-title', 'second-title'])
   })
@@ -207,7 +208,7 @@ describe('MdDialog', () => {
   it('closes on Escape when dismissable', async () => {
     const { events } = await mountDialog({ dismissable: true })
 
-    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }))
+    frame().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await flushPromises()
 
     expect(events, 'Escape asks the page to close the dialog').toEqual([false])
@@ -216,7 +217,7 @@ describe('MdDialog', () => {
   it('stays open on Escape when not dismissable', async () => {
     const { events, state } = await mountDialog({ dismissable: false })
 
-    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }))
+    frame().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await flushPromises()
 
     expect(events, 'a dialog that must be answered does not close on Escape').toEqual([])
@@ -226,8 +227,8 @@ describe('MdDialog', () => {
   it('paints the overlay with the scrim utility and no inline style', async () => {
     await mountDialog()
 
-    const overlay = frame().closest<HTMLElement>('.bg-scrim\\/md-scrim')
-    expect(overlay, 'the overlay carries the bg-scrim/md-scrim utility').not.toBeNull()
-    expect(overlay.getAttribute('style') ?? '', 'the overlay has no color-mix inline style').not.toContain('color-mix')
+    const overlay = document.querySelector<HTMLElement>('.vfm__overlay')
+    expect(overlay?.classList.contains('bg-scrim/md-scrim!'), 'the overlay carries the important bg-scrim/md-scrim utility').toBe(true)
+    expect(overlay!.getAttribute('style') ?? '', 'the overlay has no color-mix inline style').not.toContain('color-mix')
   })
 })

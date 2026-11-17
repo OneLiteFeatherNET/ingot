@@ -5,11 +5,6 @@
     "count": 1
   },
   {
-    "file": "src/components/identity/DialogShell.vue",
-    "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdSideSheet.vue",
     "match": "color-mix(in_srgb,var(--md-sys-color-scrim)_32%,transparent)",
     "count": 1

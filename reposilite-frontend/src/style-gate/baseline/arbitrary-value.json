@@ -220,7 +220,7 @@
     "count": 1
   },
   {
-    "file": "src/components/identity/DialogShell.vue",
+    "file": "src/components/md/MdDialog.vue",
     "match": "max-h-[90dvh]",
     "count": 1
   },
