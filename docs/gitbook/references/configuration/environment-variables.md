@@ -237,7 +237,7 @@ The server reads this variable when it starts, so a change needs a restart. The 
 
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
-| `INGOT_LOGIN_ACCOUNT_THROTTLE` | `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` | `false` | `true` in any case turns on the account throttle, which delays guesses against one user name from addresses that name has not signed in from. Any other value, including blank, leaves it off. The `INGOT_` name is used when it is not blank. |
+| `INGOT_LOGIN_ACCOUNT_THROTTLE` | `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` | `false` | `true` in any case turns on the account throttle, which delays guesses against one user name from addresses that name has not signed in from. Any other value, including blank, leaves it off. The `INGOT_` name is used when it is not blank. While it is on, the per-address counter of `authentication.bruteForceProtection` for Basic and token attempts is kept in the login tables too, so replicas count together. |
 
 ## Identity variables
 

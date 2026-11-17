@@ -96,7 +96,7 @@ Some state is kept by each replica for itself. Plan for it when you run more tha
 | Console stream | memory of each replica | A live console connection is held by one replica. |
 | S3 metadata cache | memory of each replica | Each replica caches object metadata on its own, until the entry expires. It can show metadata that another replica has already changed. |
 | Successful token authentication | memory of each replica, dropped when the policy revision moves, and at the latest after one minute | Every identity write advances a shared policy revision. Each replica reads it every `INGOT_AUTHORIZATION_REFRESH` seconds (default 2, `REPOSILITE_AUTHORIZATION_REFRESH` is read as fallback) and drops the cached logins of an older revision. A token that is changed or revoked on one replica is therefore refused by the others within one refresh interval. The one-minute bound still applies to every cached login. |
-| Failed Basic and token attempts (brute force protection) | memory of each replica | Each replica counts failures on its own. The dashboard login lockout is shared, see [Sessions, login and CSRF](sessions-and-login.md).
+| Failed Basic and token attempts (brute force protection) | login tables while the account throttle is on, otherwise memory of each replica | With `INGOT_LOGIN_ACCOUNT_THROTTLE=true` the replicas count together. Otherwise each replica counts failures on its own. The dashboard login lockout is shared, see [Sessions, login and CSRF](sessions-and-login.md).
 
 Repository content is outside the database. Its location decides what replicas can share. Filesystem storage needs a volume that every replica can reach, and S3 storage needs a bucket that every replica can reach.
 
