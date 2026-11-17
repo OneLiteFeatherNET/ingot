@@ -80,10 +80,14 @@ internal abstract class ReposiliteRunner {
             throw IllegalStateException("Missing Reposilite extension on integration test")
         }
 
-        val logger = PrintStreamLogger(System.out, System.err, Channel.ALL, false)
+        val logger = logger()
         // Port 0: the OS picks a free port and the server reports it back, so nothing has to be retried.
         assertOk(prepareInstance(logger))
     }
+
+    /** The logger of the instance. The default prints to the console; a test that reads the log lines returns its own. */
+    protected open fun logger(): Logger =
+        PrintStreamLogger(System.out, System.err, Channel.ALL, false)
 
     /** The drain settings of the instance. The default is the strict stop of earlier versions. */
     protected open fun shutdownSettings(): ShutdownSettings =
