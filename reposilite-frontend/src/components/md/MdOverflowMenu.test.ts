@@ -58,6 +58,44 @@ describe('MdOverflowMenu', () => {
     expect(trigger().attributes('aria-expanded'), 'the menu is closed at first').toBe('false')
   })
 
+  it('keeps the trigger named by its content when a trigger slot is given', async () => {
+    wrapper = mount(MdOverflowMenu, {
+      props: { label: 'Account menu for Alice', items: ITEMS },
+      slots: { trigger: '<span>Alice</span>' },
+      attachTo: document.body
+    })
+    await flushPromises()
+
+    expect(trigger().attributes('aria-label'), 'no label overrides the content').toBeUndefined()
+  })
+
+  it('gives the header and the items the same horizontal inset', async () => {
+    wrapper = mount(MdOverflowMenu, {
+      props: { label: 'Account menu for Alice', items: ITEMS },
+      slots: { header: '<p>Alice Example</p>' },
+      attachTo: document.body
+    })
+    await flushPromises()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    const header = document.querySelector<HTMLElement>('[role="menu"] > [role="none"]')!
+    expect(header.classList, 'the header carries the shared inset').toContain('px-3')
+    expect(menuItems()[0].classList, 'the items carry the same inset').toContain('px-3')
+  })
+
+  it('moves to the first item with Home and to the last with End', async () => {
+    await mountMenu()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    menuItems()[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
+    expect(document.activeElement, 'Home moves to the first item').toBe(menuItems()[0])
+
+    menuItems()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
+    expect(document.activeElement, 'End moves to the last item').toBe(menuItems()[2])
+  })
+
   it('draws no menu until the trigger is activated', async () => {
     await mountMenu()
 

@@ -268,14 +268,6 @@
       "count": 1
     }
   },
-  "src/components/header/MenuPanel.test.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 6
-    }
-  },
   "src/components/icons/ContrastIcon.vue": {
     "vue/max-attributes-per-line": {
       "count": 4

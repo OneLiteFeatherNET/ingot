@@ -54,6 +54,12 @@ describe('client identity namespace', () => {
   })
 
   describe('me', () => {
+    it('reads the own access summary from the caller route, with no principal parameter', () => {
+      void identity.me.access()
+
+      expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/me\/access$/), expect.anything())
+    })
+
     it('posts the exact password payload to the self service endpoint', () => {
       void identity.me.changePassword({ currentPassword: 'old-password-1', newPassword: 'new-password-12' })
 

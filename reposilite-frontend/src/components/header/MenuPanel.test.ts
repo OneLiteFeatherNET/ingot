@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref, reactive } from 'vue'
-import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { ref, reactive, computed } from 'vue'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { computeAccessibleName } from 'dom-accessibility-api'
 import MenuPanel from './MenuPanel.vue'
@@ -29,13 +29,19 @@ const state = vi.hoisted(() => ({
   isLogged: true,
   logout: vi.fn<Spy>(),
   changeTheme: vi.fn<Spy>(),
-  mode: 'dark'
+  mode: 'dark',
+  principal: { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' },
+  // The own access summary the menu reads for its sign-in sources; it is the answer of GET /api/identity/me/access.
+  access: { principal: { name: 'alice', displayName: 'Alice Example', kind: 'USER', providers: ['local'] } }
 }))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({
     token: ref({ name: 'alice', secret: 'secret' }),
-    principal: ref({ name: 'alice', displayName: 'Alice Example' }),
+    principal: ref(state.principal),
+    client: computed(() => ({
+      identity: { me: { access: () => Promise.resolve({ data: state.access }) } }
+    })),
     isLogged: ref(state.isLogged),
     logout: (...args: unknown[]) => state.logout(...args),
     login: vi.fn(),
@@ -66,8 +72,8 @@ type MountedPanel = ReturnType<typeof mountPanel>
 
 // The account menu is teleported to the body, so its items are read from the document.
 const menuItem = (name: string): HTMLElement => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemradio"]')]
-  .find(item => item.textContent!.trim() === name) as HTMLElement
-const accountTrigger = (wrapper: VueWrapper) => wrapper.find('button[aria-haspopup="menu"]')
+  .find(item => item.textContent.trim() === name) as HTMLElement
+const accountTrigger = (wrapper: MountedPanel['wrapper']) => wrapper.find('button[aria-haspopup="menu"]')
 
 describe('MenuPanel, signed in', () => {
   let mounted: MountedPanel | undefined
@@ -77,6 +83,8 @@ describe('MenuPanel, signed in', () => {
     state.mode = 'dark'
     state.logout = vi.fn<Spy>()
     state.changeTheme = vi.fn<Spy>()
+    state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
+    state.access = { principal: { name: 'alice', displayName: 'Alice Example', kind: 'USER', providers: ['local'] } }
     mounted?.wrapper.unmount()
     mounted = undefined
   })
@@ -100,15 +108,50 @@ describe('MenuPanel, signed in', () => {
     mounted = mountPanel()
 
     const trigger = accountTrigger(mounted.wrapper).element
-    expect(computeAccessibleName(trigger), 'a screen reader hears that the button opens a menu, and whose').toBe('Account menu for Alice Example')
+    expect(computeAccessibleName(trigger), 'a screen reader hears that the button opens a menu, and whose').toBe('Account menu, Alice Example')
   })
 
-  it('computes the account button name from its content, so the visible name is part of it', () => {
+  it('keeps the visible name inside the accessible name of the account button (WCAG 2.5.3, Label in Name)', () => {
     mounted = mountPanel()
 
     const trigger = accountTrigger(mounted.wrapper).element
-    expect(trigger.hasAttribute('aria-label'), 'no label overrides the content (WCAG 2.5.3, Label in Name)').toBe(false)
     expect(computeAccessibleName(trigger), 'the visible name is contained in the accessible name').toContain('Alice Example')
+  })
+
+  it('gives the name in the bar its full value as title, so a truncated name is still readable', () => {
+    mounted = mountPanel()
+
+    const name = accountTrigger(mounted.wrapper).find('[data-test="account-name"]')
+    expect(name.attributes('title'), 'the full display name is the title').toBe('Alice Example')
+  })
+
+  it('shows the display name once, in the bar, and never again inside the open menu', async () => {
+    const { wrapper } = await open()
+
+    expect((accountTrigger(wrapper).text().match(/Alice Example/g) ?? []).length, 'the bar carries the name').toBe(1)
+    const menuText = document.querySelector('[role="menu"]')!.textContent
+    expect(menuText, 'the menu does not repeat the display name').not.toContain('Alice Example')
+  })
+
+  it('shows the username in the menu header only when it differs from the display name', async () => {
+    state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
+    await open()
+    expect(document.querySelector('[data-test="account-identity"]')!.textContent, 'the username differs, so it is shown').toContain('alice')
+    mounted!.wrapper.unmount()
+
+    state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: 'alice' }
+    await open()
+    const header = document.querySelector('[data-test="account-identity"]')!.textContent
+    expect(header.match(/alice/g) ?? [], 'the same value is not shown twice').toHaveLength(0)
+  })
+
+  it('shows the kind and the sign-in source in the menu header, such as User, LDAP', async () => {
+    state.access = { principal: { name: 'alice', displayName: 'Alice Example', kind: 'USER', providers: ['ldap'] } }
+
+    await open()
+
+    const identity = document.querySelector('[data-test="account-identity"]')!
+    expect(identity.textContent.replace(/\s+/g, ' ').trim()).toContain('User, LDAP')
   })
 
   it('draws the first letter of the name as the avatar, hidden from assistive technology', () => {
@@ -136,13 +179,13 @@ describe('MenuPanel, signed in', () => {
     expect(mounted.wrapper.findAll('a').map(link => link.text()), 'no loose My account link in the bar').not.toContain('My account')
   })
 
-  it('opens the menu with the name of the user as its heading', async () => {
+  it('opens the menu with an identity block as its header, not a second copy of the name', async () => {
     const { wrapper } = await open()
 
     expect(accountTrigger(wrapper).attributes('aria-expanded')).toBe('true')
-    const heading = document.querySelector<HTMLElement>('[role="menu"] [data-test="menu-heading"]')
-    expect(heading, 'the heading names the user').not.toBeNull()
-    expect(heading!.textContent!.trim()).toBe('Alice Example')
+    const identity = document.querySelector<HTMLElement>('[role="menu"] [data-test="account-identity"]')
+    expect(identity, 'the menu header is the identity block').not.toBeNull()
+    expect(identity!.textContent, 'the header carries the kind line').toContain('User')
   })
 
   it('offers My account as a link to the account page', async () => {
@@ -166,7 +209,7 @@ describe('MenuPanel, signed in', () => {
     await open()
 
     const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
-    expect(radios.map(radio => radio.textContent!.trim())).toEqual(['Light', 'Dark', 'Follow system'])
+    expect(radios.map(radio => radio.textContent.trim())).toEqual(['Light', 'Dark', 'Follow system'])
     expect(menuItem('Dark').getAttribute('aria-checked'), 'the theme in use is checked').toBe('true')
     expect(menuItem('Light').getAttribute('aria-checked')).toBe('false')
   })
