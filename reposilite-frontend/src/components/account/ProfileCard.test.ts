@@ -57,6 +57,19 @@ describe('ProfileCard', () => {
     expect(wrapper.find('[data-test="display-name"]').text()).toBe('alice')
   })
 
+  it('draws the value once and no Username row when the display name is the username', () => {
+    const wrapper = render({ principal: { ...ALICE, displayName: 'alice' } })
+
+    expect(wrapper.findAll('dt').map(term => term.text()), 'the Username row repeats the display name').not.toContain('Username')
+    expect(wrapper.findAll('dd').map(value => value.text()).filter(value => value === 'alice'), 'alice is drawn once').toHaveLength(1)
+  })
+
+  it('keeps the Username row when the display name differs from the username', () => {
+    const terms = render().findAll('dt').map(term => term.text())
+
+    expect(terms, 'the Username row is drawn beside the display name').toContain('Username')
+  })
+
   it('names a machine account as such', () => {
     expect(render({ principal: { ...ALICE, kind: 'MACHINE' } }).text()).toContain('Machine')
   })
