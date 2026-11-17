@@ -58,12 +58,14 @@ internal const val PASSKEY_NAME = "Passkey"
 
 /**
  * A started ceremony. [challengeId] is the handle the client returns, [challenge] the base64url bytes it signs. For an
- * assertion, [allowedCredentialIds] lists the passkeys of the principal; for a registration it is empty.
+ * assertion, [allowedCredentialIds] lists the passkeys of the principal; for a registration it is empty. [userHandle] is the
+ * base64url user handle of the account, set for a registration only.
  */
 data class PasskeyChallenge(
     val challengeId: String,
     val challenge: String,
     val allowedCredentialIds: List<String>,
+    val userHandle: String? = null,
 )
 
 sealed interface PasskeyRegistration {
@@ -113,9 +115,14 @@ internal class PasskeyService(
     private val manager: WebAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager(objectConverter)
     private val credentialData = AttestedCredentialDataConverter(objectConverter)
 
-    /** Starts a passkey registration for [principalId]. */
-    fun startRegistration(principalId: Int): PasskeyChallenge =
-        issue(principalId, KIND_WEBAUTHN_REGISTER, allowedCredentialIds = emptyList())
+    /**
+     * Starts a passkey registration for [principalId]. The options carry the user handle of the account, which is random and
+     * stays with the account, so the browser never sees the name as the user id.
+     */
+    fun startRegistration(principalId: Int): PasskeyChallenge {
+        val handle = store.userHandleOf(principalId, base64Url(ByteArray(USER_HANDLE_BYTES).also { random.nextBytes(it) }))
+        return issue(principalId, KIND_WEBAUTHN_REGISTER, allowedCredentialIds = emptyList()).copy(userHandle = handle)
+    }
 
     /** Starts an assertion for [principalId]. The allowed credentials are the passkeys of that principal. */
     fun startAssertion(principalId: Int): PasskeyChallenge =
@@ -273,6 +280,7 @@ internal class PasskeyService(
     private companion object {
         const val CHALLENGE_ID_BYTES = 32
         const val CHALLENGE_BYTES = 32
+        const val USER_HANDLE_BYTES = 32
 
         fun base64Url(value: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(value)
 

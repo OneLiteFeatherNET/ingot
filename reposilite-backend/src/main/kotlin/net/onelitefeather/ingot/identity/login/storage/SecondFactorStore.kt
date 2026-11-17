@@ -35,6 +35,7 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -93,7 +94,7 @@ class SecondFactorStore(
 
     init {
         transaction(database) {
-            SchemaUtils.createMissingTablesAndColumns(MfaFactorTable, MfaRecoveryCodeTable, AuthChallengeTable)
+            SchemaUtils.createMissingTablesAndColumns(MfaFactorTable, MfaRecoveryCodeTable, AuthChallengeTable, PasskeyUserHandleTable)
         }
     }
 
@@ -369,6 +370,21 @@ class SecondFactorStore(
                 it[MfaFactorTable.publicKey] = publicKey
                 it[MfaFactorTable.signCount] = signCount
             }.value
+        }
+
+    /**
+     * The WebAuthn user handle of [principalId]. [handle] is stored only when the principal has none yet, so the handle is made
+     * once and the one that was stored first is returned to every caller, also to a replica that raced for it.
+     */
+    fun userHandleOf(principalId: Int, handle: String): String =
+        identityWrite(database) {
+            PasskeyUserHandleTable.insertIgnore {
+                it[PasskeyUserHandleTable.principalId] = EntityID(principalId, PrincipalTable)
+                it[PasskeyUserHandleTable.handle] = handle
+            }
+            PasskeyUserHandleTable.selectAll()
+                .where { PasskeyUserHandleTable.principalId eq principalId }
+                .single()[PasskeyUserHandleTable.handle]
         }
 
     /** The confirmed passkeys of a principal, oldest first. */

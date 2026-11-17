@@ -131,6 +131,18 @@ object MfaRecoveryCodeTable : IntIdTable("mfa_recovery_code") {
 }
 
 /**
+ * The WebAuthn user handle of a user: 32 random bytes in base64url, made once and kept for the life of the account. It names the
+ * account to an authenticator without carrying its name, so a rename changes nothing. An assertion does not compare the handle,
+ * so the passkeys that were registered before it existed keep signing in.
+ */
+object PasskeyUserHandleTable : Table("passkey_user_handle") {
+    val principalId = reference("principal_id", PrincipalTable, onDelete = CASCADE)
+    val handle = varchar("handle", 64).uniqueIndex("uq_passkey_user_handle")
+
+    override val primaryKey = PrimaryKey(principalId)
+}
+
+/**
  * Sign-in challenges that wait for a second factor after a password was accepted, and the challenges of passkey ceremonies. Only a
  * SHA-256 hash of the challenge id is stored; the id itself lives in the browser cookie or with the client. A challenge is single
  * use ([usedAt]) and short lived ([expiresAt]). [challenge] holds the random bytes of a WebAuthn ceremony and is null otherwise.
