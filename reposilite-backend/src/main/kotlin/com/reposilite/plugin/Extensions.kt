@@ -67,6 +67,10 @@ class Extensions(private val journalist: Journalist) : Journalist {
      * The tier that the start log and the support information show for the plugin with this id. A name that is not registered
      * reads as the plugins directory with the default tier, so this never fails and never grants Core without an origin.
      */
+    /** The origin of the plugin with this id. A name that is not registered reads as the plugins directory, which never grants Core. */
+    fun originOf(name: String): PluginOrigin =
+        origins[name] ?: PluginOrigin.PLUGINS_DIRECTORY
+
     fun effectiveTierOf(name: String): PluginTier =
         PluginTierResolver.resolve(
             origins[name] ?: PluginOrigin.PLUGINS_DIRECTORY,

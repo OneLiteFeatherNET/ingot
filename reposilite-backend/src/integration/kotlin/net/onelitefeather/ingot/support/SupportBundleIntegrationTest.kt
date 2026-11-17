@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.support
 
+import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import com.reposilite.ReposiliteRunner
 import com.reposilite.ReposiliteSpecification
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
@@ -85,6 +86,26 @@ internal class SupportBundleIntegrationTest : ReposiliteSpecification() {
         assertThat(response.status).`as`("status of the page").isEqualTo(200)
         assertThat(response.headers.getFirst("Cache-Control")).`as`("cache control of the page").isEqualTo("no-store")
         assertThat(response.body).`as`("body of the page").contains("\"ingot\"", "\"database\"", "\"configuration\"")
+    }
+
+    @Test
+    fun `should name the origin and the settings domain of each plugin in the system information`() {
+        // when: the system information is read by a manager
+        val response = Unirest.get("$base/api/admin/support/system-info")
+            .basicAuth(manager.first, manager.second)
+            .asString()
+        val plugins = DEFAULT_OBJECT_MAPPER.readTree(response.body).get("plugins")
+
+        // then: a built-in plugin with settings names its origin and its settings domain
+        val audit = plugins.single { it.get("name").asText() == "audit" }
+        assertThat(audit.get("origin").asText()).`as`("origin of the audit plugin").isEqualTo("built-in")
+        assertThat(audit.get("settingsDomain").asText()).`as`("settings domain of the audit plugin").isEqualTo("audit")
+        assertThat(audit.get("tier").asText()).`as`("tier of the audit plugin").isEqualTo("core")
+
+        // and: a built-in plugin without settings has no settings domain to link
+        val support = plugins.single { it.get("name").asText() == "support" }
+        assertThat(support.path("settingsDomain").isNull || support.path("settingsDomain").isMissingNode)
+            .`as`("settings domain of the support plugin is absent").isTrue()
     }
 
     @Test

@@ -24,8 +24,10 @@ import com.reposilite.VERSION
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.settingsName
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
@@ -36,6 +38,7 @@ import net.onelitefeather.ingot.storage.capability.SupportDetails
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.cluster.ClusterSettings
 import net.onelitefeather.ingot.cluster.ClusterSources
+import net.onelitefeather.ingot.plugin.tier.PluginOrigin
 import panda.std.reactive.Reference
 import java.io.File
 import java.lang.management.ManagementFactory
@@ -50,6 +53,20 @@ import kotlin.reflect.full.memberProperties
  * Serves the system information page and the support bundle. It reads the instance through facades that already exist and
  * registers its routes on the routing event. Nothing is written here, and nothing leaves the instance.
  */
+/**
+ * The support information of one plugin. The origin is a kind of place, never a path, and the settings domain is the name of
+ * the settings page, or null when the plugin declares no settings class. Neither value holds a secret.
+ */
+internal fun pluginFact(metadata: Plugin, tier: PluginTier, origin: PluginOrigin): PluginFact =
+    PluginFact(
+        name = metadata.name,
+        version = metadata.version,
+        dependencies = metadata.dependencies.toList(),
+        tier = tier.name.lowercase(),
+        origin = origin.name.lowercase().replace('_', '-'),
+        settingsDomain = metadata.settings.java.takeUnless { it == SharedSettings::class.java }?.let { settingsName(it) },
+    )
+
 @Plugin(name = "support", dependencies = ["local-configuration", "shared-configuration", "status", "audit"])
 internal class SupportPlugin : ReposilitePlugin() {
 
@@ -84,8 +101,8 @@ internal class SupportPlugin : ReposilitePlugin() {
             repositoryDetails = { repositoryDetails(shared) },
             plugins = {
                 reposilite.extensions.getPlugins().values.map { entry ->
-                    val tier = reposilite.extensions.effectiveTierOf(entry.metadata.name)
-                    PluginFact(entry.metadata.name, entry.metadata.version, entry.metadata.dependencies.toList(), tier.name.lowercase())
+                    val name = entry.metadata.name
+                    pluginFact(entry.metadata, reposilite.extensions.effectiveTierOf(name), reposilite.extensions.originOf(name))
                 }
             },
             cluster = { status.fetchClusterStatus() },

@@ -6140,6 +6140,8 @@ export interface components {
         PluginInformation: {
             dependencies: string[];
             name: string;
+            origin: string;
+            settingsDomain?: string | null;
             tier: string;
             version: string;
         };
