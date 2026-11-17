@@ -23,8 +23,9 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/browse` and `/browse/<path>` | `browse` | Repositories section. Shows the folder listing of the repository path. `/browse` alone shows the repository list. | Everyone, no sign-in needed. | Router (`/browse/:qualifier(.*)*`) and Backend (`/browse`, `/browse/<path>`) |
 | `/search` | `search` | Search. The artifact search. The query is kept in the address. | Everyone, no sign-in needed. | Router and Backend |
 | `/account` | `account` | My account. Profile, password and the tokens the user created. | Signed-in principals. Client-side only: the page shows a sign-in prompt to a visitor. | Router and Backend |
-| `/dashboard` | `dashboard` | Retired. Redirects to Overview (`/settings`), keeping the query and the hash, and replaces the history entry. The instance status, the resources and the getting started card are on Overview; a banner names read-only mode while it is on. | None of its own: Overview asks for the node `ingot.admin.dashboard` for the status. | Router (redirect). The server still answers the path with the app shell, since the segment stays reserved. |
-| `/analytics` | `analytics` | Analytics. Section **Traffic**: the resolved requests per repository over time. | Node `ingot.admin.dashboard`. | Router and Backend |
+| `/dashboard` | `dashboard` | Retired. Redirects to Overview (`/settings`), keeping the query and the hash, and replaces the history entry. The instance status, the resources, the traffic and the getting started card are on Overview; a banner names read-only mode while it is on. | None of its own: Overview asks for the node `ingot.admin.dashboard` for the status. | Router (redirect). The server still answers the path with the app shell, since the segment stays reserved. |
+| `/analytics` | `analytics` | Analytics, the place for what is collected. Section **Usage statistics**: whether resolved requests are counted, and the interval they are grouped by. Section **Metrics endpoint**: how to turn on the Prometheus metrics. | Node `ingot.admin.dashboard`. The usage statistics form is saved by a visitor with the node `ingot.admin.settings`. | Router and Backend |
+| `/settings/statistics` | `settings-statistics` | Retired. Redirects to Analytics (`/analytics`), keeping the query and the hash, and replaces the history entry. | None of its own. | Router (redirect) |
 | `/access` | `access` | No page of its own. When the user may open exactly one Access page, the address is replaced with that page. Otherwise a screen of 600px or more is forwarded to the first of **Users**, **Machine accounts** or **Teams** that the user may open (or to **Users** if none matches), and a narrower screen shows the index of the Access pages. | Any one of `ingot.admin.users`, `ingot.admin.tokens`, `ingot.admin.teams`. | Router and Backend (`/access`) |
 | `/access/users` | `access-users` | Access, tab **Users**. | Node `ingot.admin.users`. | Router. Backend (`/access/<path>`) |
 | `/access/users/:name` | `access-user` | Access, tab **Users**, detail of one user. | Node `ingot.admin.users`. | Router. Backend (`/access/<path>`) |
@@ -83,8 +84,8 @@ The heading and the page actions form one row above the columns from 600 pixels.
 | --- | --- |
 | **Artifacts** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`), **Javadoc** (`/settings/javadoc`), **Search index** (`/settings/search`) |
 | **Access** | **Users** (`/access/users`), **Machine accounts** (`/access/machines`), **Teams** (`/access/teams`), **Single sign-on** (`/access/sso`), **LDAP directory** (`/access/ldap`), **Sign-in protection** (`/access/security`), **Permission check** (`/access/check`) |
-| **Instance** | **Branding** (`/settings/frontend`), **Reverse proxy** (`/settings/web`), **Usage statistics** (`/settings/statistics`), **Migration** (`/settings/migration`, while the Nexus import plugin is enabled), and every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
-| **Monitoring and support** | **Audit log** (`/audit`), **Audit settings** (`/settings/audit`), **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`), **System and support** (`/settings/system-info`), while the instance offers the support bundle |
+| **Instance** | **Branding** (`/settings/frontend`), **Reverse proxy** (`/settings/web`), **Migration** (`/settings/migration`, while the Nexus import plugin is enabled), and every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
+| **Monitoring and support** | **Audit log** (`/audit`), **Audit settings** (`/settings/audit`), **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`, which also holds the usage statistics settings), **System and support** (`/settings/system-info`), while the instance offers the support bundle |
 
 On a screen narrower than 600px the tree is an index list of the groups. A page opened from it shows a back arrow that returns to the index.
 
@@ -102,6 +103,10 @@ Repositories used to be edited under **Settings**, then **Maven**. The Maven pag
 | `/settings/maven?new=repository` | `/settings/repositories?new=repository`, which opens the wizard once. The query is kept. |
 
 Other collections of other domains do not redirect. For example, an entry of the `cleanup` domain keeps its address.
+
+### Redirect to Analytics
+
+Usage statistics was a page under **Instance**. Its settings are on **Analytics** now. The old address keeps working: `/settings/statistics` opens `/analytics`, with the query and the hash kept.
 
 ### Page names under `/settings`
 
