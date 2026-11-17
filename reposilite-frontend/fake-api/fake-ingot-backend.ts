@@ -16,21 +16,20 @@
  * limitations under the License.
  */
 
-import { createRequire } from "module"
-const require = createRequire(import.meta.url)
+import express from "express"
+import type { Request, Response } from "express"
+import expressWs from "express-ws"
+import bodyParser from "body-parser"
+import crypto from "crypto"
+import * as audit from "./audit"
+import * as identity from "./identity"
+import { createSearch, sampleFiles } from "./search"
+import type { Query } from "./search"
+import { createIndexAdmin } from "./search-index"
+import { localDateOnWire } from "./wire"
+import { effectiveType, rejectionOf } from "./repository-types"
 
-const express = require("express")
-const expressWs = require("express-ws")
-const bodyParser = require('body-parser')
-const crypto = require("crypto")
-const audit = require("./audit")
-const identity = require("./identity")
-const { createSearch, sampleFiles } = require("./search")
-const { createIndexAdmin } = require("./search-index")
-const { localDateOnWire } = require("./wire")
-const { effectiveType, rejectionOf } = require("./repository-types")
-
-const {
+import {
   respond,
   authorized,
   invalidCredentials,
@@ -38,15 +37,23 @@ const {
   createFileDetails,
   createDirectoryDetails,
   generateDayWiseTimeSeries
-} = require("./extensions")
+} from "./extensions"
 
-const application = express()
-expressWs(application)
+const application = expressWs(express()).app
 
-let uploadedFiles = []
-let mavenSettingsSchema = require('./maven-settings-schema.json')
-let mavenSettingsEntity = require('./maven-settings-entity.json')
-let frontendSettingsSchema = require('./frontend-settings-schema.json')
+interface UploadedFile {
+  file: string
+  content: unknown
+}
+
+let uploadedFiles: UploadedFile[] = []
+import mavenSettingsSchemaFile from "./maven-settings-schema.json" with { type: "json" }
+import mavenSettingsEntityFile from "./maven-settings-entity.json" with { type: "json" }
+import frontendSettingsSchemaFile from "./frontend-settings-schema.json" with { type: "json" }
+
+let mavenSettingsSchema = mavenSettingsSchemaFile
+let mavenSettingsEntity = mavenSettingsEntityFile
+let frontendSettingsSchema = frontendSettingsSchemaFile
 // The access view of a repository in the identity API reads the repositories as they are edited here.
 identity.connectRepositories(() => mavenSettingsEntity.repositories ?? [])
 // Defaults mirror FrontendSettings and AppearanceSettings on the server.
@@ -80,7 +87,7 @@ let memory = 20
 let threads = 10
 // Recorded failures as the server keeps them: newest first in the listing, each with the time it
 // happened stored as an age, so the timestamps stay recent however long the stub has been running.
-const FAILURE_STACK = (message, type, frames) =>
+const FAILURE_STACK = (message: string, type: string, frames: string[]) =>
   [`  by ${type}: ${message}`, ...frames.map(frame => `  at ${frame}`)].join("\n")
 
 let recordedFailures = [
@@ -128,17 +135,34 @@ const todayLocalDate = () => {
   const now = new Date()
   return [now.getFullYear(), now.getMonth() + 1, now.getDate()]
 }
-const permissionObject = (value) =>
+interface Permission {
+  identifier: string
+  shortcut: string
+}
+interface RouteRequest {
+  path: string
+  permissions?: string[]
+}
+interface AccessToken {
+  identifier: { type: string; value: number }
+  name: string
+  createdAt: number[]
+  description: string
+  expiresAt: number | null
+  permissions: Permission[]
+  routes: { path: string; permission: Permission }[]
+}
+const permissionObject = (value: string) =>
   value === "m" || value === "access-token:manager"
     ? { identifier: "access-token:manager", shortcut: "m" }
     : { identifier: value, shortcut: value }
-const routePermissionObject = (shortcut) =>
+const routePermissionObject = (shortcut: string) =>
   shortcut === "w"
     ? { identifier: "route:write", shortcut: "w" }
     : { identifier: "route:read", shortcut: "r" }
 
 let tokenSequence = 2
-let accessTokens = [
+let accessTokens: AccessToken[] = [
   {
     identifier: { type: "PERSISTENT", value: 1 },
     name: "admin",
@@ -171,7 +195,12 @@ const MAX_THREADS = 64
 
 // A rolling window of snapshots, so the trend charts have a shape to draw rather than the
 // two points the stub used to return.
-const snapshots = []
+interface Snapshot {
+  at: number
+  memory: number
+  threads: number
+}
+const snapshots: Snapshot[] = []
 
 const recordSnapshot = () => {
   snapshots.push({ at: new Date().getTime(), memory: Math.round(memory), threads })
@@ -194,7 +223,7 @@ setInterval(() => {
 }, 5000)
 
 // The repositories a caller may see, filtered and sorted the way the real endpoint does it.
-const listRepositories = (query, signedIn) => {
+const listRepositories = (query: Record<string, unknown>, signedIn: boolean) => {
   const text = String(query.q ?? '').trim().toLowerCase()
   const requiredTags = [query.tag ?? []].flat().map(tag => String(tag).toLowerCase()).filter(tag => tag !== '')
   const all = mavenSettingsEntity.repositories ?? []
@@ -217,7 +246,7 @@ const listRepositories = (query, signedIn) => {
 
 // The search is built per request from the repositories as they are configured now, so a repository edited in
 // the settings changes who may see its files.
-const answerSearch = (req, res, endpoint) => {
+const answerSearch = (req: Request, res: Response, endpoint: "search" | "files") => {
   const publicRepositories = (mavenSettingsEntity.repositories ?? [])
     .filter(repository => repository.visibility === 'PUBLIC')
     .map(repository => repository.id)
@@ -226,8 +255,8 @@ const answerSearch = (req, res, endpoint) => {
     publicRepositories,
     state: process.env.INGOT_FAKE_API_SEARCH || 'ready'
   })
-  const answer = (signedIn) => {
-    const { status, body } = search[endpoint](req.query, { signedIn })
+  const answer = (signedIn: boolean) => {
+    const { status, body } = search[endpoint](req.query as Query, { signedIn })
     res.status(status).send(body)
   }
   authorized(req, () => answer(true), () => answer(false))
@@ -242,7 +271,7 @@ const indexAdmin = createIndexAdmin({
   schedule: (task, delay) => setTimeout(task, delay)
 })
 
-const answerIndex = (req, res, action) => authorized(req, () => {
+const answerIndex = (req: Request, res: Response, action: () => { status: number; body: unknown }) => authorized(req, () => {
   const { status, body } = action()
   if (status === 204) return res.status(204).end()
   res.status(status).send(body)
@@ -274,7 +303,7 @@ const statisticsSeries = [
 
 // Storage and cleanup. The real server leaves null fields out of its JSON, and the stub does the
 // same (omitNulls), so the dashboard's reading of missing fields is exercised as well.
-const omitNulls = (value) =>
+const omitNulls = (value: object) =>
   Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined))
 
 const MIB = 1024 * 1024
@@ -337,7 +366,32 @@ const cleanupSchema = {
   },
 }
 
-let cleanupDomain = {
+interface CleanupPolicy {
+  id: string
+  enabled: boolean
+  repositories: string[]
+  scope: string
+  keepLatest: number | null
+  olderThanDays: number | null
+  notDownloadedForDays: number | null
+  groupFilter: string | null
+  schedule: string
+}
+
+interface Deletion {
+  repository: string
+  path: string
+  version: string
+  sizeBytes: number
+  reason: string
+}
+
+interface Preview {
+  deletions: Deletion[]
+  warnings: string[]
+}
+
+let cleanupDomain: { policies: CleanupPolicy[] } = {
   policies: [
     { id: "snapshots-weekly", enabled: false, repositories: ["snapshots"], scope: "SNAPSHOTS", keepLatest: 3, olderThanDays: 30, notDownloadedForDays: null, groupFilter: "", schedule: "manual" },
     { id: "mirror-cache-nightly", enabled: true, repositories: ["mirror-cache"], scope: "MIRROR_CACHE", keepLatest: null, olderThanDays: null, notDownloadedForDays: 60, groupFilter: "net/onelitefeather/.*", schedule: "03:30" },
@@ -346,7 +400,7 @@ let cleanupDomain = {
 }
 
 // What a dry run of each policy would delete. A policy without an entry deletes nothing.
-const PREVIEWS = {
+const PREVIEWS: Record<string, Preview> = {
   "snapshots-weekly": {
     deletions: [
       { repository: "snapshots", path: "net/x/app/1.0-SNAPSHOT", version: "1.0-SNAPSHOT", sizeBytes: 1024, reason: "beyond the newest 3 versions; older than 30 days" },
@@ -367,18 +421,28 @@ const PREVIEWS = {
 }
 
 let runSequence = 4
-let cleanupRuns = [
+let cleanupRuns: {
+  id: number
+  policyId: string
+  trigger: string
+  startedAt: string
+  finishedAt: string
+  status: string
+  deletedCount: number
+  deletedBytes: number
+  failures: string[]
+}[] = [
   { id: 1, policyId: "mirror-cache-nightly", trigger: "SCHEDULED", startedAt: "2026-10-15T03:30:00Z", finishedAt: "2026-10-15T03:30:09Z", status: "SUCCEEDED", deletedCount: 412, deletedBytes: 1181116006, failures: [] },
   { id: 2, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-14T16:00:00Z", finishedAt: "2026-10-14T16:00:04Z", status: "PARTIAL", deletedCount: 2, deletedBytes: 2048, failures: ["net/x/app/0.9-SNAPSHOT: the file is locked by an upload"] },
   { id: 3, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-08T16:00:00Z", finishedAt: "2026-10-08T16:00:15Z", status: "FAILED", deletedCount: 0, deletedBytes: 0, failures: ["The storage backend did not answer within 15 seconds", "Retry the run once the backend is reachable"] },
   { id: 4, policyId: "releases-yearly", trigger: "MANUAL", startedAt: "2026-10-01T11:20:00Z", finishedAt: "2026-10-01T11:20:02Z", status: "SUCCEEDED", deletedCount: 0, deletedBytes: 0, failures: [] },
 ]
 
-const policyNotFound = (res) => res.status(404).send({ status: 404, message: "Policy not found" })
+const policyNotFound = (res: Response) => res.status(404).send({ status: 404, message: "Policy not found" })
 
-const findPolicy = (id) => cleanupDomain.policies.find(policy => policy.id === id)
+const findPolicy = (id: string) => cleanupDomain.policies.find(policy => policy.id === id)
 
-const previewOf = (policy) => {
+const previewOf = (policy: CleanupPolicy) => {
   const sample = PREVIEWS[policy.id] ?? { deletions: [], warnings: [] }
   return {
     policyId: policy.id,
@@ -389,6 +453,8 @@ const previewOf = (policy) => {
     warnings: sample.warnings,
   }
 }
+
+const rawBodyOptions = { limit: '100mb', extended: true }
 
 application
   .get("/", (req, res) => res.send("Ingot stub API"))
@@ -403,15 +469,15 @@ application
     next()
   })
   .use(express.text())
-  .use(bodyParser.raw({ limit: '100mb', extended: true }))
+  .use(bodyParser.raw(rawBodyOptions))
   .use(bodyParser.json())
-  // Cookie sessions, CSRF, setup, /api/auth/* and /api/identity/*. See identity.cjs.
+  // Cookie sessions, CSRF, setup, /api/auth/* and /api/identity/*. See identity.ts.
   .use(identity.router)
   .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup', 'login']))
   .get('/api/settings/schema/cleanup', (req, res) => res.send(cleanupSchema))
   .get('/api/settings/domain/cleanup', (req, res) => res.send(omitNulls({ policies: cleanupDomain.policies.map(omitNulls) })))
   .put('/api/settings/domain/cleanup', (req, res) => {
-    cleanupDomain = { policies: (req.body.policies ?? []).map(policy => ({ ...policy })) }
+    cleanupDomain = { policies: (req.body.policies ?? []).map((policy: CleanupPolicy) => ({ ...policy })) }
     res.send("")
   })
   .get('/api/maven/storage', (req, res) => {
@@ -482,9 +548,9 @@ application
     const repositories = mavenSettingsEntity.repositories ?? []
     const group = repositories.find(repository => repository.id === req.params.repository)
     if (!group) return res.status(404).send({ status: 404, message: 'Repository not found' })
-    const membersFor = (signedIn) => [...new Set((group.proxied ?? []).map(entry => entry.reference))]
+    const membersFor = (signedIn: boolean) => [...new Set((group.proxied ?? []).map(entry => entry.reference))]
       .map(reference => repositories.find(repository => repository.id === reference))
-      .filter(repository => repository && (repository.visibility === 'PUBLIC' || signedIn))
+      .filter((repository): repository is NonNullable<typeof repository> => repository !== undefined && (repository.visibility === 'PUBLIC' || signedIn))
       .map(repository => repository.id)
     authorized(req, () => res.send({ members: membersFor(true) }), () => res.send({ members: membersFor(false) }))
   })
@@ -532,7 +598,7 @@ application
       const existing = accessTokens.find(entry => entry.name === name)
       const secret = req.body.secret || crypto.randomBytes(24).toString("hex")
       const permissions = (req.body.permissions || []).map(permissionObject)
-      const routes = (req.body.routes || []).flatMap(route =>
+      const routes = (req.body.routes || []).flatMap((route: RouteRequest) =>
         (route.permissions || []).map(permission => ({ path: route.path, permission: routePermissionObject(permission) }))
       )
       const token = {
@@ -556,7 +622,7 @@ application
       const token = { ...existing }
       if (req.body.description != null) token.description = req.body.description
       if (req.body.permissions != null) token.permissions = req.body.permissions.map(permissionObject)
-      if (req.body.routes != null) token.routes = req.body.routes.flatMap(route =>
+      if (req.body.routes != null) token.routes = req.body.routes.flatMap((route: RouteRequest) =>
         (route.permissions || []).map(permission => ({ path: route.path, permission: routePermissionObject(permission) }))
       )
       if ('expiresAt' in req.body) token.expiresAt = req.body.expiresAt ? Math.floor(Date.parse(req.body.expiresAt) / 1000) : null
@@ -623,7 +689,7 @@ application
         "/filled",
         Array(80)
           .fill(undefined)
-          .map(() => {
+          .map<ReturnType<typeof createDirectoryDetails> | ReturnType<typeof createFileDetails>>(() => {
             const a = crypto.randomBytes(10).toString('hex').substring(0, 1 + Math.round(1 * Math.random()))
             const b = crypto.randomBytes(10).toString('hex').substring(0, 1 + Math.round(3 * Math.random()))
             const c = crypto.randomBytes(10).toString('hex').substring(0, 1 + Math.round(6 * Math.random()))
@@ -842,7 +908,8 @@ application
   .ws("/api/console/sock", (connection) => {
     let authenticated = false
 
-    connection.on("message", (message) => {
+    connection.on("message", (data) => {
+      const message = String(data)
       if (message == "Authorization:name:secret") {
         sendMessage(connection, "DEBUG | Authorized")
         authenticated = true
@@ -864,7 +931,7 @@ application
       createDirectoryDetails("filled"),
     ])
     authorized(req, () =>
-      repositories.files.push(createDirectoryDetails("private"))
+      repositories.files?.push(createDirectoryDetails("private"))
     )
     res.send(repositories)
   })
