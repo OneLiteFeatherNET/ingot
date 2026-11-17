@@ -1328,6 +1328,13 @@
       ]
     },
     {
+      "name": "app-tabs",
+      "file": "src/components/tabs/AppTabs.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "repository-type-badge",
       "file": "src/components/tokens/RepositoryTypeBadge.vue",
       "stability": "experimental",
