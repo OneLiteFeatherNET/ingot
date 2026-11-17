@@ -57,6 +57,7 @@ data class PasskeyFirstFactorRequest(
 /**
  * The options of a passkey ceremony. [challengeId] is the handle to send back, [challenge] the bytes to sign, and [rpId] the
  * relying party. [allowCredentials] lists the passkeys that may answer an assertion, and is empty for a registration.
+ * [userHandle] is the opaque user id of the account, base64url, set for a registration only.
  */
 @JsonSchema(requireNonNulls = false)
 data class PasskeyOptionsDto(
@@ -64,6 +65,7 @@ data class PasskeyOptionsDto(
     val challenge: String,
     val rpId: String,
     val allowCredentials: List<String> = emptyList(),
+    val userHandle: String? = null,
 )
 
 /** `POST /api/identity/me/factors/passkey`: the attestation of the browser, with the id of the registration options. */

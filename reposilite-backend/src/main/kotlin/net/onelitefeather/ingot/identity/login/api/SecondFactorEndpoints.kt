@@ -382,7 +382,7 @@ internal class SecondFactorEndpoints(
         path = "/api/identity/me/factors/passkey/options",
         methods = [HttpMethod.POST],
         summary = "Start a passkey registration",
-        description = "Starts the registration of a passkey for the signed-in user and returns the challenge the browser signs. The relying party is the public address of the instance (login.publicUrl), or the request host when that is blank. Without an address the answer is 409 with the reason. The registration is completed at /api/identity/me/factors/passkey",
+        description = "Starts the registration of a passkey for the signed-in user and returns the challenge the browser signs and the opaque user handle of the account, which is the WebAuthn user id and never the account name. The relying party is the public address of the instance (login.publicUrl), or the request host when that is blank. Without an address the answer is 409 with the reason. The registration is completed at /api/identity/me/factors/passkey",
         tags = ["Identity"],
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = PasskeyOptionsDto::class) ]),
@@ -401,7 +401,12 @@ internal class SecondFactorEndpoints(
                     when {
                         relyingParty == null -> errorResponse(CONFLICT, NO_RELYING_PARTY_MESSAGE)
                         challenge == null -> errorResponse(CONFLICT, "Passkeys need the database")
-                        else -> PasskeyOptionsDto(challengeId = challenge.challengeId, challenge = challenge.challenge, rpId = relyingParty.id).asSuccess()
+                        else -> PasskeyOptionsDto(
+                            challengeId = challenge.challengeId,
+                            challenge = challenge.challenge,
+                            rpId = relyingParty.id,
+                            userHandle = challenge.userHandle,
+                        ).asSuccess()
                     }
                 }
             }

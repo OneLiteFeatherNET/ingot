@@ -6,6 +6,7 @@ import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFacto
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
+import java.util.Base64
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -146,6 +147,50 @@ internal class PasskeyServiceTest {
             val result = fixture.service.finishRegistration(fixture.principalId, started.challengeId, attestation.clientDataJson, attestation.attestationObject, RP_ID, ORIGIN)
 
             assertThat(result).`as`("completion at 120 seconds").isEqualTo(PasskeyRegistration.Refused)
+        }
+    }
+
+    @Test
+    fun `a registration starts with an opaque user handle of 32 random bytes`() {
+        withFixture { fixture ->
+            val started = fixture.service.startRegistration(fixture.principalId)
+
+            val handle = Base64.getUrlDecoder().decode(checkNotNull(started.userHandle) { "registration options without a user handle" })
+
+            assertThat(handle).`as`("user handle bytes").hasSize(32)
+        }
+    }
+
+    @Test
+    fun `the user handle of a registration does not contain the account name`() {
+        withFixture { fixture ->
+            val started = fixture.service.startRegistration(fixture.principalId)
+
+            val handle = Base64.getUrlDecoder().decode(checkNotNull(started.userHandle) { "registration options without a user handle" })
+
+            assertThat(String(handle, Charsets.ISO_8859_1)).`as`("user handle bytes").doesNotContain("alice")
+        }
+    }
+
+    @Test
+    fun `the user handle of an account stays the same across registrations`() {
+        withFixture { fixture ->
+            val first = fixture.service.startRegistration(fixture.principalId).userHandle
+            val second = fixture.service.startRegistration(fixture.principalId).userHandle
+
+            assertThat(second).`as`("user handle of the second registration").isEqualTo(first)
+        }
+    }
+
+    @Test
+    fun `an earlier passkey still signs in after a later registration returns the account's user handle`() {
+        withFixture { fixture ->
+            val passkey = fixture.register(signCount = 0)
+            fixture.service.startRegistration(fixture.principalId).userHandle
+
+            val result = fixture.authenticate(passkey, signCount = 1)
+
+            assertThat(result).`as`("assertion of the passkey registered earlier").isInstanceOf(PasskeyAssertion.Verified::class.java)
         }
     }
 
