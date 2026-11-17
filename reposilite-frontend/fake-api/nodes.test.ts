@@ -15,22 +15,26 @@
  */
 
 /*
- * Tests of the pure permission node logic of the fake backend. Vitest cannot load a CommonJS test
- * file (it refuses require("vitest")), so these use the test runner that ships with Node:
- *   node --test fake-api/nodes.test.cjs
+ * Tests of the pure permission node logic of the fake backend. They are not part of the Vitest unit run,
+ * so they use the test runner that ships with Node, through the tsx loader:
+ *   node --import tsx --test fake-api/nodes.test.ts
  * Every test builds its own data and nothing reads a clock, so the order does not matter.
  */
 
-const { describe, it } = require("node:test")
-const assert = require("node:assert/strict")
-const nodes = require("./nodes.cjs")
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import * as nodes from "./nodes"
+import type { NodeEntry, Team, Token } from "./nodes"
 
-const allow = (node) => ({ node, allowed: true })
-const deny = (node) => ({ node, allowed: false })
-const user = (entries = [], extra = {}) => ({ name: "alice", nodes: entries, ...extra })
-const team = (name, entries = [], parents = [], extra = {}) => ({ name, nodes: entries, parents, ...extra })
+const allow = (node: string) => ({ node, allowed: true })
+const deny = (node: string) => ({ node, allowed: false })
+const user = (entries: NodeEntry[] = [], extra: Record<string, unknown> = {}) => ({ name: "alice", nodes: entries, ...extra })
+const team = (name: string, entries: NodeEntry[] = [], parents: string[] = [], extra: Record<string, unknown> = {}) => ({ name, nodes: entries, parents, ...extra })
 
-const check = (node, { entries, memberTeams = [], teams, token = null, ...userExtra } = {}) =>
+const check = (
+  node: string,
+  { entries, memberTeams = [], teams, token = null, ...userExtra }: { entries?: NodeEntry[]; memberTeams?: Team[]; teams?: Team[]; token?: Token | null; [extra: string]: unknown } = {},
+) =>
   nodes.evaluate({ node, user: user(entries, userExtra), memberTeams, teams: teams ?? memberTeams, token })
 
 const READ = "ingot.repository.private.read"
@@ -100,7 +104,7 @@ describe("grammar", () => {
   })
 
   it("rejects an empty part in the repository", () => {
-    assert.match(nodes.problemOf("ingot.repository.a..b.read"), /^The repository 'a\.\.b' of /)
+    assert.match(nodes.problemOf("ingot.repository.a..b.read") ?? "", /^The repository 'a\.\.b' of /)
   })
 
   it("rejects an unknown admin area", () => {
@@ -108,11 +112,11 @@ describe("grammar", () => {
   })
 
   it("checks the length before the whitespace", () => {
-    assert.match(nodes.problemOf(` ${"a".repeat(300)}`), /is longer than 255 characters$/)
+    assert.match(nodes.problemOf(` ${"a".repeat(300)}`) ?? "", /is longer than 255 characters$/)
   })
 
   it("checks the whitespace before the leading minus", () => {
-    assert.match(nodes.problemOf("- x"), /contains whitespace or control characters$/)
+    assert.match(nodes.problemOf("- x") ?? "", /contains whitespace or control characters$/)
   })
 })
 
@@ -129,7 +133,7 @@ describe("node lists", () => {
 
   it("checks invalid nodes before duplicates", () => {
     const { message } = nodes.validateEntries([allow("x"), allow("x")])
-    assert.match(message, /^Invalid permission nodes: /)
+    assert.match(String(message), /^Invalid permission nodes: /)
   })
 
   it("names the row of every invalid node as a problem, in list order", () => {
@@ -251,7 +255,7 @@ describe("evaluation", () => {
 
   it("explains a specific win with the contract phrase", () => {
     const result = check(READ, { entries: [deny("ingot.repository.*.*"), allow(READ)] })
-    assert.equal(result.trace.find(entry => entry.node === READ).reason, "Specific beats wildcard")
+    assert.equal(result.trace.find(entry => entry.node === READ)?.reason, "Specific beats wildcard")
   })
 
   it("lets a deny win when equally specific nodes disagree", () => {
@@ -261,7 +265,7 @@ describe("evaluation", () => {
 
   it("explains a tie with the contract phrase", () => {
     const result = check(READ, { entries: [allow("ingot.repository.private.*"), deny("ingot.repository.*.read")] })
-    assert.equal(result.trace.find(entry => entry.matched).reason, "Deny wins on tie")
+    assert.equal(result.trace.find(entry => entry.matched)?.reason, "Deny wins on tie")
   })
 
   it("lets a deny of one team win a tie against an allow of another team", () => {
@@ -370,8 +374,8 @@ describe("token narrowing", () => {
 
 describe("team parents", () => {
   // Ids follow the order of the pairs, as the ids of created teams do.
-  const graph = (...pairs) => pairs.map(([name, ...parents], index) => ({ id: index + 1, name, parents }))
-  const cycle = (name) => `Inheritance of '${name}' would form a cycle: a team cannot inherit from itself, directly or through its parents`
+  const graph = (...pairs: string[][]) => pairs.map(([name, ...parents], index) => ({ id: index + 1, name, parents }))
+  const cycle = (name: string) => `Inheritance of '${name}' would form a cycle: a team cannot inherit from itself, directly or through its parents`
 
   it("accepts a parent that creates no cycle", () => {
     assert.equal(nodes.checkParents(graph(["ops"], ["developers"]), "ops", ["developers"]), null)
@@ -388,12 +392,12 @@ describe("team parents", () => {
 
   it("detects a cycle through several levels", () => {
     const problem = nodes.checkParents(graph(["a", "b"], ["b", "c"], ["c"]), "c", ["a"])
-    assert.equal(problem.status, 409)
-    assert.match(problem.message, /would form a cycle/)
+    assert.equal(problem?.status, 409)
+    assert.match(problem?.message ?? "", /would form a cycle/)
   })
 
   // A chain t0 -> t1 -> ... where each team has the next one as parent.
-  const chain = (length) => Array.from({ length }, (_, index) => ({ id: index + 1, name: `t${index}`, parents: index < length - 1 ? [`t${index + 1}`] : [] }))
+  const chain = (length: number) => Array.from({ length }, (_, index) => ({ id: index + 1, name: `t${index}`, parents: index < length - 1 ? [`t${index + 1}`] : [] }))
 
   it("allows an inheritance depth of 8", () => {
     const teams = chain(9)
@@ -571,14 +575,14 @@ describe("artifact nodes", () => {
   })
 
   it("names the artifact a request is about in its problem, and the form that is refused", () => {
-    assert.match(nodes.problemOf("ingot.artifact.net.onelitefeather.manage"), /The action 'manage' of .* is unknown for an artifact node/)
-    assert.match(nodes.problemOf("ingot.artifact.*:mycelium-bom.read"), /ambiguous/)
-    assert.match(nodes.problemOf("ingot.artifact.net.*.read"), /wildcard must be the whole groupId/)
-    assert.match(nodes.problemOf("ingot.artifact.net:a:b.read"), /only one ':'/)
-    assert.match(nodes.problemOf("ingot.artifact.net:.read"), /artifactId of .* is empty/)
-    assert.match(nodes.problemOf("ingot.repository.*.artifact.net.read"), /repository wildcard of .* is not allowed/)
-    assert.match(nodes.problemOf("ingot.repository.artifact.net.read"), /repository name before .artifact. is missing/)
-    assert.match(nodes.problemOf("ingot.artifact.net"), /needs a groupId and an action/)
+    assert.match(nodes.problemOf("ingot.artifact.net.onelitefeather.manage") ?? "", /The action 'manage' of .* is unknown for an artifact node/)
+    assert.match(nodes.problemOf("ingot.artifact.*:mycelium-bom.read") ?? "", /ambiguous/)
+    assert.match(nodes.problemOf("ingot.artifact.net.*.read") ?? "", /wildcard must be the whole groupId/)
+    assert.match(nodes.problemOf("ingot.artifact.net:a:b.read") ?? "", /only one ':'/)
+    assert.match(nodes.problemOf("ingot.artifact.net:.read") ?? "", /artifactId of .* is empty/)
+    assert.match(nodes.problemOf("ingot.repository.*.artifact.net.read") ?? "", /repository wildcard of .* is not allowed/)
+    assert.match(nodes.problemOf("ingot.repository.artifact.net.read") ?? "", /repository name before .artifact. is missing/)
+    assert.match(nodes.problemOf("ingot.artifact.net") ?? "", /needs a groupId and an action/)
   })
 
   it("matches an artifact request inside the group and not a sibling group", () => {
@@ -700,7 +704,7 @@ describe("decision facts", () => {
 
 describe("path requests", () => {
   const FILE = "net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
-  const path = (repository, pathInRepository, action = "deploy") => nodes.pathRequest({ repository, path: pathInRepository, action })
+  const path = (repository: string, pathInRepository: string, action = "deploy") => nodes.pathRequest({ repository, path: pathInRepository, action })
 
   it("is decided by the artifact node whose group covers the directory of the path", () => {
     const result = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
@@ -758,7 +762,7 @@ describe("path requests", () => {
 
 describe("instance admin shortcut", () => {
   const ADMIN = "ingot.admin.*"
-  const adminUser = (extra = []) => user([allow(ADMIN), ...extra])
+  const adminUser = (extra: NodeEntry[] = []) => user([allow(ADMIN), ...extra])
 
   it("allows an instance admin a repository node that no rule of its own covers", () => {
     const result = nodes.evaluate({ node: READ, user: adminUser() })

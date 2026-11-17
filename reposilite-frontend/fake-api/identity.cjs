@@ -29,7 +29,7 @@ const express = require("express")
 const { basicAuth } = require("./extensions")
 const audit = require("./audit")
 const loginProviders = require("./login-providers")
-const nodeLogic = require("./nodes.cjs")
+const nodeLogic = require("./nodes")
 const { instantOnWire, localDateOnWire } = require("./wire")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
