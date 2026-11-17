@@ -189,6 +189,62 @@ describe('MdTabs address', () => {
   })
 })
 
+// jsdom has no scrollIntoView, so the tests install a recording stub on the element prototype and remove it afterwards.
+const stubScrollIntoView = () => {
+  const scrolled: { element: HTMLElement; options: unknown }[] = []
+  const scrollIntoView = function (this: HTMLElement, options: unknown) {
+    scrolled.push({ element: this, options })
+  }
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true, writable: true })
+  return scrolled
+}
+
+describe('MdTabs narrow screens', () => {
+  afterEach(() => {
+    delete (HTMLElement.prototype as Partial<Pick<HTMLElement, 'scrollIntoView'>>).scrollIntoView
+  })
+
+  it('keeps the tab list on one line and lets it scroll sideways instead of wrapping', () => {
+    const tabs = mountTabs()
+
+    expect(tabs.find('[role="tablist"]').classes(), 'the tab list does not wrap and scrolls when it overflows').toEqual(
+      expect.arrayContaining(['flex-nowrap', 'overflow-x-auto']),
+    )
+  })
+
+  it('keeps every tab at its own width, so a tab is not squeezed when the row overflows', () => {
+    const tabs = mountTabs()
+
+    for (const tab of tabsOf(tabs)) {
+      expect(tab.classes(), `tab "${tab.text()}" lacks shrink-0`).toContain('shrink-0')
+    }
+  })
+
+  it('scrolls a tab into view when it is selected by a click', async () => {
+    const scrolled = stubScrollIntoView()
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    expect(scrolled.at(-1), 'the chosen tab is scrolled to').toEqual({
+      element: tabsOf(tabs)[2].element,
+      options: { block: 'nearest', inline: 'nearest' },
+    })
+  })
+
+  it('scrolls the tab named in the address into view on the first render', async () => {
+    const scrolled = stubScrollIntoView()
+    const router = await routerAt('/settings/system-info?tab=environment')
+
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    await flushPromises()
+
+    expect(scrolled.map((call) => call.element), 'the deep-linked tab is scrolled to').toContain(tabsOf(tabs)[2].element)
+  })
+})
+
 describe('MdTabs anchors', () => {
   it('names its root md-tabs', () => {
     const tabs = mountTabs()
