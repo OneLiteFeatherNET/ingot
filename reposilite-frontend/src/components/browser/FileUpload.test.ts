@@ -15,18 +15,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FileUpload from './FileUpload.vue'
 
 // Every deploy stays pending, so a test can look at the form while the upload is in flight.
-const { deploy } = vi.hoisted(() => ({ deploy: { calls: [] } }))
+const { deploy } = vi.hoisted(() => ({ deploy: { calls: [] as unknown[][] } }))
 
 vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
   const client = ref({
     maven: {
-      deploy: (...args) => {
+      deploy: (...args: unknown[]) => {
         deploy.calls.push(args)
         return new Promise(() => {})
       },
@@ -43,7 +43,7 @@ vi.mock('../../store/qualifier', () => ({
   })
 }))
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountUpload = async () => {
   wrapper = mount(FileUpload)
@@ -52,10 +52,10 @@ const mountUpload = async () => {
 }
 
 const uploadButton = () =>
-  wrapper.findAll('button').find(button => button.text() === 'Upload files')
+  wrapper!.findAll('button').find(button => button.text() === 'Upload files')
 
-const selectFile = async (name) => {
-  wrapper.vm.files = [{ name, file: new Blob(['content']) }]
+const selectFile = async (name: string) => {
+  (wrapper!.vm as unknown as { files: unknown[] }).files = [{ name, file: new Blob(['content']) }]
   await nextTick()
 }
 
@@ -73,8 +73,8 @@ describe('FileUpload while an upload is in flight', () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
-    uploadButton().trigger('click')
-    uploadButton().trigger('click')
+    void uploadButton()!.trigger('click')
+    void uploadButton()!.trigger('click')
     await flushPromises()
 
     expect(deploy.calls, 'a double click must not send the file again').toHaveLength(1)
@@ -84,20 +84,20 @@ describe('FileUpload while an upload is in flight', () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
-    uploadButton().trigger('click')
+    void uploadButton()!.trigger('click')
     await flushPromises()
 
-    expect(uploadButton().attributes('disabled'), 'the button cannot be pressed while busy').toBeDefined()
+    expect(uploadButton()!.attributes('disabled'), 'the button cannot be pressed while busy').toBeDefined()
   })
 
   it('shows each file as uploading while it is sent', async () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
-    uploadButton().trigger('click')
+    void uploadButton()!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text(), 'the file reports its progress').toContain('Uploading')
+    expect(wrapper!.text(), 'the file reports its progress').toContain('Uploading')
   })
 })
 
@@ -111,8 +111,8 @@ describe('FileUpload controls', () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
-    const checksums = wrapper.findAll('input[type="checkbox"]')
-      .find(checkbox => checkbox.element.labels?.[0]?.textContent.includes('Generate default checksums'))
+    const checksums = wrapper!.findAll('input[type="checkbox"]')
+      .find(checkbox => (checkbox.element as HTMLInputElement).labels?.[0]?.textContent?.includes('Generate default checksums'))
 
     expect(checksums, 'the checksum option is a checkbox named by its label').toBeDefined()
   })
@@ -121,7 +121,7 @@ describe('FileUpload controls', () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
-    const remove = wrapper.find('button[aria-label="Remove example-1.0.jar"]')
+    const remove = wrapper!.find('button[aria-label="Remove example-1.0.jar"]')
 
     expect(remove.exists(), 'every remove control says which file it removes').toBe(true)
   })
@@ -129,7 +129,7 @@ describe('FileUpload controls', () => {
   it('lets the destination path in the upload heading wrap on a narrow screen', async () => {
     await mountUpload()
 
-    const destination = wrapper.find('#browser-upload h2 span')
+    const destination = wrapper!.find('#browser-upload h2 span')
 
     expect(destination.classes(), 'the path may break anywhere, so a long one stays inside a 320px screen')
       .toContain('wrap-anywhere')
@@ -143,9 +143,9 @@ describe('FileUpload keyboard access', () => {
   })
 
   const chooseButton = () =>
-    wrapper.findAll('button').find(button => button.text() === 'Choose files')
+    wrapper!.findAll('button').find(button => button.text() === 'Choose files')
 
-  const hiddenInput = () => wrapper.find('input[type="file"]').element
+  const hiddenInput = () => wrapper!.find('input[type="file"]').element as HTMLInputElement
 
   it('offers a Choose files button that a keyboard user can reach', async () => {
     await mountUpload()
@@ -153,15 +153,15 @@ describe('FileUpload keyboard access', () => {
     const button = chooseButton()
 
     expect(button, 'the drop zone needs a real button to open the picker').toBeDefined()
-    expect(button.element.tabIndex, 'the button is in the tab order').toBeGreaterThanOrEqual(0)
-    expect(button.attributes('disabled'), 'the button is enabled').toBeUndefined()
+    expect((button!.element as HTMLElement).tabIndex, 'the button is in the tab order').toBeGreaterThanOrEqual(0)
+    expect(button!.attributes('disabled'), 'the button is enabled').toBeUndefined()
   })
 
   it('opens the file picker when Choose files is pressed', async () => {
     await mountUpload()
     const picker = vi.spyOn(hiddenInput(), 'click').mockImplementation(() => {})
 
-    chooseButton().trigger('click')
+    void chooseButton()!.trigger('click')
 
     expect(picker, 'the hidden file input is clicked').toHaveBeenCalledTimes(1)
   })

@@ -14,39 +14,40 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createURL } from '../../store/client'
-import { property } from '../../helpers/vue-extensions'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { describeEntry, describeSize } from './entryMeta'
 import { actionCountOf, actionSlotClass, canDeleteAt, rowActionsOf } from './rowActions'
+import type { BrowserFile, BrowserPath } from './listing'
 
 /*
  * One row of the listing. The row is a list item; its name is the link, stretched over the
  * whole row, and the actions sit above that stretch as buttons of their own. A link inside
  * a link, or a button inside a link, is invalid, so the actions never live in the link.
  */
-const props = defineProps({
-  file: property(Object, true),
-  qualifier: property(Object, true),
-  url: property(String, false),
+const props = defineProps<{
+  file: BrowserFile
+  qualifier: BrowserPath
+  url?: string
   // A router location, for a directory: the row is a link into the browser.
-  to: property(Object, false),
-  openDeleteEntryModal: property(Function, true),
-  compactMode: property(Boolean, true),
-  signedIn: property(Boolean, false),
-  busy: property(Boolean, false),
+  to?: RouteLocationRaw
+  openDeleteEntryModal: (file: BrowserFile) => void
+  compactMode: boolean
+  signedIn?: boolean
+  busy?: boolean
   // The number of actions the widest row of the listing offers. The list passes it so that every row
   // reserves the same slot; without it the row sizes its slot by its own actions.
-  actionSlots: property(Number, false)
-})
+  actionSlots?: number
+}>()
 
-const emit = defineEmits(['download'])
+const emit = defineEmits<{ download: [BrowserFile] }>()
 
 const { hasPermissionTo } = useSession()
 const { javadocSuffixes } = usePlaceholders()
@@ -73,10 +74,10 @@ const textClass = computed(() =>
     : 'flex min-w-0 flex-1 flex-col'
 )
 
-const openUrl = (url) =>
-  window.open(url, '_blank')
+const openUrl = (url: string | null | undefined) =>
+  window.open(url as string, '_blank')
 
-const getJavaDocsUrl = () => {
+const getJavaDocsUrl = (): string | null => {
   const qualifier = props.qualifier.path
   const elements = qualifier.split('/')
 
@@ -89,9 +90,12 @@ const getJavaDocsUrl = () => {
 
 const canOpenJavadocs = computed(() => actions.value.javadoc)
 
+// Only a directory row links into the browser, and the list always passes its location.
+const routerLocation = computed(() => props.to as RouteLocationRaw)
+
 // Anonymous visitors follow the link and the browser saves the file. A signed-in request has
 // to carry the token, which a link cannot send, so the page fetches the file itself.
-const onFileClick = (event) => {
+const onFileClick = (event: Event) => {
   if (!props.signedIn) {
     return
   }
@@ -110,7 +114,7 @@ const onFileClick = (event) => {
   >
     <router-link
       v-if="isDirectory"
-      :to="to"
+      :to="routerLocation"
       class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
       :class="compactMode ? 'gap-2 medium:gap-4' : 'gap-4'"
     >

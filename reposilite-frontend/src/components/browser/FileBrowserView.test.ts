@@ -15,10 +15,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import type { ComponentPublicInstance, Ref } from 'vue'
 import FileBrowserView from './FileBrowserView.vue'
 import BrowserUpload from './FileUpload.vue'
-import { sessionState } from '../../store/session'
+import * as session from '../../store/session'
+
+// The mock above also exports the state the tests set. The real session module does not, so the type says what the mock holds.
+type SessionStateMock = { details: Ref<unknown>; client: Ref<unknown>; sessionReady: Ref<boolean>; canWrite: Ref<boolean>; isManager: Ref<boolean> }
+const { sessionState } = session as unknown as { sessionState: SessionStateMock }
 import { DETAILS_COLLAPSED_KEY } from '../card/detailsCollapsed'
 
 // The session store is replaced per file; each test swaps in its own client below.
@@ -65,7 +70,7 @@ vi.mock('../card/SnippetsCard.vue', async () => {
     default: {
       name: 'SnippetsCard',
       emits: ['update:collapsed'],
-      render() {
+      render(this: ComponentPublicInstance) {
         return h('button', {
           type: 'button',
           'data-testid': 'card-fold',
@@ -76,10 +81,10 @@ vi.mock('../card/SnippetsCard.vue', async () => {
   }
 })
 
-const networkError = () => ({ message: 'Network Error', request: {} })
-const httpError = (status, message = '') => ({ response: { status, data: { message } } })
+const networkError = () => Object.assign(new Error('Network Error'), { request: {} })
+const httpError = (status: number, message = '') => Object.assign(new Error(), { response: { status, data: { message } } })
 
-const clientWithDetails = (details) => ({
+const clientWithDetails = (details: unknown) => ({
   maven: {
     details,
     download: () => Promise.reject(new Error('not used')),
@@ -89,7 +94,7 @@ const clientWithDetails = (details) => ({
 
 // Each test unmounts what it mounted, so a later change to the shared session cannot reach
 // a view that a previous test left behind.
-const mounted = []
+const mounted: VueWrapper[] = []
 
 const mountView = () => {
   const wrapper = mount(FileBrowserView, {
@@ -100,7 +105,7 @@ const mountView = () => {
   return wrapper
 }
 
-const buttonWithText = (wrapper, text) =>
+const buttonWithText = (wrapper: VueWrapper, text: string) =>
   wrapper.findAll('button').find(button => button.text() === text)
 
 describe('FileBrowserView listing errors', () => {
@@ -131,7 +136,7 @@ describe('FileBrowserView listing errors', () => {
 
     const wrapper = mountView()
     await flushPromises()
-    await buttonWithText(wrapper, 'Retry').trigger('click')
+    await buttonWithText(wrapper, 'Retry')!.trigger('click')
     await flushPromises()
 
     expect(details, 'retry must request the directory a second time').toHaveBeenCalledTimes(2)
@@ -317,9 +322,9 @@ describe('FileBrowserView toolbar', () => {
 })
 
 describe('FileBrowserView group references', () => {
-  const rootMounted = []
+  const rootMounted: VueWrapper[] = []
 
-  const clientWith = ({ details, members }) => ({
+  const clientWith = ({ details, members }: { details: unknown; members: unknown }) => ({
     maven: {
       details,
       members,
@@ -328,7 +333,7 @@ describe('FileBrowserView group references', () => {
     }
   })
 
-  const mountAt = (path) => {
+  const mountAt = (path: string) => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }
@@ -393,7 +398,7 @@ describe('FileBrowserView details layout', () => {
   const SIDE_BY_SIDE = 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
 
   // The view starts with a comment, so its root is a fragment: the grid is found by its class.
-  const layoutGrid = (wrapper) => {
+  const layoutGrid = (wrapper: VueWrapper) => {
     const grid = wrapper.find('.container.grid')
     expect(grid.exists(), 'the details and listing share one grid').toBe(true)
     return grid
@@ -445,9 +450,9 @@ describe('FileBrowserView details layout', () => {
 })
 
 describe('FileBrowserView repository type in the header', () => {
-  const mounted = []
+  const mounted: VueWrapper[] = []
   const emptyDetails = () => Promise.resolve({ data: { files: [] } })
-  const clientWithList = (repositories) => ({
+  const clientWithList = (repositories?: unknown) => ({
     maven: {
       details: emptyDetails,
       members: () => Promise.resolve({ data: { members: [] } }),
@@ -457,7 +462,7 @@ describe('FileBrowserView repository type in the header', () => {
     }
   })
 
-  const mountAt = (path) => {
+  const mountAt = (path: string) => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }
@@ -532,9 +537,9 @@ describe('FileBrowserView repository type in the header', () => {
 })
 
 describe('FileBrowserView uploads by repository type', () => {
-  const mounted = []
+  const mounted: VueWrapper[] = []
   const emptyDetails = () => Promise.resolve({ data: { files: [] } })
-  const clientWithTypes = ({ repositories, members = [] }) => ({
+  const clientWithTypes = ({ repositories, members = [] }: { repositories: unknown; members?: unknown[] }) => ({
     maven: {
       details: emptyDetails,
       members: () => Promise.resolve({ data: { members } }),
@@ -544,7 +549,7 @@ describe('FileBrowserView uploads by repository type', () => {
     }
   })
 
-  const mountAt = (path) => {
+  const mountAt = (path: string) => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }

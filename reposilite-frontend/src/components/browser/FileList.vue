@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import download from 'downloadjs'
+import type { AxiosResponse } from 'axios'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { browseLocation, childPath, parentPathOf } from '../../router/paths'
 import { createURL } from '../../store/client'
@@ -29,19 +30,19 @@ import MdButton from '../md/MdButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { property } from '../../helpers/vue-extensions'
+import type { BrowserFile, BrowserPath, DeleteTarget, Listing, ListingFailure } from './listing'
 
-const props = defineProps({
-  qualifier: property(Object, true),
-  files: property(Object, true),
-  compactMode: property(Boolean, true),
-  loading: property(Boolean, true),
-  hiddenCount: property(Number, false),
+const props = defineProps<{
+  qualifier: BrowserPath
+  files: Partial<Listing>
+  compactMode: boolean
+  loading: boolean
+  hiddenCount?: number
   // The repositories a group references, shown on the root of a repository only.
-  members: property(Array, false),
+  members?: string[]
   // A manager may edit the members of a group, in the settings of the repository.
-  canEditMembers: property(Boolean, false)
-})
+  canEditMembers?: boolean
+}>()
 
 const router = useRouter()
 const references = computed(() => props.members ?? [])
@@ -56,7 +57,7 @@ const editMembers = () => router.push({
 const parentLocation = computed(() => browseLocation(parentPathOf(props.qualifier.path)))
 const repositoryLocation = computed(() => browseLocation(props.qualifier.path.split('/')[0]))
 
-const emit = defineEmits(['retry'])
+const emit = defineEmits<{ retry: [] }>()
 
 // Judged on the list as it is shown, after hidden files are filtered out.
 const isEmpty = computed(() =>
@@ -69,7 +70,7 @@ const showUtilityFiles = () => {
 }
 
 // What each kind of failed listing says, and whether asking again can help.
-const FAILURES = {
+const FAILURES: Record<ListingFailure, { icon: string; title: string; body: string; retryable: boolean }> = {
   network: {
     icon: 'error',
     title: 'Cannot reach the repository',
@@ -97,8 +98,9 @@ const FAILURES = {
 }
 
 const failure = computed(() => {
-  const base = FAILURES[props.files.error] ?? FAILURES.unknown
-  const body = props.files.error === 'unknown' && props.files.message ? props.files.message : base.body
+  const error = props.files.error
+  const base = (error ? FAILURES[error] : undefined) ?? FAILURES.unknown
+  const body = error === 'unknown' && props.files.message ? props.files.message : base.body
   return { ...base, body }
 })
 
@@ -106,10 +108,14 @@ const failure = computed(() => {
 const skeletonWidths = ['11rem', '7rem', '14rem', '9rem', '12rem', '8rem']
 const skeletonCount = computed(() => Math.min(props.files.list?.length || 5, 10))
 
+// A placeholder row while the listing loads. It has no file behind it.
+type SkeletonRow = { __skeleton: true }
+const isSkeleton = (entry: BrowserFile | SkeletonRow): entry is SkeletonRow => '__skeleton' in entry
+
 // one index-keyed loop so rows patch in place (skeleton -> data) instead of remounting
-const displayedEntries = computed(() =>
+const displayedEntries = computed<Array<BrowserFile | SkeletonRow>>(() =>
   props.loading
-    ? Array.from({ length: skeletonCount.value }, () => ({ __skeleton: true }))
+    ? Array.from({ length: skeletonCount.value }, () => ({ __skeleton: true as const }))
     : (props.files.list ?? [])
 )
 
@@ -128,22 +134,22 @@ const widestActions = computed(() => widestActionCount(props.files.list ?? [], {
 const signedIn = computed(() => Boolean(token.value.name && token.value.secret))
 
 // Names of the files being fetched right now, so their rows can show progress.
-const downloading = reactive({})
+const downloading = reactive<Record<string, boolean>>({})
 // A property read, not Object.hasOwn: only reads through the proxy register for re-rendering.
-const isDownloading = (file) => downloading[file.name] === true
+const isDownloading = (file: BrowserFile) => downloading[file.name] === true
 
-const downloadHandler = (file) => {
+const downloadHandler = (file: BrowserFile) => {
   downloading[file.name] = true
   client.value.maven.download(childPath(props.qualifier.path, file.name))
-    .then(response => download(response.data, file.name, response.headers['content-type']))
+    .then((response: AxiosResponse<Blob>) => download(response.data, file.name, response.headers['content-type'] as string | undefined))
     .catch(error => createErrorToast(`Cannot download file: ${errorMessage(error)}`))
     .finally(() => {
       delete downloading[file.name]
     })
 }
 
-const deleteModalValue = ref()
-const openDeleteModal = (entry) => {
+const deleteModalValue = ref<DeleteTarget>()
+const openDeleteModal = (entry: BrowserFile) => {
   deleteModalValue.value = {
     path: props.qualifier.path,
     file: entry.name,
@@ -155,10 +161,10 @@ const closeDeleteModal = () =>
 
 // Directories open in the browser, so their links are routes; files are served by the
 // repository itself, so their links are plain URLs.
-const directoryLocation = (file) =>
+const directoryLocation = (file: BrowserFile) =>
   browseLocation(childPath(props.qualifier.path, file.name))
 
-const entryUrl = (file) =>
+const entryUrl = (file: BrowserFile) =>
   createURL(`/${childPath(props.qualifier.path, file.name)}`)
 </script>
 
@@ -179,10 +185,10 @@ const entryUrl = (file) =>
     >
       <template
         v-for="(entry, index) in displayedEntries"
-        :key="entry.__skeleton ? `skeleton-${index}` : entry.name"
+        :key="isSkeleton(entry) ? `skeleton-${index}` : entry.name"
       >
         <li
-          v-if="entry.__skeleton"
+          v-if="isSkeleton(entry)"
           class="relative flex items-center gap-4 rounded-corner-medium px-4"
           :class="compactMode ? 'min-h-14' : 'min-h-18'"
         >
@@ -208,7 +214,7 @@ const entryUrl = (file) =>
       </template>
     </ul>
     <div
-      v-if="isEmpty && hiddenCount > 0"
+      v-if="isEmpty && (hiddenCount ?? 0) > 0"
       class="flex flex-col items-start gap-3 px-4 pt-4"
     >
       <p class="md-body-large text-on-surface-variant">

@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watchEffect } from 'vue'
 import { createSuccessToast, createErrorToast, errorMessage } from '../../helpers/toast'
 import { createUploadQueue } from './uploadQueue'
 import { useSession } from '../../store/session'
 import useQualifier from '../../store/qualifier'
-import FileUpload from 'vue-upload-component'
+import FileUpload, { type VueUploadItem } from 'vue-upload-component'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -74,28 +74,31 @@ const pathMatchesPom = computed(() => {
   return generatedPath === currentPath
 })
 
-const files = ref([])
+const files = ref<VueUploadItem[]>([])
 const isEnabled = computed(() => files.value.length > 0)
 
-const removeFile = (file) =>
+const removeFile = (file: VueUploadItem) =>
   files.value = files.value.filter(element => element !== file)
 
 // One batch at a time: a second press while files are in flight is ignored by the queue.
 const queue = createUploadQueue()
 const uploading = computed(() => queue.state.busy)
 
-const STATUS_LABELS = {
+const STATUS_LABELS: Partial<Record<string, string>> = {
   uploading: 'Uploading',
   failed: 'Upload failed. Press Upload files to try again.',
   done: 'Uploaded'
 }
-const statusLabel = (name) =>
-  STATUS_LABELS[queue.state.statuses[name]] ?? 'Ready to upload'
+// The queue keeps one status per task key; a name it has not seen has none.
+const statusOf = (name: string): string | undefined =>
+  (queue.state.statuses as Record<string, string | undefined>)[name]
+const statusLabel = (name: string): string =>
+  STATUS_LABELS[statusOf(name) ?? ''] ?? 'Ready to upload'
 
 // The drop zone is the vue-upload-component, which renders a hidden file input and a label
 // that covers the zone for mouse users. The button below is the keyboard route to the picker.
-const upload = ref(null)
-const pickerInput = () => upload.value?.$el?.querySelector('input[type="file"]')
+const upload = ref<{ $el?: Element } | null>(null)
+const pickerInput = () => upload.value?.$el?.querySelector<HTMLInputElement>('input[type="file"]')
 const choosePicker = () => pickerInput()?.click()
 
 // The input stays in the DOM for the component to work, but a focus stop on an invisible
@@ -118,19 +121,22 @@ const uploadFiles = () => {
     return
   }
 
-  const tasks = files.value.map(vueFile => ({
-    key: vueFile.name,
-    run: () => client.value.maven.deploy(`${destination.value}/${vueFile.name}`, vueFile.file, checksumsEnabled.value)
-      .then(() => {
-        createSuccessToast(`File ${vueFile.name} has been uploaded`)
-        removeFile(vueFile)
-        refreshQualifier()
-      })
-      .catch(error => {
-        createErrorToast(`Cannot upload file ${vueFile.name}: ${errorMessage(error)}`)
-        throw error
-      })
-  }))
+  const tasks: { key: string; run: () => Promise<unknown> }[] = files.value.map(vueFile => {
+    const name = vueFile.name ?? ''
+    return {
+      key: name,
+      run: () => client.value.maven.deploy(`${destination.value}/${name}`, vueFile.file, checksumsEnabled.value)
+        .then(() => {
+          createSuccessToast(`File ${name} has been uploaded`)
+          removeFile(vueFile)
+          refreshQualifier()
+        })
+        .catch(error => {
+          createErrorToast(`Cannot upload file ${name}: ${errorMessage(error)}`)
+          throw error
+        })
+    }
+  })
 
   if (stubPomEnabled.value) {
     tasks.push({
@@ -218,9 +224,9 @@ const uploadFiles = () => {
           />
           <span class="flex min-w-0 flex-1 flex-col">
             <span class="truncate md-body-large">{{ file.name }}</span>
-            <span class="md-body-small text-on-surface-variant">{{ statusLabel(file.name) }}</span>
+            <span class="md-body-small text-on-surface-variant">{{ statusLabel(file.name ?? '') }}</span>
             <MdLinearProgress
-              v-if="queue.state.statuses[file.name] === 'uploading'"
+              v-if="statusOf(file.name ?? '') === 'uploading'"
               indeterminate
               :label="`Uploading ${file.name}`"
               class="mt-1"

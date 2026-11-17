@@ -15,7 +15,8 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import type { BrowserFile } from './listing'
 import prettyBytes from 'pretty-bytes'
 import DetailedListEntry from './DetailedListEntry.vue'
 
@@ -30,9 +31,9 @@ vi.mock('../../store/session', async () => {
   }
 })
 
-const jar = { name: 'example-1.0.jar', type: 'FILE', contentLength: 2048 }
+const jar = { name: 'example-1.0.jar', type: 'FILE' as const, contentLength: 2048 }
 
-const mountEntry = (file = jar) =>
+const mountEntry = (file: BrowserFile = jar) =>
   mount(DetailedListEntry, {
     props: {
       file,
@@ -45,12 +46,12 @@ const mountEntry = (file = jar) =>
     global: { stubs: { 'router-link': RouterLinkStub } }
   })
 
-const actionsOf = (wrapper) =>
+const actionsOf = (wrapper: VueWrapper) =>
   wrapper.find('[data-row-actions]')
 
 // Each test mounts its own row and nothing else is shared between them.
-const mounted = []
-const mountRow = (file) => {
+const mounted: VueWrapper[] = []
+const mountRow = (file?: BrowserFile) => {
   const wrapper = mountEntry(file)
   mounted.push(wrapper)
   return wrapper
@@ -128,15 +129,15 @@ describe('DetailedListEntry appearance', () => {
     const size = wrapper.findAll('span').find(span => span.text() === prettyBytes(jar.contentLength))
 
     expect(size, 'the size is rendered as its own element').toBeDefined()
-    expect(size.element.parentElement.textContent, 'the size shares the row with the name').toContain('example-1.0.jar')
-    expect(size.classes(), 'the size uses the label-small style').toContain('md-label-small')
+    expect(size!.element.parentElement!.textContent, 'the size shares the row with the name').toContain('example-1.0.jar')
+    expect(size!.classes(), 'the size uses the label-small style').toContain('md-label-small')
   })
 })
 
 describe('DetailedListEntry md3 list spec', () => {
-  const folder = { name: 'releases', type: 'DIRECTORY' }
+  const folder = { name: 'releases', type: 'DIRECTORY' as const }
 
-  const mountRow = (overrides = {}, file = jar) => {
+  const mountRow = (overrides: Record<string, unknown> = {}, file: BrowserFile = jar) => {
     const wrapper = mount(DetailedListEntry, {
       props: {
         file,
@@ -203,25 +204,25 @@ describe('DetailedListEntry md3 list spec', () => {
     const wrapper = mountRow({ compactMode: true })
     const size = wrapper.findAll('span').find(span => span.text() === prettyBytes(jar.contentLength))
 
-    expect(size.classes(), 'the trailing size uses label-small').toContain('md-label-small')
-    expect(size.classes(), 'the trailing size is on-surface-variant').toContain('text-on-surface-variant')
+    expect(size!.classes(), 'the trailing size uses label-small').toContain('md-label-small')
+    expect(size!.classes(), 'the trailing size is on-surface-variant').toContain('text-on-surface-variant')
   })
 
   it('sets the file name in the body-large style', () => {
     const name = mountRow().findAll('span').find(span => span.text() === jar.name)
 
-    expect(name.classes(), 'the headline uses body-large').toContain('md-body-large')
+    expect(name!.classes(), 'the headline uses body-large').toContain('md-body-large')
   })
 })
 
 describe('DetailedListEntry actions slot', () => {
-  const xml = { name: 'maven-metadata.xml', type: 'FILE', contentType: 'application/xml', contentLength: 512 }
-  const javadoc = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentLength: 4096 }
+  const xml = { name: 'maven-metadata.xml', type: 'FILE' as const, contentType: 'application/xml', contentLength: 512 }
+  const javadoc = { name: 'example-1.0-javadoc.jar', type: 'FILE' as const, contentLength: 4096 }
   // Viewable and a javadoc: the widest set of actions a row can have.
-  const widest = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentType: 'application/xml', contentLength: 1024 }
-  const folder = { name: 'releases', type: 'DIRECTORY' }
+  const widest = { name: 'example-1.0-javadoc.jar', type: 'FILE' as const, contentType: 'application/xml', contentLength: 1024 }
+  const folder = { name: 'releases', type: 'DIRECTORY' as const }
 
-  const mountRow = (file, actionSlots) => {
+  const mountRow = (file: BrowserFile, actionSlots?: number) => {
     const wrapper = mount(DetailedListEntry, {
       props: {
         file,
