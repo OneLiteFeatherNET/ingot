@@ -34,6 +34,9 @@ abstract class CheckPluginTiersTask : DefaultTask() {
     @get:Internal
     abstract val workflowsDirectory: DirectoryProperty
 
+    @get:Internal
+    abstract val dockerfile: RegularFileProperty
+
     @get:OutputFile
     abstract val tierFile: RegularFileProperty
 
@@ -57,7 +60,8 @@ abstract class CheckPluginTiersTask : DefaultTask() {
 
         val pluginsDir = pluginsDirectory.get().asFile.toPath()
         val violations = PluginTierCheck.violations(checks) +
-            PluginTierCheck.evidenceViolations(pluginsDir, workflowsDirectory.get().asFile.toPath())
+            PluginTierCheck.evidenceViolations(pluginsDir, workflowsDirectory.get().asFile.toPath()) +
+            PluginTierCheck.bundledViolations(pluginsDir, dockerfile.get().asFile.toPath())
         if (violations.isNotEmpty()) {
             throw GradleException(violations.joinToString(separator = "\n", prefix = "Plugin tier check failed:\n") { "  - $it" })
         }

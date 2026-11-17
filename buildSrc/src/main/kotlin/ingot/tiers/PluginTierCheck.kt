@@ -60,6 +60,7 @@ object PluginTierCheck {
     private val pluginAnnotation = Regex("""@Plugin\b(?:\s*\(([^)]*)\))?""")
     private val nameArgument = Regex("""\bname\s*=\s*"([^"]*)"""")
     private val tierArgument = Regex("""\btier\s*=\s*(?:PluginTier\.)?(\w+)""")
+    private val bundledCopy = Regex("""/plugins/([\w.-]+\.jar)\s+/app/bundled-plugins/""")
 
     // Every module of the plugins directory is a subdirectory with a build script, sorted by name.
     fun scan(pluginsDir: Path): List<ModuleCheck> {
@@ -71,6 +72,37 @@ object PluginTierCheck {
     }
 
     fun violations(checks: List<ModuleCheck>): List<String> = checks.flatMap { it.violations() }
+
+    // The jars that the Dockerfile copies into /app/bundled-plugins, by file name. The Dockerfile is read as text: one COPY
+    // line per jar, with the source under a plugins directory and the target in /app/bundled-plugins.
+    fun bundledJars(dockerfile: Path): Set<String> {
+        if (!dockerfile.isRegularFile()) return emptySet()
+        return bundledCopy.findAll(dockerfile.readText()).map { it.groupValues[1] }.toSet()
+    }
+
+    // A Core declaration needs a jar in the image, and a jar in the image needs a Core or an Experimental declaration. Both
+    // directions are checked, so an image that bundles a plugin no tier explains is caught as well.
+    fun bundledViolations(pluginsDir: Path, dockerfile: Path): List<String> {
+        val checks = scan(pluginsDir).associateBy { it.module }
+        val jars = bundledJars(dockerfile)
+
+        val missingJars = checks.values
+            .filter { it.declared == Tier.CORE && "${it.module}.jar" !in jars }
+            .map { "${it.module} declares CORE but the Dockerfile does not copy ${it.module}.jar into /app/bundled-plugins." }
+
+        val unexplainedJars = jars.sorted().mapNotNull { jar ->
+            val module = jar.removeSuffix(".jar")
+            val declared = checks[module]?.declared
+            if (declared == Tier.CORE || declared == Tier.EXPERIMENTAL) {
+                null
+            } else {
+                "$jar is copied into /app/bundled-plugins but its module $module declares " +
+                    "${declared?.name ?: "no tier, as it has no @Plugin class"}, which is neither CORE nor EXPERIMENTAL."
+            }
+        }
+
+        return missingJars + unexplainedJars
+    }
 
     // An Official module needs a contractTest source set and a workflow that runs its contractTest task. The workflow
     // files are read as text, so the task has to be named by its Gradle path, as the CI job spells it.
