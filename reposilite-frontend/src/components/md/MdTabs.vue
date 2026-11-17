@@ -27,7 +27,7 @@
  *               When a name is given and a router is installed, choosing a tab replaces the history entry.
  * Emits update:modelValue with the key of the tab that was chosen.
  */
-import { computed, inject, useId } from 'vue'
+import { computed, inject, onMounted, useId, watch } from 'vue'
 import { routeLocationKey, routerKey } from 'vue-router'
 
 export interface AppTab {
@@ -99,6 +99,16 @@ const onKeydown = (event: KeyboardEvent, index: number) => {
 const remember = (key: string, element: unknown) => {
   if (element instanceof HTMLElement) buttons.set(key, element)
 }
+
+// A tab row that is wider than the screen scrolls sideways, so the selected tab is brought into view on the first render
+// (a deep link such as ?tab=configuration) and whenever the selection changes.
+const scrollSelectedIntoView = () => {
+  const key = selected.value
+  if (key) buttons.get(key)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+}
+
+onMounted(scrollSelectedIntoView)
+watch(selected, scrollSelectedIntoView, { flush: 'post' })
 </script>
 
 <template>
@@ -109,7 +119,7 @@ const remember = (key: string, element: unknown) => {
     <div
       role="tablist"
       :aria-label="label"
-      class="flex flex-wrap gap-1 border-b border-outline-variant"
+      class="flex flex-nowrap gap-1 overflow-x-auto border-b border-outline-variant pb-px scrollbar-hidden"
     >
       <button
         v-for="(tab, index) in tabs"
@@ -121,7 +131,7 @@ const remember = (key: string, element: unknown) => {
         :aria-selected="tab.key === selected"
         :aria-controls="panelId(tab.key)"
         :tabindex="tab.key === selected ? 0 : -1"
-        class="md-focus-ring md-label-large -mb-px min-h-6 min-w-6 border-b-2 px-4 py-2"
+        class="md-focus-ring md-label-large -mb-px min-h-6 min-w-6 shrink-0 border-b-2 px-4 py-2"
         :class="tab.key === selected ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'"
         @click="choose(tab.key)"
         @keydown="onKeydown($event, index)"
