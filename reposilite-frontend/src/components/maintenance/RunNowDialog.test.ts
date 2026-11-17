@@ -131,3 +131,75 @@ describe('RunNowDialog result', () => {
     expect(runButton()).toBeNull()
   })
 })
+
+describe('RunNowDialog focus and announcement', () => {
+  let opener: HTMLButtonElement | undefined
+
+  // The parent keeps the dialog's model in step, as the app does, so a close the dialog emits really closes it.
+  const openFromOpener = async () => {
+    opener = document.createElement('button')
+    opener.id = 'run-now-opener'
+    document.body.append(opener)
+    opener.focus()
+    wrapper = mount(RunNowDialog, {
+      props: {
+        modelValue: false,
+        policyId: 'snapshots-weekly',
+        running: false,
+        result: null,
+        error: null,
+        'onUpdate:modelValue': (value: boolean) => wrapper.setProps({ modelValue: value })
+      },
+      attachTo: document.body
+    }) as VueWrapper
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+  }
+
+  const dialog = () => document.getElementById('run-now-title')?.closest('[aria-modal="true"]') as HTMLElement
+
+  afterEach(() => {
+    opener?.remove()
+    opener = undefined
+  })
+
+  it('announces the dialog as an alertdialog', async () => {
+    await openFromOpener()
+
+    expect(dialog().getAttribute('role')).toBe('alertdialog')
+  })
+
+  it('describes the alertdialog with the warning that the run deletes artifacts', async () => {
+    await openFromOpener()
+
+    const describedBy = dialog().getAttribute('aria-describedby')
+    const description = describedBy ? document.getElementById(describedBy) : null
+
+    expect(description?.textContent).toContain('deletes the artifacts this policy selects')
+  })
+
+  it('moves the focus to Cancel when the dialog opens', async () => {
+    await openFromOpener()
+
+    expect(document.activeElement?.id).toBe('run-now-cancel')
+  })
+
+  it('returns the focus to the opener after Cancel closes the dialog', async () => {
+    await openFromOpener()
+
+    document.getElementById('run-now-cancel')?.click()
+    await flushPromises()
+
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('returns the focus to the opener after Escape closes the dialog', async () => {
+    await openFromOpener()
+
+    dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(document.activeElement).toBe(opener)
+  })
+})
