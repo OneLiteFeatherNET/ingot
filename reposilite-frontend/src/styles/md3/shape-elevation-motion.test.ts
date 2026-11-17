@@ -102,6 +102,8 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     ['--spacing-md-top-bar', '4rem'],
     ['--spacing-md-rail', '6rem'],
     ['--spacing-md-bottom-bar', '5rem'],
+    ['--spacing-md-inset-16', '1rem'],
+    ['--spacing-md-inset-72', '4.5rem'],
     ['--container-md-reading', '60rem'],
     ['--container-md-sheet', '20rem'],
     ['--container-md-snackbar', '35rem'],

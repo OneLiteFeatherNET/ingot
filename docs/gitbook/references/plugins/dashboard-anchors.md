@@ -102,9 +102,14 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-chip` | experimental | `src/components/md/MdChip.vue` | none | none |
 | `md-chip-input` | experimental | `src/components/md/MdChipInput.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
+| `md-divider` | experimental | `src/components/md/MdDivider.vue` | none | none |
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none |
+| `md-key-value-list` | experimental | `src/components/md/MdKeyValueList.vue` | none | none |
 | `md-linear-progress` | experimental | `src/components/md/MdLinearProgress.vue` | none | none |
+| `md-list` | experimental | `src/components/md/MdList.vue` | none | none |
+| `md-list-detail` | experimental | `src/components/md/MdListDetail.vue` | none | none |
+| `md-list-item` | experimental | `src/components/md/MdListItem.vue` | none | none |
 | `md-listbox` | experimental | `src/components/md/MdListbox.vue` | none | none |
 | `md-navigation-bar` | experimental | `src/components/md/MdNavigationBar.vue` | none | none |
 | `md-navigation-rail` | experimental | `src/components/md/MdNavigationRail.vue` | none | none |
@@ -112,6 +117,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-page` | experimental | `src/components/md/MdPage.vue` | none | none |
 | `md-page-header` | experimental | `src/components/md/MdPageHeader.vue` | none | none |
 | `md-radio` | experimental | `src/components/md/MdRadio.vue` | none | none |
+| `md-section` | experimental | `src/components/md/MdSection.vue` | none | none |
 | `md-select` | experimental | `src/components/md/MdSelect.vue` | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none |
 | `md-side-sheet` | experimental | `src/components/md/MdSideSheet.vue` | none | none |
