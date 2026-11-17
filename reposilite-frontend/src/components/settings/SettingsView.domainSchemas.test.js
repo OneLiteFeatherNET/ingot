@@ -98,6 +98,14 @@ describe.each(Object.keys(SCHEMAS).filter(domain => !isAccessDomain(domain)))('t
   })
 })
 
+describe('the width of the administration forms', () => {
+  it('lifts the reading measure from the Cleanup policies page, so its list and editor take the full width', async () => {
+    await mountDomain('cleanup')
+
+    expect(wrapper.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
+  })
+})
+
 describe.each(Object.keys(SCHEMAS))('the %s schema', (domain) => {
   // A fresh validator per test: a compiled schema is cached by its validator, so the shared one can hide a failure.
   it('compiles with a fresh validator, as the forms compile it', async () => {
