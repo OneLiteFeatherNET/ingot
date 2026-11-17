@@ -121,7 +121,7 @@ const remember = (key: string, element: unknown) => {
         :aria-selected="tab.key === selected"
         :aria-controls="panelId(tab.key)"
         :tabindex="tab.key === selected ? 0 : -1"
-        class="md-label-large -mb-px min-h-6 min-w-6 border-b-2 px-4 py-2 focus-visible:outline-2 focus-visible:outline-primary"
+        class="md-focus-ring md-label-large -mb-px min-h-6 min-w-6 border-b-2 px-4 py-2"
         :class="tab.key === selected ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'"
         @click="choose(tab.key)"
         @keydown="onKeydown($event, index)"
@@ -136,6 +136,7 @@ const remember = (key: string, element: unknown) => {
       :key="tab.key"
       role="tabpanel"
       tabindex="0"
+      class="md-focus-ring"
       :aria-labelledby="tabId(tab.key)"
       :hidden="tab.key !== selected"
     >

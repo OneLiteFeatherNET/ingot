@@ -116,6 +116,47 @@ describe('MdTabs value', () => {
   })
 })
 
+describe('MdTabs focus ring', () => {
+  it('draws the focus ring of a tab with the standard md-focus-ring utility, which shows only for keyboard focus', () => {
+    const tabs = mountTabs()
+
+    for (const tab of tabsOf(tabs)) {
+      expect(tab.classes(), `tab "${tab.text()}" takes the standard focus ring`).toContain('md-focus-ring')
+    }
+  })
+
+  it('draws no focus outline on a tab that is not the standard ring, so only focus-visible shows a ring', () => {
+    const tabs = mountTabs()
+
+    for (const tab of tabsOf(tabs)) {
+      const outlines = tab.classes().filter((name) => /outline|ring/.test(name))
+      expect(outlines.every((name) => name === 'md-focus-ring' || name.startsWith('focus-visible:')), `tab "${tab.text()}" outline classes: ${outlines.join(' ')}`).toBe(true)
+    }
+  })
+
+  it('draws the focus ring of the panel with the standard utility, so the browser default box does not show', () => {
+    const tabs = mountTabs()
+
+    const panel = tabs.find('[role="tabpanel"]')
+
+    expect(panel.classes(), 'the panel is a focus stop, so it takes the ring the other controls take').toContain('md-focus-ring')
+  })
+
+  it('keeps focus where it is when the address selects another tab, so no tab takes a ring after navigation', async () => {
+    const router = await routerAt('/settings/system-info?tab=overview')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    const outside = document.createElement('button')
+    document.body.appendChild(outside)
+    outside.focus()
+
+    await router.replace({ path: '/settings/system-info', query: { tab: 'environment' } })
+    await flushPromises()
+
+    expect(tabsOf(tabs)[2].attributes('aria-selected'), 'the address selected the tab').toBe('true')
+    expect(document.activeElement, 'focus did not move to the selected tab').toBe(outside)
+  })
+})
+
 describe('MdTabs address', () => {
   it('ignores the address when no query parameter is named, so the first tab stays selected', async () => {
     const router = await routerAt('/settings/system-info?tab=environment')
