@@ -22,18 +22,18 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 2. Server API (merged: `feat(console)`, #412 and #427)
 
-- [ ] 2.1 `test(console)`: command listing tests. Merged in #412.
-- [ ] 2.2 `test(console)`: structured execute tests, exit codes, streams, `data`, plain mode unchanged. Merged in #427.
-- [ ] 2.3 `test(console)`: confirmation tests for dangerous commands. Merged in #427.
-- [ ] 2.4 `feat(console)`: listing, structured execute, `isDangerous`, the `StructuredCommand` interface and the OpenAPI additions. Merged in
+- [x] 2.1 `test(console)`: command listing tests. Merged in #412.
+- [x] 2.2 `test(console)`: structured execute tests, exit codes, streams, `data`, plain mode unchanged. Merged in #427.
+- [x] 2.3 `test(console)`: confirmation tests for dangerous commands. Merged in #427.
+- [x] 2.4 `feat(console)`: listing, structured execute, `isDangerous`, the `StructuredCommand` interface and the OpenAPI additions. Merged in
   #412 and #427. The `scope` member is new and is task 4.8.
-- [ ] 2.5 Code pull request `feat(console): add a command listing and structured results to the console api`. Merged as #412 and #427.
+- [x] 2.5 Code pull request `feat(console): add a command listing and structured results to the console api`. Merged as #412 and #427.
 
 ## 3. Audit (merged: `feat(audit)`, #434)
 
-- [ ] 3.1 `test(audit)`: audit tests for the HTTP and websocket channels. Merged in #434.
-- [ ] 3.2 `feat(audit)`: `CONSOLE_COMMAND_EXECUTED` and its emission. Merged in #434. The `client` value from the hello is task 4.6.
-- [ ] 3.3 Code pull request `feat(audit): audit remote console commands`. Merged as #434.
+- [x] 3.1 `test(audit)`: audit tests for the HTTP and websocket channels. Merged in #434.
+- [x] 3.2 `feat(audit)`: `CONSOLE_COMMAND_EXECUTED` and its emission. Merged in #434. The `client` value from the hello is task 4.6.
+- [x] 3.3 Code pull request `feat(audit): audit remote console commands`. Merged as #434.
 
 ## 4. Server protocol (`feat(console)`, `test(console)`)
 
@@ -93,19 +93,19 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 6. The CLI, exec mode (`feat(cli)`, `test(cli)`)
 
-- [ ] 6.1 `test(cli)`: failing tests for configuration resolution as a pure function of flags, an environment map and a config file in a
+- [x] 6.1 `test(cli)`: failing tests for configuration resolution as a pure function of flags, an environment map and a config file in a
   temporary directory: order, contexts, refusal of an inline token, no `--token`, no `REPOSILITE_` fallback.
-- [ ] 6.2 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning,
+- [x] 6.2 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning,
   and a check that no output stream ever contains the secret.
 - [ ] 6.3 `test(cli)`: failing tests for exec mode against a stub HTTP server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines,
   stdin script with comments, an argument with a space, no prompt in a pipe, stdout holds only command output, and exit `6` when
   `GET /api/console/commands` answers `404`.
-- [ ] 6.4 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
+- [x] 6.4 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
   `--insecure` warning, no insecure switch in the config file.
 - [ ] 6.5 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` with its first code. Implement configuration, tokens, exec
   mode and TLS with picocli and `java.net.http.HttpClient`. Without a terminal, bare `ingot` prints usage and exits with code 2, because the
   interactive mode arrives in group 7. Verify: 6.1 to 6.4 are green and `./gradlew :ingot-cli:build` passes.
-- [ ] 6.6 Code pull request, title `feat(cli): add the ingot command line client`. Read the template and fill it as in 4.9. The CLI stays in this
+- [x] 6.6 Code pull request, title `feat(cli): add the ingot command line client`. Read the template and fill it as in 4.9. The CLI stays in this
   repository (open question 2, settled), so the title keeps its type and scope and nothing moves.
 
 ## 7. The CLI REPL over the shared websocket (`feat(cli)`, `test(cli)`)
@@ -132,14 +132,14 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   `heavy`, and the REPL starts.
 - [ ] 8.3 Evaluate a GraalVM native binary (open question 4): record build time, size and the reflection configuration cost in the pull
   request description, and only add it if the build sustains it. Verify: the result is written down either way.
-- [ ] 8.4 Code pull request, title `build(cli): package the cli as a jar and a container image`. Same description rules as 4.9.
+- [x] 8.4 Code pull request, title `build(cli): package the cli as a jar and a container image`. Same description rules as 4.9.
 - [ ] 8.5 `ci(cli)`: extend the "Container images" job to start the CLI image against the server image of the same run, assert `status`
   and `help` in exec mode, and assert that a version 1 hello gets a `welcome`. Add the second architecture build on pull requests like the
   server image, and extend the `changes` filter deny list for the CLI paths. Verify: the three drop-in questions of `CLAUDE.md` still pass
   for the server image.
-- [ ] 8.6 `ci(cli)`: release job for `ghcr.io/onelitefeathernet/ingot-cli` with `sbom: true` and `provenance: mode=max` on releases only, the
+- [x] 8.6 `ci(cli)`: release job for `ghcr.io/onelitefeathernet/ingot-cli` with `sbom: true` and `provenance: mode=max` on releases only, the
   registry back-off of the dashboard image, jar upload, signing and SBOM attachment. Verify: a dry run on a branch builds without pushing.
-- [ ] 8.7 Code pull request, title `ci(cli): build and publish the cli image`. Same description rules as 4.9.
+- [x] 8.7 Code pull request, title `ci(cli): build and publish the cli image`. Same description rules as 4.9.
 
 ## 9. Documentation (`docs(console)`, `test(docs)`)
 
