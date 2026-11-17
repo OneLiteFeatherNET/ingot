@@ -45,6 +45,27 @@ describe('MdCard', () => {
     expect(wrapper.classes()).toContain('shadow-elevation-1')
   })
 
+  it('low variant uses the surface-container-low background', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'low' } })
+
+    expect(wrapper.attributes('data-variant')).toBe('low')
+    expect(wrapper.classes()).toContain('bg-surface-container-low')
+  })
+
+  it('low variant has no shadow and no border', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'low' } })
+
+    expect(wrapper.classes(), 'the low card lies flat on the page').not.toContain('shadow-elevation-1')
+    expect(wrapper.classes(), 'the low card has no outline').not.toContain('border-outline-variant')
+  })
+
+  it('low variant keeps the medium corner radius and default padding of the hand-built cards', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'low' } })
+
+    expect(wrapper.classes()).toContain('rounded-corner-medium')
+    expect(wrapper.classes()).toContain('p-4')
+  })
+
   it('keeps the padding of the default card when no padding is given', () => {
     const wrapper = mount(MdCard)
 

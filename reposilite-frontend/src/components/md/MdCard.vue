@@ -20,12 +20,13 @@ import type { Component } from 'vue'
 /*
  * Material Design 3 card. A plain container: the content and its actions belong to the
  * slot. Pick the variant by how much the card must stand out from the page: elevated for
- * a card that floats, filled for grouped content, outlined for a quiet container.
+ * a card that floats, filled for grouped content, low for a flat tinted panel on the page,
+ * outlined for a quiet container.
  * `padding` is `none` for a card whose content draws its own inset, such as a table or a code block.
  * `as` draws the card as another element or component, such as a router link, with the same surface.
  */
 withDefaults(defineProps<{
-  variant?: 'elevated' | 'filled' | 'outlined'
+  variant?: 'elevated' | 'filled' | 'low' | 'outlined'
   padding?: 'default' | 'none'
   as?: string | Component
 }>(), {
@@ -46,6 +47,7 @@ const PADDINGS = {
 const VARIANTS = {
   elevated: 'bg-surface-container-low shadow-elevation-1',
   filled: 'bg-surface-container-highest',
+  low: 'bg-surface-container-low',
   outlined: 'border border-outline-variant bg-surface'
 }
 </script>

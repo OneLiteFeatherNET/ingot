@@ -457,7 +457,7 @@ Slot: `default` (the icon). The container and state layer are 40 by 40 px, the i
 
 Props:
 
-- `variant`: `'filled'` (default), `'elevated'`, `'outlined'`
+- `variant`: `'filled'` (default), `'elevated'`, `'low'`, `'outlined'`. `low` is the flat `surface-container-low` panel without a shadow, as hand-built cards used it
 
 Slot: `default`. The card adds the 12px corner radius and 16px padding.
 
