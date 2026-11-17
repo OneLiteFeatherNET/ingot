@@ -62,4 +62,16 @@ describe('MdSection', () => {
 
     expect(wrapper.attributes('data-ingot-component')).toBe('md-section')
   })
+
+  it('sets the level 2 title in the title-medium type role', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members' } })
+
+    expect(wrapper.get('h2').classes(), 'a level 2 title must use md-title-medium').toContain('md-title-medium')
+  })
+
+  it('sets the level 3 title in the title-small type role', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members', level: 3 } })
+
+    expect(wrapper.get('h3').classes(), 'a level 3 title must use md-title-small').toContain('md-title-small')
+  })
 })
