@@ -1286,6 +1286,10 @@
       },
       "LoginProvidersResponse" : {
         "properties" : {
+          "passwordMinLength" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "providers" : {
             "items" : {
               "$ref" : "#/components/schemas/LoginProviderDto"

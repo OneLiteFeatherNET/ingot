@@ -78,6 +78,10 @@ class LoginFacade internal constructor(
     fun setupRequired(): Boolean =
         service?.isSetupRequired() ?: false
 
+    /** The shortest password the server accepts for a new password, read from the login settings on every call. */
+    fun passwordMinLength(): Int =
+        settings().passwordPolicy.minLength
+
     /** The setup code to show in the log, `null` when no setup is required. */
     fun issueSetupCode(): String? =
         service?.issueSetupCode()
