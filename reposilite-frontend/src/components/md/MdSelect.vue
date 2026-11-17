@@ -366,6 +366,7 @@ onBeforeUnmount(() => {
         :class="labelClass"
       >{{ label }}</label>
       <span
+        v-if="!readonly"
         class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 [&>svg]:size-6"
         :class="iconClass"
         aria-hidden="true"
