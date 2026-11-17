@@ -1,18 +1,17 @@
 header:
   schema-version: 2.2.0
-  last-updated: '2026-11-14'
+  last-updated: '2026-11-17'
   last-reviewed: '2026-11-14'
   url: https://raw.githubusercontent.com/OneLiteFeatherNET/ingot/main/SECURITY-INSIGHTS.yml
   comment: |
-    OpenSSF Security Insights file for Ingot, a fork of Reposilite. Values marked TODO(onelitefeather)
-    are decided by the maintainers and filled in before this file is merged.
+    OpenSSF Security Insights file for Ingot, a fork of Reposilite.
 
 project:
   name: Ingot
   homepage: https://github.com/OneLiteFeatherNET/ingot
   roadmap: https://github.com/OneLiteFeatherNET/ingot/blob/main/ROADMAP.md
   administrators:
-    - name: 'TODO(onelitefeather): maintainer name'
+    - name: TheMeinerLP
       primary: true
   documentation:
     code-of-conduct: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/CODE_OF_CONDUCT.md
@@ -40,7 +39,7 @@ repository:
   accepts-change-request: true
   accepts-automated-change-request: true
   core-team:
-    - name: 'TODO(onelitefeather): maintainer name'
+    - name: TheMeinerLP
       primary: true
   documentation:
     contributing-guide: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/CONTRIBUTING.md
@@ -55,3 +54,5 @@ repository:
     distribution-points:
       - uri: https://github.com/OneLiteFeatherNET/ingot/releases
         comment: GitHub release page
+      - uri: https://ghcr.io/onelitefeathernet/ingot
+        comment: Container image
