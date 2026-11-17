@@ -28,6 +28,7 @@ import MdButton from '../md/MdButton.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 import { filterRows, tabForFragment } from './systemInfoTabs'
+import { formatUptime } from './uptime'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
 const session = useSession()
@@ -178,39 +179,37 @@ onMounted(() => {
     </p>
 
     <template v-else>
-      <header class="flex flex-col gap-4">
-        <p class="md-body-large text-on-surface-variant">
+      <header class="flex flex-col items-start gap-4">
+        <p class="md-body-large max-w-prose text-on-surface-variant">
           A zip with what a maintainer needs to look at this instance: the system information, the local and shared
           configuration, the cluster members, the plugins and the recent log lines of this instance only.
         </p>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <details
-            data-ingot-part="support-note"
-            class="md-body-medium max-w-prose text-on-surface-variant"
-          >
-            <summary class="md-label-large cursor-pointer text-on-surface">
-              What is removed
-            </summary>
-            <p class="mt-2">
-              Secrets are removed or masked before the bundle is built: passwords, access keys, tokens, bus credentials and the
-              database user and password. Values of settings that hold a secret are masked, and every log line is scrubbed of
-              known secrets and of credentials in headers and URLs.
-            </p>
-            <p class="mt-2">
-              Free text in a log line can still hold something no rule recognises, such as a customer name in a path.
-              Read the zip before you attach it to a public issue.
-            </p>
-          </details>
-          <button
-            type="button"
-            data-ingot-part="support-action"
-            class="md-label-large w-fit rounded-full bg-primary px-6 py-3 text-on-primary disabled:opacity-60"
-            :disabled="busy"
-            @click="downloadBundle"
-          >
-            Download support bundle
-          </button>
-        </div>
+        <details
+          data-ingot-part="support-note"
+          class="md-body-medium max-w-prose text-on-surface-variant"
+        >
+          <summary class="md-label-large w-fit cursor-pointer text-on-surface">
+            What is removed
+          </summary>
+          <p class="mt-2">
+            Secrets are removed or masked before the bundle is built: passwords, access keys, tokens, bus credentials and the
+            database user and password. Values of settings that hold a secret are masked, and every log line is scrubbed of
+            known secrets and of credentials in headers and URLs.
+          </p>
+          <p class="mt-2">
+            Free text in a log line can still hold something no rule recognises, such as a customer name in a path.
+            Read the zip before you attach it to a public issue.
+          </p>
+        </details>
+        <button
+          type="button"
+          data-ingot-part="support-action"
+          class="md-label-large w-fit rounded-full bg-primary px-6 py-3 text-on-primary disabled:opacity-60"
+          :disabled="busy"
+          @click="downloadBundle"
+        >
+          Download support bundle
+        </button>
       </header>
 
       <AppTabs
@@ -227,11 +226,11 @@ onMounted(() => {
           </p>
           <div
             v-else-if="tab === 'overview' && info"
-            class="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3"
+            class="grid grid-cols-1 gap-4 medium:grid-cols-2 expanded:grid-cols-3"
           >
             <article
               aria-labelledby="support-ingot"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-ingot"
@@ -239,18 +238,28 @@ onMounted(() => {
               >
                 Ingot
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-                <dt>Instance</dt><dd>{{ info.instance }}</dd>
-                <dt>Version</dt><dd>{{ info.ingot.version }}</dd>
-                <dt>Build time</dt><dd>{{ info.ingot.buildTime }}</dd>
-                <dt>Commit</dt><dd>{{ info.ingot.commit }}</dd>
-                <dt>Generated</dt><dd>{{ info.generatedAt }}</dd>
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                <dt>Instance</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.instance }}
+                </dd>
+                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.ingot.version }}
+                </dd>
+                <dt>Build time</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.ingot.buildTime }}
+                </dd>
+                <dt>Commit</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.ingot.commit }}
+                </dd>
+                <dt>Generated</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.generatedAt }}
+                </dd>
               </dl>
             </article>
 
             <article
               aria-labelledby="support-java"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-java"
@@ -258,13 +267,25 @@ onMounted(() => {
               >
                 Java
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-                <dt>Vendor</dt><dd>{{ info.jvm.vendor }}</dd>
-                <dt>Version</dt><dd>{{ info.jvm.version }}</dd>
-                <dt>Uptime</dt><dd>{{ info.jvm.uptimeMillis }} ms</dd>
-                <dt>Heap</dt><dd>{{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB</dd>
-                <dt>Processors</dt><dd>{{ info.jvm.processors }}</dd>
-                <dt>Threads</dt><dd>{{ info.jvm.threads }}</dd>
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                <dt>Vendor</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.jvm.vendor }}
+                </dd>
+                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.jvm.version }}
+                </dd>
+                <dt>Uptime</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ formatUptime(info.jvm.uptimeMillis) }}
+                </dd>
+                <dt>Heap</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB
+                </dd>
+                <dt>Processors</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.jvm.processors }}
+                </dd>
+                <dt>Threads</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.jvm.threads }}
+                </dd>
               </dl>
               <details>
                 <summary class="md-label-large cursor-pointer text-on-surface-variant">
@@ -283,7 +304,7 @@ onMounted(() => {
 
             <article
               aria-labelledby="support-os"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-os"
@@ -291,17 +312,25 @@ onMounted(() => {
               >
                 Operating system
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-                <dt>Name</dt><dd>{{ info.operatingSystem.name }}</dd>
-                <dt>Version</dt><dd>{{ info.operatingSystem.version }}</dd>
-                <dt>Architecture</dt><dd>{{ info.operatingSystem.architecture }}</dd>
-                <dt>Container</dt><dd>{{ info.operatingSystem.container ? 'yes' : 'no' }}</dd>
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                <dt>Name</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.operatingSystem.name }}
+                </dd>
+                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.operatingSystem.version }}
+                </dd>
+                <dt>Architecture</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.operatingSystem.architecture }}
+                </dd>
+                <dt>Container</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.operatingSystem.container ? 'yes' : 'no' }}
+                </dd>
               </dl>
             </article>
 
             <article
               aria-labelledby="support-database"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-database"
@@ -309,15 +338,19 @@ onMounted(() => {
               >
                 Database
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-                <dt>Kind</dt><dd>{{ info.database.kind }}</dd>
-                <dt>Endpoint</dt><dd>{{ info.database.endpoint ?? 'none' }}</dd>
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                <dt>Kind</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.database.kind }}
+                </dd>
+                <dt>Endpoint</dt><dd class="min-w-0 wrap-anywhere">
+                  {{ info.database.endpoint ?? 'none' }}
+                </dd>
               </dl>
             </article>
 
             <article
               aria-labelledby="support-storage"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-storage"
@@ -340,7 +373,7 @@ onMounted(() => {
 
             <article
               aria-labelledby="support-cluster"
-              class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+              class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
             >
               <h2
                 id="support-cluster"
@@ -352,8 +385,10 @@ onMounted(() => {
                 No cluster bus is configured. This instance runs alone.
               </p>
               <template v-else>
-                <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-                  <dt>Bus</dt><dd>{{ info.cluster.bus.state }} ({{ info.cluster.bus.transport }}, {{ info.cluster.bus.url }})</dd>
+                <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                  <dt>Bus</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ info.cluster.bus.state }} ({{ info.cluster.bus.transport }}, {{ info.cluster.bus.url }})
+                  </dd>
                 </dl>
                 <ul>
                   <li
@@ -417,12 +452,14 @@ onMounted(() => {
               >
                 Environment
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
                 <template
                   v-for="[name, value] in environmentRows"
                   :key="name"
                 >
-                  <dt>{{ name }}</dt><dd>{{ value }}</dd>
+                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ value }}
+                  </dd>
                 </template>
               </dl>
               <p
@@ -443,12 +480,14 @@ onMounted(() => {
               >
                 System properties
               </h2>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
                 <template
                   v-for="[name, value] in propertyRows"
                   :key="name"
                 >
-                  <dt>{{ name }}</dt><dd>{{ value }}</dd>
+                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ value }}
+                  </dd>
                 </template>
               </dl>
               <p
@@ -486,12 +525,14 @@ onMounted(() => {
               <h3 class="md-title-small text-on-surface">
                 Local
               </h3>
-              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
                 <template
                   v-for="[name, value] in localRows"
                   :key="name"
                 >
-                  <dt>{{ name }}</dt><dd>{{ value }}</dd>
+                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ value }}
+                  </dd>
                 </template>
               </dl>
               <p

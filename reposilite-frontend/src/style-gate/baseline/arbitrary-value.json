@@ -535,11 +535,6 @@
     "count": 1
   },
   {
-    "file": "src/components/support/SystemInfoView.vue",
-    "match": "grid-cols-[max-content_1fr]",
-    "count": 8
-  },
-  {
     "file": "src/components/tokens/SegmentedControl.vue",
     "match": "rounded-[20px]",
     "count": 1

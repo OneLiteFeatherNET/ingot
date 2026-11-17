@@ -108,6 +108,7 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     ['--container-md-sheet', '20rem'],
     ['--container-md-snackbar', '35rem'],
     ['--container-md-crumb', '10rem'],
+    ['--grid-md-key-value', 'auto minmax(0, 1fr)'],
   ])('declares the layout token %s as %s', (name, value) => {
     expect(shapeTheme, `${name} is a theme token`).toContain(`${name}: ${value};`)
   })

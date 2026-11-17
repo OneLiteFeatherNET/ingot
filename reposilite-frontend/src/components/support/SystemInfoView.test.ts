@@ -399,3 +399,81 @@ describe('SystemInfoView factory reset', () => {
     wrapper.unmount()
   })
 })
+
+describe('SystemInfoView layout of the cards', () => {
+  it('gives every card and every value cell a min-w-0, so a long value cannot push its card wider', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const overview = panelsOf(wrapper)[0]
+    for (const card of overview.findAll('article')) {
+      expect(card.classes(), `the card ${card.attributes('aria-labelledby')} may shrink below its content`).toContain('min-w-0')
+    }
+    for (const value of overview.findAll('dd')) {
+      expect(value.classes(), `the value "${value.text()}" may shrink below its content`).toContain('min-w-0')
+    }
+  })
+
+  it('wraps a value anywhere it does not fit, so an unbroken hostname or instance name stays inside its card', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    for (const value of panelsOf(wrapper)[0].findAll('dd')) {
+      expect(value.classes(), `the value "${value.text()}" wraps anywhere`).toContain('wrap-anywhere')
+    }
+  })
+
+  it('gives the environment values the same min-w-0 and wrap as the cards', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    for (const value of panelsOf(wrapper)[2].findAll('dd')) {
+      expect(value.classes(), `the environment value "${value.text()}" may shrink`).toContain('min-w-0')
+      expect(value.classes(), `the environment value "${value.text()}" wraps anywhere`).toContain('wrap-anywhere')
+    }
+  })
+})
+
+describe('SystemInfoView support action placement', () => {
+  // The disclosure of the header is the first one on the page: the tabs come after it.
+  const noteOf = (wrapper: Page) => wrapper.find('details')
+
+  it('draws the download button after the disclosure in the DOM', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const disclosure = noteOf(wrapper).element
+    const button = buttonNamed(wrapper, DOWNLOAD)!.element
+    expect(disclosure.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING, 'the button follows the disclosure').toBeTruthy()
+  })
+
+  it('does not place the button in a row with the disclosure, so toggling the disclosure cannot move it sideways', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const header = noteOf(wrapper).element.parentElement!
+    const button = buttonNamed(wrapper, DOWNLOAD)!.element
+    expect(button.parentElement, 'the button is a direct child of the header column').toBe(header)
+    expect(header.className, 'the header stacks its children in a column').toMatch(/\bflex-col\b/)
+    expect(header.className, 'the header is not a wrapping row').not.toMatch(/\bflex-wrap\b/)
+  })
+
+  it('makes the disclosure summary only as wide as its label, so the focus outline hugs the text', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    expect(noteOf(wrapper).find('summary').classes(), 'the summary is fit to its content').toContain('w-fit')
+  })
+})
+
+describe('SystemInfoView uptime', () => {
+  it('shows the uptime of the JVM in minutes and seconds, not as raw milliseconds', async () => {
+    // given: a JVM that has been up for 700926 milliseconds
+    const wrapper = await mountView(withInfo({ ...FIXTURE, jvm: { ...FIXTURE.jvm, uptimeMillis: 700926 } }))
+    await flushPromises()
+
+    // then: the value of the Uptime row reads as a duration
+    const term = panelsOf(wrapper)[0].findAll('dt').find(item => item.text() === 'Uptime')!
+    expect(term.element.nextElementSibling?.textContent).toBe('11 min 40 s')
+  })
+})

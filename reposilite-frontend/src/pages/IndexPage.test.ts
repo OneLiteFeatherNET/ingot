@@ -117,6 +117,12 @@ vi.mock('../components/account/AccountView.vue', sectionStub('AccountStub', 'acc
 vi.mock('../components/audit/AuditView.vue', sectionStub('AuditStub', 'audit'))
 vi.mock('../components/search/SearchView.vue', sectionStub('SearchStub', 'search'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
+vi.mock('../components/support/SystemInfoView.vue', sectionStub('SystemInfoStub', 'system-info'))
+// The support gate is answered by the test: the bundle check is ready, and the page is offered through the registry.
+vi.mock('../store/supportBundle', async () => {
+  const { ref: makeRef } = await import('vue')
+  return { supportBundleReady: makeRef(true), loadSupportBundle: vi.fn(), clearSupportBundle: vi.fn() }
+})
 
 const QUALIFIER = { path: '', watchable: 0 }
 
@@ -870,5 +876,27 @@ describe('IndexPage Administration tree', () => {
     await mountAt('/audit', { logged: true, nodes: ['ingot.admin.audit'], client })
 
     expect(client.settings.domains, 'the visitor without the node causes no request that would answer 403').not.toHaveBeenCalled()
+  })
+})
+
+describe('IndexPage system information frame', () => {
+  // The registry is loaded when a test needs it, which keeps the page's type intact for the lint of this file.
+  const offerSupportPages = async (offered: boolean) => {
+    const { setSupportBundleOffered } = await import('../navigation/registry')
+    setSupportBundleOffered(offered)
+  }
+
+  afterEach(async () => {
+    await offerSupportPages(false)
+  })
+
+  it('lets the system information page use the full width, so it is not held to the reading measure', async () => {
+    await offerSupportPages(true)
+
+    const { wrapper } = await mountAt('/settings/system-info', { manager: true })
+
+    expect(wrapper.find('[data-section="system-info"]').exists(), 'the page is on screen').toBe(true)
+    const frame = wrapper.findComponent({ name: 'AdministrationFrame' }) as StubWrapper
+    expect(frame.props('reading'), 'the frame is not a reading page').toBe(false)
   })
 })
