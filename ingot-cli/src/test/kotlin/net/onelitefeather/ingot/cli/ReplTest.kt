@@ -251,6 +251,20 @@ internal class ReplTest {
     }
 
     @Test
+    fun `should answer no and keep the REPL running when Ctrl-D ends the confirmation`() {
+        // given: a server that asks for confirmation of `stop` and answers `status`
+        stubWithListing().use { stub ->
+            // when: the operator enters `stop`, presses Ctrl-D at the question, and then enters `status`
+            val session = runScripted(stub, "stop\n\u0004status\n")
+
+            // then: nothing is confirmed, the later command still runs, and the REPL leaves normally at end of input
+            assertThat(stub.executed().none { it.query?.contains("confirm=true") == true }).isTrue()
+            assertThat(stub.executed().map { it.body }).containsExactly("stop", "status")
+            assertThat(session.exit).isEqualTo(ExitCode.OK)
+        }
+    }
+
+    @Test
     fun `should print the older server notice once and keep running commands when the listing is absent`() {
         // given: a server without /api/console/commands
         stubWithListing(listingStatus = 404).use { stub ->
