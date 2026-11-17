@@ -15,11 +15,16 @@
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import download from 'downloadjs'
 import FileList from './FileList.vue'
 import { useAdjustments } from '../../store/adjustments'
-import { sessionState } from '../../store/session'
+import type { Ref } from 'vue'
+import * as session from '../../store/session'
+
+// The mock above also exports the state the tests set. The real session module does not, so the type says what the mock holds.
+type SessionStateMock = { client: Ref<unknown>; token: Ref<{ name: string; secret: string }> }
+const { sessionState } = session as unknown as { sessionState: SessionStateMock }
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }))
 
@@ -55,7 +60,7 @@ vi.mock('../../store/qualifier', () => ({
 
 const jar = { name: 'example-1.0.jar', type: 'FILE', contentLength: 2048 }
 
-const mountList = (props) =>
+const mountList = (props: Record<string, unknown> = {}) =>
   mount(FileList, {
     props: {
       qualifier: { path: 'releases/net/example' },
@@ -68,7 +73,7 @@ const mountList = (props) =>
     global: { stubs: { 'router-link': RouterLinkStub } }
   })
 
-const buttonWithText = (wrapper, text) =>
+const buttonWithText = (wrapper: VueWrapper, text: string) =>
   wrapper.findAll('button').find(button => button.text() === text)
 
 describe('FileList missing directory', () => {
@@ -85,7 +90,7 @@ describe('FileList missing directory', () => {
   it('offers to go to the parent directory', async () => {
     const wrapper = mountList({ files: { list: [], error: 'not-found' } })
 
-    await buttonWithText(wrapper, 'Go to parent').trigger('click')
+    await buttonWithText(wrapper, 'Go to parent')!.trigger('click')
 
     expect(routerPush, 'the parent is the browse route of the directory above').toHaveBeenCalledWith({ name: 'browse', params: { qualifier: ['releases', 'net'] } })
   })
@@ -93,7 +98,7 @@ describe('FileList missing directory', () => {
   it('offers to go to the repository root', async () => {
     const wrapper = mountList({ files: { list: [], error: 'not-found' } })
 
-    await buttonWithText(wrapper, 'Go to repository root').trigger('click')
+    await buttonWithText(wrapper, 'Go to repository root')!.trigger('click')
 
     expect(routerPush, 'the root is the first segment of the browsed path').toHaveBeenCalledWith({ name: 'browse', params: { qualifier: ['releases'] } })
   })
@@ -133,7 +138,7 @@ describe('FileList empty state', () => {
   it('shows the utility files when the hidden-files action is pressed', async () => {
     const wrapper = mountList({ files: { list: [], error: false }, hiddenCount: 2 })
 
-    await buttonWithText(wrapper, 'Show utility files').trigger('click')
+    await buttonWithText(wrapper, 'Show utility files')!.trigger('click')
 
     expect(useAdjustments().displayHashFiles.value, 'the adjustment is switched on').toBe(true)
   })
@@ -145,24 +150,24 @@ describe('FileList empty state', () => {
   })
 })
 
-const signedInAs = (name, secret) => {
+const signedInAs = (name: string, secret: string) => {
   sessionState.token.value = { name, secret }
 }
 
 // A download that stays pending until the test settles it.
 const pendingDownload = () => {
-  let settle
+  let settle!: { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
   const promise = new Promise((resolve, reject) => {
     settle = { resolve, reject }
   })
   return { promise, settle }
 }
 
-const fileLink = (wrapper) =>
+const fileLink = (wrapper: VueWrapper) =>
   wrapper.find('a[href$="example-1.0.jar"]')
 
 describe('FileList downloads', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
   beforeEach(() => {
     vi.mocked(download).mockClear()
@@ -179,7 +184,7 @@ describe('FileList downloads', () => {
     sessionState.client.value = { maven }
     wrapper = mountList({ files: { list: [jar], error: false } })
 
-    fileLink(wrapper).trigger('click')
+    void fileLink(wrapper).trigger('click')
 
     expect(maven.download, 'no request is made by the page, the browser follows the link').not.toHaveBeenCalled()
     expect(fileLink(wrapper).attributes('href'), 'the link points at the file').toContain('example-1.0.jar')
@@ -191,7 +196,7 @@ describe('FileList downloads', () => {
     signedInAs('me', 'secret')
     wrapper = mountList({ files: { list: [jar], error: false } })
 
-    fileLink(wrapper).trigger('click')
+    void fileLink(wrapper).trigger('click')
     await flushPromises()
 
     expect(maven.download, 'the request carries the signed-in credentials').toHaveBeenCalledWith('releases/net/example/example-1.0.jar')
@@ -204,7 +209,7 @@ describe('FileList downloads', () => {
     signedInAs('me', 'secret')
     wrapper = mountList({ files: { list: [jar], error: false } })
 
-    fileLink(wrapper).trigger('click')
+    void fileLink(wrapper).trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[role="progressbar"]').exists(), 'the row reports that it is downloading').toBe(true)
@@ -216,7 +221,7 @@ describe('FileList downloads', () => {
     signedInAs('me', 'secret')
     wrapper = mountList({ files: { list: [jar], error: false } })
 
-    fileLink(wrapper).trigger('click')
+    void fileLink(wrapper).trigger('click')
     pending.settle.resolve({ data: 'bytes', headers: {} })
     await flushPromises()
 
@@ -299,7 +304,7 @@ describe('FileList includes section', () => {
     const empty = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Directory is empty')
     expect(empty, 'the empty state is still stated').toBeDefined()
     expect(wrapper.find('#browser-list').findAll('svg'), 'no icon is drawn in the empty state').toHaveLength(0)
-    expect(empty.text(), 'the text has no glyph outside printable ASCII').toMatch(/^[ -~]*$/)
+    expect(empty!.text(), 'the text has no glyph outside printable ASCII').toMatch(/^[ -~]*$/)
   })
 })
 
@@ -313,7 +318,7 @@ describe('FileList edit members of a group', () => {
 
     const edit = wrapper.findAll('button').find(button => button.text() === 'Edit members')
     expect(edit, 'the group has an edit action for managers').toBeDefined()
-    await edit.trigger('click')
+    await edit!.trigger('click')
 
     expect(routerPush).toHaveBeenCalledWith({
       name: 'settings-repository',
@@ -341,13 +346,13 @@ describe('FileList action slot', () => {
     const wrapper = mountList({ files: { list: [jar], error: false } })
     const rows = wrapper.findAllComponents({ name: 'DetailedListEntry' })
 
-    expect(rows.map(row => row.props('actionSlots')), 'a signed-out listing of jars reserves nothing').toEqual([0])
+    expect(rows.map(row => row.props('actionSlots') as number), 'a signed-out listing of jars reserves nothing').toEqual([0])
   })
 
   it('gives every row the room of the widest row, so the sizes line up', () => {
     const wrapper = mountList({ files: { list: [jar, xml], error: false } })
     const rows = wrapper.findAllComponents({ name: 'DetailedListEntry' })
 
-    expect(rows.map(row => row.props('actionSlots')), 'the xml row offers one action, so each row reserves one').toEqual([1, 1])
+    expect(rows.map(row => row.props('actionSlots') as number), 'the xml row offers one action, so each row reserves one').toEqual([1, 1])
   })
 })

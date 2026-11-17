@@ -14,8 +14,10 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { AxiosResponse } from 'axios'
+import type { components } from '../../types/api'
 import { useAdjustments } from '../../store/adjustments'
 import { useSession } from '../../store/session'
 import AdjustmentsModal from './AdjustmentsModal.vue'
@@ -27,22 +29,22 @@ import BrowserIcon from './BrowserIcon.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import { typeBadgeOf } from '../../store/maven/repositoryTypes'
 import MdIconButton from '../md/MdIconButton.vue'
-import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
 import { classifyListingError } from './listingError'
+import type { BrowserFile, BrowserQualifier, Listing } from './listing'
 
-const props = defineProps({
-  qualifier: property(Object, true)
-})
+const props = defineProps<{
+  qualifier: BrowserQualifier
+}>()
 
-const files = ref({})
+const files = ref<Partial<Listing>>({})
 const loading = ref(true)
 const { details, client, hasPermissionTo, sessionReady, isManager } = useSession()
 const { applyAdjustments, countHiddenFiles } = useAdjustments()
 
 const processedFiles = computed(() => ({
   ...files.value,
-  list: applyAdjustments([...files.value.list ?? []])
+  list: applyAdjustments([...files.value.list ?? []]) as BrowserFile[]
 }))
 
 // Hidden utility files are counted here, on the listing as the server sent it.
@@ -57,7 +59,7 @@ const readOnlyType = computed(() => {
   return badge && !badge.legacy && (badge.key === 'proxy' || badge.key === 'group') ? badge.key : ''
 })
 
-const READ_ONLY_TEXT = {
+const READ_ONLY_TEXT: Record<string, string> = {
   proxy: 'This is a proxy repository. Its files are fetched from the remote repositories it is set up with. Upload to a hosted repository instead.',
   group: 'This is a group repository. It lists the repositories above and has no files of its own. Upload to one of the repositories it lists instead.'
 }
@@ -71,9 +73,9 @@ const canUpload = computed(() => {
 })
 
 // The root of a repository is the only place a group lists the repositories it references.
-const isRepositoryRoot = (path) => path.length > 0 && !path.includes('/')
+const isRepositoryRoot = (path: string) => path.length > 0 && !path.includes('/')
 
-const members = ref([])
+const members = ref<string[]>([])
 
 // Asked again when the session changes, since what a caller may see of the references changes with it.
 // A failed request leaves the listing as it was, with no references and no error of its own.
@@ -87,7 +89,7 @@ watch(
     }
 
     const isStale = () => path !== props.qualifier.path
-    new Promise(resolve => resolve(client.value.maven.members(path)))
+    new Promise<AxiosResponse<components['schemas']['RepositoryMembersResponse']>>(resolve => resolve(client.value.maven.members(path)))
       .then(response => {
         if (!isStale()) members.value = response.data.members ?? []
       })
@@ -100,7 +102,7 @@ watch(
 
 // The repository this browser is in, from the repository list, for the badge of its type. Asked once per
 // repository, so browsing down its directories does not ask again. A failed request shows no badge.
-const repositoryEntry = ref(null)
+const repositoryEntry = ref<components['schemas']['RepositoryListEntry'] | null>(null)
 const repositoryId = computed(() => props.qualifier.path.split('/')[0])
 
 watch(
@@ -113,7 +115,7 @@ watch(
     }
 
     const isStale = () => id !== repositoryId.value
-    new Promise(resolve => resolve(client.value.maven.repositories()))
+    new Promise<AxiosResponse<components['schemas']['RepositoryListEntriesResponse']>>(resolve => resolve(client.value.maven.repositories()))
       .then(response => {
         if (!isStale()) repositoryEntry.value = (response.data.repositories ?? []).find(entry => String(entry.id) === id) ?? null
       })
@@ -142,7 +144,7 @@ watch(
     loading.value = true
 
     client.value.maven.details(qualifier)
-      .then(response => {
+      .then((response: AxiosResponse<{ files: BrowserFile[] }>) => {
         if (isStale()) return
         files.value = {
           list: response.data.files,
@@ -167,7 +169,7 @@ watch(
           const uniqueIntermediateDirectories = [...new Set(intermediateDirectories)]
 
           files.value = {
-            list: uniqueIntermediateDirectories.map(directory => ({
+            list: uniqueIntermediateDirectories.map((directory): BrowserFile => ({
               name: directory,
               type: 'DIRECTORY',
               list: []
