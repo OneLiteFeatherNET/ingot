@@ -106,3 +106,8 @@ change is the first provider that uses both, which proves the seam for the later
   run against one container.
 - `openspec validate add-azure-blob-storage-plugin --strict` passes, and
   `grep -rnP '[\x{2013}\x{2014}]' openspec/changes/add-azure-blob-storage-plugin` prints nothing.
+
+## Vendor claims (task 0.1)
+
+Task 0.1 is ticked, but the vendor claims in this proposal and in the design were not independently verified against the vendor
+documentation before archiving. Treat them as assumptions until a later change records the sources and dates.
