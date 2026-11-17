@@ -59,6 +59,8 @@ class Viewer internal constructor(/* identifier and subject, not public */) {
 }
 ```
 
+The plugin gets the `AccessTokenDto?` from `accessed { }` and passes it to `viewerOf` (Q1, settled 2026-11-17).
+
 `Viewer` has no public constructor, no public property of the token or the subject, and no `toString` that shows either. Every method is
 a question with a boolean or a set answer. Errors of the routes (`401`, `403`, `404`) are not exposed; a plugin that needs a status code
 maps `false` itself.
@@ -109,7 +111,8 @@ of the change asserts that no public member of `net.onelitefeather.ingot.access`
 `searchAccess()` returns the `SearchAccess` of `search/access/SearchAccess.kt:25`. It is the value the search engine takes as a parameter
 (`ArtifactSearchEngine.facets(query, access)`, `ArtifactSearchEngine.kt:36`). Returning it makes `SearchAccess`, `RepositoryAccess` and the
 `PathPredicate` hierarchy part of the plugin API surface. They are added to the allowlist of `add-plugin-api-artifact` with the experimental
-marker, and the closure check of that change decides whether the hierarchy closes without further types (Q2).
+marker, and the closure check of that change decides whether the hierarchy closes without further types. This change exposes the access value only,
+not the query path of the search engine (Q2, settled 2026-11-17).
 
 ### D8: operations and drop-in
 
@@ -139,15 +142,16 @@ facade in the plugin context; installations without a plugin never call it.
 - **Search access types grow the closure.** Mitigation: D7 and Q2 measure it before merge.
 - **Merge order with the authorizer chain.** Mitigation: D5, a switch that changes no public type.
 
-## Open questions (each has a default)
+## Open questions (settled 2026-11-17)
 
-- **Q1. Where the viewer comes from.** Default: the plugin passes the `AccessTokenDto?` of `accessed { }` to `viewerOf`. Alternative: a
-  request-scoped helper in the web facade that resolves the viewer once per request.
-- **Q2. Read path of the search engine.** Default: this change exposes the access value only; the portal's query path is `SearchFacade.engine`,
-  a public property of a facade whose constructor is internal, and its allowlisting is decided after the closure of D7 is measured.
-  Alternative: a separate read-only search facade with only the query, facets and files methods.
-- **Q3. Result type.** Default: `Boolean` and `Set<String>`. Alternative: a result type with a reason, which would reintroduce the status
-  distinction of D4.
-- **Q4. Hidden repositories in listings.** Default: `canListRepository` answers as the route does, so a `HIDDEN` repository is not listed
-  without `canListHidden`.
-- **Q5. Caching.** Default: none. Each call evaluates the rules, which is what the routes do.
+Each question is settled with the default its proposal gives. The decisions are in D1 to D7.
+
+- **Q1. Where the viewer comes from.** Settled: the plugin passes the `AccessTokenDto?` of `accessed { }` to `viewerOf` (D1). The
+  request-scoped helper is not part of this change.
+- **Q2. Read path of the search engine.** Settled: this change exposes the access value only (D7). The query path (`SearchFacade.engine`)
+  is not allowlisted here. Its allowlisting is decided after the closure of D7 is measured (task 5.2). The separate read-only search facade
+  is not part of this change.
+- **Q3. Result type.** Settled: `Boolean` and `Set<String>` (D1, D4). No result type carries a reason.
+- **Q4. Hidden repositories in listings.** Settled: `canListRepository` answers as the route does, so a `HIDDEN` repository is not listed
+  without `canListHidden` (D2).
+- **Q5. Caching.** Settled: none. Each call evaluates the rules, as the routes do (see Non-goals).
