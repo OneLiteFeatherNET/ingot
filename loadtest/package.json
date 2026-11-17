@@ -1,0 +1,18 @@
+{
+  "name": "ingot-loadtest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "k6 load tests for Ingot deployment shapes, written in TypeScript",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"lib/**/*.test.ts\" \"runner/**/*.test.ts\" \"scenarios/**/*.test.ts\" \"profiles/**/*.test.ts\"",
+    "load": "tsx runner/main.ts"
+  },
+  "devDependencies": {
+    "@types/k6": "1.7.0",
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}
