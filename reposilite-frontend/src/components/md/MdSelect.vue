@@ -55,11 +55,13 @@ const props = withDefaults(defineProps<{
   id?: string
   disabled?: boolean
   required?: boolean
+  readonly?: boolean
 }>(), {
   modelValue: '',
   supportingText: '',
   errorText: '',
-  id: ''
+  id: '',
+  readonly: false
 })
 
 const emit = defineEmits<{
@@ -170,7 +172,7 @@ function scrollActiveIntoView() {
 }
 
 function openMenu() {
-  if (props.disabled || props.options.length === 0 || isOpen.value) return
+  if (props.disabled || props.readonly || props.options.length === 0 || isOpen.value) return
   active.value = selectedIndex.value >= 0 ? selectedIndex.value : 0
   place()
   isOpen.value = true
@@ -232,7 +234,7 @@ function typeAhead(letter: string) {
 const SINGLE_CHARACTER = /^\S$/
 
 function onKeydown(event: KeyboardEvent) {
-  if (props.disabled) return
+  if (props.disabled || props.readonly) return
   const key = event.key
   const plain = !event.ctrlKey && !event.metaKey && !event.altKey
 
@@ -286,7 +288,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function onClick() {
-  if (props.disabled) return
+  if (props.disabled || props.readonly) return
   if (isOpen.value) {
     closeMenu()
   } else {
@@ -347,6 +349,7 @@ onBeforeUnmount(() => {
         :aria-describedby="describedBy"
         :aria-invalid="error ? 'true' : undefined"
         :aria-required="required ? 'true' : undefined"
+        :aria-readonly="readonly ? 'true' : undefined"
         :aria-disabled="disabled ? 'true' : undefined"
         :tabindex="disabled ? -1 : 0"
         class="peer relative flex h-14 w-full cursor-pointer select-none items-center rounded-corner-extra-small border bg-transparent pl-4 pr-12 md-body-large outline-none"

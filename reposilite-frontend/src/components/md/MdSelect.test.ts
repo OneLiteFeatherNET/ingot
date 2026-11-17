@@ -425,6 +425,46 @@ describe('MdSelect', () => {
     })
   })
 
+  describe('read only', () => {
+    it('keeps the field focusable and marks it aria-readonly', () => {
+      const wrapper = mountSelect({ readonly: true, modelValue: 'PUBLIC' })
+
+      expect(combobox(wrapper).attributes('tabindex'), 'a read only field stays in the tab order').toBe('0')
+      expect(combobox(wrapper).attributes('aria-readonly')).toBe('true')
+    })
+
+    it('shows the chosen value while read only', () => {
+      const wrapper = mountSelect({ readonly: true, modelValue: 'HIDDEN' })
+
+      expect(combobox(wrapper).text()).toBe('Hidden')
+    })
+
+    it('does not open the menu on click or on ArrowDown', async () => {
+      const wrapper = mountSelect({ readonly: true, modelValue: 'PUBLIC' })
+
+      await open(wrapper)
+      await press(wrapper, 'ArrowDown')
+
+      expect(isOpen(wrapper), 'a read only field has no menu').toBe(false)
+    })
+
+    it('does not change the value on a typed letter, Enter or Space', async () => {
+      const wrapper = mountSelect({ readonly: true, modelValue: 'PUBLIC' })
+
+      await press(wrapper, 'h')
+      await press(wrapper, 'Enter')
+      await press(wrapper, ' ')
+
+      expect(wrapper.emitted('update:modelValue'), 'no value is emitted').toBeUndefined()
+    })
+
+    it('does not mark a field read only unless readonly is set', () => {
+      const wrapper = mountSelect({ modelValue: 'PUBLIC' })
+
+      expect(combobox(wrapper).attributes('aria-readonly')).toBeUndefined()
+    })
+  })
+
   describe('focus', () => {
     const focusVariants = (element: Element) => [...element.classList].filter((name) => name.startsWith('focus:'))
     const peerFocusVariants = (element: Element) => [...element.classList].filter((name) => name.startsWith('peer-focus:'))
