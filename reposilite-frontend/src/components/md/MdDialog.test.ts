@@ -34,6 +34,9 @@ afterEach(() => {
 const frame = () => document.querySelector<HTMLElement>('.vfm__content > div')!
 const dialogRoot = () => document.querySelector<HTMLElement>('.vfm')!
 const focusables = () => [...frame().querySelectorAll<HTMLElement>('button')]
+// Every element of the dialog subtree with a dialog role, the modal root included (a descendant selector would skip it).
+const dialogRoles = () => [...document.querySelectorAll<HTMLElement>('.vfm, .vfm *')]
+  .filter(element => ['dialog', 'alertdialog'].includes(element.getAttribute('role') ?? ''))
 
 interface DialogOptions {
   open?: boolean
@@ -110,13 +113,30 @@ describe('MdDialog', () => {
     }
   })
 
-  it('is a dialog role by default, and an alertdialog when role is set', async () => {
+  it('exposes exactly one element with role dialog by default', async () => {
     await mountDialog()
-    expect(frame().getAttribute('role'), 'the default role is dialog').toBe('dialog')
-    document.body.querySelectorAll('.vfm').forEach(element => element.remove())
 
+    const roles = dialogRoles()
+    expect(roles.length, 'the dialog subtree has one dialog role, not one per layer').toBe(1)
+    expect(roles[0].getAttribute('role'), 'the single role is dialog').toBe('dialog')
+  })
+
+  it('exposes exactly one alertdialog role when role is alertdialog, named by the title', async () => {
+    await mountDialog({ role: 'alertdialog', labelledby: 'token-title' })
+
+    const roles = dialogRoles()
+    expect(roles.length, 'the dialog subtree has one dialog role').toBe(1)
+    expect(roles[0].getAttribute('role'), 'the single role is alertdialog').toBe('alertdialog')
+    const name = document.getElementById(roles[0].getAttribute('aria-labelledby')!)
+    expect(name?.textContent.trim(), 'the alertdialog is named by the title').toBe('Create token')
+  })
+
+  it('leaves the role and the name to the modal root, not the frame', async () => {
     await mountDialog({ role: 'alertdialog' })
-    expect(frame().getAttribute('role'), 'the role prop sets alertdialog').toBe('alertdialog')
+
+    expect(frame().hasAttribute('role'), 'the frame carries no role').toBe(false)
+    expect(frame().hasAttribute('aria-labelledby'), 'the frame carries no name').toBe(false)
+    expect(frame().hasAttribute('aria-modal'), 'the frame carries no modal flag').toBe(false)
   })
 
   it('names the dialog by the heading of the header slot through the labelledby id', async () => {

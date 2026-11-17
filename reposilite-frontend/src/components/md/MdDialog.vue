@@ -98,6 +98,17 @@ watch(frame, (element) => {
   target?.focus()
 }, { flush: 'post' })
 
+// The dialog role and its name belong to one element. vue-final-modal renders its root with the fixed role "dialog", and
+// a role passed through attrs does not replace it, so the root gets the role of the `role` prop after it renders. The
+// frame carries neither. Limit: the root's role is written to the DOM outside the template. Vue does not reset it on a
+// later render, because the template value stays "dialog". A vue-final-modal release that binds the role from a prop
+// needs this step removed.
+const applyRootRole = () => {
+  frame.value?.closest('.vfm')?.setAttribute('role', props.role)
+}
+watch(frame, applyRootRole, { flush: 'post' })
+watch(() => props.role, applyRootRole, { flush: 'post' })
+
 watch(() => props.modelValue, async (open) => {
   if (open) {
     openerChain = chainFrom(document.activeElement as HTMLElement | null)
@@ -146,10 +157,6 @@ const onKeydown = (event: KeyboardEvent) => {
   >
     <div
       ref="frame"
-      :role="role"
-      aria-modal="true"
-      :aria-labelledby="labelledby"
-      :aria-describedby="describedby"
       :class="[SIZES[size], 'mx-auto max-h-[90dvh] w-full min-w-70 overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3']"
       data-ingot-component="dialog-shell"
       @keydown="onKeydown"
