@@ -23,9 +23,11 @@ import LoginModal from './LoginModal.vue'
 import { openLogin } from '../../store/login'
 import { useSession } from '../../store/session'
 import { resetClock, setClock } from '../../helpers/clock'
+import { rateLimitMessage } from '../../helpers/rate-limit'
+import { WebAuthnCancelledError } from '../../store/webauthn'
 
 // The shape of the session actions the dialog calls. Each one is a spy that the tests replace the answer of.
-type ActionFn = (...args: unknown[]) => Promise<void>
+type ActionFn = (...args: unknown[]) => Promise<unknown>
 
 // The actions that reach the server are replaced; the state refs and the failure wording are the
 // real ones, so the dialog is tested with the mapping the app actually uses.
@@ -33,7 +35,17 @@ const actions = vi.hoisted(() => ({
   signInWithPassword: vi.fn<ActionFn>(),
   signInWithToken: vi.fn<ActionFn>(),
   completeSetup: vi.fn<ActionFn>(),
-  loadProviders: vi.fn<ActionFn>()
+  loadProviders: vi.fn<ActionFn>(),
+  completeSecondFactor: vi.fn<ActionFn>(),
+  completePasskeySecondFactor: vi.fn<ActionFn>()
+}))
+
+// Whether the browser has WebAuthn is a switch the tests set. The helper's conversions are tested on their own.
+const passkeys = vi.hoisted(() => ({ supported: true }))
+
+vi.mock('../../store/webauthn', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../store/webauthn')>()),
+  isWebAuthnSupported: () => passkeys.supported
 }))
 
 vi.mock('../../store/session', async (importOriginal) => {
@@ -45,7 +57,9 @@ vi.mock('../../store/session', async (importOriginal) => {
       signInWithPassword: (...args: unknown[]) => actions.signInWithPassword(...args),
       signInWithToken: (...args: unknown[]) => actions.signInWithToken(...args),
       completeSetup: (...args: unknown[]) => actions.completeSetup(...args),
-      loadProviders: (...args: unknown[]) => actions.loadProviders(...args)
+      loadProviders: (...args: unknown[]) => actions.loadProviders(...args),
+      completeSecondFactor: (...args: unknown[]) => actions.completeSecondFactor(...args),
+      completePasskeySecondFactor: (...args: unknown[]) => actions.completePasskeySecondFactor(...args)
     })
   }
 })
@@ -109,10 +123,13 @@ describe('LoginModal', () => {
   })
 
   beforeEach(async () => {
-    actions.signInWithPassword = vi.fn<ActionFn>().mockResolvedValue()
-    actions.signInWithToken = vi.fn<ActionFn>().mockResolvedValue()
-    actions.completeSetup = vi.fn<ActionFn>().mockResolvedValue()
-    actions.loadProviders = vi.fn<ActionFn>().mockResolvedValue()
+    actions.signInWithPassword = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    actions.signInWithToken = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    actions.completeSetup = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    actions.loadProviders = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    actions.completeSecondFactor = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    actions.completePasskeySecondFactor = vi.fn<ActionFn>().mockResolvedValue(undefined)
+    passkeys.supported = true
     store = useSession()
     store.providers.value = [LOCAL]
     store.setupRequired.value = false
@@ -357,7 +374,7 @@ describe('LoginModal', () => {
 
     it('sends the next attempt after the wait', async () => {
       await submitLimited({ 'retry-after': '60' })
-      actions.signInWithPassword.mockReset().mockResolvedValue()
+      actions.signInWithPassword.mockReset().mockResolvedValue(undefined)
 
       tickTo(60)
       type('login-username', 'alice')
@@ -772,6 +789,188 @@ describe('LoginModal', () => {
       await submit()
 
       expect(dialog().querySelector('[role="alert"]')!.textContent!.trim()).toBe('Setup code is incorrect')
+    })
+  })
+
+  describe('second step of the sign in', () => {
+    const CODE_AND_RECOVERY = { mfaRequired: true, methods: ['AUTHENTICATOR', 'RECOVERY_CODE'] }
+    const CODE_ONLY = { mfaRequired: true, methods: ['AUTHENTICATOR'] }
+    const RECOVERY_ONLY = { mfaRequired: true, methods: ['RECOVERY_CODE'] }
+    const WITH_PASSKEY = { mfaRequired: true, methods: ['AUTHENTICATOR', 'PASSKEY'] }
+
+    const heading = (): HTMLElement => dialog().querySelector('h2') as HTMLElement
+    const alertText = (): string | null => dialog().querySelector('[role="alert"]')?.textContent?.trim() ?? null
+    const verifyButton = (): HTMLButtonElement => buttonByLabel('Verify') as HTMLButtonElement
+
+    // Signs in with the password, and the server answers with the given second factor challenge.
+    const reachSecondStep = async (challenge: unknown) => {
+      actions.signInWithPassword.mockResolvedValue(challenge)
+      await openDialog()
+      type('login-username', 'alice')
+      type('login-password', 'correct horse battery')
+      await submit()
+    }
+
+    it('shows the second step under the title Two-step verification after a password answer that asks for a factor', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      expect(heading().textContent?.trim(), 'the step has its own title').toBe('Two-step verification')
+      expect(dialog(), 'the dialog stays open until the second factor is verified').not.toBeNull()
+    })
+
+    it('offers an authenticator code field with one-time-code autocomplete and a numeric keyboard', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      expect(field('login-code').autocomplete, 'the browser may fill the code from the app').toBe('one-time-code')
+      expect(field('login-code').getAttribute('inputmode'), 'a numeric keyboard on phones').toBe('numeric')
+      expect(field('login-code').required).toBe(true)
+    })
+
+    it('swaps the code field for a recovery code field through the recovery code option', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      buttonByLabel('Use a recovery code').click()
+      await flushPromises()
+
+      expect(field('login-recovery-code'), 'the recovery code has its own field').toBeTruthy()
+      expect(document.getElementById('login-code'), 'the authenticator field is replaced, not stacked').toBeNull()
+      expect(buttonLabels(), 'the option swaps back to the authenticator code').toContain('Use an authenticator code')
+    })
+
+    it('opens on the recovery code field when the server lists only recovery codes', async () => {
+      await reachSecondStep(RECOVERY_ONLY)
+
+      expect(field('login-recovery-code')).toBeTruthy()
+      expect(document.getElementById('login-code')).toBeNull()
+    })
+
+    it('shows the passkey action when the server lists a passkey and the browser supports it', async () => {
+      await reachSecondStep(WITH_PASSKEY)
+
+      expect(buttonLabels()).toContain('Use a passkey')
+    })
+
+    it('hides the passkey action when the browser has no WebAuthn, even if the server lists a passkey', async () => {
+      passkeys.supported = false
+
+      await reachSecondStep(WITH_PASSKEY)
+
+      expect(buttonLabels(), 'a browser without WebAuthn cannot run the ceremony').not.toContain('Use a passkey')
+    })
+
+    it('hides the passkey action when the server does not list a passkey for the account', async () => {
+      await reachSecondStep(CODE_ONLY)
+
+      expect(buttonLabels()).not.toContain('Use a passkey')
+    })
+
+    it('sends the code the visitor typed to the second factor', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '123456')
+
+      await submit()
+
+      expect(actions.completeSecondFactor).toHaveBeenCalledWith('123456')
+    })
+
+    it('sends the recovery code typed into the recovery field', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+      buttonByLabel('Use a recovery code').click()
+      await flushPromises()
+      type('login-recovery-code', 'ABCD-EFGH')
+
+      await submit()
+
+      expect(actions.completeSecondFactor).toHaveBeenCalledWith('ABCD-EFGH')
+    })
+
+    it('closes after a valid code', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '123456')
+
+      await submit()
+
+      expect(dialog()?.querySelector('h2'), 'a signed in user does not need the dialog').toBeFalsy()
+    })
+
+    it('keeps the step open with the server message when the code is wrong', async () => {
+      actions.completeSecondFactor.mockRejectedValue(answer(401, 'Invalid code'))
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '000000')
+
+      await submit()
+
+      expect(heading().textContent?.trim(), 'a wrong code keeps the second step').toBe('Two-step verification')
+      expect(alertText(), 'the failure is announced in an alert').toBe('Invalid code')
+    })
+
+    it('clears the code field after a wrong code', async () => {
+      actions.completeSecondFactor.mockRejectedValue(answer(401, 'Invalid code'))
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '000000')
+
+      await submit()
+
+      expect(field('login-code').value, 'the next attempt starts empty').toBe('')
+    })
+
+    it('moves focus to the step heading when the second step opens', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      expect(document.activeElement, 'the step is announced from its heading').toBe(heading())
+    })
+
+    it('moves focus back to the step heading after a wrong code', async () => {
+      actions.completeSecondFactor.mockRejectedValue(answer(401, 'Invalid code'))
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '000000')
+
+      await submit()
+
+      expect(document.activeElement, 'the failure is read with the step it belongs to').toBe(heading())
+    })
+
+    it('returns to the first step through Cancel, keeping the username and clearing the password', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      buttonByLabel('Cancel').click()
+      await flushPromises()
+
+      expect(heading().textContent?.trim(), 'Cancel leaves the second step, not the dialog').toBe('Sign in')
+      expect(field('login-username').value).toBe('alice')
+      expect(field('login-password').value, 'the password is not kept after the second step was reached').toBe('')
+      expect(document.getElementById('login-code')).toBeNull()
+    })
+
+    it('keeps the step open with the reason when the passkey prompt is dismissed', async () => {
+      actions.completePasskeySecondFactor.mockRejectedValue(new WebAuthnCancelledError())
+      await reachSecondStep(WITH_PASSKEY)
+
+      buttonByLabel('Use a passkey').click()
+      await flushPromises()
+
+      expect(heading().textContent?.trim()).toBe('Two-step verification')
+      expect(alertText()).toBe('The passkey request was cancelled')
+    })
+
+    it('closes when the passkey is accepted', async () => {
+      await reachSecondStep(WITH_PASSKEY)
+
+      buttonByLabel('Use a passkey').click()
+      await flushPromises()
+
+      expect(dialog()?.querySelector('h2'), 'a passkey that is accepted signs the user in').toBeFalsy()
+    })
+
+    it('says how long to wait and disables the verify button when the server rate limits the second step', async () => {
+      actions.completeSecondFactor.mockRejectedValue(rejection(429, { 'Retry-After': '120' }))
+      await reachSecondStep(CODE_AND_RECOVERY)
+      type('login-code', '123456')
+
+      await submit()
+
+      expect(alertText()).toBe(rateLimitMessage(120))
+      expect(verifyButton().disabled, 'no attempt is sent during the wait').toBe(true)
     })
   })
 })

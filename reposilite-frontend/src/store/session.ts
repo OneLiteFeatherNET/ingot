@@ -15,11 +15,12 @@
  */
 
 import { computed, ref, watch, watchEffect } from "vue"
-import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler, tokenCredentials } from './client'
+import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler, tokenCredentials, type SecondFactorChallenge } from './client'
 import { openSessionChannel, type ChannelMessage } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
 import { canUse } from './nodeAccess'
+import { getPasskeyAssertion, isWebAuthnSupported, WebAuthnCancelledError, WebAuthnUnsupportedError } from './webauthn'
 import type { AxiosError } from 'axios'
 import type { components } from '../types/api'
 
@@ -172,10 +173,59 @@ const startCookieSession = async (data: { principal?: ApiLoginPrincipal; mustCha
 
 // The provider id decides which directory checks the pair: the Ingot account by default, or the LDAP
 // provider of the server. Both answer alike, so the dialog shows the same failure for either.
-const signInWithPassword = ({ provider = 'local', username, password }: { provider?: string; username: string; password: string }) =>
+// The server answers mfaRequired for a user with a second factor. That answer starts no session: the caller shows the second
+// step, and the session starts only when completeSecondFactor or completePasskeySecondFactor succeeds.
+const isSecondFactorChallenge = (data: unknown): data is SecondFactorChallenge =>
+  typeof data === 'object' && data !== null && (data as { mfaRequired?: unknown }).mfaRequired === true
+
+const signInWithPassword = ({ provider = 'local', username, password }: { provider?: string; username: string; password: string }): Promise<SecondFactorChallenge | undefined> =>
   anonymousApi()
     .login({ provider, username, password })
+    .then(async response => {
+      if (isSecondFactorChallenge(response.data)) {
+        return response.data
+      }
+      await startCookieSession(response.data)
+      return undefined
+    })
+
+// The second step with a code of the authenticator app or a recovery code. The server keeps the challenge open after a wrong code.
+const completeSecondFactor = (code: string): Promise<void> =>
+  anonymousApi()
+    .verifySecondFactor(code)
     .then(response => startCookieSession(response.data))
+
+// The second step with a passkey: the options of the pending sign in, the browser's ceremony, then the assertion. Nothing is sent
+// to the server when the browser has no WebAuthn, and a dismissed prompt leaves the sign in pending.
+const completePasskeySecondFactor = async (): Promise<void> => {
+  if (!isWebAuthnSupported()) {
+    throw new WebAuthnUnsupportedError()
+  }
+  const options = (await anonymousApi().passkeyChallenge()).data
+  if (!options.challengeId || !options.challenge || !options.rpId) {
+    throw new Error('The passkey sign in could not be started')
+  }
+  const assertion = await getPasskeyAssertion({
+    challenge: options.challenge,
+    rpId: options.rpId,
+    allowCredentials: options.allowCredentials ?? [],
+  })
+  const answer = await anonymousApi().verifyPasskey({ challengeId: options.challengeId, ...assertion })
+  await startCookieSession(answer.data)
+}
+
+// The message of a failed second step. A wrong code is a 401 whose message the server gives, and a rate limit carries Retry-After.
+// The passkey prompt's own reasons are shown as they are.
+const secondFactorFailureMessage = (error: unknown): string => {
+  if (error instanceof WebAuthnCancelledError || error instanceof WebAuthnUnsupportedError) {
+    return error.message
+  }
+  const failure = error as AxiosError<{ message?: string }>
+  const status = failure?.response?.status
+  if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
+  if (status === 401) return String(failure.response?.data?.message ?? '') || 'The code is not valid'
+  return errorMessage(error)
+}
 
 // First run: the setup response signs the new administrator in. A server that answers without a
 // principal gets the same credentials once more as an ordinary sign in.
@@ -437,6 +487,8 @@ export function useSession() {
     login,
     logout,
     signInWithPassword,
+    completeSecondFactor,
+    completePasskeySecondFactor,
     signInWithToken,
     signOut,
     completeSetup,
@@ -463,4 +515,4 @@ export function useSession() {
   }
 }
 
-export { loginFailureMessage, passwordFailureMessage, setupFailureMessage, stopSharingSession, whenSessionKnown }
+export { loginFailureMessage, passwordFailureMessage, secondFactorFailureMessage, setupFailureMessage, stopSharingSession, whenSessionKnown }
