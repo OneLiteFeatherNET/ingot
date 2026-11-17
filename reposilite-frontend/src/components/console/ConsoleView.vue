@@ -25,6 +25,7 @@ import { enabledFromLevelParam, levelParam } from '../../router/url-state'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdTextField from '../md/MdTextField.vue'
 
 const props = withDefaults(defineProps<{
@@ -303,19 +304,19 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
           lines survive verbatim, and without resetting it the indentation of this template
           is rendered as part of the sentence.
         -->
-          <p
+          <MdStatePanel
             v-if="awaitingFirstLine"
-            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
-          >
-            Connected. Waiting for the first log line.
-          </p>
+            state="empty"
+            description="Connected. Waiting for the first log line."
+            class="whitespace-normal font-sans"
+          />
 
-          <p
+          <MdStatePanel
             v-else-if="noLinesMatch"
-            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
-          >
-            No lines match the filter. Clear the filter or switch a level back on to see the output.
-          </p>
+            state="empty"
+            description="No lines match the filter. Clear the filter or switch a level back on to see the output."
+            class="whitespace-normal font-sans"
+          />
         </div>
 
         <div
