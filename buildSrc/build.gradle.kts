@@ -20,6 +20,19 @@ plugins {
 
 repositories {
     gradlePluginPortal()
+    mavenCentral()
+}
+
+dependencies {
+    // The versions match the test dependencies of the project modules.
+    testImplementation("org.assertj:assertj-core:4.0.0-M1")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // No plugin dependencies. The axion-release-plugin was removed together with the git

@@ -18,13 +18,14 @@ package net.onelitefeather.ingot.storage.gcs
 
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 
 /**
  * The plugin `gcs-storage`. Its storage factory is registered through the service file of the storage providers, so this class only
  * gives the jar its plugin identity, which the plugin store and the dashboard list.
  */
-@Plugin(name = "gcs-storage")
+@Plugin(name = "gcs-storage", tier = PluginTier.EXPERIMENTAL)
 class GcsStoragePlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade? = null

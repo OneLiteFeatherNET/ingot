@@ -684,6 +684,34 @@ jobs:
       - name: "Run the contract tests of the Official plugins"
         run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:contractTest :reposilite-plugins:migration-plugin:contractTest
 
+  # Every plugin module declares the tier its sources back up: an opt-in to an experimental Ingot API needs the
+  # EXPERIMENTAL declaration, and the declaration needs the opt-in. It reads sources only, so it runs on every pull
+  # request and on the nightly run, and it is blocking through Light checks.
+  plugin-tiers:
+    name: "Plugin tiers"
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Check the plugin tiers"
+        run: ./gradlew --build-cache checkPluginTiers
+
   # The workflow script tests used to run only inside the container images job, which is heavy. A change to a workflow
   # or a workflow script is the one that can break them, and the scope step turns the image and chart flags on together
   # only for a path it cannot place, which is what an edit under .github is. They need no Docker and no network.
@@ -741,7 +769,7 @@ jobs:
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, script-tests, docs-tests]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
