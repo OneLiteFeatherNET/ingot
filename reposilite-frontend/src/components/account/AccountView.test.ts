@@ -17,13 +17,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { computed, ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import AccountView from './AccountView.vue'
+
+type AccessOutcome = 'ready' | 'unavailable' | 'pending'
 
 type SessionOptions = {
   mode?: string
   mustChange?: boolean
   admin?: boolean
   teams?: string[]
+  access?: AccessOutcome
+  nodes?: string[]
+  denials?: string[]
+  grants?: { team: string; repository: string | null; role: string; pathPrefix?: string | null }[]
+  tokenNarrowed?: boolean
 }
 
 // The session is replaced by plain refs, so each test decides who is signed in and how.
@@ -40,9 +48,29 @@ vi.mock('../../helpers/toast', () => ({
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
 
-const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams = ['developers'] }: SessionOptions = {}) => {
+const SECTIONS = ['Profile', 'Sign-in and security', 'My tokens', 'Your access']
+
+// The answer of GET /api/identity/me/access for the signed in principal, built per test.
+const summaryOf = ({ admin = false, teams = ['developers'], nodes = ['ingot.repository.releases.read'], denials = [], grants = [], tokenNarrowed = false }: SessionOptions) => ({
+  principal: { name: 'alice', displayName: 'Alice Example', kind: 'USER', providers: ['local'] },
+  instanceAdmin: admin,
+  teams: teams.map(name => ({ name, parents: ['everyone'] })),
+  nodes,
+  denials: denials.map(node => ({ node, overridden: false })),
+  grants: grants.length > 0 ? grants : [{ team: 'developers', repository: 'releases', role: 'READ', pathPrefix: null }],
+  tokenNarrowed
+})
+
+const fakeSession = (options: SessionOptions = {}) => {
+  const { mode = 'cookie', admin = false, teams = ['developers'], access = 'ready' } = options
+  const accessAnswer = access === 'ready'
+    ? Promise.resolve({ data: summaryOf({ ...options, admin, teams }) })
+    : access === 'unavailable'
+      ? Promise.reject(new Error('404'))
+      : new Promise(() => {})
   const me = {
     changePassword: vi.fn().mockResolvedValue({ status: 204 }),
+    access: vi.fn(() => accessAnswer),
     tokens: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       create: vi.fn(),
@@ -57,7 +85,7 @@ const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams
     details,
     instanceAdmin: computed(() => details.value.instanceAdmin === true),
     authMode: ref(mode),
-    mustChangePassword: ref(mustChange),
+    mustChangePassword: ref(options.mustChange ?? false),
     passwordMinLength: ref(12),
     client: ref({ identity: { me } })
   }
@@ -70,10 +98,20 @@ describe('AccountView', () => {
 
   const mountView = async (options?: SessionOptions) => {
     holder.session = fakeSession(options)
-    wrapper = mount(AccountView, { attachTo: document.body }) as VueWrapper
+    // The Explain links of Your access are router links, so the page is mounted with a router like the dashboard's.
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/access/check', name: 'access-check', component: { render: () => null } },
+        { path: '/:rest(.*)', component: { render: () => null } }
+      ]
+    })
+    wrapper = mount(AccountView, { attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
     await flushPromises()
     return holder.session
   }
+
+  const sectionOf = (headingId: string) => wrapper.find(`[aria-labelledby="${headingId}"]`)
 
   afterEach(() => {
     wrapper?.unmount()
@@ -120,12 +158,36 @@ describe('AccountView', () => {
     expect(wrapper.find('#account-title').element.tagName, 'the title keeps its id and is a level one heading').toBe('H1')
   })
 
-  it('renders the profile with the teams and the instance admin badge', async () => {
+  it('shows the four sections in order: Profile, Sign-in and security, My tokens, Your access', async () => {
+    await mountView()
+
+    const headings = wrapper.findAll('h3').map(heading => heading.text()).filter(text => SECTIONS.includes(text))
+
+    expect(headings, 'each section has its heading, once, in this order').toEqual(SECTIONS)
+  })
+
+  it('shows each profile value once: the display name, the kind and the sign-in sources, with no team or admin tag', async () => {
     await mountView({ admin: true, teams: ['developers', 'release'] })
 
-    expect(wrapper.findAll('[data-test="team"]').map(chip => chip.text())).toEqual(['developers', 'release'])
-    expect(wrapper.find('[data-test="instance-admin"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Alice Example')
+    const profile = sectionOf('profile-title')
+    expect(profile.findAll('[data-test="team"]'), 'the teams are in Your access').toHaveLength(0)
+    expect(profile.find('[data-test="instance-admin"]').exists(), 'the admin tag is in Your access').toBe(false)
+    expect(profile.text()).toContain('Alice Example')
+  })
+
+  it('draws the teams and the instance admin tag in Your access', async () => {
+    await mountView({ admin: true, teams: ['developers', 'release'] })
+
+    const access = sectionOf('access-title')
+    const teams = access.findAll('[data-test="team"]').map(chip => chip.text())
+    expect(teams, 'each team is named in Your access').toEqual(expect.arrayContaining([expect.stringContaining('developers'), expect.stringContaining('release')]))
+    expect(access.find('[data-test="instance-admin"]').exists()).toBe(true)
+  })
+
+  it('shows the teams with their direct parents, which is what the rights come through', async () => {
+    await mountView()
+
+    expect(wrapper.find('[data-test="team"]').text(), 'the team names its parent').toContain('inherits from everyone')
   })
 
   it('shows the password form in a cookie session', async () => {
@@ -141,27 +203,37 @@ describe('AccountView', () => {
     expect(wrapper.text()).toContain('signed in with an access token')
   })
 
+  it('puts the placeholder slot for two-step sign-in inside the sign-in and security section', async () => {
+    await mountView()
+
+    const slot = wrapper.find('[data-test="sign-in-slot"]')
+
+    expect(slot.attributes('data-ingot-slot'), 'the slot is named for the change that fills it').toBe('add-multi-factor-authentication')
+    expect(slot.text()).toContain('Two-step sign-in is not set up')
+    expect(sectionOf('security-title').find('[data-test="sign-in-slot"]').exists()).toBe(true)
+  })
+
   it('shows no banner when no new password is required', async () => {
     await mountView()
 
     expect(wrapper.text()).not.toContain('Set a new password before you continue')
   })
 
-  it('shows the banner and puts the password card at the top when a new password is required', async () => {
+  it('shows the banner and puts the sign-in and security section at the top when a new password is required', async () => {
     await mountView({ mustChange: true })
 
     const sections = wrapper.findAll('section').map(section => section.attributes('aria-labelledby'))
 
     expect(wrapper.find('[data-test="must-change"]').text()).toContain('Set a new password before you continue')
-    expect(sections.indexOf('password-title'), 'the password card comes before the profile').toBeLessThan(sections.indexOf('profile-title'))
+    expect(sections.indexOf('security-title'), 'the password card comes before the profile').toBeLessThan(sections.indexOf('profile-title'))
   })
 
-  it('keeps the password card below the profile when no change is required', async () => {
+  it('keeps the sign-in and security section below the profile when no change is required', async () => {
     await mountView()
 
     const sections = wrapper.findAll('section').map(section => section.attributes('aria-labelledby'))
 
-    expect(sections.indexOf('profile-title')).toBeLessThan(sections.indexOf('password-title'))
+    expect(sections.indexOf('profile-title')).toBeLessThan(sections.indexOf('security-title'))
   })
 
   it('lifts the requirement once the password is changed', async () => {
@@ -183,5 +255,84 @@ describe('AccountView', () => {
 
     expect(session.me.tokens.list).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('My tokens')
+  })
+
+  it('asks for the own access summary with no principal, so the page takes none from the address', async () => {
+    const session = await mountView()
+
+    expect(session.me.access, 'the summary is requested once').toHaveBeenCalledTimes(1)
+    expect(session.me.access).toHaveBeenCalledWith()
+  })
+
+  it('states the allowed rights in plain words and lists the denials apart', async () => {
+    await mountView({ nodes: ['ingot.repository.releases.read'], denials: ['ingot.admin.users'] })
+
+    const allowed = wrapper.findAll('[data-test="allowed-permission"]').map(item => item.text())
+    const denied = wrapper.findAll('[data-test="denied-permission"]').map(item => item.text())
+
+    expect(allowed, 'the allowed right is in plain words').toEqual(expect.arrayContaining([expect.stringContaining('Read from releases')]))
+    expect(denied, 'the denial is listed apart').toEqual([expect.stringContaining('Manage users')])
+  })
+
+  it('names the repository access with its role and the team it comes through', async () => {
+    await mountView()
+
+    const scope = wrapper.find('[data-test="scope"]').text()
+
+    expect(scope).toContain('Read from releases')
+    expect(scope, 'the team the access comes through').toContain('developers')
+  })
+
+  it('shows a grant without a repository as one plain line, not as a dropped row', async () => {
+    await mountView({ grants: [{ team: 'ops', repository: null, role: 'ADMIN' }] })
+
+    expect(wrapper.find('[data-test="unknown"]').text()).toContain('ops holds ADMIN without a repository')
+  })
+
+  it('offers only Explain links in Your access, no input and no button', async () => {
+    await mountView({ nodes: ['ingot.admin.users'], denials: ['ingot.admin.teams'] })
+
+    const access = sectionOf('access-title')
+    const links = access.findAll('a')
+
+    expect(access.findAll('input, button, select, textarea'), 'the section is read only').toHaveLength(0)
+    expect(links.length, 'each right has an Explain link').toBeGreaterThan(0)
+    links.forEach(link => expect(link.text()).toBe('Explain'))
+  })
+
+  it('links an Explain to the access check, pre-filled with the principal, for a principal who may use the Access area', async () => {
+    await mountView({ nodes: ['ingot.admin.users'] })
+
+    const hrefs = sectionOf('access-title').findAll('a').map(link => link.attributes('href') ?? '')
+
+    expect(hrefs, 'the check is pre-filled with the principal').toEqual(expect.arrayContaining([expect.stringMatching(/^\/access\/check\?principal=alice&node=/)]))
+  })
+
+  it('links an Explain to the how-to page for a principal who may not use the Access area', async () => {
+    await mountView({ nodes: ['ingot.repository.releases.read'] })
+
+    const hrefs = sectionOf('access-title').findAll('a').map(link => link.attributes('href') ?? '')
+
+    expect(hrefs.length).toBeGreaterThan(0)
+    hrefs.forEach(href => expect(href, 'the how-to page is the target').toContain('check-access'))
+  })
+
+  it('names a token session as one that narrows the list', async () => {
+    await mountView({ tokenNarrowed: true })
+
+    expect(sectionOf('access-title').text()).toContain('This access token narrows the list')
+  })
+
+  it('says so when the server does not have the access summary', async () => {
+    await mountView({ access: 'unavailable' })
+
+    expect(sectionOf('access-title').text()).toContain('The access summary is not available on this server')
+  })
+
+  it('shows a loading line in Your access while the summary is on its way, and the rest of the page does not wait', async () => {
+    await mountView({ access: 'pending' })
+
+    expect(sectionOf('access-title').text()).toContain('Loading your access')
+    expect(wrapper.find('[data-test="sign-in-slot"]').exists(), 'the sign-in section is drawn meanwhile').toBe(true)
   })
 })

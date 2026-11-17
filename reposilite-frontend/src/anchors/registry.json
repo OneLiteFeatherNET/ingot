@@ -244,6 +244,14 @@
       "file": "src/components/account/AccountView.vue",
       "stability": "experimental",
       "parts": [],
+      "states": [],
+      "slots": ["add-multi-factor-authentication"]
+    },
+    {
+      "name": "your-access",
+      "file": "src/components/account/YourAccess.vue",
+      "stability": "experimental",
+      "parts": [],
       "states": []
     },
     {

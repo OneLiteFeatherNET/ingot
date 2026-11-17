@@ -603,6 +603,17 @@ A modal panel from the leading edge, 320px wide or the window less 56px, whichev
 
 64px, `sticky top-0`, `surface-container` at every scroll position, the same role as the rail, so the two form one frame. It has no tone change on scroll, no border, no shadow and no decorative rule: the `surface` content sheet is the edge. It holds the instance name, as a link to the start page, and the account menu, and nothing else. The instance name is not a heading; each page has its own level one heading.
 
+### Account menu
+
+For a signed in visitor the bar holds one button, the account menu. Its avatar is the first letter of the display name, and the name follows it from 900 pixels; below that the name is screen reader only. The button is named `Account menu, <display name>`, so a screen reader user hears what it opens and whose account it is. A long name truncates, and its full value is the button's `title`.
+
+The menu's header is an identity block, and it never repeats the display name:
+
+1. The username, only when it differs from the display name (`md-body-small`, `text-on-surface-variant`).
+2. A line with the kind and the sign-in sources, such as `User, LDAP` (`md-label-small`). The sources are the providers the principal is linked to, and an unknown provider id is shown as the id.
+
+The header and the items share one horizontal inset: the menu keeps its `p-2`, and every row, header or item, adds `px-3`. The text of the header and the labels of the items therefore start on the same edge, and the state layers of the items cover the full row. The avatar sits on the bar's own inset, so the header and the trigger are not aligned to one edge; the menu opens from the trigger's right edge.
+
 ### MdLinearProgress
 
 Props:
@@ -754,6 +765,25 @@ The Administration tree is the one navigation of the operator area. These rules 
 - **Save bar.** The notice that saved changes reach every instance within 10 seconds is the supporting text of the save bar and
   part of the save confirmation. It is not the description of a page.
 - **No filled button in the header of a page that can show a save bar.** The save bar carries the primary action.
+
+## Account page
+
+The account page, My account, has four sections in this order, each with its heading:
+
+- **Profile.** Each value once: the display name, the username only when it differs, the kind and the sign-in sources. The teams and the instance admin tag are not drawn here.
+- **Sign-in and security.** The password card for a cookie session, and a named slot for two-step sign-in (`data-ingot-slot`) with the note that it is not set up. A later change fills the slot. When a new password is required, this section moves to the top.
+- **Tokens.** The signed in user's own tokens, unchanged.
+- **Your access.** What the account may do on this instance. It is read only.
+
+Your access draws the view model of the own access summary (`src/components/account/accessView.ts`), never the raw response:
+
+- **Read only.** The section has no button, no field and no control that changes anything. Its only links are the Explain links, one per permission and one per repository access.
+- **Own summary only.** The page requests the summary of the signed in principal without a principal parameter. It never takes a principal from the address or from a form.
+- **Plain words.** Each permission is one sentence, such as `Read from releases` or `Manage users`, with its node in code beside it. Allowed rights come first and denials are listed apart. A node the view does not know is shown as its own text, never dropped.
+- **Repository access.** Each repository grant names its role, its path prefix when it has one, and the team it comes through. A scope type the view does not know is one plain line, so a server that adds a type first does not break the page.
+- **Teams.** Each team is listed with the teams it inherits from, which is where the principal's rights come through.
+- **Token sessions.** A token narrows the list, and the section says so.
+- **States.** While the summary is on its way the section shows a loading line. When the server does not have the summary, it shows that it is not available. The rest of the page does not wait for either.
 
 ## Known gaps
 

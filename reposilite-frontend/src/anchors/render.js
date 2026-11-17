@@ -41,6 +41,7 @@ export function renderAnchorsDoc(registry) {
     "| `data-ingot-component` | The component, on its root element. The value is the name in the table below. |",
     "| `data-ingot-part` | A named inner part of a component, such as its header or its actions. Listed per component. |",
     "| `data-ingot-state` | The state a part or component is in. One of `current`, `loading`, `error`, `empty` or `open`. Listed per component. |",
+    "| `data-ingot-slot` | A named place in a component where a later change puts its own content, such as a card that is not built yet. Listed per component. |",
     "| `data-ingot-component-alias` | The old name of a renamed component, kept for one minor release. Present only while an alias is listed below. |",
     "| `data-ingot-repository` | The repository name, on the repository row and on the repository header. The name is already on screen. |",
     "| `data-ingot-block` | The type of a plugin block, one of the closed set of block types. |",
@@ -52,11 +53,11 @@ export function renderAnchorsDoc(registry) {
     "",
     "## Components",
     "",
-    "| Name | Stability | Source | Parts | States |",
-    "| --- | --- | --- | --- | --- |",
+    "| Name | Stability | Source | Parts | States | Slots |",
+    "| --- | --- | --- | --- | --- | --- |",
     ...components.map(
       (entry) =>
-        `| \`${entry.name}\`${entry.ownElement === false ? " (no element of its own)" : ""} | ${entry.stability} | \`${entry.file}\` | ${code(entry.parts)} | ${code(entry.states)} |`,
+        `| \`${entry.name}\`${entry.ownElement === false ? " (no element of its own)" : ""} | ${entry.stability} | \`${entry.file}\` | ${code(entry.parts)} | ${code(entry.states)} | ${code(entry.slots ?? [])} |`,
     ),
     "",
     "## Aliases",
