@@ -124,6 +124,14 @@ describe('validateNewPassword', () => {
     expect(validateNewPassword('twelve-chars', 'twelve-chars').password).toBe('')
   })
 
+  it('rejects a password under the configured minimum and names that minimum', () => {
+    expect(validateNewPassword('a'.repeat(12), 'a'.repeat(12), 16).password).toBe('Use at least 16 characters')
+  })
+
+  it('accepts 8 characters when the configured minimum is 8', () => {
+    expect(validateNewPassword('a'.repeat(8), 'a'.repeat(8), 8).password).toBe('')
+  })
+
   it('rejects a confirmation that differs', () => {
     expect(validateNewPassword('a-long-password', 'another-password').confirm).toBe('Passwords do not match')
   })

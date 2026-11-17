@@ -702,6 +702,31 @@ describe('LoginModal', () => {
       expect(field('setup-password').getAttribute('aria-invalid')).toBe('true')
     })
 
+    afterEach(() => {
+      store.passwordMinLength.value = 12
+    })
+
+    it('names the configured minimum and does not submit a shorter password', async () => {
+      store.passwordMinLength.value = 16
+      await openDialog()
+      fillSetup({ password: 'a'.repeat(12), confirm: 'a'.repeat(12) })
+
+      await submit()
+
+      expect(actions.completeSetup).not.toHaveBeenCalled()
+      expect(helperOf('setup-password').textContent).toMatch(/at least 16 characters/i)
+    })
+
+    it('accepts 8 characters when the configured minimum is 8', async () => {
+      store.passwordMinLength.value = 8
+      await openDialog()
+      fillSetup({ password: 'eight-08', confirm: 'eight-08' })
+
+      await submit()
+
+      expect(actions.completeSetup).toHaveBeenCalled()
+    })
+
     it('sends exactly the setup code, username, password and display name', async () => {
       await openDialog()
       fillSetup({ display: 'Root Admin' })

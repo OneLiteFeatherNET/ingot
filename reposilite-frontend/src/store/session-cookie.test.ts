@@ -639,6 +639,23 @@ describe('providers and setup', () => {
     expect(store.setupRequired.value).toBe(true)
   })
 
+  it('takes the password minimum from the providers answer', async () => {
+    const { axios, store } = await loadSession()
+    serve(axios, {
+      providers: { providers: [], tokenLogin: true, setupRequired: true, passwordMinLength: 16 }
+    })
+
+    await store.loadProviders()
+
+    expect(store.passwordMinLength.value).toBe(16)
+  })
+
+  it('keeps twelve as the password minimum until the providers answer names one', async () => {
+    const { store } = await loadSession()
+
+    expect(store.passwordMinLength.value).toBe(12)
+  })
+
   it('posts the setup request and signs in from its response', async () => {
     const { axios, store } = await loadSession()
     serve(axios, { setup: { data: { principal: PRINCIPAL } } })
