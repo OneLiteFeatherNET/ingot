@@ -290,6 +290,20 @@ describe('the repositories table', () => {
     }
   })
 
+  it('keeps the type badge and its label on one line in the Type cell', async () => {
+    await mountPage()
+
+    const badge = rowOf('releases').find('[data-test="type-badge"]').element
+    expect(badge.closest('div')!.className, 'the badge is as wide as its label, so the two do not wrap apart').toContain('w-max')
+  })
+
+  it('does not round the corners of the table region, so its last divider is not clipped', async () => {
+    await mountPage()
+
+    const region = wrapper.find('[role="region"][aria-label="Repositories table"]')
+    expect(region.classes(), 'the scroll region has no rounded corners that would clip the bottom edge').not.toContain('rounded-corner-medium')
+  })
+
   it('draws the same divider under every row, the last one included', async () => {
     await mountPage({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
 
