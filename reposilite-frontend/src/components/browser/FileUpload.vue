@@ -91,7 +91,7 @@ const STATUS_LABELS: Partial<Record<string, string>> = {
 }
 // The queue keeps one status per task key; a name it has not seen has none.
 const statusOf = (name: string): string | undefined =>
-  (queue.state.statuses as Record<string, string | undefined>)[name]
+  queue.state.statuses[name]
 const statusLabel = (name: string): string =>
   STATUS_LABELS[statusOf(name) ?? ''] ?? 'Ready to upload'
 

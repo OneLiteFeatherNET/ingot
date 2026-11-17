@@ -31,6 +31,7 @@ import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { BrowserFile, BrowserPath, DeleteTarget, Listing, ListingFailure } from './listing'
+import type { GlyphName } from './glyphs'
 
 const props = defineProps<{
   qualifier: BrowserPath
@@ -70,7 +71,7 @@ const showUtilityFiles = () => {
 }
 
 // What each kind of failed listing says, and whether asking again can help.
-const FAILURES: Record<ListingFailure, { icon: string; title: string; body: string; retryable: boolean }> = {
+const FAILURES: Record<ListingFailure, { icon: GlyphName; title: string; body: string; retryable: boolean }> = {
   network: {
     icon: 'error',
     title: 'Cannot reach the repository',
