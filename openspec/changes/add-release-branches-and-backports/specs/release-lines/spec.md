@@ -26,7 +26,7 @@ checked against that file.
 ### Requirement: A release branch is cut when the next line ships
 
 A release branch `release/<major>.<minor>.x` SHALL be created from the last tag of the previous line when a release with patch
-version 0 is created on `main`. The branch SHALL NOT be created before that release. The branch SHALL point at the previous
+version 0 is created on `main`, whether that release is a minor or a major release. The branch SHALL NOT be created before that release. The branch SHALL point at the previous
 line's last tag, not at the tip of `main`.
 
 #### Scenario: No branch exists while the line is the newest
@@ -92,6 +92,16 @@ architectures, the drop-in contract checks and the plugin API check. Release ima
 
 - **WHEN** a pull request into `release/1.1.x` changes the plugin API
 - **THEN** the plugin API check fails and the pull request cannot be merged
+
+### Requirement: The support window of each line is fixed
+
+The newest line SHALL receive every fix. The previous line SHALL receive security fixes for 90 days after the next line ships.
+Older lines SHALL receive no fixes. The window SHALL be stated in `SUPPORT.md` and in `.github/SECURITY.md` from the same file.
+
+#### Scenario: The previous line keeps security fixes for 90 days
+
+- **WHEN** release 2.0.0 ships on a given date
+- **THEN** the end of life date of the 1.1 line is that date plus 90 days
 
 ### Requirement: A window ends with a reviewed change
 

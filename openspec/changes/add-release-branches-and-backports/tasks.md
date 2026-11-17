@@ -19,10 +19,11 @@ builds and passes on its own.
   `versioning` key in the config file or not, and the release pull request title pattern for a branch. Record the answers in the
   first code pull request description. Verify: each claim in the design, section "Facts checked", is either confirmed or
   corrected in the design before group 6 starts.
-- [ ] 2.2 The maintainer confirms the open questions of the design (1 to 9), and in particular the window, cutting on a major, the
-  meaning of tag `X`, the label name and the archive method. Verify: the answers are recorded in the proposal review, not in a file.
-- [ ] 2.3 Sequencing: the maintainer decides whether pull request #22 (release 2.0.0) waits until groups 3 to 9 are merged.
-  Verify: the decision is written on PR #22 before it is merged.
+- [ ] 2.2 The maintainer confirmed the open questions of the design (1 to 9) on 2026-11-17, in particular the window, cutting on a
+  major, the meaning of tag `X`, the label name and the archive method. Verify: the answers are recorded in design.md, section
+  "Open questions, settled 2026-11-17".
+- [ ] 2.3 Sequencing: the maintainer decided on 2026-11-17 that pull request #22 (release 2.0.0) waits until groups 3 to 9 and
+  13 to 14 are merged. Verify: the decision is written on PR #22 before it is merged.
 
 ## 3. Support lines
 

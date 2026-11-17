@@ -43,7 +43,8 @@ this change.
 - Changes to the upstream Reposilite line. It is not covered by this policy.
 - Changing the `main` release flow, the version scheme or the Conventional Commits rules.
 - Branch protection and rulesets in the GitHub settings. They are described in the runbook and set by a maintainer.
-- Creating `release/1.1.x` before pull request #22 ships. That is a decision for the maintainer (see the open questions).
+- Creating `release/1.1.x` by hand before pull request #22 ships. The cut job creates it when 2.0.0 ships (open question 2,
+  settled 2026-11-17).
 
 ## Capabilities
 

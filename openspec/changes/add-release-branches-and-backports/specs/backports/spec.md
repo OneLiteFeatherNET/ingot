@@ -46,7 +46,13 @@ name the source pull request.
 #### Scenario: The backport commit is signed off
 
 - **WHEN** the cherry-pick succeeds
-- **THEN** the commit message contains a `Signed-off-by` line and the `(cherry picked from commit ...)` trailer
+- **THEN** the commit message contains a `Signed-off-by` line naming the actor who applied the label, and the
+  `(cherry picked from commit ...)` trailer
+
+#### Scenario: The label actor has no public email
+
+- **WHEN** the actor who applied the label has no public email address
+- **THEN** the job comments on the source pull request, and the maintainer adds the sign-off before the backport is merged
 
 ### Requirement: A conflict is reported on the source pull request
 

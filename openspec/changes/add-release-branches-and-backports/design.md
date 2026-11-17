@@ -58,8 +58,7 @@ Consequence: changing the window means changing one file and running one command
 - Name: `release/<major>.<minor>.x`, for example `release/1.1.x`. The `x` stays literal, so the branch name matches the
   line and not a version.
 - Trigger: a release created on `main` whose version has patch 0 (`X.Y.0`). A major release counts as a new line too, so the
-  release that ships 2.0.0 cuts `release/1.1.x`. The coordinator's brief said "next minor"; this design extends it to majors
-  and marks it as a maintainer decision in the open questions.
+  release that ships 2.0.0 cuts `release/1.1.x` (open question 1, settled 2026-11-17).
 - Base: the tag of the last release of the old line (`v1.1.1` for `release/1.1.x`), not the tip of `main`. `main` already
   holds unreleased changes for the new line, and the old line must not receive them.
 - Who: a job in `release-please.yml` (`cut-release-branch`), running after a release on `main` that has patch 0. It runs with
@@ -87,7 +86,7 @@ Consequence: changing the window means changing one file and running one command
 - The release pull request title carries the line, for example `chore(release-1.1.x): release 1.1.2`, so a reviewer sees which
   line it belongs to. The exact pattern is set in the branch configuration and checked in the spike.
 - The `maven`, `plugins` and `chart` jobs run for branch releases as they do for `main`. The plugin catalogue is only
-  regenerated on `main`, because the catalogue lists the newest versions (see open questions).
+  regenerated on `main`, because the catalogue lists the newest versions (open question 6).
 
 ## Decision 4: the GitHub "Latest" flag follows the newest line
 
@@ -142,7 +141,7 @@ The image job keeps `X.Y.Z` on every release. Whether `X.Y` and `X` move is deci
   not spread a change that was never meant for the line.
 - The cherry-pick: `git cherry-pick -x -s <sha>` on a branch `backport/<pr-number>-<line>` created from `origin/release/<line>.x`.
   `-x` adds the `(cherry picked from commit ...)` trailer and `-s` a sign-off. The sign-off names the label actor, because the
-  Developer Certificate of Origin certification has to come from a person (open question on the exact identity).
+  Developer Certificate of Origin certification has to come from a person (open question 5).
 - Pull request: title equal to the title of the source pull request, which is already a valid Conventional Commit. The body
   states "Backport of #<n> to `release/<line>.x`" and links the source pull request. Base `release/<line>.x`. The pull request
   is opened by the release bot, which the sign-off check accepts as a bot pull request (`add-dco-check`, C2). The cherry-pick
@@ -193,7 +192,7 @@ LTS is a non-goal. The design leaves room for it, so that an LTS line is a data 
 
 - Release 2.0.0 (PR #22) is the first release that cuts `release/1.1.x`. If it merges before the cut job exists, the branch has
   to be cut by hand from `v1.1.1` with the steps in the runbook, and the window clock starts on the ship date either way.
-- Recommended order: merge the code pull requests and the docs before PR #22 is merged. The release pull request itself is
+- Settled 2026-11-17: groups 3 to 9 and 13 to 14 of `tasks.md` are merged before PR #22. The release pull request itself is
   not changed.
 
 ## Risks
@@ -206,18 +205,23 @@ LTS is a non-goal. The design leaves room for it, so that an LTS line is a data 
   check in the release step refuses any version outside the branch's line.
 - The workflow file grows. The release decisions are moved into scripts with tests, so the YAML only wires them.
 
-## Open questions with defaults
+## Open questions, settled 2026-11-17
 
-1. **Cut on a new major as well as a new minor?** Default: yes, because 2.0.0 is the case that matters now.
-2. **Maintainer creates `release/1.1.x` before PR #22 or the job does it on release?** Default: the job, with the sequencing
-   above. A manual cut is the fallback.
-3. **Tag `X` on patch releases of an older line.** Default: `1` moves to `1.1.2` while `1.1` is the highest 1.x. Alternative: `X`
-   tracks only the newest line, which is simpler and stops users who pin `1` from receiving fixes.
-4. **Label naming.** Default: `backport:<major>.<minor>`, for example `backport:1.1`, mapped to `release/1.1.x`.
-5. **Sign-off identity of a backport.** Default: the label actor's sign-off. If that person has no public email, the job
-   comments and the maintainer adds the sign-off before merge.
-6. **Plugin catalogue for branch releases.** Default: regenerated on `main` only.
-7. **Renovate on release branches.** Default: not covered; security dependency updates for an old line are a manual backport.
-8. **Archive by rename or by deletion.** Default: rename to `archive/<line>.x`.
-9. **Confirmation of the window.** The window in `SUPPORT.md` stays as currently written (latest line every fix, previous line
-   security only for 90 days after the next line ships, older lines nothing). The maintainer confirms it in the proposal review.
+The maintainer settled every question below with the default recommended in this design. The answers are binding for the code
+pull requests.
+
+1. **Cut on a new major as well as a new minor?** Settled 2026-11-17: yes. The release that ships 2.0.0 cuts `release/1.1.x`
+   (Decision 2).
+2. **Maintainer creates `release/1.1.x` before PR #22 or the job does it on release?** Settled 2026-11-17: the job does it, with
+   the sequencing above. A manual cut from `v1.1.1` stays the fallback.
+3. **Tag `X` on patch releases of an older line.** Settled 2026-11-17: `1` moves to `1.1.2` while `1.1` is the highest 1.x
+   (Decision 5). `X` does not track only the newest line.
+4. **Label naming.** Settled 2026-11-17: `backport:<major>.<minor>`, for example `backport:1.1`, mapped to `release/1.1.x`.
+5. **Sign-off identity of a backport.** Settled 2026-11-17: the sign-off of the label actor. If that person has no public email,
+   the job comments and the maintainer adds the sign-off before merge.
+6. **Plugin catalogue for branch releases.** Settled 2026-11-17: regenerated on `main` only.
+7. **Renovate on release branches.** Settled 2026-11-17: not covered. Security dependency updates for an old line are a manual
+   backport.
+8. **Archive by rename or by deletion.** Settled 2026-11-17: rename to `archive/<line>.x`.
+9. **Confirmation of the window.** Settled 2026-11-17: the window stays as `SUPPORT.md` states it. The latest line receives every
+   fix, the previous line receives security fixes for 90 days after the next line ships, and older lines receive nothing.
