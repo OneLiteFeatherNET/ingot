@@ -76,10 +76,34 @@ describe('KeyValueTree', () => {
     expect(table(mountTree()).classes(), 'the table uses the monospace font').toContain('font-mono')
   })
 
-  it('wraps a long value inside its column instead of running past the page', () => {
+  it('wraps a long value inside its column, and keeps a short value whole', () => {
     const wrapper = mountTree({ entries: [['LONG', 'x'.repeat(400)]] })
 
-    expect(rowOf(wrapper, 'LONG')?.find('[role="cell"]').classes(), 'the value breaks inside its column').toContain('break-all')
+    expect(rowOf(wrapper, 'LONG')?.find('[role="cell"]').classes(), 'only a value too long for its line breaks').toContain('wrap-anywhere')
+    expect(rowOf(wrapper, 'LONG')?.find('[role="cell"]').classes(), 'a short token is not broken mid-word by break-all').not.toContain('break-all')
+  })
+
+  it('names a group of keys that share a leading underscore, so it is never a bare count', () => {
+    const wrapper = mountTree({ entries: [['_ALPHA', '1'], ['_BETA', '2'], ['PUID', '1000']] })
+
+    const names = wrapper.findAll('button[aria-expanded]').map((button) => button.text())
+    expect(names.some((name) => name.startsWith('_') && name.includes('2 keys')), 'the group reads _ followed by its count').toBe(true)
+  })
+
+  it('stacks the key above its value below medium width, and puts both on the page width', () => {
+    const wrapper = mountTree({ entries: smallRows() })
+
+    expect(table(wrapper).classes(), 'one column below medium width').toContain('grid-cols-1')
+    expect(table(wrapper).classes(), 'the key and value columns from medium width up').toContain('medium:grid-cols-(--grid-md-key-value)')
+  })
+
+  it('indents the value of a nested key one level under its key when the rows are stacked', async () => {
+    const wrapper = mountTree({ entries: serviceRows() })
+    await groupButton(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.trigger('click')
+
+    const key = rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS')
+    expect(key?.find('[role="rowheader"]').classes(), 'the key keeps the indent of its level').toContain('md-tree-depth-1')
+    expect(key?.find('[role="cell"]').classes(), 'the value is one level deeper, only below medium width').toContain('max-medium:md-tree-depth-2')
   })
 
   it('shows an empty value as a muted placeholder, not as a blank cell', () => {
