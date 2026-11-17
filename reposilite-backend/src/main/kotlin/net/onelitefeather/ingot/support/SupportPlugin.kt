@@ -34,6 +34,7 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.status.StatusFacade
 import com.reposilite.storage.s3.S3StorageProviderSettings
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import net.onelitefeather.ingot.storage.capability.SupportDetails
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.cluster.ClusterSettings
@@ -57,6 +58,13 @@ import kotlin.reflect.full.memberProperties
  * The support information of one plugin. The origin is a kind of place, never a path, and the settings domain is the name of
  * the settings page, or null when the plugin declares no settings class. Neither value holds a secret.
  */
+/**
+ * The details of one repository storage: the entries of its settings and the entries of its live provider. A key of the settings wins
+ * over the same key of the provider, so a provider cannot replace what the operator configured.
+ */
+internal fun storageDetails(settings: Any?, provider: Any?): Map<String, String> =
+    (provider as? SupportDetails)?.describe().orEmpty() + (settings as? SupportDetails)?.describe().orEmpty()
+
 internal fun pluginFact(metadata: Plugin, tier: PluginTier, origin: PluginOrigin): PluginFact =
     PluginFact(
         name = metadata.name,
@@ -83,6 +91,7 @@ internal class SupportPlugin : ReposilitePlugin() {
         val localConfiguration = facade<LocalConfiguration>()
         val shared = facade<SharedConfigurationFacade>()
         val status = facade<StatusFacade>()
+        val repositories = facade<RepositoryRegistry>()
         val cluster = runCatching { ClusterSettings.read(ClusterSources.system()) }.getOrNull()
 
         val sources = SupportSources(
@@ -98,7 +107,7 @@ internal class SupportPlugin : ReposilitePlugin() {
             localValues = { localValues(localConfiguration) },
             sharedDomains = { sharedDomains(shared) },
             repositoryStorage = { repositoryStorage(shared) },
-            repositoryDetails = { repositoryDetails(shared) },
+            repositoryDetails = { repositoryDetails(shared, repositories) },
             plugins = {
                 reposilite.extensions.getPlugins().values.map { entry ->
                     val name = entry.metadata.name
@@ -180,10 +189,12 @@ internal class SupportPlugin : ReposilitePlugin() {
             SharedDomainDocument(name, type, document)
         }
 
-    private fun repositoryDetails(shared: SharedConfigurationFacade): Map<String, Map<String, String>> =
-        shared.getDomainSettings<MavenSettings>().get().repositories.associate { repository ->
-            repository.id to ((repository.storageProvider as? SupportDetails)?.describe().orEmpty())
+    private fun repositoryDetails(shared: SharedConfigurationFacade, registry: RepositoryRegistry): Map<String, Map<String, String>> {
+        val live = registry.repositories().associateBy { it.name }
+        return shared.getDomainSettings<MavenSettings>().get().repositories.associate { repository ->
+            repository.id to storageDetails(repository.storageProvider, live[repository.id]?.storageProvider)
         }
+    }
 
     private fun repositoryStorage(shared: SharedConfigurationFacade): List<RepositoryStorage> =
         shared.getDomainSettings<MavenSettings>().get().repositories.map { repository ->
