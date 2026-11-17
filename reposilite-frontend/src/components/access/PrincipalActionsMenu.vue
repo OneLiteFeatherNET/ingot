@@ -44,9 +44,10 @@ import { detailOf, type PrincipalDetailAnswer, type PrincipalSummary, type Princ
  *
  * The open menu is teleported to the body and positioned with `fixed` from the bounding rect of
  * its trigger, because the list card clips whatever sticks out of it (overflow-hidden keeps its
- * rounded corners). It opens upwards when there is no room below. As the menu then no longer
- * follows its trigger, it closes on scroll and resize. It also closes on Escape (the focus goes
- * back to the trigger), on a press outside of it and when the focus leaves it.
+ * rounded corners). It opens upwards when there is no room below. A scroll or a resize moves the
+ * trigger, so the menu is placed again from it, once per frame. It closes only when the trigger has
+ * left the screen. It also closes on Escape (the focus goes back to the trigger), on a press outside
+ * of it and when the focus leaves it.
  *
  * Disable and enable read the principal again right before the write and send the entity tag
  * of that fresh read as If-Match, so a change made elsewhere in the meantime answers 412
@@ -101,11 +102,28 @@ const onPointerdown = (event: Event) => {
   if (!insideMenu(event.target)) closeMenu()
 }
 
+// Follows the trigger after a scroll or a resize, at most once per frame. The menu closes only when the trigger has
+// left the screen; a menu that closed on every scroll lost the race with a scroll that began before it opened.
+let frame = 0
+const follow = () => {
+  if (frame) return
+  frame = requestAnimationFrame(() => {
+    frame = 0
+    const rect = triggerElement()?.getBoundingClientRect()
+    if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) closeMenu()
+    else place()
+  })
+}
+
 const listen = (on: boolean) => {
   const toggle = on ? 'addEventListener' : 'removeEventListener'
   document[toggle]('pointerdown', onPointerdown)
-  window[toggle]('scroll', closeMenu, true)
-  window[toggle]('resize', closeMenu)
+  window[toggle]('scroll', follow, true)
+  window[toggle]('resize', follow)
+  if (!on && frame) {
+    cancelAnimationFrame(frame)
+    frame = 0
+  }
 }
 
 watch(menuOpen, async (open) => {
@@ -136,7 +154,7 @@ const choose = (action: () => void) => {
 const onKeydown = (event: KeyboardEvent) => {
   if (event.key !== 'Escape' || !menuOpen.value) return
   menuOpen.value = false
-  triggerElement()?.focus()
+  triggerElement()?.focus({ preventScroll: true })
 }
 
 // Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
