@@ -79,18 +79,18 @@ The source is a GET path below the prefix. The response is an object:
 { "items": [ { "title": "...", "subtitle": "...", "chips": ["..."], "href": "/..." } ], "next": "opaque or null", "facets": { "loader": [ { "value": "paper", "count": 12 } ] } }
 ```
 
-- `items`: at most `pageSize` per response, and at most 100 drawn. Each item has a `title` (1 to 200 characters), an optional `subtitle`
+- `pageSize` is 1 to 100 and is checked at registration. `items`: at most `pageSize` per response, and at most 100 drawn. Each item has a `title` (1 to 200 characters), an optional `subtitle`
   (at most 400), `chips` (at most 8 strings of 1 to 40 characters) and an optional `href` checked by D4.
 - `next`: an opaque cursor. When it is a string, the list shows "Load more", which sends the same source with `cursor=<next>` and the
   current filter values. When it is null, the list is complete.
 - `facets`: optional, read by the filter of D3.
 - An item that does not have the expected shape is drawn as its text, and an item without a `title` is skipped with a note.
 
-A list shows an empty state text of its own: "Nothing to show." It names no count it cannot know.
+A list draws rows, not cards (Q1, settled 2026-11-17). A list shows an empty state text of its own: "Nothing to show." It names no count it cannot know.
 
 ### D3: the filter
 
-`FilterBlock(controls)`, with 1 to 6 controls. A `Text` control sends its value as the parameter named by its key. A `Select` control
+`FilterBlock(controls)`, with 1 to 6 controls. The key `cursor` is reserved for paging and is refused as a filter key (Q2, settled 2026-11-17); a plugin that needs a `limit` declares it as a filter. A `Text` control sends its value as the parameter named by its key. A `Select` control
 sends its option value. An empty value is not sent. The filter applies to the next `List` block of the same page, and the page
 validator refuses a filter that has no list after it.
 
@@ -102,7 +102,7 @@ first page and drops the cursor.
 
 ### D4: links
 
-A link is a path, checked by `linkProblem` in the validator and by a function of the same name in `pluginBlocks.ts`. The rules, all of
+A link is a path, checked by `linkProblem` in the validator and by `linkAllowed` in `pluginBlocks.ts`. A link to a reader page is a same-origin path like any other, with no special rule (Q3, settled 2026-11-17). The rules, all of
 which must hold:
 
 1. It starts with `/` and the second character is not `/` and not `\`.
@@ -176,10 +176,10 @@ it is merged, and the test of D9 covers the constructors of the old blocks.
 - **Counts that are wrong.** The dashboard draws the counts it is given. The correctness of counts belongs to the plugin and to
   `add-search-attribute-facets`.
 
-## Open questions (each has a default)
+## Open questions (settled 2026-11-17 with the recommended default)
 
-- **Q1. Cards or rows.** Default rows. A grid of cards is a layout choice of the dashboard and can follow.
-- **Q2. Reserved parameter names.** Default `cursor` only. A plugin that needs `limit` declares it as a filter.
-- **Q3. Link to another reader page.** Default: a link is a same-origin path, so `/plugins/<plugin>/<page>?item=...` works without a
-  special rule.
-- **Q4. Language names.** Default the five names above. More names are a later, additive change.
+- **Q1. Cards or rows.** Settled 2026-11-17: rows. A grid of cards is a layout choice of the dashboard and can follow.
+- **Q2. Reserved parameter names.** Settled 2026-11-17: `cursor` only. A plugin that needs `limit` declares it as a filter.
+- **Q3. Link to another reader page.** Settled 2026-11-17: a link is a same-origin path, so `/plugins/<plugin>/<page>?item=...` works
+  without a special rule.
+- **Q4. Language names.** Settled 2026-11-17: the five names above. More names are a later, additive change.
