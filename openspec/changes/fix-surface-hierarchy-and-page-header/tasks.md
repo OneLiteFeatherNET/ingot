@@ -41,10 +41,10 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root is `MdPage` with no `mx-auto` or `max-w-*` class,
   that its form blocks carry the reading measure, and that the page has one `h1`. Verify: it fails on `AccountView.vue:43` and `:47`.
 - [ ] 2.8 `test(ui)`: in `src/components/settings/EntryDetail.test.js`, assert that the back button is in its own row above the `h3` at
-  every width (no `min-[840px]:hidden` on the row that holds the heading). Verify: it fails on `EntryDetail.vue:280`.
+  every width (no `expanded:hidden` on the row that holds the heading). Verify: it fails on `EntryDetail.vue:280`.
 - [ ] 2.9 `test(ui)`: in `src/components/access/TeamsPanel.test.js`, `src/components/access/PrincipalsPanel.test.js` and a new
   `src/components/settings/CollectionEditor.test.js`, assert that the detail pane carries the inset class that `MdListDetail` gives both
-  panes, and no `max-[839px]:hidden` on the pane's inset. Verify: it fails on `TeamsPanel.vue:196`, `PrincipalsPanel.vue:255` and
+  panes, and no `max-expanded:hidden` on the pane's inset. Verify: it fails on `TeamsPanel.vue:196`, `PrincipalsPanel.vue:255` and
   `CollectionEditor.vue:161`.
 - [ ] 2.10 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that the card title is a heading of level two or three.
   Verify: it fails on `SnippetsCard.vue:178`.

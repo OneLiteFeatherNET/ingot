@@ -28,7 +28,7 @@ Measured on `main` in `reposilite-frontend/`, with the references checked agains
   The high contrast set (`prefers-contrast: more`) strengthens `outline` (`color.css:176` and `:213`). It is measured again in
   the tasks, with the values recorded in the pull request, because this design does not compute it.
 - **Page containers.** `src/components/layout/AdministrationFrame.vue:103` has two variants. The reading variant
-  (`container max-w-[960px] pb-12 pt-7`) has no `mx-auto`, and the wide one has it. `src/components/account/AccountView.vue:43` has
+  (`container max-w-md-reading pb-12 pt-7`) has no `mx-auto`, and the wide one has it. `src/components/account/AccountView.vue:43` has
   the same missing `mx-auto`. Hand-written page containers also sit in `DefaultHeader.vue:37`, `DashboardView.vue:37`,
   `SearchView.vue:250` (no `max-w-none`), `FileBrowserView.vue:208`, `RepositoryOverview.vue:202` (`mb-12` where the rest use
   `pb-12`), `HeaderHero.vue:42`, `SiteFooter.vue:31` (no `mx-auto`), `NotFoundView.vue:23`, `ViewLoadError.vue:27`,
@@ -46,7 +46,7 @@ Measured on `main` in `reposilite-frontend/`, with the references checked agains
   on the `nav` while the wrapping happens in the `ol` (`:52` and `:55`), its current crumb has no `min-h-12` while its links do
   (`:69` and `:77`), and its parent button has `ml-1` (`:94`).
 - **Padding and inset of the detail panes.** `src/components/access/TeamsPanel.vue:196`, `PrincipalsPanel.vue:255` and
-  `src/components/settings/CollectionEditor.vue:161` take `min-[840px]:p-6` and nothing below 840 pixels. `access/TeamDetail.vue:207` and
+  `src/components/settings/CollectionEditor.vue:161` take `expanded:p-6` and nothing below 840 pixels. `access/TeamDetail.vue:207` and
   `settings/EntryDetail.vue:280-295` (the back button, hidden from 840 pixels) complete the picture.
 - **Existing tests that touch these elements.** `e2e/layout.spec.js:35` reads the Repositories heading as level 2. The
   `data-test="entry-title"` attribute is on `RepositoryDetail.vue:208` and on `settings/EntryDetail.vue:294`, and
@@ -109,7 +109,7 @@ its centred column go (D11), so the reading branch of the frame (`Administration
 stop being a difference of kind between pages.
 
 Running text and forms do not use the page width. A block of prose or a form inside a page takes the reading measure of D11
-(`max-w-[960px]`, left-aligned, no `mx-auto`). The measure is set on the block, never on the page container.
+(`max-w-md-reading`, left-aligned, no `mx-auto`). The measure is set on the block, never on the page container.
 
 No view writes `container` itself, and no view writes `mx-auto` or `max-w-*` on the page container. `MdPage` owns the top and bottom spacing so
 that `pb-12` and `mb-12` cannot disagree. A test reads the sources of the views and fails on a `container` class outside `MdPage`
@@ -173,7 +173,7 @@ trail and its back control. Its type section and its lists take the full width t
 
 The detail panes of the list-detail layout (`TeamsPanel.vue:196`, `PrincipalsPanel.vue:255`, `CollectionEditor.vue:161`) and their
 detail components (`TeamDetail.vue:207`, `PrincipalDetail.vue`) take the same padding at every width through `MdListDetail`, which gives
-both panes one inset. The `min-[840px]:p-6` and `max-[839px]:hidden` classes move into the primitive. The list pane and the detail
+both panes one inset. The `expanded:p-6` and `max-expanded:hidden` classes move into the primitive. The list pane and the detail
 pane start at the same left edge below 840 pixels, so the title of the detail is not flush against the window edge.
 
 ### D7. Card default
@@ -217,7 +217,7 @@ left-aligned.
 
 - Pages are full width. Dashboard pages hold lists, tables, account settings, detail panes and the file browser, and each needs the width
   after the side navigation. A page container carries no `max-w-*` and no `mx-auto`.
-- A reading measure of 960 pixels applies to running text and form blocks only. The block carries `max-w-[960px]` and is left-aligned to
+- A reading measure of 960 pixels applies to running text and form blocks only. The block carries `max-w-md-reading` and is left-aligned to
   the page's left edge, so the title, the trail, the description and the text share one edge at every width. The left alignment follows
   the header rule of D3.
 - The centred 960 pixel page column, which was the default of question 2 before this decision, is rejected for pages. It puts a page's
