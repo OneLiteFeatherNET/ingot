@@ -16,6 +16,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 
 /*
@@ -42,48 +43,51 @@ const groups = computed(() => {
 </script>
 
 <template>
-  <section
-    role="alert"
-    class="mb-6 flex flex-col gap-4 rounded-corner-medium bg-error-container p-4 text-on-error-container"
+  <div
+    class="mb-6"
     data-ingot-component="settings-import-errors"
   >
-    <div class="flex flex-wrap items-start justify-between gap-2">
-      <h2 class="md-title-medium">
-        The file was not imported
-      </h2>
-      <MdButton
-        variant="text"
-        type="button"
-        @click="emit('dismiss')"
-      >
-        Dismiss
-      </MdButton>
-    </div>
-    <p class="md-body-medium">
-      Nothing was loaded into the draft. Fix these values in the file and import it again.
-    </p>
-    <div
-      v-for="group in groups"
-      :key="group.domain"
-      class="flex flex-col gap-2"
+    <MdAlert
+      tone="error"
+      title="The file was not imported"
     >
-      <h3
-        v-if="group.domain"
-        class="md-label-large"
-      >
-        {{ group.domain }}
-      </h3>
-      <ul class="flex flex-col gap-1 md-body-medium">
-        <li
-          v-for="(error, index) in group.errors"
-          :key="index"
+      <div class="flex flex-col gap-4">
+        <p>
+          Nothing was loaded into the draft. Fix these values in the file and import it again.
+        </p>
+        <div
+          v-for="group in groups"
+          :key="group.domain"
+          class="flex flex-col gap-2"
         >
-          <span
-            v-if="error.label"
-            class="font-medium"
-          >{{ error.label }}: </span>{{ error.message }}
-        </li>
-      </ul>
-    </div>
-  </section>
+          <h3
+            v-if="group.domain"
+            class="md-label-large"
+          >
+            {{ group.domain }}
+          </h3>
+          <ul class="flex flex-col gap-1">
+            <li
+              v-for="(error, index) in group.errors"
+              :key="index"
+            >
+              <span
+                v-if="error.label"
+                class="font-medium"
+              >{{ error.label }}: </span>{{ error.message }}
+            </li>
+          </ul>
+        </div>
+      </div>
+      <template #action>
+        <MdButton
+          variant="text"
+          type="button"
+          @click="emit('dismiss')"
+        >
+          Dismiss
+        </MdButton>
+      </template>
+    </MdAlert>
+  </div>
 </template>
