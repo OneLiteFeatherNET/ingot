@@ -127,6 +127,34 @@ internal class AzureBlobStorageProviderFactoryTest {
     }
 
     @Test
+    fun `should keep the account name of the settings over the environment`() {
+        // when: the repository names its own account and the environment names another
+        val resolved = AzureBlobStorageProviderSettings(accountName = "settingsaccount")
+            .withEnvironment(context(mapOf("AZURE_BLOB_ACCOUNT_NAME" to "envaccount")))
+
+        // then: the repository setting is used
+        assertThat(resolved.accountName).`as`("account name").isEqualTo("settingsaccount")
+    }
+
+    @Test
+    fun `should read only the account and the endpoint from the environment`() {
+        // given: a context that records every variable the factory asks for
+        val requested = mutableListOf<String>()
+        val recording = object : StorageProviderContext by context() {
+            override fun environment(name: String): String? {
+                requested += name
+                return null
+            }
+        }
+
+        // when: a repository without account or endpoint is resolved
+        AzureBlobStorageProviderSettings(container = "repositories").withEnvironment(recording)
+
+        // then: only the non-secret names are read, so no credential reaches the environment path
+        assertThat(requested).`as`("requested variables").containsExactlyInAnyOrder("AZURE_BLOB_ENDPOINT", "AZURE_BLOB_ACCOUNT_NAME")
+    }
+
+    @Test
     fun `should be found through the storage provider service file of the jar`() {
         // when: the storage provider factories of the class path are listed as the server lists them
         val factories = ServiceLoader.load(StorageProviderFactory::class.java).map { it.javaClass.name }
