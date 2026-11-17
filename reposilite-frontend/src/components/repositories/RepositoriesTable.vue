@@ -98,7 +98,7 @@ const onAction = (row: RepositoryRow, value: string) => {
     role="region"
     aria-label="Repositories table"
     tabindex="0"
-    class="overflow-x-auto rounded-corner-medium md-focus-ring"
+    class="overflow-x-auto md-focus-ring"
     data-ingot-component="repositories-table"
   >
     <table class="w-full min-w-[40rem] border-collapse text-left">
@@ -218,7 +218,9 @@ const onAction = (row: RepositoryRow, value: string) => {
           </th>
           <td class="px-3 py-3 align-middle">
             <div class="flex flex-col gap-2">
-              <TypeBadge :type="row.type" />
+              <div class="w-max">
+                <TypeBadge :type="row.type" />
+              </div>
               <p
                 v-if="row.type.key === 'MIXED'"
                 class="md-body-small text-warning"
