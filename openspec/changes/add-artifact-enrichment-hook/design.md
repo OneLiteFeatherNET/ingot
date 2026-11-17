@@ -165,7 +165,7 @@ The existing index status response (`GET /api/maven/search/index`, see `add-sear
 
 Every replica that drains the outbox runs the enrichers it has registered. Replicas with different enricher sets therefore write
 different rows for the same file. The change records this and does not solve it: the next change stores the enricher version in
-each row, and a rebuild or a version mismatch can detect it (Q3). Operators install the same plugin jars on every replica, as they do
+each row and re-enriches a row on a version mismatch (Q3). Operators install the same plugin jars on every replica, as they do
 for any plugin.
 
 ## Plugin API gaps closed and not closed
@@ -191,15 +191,19 @@ for any plugin.
 
 - **A slow enricher slows indexing.** Mitigation: the deadline per call, a bounded queue and the `busy` skip. Throughput per enricher is
   one file per deadline at worst.
-- **Budget too small for some jars.** Mitigation: the default is a constant that the first code pull request makes testable; Q2 decides
-  whether it becomes a key.
+- **Budget too small for some jars.** Mitigation: the default is a constant that the first code pull request makes testable; Q2 is settled:
+  the values stay constants in this change.
 - **Rebuild gap.** Files indexed before the plugin existed stay unenriched until they change. Mitigation: explicit in D3, closed by the
   next change.
 
-## Open questions (each has a default)
+## Open questions, settled 2026-11-17
 
-- **Q1. Where the executor lives.** Default: one executor owned by the search plugin, shared by all enrichers.
-- **Q2. Configuration of the budget and the deadline.** Default: constants. If an operator needs to change them, the key takes the
-  `INGOT_SEARCH_ENRICHMENT_` prefix with the `REPOSILITE_` spelling as fallback, and it is added in a separate change.
-- **Q3. Version mismatch across replicas.** Default: the next change stores the enricher version and re-enriches on mismatch.
-- **Q4. Enrichment of unchanged files on rebuild.** Default: no in this change. Full re-enrichment needs the version of Q3.
+The maintainer settled every question with the default recommended here. The answers are binding for the code pull requests.
+
+- **Q1. Where the executor lives.** Settled 2026-11-17: one executor owned by the search plugin, shared by all enrichers.
+- **Q2. Configuration of the budget and the deadline.** Settled 2026-11-17: constants in this change. If an operator needs to change
+  them, a later change adds the key with the `INGOT_SEARCH_ENRICHMENT_` prefix and the `REPOSILITE_` spelling as fallback.
+- **Q3. Version mismatch across replicas.** Settled 2026-11-17: the next change stores the enricher version in each row and
+  re-enriches a row on a version mismatch.
+- **Q4. Enrichment of unchanged files on rebuild.** Settled 2026-11-17: no in this change. Full re-enrichment comes with the version
+  of Q3.

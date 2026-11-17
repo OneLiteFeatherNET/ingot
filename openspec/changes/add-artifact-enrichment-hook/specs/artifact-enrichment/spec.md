@@ -87,7 +87,7 @@ with the enricher id, the repository and the path, but without any content.
 ### Requirement: Status of enrichers
 
 The index status response SHALL carry an additive block with the counters `calls`, `completed`, `skipped`, `failed` and `busy` for each
-registered enricher. No existing field of the response SHALL change.
+registered enricher, and the number of failures per reason. No existing field of the response SHALL change.
 
 #### Scenario: Status after failures
 

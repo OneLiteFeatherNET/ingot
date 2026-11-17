@@ -36,7 +36,7 @@ promise.
 - Enrichment on the request thread of a deployment or a download. It is never on the request path.
 - Enrichment of directories, of metadata files other than the declared extensions, or of files removed from storage.
 - Any change to the search backends (Elasticsearch, OpenSearch, Meilisearch, Lucene, database). The hook sits before the backend.
-- A configuration key. The budget and the deadline are constants in this change (open question Q2 in the design).
+- A configuration key. The budget and the deadline are constants in this change (open question Q2 in the design, settled 2026-11-17: constants).
 - Exposing storage to plugins outside the content handle. Plugins do not get the storage facade.
 
 ## Capabilities
