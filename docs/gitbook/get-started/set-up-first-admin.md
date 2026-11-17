@@ -33,7 +33,7 @@ An instance without users cannot be used until one person signs in as administra
 
 6. Enter a **Display name** if you want one. It is optional.
 
-7. Enter a password of 12 to 256 characters in **Password**, then repeat it in **Confirm password**.
+7. Enter a password of 12 to 256 characters in **Password**, then repeat it in **Confirm password**. The 12 is the default minimum. An operator can raise it with `minLength` in the password policy, see [Password policy](../references/settings/login-providers.md#password-policy).
 
 8. Select **Set up**.
 

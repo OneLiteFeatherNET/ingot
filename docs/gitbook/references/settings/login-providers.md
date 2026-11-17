@@ -53,11 +53,13 @@ Upgrade note: the table of known addresses starts empty when the switch is turne
 
 ### Password policy
 
-The password policy applies when a password is set, changed or reset, and when the first administrator is created during setup. It never applies at sign-in, so a stored password is not checked again and no user is locked out by a new rule. With the defaults, a new password needs at least 12 characters, as it always has, and no breached-password check runs.
+The password policy applies to a password that is chosen in three places: the first administrator at setup, a user who changes their own password, and an administrator who resets a user's password. It never applies at sign-in, so a stored password is not checked again and no user is locked out by a new rule. Creating a user through the identity API stores no password. The **New user** dialog of the dashboard creates the user and then sets the first password through the reset route, so the rule applies to that password at once. With the defaults, a new password needs at least 12 characters, as it always has, and no breached-password check runs.
+
+The key path of the minimum is `login.passwordPolicy.minLength`. The other keys are in the table below.
 
 | Key in `passwordPolicy` | Default | Meaning |
 | --- | --- | --- |
-| `minLength` | `12` | Fewest characters of a new password, counted in UTF-16 code units as before. Between 8 and 256. A higher value applies to the next password a user sets. The docs recommend 12 to 15 for new installations. |
+| `minLength` | `12` | Fewest characters of a new password, counted in UTF-16 code units as before. Between 8 and 256. A higher value applies to the next password that is set; stored passwords are not checked again. |
 | `breachCheck.mode` | `OFF` | `OFF` makes no check. `RANGE` asks the range service. `OFFLINE` compares with a file. |
 | `breachCheck.file` | empty | `OFFLINE` only: a file with one SHA-1 hash in hexadecimal per line, optionally followed by `:COUNT`. It is read once at start, and the start fails when it cannot be read. |
 | `breachCheck.rangeUrl` | `https://api.pwnedpasswords.com/range/` | `RANGE` only: base address of the range service, ending in a slash. The five characters are appended. Must be an `https://` address, so a mirror of the API can be used. |

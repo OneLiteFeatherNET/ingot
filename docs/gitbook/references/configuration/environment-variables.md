@@ -231,6 +231,14 @@ The decision log keeps one audit row for each denied check, each write decision 
 
 The variable is read when the access token plugin starts, so a change takes effect after a restart. Records hold names and rule identifiers, never a token secret. Retention is the one of the audit log, see [Retention](../identity/audit-events.md#retention).
 
+## Login variables
+
+The server reads this variable when it starts, so a change needs a restart. The switch has no effect on the admin page. See [Account throttle](../settings/login-providers.md#account-throttle) for the delays and their thresholds.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_LOGIN_ACCOUNT_THROTTLE` | `REPOSILITE_LOGIN_ACCOUNT_THROTTLE` | `false` | `true` in any case turns on the account throttle, which delays guesses against one user name from addresses that name has not signed in from. Any other value, including blank, leaves it off. The `INGOT_` name is used when it is not blank. |
+
 ## Identity variables
 
 The guard of external references decides whether linking a team to a provider group needs the admin area `ingot.admin.idp`, see [Map provider groups to teams](../../configure/authentication/map-provider-groups-to-teams.md#the-external-reference-of-a-team).
