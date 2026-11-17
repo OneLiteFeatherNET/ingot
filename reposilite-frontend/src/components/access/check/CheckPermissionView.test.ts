@@ -116,16 +116,16 @@ describe('CheckPermissionView', () => {
 
   beforeEach(() => {
     identity = {
-      check: vi.fn(async () => ({ data: ALLOWED })),
+      check: vi.fn(() => Promise.resolve({ data: ALLOWED })),
       principals: {
-        list: vi.fn(async () => ({ data: PRINCIPALS })),
-        get: vi.fn(async () => ({ data: { name: 'alice', teams: [], tokens: [{ name: 'deploy' }, { name: 'docs' }] } }))
+        list: vi.fn(() => Promise.resolve({ data: PRINCIPALS })),
+        get: vi.fn(() => Promise.resolve({ data: { name: 'alice', teams: [], tokens: [{ name: 'deploy' }, { name: 'docs' }] } }))
       },
-      nodes: { catalog: vi.fn(async () => ({ data: { nodes: CATALOG } })) }
+      nodes: { catalog: vi.fn(() => Promise.resolve({ data: { nodes: CATALOG } })) }
     }
     maven = {
-      repositories: vi.fn(async () => ({ data: { repositories: REPOSITORIES } })),
-      details: vi.fn(async (gav: string) => ({ data: DIRECTORIES[gav] ?? { name: '', type: 'DIRECTORY', files: [] } }))
+      repositories: vi.fn(() => Promise.resolve({ data: { repositories: REPOSITORIES } })),
+      details: vi.fn((gav: string) => Promise.resolve({ data: DIRECTORIES[gav] ?? { name: '', type: 'DIRECTORY', files: [] } }))
     }
     holder.session = { client: ref({ identity, maven }) }
     vi.mocked(createErrorToast).mockClear()
@@ -804,7 +804,9 @@ describe('CheckPermissionView', () => {
       await type('principal-field', 'alice')
       await switchToPath()
 
+      await type('artifact-repository', 'releases')
       await type('artifact-path', DEPLOYED)
+      await type('artifact-repository', '')
 
       expect(wrapper.find('[data-test="artifact-repository"]').text()).toContain('Enter the repository the path is in')
       expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
