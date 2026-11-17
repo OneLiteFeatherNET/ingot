@@ -83,6 +83,20 @@ describe('the repositories table', () => {
     expect(wrapper.find('table caption').text(), 'the caption counts the rows').toBe('Repositories, 5 of 5 shown')
   })
 
+  it('shows the count once, beside the filter, and keeps the caption visually hidden for assistive technology', async () => {
+    await mountPage()
+
+    const visible = wrapper.findAll('[role="status"]').filter(region => region.text().includes('shown'))
+    expect(visible.map(region => region.text()), 'one visible count').toEqual(['5 of 5 repositories shown'])
+    expect(wrapper.find('table caption').classes(), 'the caption is visually hidden').toContain('sr-only')
+    expect(wrapper.find('table caption').text(), 'the caption still names the count for screen readers').toBe('Repositories, 5 of 5 shown')
+
+    const row = wrapper.get('[data-test="filter-count"]').element.parentElement!
+    expect(row.className, 'the filter and the count share a row that wraps on narrow widths').toContain('flex-wrap')
+    expect(row.contains(filterInput().element), 'the count sits in the row of the filter').toBe(true)
+    expect(filterInput().element.closest('.max-w-md'), 'the filter field has a maximum width').not.toBeNull()
+  })
+
   it('names the page with an h2 and marks the columns and the name cells as headers', async () => {
     await mountPage()
 

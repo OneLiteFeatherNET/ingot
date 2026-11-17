@@ -98,7 +98,7 @@ const onAction = (row: RepositoryRow, value: string) => {
     data-ingot-component="repositories-table"
   >
     <table class="w-full min-w-[40rem] border-collapse text-left">
-      <caption class="pb-2 text-left md-body-medium text-on-surface-variant">
+      <caption class="sr-only">
         {{ caption }}
       </caption>
       <thead data-ingot-part="header">

@@ -192,21 +192,24 @@ const confirmDelete = () => {
     </p>
 
     <template v-else>
-      <MdTextField
-        :model-value="query"
-        label="Filter repositories"
-        variant="outlined"
-        autocomplete="off"
-        supporting-text="Search by id, description or tag. Use tag:name for one tag."
-        @update:model-value="query = $event"
-      />
-      <p
-        role="status"
-        data-test="filter-count"
-        class="md-body-medium text-on-surface-variant"
-      >
-        {{ countText }}
-      </p>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <MdTextField
+          :model-value="query"
+          label="Filter repositories"
+          variant="outlined"
+          autocomplete="off"
+          supporting-text="Search by id, description or tag. Use tag:name for one tag."
+          class="max-w-md"
+          @update:model-value="query = $event"
+        />
+        <p
+          role="status"
+          data-test="filter-count"
+          class="md-body-medium text-on-surface-variant"
+        >
+          {{ countText }}
+        </p>
+      </div>
       <p
         role="status"
         data-test="status-message"
