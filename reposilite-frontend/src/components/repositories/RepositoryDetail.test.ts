@@ -91,11 +91,18 @@ const writePolicyRadios = () => Array.from(document.querySelectorAll<HTMLInputEl
 const buttonNamed = (text: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent?.trim() === text)!
 
 describe('the repository detail page', () => {
-  it('does not repeat the id of the repository as a heading, the page heading names it', async () => {
+  it('names the repository in the first heading of the detail, the second level heading with its id', async () => {
     await mountDetail({ id: 'releases' })
 
-    const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
-    expect(headings, 'no heading of the detail is the id').not.toContain('releases')
+    expect(wrapper.find('h2').text(), 'the first heading of the detail is the id').toBe('releases')
+  })
+
+  it('draws the id as the heading of the header of the detail', async () => {
+    await mountDetail({ id: 'releases' })
+
+    const name = wrapper.get('[data-test="repository-name"]').element
+    expect(name.tagName, 'the id is a second level heading').toBe('H2')
+    expect(name.closest('header'), 'the heading sits in the header of the detail').not.toBeNull()
   })
 
   it('starts the headings of the detail at the second level, under the page heading', async () => {
