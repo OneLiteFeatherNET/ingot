@@ -115,7 +115,7 @@ const submit = async () => {
     <form
       v-else
       id="account-password-form"
-      class="flex flex-col gap-4"
+      class="flex max-w-xl flex-col gap-4"
       novalidate
       @submit.prevent="submit()"
     >

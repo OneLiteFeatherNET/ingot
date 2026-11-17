@@ -42,7 +42,7 @@ const passwordChanged = () => {
 
 <template>
   <section
-    class="container max-w-md-reading pb-12 pt-7"
+    class="container pb-12 pt-7"
     aria-labelledby="account-title"
     data-ingot-component="account-view"
   >
@@ -67,10 +67,7 @@ const passwordChanged = () => {
       Set a new password before you continue
     </p>
 
-    <div
-      class="grid grid-cols-1 items-start gap-4 min-[960px]:grid-cols-2"
-      :class="mustChangePassword ? '[&>*:first-child]:min-[960px]:col-span-2' : ''"
-    >
+    <div class="grid grid-cols-1 items-start gap-4 expanded:grid-cols-2">
       <PasswordCard
         v-if="mustChangePassword"
         :api="identity"
@@ -90,7 +87,7 @@ const passwordChanged = () => {
         :available="passwordAvailable"
         @changed="passwordChanged"
       />
-      <div class="min-w-0 min-[960px]:col-span-2">
+      <div class="min-w-0 col-span-full">
         <TokenList :api="identity.tokens" />
       </div>
     </div>
