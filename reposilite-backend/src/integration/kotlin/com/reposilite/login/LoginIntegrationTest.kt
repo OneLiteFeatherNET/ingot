@@ -97,6 +97,17 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `names the password minimum in the providers answer before any user exists`() {
+        // when: the login providers are requested on an instance without any user, as the setup form does
+        val response = http.get("$base/api/auth/providers").asJacksonObject(LoginProvidersResponse::class)
+
+        // then: the answer carries the default minimum of 12 characters, so the form can check a new password
+        assertSuccessResponse(OK, response) { providers ->
+            assertThat(providers.passwordMinLength).isEqualTo(12)
+        }
+    }
+
+    @Test
     fun `publishes the local password provider once a user exists`() {
         // given: a user exists, so the local provider has an account to check
         loginFacade.createUser("dave-login", "Dave", password)
