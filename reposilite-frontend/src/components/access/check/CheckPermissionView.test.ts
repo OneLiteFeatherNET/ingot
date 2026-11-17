@@ -48,6 +48,17 @@ const CATALOG = [
 
 const NODE = 'ingot.repository.private.read'
 
+const REPOSITORIES = [
+  { id: 'releases', type: 'maven' },
+  { id: 'snapshots', type: 'maven' }
+]
+
+// The directory listings of the browse endpoint, keyed by the path it is asked for.
+const DIRECTORIES: Record<string, { name: string, type: string, files: { name: string, type: string }[] }> = {
+  releases: { name: 'releases', type: 'DIRECTORY', files: [{ name: 'net', type: 'DIRECTORY' }, { name: 'README.md', type: 'FILE' }] },
+  'releases/net': { name: 'net', type: 'DIRECTORY', files: [{ name: 'onelitefeather', type: 'DIRECTORY' }, { name: 'notes.txt', type: 'FILE' }] }
+}
+
 const ALLOWED = {
   allowed: true,
   decision: { source: 'USER', subject: 'alice', node: NODE, allowed: true, depth: 0 },
@@ -79,6 +90,7 @@ describe('CheckPermissionView', () => {
   let wrapper: VueWrapper
   let router: Router
   let identity: IdentityFake
+  let maven: { repositories: Mock, details: Mock }
 
   const mountView = async (url = '/access/check') => {
     router = createRouter({
@@ -111,7 +123,11 @@ describe('CheckPermissionView', () => {
       },
       nodes: { catalog: vi.fn(async () => ({ data: { nodes: CATALOG } })) }
     }
-    holder.session = { client: ref({ identity }) }
+    maven = {
+      repositories: vi.fn(async () => ({ data: { repositories: REPOSITORIES } })),
+      details: vi.fn(async (gav: string) => ({ data: DIRECTORIES[gav] ?? { name: '', type: 'DIRECTORY', files: [] } }))
+    }
+    holder.session = { client: ref({ identity, maven }) }
     vi.mocked(createErrorToast).mockClear()
   })
 
@@ -261,6 +277,101 @@ describe('CheckPermissionView', () => {
 
       expect([text('summary-source'), text('summary-subject'), text('summary-node'), text('summary-depth')])
         .toEqual(['Default', 'None', 'None', 'None'])
+    })
+  })
+
+  describe('suggestions of the artifact path', () => {
+    const switchToPath = async () => {
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+      await flushPromises()
+    }
+
+    const optionTexts = (field: string): string[] => wrapper.findAll(`[data-test="${field}"] [data-test="option"]`).map(option => option.text())
+
+    // The pause before a path is looked up is 200 ms; the fake clock covers only setTimeout, so flushPromises still works.
+    const withFakeClock = async (run: () => Promise<void>) => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      try {
+        await run()
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+
+    it('suggests the repositories of the server that match the typed text', async () => {
+      await mountView()
+      await switchToPath()
+
+      await type('artifact-repository', 'rel')
+      await flushPromises()
+
+      expect(optionTexts('artifact-repository').some(text => text.startsWith('releases')), 'releases matches').toBe(true)
+      expect(optionTexts('artifact-repository').some(text => text.startsWith('snapshots')), 'snapshots does not match').toBe(false)
+    })
+
+    it('keeps the path field off until a repository is chosen', async () => {
+      await mountView()
+      await switchToPath()
+
+      expect(wrapper.find('[data-test="artifact-path"] input').attributes('disabled')).toBeDefined()
+    })
+
+    it('turns the path field on once a repository is typed', async () => {
+      await mountView()
+      await switchToPath()
+
+      await type('artifact-repository', 'releases')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="artifact-path"] input').attributes('disabled')).toBeUndefined()
+    })
+
+    it('asks the browse endpoint for the directory of the segment being typed only after a 200 ms pause', async () => {
+      await mountView()
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await flushPromises()
+
+      await withFakeClock(async () => {
+        await type('artifact-path', 'net/')
+        await vi.advanceTimersByTimeAsync(199)
+        expect(maven.details, 'no request inside the pause').not.toHaveBeenCalled()
+
+        await vi.advanceTimersByTimeAsync(1)
+        expect(maven.details).toHaveBeenCalledWith('releases/net')
+      })
+    })
+
+    it('suggests the entries of that directory, folders with a trailing slash, for the typed segment', async () => {
+      await mountView()
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await flushPromises()
+
+      await withFakeClock(async () => {
+        await type('artifact-path', 'net/o')
+        await vi.advanceTimersByTimeAsync(200)
+      })
+      await flushPromises()
+
+      expect(optionTexts('artifact-path').some(text => text.startsWith('net/onelitefeather/')), 'the folder is suggested').toBe(true)
+      expect(optionTexts('artifact-path').some(text => text.startsWith('net/notes.txt')), 'a file that does not match is left out').toBe(false)
+    })
+
+    it('shows no suggestions when the directory cannot be listed', async () => {
+      await mountView()
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await flushPromises()
+      maven.details.mockRejectedValueOnce(new Error('not found'))
+
+      await withFakeClock(async () => {
+        await type('artifact-path', 'net/')
+        await vi.advanceTimersByTimeAsync(200)
+      })
+      await flushPromises()
+
+      expect(optionTexts('artifact-path')).toEqual([])
     })
   })
 
