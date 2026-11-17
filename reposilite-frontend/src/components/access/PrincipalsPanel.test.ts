@@ -269,6 +269,19 @@ describe('PrincipalsPanel', () => {
       expect(principals.get).toHaveBeenCalledWith('alice')
     })
 
+    it('offers the permission check next to New user on the list when no user is selected', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      const link = wrapper!.findAll('a').find(item => item.text() === 'Check a permission')
+      expect(link?.attributes('href'), 'the list toolbar opens the check').toBe('/access/check')
+    })
+
+    it('draws no permission check link beside the detail of a user, the detail pane offers its own', async () => {
+      await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
+
+      expect(wrapper!.findAll('a').map(item => item.text())).not.toContain('Check a permission')
+    })
+
     it('creates a user through the dialog: the principal first, then the password', async () => {
       await mountPanel({ kind: 'USER' })
 

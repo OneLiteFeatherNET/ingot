@@ -167,6 +167,19 @@ describe('TeamsPanel', () => {
     expect(wrapper!.find('[data-test="detail"]').text()).toBe('release')
   })
 
+  it('offers the permission check next to New team on the list when no team is selected', async () => {
+    await mountPanel()
+
+    const link = wrapper!.findAll('a').find(item => item.text() === 'Check a permission')
+    expect(link?.attributes('href'), 'the list toolbar opens the check').toBe('/access/check')
+  })
+
+  it('draws no permission check link beside the detail of a team', async () => {
+    await mountPanel({ name: 'release' }, '/access/teams/release')
+
+    expect(wrapper!.findAll('a').map(item => item.text())).not.toContain('Check a permission')
+  })
+
   it('opens the new team after the create dialog made it', async () => {
     await mountPanel()
 

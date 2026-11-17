@@ -166,12 +166,33 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="principal-display-name"]').text(), 'the display name is kept as text').toBe('Alice Example')
     })
 
-    it('does not repeat the name of the user as a heading, the page heading names it', async () => {
+    it('names the user in the second level heading of the detail, the display name', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 
-      const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
-      expect(headings, 'no heading of the detail is the display name').not.toContain('Alice Example')
-      expect(headings, 'no heading of the detail is the id').not.toContain('alice')
+      expect(wrapper.find('h2').text(), 'the first heading of the detail is the display name').toBe('Alice Example')
+    })
+
+    it('shows the username under the heading when it differs from the display name', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const heading = wrapper.find('h2').element
+      expect(heading.parentElement?.querySelector('[data-test="heading-username"]')?.textContent, 'the username sits under the name').toBe('alice')
+    })
+
+    it('shows no username under the heading when the display name is the username', async () => {
+      principals.get.mockResolvedValueOnce({ data: { ...ALICE, displayName: '' }, headers: { etag: '"1"' } })
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('h2').text(), 'with no display name the heading is the username').toBe('alice')
+      expect(wrapper.find('[data-test="heading-username"]').exists(), 'the name is not repeated').toBe(false)
+    })
+
+    it('keeps the actions in the row of the heading', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const row = wrapper.find('h2').element.closest('[data-test="heading-row"]')
+      expect(row, 'the heading has its row').not.toBeNull()
+      expect(row!.querySelector('[data-test="check-permission"]'), 'the check action is in the heading row').not.toBeNull()
     })
 
     it('starts the headings of the detail at the second level, under the page heading', async () => {

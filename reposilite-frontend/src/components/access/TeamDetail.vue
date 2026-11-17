@@ -42,8 +42,9 @@ import { useTeamDetail, type TeamWrite, type WriteResult } from './useTeamDetail
  *
  * Every write sends the entity tag of the detail as If-Match. A 412 opens the conflict dialog.
  * A rejection that names a reason, such as the last instance admin, is shown with the server's
- * own wording in the dialog that caused it. The name of the team is the page heading, drawn by the
- * page frame, so this component draws no heading and no back control of its own.
+ * own wording in the dialog that caused it. The name of the team is the heading of this detail (a second
+ * level heading, under the page heading that names the list). The way back is the page frame's, so this
+ * component draws no back control of its own.
  *
  * Props:
  *   name  the team to show
@@ -243,6 +244,9 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
       <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
+            <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">
+              {{ detail.name }}
+            </h2>
             <div
               v-if="detail.instanceRole"
               class="flex flex-wrap items-center gap-2"

@@ -18,5 +18,7 @@
 // named by the surface it serves until its icon family is decided (proposal question 3), and one path has one name.
 export const GLYPHS: Readonly<Record<string, string>> = Object.freeze({
   // The close glyph of the side sheet, the path of components/icons/CloseIcon.vue.
-  'sheet-close': 'M6 18L18 6M6 6l12 12'
+  'sheet-close': 'M6 18L18 6M6 6l12 12',
+  // The check of a permission on the list toolbars of the access pages: a shield with a tick in it.
+  'shield-check': 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zM9 12l2 2 4-4'
 })
