@@ -42,6 +42,8 @@ const lineCountOfText = (locator) => locator.evaluate((element) => {
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
   let node = walker.nextNode()
   while (node && node.textContent.trim() === '') node = walker.nextNode()
+  // The title is not rendered while the card loads, so there is no text to count yet.
+  if (!node) return 0
   const range = document.createRange()
   range.selectNodeContents(node)
   return range.getClientRects().length
@@ -162,7 +164,7 @@ test.describe('browse layout', () => {
       const repository = await seed.repository('details-heading')
       await page.goto(siteUrl(`/browse/${repository}`))
       await expect(detailsToggle(page), 'the details toggle').toBeVisible()
-      expect(await lineCountOfText(detailsToggle(page)), 'lines of the details heading').toBe(1)
+      await expect.poll(() => lineCountOfText(detailsToggle(page)), { message: 'lines of the details heading' }).toBe(1)
     })
   }
 
