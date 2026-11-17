@@ -72,11 +72,8 @@ const follow = (repository: PublicRepository) => {
     :labelledby="titleId"
     :describedby="explanationId"
   >
-    <template #header>
-      <div
-        class="flex flex-col gap-2"
-        data-ingot-component="public-repositories-dialog"
-      >
+    <div data-ingot-component="public-repositories-dialog">
+      <div class="flex flex-col gap-2">
         <h2
           :id="titleId"
           class="md-headline-small"
@@ -90,46 +87,44 @@ const follow = (repository: PublicRepository) => {
           Anyone can read these repositories without signing in.
         </p>
       </div>
-    </template>
 
-    <div class="mt-4 flex flex-col gap-2">
-      <ul
-        v-if="repositories.length > 0"
-        aria-label="Public repositories"
-        class="flex flex-col gap-2"
-      >
-        <li
-          v-for="repository in repositories"
-          :key="repository.id"
-          class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
+      <div class="mt-4 flex flex-col gap-2">
+        <ul
+          v-if="repositories.length > 0"
+          aria-label="Public repositories"
+          class="flex flex-col gap-2"
         >
-          <div class="flex min-w-0 flex-1 basis-40 flex-col">
-            <span class="md-title-small break-all">{{ repository.id }}</span>
-            <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
-          </div>
-          <MdButton
-            variant="text"
-            :href="hrefOf(repository)"
-            :aria-label="`Change visibility of ${repository.id}`"
-            @click.prevent="follow(repository)"
+          <li
+            v-for="repository in repositories"
+            :key="repository.id"
+            class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
           >
-            Change visibility
-          </MdButton>
-        </li>
-      </ul>
-      <p
-        v-else
-        class="md-body-medium text-on-surface-variant"
-      >
-        No repository is public.
-      </p>
-    </div>
+            <div class="flex min-w-0 flex-1 basis-40 flex-col">
+              <span class="md-title-small break-all">{{ repository.id }}</span>
+              <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
+            </div>
+            <MdButton
+              variant="text"
+              :href="hrefOf(repository)"
+              :aria-label="`Change visibility of ${repository.id}`"
+              @click.prevent="follow(repository)"
+            >
+              Change visibility
+            </MdButton>
+          </li>
+        </ul>
+        <p
+          v-else
+          class="md-body-medium text-on-surface-variant"
+        >
+          No repository is public.
+        </p>
+      </div>
 
-    <template
-      v-if="repositories.length > 0"
-      #actions
-    >
-      <MdDialogActions class="mt-6">
+      <MdDialogActions
+        v-if="repositories.length > 0"
+        class="mt-6"
+      >
         <MdButton
           variant="filled"
           type="button"
@@ -138,6 +133,6 @@ const follow = (repository: PublicRepository) => {
           Looks right
         </MdButton>
       </MdDialogActions>
-    </template>
+    </div>
   </MdDialog>
 </template>

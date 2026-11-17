@@ -115,6 +115,15 @@ describe('PublicRepositoriesDialog', () => {
     expect(wrapper?.emitted('update:modelValue')).toEqual([[false]])
   })
 
+  it('keeps the heading, the rows and the confirmation in one content block', async () => {
+    await mountDialog()
+
+    // The heading sits in a header block, which sits in the content block that also holds the rows and the actions.
+    const content = dialog()?.querySelector('h2')?.parentElement?.parentElement
+    expect(content?.querySelectorAll('li'), 'the content block holds every row').toHaveLength(2)
+    expect(buttonNamed('Looks right') && content?.contains(buttonNamed('Looks right') ?? null), 'the content block holds the confirmation').toBe(true)
+  })
+
   it('names the dialog by its heading', async () => {
     await mountDialog()
 
