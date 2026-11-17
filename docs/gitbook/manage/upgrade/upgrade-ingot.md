@@ -152,6 +152,27 @@ All checks answer as they did before the upgrade.
 
 If a token that worked before no longer authenticates, do not delete anything. Leave the data as it is and follow [Roll back an upgrade](#roll-back-an-upgrade).
 
+### Run the Helm test hook
+
+If you run Ingot with the Helm chart in `charts/ingot`, the chart can run a check pod with `helm test`. The hook is off by default, so the chart renders no test pod until you turn it on:
+
+```bash
+helm upgrade ingot charts/ingot --reuse-values --set tests.enabled=true
+helm test ingot
+```
+
+The pod calls the health endpoint and the public page of the server. A failed check fails `helm test`, and the pod is kept for its logs.
+
+To check an authenticated request as well, store a token in a Secret in the release namespace and name the Secret and its key:
+
+```bash
+kubectl create secret generic ingot-test --from-literal=token=<token>
+helm upgrade ingot charts/ingot --reuse-values --set tests.enabled=true --set tests.tokenSecret.name=ingot-test --set tests.tokenSecret.key=token
+helm test ingot
+```
+
+The chart reads the token from the Secret and never renders its value. The pod sends it as a bearer token to `/api/status/instance`, so use a token that endpoint accepts. Delete the Secret when you are done.
+
 ## Roll back an upgrade
 
 ### What the rollback needs
