@@ -142,11 +142,10 @@ describe('BreadcrumbNavigation', () => {
     expect(wrapper.findComponent({ name: 'MdBreadcrumb' }).exists(), 'the trail is the shared MD3 breadcrumb').toBe(true)
   })
 
-  it('keeps the breadcrumb-navigation anchor on the trail nav', async () => {
+  it('keeps the breadcrumb-navigation anchor on the component root', async () => {
     wrapper = await mountBreadcrumb()
-    const trail = wrapper.findComponent({ name: 'MdBreadcrumb' })
 
-    expect(trail.attributes('data-ingot-component'), 'plugins still style the trail by this anchor').toBe('breadcrumb-navigation')
+    expect(wrapper.attributes('data-ingot-component'), 'plugins still style the component by this anchor').toBe('breadcrumb-navigation')
   })
 
   it('gives the current crumb and every link the same minimum height class', async () => {

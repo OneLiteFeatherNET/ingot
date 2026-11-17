@@ -44,13 +44,14 @@ const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium">
-    <!-- The anchor stays on the trail's nav, so plugin stylesheets keep matching it. -->
+  <div
+    class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium"
+    data-ingot-component="breadcrumb-navigation"
+  >
     <MdBreadcrumb
       :items="trail"
       size="large"
       class="min-w-0"
-      data-ingot-component="breadcrumb-navigation"
     />
     <!-- The parent control is an action beside the trail, not a crumb. Its link is the icon button itself. -->
     <router-link
