@@ -120,185 +120,182 @@ const submit = () => {
     labelledby="policy-dialog-title"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <template #header>
+    <div data-ingot-component="policy-dialog">
       <h2
         id="policy-dialog-title"
         class="md-headline-small text-on-surface"
-        data-ingot-component="policy-dialog"
       >
         {{ isEditing ? `Edit ${policy?.id}` : 'New cleanup policy' }}
       </h2>
-    </template>
 
-    <form
-      id="policy-form"
-      class="mt-5 flex flex-col gap-5"
-      novalidate
-      @submit.prevent="submit"
-    >
-      <MdTextField
-        id="policy-id"
-        label="Id"
-        variant="outlined"
-        autocomplete="off"
-        :disabled="isEditing"
-        :model-value="draft.id"
-        :supporting-text="isEditing ? 'The id cannot be changed after creation.' : 'Letters, digits, dots, hyphens and underscores.'"
-        :error="!!shownErrors.id"
-        :error-text="shownErrors.id"
-        @update:model-value="draft.id = $event"
-      />
+      <form
+        id="policy-form"
+        class="mt-5 flex flex-col gap-5"
+        novalidate
+        @submit.prevent="submit"
+      >
+        <MdTextField
+          id="policy-id"
+          label="Id"
+          variant="outlined"
+          autocomplete="off"
+          :disabled="isEditing"
+          :model-value="draft.id"
+          :supporting-text="isEditing ? 'The id cannot be changed after creation.' : 'Letters, digits, dots, hyphens and underscores.'"
+          :error="!!shownErrors.id"
+          :error-text="shownErrors.id"
+          @update:model-value="draft.id = $event"
+        />
 
-      <div class="flex flex-col gap-2">
-        <MdSwitch
-          id="policy-enabled"
-          v-model="draft.enabled"
-        >
-          Enabled
-        </MdSwitch>
-        <p class="md-body-small text-on-surface-variant">
-          Disabled policies can still be previewed and run by hand.
-        </p>
-      </div>
-
-      <fieldset class="flex flex-col gap-2">
-        <legend class="md-label-large text-on-surface-variant">
-          Repositories
-        </legend>
-        <div
-          v-if="repositoryOptions.length"
-          class="flex flex-wrap gap-2"
-        >
-          <MdChip
-            v-for="id in repositoryOptions"
-            :key="id"
-            variant="filter"
-            :selected="draft.repositories.includes(id)"
-            :data-repository="id"
-            @click="toggleRepository(id)"
+        <div class="flex flex-col gap-2">
+          <MdSwitch
+            id="policy-enabled"
+            v-model="draft.enabled"
           >
-            {{ id }}
-          </MdChip>
+            Enabled
+          </MdSwitch>
+          <p class="md-body-small text-on-surface-variant">
+            Disabled policies can still be previewed and run by hand.
+          </p>
         </div>
-        <p
-          v-else
-          class="md-body-small text-on-surface-variant"
-        >
-          No repository is configured yet. Add one in the Maven settings.
-        </p>
-        <p
-          v-for="warning in warnings"
-          :key="warning"
-          class="md-body-small text-warning"
-          role="status"
-        >
-          {{ warning }}
-        </p>
-      </fieldset>
 
-      <MdSelect
-        id="policy-scope"
-        label="Scope"
-        :model-value="draft.scope"
-        :options="scopeOptions"
-        :supporting-text="scopeHelp(draft.scope)"
-        @update:model-value="draft.scope = $event"
-      />
+        <fieldset class="flex flex-col gap-2">
+          <legend class="md-label-large text-on-surface-variant">
+            Repositories
+          </legend>
+          <div
+            v-if="repositoryOptions.length"
+            class="flex flex-wrap gap-2"
+          >
+            <MdChip
+              v-for="id in repositoryOptions"
+              :key="id"
+              variant="filter"
+              :selected="draft.repositories.includes(id)"
+              :data-repository="id"
+              @click="toggleRepository(id)"
+            >
+              {{ id }}
+            </MdChip>
+          </div>
+          <p
+            v-else
+            class="md-body-small text-on-surface-variant"
+          >
+            No repository is configured yet. Add one in the Maven settings.
+          </p>
+          <p
+            v-for="warning in warnings"
+            :key="warning"
+            class="md-body-small text-warning"
+            role="status"
+          >
+            {{ warning }}
+          </p>
+        </fieldset>
 
-      <fieldset class="flex flex-col gap-4">
-        <legend class="md-label-large text-on-surface-variant">
-          Limits. Set at least one.
-        </legend>
-        <MdTextField
-          id="policy-keep-latest"
-          label="Keep the newest versions"
-          variant="outlined"
-          type="number"
-          min="1"
-          step="1"
-          inputmode="numeric"
-          :model-value="draft.keepLatest"
-          supporting-text="Versions beyond this count are candidates. Leave empty to ignore."
-          :error="!!shownErrors.keepLatest"
-          :error-text="shownErrors.keepLatest"
-          @update:model-value="draft.keepLatest = $event"
-        />
-        <MdTextField
-          id="policy-older-than-days"
-          label="Older than (days)"
-          variant="outlined"
-          type="number"
-          min="1"
-          step="1"
-          inputmode="numeric"
-          :model-value="draft.olderThanDays"
-          supporting-text="Versions published longer ago than this are candidates."
-          :error="!!shownErrors.olderThanDays"
-          :error-text="shownErrors.olderThanDays"
-          @update:model-value="draft.olderThanDays = $event"
-        />
-        <MdTextField
-          id="policy-not-downloaded-days"
-          label="Not downloaded for (days)"
-          variant="outlined"
-          type="number"
-          min="1"
-          step="1"
-          inputmode="numeric"
-          :model-value="draft.notDownloadedForDays"
-          supporting-text="Uses the file modification time when no download times exist. Most useful for the mirror cache."
-          :error="!!shownErrors.notDownloadedForDays"
-          :error-text="shownErrors.notDownloadedForDays"
-          @update:model-value="draft.notDownloadedForDays = $event"
-        />
-        <MdAlert
-          v-if="shownErrors.retention"
-          tone="error"
-        >
-          {{ shownErrors.retention }}
-        </MdAlert>
-      </fieldset>
-
-      <MdTextField
-        id="policy-group-filter"
-        label="Group filter (optional)"
-        variant="outlined"
-        autocomplete="off"
-        :model-value="draft.groupFilter"
-        supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
-        :error="!!shownErrors.groupFilter"
-        :error-text="shownErrors.groupFilter"
-        @update:model-value="draft.groupFilter = $event"
-      />
-
-      <fieldset class="flex flex-col gap-3 pt-3">
-        <legend class="md-label-large text-on-surface-variant">
-          Schedule
-        </legend>
         <MdSelect
-          id="policy-schedule"
-          label="When to run"
-          :model-value="draft.scheduleMode"
-          :options="scheduleOptions"
-          supporting-text="A scheduled run uses the server's local time zone."
-          @update:model-value="draft.scheduleMode = $event"
+          id="policy-scope"
+          label="Scope"
+          :model-value="draft.scope"
+          :options="scopeOptions"
+          :supporting-text="scopeHelp(draft.scope)"
+          @update:model-value="draft.scope = $event"
         />
-        <MdTextField
-          v-if="draft.scheduleMode === 'daily'"
-          id="policy-schedule-time"
-          label="Time (HH:mm)"
-          variant="outlined"
-          type="time"
-          :model-value="draft.scheduleTime"
-          :error="!!shownErrors.schedule"
-          :error-text="shownErrors.schedule"
-          @update:model-value="draft.scheduleTime = $event"
-        />
-      </fieldset>
-    </form>
 
-    <template #actions>
-      <MdDialogActions>
+        <fieldset class="flex flex-col gap-4">
+          <legend class="md-label-large text-on-surface-variant">
+            Limits. Set at least one.
+          </legend>
+          <MdTextField
+            id="policy-keep-latest"
+            label="Keep the newest versions"
+            variant="outlined"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            :model-value="draft.keepLatest"
+            supporting-text="Versions beyond this count are candidates. Leave empty to ignore."
+            :error="!!shownErrors.keepLatest"
+            :error-text="shownErrors.keepLatest"
+            @update:model-value="draft.keepLatest = $event"
+          />
+          <MdTextField
+            id="policy-older-than-days"
+            label="Older than (days)"
+            variant="outlined"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            :model-value="draft.olderThanDays"
+            supporting-text="Versions published longer ago than this are candidates."
+            :error="!!shownErrors.olderThanDays"
+            :error-text="shownErrors.olderThanDays"
+            @update:model-value="draft.olderThanDays = $event"
+          />
+          <MdTextField
+            id="policy-not-downloaded-days"
+            label="Not downloaded for (days)"
+            variant="outlined"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            :model-value="draft.notDownloadedForDays"
+            supporting-text="Uses the file modification time when no download times exist. Most useful for the mirror cache."
+            :error="!!shownErrors.notDownloadedForDays"
+            :error-text="shownErrors.notDownloadedForDays"
+            @update:model-value="draft.notDownloadedForDays = $event"
+          />
+          <MdAlert
+            v-if="shownErrors.retention"
+            tone="error"
+          >
+            {{ shownErrors.retention }}
+          </MdAlert>
+        </fieldset>
+
+        <MdTextField
+          id="policy-group-filter"
+          label="Group filter (optional)"
+          variant="outlined"
+          autocomplete="off"
+          :model-value="draft.groupFilter"
+          supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
+          :error="!!shownErrors.groupFilter"
+          :error-text="shownErrors.groupFilter"
+          @update:model-value="draft.groupFilter = $event"
+        />
+
+        <fieldset class="flex flex-col gap-3 pt-3">
+          <legend class="md-label-large text-on-surface-variant">
+            Schedule
+          </legend>
+          <MdSelect
+            id="policy-schedule"
+            label="When to run"
+            :model-value="draft.scheduleMode"
+            :options="scheduleOptions"
+            supporting-text="A scheduled run uses the server's local time zone."
+            @update:model-value="draft.scheduleMode = $event"
+          />
+          <MdTextField
+            v-if="draft.scheduleMode === 'daily'"
+            id="policy-schedule-time"
+            label="Time (HH:mm)"
+            variant="outlined"
+            type="time"
+            :model-value="draft.scheduleTime"
+            :error="!!shownErrors.schedule"
+            :error-text="shownErrors.schedule"
+            @update:model-value="draft.scheduleTime = $event"
+          />
+        </fieldset>
+      </form>
+
+      <MdDialogActions class="mt-7">
         <MdButton
           id="policy-cancel"
           variant="text"
@@ -317,6 +314,6 @@ const submit = () => {
           Save policy
         </MdButton>
       </MdDialogActions>
-    </template>
+    </div>
   </MdDialog>
 </template>

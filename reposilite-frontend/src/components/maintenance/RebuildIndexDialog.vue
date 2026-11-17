@@ -74,37 +74,33 @@ const confirm = () => {
     describedby="search-index-rebuild-body"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <template #header>
+    <div data-ingot-component="rebuild-index-dialog">
       <h2
         id="search-index-rebuild-title"
         class="md-headline-small text-on-surface"
-        data-ingot-component="rebuild-index-dialog"
       >
         Rebuild the search index?
       </h2>
-    </template>
+      <p
+        id="search-index-rebuild-body"
+        class="mt-3 md-body-medium text-on-surface-variant"
+      >
+        A rebuild reads the files of the chosen repositories from storage again and corrects the index.
+        It deletes nothing from storage. Search keeps working meanwhile, and results may be partial until
+        the rebuild ends.
+      </p>
+      <div class="mt-4">
+        <MdSelect
+          id="search-index-scope"
+          label="Repositories"
+          :model-value="scope"
+          :options="options"
+          supporting-text="Choose one repository, or all of them."
+          @update:model-value="scope = $event"
+        />
+      </div>
 
-    <p
-      id="search-index-rebuild-body"
-      class="mt-3 md-body-medium text-on-surface-variant"
-    >
-      A rebuild reads the files of the chosen repositories from storage again and corrects the index.
-      It deletes nothing from storage. Search keeps working meanwhile, and results may be partial until
-      the rebuild ends.
-    </p>
-    <div class="mt-4">
-      <MdSelect
-        id="search-index-scope"
-        label="Repositories"
-        :model-value="scope"
-        :options="options"
-        supporting-text="Choose one repository, or all of them."
-        @update:model-value="scope = $event"
-      />
-    </div>
-
-    <template #actions>
-      <MdDialogActions>
+      <MdDialogActions class="mt-6">
         <MdButton
           id="search-index-rebuild-cancel"
           variant="text"
@@ -124,6 +120,6 @@ const confirm = () => {
           {{ running ? 'Starting…' : 'Rebuild' }}
         </MdButton>
       </MdDialogActions>
-    </template>
+    </div>
   </MdDialog>
 </template>
