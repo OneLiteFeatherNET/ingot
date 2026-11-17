@@ -264,6 +264,45 @@ describe('CheckPermissionView', () => {
     })
   })
 
+  describe('a result that no longer matches the question', () => {
+    it('clears the verdict when the principal changes', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      await type('principal-field', 'ci-bot')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="verdict"]').exists()).toBe(false)
+    })
+
+    it('clears the verdict when the node changes', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      await type('node-field', 'ingot.admin.settings')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="verdict"]').exists()).toBe(false)
+    })
+
+    it('clears the verdict and the details when the mode changes to the artifact path', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="verdict"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="summary"]').exists()).toBe(false)
+    })
+
+    it('keeps the verdict while the question is the one that was checked', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      await type('principal-field', 'alice')
+      await flushPromises()
+
+      expect(text('verdict-text')).toBe('Allowed')
+    })
+  })
+
   describe('the derivation trace', () => {
     it('lists the steps in the order of the trace', async () => {
       await mountView(`/access/check?principal=alice&node=${NODE}`)
