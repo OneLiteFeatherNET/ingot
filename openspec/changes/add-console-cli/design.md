@@ -212,7 +212,7 @@ Server to client:
   or an expired session closes the connection with 1008 and an `error` with code `unauthorized`. A session also closes at its expiry
   time, from the clock. A check at the handshake alone would keep a revoked REPL open for as long as it stays connected. The cluster
   rule "principal revocation takes effect on the next request" (`openspec/specs/cluster-coordination`) is kept this way.
-- The permission is unchanged: the console area, one node, `ingot.admin.console`, for every command (open question 7). A missing area
+- The permission is unchanged: console access is the permission area `console` (node `ingot.admin.console`) for every command (open question 7, settled 2026-11-17). A missing area
   answers `unauthorized`, as the websocket and SSE do today. The HTTP route answers 403 (open question 16).
 
 ### 2.5 Compatibility with the existing handler
@@ -494,9 +494,10 @@ Resolution order, first hit wins: command-line flag, environment variable, the s
   `CLAUDE.md`).
 - A jar `ingot-cli-<version>.jar` (shaded, runnable) is attached to each release and signed like the other release artefacts
   (`sign-release-artifacts`), with its SBOM (`attach-release-sboms`).
-- GraalVM native image: evaluated in open question 4. The default is the jar and the JRE-based image, because it is the path that
+- GraalVM native image: decided by open question 4 (settled 2026-11-17). The jar and the JRE-based image ship, because it is the path that
   works on both architectures with no QEMU build, and a native binary needs a build per target architecture, which the repository
-  avoids on purpose (`CLAUDE.md`, "How the images are built").
+  avoids on purpose (`CLAUDE.md`, "How the images are built"). Task 8.3 records the GraalVM evaluation, and a native binary is added
+  only if the build sustains it.
 
 ## Security
 
@@ -560,50 +561,37 @@ Open pull requests that touch the same files, at the time of writing:
   `isDangerous` hook; whichever lands second adopts it), `add-audit-json-sink` (receives the new action), `add-permission-nodes` and
   `introduce-authorizer-chain` (per-command permissions), `add-overload-protection` (limits).
 
-## Open questions
+## Open questions (settled 2026-11-17)
 
-1. **Server stdin console as a REPL.** The maintainer's wording can also mean making the server's own console a JLine REPL. Default: no,
-   the CLI is additive and `docker attach` keeps working. Alternative: a REPL for the stdin console behind `INGOT_CONSOLE_REPL=true`.
-2. **Where the CLI lives.** Default: a Gradle module `ingot-cli` in this repository (shared release, one version, one CI,
-   the API and its client change in one pull request). Alternative: its own repository, which gives it an independent release rhythm and
-   a smaller clone, but splits API and client across two repositories and needs a compatibility matrix. Directory name: `ingot-cli`
-   (new code, new namespace) versus `reposilite-cli` (module naming rule).
-3. **Language.** Default: Kotlin on the JVM, to reuse picocli and the toolchain. Alternative: Go, a small static binary and fast start, at
-   the price of a second toolchain, a second supply-chain pipeline and no code sharing.
-4. **Native binary.** Default: ship the jar and the JRE image; add a GraalVM native binary only if the build sustains it
-   (reflection config for picocli and JLine, one build per architecture without QEMU needs native runners). Document the outcome. A
-   native binary is not a requirement of this change.
-5. **Plain http.** Default: warn on stderr when sending credentials over `http` to a non-loopback host. Alternative: refuse unless
-   `--insecure-http`.
-6. **Argument completion from data.** Default: complete names, options and fixed values only. Alternative: a server hook that completes
-   token names, repository ids and cache targets, which needs a new `ReposiliteCommand` member and a request per completion.
-7. **Per-command permission.** Default: keep the single node `ingot.admin.console`, and note that a CLI token can run every command. Alternative:
-   nodes such as `ingot.admin.console.read` (status, stats, tokens, failures, help) and `ingot.admin.console.write`, designed with
-   `add-permission-nodes`.
-8. **Quoting.** The server splits on single spaces. Default: the CLI refuses arguments with spaces. Alternative: add quote handling to
-   `CommandExecutor.parseCommand`, which changes parsing for every channel and needs its own change.
-9. **Rate limit for valid tokens.** Default: none beyond `add-overload-protection`. Alternative: a per-token command rate (for example 60 per minute)
-   with a `429` and a `Retry-After`, off by default.
-10. **Shipping the CLI inside the server image.** Default: no, the CLI image is separate. Alternative: add the jar to the `ingot` image for
-    `kubectl exec`. It grows the server image for a use the CLI image already serves.
-11. **Image name.** Default: `ghcr.io/onelitefeathernet/ingot-cli`, as requested.
-12. **Config file format.** Default: YAML (contexts read like a kubeconfig). Alternative: the project's `.cdn` format, or JSON.
-13. **Confirmation of `stop` in the REPL.** Default: dangerous, asks. Alternative: `stop` is excluded because the REPL already makes it explicit.
-14. **Sticky sessions.** Default: none required. A connection stays on one replica, and a reconnect may reach another one, which the
-    client marks. Alternative: cookie affinity in the ingress of the dashboard, which keeps the log continuous across a reconnect. The
-    affinity needs to be documented per ingress, so it is not made the default.
-15. **Which replicas a session shows.** Default: the own replica, plus the other replicas when console fan-out is on (Decision 2.7).
-    The frames always carry `node`, so the dashboard can label the lines. Question for the maintainer: should the dashboard show other
-    replicas' lines without the switch, or keep the switch as the only way?
-16. **Authorization wording.** `docs/gitbook/references/console-commands.md` says the three remote entry points check the instance admin
-    role and not the `console` area. The code checks the area (`ConsoleAuthenticator.requireConsoleArea`), and the HTTP route answers 403
-    while the socket answers `unauthorized`. Default: the code is the reference, and the docs are corrected in the documentation pull
-    request. The maintainer should confirm which rule is meant.
-17. **HTTP fallback for the REPL.** Default: none. A server without version 1 gives exit code `6`. Alternative: a one-request-per-line
-    REPL for older servers, which the maintainer's decision replaces, so it is not planned.
-18. **Results on resume, and cancel.** Default: a command in flight at a drop is reported as unknown, and no cancel frame exists in
-    version 1. Alternatives: the server keeps the last results per session for about 60 seconds, so a resume can return them, and a
-    `cancel` frame for long commands. Both need per-command cancellation support that the commands do not have today.
-19. **Per-replica commands.** Default: `level`, `status`, `failures` and `stats` are `scope` `node`. `cache` is to be checked per action.
-    The list is set by hand in the command classes, not derived, so a plugin command defaults to `cluster`. Question: is a default of
-    `cluster` right for plugin commands, which may hold state per replica?
+Every question is settled with its recommended default on 2026-11-17. The tasks and the specs implement these answers. No question is
+left open in this change.
+
+1. **Server stdin console as a REPL.** Resolved: no. The CLI is additive and `docker attach` keeps working. A JLine REPL behind
+   `INGOT_CONSOLE_REPL=true` is not planned.
+2. **Where the CLI lives.** Resolved: a Gradle module `ingot-cli` in this repository, in the directory `ingot-cli`, one release, one CI.
+   The CLI is not moved to its own repository, so task group 6 stays here.
+3. **Language.** Resolved: Kotlin on the JVM, to reuse picocli and the toolchain.
+4. **Native binary.** Resolved: ship the jar and the JRE image. A GraalVM native binary is added only if task 8.3 shows that the build
+   sustains it, and the outcome is written down either way.
+5. **Plain http.** Resolved: warn on stderr when credentials would travel over `http` to a non-loopback host.
+6. **Argument completion from data.** Resolved: complete names, options and fixed values only. Completion of token names, repository
+   ids and cache targets is not in version 1.
+7. **Per-command permission.** Resolved: console access is the permission area `console` (node `ingot.admin.console`) for every command,
+   as the maintainer decided for this change. A CLI token can run every command. Per-command nodes are not added here.
+8. **Quoting.** Resolved: the CLI refuses arguments with spaces. `CommandExecutor.parseCommand` is not changed.
+9. **Rate limit for valid tokens.** Resolved: none beyond `add-overload-protection`. A per-token command rate stays off.
+10. **Shipping the CLI inside the server image.** Resolved: no. The CLI image is separate, and the `ingot` image is not touched.
+11. **Image name.** Resolved: `ghcr.io/onelitefeathernet/ingot-cli`.
+12. **Config file format.** Resolved: YAML, with contexts that read like a kubeconfig.
+13. **Confirmation of `stop` in the REPL.** Resolved: `stop` is dangerous and asks for confirmation, as in every channel.
+14. **Sticky sessions.** Resolved: none required. A reconnect may reach another replica, and the client marks the change of `node`.
+    Cookie affinity is documented per ingress and is not the default.
+15. **Which replicas a session shows.** Resolved: the own replica, plus the other replicas when console fan-out is on (Decision 2.7).
+    The switch stays the only way to show other replicas' lines. Every frame carries `node`, so the dashboard labels the lines.
+16. **Authorization wording.** Resolved: the code is the reference. Console access is the permission area `console`, the HTTP route
+    answers 403 and the socket answers `unauthorized`. The docs are corrected in task 9.2.
+17. **HTTP fallback for the REPL.** Resolved: none. A server without version 1 gives exit code `6`.
+18. **Results on resume, and cancel.** Resolved: a command in flight at a drop is reported as unknown, and version 1 has no cancel frame
+    and keeps no results for a resume.
+19. **Per-replica commands.** Resolved: `level`, `status`, `failures` and `stats` are `scope` `node`, `cache` is checked per action, and
+    a plugin command defaults to `cluster`. A plugin command that holds state per replica declares `node` itself.

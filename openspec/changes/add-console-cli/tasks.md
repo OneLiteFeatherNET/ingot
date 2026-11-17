@@ -105,8 +105,8 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 - [ ] 6.5 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` with its first code. Implement configuration, tokens, exec
   mode and TLS with picocli and `java.net.http.HttpClient`. Without a terminal, bare `ingot` prints usage and exits with code 2, because the
   interactive mode arrives in group 7. Verify: 6.1 to 6.4 are green and `./gradlew :ingot-cli:build` passes.
-- [ ] 6.6 Code pull request, title `feat(cli): add the ingot command line client`. Read the template and fill it as in 4.9. If open question 2
-  moves the CLI to its own repository, this group moves there and the title keeps its type and scope.
+- [ ] 6.6 Code pull request, title `feat(cli): add the ingot command line client`. Read the template and fill it as in 4.9. The CLI stays in this
+  repository (open question 2, settled), so the title keeps its type and scope and nothing moves.
 
 ## 7. The CLI REPL over the shared websocket (`feat(cli)`, `test(cli)`)
 

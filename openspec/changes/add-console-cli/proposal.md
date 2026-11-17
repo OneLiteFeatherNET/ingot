@@ -42,7 +42,7 @@ Everything is additive. The server console, the existing endpoints and the stdin
     `--output json`, and no prompt unless the process runs on a terminal.
 - **A new container image** `ghcr.io/onelitefeathernet/ingot-cli`, for `kubectl run -it --rm` and `docker compose run`, for
   `linux/amd64` and `linux/arm64`, with SBOM and provenance on releases.
-- **A jar on every release**, and a GraalVM native binary only if the build sustains it (open question 4).
+- **A jar on every release**, and a GraalVM native binary only if task 8.3 shows that the build sustains it (open question 4).
 - **Configuration**: `INGOT_URL`, `INGOT_TOKEN`, `INGOT_TOKEN_FILE`, a credentials helper, contexts in a config file, and TLS
   options including a custom CA. The token is never a command-line argument.
 - **Documentation**: the CLI reference and how-to pages (on `main` since #454, updated for the REPL transport), and the console
