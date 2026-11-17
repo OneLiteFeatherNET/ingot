@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { classifyListingError } from './listingError'
 
-const failedWithStatus = (status) => ({ response: { status, data: {} } })
+const failedWithStatus = (status: number) => ({ response: { status, data: {} } })
 
 describe('classifyListingError', () => {
   it('classifies a 404 response as not-found', () => {

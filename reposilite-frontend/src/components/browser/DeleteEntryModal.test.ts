@@ -15,17 +15,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import DeleteEntryModal from './DeleteEntryModal.vue'
 
 // Records every delete request the modal sends, so each test can inspect its own.
-const { deleteRequests } = vi.hoisted(() => ({ deleteRequests: [] }))
+const { deleteRequests } = vi.hoisted(() => ({ deleteRequests: [] as string[] }))
 
 vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
   const client = ref({
     maven: {
-      delete: (gav) => {
+      delete: (gav: string) => {
         deleteRequests.push(gav)
         return Promise.resolve({})
       }
@@ -43,11 +43,11 @@ vi.mock('../../store/qualifier', () => ({
 const file = { path: 'releases/net/example', file: 'example-1.0.jar', directory: false }
 const folder = { path: 'releases/net', file: 'example', directory: true }
 
-let wrapper
+let wrapper: VueWrapper | undefined
 const close = vi.fn()
 
 // The dialog is teleported to the body, so the tests look for it there.
-const mountDialog = (value) => {
+const mountDialog = (value: typeof file | typeof folder) => {
   wrapper = mount(DeleteEntryModal, {
     props: { value, close },
     attachTo: document.body
@@ -55,8 +55,8 @@ const mountDialog = (value) => {
 }
 
 const dialog = () => document.querySelector('[role="alertdialog"]')
-const dialogText = () => dialog()?.textContent.replace(/\s+/g, ' ').trim() ?? ''
-const buttonInDialog = (text) =>
+const dialogText = () => dialog()?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+const buttonInDialog = (text: string) =>
   [...(dialog()?.querySelectorAll('button') ?? [])].find(button => button.textContent.trim() === text)
 
 describe('DeleteEntryModal', () => {
@@ -83,8 +83,8 @@ describe('DeleteEntryModal', () => {
     const overlay = document.querySelector('.vfm__overlay')
 
     expect(overlay, 'the modal paints an overlay').not.toBeNull()
-    expect(overlay.classList.contains('bg-scrim/md-scrim!'), 'the overlay uses the md3 scrim at 32%').toBe(true)
-    expect(overlay.classList.contains('bg-scrim/40!'), 'the old 40% scrim is gone').toBe(false)
+    expect(overlay!.classList.contains('bg-scrim/md-scrim!'), 'the overlay uses the md3 scrim at 32%').toBe(true)
+    expect(overlay!.classList.contains('bg-scrim/40!'), 'the old 40% scrim is gone').toBe(false)
   })
 
   it('states that deleting a file cannot be undone', async () => {
@@ -112,7 +112,7 @@ describe('DeleteEntryModal', () => {
     mountDialog(file)
     await flushPromises()
 
-    buttonInDialog('Delete').click()
+    buttonInDialog('Delete')!.click()
     await flushPromises()
 
     expect(deleteRequests, 'the delete request names the file').toEqual(['releases/net/example/example-1.0.jar'])
@@ -123,7 +123,7 @@ describe('DeleteEntryModal', () => {
     mountDialog(file)
     await flushPromises()
 
-    buttonInDialog('Cancel').click()
+    buttonInDialog('Cancel')!.click()
     await flushPromises()
 
     expect(deleteRequests, 'cancelling deletes nothing').toEqual([])

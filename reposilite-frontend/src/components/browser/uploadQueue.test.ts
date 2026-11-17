@@ -18,9 +18,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { createUploadQueue } from './uploadQueue'
 
 // A task whose outcome the test decides, so the batch can be held in flight on purpose.
-const controlledTask = (key) => {
-  let resolve
-  let reject
+const controlledTask = (key: string) => {
+  let resolve!: (value?: unknown) => void
+  let reject!: (reason?: unknown) => void
   const run = vi.fn(() => new Promise((res, rej) => {
     resolve = res
     reject = rej
@@ -47,7 +47,7 @@ describe('upload queue', () => {
     const queue = createUploadQueue()
     const task = controlledTask('a.jar')
 
-    queue.start([task])
+    void queue.start([task])
     const accepted = queue.start([task])
 
     expect(accepted, 'a double click must not start a second batch').toBe(false)

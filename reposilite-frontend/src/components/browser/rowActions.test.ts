@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { actionSlotClass, actionCountOf, widestActionCount } from './rowActions'
+import { actionSlotClass, actionCountOf, widestActionCount, type RowActionOptions } from './rowActions'
 
 const SUFFIXES = ['-javadoc.jar', '-groovydoc.jar']
 const qualifier = { path: 'releases/net/example' }
@@ -24,7 +24,7 @@ const xml = { name: 'maven-metadata.xml', type: 'FILE', contentType: 'applicatio
 const javadoc = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentLength: 4096 }
 const widest = { name: 'example-1.0-javadoc.jar', type: 'FILE', contentType: 'application/xml', contentLength: 1024 }
 
-const countOf = (file, canDelete = false) =>
+const countOf = (file: RowActionOptions['file'], canDelete = false) =>
   actionCountOf({ file, qualifier, canDelete, javadocSuffixes: SUFFIXES })
 
 describe('actionSlotClass', () => {

@@ -22,7 +22,7 @@ import { describeEntry } from './entryMeta'
 const STORED_AT = Date.UTC(2026, 9, 15, 12, 0, 0)
 
 // The API sends java.time.Instant as Unix epoch seconds, with a fraction for milliseconds.
-const asEpochSeconds = (millis) => millis / 1000 + 0.123
+const asEpochSeconds = (millis: number) => millis / 1000 + 0.123
 
 const dateLabel = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
   .format(new Date(STORED_AT))
