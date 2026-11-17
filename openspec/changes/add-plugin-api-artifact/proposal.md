@@ -34,8 +34,8 @@ compiling against the project. The slim artifact is a second publication, not a 
   add their own package to the allowlist.
 - Changing the bundle, renaming a package, or moving any class of `com.reposilite.*`.
 - Enforcing API compatibility between releases. The japicmp report and its gate are `extend-plugin-abi-gate`.
-- Publishing to a public repository or Maven Central (open question Q1 in the design).
-- Nightly publication of the slim artifact (open question Q3).
+- Publishing to a public repository or Maven Central (open question Q1 in the design, settled 2026-11-17: the repository that already hosts `ingot`).
+- Nightly publication of the slim artifact (open question Q3 in the design, settled 2026-11-17: release only).
 
 ## Capabilities
 

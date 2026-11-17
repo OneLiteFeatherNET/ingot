@@ -20,7 +20,8 @@ The build SHALL publish a Maven artifact `net.onelitefeather.ingot:ingot-plugin-
 #### Scenario: Bundle unchanged
 
 - **WHEN** the artifact is published
-- **THEN** the coordinates and the contents of `net.onelitefeather.ingot:ingot` are the same as before the change
+- **THEN** the coordinates and the contents of `net.onelitefeather.ingot:ingot` are the same as before the change, apart from the
+  marker annotation `@ExperimentalIngotPluginApi` that this change adds to both
 
 ### Requirement: Closure of the artifact
 

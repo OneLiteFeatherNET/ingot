@@ -62,8 +62,8 @@ The check reads class files. The reader is ASM if it is already on the build cla
 confirmed in the first code pull request. The check is a pure function of the class files, so its unit tests can build class files
 into a temporary directory and need no server.
 
-The number of violations for the first list is not known until the list is built. If it is large, the maintainers choose between
-widening the allowlist and moving a type (Q2). Packages are not moved by this change, so no class changes its name.
+The number of violations for the first list is not known until the list is built. If it is large, the allowlist grows in the
+pull request that finds the violation, as D2 states (Q2). No class is moved or renamed by this change.
 
 ### D3: the consumer fixture is the proof
 
@@ -86,7 +86,7 @@ marker class, which is added to both).
 ### D6: publication follows the release
 
 The slim artifact has the same version as `ingot` and is published in the release job next to the bundle. It is not published with
-nightlies (Q3). A consumer that wants a nightly uses the bundle as today.
+nightlies (Q3, settled). A consumer that wants a nightly uses the bundle as today.
 
 ## Consequences for the other prerequisites
 
@@ -102,17 +102,18 @@ nightlies (Q3). A consumer that wants a nightly uses the bundle as today.
 - **Shading the whole bundle.** Rejected: the goal is the opposite, a smaller set.
 - **Publishing only a Kotlin interface module.** Rejected: the plugin API is Java and Kotlin, and `@Plugin` is Java.
 
-## Open questions (each has a default)
+## Open questions, settled 2026-11-17
 
-- **Q1. Publication target.** Default: the repository that already hosts `ingot`, so reads need credentials as they do today. The
-  alternative (a public repository or Maven Central) removes the largest adoption barrier and needs a maintainer decision on
-  hosting and signing.
-- **Q2. Closure policy.** Default: fail the build on a public-signature reference outside the allowlist (D2). Alternative: include the
-  closure automatically, which makes the artifact larger and less of a boundary.
-- **Q3. Nightly publication.** Default: release only.
-- **Q4. Version.** Default: the same version as `ingot`, no independent versioning.
-- **Q5. Ownership of the allowlist.** Default: a maintainer reviews every change of `plugin-api-classes.txt`, enforced by review rather
-  than by code owners file.
+The maintainer settled every question with the default recommended here. The answers are binding for the code pull requests.
+
+- **Q1. Publication target.** Settled 2026-11-17: the repository that already hosts `ingot`, so reads need credentials as they do
+  today. A public repository or Maven Central is not part of this change.
+- **Q2. Closure policy.** Settled 2026-11-17: the build fails on a public-signature reference outside the allowlist (D2). The
+  allowlist grows in the pull request that finds the violation. The closure is not included automatically.
+- **Q3. Nightly publication.** Settled 2026-11-17: release only.
+- **Q4. Version.** Settled 2026-11-17: the same version as `ingot`, with no independent versioning.
+- **Q5. Ownership of the allowlist.** Settled 2026-11-17: a maintainer reviews every change of `plugin-api-classes.txt`. The review
+  is enforced by review, not by a code owners file.
 
 ## Risks
 
