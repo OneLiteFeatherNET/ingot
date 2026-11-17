@@ -100,6 +100,7 @@ export type RouteMeta = {
 export interface NamedLocation {
   name: string
   params?: Record<string, string | string[]>
+  query?: Record<string, string>
 }
 
 export interface ChildPage {
@@ -559,11 +560,7 @@ const SHORTCUTS: Record<string, Shortcut[]> = {
   'page:audit': [{ label: 'Audit settings', to: settingsTo('audit'), node: ADMIN_NODES.settings }],
   'settings:audit': [{ label: 'Open the audit log', to: { name: 'audit' }, node: ADMIN_NODES.audit }],
   'page:analytics': [{ label: 'Usage statistics', to: settingsTo('statistics'), node: ADMIN_NODES.settings }],
-  'page:maintenance': [
-    { label: 'Search index', to: settingsTo('search'), node: ADMIN_NODES.settings },
-    { label: 'Cleanup policies', to: settingsTo('cleanup'), node: ADMIN_NODES.settings },
-  ],
-  'settings:search': [{ label: 'Rebuild now on Maintenance', to: { name: 'maintenance' }, node: ADMIN_NODES.maintenance }],
+  'settings:search': [{ label: 'Rebuild now on Maintenance', to: { name: 'maintenance', query: { tab: 'index' } }, node: ADMIN_NODES.maintenance }],
 }
 
 const shortcutsOf = (treeKey: string, can: Can): { label: string; to: NamedLocation }[] => (SHORTCUTS[treeKey] ?? [])

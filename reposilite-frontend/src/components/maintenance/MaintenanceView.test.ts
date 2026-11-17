@@ -160,13 +160,13 @@ describe('MaintenanceView', () => {
     await mountAt('/maintenance')
     expect(session.client.maven.searchIndex, 'the index is not read while its tab is closed').not.toHaveBeenCalled()
 
-    tabNamed(wrapper, 'Search index').trigger('click')
+    await tabNamed(wrapper, 'Search index').trigger('click')
     await flushPromises()
     expect(session.client.maven.searchIndex, 'the index is read once its tab is opened').toHaveBeenCalledTimes(1)
 
-    tabNamed(wrapper, 'Storage usage').trigger('click')
+    await tabNamed(wrapper, 'Storage usage').trigger('click')
     await flushPromises()
-    tabNamed(wrapper, 'Search index').trigger('click')
+    await tabNamed(wrapper, 'Search index').trigger('click')
     await flushPromises()
     expect(session.client.maven.searchIndex, 'switching back does not read it again').toHaveBeenCalledTimes(1)
   })
@@ -175,7 +175,7 @@ describe('MaintenanceView', () => {
     await mountAt('/maintenance')
     expect(session.client.cleanup.runs, 'the runs are not read while the tab is closed').not.toHaveBeenCalled()
 
-    tabNamed(wrapper, 'Cleanup policies').trigger('click')
+    await tabNamed(wrapper, 'Cleanup policies').trigger('click')
     await flushPromises()
 
     expect(session.client.cleanup.runs, 'the runs are read once the tab is opened').toHaveBeenCalledTimes(1)
@@ -189,7 +189,7 @@ describe('MaintenanceView', () => {
 
   it('reloads the storage figures once a run has finished', async () => {
     await mountAt('/maintenance')
-    tabNamed(wrapper, 'Cleanup policies').trigger('click')
+    await tabNamed(wrapper, 'Cleanup policies').trigger('click')
     await flushPromises()
     void wrapper.findAll('button').find(button => button.attributes('aria-label') === 'Run snapshots-weekly now')!.trigger('click')
     await flushPromises()
