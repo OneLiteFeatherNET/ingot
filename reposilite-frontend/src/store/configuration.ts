@@ -31,16 +31,17 @@ import type { createClient } from './client'
 import { settingsDomainNames } from './settingsDomains'
 import { frontendSecretsHidden } from './placeholders'
 import { diffSettings } from '../components/settings/settingsDiff'
+import type { SettingsChange } from '../components/settings/settingsDiff'
+import type { SettingsFile } from '../components/settings/settingsImport'
+import type { CollectionEntry, SettingsSchema } from '../types/settings'
+
+export type { SettingsChange }
 
 type Client = ReturnType<typeof createClient>
 /* A holder of the client: the session provides it as a computed ref. */
 interface ClientRef { readonly value: Client }
 /* The stored settings of one domain. The form reads and writes them by key, so the keys stay open. */
 type DomainData = Record<string, unknown>
-/* The form schema of a domain as formSchemaOf returns it. Only its title is read here. */
-export interface FormSchema { title?: string; [field: string]: unknown }
-/* One change of the conflict review, as settingsDiff lists it. Only the fields the review reads are named here. */
-export interface SettingsChange { id: string; domain: string; domainTitle: string; kind: string; group: { key: string; title: string; id: string } | null; path: unknown[]; label: string; masked: boolean; before: unknown; after: unknown; index?: number }
 /* The domain whose stored settings changed elsewhere, as the conflict dialog holds it. */
 export interface SettingsConflict { kind: 'settings'; name: string; title: string; reviewed: boolean; server: DomainData | null }
 /* A domain as the initial load receives it, before the schema defaults are applied. */
@@ -50,6 +51,8 @@ interface DomainFailure { domain: string; error: Parameters<typeof isPreconditio
 
 const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const isRecord = (value: unknown): value is DomainData => isPlainObject(value)
+// Boundary cast: a collection is loose JSON, and the schema describes each entry as an object with an id.
+const asEntries = (value: unknown): CollectionEntry[] => value as CollectionEntry[]
 type Tester = (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) => number
 /* The client answers with untyped axios responses. This names the body a settings call returns. */
 const bodyAs = <T>(request: Promise<AxiosResponse>): Promise<AxiosResponse<T>> => request as Promise<AxiosResponse<T>>
@@ -91,7 +94,7 @@ export const countDifferences = (current: unknown, saved: unknown): number => {
  */
 export const createConfigurationStore = (client: ClientRef, { secretsHidden: serverHidesSecrets = frontendSecretsHidden }: { secretsHidden?: () => boolean } = {}) => {
   const domains = ref<string[]>([])
-  const schemas = ref<Record<string, FormSchema>>({})
+  const schemas = ref<Record<string, SettingsSchema>>({})
   const configurations = ref<Record<string, DomainData>>({})
   const snapshots = ref<Record<string, DomainData>>({})
   const validity = ref<Record<string, boolean>>({})
@@ -175,7 +178,8 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
       }))
 
       domains.value = domainNames
-      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = formSchemaOf(schema) as FormSchema })
+      // The server schema is loose JSON; the keywords the store and the forms read are typed by SettingsSchema.
+      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = formSchemaOf(schema) as SettingsSchema })
       loaded.forEach(({ domain, configuration, etag }) => {
         setSavedState(domain, withDefaults(domain, cloneJson(configuration)), etag)
       })
@@ -345,10 +349,10 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
    * The saved state as a password protected file. The server reads the stored values, so the draft is never part of it.
    * The response is the file itself; the caller saves it.
    */
-  const exportSaved = async (password: string) =>(await bodyAs<unknown>(client.value.settings.exportSaved(password))).data
+  const exportSaved = async (password: string): Promise<SettingsFile> =>(await bodyAs<SettingsFile>(client.value.settings.exportSaved(password))).data
 
   /* Decrypts a password protected file for review. Nothing is stored here: the result goes into the draft like a plain file. */
-  const openExport = async (password: string, exported: unknown): Promise<Record<string, DomainData>> =>(await bodyAs<Record<string, DomainData>>(client.value.settings.openExport(password, exported))).data
+  const openExport = async (password: string, exported: SettingsFile): Promise<Record<string, DomainData>> =>(await bodyAs<Record<string, DomainData>>(client.value.settings.openExport(password, exported))).data
 
   /* Puts checked values of the domains into the draft. Nothing is written: the user reviews and saves them like any edit. */
   const importDomains = (byDomain: Record<string, DomainData>): void => {
@@ -379,17 +383,17 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
    * cannot be saved or downloaded until it has one.
    */
   const idsAreUsable = (domain: string): boolean => collectionsOf(schemas.value[domain]).every((collection) => {
-    const entries = (configurations.value[domain]?.[collection.key] ?? []) as unknown[]
+    const entries = asEntries(configurations.value[domain]?.[collection.key] ?? [])
     return entries.every((entry, index) => {
       const others = entries.filter((_, other) => other !== index).map(idText)
       return validateNewId(String(idText(entry)), others, String(collection.noun)) === ''
     })
   })
 
-  const entriesOf = (domain: string, collection: string): unknown[] => {
+  const entriesOf = (domain: string, collection: string): CollectionEntry[] => {
     if (!configurations.value[domain]) configurations.value[domain] = {}
     if (!Array.isArray(configurations.value[domain][collection])) configurations.value[domain][collection] = []
-    return configurations.value[domain][collection] as unknown[]
+    return asEntries(configurations.value[domain][collection])
   }
 
   /*
@@ -414,7 +418,7 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
   const entryKeysOf = (domain: string, collection: string): string[] => [...keysFor(domain, collection, (configurations.value[domain]?.[collection] as unknown[] | undefined)?.length ?? 0)]
 
   /* Replaces the entry at `index`. An edit that arrives without an id keeps the id the entry had, so a change of the form can never drop an entry from the list. */
-  const setEntry = (domain: string, collection: string, index: number, entry: unknown): void => {
+  const setEntry = (domain: string, collection: string, index: number, entry: CollectionEntry): void => {
     const entries = entriesOf(domain, collection)
     const previous = entries[index]
     const keepsId = isRecord(entry) && entry.id === undefined && isRecord(previous) && previous.id !== undefined
@@ -423,7 +427,7 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
   }
 
   /* Appends an entry and returns its position in the collection. */
-  const addEntry = (domain: string, collection: string, entry: unknown): number => {
+  const addEntry = (domain: string, collection: string, entry: CollectionEntry): number => {
     const entries = entriesOf(domain, collection)
     keysFor(domain, collection, entries.length)
     entries.push(entry)
@@ -451,14 +455,14 @@ export const createConfigurationStore = (client: ClientRef, { secretsHidden: ser
    * The changes between the server state the conflict review fetched and the draft, as the review sheet lists them.
    * Empty until the review has run. Reverting a change in the draft shrinks the list, as it would for unsaved changes.
    */
-  const conflictChanges = computed((): SettingsChange[] => {
+  const conflictChanges = computed((): readonly SettingsChange[] => {
     const current = conflict.value
     if (current?.kind !== 'settings' || !current.server) return []
     return diffSettings(
       { [current.name]: current.server },
       { [current.name]: configurations.value[current.name] ?? {} },
       schemas.value
-    ) as SettingsChange[]
+    )
   })
 
   return {
