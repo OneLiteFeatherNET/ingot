@@ -42,7 +42,7 @@ interface DialogOptions {
   open?: boolean
   labelledby?: string
   dismissable?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'compact'
   role?: 'dialog' | 'alertdialog'
   body?: () => VNode[]
 }
@@ -111,6 +111,16 @@ describe('MdDialog', () => {
       expect(frame().classList.contains('min-w-70'), `the ${size} size keeps the 280px floor`).toBe(true)
       document.body.querySelectorAll('.vfm').forEach(element => element.remove())
     }
+  })
+
+  it('draws the compact size full screen below the medium window and as the lg frame from it', async () => {
+    await mountDialog({ size: 'compact' })
+
+    expect(frame().classList.contains('max-medium:h-dvh'), 'below 600px the frame is as tall as the window').toBe(true)
+    expect(frame().classList.contains('max-medium:max-h-dvh'), 'below 600px the 90% height cap of the base frame is lifted').toBe(true)
+    expect(frame().classList.contains('max-medium:max-w-none'), 'below 600px the frame has no width cap').toBe(true)
+    expect(frame().classList.contains('max-medium:rounded-none'), 'below 600px the frame has square corners').toBe(true)
+    expect(frame().classList.contains('medium:max-w-140'), 'from 600px the frame is the lg size, capped at 560px').toBe(true)
   })
 
   it('exposes exactly one element with role dialog by default', async () => {
