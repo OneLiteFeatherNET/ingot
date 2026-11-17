@@ -22,7 +22,8 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import AppTabs from '../tabs/AppTabs.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
@@ -33,6 +34,7 @@ import DashboardView from '../dashboard/DashboardView.vue'
 import { attentionRows, glanceRows, unsavedTreeKeys } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import { domainFormOf } from './domainForm'
+import { activeTabKey, errorCountsOf, firstErrorTab, labelWithErrors, tabsOfLayout, validationErrorsOf } from './sectionTabs'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
@@ -185,6 +187,36 @@ const domainForm = computed(() => {
   if (!domain) return null
   return domainFormOf(store.schemas.value[domain], collectionsFor(domain).map(collection => collection.key))
 })
+
+/*
+ * A domain that opts in (see sectionTabsOf) shows the sections of its form as tabs. Every tab draws the same domain data,
+ * so one save and one Discard cover all of them. The errors of every section are counted, including the hidden ones, and
+ * shown in the tab label.
+ */
+const tabbedDomain = computed(() => {
+  const domain = activeDomain.value
+  return Boolean(domain) && sectionTabsOf(domain) && !isAccessDomain(domain) && domainForm.value !== null
+})
+const sectionTabs = computed(() => (tabbedDomain.value ? tabsOfLayout(domainForm.value.layout, domainForm.value.schema) : []))
+const sectionErrors = computed(() => {
+  if (sectionTabs.value.length === 0) return {}
+  const domain = activeDomain.value
+  return errorCountsOf(sectionTabs.value, validationErrorsOf(store.configurationValidator, store.schemas.value[domain], configurations.value[domain]))
+})
+const sectionLabels = computed(() => sectionTabs.value.map(tab => ({
+  key: tab.key,
+  label: labelWithErrors(tab.label, sectionErrors.value[tab.key] ?? 0)
+})))
+const activeSection = computed(() => activeTabKey(sectionTabs.value, route.query.tab))
+const activeSectionLayout = computed(() => sectionTabs.value.find(tab => tab.key === activeSection.value)?.layout)
+const firstErrorSection = computed(() => firstErrorTab(sectionTabs.value, sectionErrors.value))
+
+// The bar's button moves to the tab that holds the first error, where the error is fixed. Save stays off while the domain is invalid.
+const showFirstError = () => {
+  const key = firstErrorSection.value
+  if (key === undefined) return
+  router.replace({ path: route.path, query: { ...route.query, tab: key }, hash: route.hash })
+}
 
 // The address names the domain on screen. A domain that is not in the address is written there.
 watch(
@@ -589,8 +621,28 @@ watch(
               :domain="activeDomain"
               :title="store.titleOf(activeDomain)"
             />
+            <AppTabs
+              v-if="tabbedDomain && configurations[activeDomain]"
+              :key="`section-tabs:${activeDomain}`"
+              :tabs="sectionLabels"
+              :label="`${store.titleOf(activeDomain)} sections`"
+            >
+              <template #default="{ tab }">
+                <JsonForms
+                  v-if="tab === activeSection"
+                  :key="`domain-fields:${activeDomain}:${tab}`"
+                  :config="formsConfiguration"
+                  :data="configurations[activeDomain]"
+                  :schema="domainForm.schema"
+                  :uischema="activeSectionLayout"
+                  :renderers="renderers"
+                  :ajv="store.configurationValidator"
+                  @change="onDomainChange(activeDomain, $event)"
+                />
+              </template>
+            </AppTabs>
             <JsonForms
-              v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
+              v-else-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
               :key="`domain-fields:${activeDomain}`"
               :config="formsConfiguration"
               :data="configurations[activeDomain]"
@@ -636,9 +688,11 @@ watch(
         :count="countOfChanges"
         :invalid="invalidDomains.length > 0"
         :saving="saving"
+        :first-error-label="firstErrorSection === undefined ? '' : 'Show the first error'"
         @save="save"
         @discard="discard"
         @review="reviewOpen = true"
+        @show-error="showFirstError"
       />
     </div>
 
