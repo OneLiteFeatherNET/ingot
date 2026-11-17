@@ -381,6 +381,10 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      # Writes build/plugin-tiers.json, which the catalogue generator reads. A failed check stops the job before any upload.
+      - name: "Check the plugin tiers"
+        run: ./gradlew checkPluginTiers
+
       # Fails before the build when the key or the key id is missing, and before any upload in every case.
       - name: "Check the signing configuration"
         env:

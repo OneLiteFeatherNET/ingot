@@ -215,10 +215,10 @@ cmd_fetch() {
 cmd_generate() {
     require_var VERSION
     require_var PLUGIN_STAGE
-    local generated
+    local generated tiers="$SCRIPT_DIR/../../build/plugin-tiers.json"
     generated="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     python3 "$SCRIPT_DIR/generate_plugin_catalogue.py" publish \
-        --repository "$PLUGIN_STAGE" --version "$VERSION" --generated "$generated"
+        --repository "$PLUGIN_STAGE" --tiers "$tiers" --version "$VERSION" --generated "$generated"
 }
 
 cmd_sign_catalogue() {
