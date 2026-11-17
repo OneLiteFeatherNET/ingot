@@ -228,6 +228,17 @@
   }
 }
 
+/*
+ * Hides the scrollbar of a row that scrolls sideways. The row stays scrollable by touch, trackpad and keyboard.
+ */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility md-router-view {
   min-height: calc(100vh - --spacing(8));
 }

@@ -189,6 +189,124 @@ describe('MdTabs address', () => {
   })
 })
 
+// jsdom has no layout, so the tests give the tab list and its tabs a fixed geometry: the list is `listWidth` wide and
+// each tab is 150 pixels, placed one after the other. Every stub is restored after the test that installed it.
+const TAB_WIDTH = 150
+const restorers: (() => void)[] = []
+
+const stubLayout = (listWidth: number) => {
+  const rect = (left: number, width: number) => ({ left, right: left + width, top: 0, bottom: 0, width, height: 0, x: left, y: 0, toJSON: () => ({}) })
+  const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.getAttribute('role') === 'tablist') return rect(0, listWidth)
+    const index = Array.from(this.parentElement?.children ?? []).indexOf(this)
+    return rect(index * TAB_WIDTH, TAB_WIDTH)
+  })
+  restorers.push(() => { spy.mockRestore() })
+}
+
+// Records every call of scrollIntoView, which must never be used: it would also scroll the page.
+const stubScrollIntoView = () => {
+  const scrollIntoView = vi.fn()
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true, writable: true })
+  restorers.push(() => { delete (HTMLElement.prototype as Partial<Pick<HTMLElement, 'scrollIntoView'>>).scrollIntoView })
+  return scrollIntoView
+}
+
+const stubReducedMotion = (reduce: boolean) => {
+  Object.defineProperty(window, 'matchMedia', {
+    value: (query: string) => ({ matches: reduce && query === '(prefers-reduced-motion: reduce)', media: query }),
+    configurable: true,
+    writable: true,
+  })
+  restorers.push(() => { delete (window as Partial<Pick<Window, 'matchMedia'>>).matchMedia })
+}
+
+// The tab list is the element that scrolls, so its scrollTo is the one that is recorded.
+const recordScrollTo = (tabs: VueWrapper) => {
+  const list = tabs.find('[role="tablist"]').element as HTMLElement
+  const scrollTo = vi.fn()
+  list.scrollTo = scrollTo
+  return scrollTo
+}
+
+describe('MdTabs narrow screens', () => {
+  afterEach(() => {
+    restorers.splice(0).reverse().forEach((restore) => restore())
+  })
+
+  it('keeps the tab list on one line and lets it scroll sideways instead of wrapping', () => {
+    const tabs = mountTabs()
+
+    expect(tabs.find('[role="tablist"]').classes(), 'the tab list does not wrap and scrolls when it overflows').toEqual(
+      expect.arrayContaining(['flex-nowrap', 'overflow-x-auto']),
+    )
+  })
+
+  it('keeps every tab at its own width, so a tab is not squeezed when the row overflows', () => {
+    const tabs = mountTabs()
+
+    for (const tab of tabsOf(tabs)) {
+      expect(tab.classes(), `tab "${tab.text()}" lacks shrink-0`).toContain('shrink-0')
+    }
+  })
+
+  it('scrolls only the tab list sideways so a chosen tab cut off on the right becomes fully visible', async () => {
+    stubLayout(300)
+    const scrollIntoView = stubScrollIntoView()
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    const scrollTo = recordScrollTo(tabs)
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    expect(scrollTo, 'the tab list is scrolled by the offset that shows the tab').toHaveBeenCalledWith({ left: 150, behavior: 'smooth' })
+    expect(scrollIntoView, 'the page is never scrolled by scrollIntoView').not.toHaveBeenCalled()
+  })
+
+  it('brings the deep-linked tab into view on mount without animation, and never scrolls the page', async () => {
+    stubLayout(300)
+    const scrollIntoView = stubScrollIntoView()
+    const router = await routerAt('/settings/system-info?tab=environment')
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true, writable: true })
+    restorers.push(() => { delete (HTMLElement.prototype as Partial<Pick<HTMLElement, 'scrollTo'>>).scrollTo })
+
+    mountTabs({ queryParam: 'tab' }, router)
+    await flushPromises()
+
+    expect(scrollTo, 'the deep-linked tab is shown with the auto behaviour').toHaveBeenCalledWith({ left: 150, behavior: 'auto' })
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('leaves the tab list where it is when the chosen tab is already fully visible', async () => {
+    stubLayout(1000)
+    stubScrollIntoView()
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    const scrollTo = recordScrollTo(tabs)
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    expect(scrollTo).not.toHaveBeenCalled()
+  })
+
+  it('changes the tab without animation when the user prefers reduced motion', async () => {
+    stubLayout(300)
+    stubReducedMotion(true)
+    stubScrollIntoView()
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    const scrollTo = recordScrollTo(tabs)
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    expect(scrollTo).toHaveBeenCalledWith({ left: 150, behavior: 'auto' })
+  })
+})
+
 describe('MdTabs anchors', () => {
   it('names its root md-tabs', () => {
     const tabs = mountTabs()

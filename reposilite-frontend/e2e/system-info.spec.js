@@ -117,6 +117,20 @@ test.describe('system information and support page', () => {
     }
   })
 
+  test('keeps all tabs on one row at 390 pixels, with the deep-linked tab in view and no sideways page scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto(siteUrl('/settings/system-info?tab=configuration'))
+    await expect(tab(page, 'Configuration')).toHaveAttribute('aria-selected', 'true')
+    await expect(tab(page, 'Configuration')).toBeInViewport()
+    expect(await page.evaluate(() => window.scrollY), 'a deep link does not scroll the page vertically').toBe(0)
+
+    const rows = await Promise.all(TABS.map(async (name) => Math.round((await tab(page, name).boundingBox()).y)))
+    expect(new Set(rows).size, 'every tab sits on the same row').toBe(1)
+
+    const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    expect(fits, 'the page does not scroll sideways at 390 pixels').toBe(true)
+  })
+
   for (const width of [320, 600, 1440]) {
     test(`has no serious or critical violations on each tab at ${width} pixels`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 })
