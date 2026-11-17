@@ -704,6 +704,13 @@
       "states": []
     },
     {
+      "name": "md-alert",
+      "file": "src/components/md/MdAlert.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-button",
       "file": "src/components/md/MdButton.vue",
       "stability": "experimental",
@@ -802,11 +809,29 @@
       "states": []
     },
     {
+      "name": "md-skeleton",
+      "file": "src/components/md/MdSkeleton.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-snackbar",
       "file": "src/components/md/MdSnackbar.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
+    },
+    {
+      "name": "md-state-panel",
+      "file": "src/components/md/MdStatePanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "empty",
+        "loading",
+        "error"
+      ]
     },
     {
       "name": "md-switch",

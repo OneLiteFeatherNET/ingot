@@ -94,6 +94,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `maintenance-view` | experimental | `src/components/maintenance/MaintenanceView.vue` | none | none |
 | `mapping-step` | experimental | `src/components/migration/MappingStep.vue` | none | none |
 | `maven-options-panel` | experimental | `src/components/repositories/MavenOptionsPanel.vue` | none | none |
+| `md-alert` | experimental | `src/components/md/MdAlert.vue` | none | none |
 | `md-button` | experimental | `src/components/md/MdButton.vue` | none | none |
 | `md-card` | experimental | `src/components/md/MdCard.vue` | none | none |
 | `md-checkbox` | experimental | `src/components/md/MdCheckbox.vue` | none | none |
@@ -110,7 +111,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-select` | experimental | `src/components/md/MdSelect.vue` | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none |
 | `md-side-sheet` | experimental | `src/components/md/MdSideSheet.vue` | none | none |
+| `md-skeleton` | experimental | `src/components/md/MdSkeleton.vue` | none | none |
 | `md-snackbar` | experimental | `src/components/md/MdSnackbar.vue` | none | none |
+| `md-state-panel` | experimental | `src/components/md/MdStatePanel.vue` | none | `empty`, `loading`, `error` |
 | `md-switch` | experimental | `src/components/md/MdSwitch.vue` | none | none |
 | `md-text-area` | experimental | `src/components/md/MdTextArea.vue` | none | none |
 | `md-text-area-renderer` (no element of its own) | stable | `src/components/renderers/MdTextAreaRenderer.vue` | none | none |
