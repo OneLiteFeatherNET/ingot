@@ -194,12 +194,12 @@ const onAction = (row: RepositoryRow, value: string) => {
           <th
             scope="row"
             data-ingot-part="cell-name"
-            class="min-w-48 w-full max-w-0 px-3 py-3 text-left md-body-large text-on-surface"
+            class="px-3 py-3 text-left md-body-large text-on-surface"
           >
             <RouterLink
               :to="{ name: 'settings-repository', params: { id: row.route } }"
               :title="row.name"
-              class="md-focus-ring md-touch-target relative block truncate rounded-corner-small text-primary"
+              class="md-focus-ring md-touch-target relative block max-w-80 truncate rounded-corner-small text-primary"
             >
               {{ row.name }}
             </RouterLink>

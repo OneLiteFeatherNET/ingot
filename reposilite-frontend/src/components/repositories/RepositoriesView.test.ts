@@ -225,6 +225,15 @@ describe('the repositories table', () => {
     expect(address.attributes('title'), 'the title is the full address').toBe('https://repo.example.net/releases')
   })
 
+  it('gives the free width to the address, and the name only the width its text needs', async () => {
+    await mountPage()
+
+    const row = rowOf('releases')
+    expect(row.find('th[scope="row"]').classes(), 'the name cell does not claim a share of the width').not.toContain('w-full')
+    expect(row.find('code').element.closest('td')!.className, 'the address cell takes the free width').toContain('w-full')
+    expect(row.find('th[scope="row"] a').classes(), 'a long name is capped at a width, then truncated').toContain('max-w-80')
+  })
+
   it('keeps the Write policy heading on one line', async () => {
     await mountPage()
 
