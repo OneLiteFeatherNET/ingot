@@ -398,6 +398,9 @@ to them, in `shape-elevation-motion.css`:
   yet.
 - `animate-skeleton-fade-in` (800ms, with a 200ms delay), for the skeleton bars. Its timing
   function is `ease-out`; a motion easing token would change the curve.
+- `animate-md-page-enter` (200ms, the standard easing), for the page column of an Administration entry. The page fades in and
+  rises 4 pixels when the entry changes, and a query change keeps the page. `motion-reduce:animate-none` turns it off. The side
+  navigation and the header do not animate.
 
 Reduced motion is one rule, in the `base` layer of `src/style.css`. It shortens every
 animation and transition of the dashboard to 0.01ms, so `md-state-layer` and the linear
@@ -744,9 +747,10 @@ The Administration tree is the one navigation of the operator area. These rules 
   term names one concept, and a renamed label keeps its old word as a filter keyword.
 - **Descriptions.** Each entry has one line, written from the fields the page really has. It sits under the heading. An entry
   without a description draws no empty line.
-- **Page header.** Above the columns: the trail (Administration, then the group as plain text, and on a detail page the list
-  page as a link), the heading that names the page, the description, and the page actions with the shortcuts on the right.
-  Below 1240 pixels the trail is its last crumb, beside a 48 pixel back arrow.
+- **Page header.** From 1240px the header sits in the page column, beside the side navigation, and its top edge is the top edge
+  of the navigation; below 1240px it stays above the index. It holds the trail (Administration, then the group as plain text,
+  and on a detail page the list page as a link), the heading that names the page, the description, and the page actions with
+  the shortcuts on the right. Below 1240 pixels the trail is its last crumb, beside a 48 pixel back arrow.
 - **Save bar.** The notice that saved changes reach every instance within 10 seconds is the supporting text of the save bar and
   part of the save confirmation. It is not the description of a page.
 - **No filled button in the header of a page that can show a save bar.** The save bar carries the primary action.
