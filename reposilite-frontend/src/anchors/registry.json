@@ -746,6 +746,13 @@
       "states": []
     },
     {
+      "name": "md-badge",
+      "file": "src/components/md/MdBadge.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-breadcrumb",
       "file": "src/components/md/MdBreadcrumb.vue",
       "stability": "experimental",
@@ -870,6 +877,13 @@
     {
       "name": "md-navigation-bar",
       "file": "src/components/md/MdNavigationBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-navigation-item",
+      "file": "src/components/md/MdNavigationItem.vue",
       "stability": "experimental",
       "parts": [],
       "states": []

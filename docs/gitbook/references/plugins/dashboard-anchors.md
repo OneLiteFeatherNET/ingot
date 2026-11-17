@@ -98,6 +98,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `mapping-step` | experimental | `src/components/migration/MappingStep.vue` | none | none |
 | `maven-options-panel` | experimental | `src/components/repositories/MavenOptionsPanel.vue` | none | none |
 | `md-alert` | experimental | `src/components/md/MdAlert.vue` | none | none |
+| `md-badge` | experimental | `src/components/md/MdBadge.vue` | none | none |
 | `md-breadcrumb` | experimental | `src/components/md/MdBreadcrumb.vue` | none | none |
 | `md-button` | experimental | `src/components/md/MdButton.vue` | none | none |
 | `md-card` | experimental | `src/components/md/MdCard.vue` | none | none |
@@ -118,6 +119,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-list-item` | experimental | `src/components/md/MdListItem.vue` | none | none |
 | `md-listbox` | experimental | `src/components/md/MdListbox.vue` | none | none |
 | `md-navigation-bar` | experimental | `src/components/md/MdNavigationBar.vue` | none | none |
+| `md-navigation-item` | experimental | `src/components/md/MdNavigationItem.vue` | none | none |
 | `md-navigation-rail` | experimental | `src/components/md/MdNavigationRail.vue` | none | none |
 | `md-overflow-menu` | experimental | `src/components/md/MdOverflowMenu.vue` | none | none |
 | `md-page` | experimental | `src/components/md/MdPage.vue` | none | none |
