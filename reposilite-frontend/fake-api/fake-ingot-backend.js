@@ -26,7 +26,7 @@ const crypto = require("crypto")
 const audit = require("./audit")
 const identity = require("./identity.cjs")
 const { createSearch, sampleFiles } = require("./search")
-const { createIndexAdmin } = require("./search-index.cjs")
+const { createIndexAdmin } = require("./search-index")
 const { localDateOnWire } = require("./wire")
 const { effectiveType, rejectionOf } = require("./repository-types")
 

@@ -25,7 +25,100 @@
  * on every route, as with INGOT_LOCAL_SEARCHENABLED=false (section 6.4).
  */
 
-const NOT_FOUND = { status: 404, body: { status: 404, message: "Not found" } }
+export interface Message {
+  status: 400 | 404 | 409
+  body: { status: number; message: string }
+}
+
+interface Counters {
+  processed: number
+  upserted: number
+  deleted: number
+  unparsed: number
+  skippedTooLong: number
+  errors: number
+}
+
+interface IndexState {
+  state: string
+  lagSeconds: number
+  drift: number
+  missing: number
+  changed: number
+}
+
+interface Run {
+  id: number
+  kind: string
+  trigger: string
+  status: string
+  startedAt: number
+  finishedAt: number | null
+  leaseOwner: string
+  leaseUntil: number | null
+  repositories: string[] | null
+  targets: string[]
+  cursorRepository: string | null
+  cursorPath: string | null
+  counters: Counters
+  lastError: string | null
+  stepCount: number
+}
+
+interface Wire {
+  id: number
+  kind: string
+  trigger: string
+  status: string
+  startedAt: number | null
+  finishedAt: number | null
+  leaseOwner: string | null
+  leaseUntil: number | null
+  repositories: string[] | null
+  cursorRepository: string | null
+  cursorPath: string | null
+  counters: Counters
+  lastError: string | null
+}
+
+interface Verify {
+  runId: number
+  at: number | null
+  sampled: number
+  missing: number
+  changed: number
+  reorigined: number
+  removedRepositoryRows: number
+  drift: number
+}
+
+export interface StatusOk {
+  status: 200
+  body: {
+    state: string
+    lagSeconds: number
+    lastFullRebuild: number
+    rows: number
+    outbox: { pending: number; deadLetters: number; droppedEnqueues: number }
+    repositories: string[]
+    engine: string
+    activeRun: Wire | null
+    runs: Wire[]
+    lastVerify: Verify | null
+  }
+}
+
+export interface Accepted {
+  status: 202
+  body: { runId: number }
+}
+
+export interface Cancelled {
+  status: 204
+  body: null
+}
+
+const NOT_FOUND: Message = { status: 404, body: { status: 404, message: "Not found" } }
 const RUN_HISTORY = 20
 const LEASE_MS = 120000
 const STEP_MS = 1500
@@ -33,33 +126,42 @@ const ROWS_PER_STEP = 500
 const FAKE_ROWS = 1834
 const FAKE_LAST_REBUILD_SECONDS = Date.parse("2026-10-20T03:30:12Z") / 1000
 
-const STATES = {
+const STATES: Record<string, IndexState> = {
   ready: { state: "READY", lagSeconds: 0, drift: 0.001, missing: 2, changed: 0 },
   building: { state: "BUILDING", lagSeconds: 0, drift: 0.001, missing: 2, changed: 0 },
   missing: { state: "MISSING", lagSeconds: 0, drift: 0.001, missing: 2, changed: 0 },
   degraded: { state: "DEGRADED", lagSeconds: 420, drift: 0.07, missing: 90, changed: 50 },
 }
 
-const zeroCounters = () => ({ processed: 0, upserted: 0, deleted: 0, unparsed: 0, skippedTooLong: 0, errors: 0 })
+const zeroCounters = (): Counters => ({ processed: 0, upserted: 0, deleted: 0, unparsed: 0, skippedTooLong: 0, errors: 0 })
 
 // An Instant on the wire: epoch seconds with a fraction, as Jackson writes java.time.Instant.
-const seconds = (ms) => (ms === null || ms === undefined ? null : ms / 1000)
+function seconds(ms: number): number
+function seconds(ms: number | null | undefined): number | null
+function seconds(ms: number | null | undefined): number | null {
+  return ms === null || ms === undefined ? null : ms / 1000
+}
 
-const badRequest = (message) => ({ status: 400, body: { status: 400, message } })
-const conflict = (message) => ({ status: 409, body: { status: 409, message } })
+const badRequest = (message: string): Message => ({ status: 400, body: { status: 400, message } })
+const conflict = (message: string): Message => ({ status: 409, body: { status: 409, message } })
 
-const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }) => {
+const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }: {
+  repositories: () => string[]
+  state?: () => string
+  now: () => number
+  schedule: (task: () => void, delay: number) => void
+}) => {
   const indexState = STATES[state()] ?? STATES.ready
   const disabled = state() === "disabled"
   let sequence = 0
-  let runs = []
-  let activeRun = null
+  let runs: Run[] = []
+  let activeRun: Run | null = null
   let lastFullRebuild = FAKE_LAST_REBUILD_SECONDS * 1000
-  let lastVerify = null
+  let lastVerify: Verify | null = null
 
   const names = () => [...repositories()].sort()
 
-  const wire = (run) => ({
+  const wire = (run: Run): Wire => ({
     id: run.id,
     kind: run.kind,
     trigger: run.trigger,
@@ -75,7 +177,7 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
     lastError: run.lastError,
   })
 
-  const finish = (run, status, at) => {
+  const finish = (run: Run, status: string, at: number) => {
     run.status = status
     run.finishedAt = at
     run.leaseUntil = null
@@ -84,7 +186,7 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
 
   // One step of a rebuild: a repository is first entered (its cursor path is set), then marked done. A verify
   // run needs one step and then publishes its report.
-  const step = (run) => {
+  const step = (run: Run): void => {
     if (run.status !== "RUNNING") return
     if (run.kind === "VERIFY") {
       lastVerify = {
@@ -116,7 +218,7 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
     schedule(() => step(run), STEP_MS)
   }
 
-  const startRun = ({ kind, trigger, repositoryNames = null }) => {
+  const startRun = ({ kind, trigger, repositoryNames = null }: { kind: string; trigger: string; repositoryNames?: string[] | null }) => {
     const at = now()
     const run = {
       id: ++sequence,
@@ -143,7 +245,7 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
 
   if (!disabled && state() === "building") startRun({ kind: "REBUILD", trigger: "STARTUP" })
 
-  const status = () => {
+  const status = (): StatusOk | Message => {
     if (disabled) return NOT_FOUND
     return {
       status: 200,
@@ -162,7 +264,7 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
     }
   }
 
-  const startRebuild = (body) => {
+  const startRebuild = (body: { repositories?: string[] }): Accepted | Message => {
     if (disabled) return NOT_FOUND
     if (activeRun) return conflict("A rebuild or verify run is already running")
     const requested = body?.repositories
@@ -176,14 +278,14 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
     return { status: 202, body: { runId: run.id } }
   }
 
-  const startVerify = () => {
+  const startVerify = (): Accepted | Message => {
     if (disabled) return NOT_FOUND
     if (activeRun) return conflict("A rebuild or verify run is already running")
     const run = startRun({ kind: "VERIFY", trigger: "MANUAL" })
     return { status: 202, body: { runId: run.id } }
   }
 
-  const cancel = (id) => {
+  const cancel = (id: string | number): Cancelled | Message => {
     if (disabled) return NOT_FOUND
     const run = runs.find(entry => entry.id === Number(id))
     if (!run) return NOT_FOUND
@@ -195,4 +297,4 @@ const createIndexAdmin = ({ repositories, state = () => "ready", now, schedule }
   return { status, startRebuild, startVerify, cancel }
 }
 
-module.exports = { createIndexAdmin }
+export { createIndexAdmin }
