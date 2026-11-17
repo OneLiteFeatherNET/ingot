@@ -51,7 +51,7 @@ const ROUTES: AppRoute[] = [
   // The retired Dashboard page: its address shows Overview, which holds the instance status. The query and the hash
   // stay, and the redirect replaces the history entry (create.ts), so the back button skips the old address.
   { name: 'dashboard', path: '/dashboard', redirect: to => ({ name: 'settings', query: to.query, hash: to.hash }) },
-  // What the instance collects: the usage statistics settings and the metrics endpoint. Its permission is the dashboard node.
+  // What the instance collects: the usage statistics settings and the metrics endpoint. Its permission is the settings node or the dashboard node.
   { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
   // the team in `:name`. `/access` is forwarded by the router (create.ts) or shows the index of the pages.

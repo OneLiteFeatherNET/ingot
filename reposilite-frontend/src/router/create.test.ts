@@ -209,7 +209,9 @@ describe('the usage statistics address', () => {
     await router.push('/settings/statistics')
 
     expect(router.currentRoute.value.name, 'the old address leads to Analytics').toBe('analytics')
-    expect(routeAllowed(router.currentRoute.value.meta, can, false), 'the route access after the redirect').toBe(opens)
+    const analytics = ROUTES.find(route => route.name === 'analytics')
+
+    expect(routeAllowed(analytics?.meta, can, false), 'the route access after the redirect').toBe(opens)
   })
 })
 

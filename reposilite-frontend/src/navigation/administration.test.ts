@@ -316,7 +316,7 @@ describe('the Administration tree of an administrator', () => {
   it('lists Audit settings without Audit log to a visitor with the settings node and not the audit node', () => {
     const groups = adminGroups(only(ADMIN_NODES.settings), { domains: ['audit'] })
 
-    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toEqual(['settings:audit'])
+    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toEqual(['settings:audit', 'page:analytics'])
   })
 
   it('lists Audit log without Audit settings to a visitor with the audit node and not the settings node', () => {
