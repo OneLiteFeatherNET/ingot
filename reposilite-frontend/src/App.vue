@@ -29,7 +29,7 @@ import SkipLink from './components/layout/SkipLink.vue'
 // content sheet when the navigation frame shows.
 const { description } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
-const { initializeSession } = useSession()
+const { initializeSession, loadProviders } = useSession()
 const { qualifier } = useQualifier()
 
 // The document title belongs to the router now: it names the section or the browsed path.
@@ -43,6 +43,8 @@ watchEffect(() => document.documentElement.classList.toggle('dark', theme.isDark
 // A rejected stored secret is already handled by the session. Anything else means the
 // server could not be asked, and the page should say so instead of quietly showing nothing.
 initializeSession().catch((error: unknown) => createErrorToast(`Cannot reach the server: ${errorMessage(error)}`))
+// The password minimum of the server, so that every password form states the length it will enforce.
+loadProviders().catch(() => undefined)
 </script>
 
 <template>

@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NewUserDialog from './NewUserDialog.vue'
+import { useSession } from '../../store/session'
 import type { PrincipalsApi } from './accessPrincipals'
 import { createErrorToast } from '../../helpers/toast'
 
@@ -67,6 +68,7 @@ describe('NewUserDialog', () => {
   afterEach(() => {
     wrapper!.unmount()
     document.body.innerHTML = ''
+    useSession().passwordMinLength.value = 12
   })
 
   it('creates the principal first and sets the initial password second', async () => {
@@ -111,6 +113,23 @@ describe('NewUserDialog', () => {
 
     expect(api.create).not.toHaveBeenCalled()
     expect(dialog().textContent).toContain('Use at least 12 characters')
+  })
+
+  it('names the configured minimum and sends nothing below it', async () => {
+    useSession().passwordMinLength.value = 16
+    fill({ password: 'a'.repeat(12) })
+    await submit()
+
+    expect(api.create).not.toHaveBeenCalled()
+    expect(dialog().textContent).toContain('Use at least 16 characters')
+  })
+
+  it('accepts 8 characters when the configured minimum is 8', async () => {
+    useSession().passwordMinLength.value = 8
+    fill({ password: 'eight-08' })
+    await submit()
+
+    expect(api.create).toHaveBeenCalled()
   })
 
   it('sends nothing without a username', async () => {

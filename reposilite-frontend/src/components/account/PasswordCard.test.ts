@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PasswordCard from './PasswordCard.vue'
+import { useSession } from '../../store/session'
 
 const toast = vi.hoisted(() => ({ success: vi.fn() }))
 
@@ -54,6 +55,7 @@ describe('PasswordCard', () => {
   afterEach(() => {
     wrapper?.unmount()
     document.body.innerHTML = ''
+    useSession().passwordMinLength.value = 12
   })
 
   it('sends the exact payload to change the password', async () => {
@@ -95,6 +97,28 @@ describe('PasswordCard', () => {
 
     expect(api.changePassword, 'the length is checked before the request').not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Use at least 12 characters')
+  })
+
+  it('names the configured minimum in the hint and in the error', async () => {
+    useSession().passwordMinLength.value = 16
+    mountCard()
+
+    expect(wrapper.text()).toContain('At least 16 characters')
+    await fill('old-password-12', 'a'.repeat(12))
+    await submit()
+
+    expect(api.changePassword).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Use at least 16 characters')
+  })
+
+  it('accepts 8 characters when the configured minimum is 8', async () => {
+    useSession().passwordMinLength.value = 8
+    mountCard()
+
+    await fill('old-password-12', 'eight-08')
+    await submit()
+
+    expect(api.changePassword).toHaveBeenCalled()
   })
 
   it('sends nothing when the confirmation differs', async () => {

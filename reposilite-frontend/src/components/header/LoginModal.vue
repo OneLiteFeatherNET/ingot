@@ -48,10 +48,10 @@ const {
   setupRequired,
   loginFailureMessage,
   passwordFailureMessage,
-  setupFailureMessage
+  setupFailureMessage,
+  passwordMinLength
 } = useSession()
 
-const MIN_PASSWORD_LENGTH = 12
 
 const showLogin = ref(false)
 
@@ -113,8 +113,10 @@ const title = computed<string>(() => ({
 }[mode.value]))
 const formId = computed(() => `login-form-${mode.value}`)
 
+const minimumHint = computed(() => `At least ${passwordMinLength.value} characters`)
+const minimumError = computed(() => `Use at least ${passwordMinLength.value} characters`)
 const passwordError = computed(() =>
-  submitted.value && setupPassword.value.length < MIN_PASSWORD_LENGTH)
+  submitted.value && setupPassword.value.length < passwordMinLength.value)
 const confirmError = computed(() =>
   submitted.value && setupConfirm.value !== setupPassword.value)
 
@@ -345,9 +347,9 @@ const overlayStyle = {
             label="Password"
             type="password"
             autocomplete="new-password"
-            supporting-text="At least 12 characters"
+            :supporting-text="minimumHint"
             :error="passwordError"
-            error-text="Use at least 12 characters"
+            :error-text="minimumError"
             required
           />
           <MdTextField

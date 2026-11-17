@@ -98,6 +98,8 @@ const mustChangePassword = ref(false)
 // What GET /api/auth/providers last said, for the sign in dialog.
 const providers = ref<LoginProvider[]>([])
 const setupRequired = ref(false)
+// The shortest password the server accepts for a new one, from the providers answer. Twelve until it is known.
+const passwordMinLength = ref(12)
 
 const defaultDetails: SessionDetails | undefined = undefined
 const details = ref<SessionDetails | undefined>(defaultDetails)
@@ -191,6 +193,9 @@ const loadProviders = (): Promise<components["schemas"]["LoginProvidersResponse"
   anonymousApi().providers().then(response => {
     providers.value = response.data?.providers ?? []
     setupRequired.value = response.data?.setupRequired === true
+    if (typeof response.data?.passwordMinLength === 'number') {
+      passwordMinLength.value = response.data.passwordMinLength
+    }
     return response.data
   })
 
@@ -442,6 +447,7 @@ export function useSession() {
     mustChangePassword,
     providers,
     setupRequired,
+    passwordMinLength,
     loginFailureMessage,
     passwordFailureMessage,
     setupFailureMessage,

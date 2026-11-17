@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import ResetPasswordDialog from './ResetPasswordDialog.vue'
+import { useSession } from '../../store/session'
 import type { PrincipalsApi } from './accessPrincipals'
 
 type ErrorLike = { response?: { data?: { message?: string } }, message?: string } | undefined
@@ -57,6 +58,26 @@ describe('ResetPasswordDialog', () => {
   afterEach(() => {
     wrapper!.unmount()
     document.body.innerHTML = ''
+    useSession().passwordMinLength.value = 12
+  })
+
+  it('names the configured minimum and sends nothing below it', async () => {
+    useSession().passwordMinLength.value = 16
+    type('reset-password-new', 'a'.repeat(12))
+    type('reset-password-confirm', 'a'.repeat(12))
+    await submit()
+
+    expect(api.setPassword).not.toHaveBeenCalled()
+    expect(dialog().textContent).toContain('Use at least 16 characters')
+  })
+
+  it('accepts 8 characters when the configured minimum is 8', async () => {
+    useSession().passwordMinLength.value = 8
+    type('reset-password-new', 'eight-08')
+    type('reset-password-confirm', 'eight-08')
+    await submit()
+
+    expect(api.setPassword).toHaveBeenCalled()
   })
 
   it('tells the admin that the user must change the password at the next sign-in', () => {

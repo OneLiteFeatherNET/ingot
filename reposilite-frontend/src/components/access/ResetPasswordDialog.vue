@@ -21,6 +21,7 @@ import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
 import { validateNewPassword, type PrincipalSummary, type PrincipalsApi } from './accessPrincipals'
+import { useSession } from '../../store/session'
 
 /*
  * Sets a new password for a user. The user has to change it at the next sign-in, so the admin
@@ -57,7 +58,9 @@ const submitted = ref(false)
 const busy = ref(false)
 const failure = ref('')
 
-const problems = computed(() => validateNewPassword(password.value, confirm.value))
+const { passwordMinLength } = useSession()
+const minimumHint = computed(() => `At least ${passwordMinLength.value} characters`)
+const problems = computed(() => validateNewPassword(password.value, confirm.value, passwordMinLength.value))
 
 const reset = () => {
   password.value = ''
@@ -117,7 +120,7 @@ const submit = async () => {
         label="New password"
         type="password"
         autocomplete="new-password"
-        supporting-text="At least 12 characters"
+        :supporting-text="minimumHint"
         required
         :error="submitted && problems.password !== ''"
         :error-text="problems.password"
