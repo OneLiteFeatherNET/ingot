@@ -21,12 +21,12 @@ Facts checked against `main` at `3614657d0`:
   `net.onelitefeather.ingot` package is in it, and `pluginApiReport` (about line 523) uses that list only.
 - The Ingot bundle is published as `net.onelitefeather.ingot:ingot` at each release (`reposilite-backend/build.gradle.kts`, publication
   `bundle`, `artifactId = "ingot"`). The last release is `v1.1.1` (tag, 2026-10-16), so a baseline exists. Whether that release is
-  visible in the release repository is an open question (Q1).
+  visible in the release repository is settled as yes and verified in the first code pull request (design Q1).
 - Experimental surface is marked with three annotations: `@ExperimentalIngotFormatApi` (`format/RepositoryFormat.kt`, level ERROR),
   `@ExperimentalIngotSearchApi` (`search/backend/SearchBackendApi.kt`, WARNING) and `@ExperimentalIngotStorageApi`
   (`storage/IngotStorageProviderFactory.kt`, WARNING). The storage capability interfaces carry the storage marker.
 - `RepositoryRegistry` (`repository/RepositoryRegistry.kt:28`) is documented as "not yet stable for plugins", yet it has no marker.
-  The gate therefore cannot tell its status from the code alone (Q3).
+  The gate therefore cannot tell its status from the code alone. Settled: it is reported as promised (design Q3).
 - The CI job "Plugin API" (`.github/workflows/ci.yml`, about line 564) runs `pluginApiReport` and the canaries, and writes the Markdown
   report to the job summary. It is report-only (`plugin-abi-gate`, "Report-only CI job").
 - Kotlin `internal` declarations are public in bytecode. The archived design (`gate-plugin-abi/design.md`, D1) names this as the reason
@@ -38,7 +38,7 @@ Facts checked against `main` at `3614657d0`:
 - **Ingot package list.** A second list in `reposilite-backend/build.gradle.kts`, `ingotPluginApiPackages`, with the packages that
   plugin-api.md documents (`net.onelitefeather.ingot.format`, `.repository`, `.search.backend`, `.storage`, `.storage.capability`), the
   plugin API that Ingot added under the `com.reposilite.*` name (`com.reposilite.frontend.api`, home of the dashboard facade `PluginUiFacade`,
-  which neither existing comparison sees), and the packages of the prerequisites that land first (`add-plugin-api-artifact`,
+  which neither existing comparison sees), and the packages of the prerequisites, each added by its own pull request (design D7; `add-plugin-api-artifact`,
   `add-artifact-enrichment-hook`,
   `add-search-document-attributes`, `add-search-attribute-facets`, `expose-plugin-access-checks`). A unit test (in `.github/scripts/tests`,
   Python `unittest`, reading the build script and the documentation as text) fails when a documented Ingot package is missing from the list.
@@ -96,8 +96,8 @@ Facts checked against `main` at `3614657d0`:
     pull request, in the same reviewed line. Until they land, the report simply does not show them.
   - Consumers that the report helps: `add-plugin-reader-pages` (its design D1, a new reader page class) and
     `add-plugin-ui-browse-blocks` (its design D8, four subclasses of the sealed block model). The report must show them as additions.
-- **Order.** Default: this change lands after the prerequisites it lists. Recommended: it lands earlier, so that the other prerequisites are
-  reported as they arrive. The default order of the portal proposals puts it last; Q2 asks the maintainers to choose.
+- **Order.** This change lands before the prerequisites it lists, so that each prerequisite is reported as it arrives (design Q2 and D9,
+  settled 2026-11-17).
 - **Code.** `reposilite-backend/build.gradle.kts`, `.github/workflows/ci.yml` (one step and one summary section), `.github/scripts/tests`
   (a unit test), `docs/gitbook/references/plugins/plugin-api.md`.
 

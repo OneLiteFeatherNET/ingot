@@ -7,7 +7,7 @@ a test, no shared mutable state, a temporary directory per test where a file is 
 No configuration key, environment variable or deployment manifest changes.
 
 Depends on: `gate-plugin-abi` (merged). Soft: the prerequisites that add packages to the list (each adds its own package in its own pull
-request, see design D7). Recommended to land before them (proposal, "Order"; Q2 of the design).
+request, see design D7). Lands before them (proposal, "Order"; design Q2 and D9, settled 2026-11-17).
 
 Each code pull request stays under about 400 changed lines, excluding tests and fixtures, and builds and passes on its own.
 

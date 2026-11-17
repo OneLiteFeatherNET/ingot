@@ -41,8 +41,8 @@ japicmp is chosen. Its weakness is Kotlin visibility, which D4 handles.
 ### D2: the baseline is a property, changed by the release
 
 `ingotBaseline` is a property in `reposilite-backend/build.gradle.kts`, set to `1.1.1`. Each release changes it, in the release change
-that the release process owns, so that the next release is compared with the one before it. Until a release exists in the repository,
-the value is the last release that does (Q1).
+that the release process owns, so that the next release is compared with the one before it. The value is `1.1.1` when that release
+resolves from the repository. If it does not, the value is the first release that does, and the report says so (Q1, settled 2026-11-17).
 
 The baseline is resolved in a detached configuration with `isTransitive = false`, as the 3.5.28 archive is, and its dependencies come
 from a second detached configuration that serves as the classpath.
@@ -118,6 +118,12 @@ D1) avoids on purpose.
 
 The rule of D5 applies: a package that is documented as plugin API of Ingot is listed, and `com.reposilite.journalist` is never listed.
 
+### D9: landing order
+
+This change lands before the prerequisites it lists (Q2, settled 2026-11-17). The package list then exists before any package is added
+to it, and each prerequisite adds its own package in its own pull request (D7). The list test of D5 is green at landing, because every
+package that the documentation names under `net.onelitefeather.ingot` is in the list from the start.
+
 ## Risks
 
 - **Experimental findings are read as harmless.** Mitigation: the section is labelled "experimental, not promised", and the documentation says
@@ -129,14 +135,14 @@ The rule of D5 applies: a package that is documented as plugin API of Ingot is l
 - **Kotlin metadata changes with the compiler.** Mitigation: the metadata reader is pinned, and D4's unreadable-class rule keeps a finding
   rather than dropping it.
 
-## Open questions (each has a default)
+## Open questions (settled 2026-11-17)
 
-- **Q1. Is `net.onelitefeather.ingot:ingot:1.1.1` in the release repository?** Default: yes, to verify in the first pull request with
-  `gradlew dependencies --configuration` on the detached configuration. If not, the first release that is there becomes the baseline.
-- **Q2. When does this land?** Default: after the prerequisites it lists, as the Minecraft proposal orders it. Recommended: before them, so
-  that each prerequisite is reported as it lands. The maintainers choose.
-- **Q3. Mark `RepositoryRegistry` experimental.** Default: report it as promised, which is what the code says. The documentation says "not yet
-  stable". Adding a marker is a code change in another pull request, and this change does not make it.
-- **Q4. Where `com.reposilite.frontend.api` is compared.** Default: in the Ingot comparison (D8), because the facade is new in Ingot and
-  is not part of the 3.5.28 promise. Adding it to the 3.5.28 list would only show it as an addition, so the maintainers may add it there for
-  visibility, without any change of the promise.
+Each question is settled with the answer its proposal gives as the default. Q2 is the exception: its proposal lists "after" as the
+default and "before" as the recommendation, and "before" is taken because D7 needs the list to exist first.
+
+- **Q1. Is `net.onelitefeather.ingot:ingot:1.1.1` in the release repository?** Settled: yes. Task 2.3 verifies it. If it does not
+  resolve, the first release that does becomes the baseline (D2).
+- **Q2. When does this land?** Settled: before the prerequisites it lists (D9).
+- **Q3. Mark `RepositoryRegistry` experimental.** Settled: no. The type is reported as promised, which is what the code says. This change
+  adds no marker. The documentation keeps "not yet stable" until a separate change adds one.
+- **Q4. Where `com.reposilite.frontend.api` is compared.** Settled: in the Ingot comparison (D8). The 3.5.28 list does not change.
