@@ -52,6 +52,7 @@ image:
 ## Typed HA values. Each one renders nothing while it is unset, so a release that sets none of them keeps its manifests.
 ## Secrets are referenced by name and key. The chart never renders their values.
 database:
+  # PostgreSQL is the recommended shared database for several replicas and for production. MariaDB is supported, not recommended.
   # Name of a Secret in the release namespace. Sets INGOT_LOCAL_DATABASE from the key secretKey of that Secret.
   existingSecret: ""
   secretKey: database
