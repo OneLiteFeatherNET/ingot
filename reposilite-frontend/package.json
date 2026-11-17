@@ -16,7 +16,7 @@
     "build": "vite build",
     "build:dashboard": "INGOT_DASHBOARD_BUILD=1 vite build && nitro build",
     "serve": "vite preview",
-    "fake-api": "nodemon --watch fake-api --exec tsx fake-api/fake-ingot-backend.js",
+    "fake-api": "nodemon --watch fake-api --exec tsx fake-api/fake-ingot-backend.ts",
     "full": "concurrently -k \"npm run fake-api\" \"vite\"",
     "license-check": "license-checker-rseidelsohn --production --summary --onlyAllow \"0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;ISC;MIT;MPL-2.0;Unlicense\""
   },
