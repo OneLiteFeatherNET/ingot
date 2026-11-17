@@ -1,0 +1,98 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Browser login settings",
+  "title" : "Login",
+  "properties" : {
+    "maxFailedAttempts" : {
+      "type" : "integer",
+      "format" : "int32",
+      "description" : "Failed password logins that lock a user name from one address, and the same number of failures that lock an address. Applies by default, independently of the brute force protection of Basic and token authentication",
+      "title" : "Maximum Failed Attempts"
+    },
+    "lockoutMinutes" : {
+      "type" : "integer",
+      "format" : "int64",
+      "description" : "How long a locked user name or address stays locked after the first lockout. Every further lockout without a quiet period doubles it, up to 24 hours",
+      "title" : "Lockout Minutes"
+    },
+    "accountThrottle" : {
+      "type" : "object",
+      "description" : "Delay of password and token guesses for one user name from addresses the name has not signed in from. Only applies while the switch INGOT_LOGIN_ACCOUNT_THROTTLE is on; the thresholds here have no effect without it",
+      "title" : "Account Throttle",
+      "properties" : {
+        "threshold" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Failed credentials for one user name, from any address, after which the next guess from a new address is delayed. The first delay is one second",
+          "title" : "Threshold"
+        },
+        "quietMinutes" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Minutes without a failure after which the count of failures of a user name starts again at zero",
+          "title" : "Quiet Minutes"
+        },
+        "maxDelaySeconds" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Longest delay of one request. The delay doubles with every failure beyond the threshold and ends by itself; a success clears it",
+          "title" : "Maximum Delay Seconds"
+        },
+        "knownAddressDays" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Days after its last sign-in during which an address counts as known for a user name. A known address is not delayed by the account key",
+          "title" : "Known Address Days"
+        }
+      }
+    },
+    "passwordPolicy" : {
+      "type" : "object",
+      "description" : "Rules for a password that a user or an administrator sets. None of them applies at sign-in",
+      "title" : "Password Policy",
+      "properties" : {
+        "minLength" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Fewest characters of a new password, counted as before in UTF-16 code units. Between 8 and 256. A higher value applies to the next password that is set; stored passwords are not checked again",
+          "title" : "Minimum Length"
+        },
+        "breachCheck" : {
+          "type" : "object",
+          "description" : "Check of a new password against lists of breached passwords. Off by default",
+          "title" : "Breached Password Check",
+          "properties" : {
+            "mode" : {
+              "type" : "string",
+              "enum" : [ "OFF", "RANGE", "OFFLINE" ],
+              "description" : "OFF makes no check. RANGE sends the first five characters of the SHA-1 of a new password to the range service and compares the rest here. OFFLINE compares with the file below. RANGE is an outside call",
+              "title" : "Mode"
+            },
+            "file" : {
+              "type" : "string",
+              "description" : "OFFLINE only: a file with one SHA-1 hash in hexadecimal per line. It is read once at start, and the start fails when it cannot be read",
+              "title" : "File"
+            },
+            "rangeUrl" : {
+              "type" : "string",
+              "description" : "RANGE only: base address of the range service, ending in a slash. The five characters are appended to it. Must be an https address",
+              "title" : "Range URL"
+            },
+            "failClosed" : {
+              "type" : "boolean",
+              "description" : "RANGE only: when the service does not answer, refuse the change with 503 and Retry-After. When off, the change is allowed and an audit event records the outage",
+              "title" : "Fail Closed"
+            }
+          }
+        }
+      }
+    },
+    "idleTimeoutMinutes" : {
+      "type" : "integer",
+      "format" : "int64",
+      "description" : "Minutes a browser session may stay idle before its refresh token expires. 0 keeps the refresh lifetime as the only idle limit. Otherwise at least 5, and at most the refresh lifetime in minutes",
+      "title" : "Idle Timeout Minutes"
+    }
+  }
+}
