@@ -129,10 +129,49 @@ describe('BreadcrumbNavigation', () => {
 
   it('names the trail as breadcrumb navigation', async () => {
     wrapper = await mountBreadcrumb()
+    const nav = wrapper.find('nav')
 
-    expect((wrapper.element as Element).tagName, 'the trail is a nav element').toBe('NAV')
-    expect(wrapper.attributes('aria-label')).toBe('Breadcrumb')
-    expect(wrapper.find('nav ol').exists(), 'the segments form an ordered list').toBe(true)
+    expect(nav.exists(), 'the trail is a nav element').toBe(true)
+    expect(nav.attributes('aria-label')).toBe('Breadcrumb')
+    expect(nav.find('ol').exists(), 'the segments form an ordered list').toBe(true)
+  })
+
+  it('draws the trail with MdBreadcrumb', async () => {
+    wrapper = await mountBreadcrumb()
+
+    expect(wrapper.findComponent({ name: 'MdBreadcrumb' }).exists(), 'the trail is the shared MD3 breadcrumb').toBe(true)
+  })
+
+  it('keeps the breadcrumb-navigation anchor on the trail nav', async () => {
+    wrapper = await mountBreadcrumb()
+    const trail = wrapper.findComponent({ name: 'MdBreadcrumb' })
+
+    expect(trail.attributes('data-ingot-component'), 'plugins still style the trail by this anchor').toBe('breadcrumb-navigation')
+  })
+
+  it('gives the current crumb and every link the same minimum height class', async () => {
+    wrapper = await mountBreadcrumb()
+    const crumbs = [...wrapper.findAll('ol a'), ...wrapper.findAll('[aria-current="page"]')]
+
+    expect(crumbs.length, 'the trail has links and a current crumb').toBeGreaterThan(1)
+    for (const crumb of crumbs) {
+      expect(crumb.classes(), `the crumb ${crumb.text()} has the shared minimum height`).toContain('min-h-12')
+    }
+  })
+
+  it('keeps the parent directory button outside the trail', async () => {
+    wrapper = await mountBreadcrumb()
+    const trail = wrapper.findComponent({ name: 'MdBreadcrumb' })
+
+    expect(wrapper.find('[aria-label="Parent directory"]').exists(), 'the parent control is rendered').toBe(true)
+    expect(trail.find('[aria-label="Parent directory"]').exists(), 'the parent control is not a crumb').toBe(false)
+  })
+
+  it('draws no separator with a pseudo element', async () => {
+    wrapper = await mountBreadcrumb()
+
+    expect(wrapper.html(), 'no after: utility draws a separator').not.toContain('after:')
+    expect(wrapper.html(), 'no before: utility draws a separator').not.toContain('before:')
   })
 
   it('lets a long path wrap between segments, not inside them', async () => {
@@ -159,7 +198,7 @@ describe('BreadcrumbNavigation', () => {
     wrapper = await mountBreadcrumb(`filled/${segment}`)
     const current = wrapper.find('[aria-current="page"]')
 
-    expect(current.classes(), 'the long name is cut with an ellipsis, not wrapped or cut in the middle').toContain('truncate')
+    expect(current.find('span').classes(), 'the long name is cut with an ellipsis, not wrapped or cut in the middle').toContain('truncate')
     expect(current.attributes('title'), 'hovering the crumb shows the whole name').toBe(segment)
   })
 
