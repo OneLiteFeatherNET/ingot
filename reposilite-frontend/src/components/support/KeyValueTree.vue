@@ -47,6 +47,10 @@ const CHEVRON = 'M6 9l6 6 6-6'
 // The indent of a level is a style utility (md-tree-depth-N), so the classes are written out here for the style gate.
 const DEPTH_CLASSES = ['md-tree-depth-0', 'md-tree-depth-1', 'md-tree-depth-2', 'md-tree-depth-3', 'md-tree-depth-4', 'md-tree-depth-5', 'md-tree-depth-6']
 const depthClass = (depth: number) => DEPTH_CLASSES[Math.min(depth, DEPTH_CLASSES.length - 1)]
+// Below medium width the value sits under its key, one level deeper, so the value cell takes the indent of the next level
+// there only. Index d holds the indent of level d + 1, so the deepest class is md-tree-depth-6.
+const VALUE_DEPTH_CLASSES = ['max-medium:md-tree-depth-1', 'max-medium:md-tree-depth-2', 'max-medium:md-tree-depth-3', 'max-medium:md-tree-depth-4', 'max-medium:md-tree-depth-5', 'max-medium:md-tree-depth-6']
+const valueDepthClass = (depth: number) => VALUE_DEPTH_CLASSES[Math.min(depth, VALUE_DEPTH_CLASSES.length - 1)]
 const MARK_CLASS = 'rounded-corner-small bg-primary-container text-on-primary-container'
 
 const filtering = computed(() => props.query.trim() !== '')
@@ -119,13 +123,13 @@ const parts = (text: string) => splitMatch(text, props.query)
     <div
       role="table"
       :aria-label="label"
-      class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 font-mono md-code-small"
+      class="grid min-w-0 grid-cols-1 medium:grid-cols-(--grid-md-key-value) gap-x-6 font-mono md-code-small"
     >
       <div
         v-for="row in rows"
         :key="`${row.kind}:${row.key}`"
         role="row"
-        class="col-span-full grid min-w-0 grid-cols-subgrid"
+        class="col-span-full grid min-w-0 grid-cols-1 medium:grid-cols-subgrid"
       >
         <div
           v-if="row.kind === 'group'"
@@ -145,7 +149,7 @@ const parts = (text: string) => splitMatch(text, props.query)
               class="shrink-0 transition-transform duration-md-short3"
               :class="row.open ? 'rotate-180' : ''"
             />
-            <span class="min-w-0 break-all">
+            <span class="min-w-0 wrap-anywhere">
               <template
                 v-for="(part, index) in parts(row.key)"
                 :key="index"
@@ -165,7 +169,7 @@ const parts = (text: string) => splitMatch(text, props.query)
         <template v-else>
           <div
             role="rowheader"
-            class="min-w-0 break-all py-1 text-on-surface-variant"
+            class="min-w-0 wrap-anywhere py-1 text-on-surface-variant"
             :class="depthClass(row.depth)"
           >
             <template
@@ -183,8 +187,8 @@ const parts = (text: string) => splitMatch(text, props.query)
           </div>
           <div
             role="cell"
-            class="min-w-0 break-all py-1"
-            :class="row.value === '' ? 'italic text-on-surface-variant' : 'text-on-surface'"
+            class="min-w-0 wrap-anywhere py-1"
+            :class="[valueDepthClass(row.depth), row.value === '' ? 'italic text-on-surface-variant' : 'text-on-surface']"
           >
             <template v-if="row.value === ''">
               (empty)
