@@ -52,6 +52,8 @@ describe('route to section mapping', () => {
     // The retired dashboard address redirects to Overview, so the section is the one of its target.
     ['/dashboard', 'settings'],
     ['/analytics', 'analytics'],
+    // The retired Usage statistics address redirects to Analytics, which is where the collection settings are now.
+    ['/settings/statistics', 'analytics'],
     ['/access/users', 'access'],
     ['/access/users/alice', 'access'],
     ['/access/machines', 'access'],
@@ -163,6 +165,21 @@ describe('analytics route', () => {
 
     expect(router.currentRoute.value.name, 'the page shows the no access state in place').toBe('analytics')
     expect(notify, 'no toast announces the denial any more').not.toHaveBeenCalled()
+  })
+})
+
+describe('the usage statistics address', () => {
+  it('sends /settings/statistics to analytics and keeps the query', async () => {
+    const router = makeRouter({
+      isManager: () => true,
+      isLogged: () => true,
+      whenSessionKnown: () => Promise.resolve()
+    })
+
+    await router.push('/settings/statistics?from=bookmark')
+
+    expect(router.currentRoute.value.name, 'the old address leads to Analytics').toBe('analytics')
+    expect(router.currentRoute.value.query).toEqual({ from: 'bookmark' })
   })
 })
 

@@ -287,7 +287,6 @@ describe('the labels and descriptions of the Administration tree', () => {
     expect(labels).toEqual({
       'settings:frontend': 'Branding',
       'settings:web': 'Reverse proxy',
-      'settings:statistics': 'Usage statistics',
       'settings:search': 'Search index',
       'settings:cleanup': 'Cleanup policies',
       'settings:javadoc': 'Javadoc',
@@ -309,7 +308,7 @@ describe('the labels and descriptions of the Administration tree', () => {
     expect(linksWith({ domains: BUILT_IN_DOMAINS }).map(link => link.key)).toEqual([
       'page:overview', 'page:repositories','settings:cleanup', 'settings:javadoc', 'settings:search',
       'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check',
-      'settings:frontend', 'settings:web', 'settings:statistics', 'page:migration',
+      'settings:frontend', 'settings:web', 'page:migration',
       'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info',
     ])
   })
@@ -336,10 +335,8 @@ describe('shortcuts between the pages of the Administration tree', () => {
     expect(shortcutsOf('settings:audit', canWith(['ingot.admin.settings']))).toEqual([])
   })
 
-  it('links Analytics to Usage statistics for a visitor with the settings node', () => {
-    expect(shortcutsOf('page:analytics', canWith(['ingot.admin.dashboard', 'ingot.admin.settings']))).toEqual([
-      { label: 'Usage statistics', to: { name: 'settings', params: { domain: 'statistics' } } },
-    ])
+  it('draws no shortcut on Analytics, because the usage statistics settings are on the page itself', () => {
+    expect(shortcutsOf('page:analytics', canWith(['ingot.admin.dashboard', 'ingot.admin.settings']))).toEqual([])
   })
 
   it('draws no shortcut on Maintenance, whose tabs replace the links to Search index and Cleanup policies', () => {

@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
+import { matchEntries } from './adminFilter'
 import {
   adminGroups,
   administrationLocation,
@@ -294,7 +295,7 @@ describe('the Administration tree of an administrator', () => {
     expect(labels).toEqual([
       ['Artifacts', ['Repositories', 'Cleanup policies', 'Javadoc', 'Search index']],
       ['Access', ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check']],
-      ['Instance', ['Branding', 'Reverse proxy', 'Usage statistics', 'Migration']],
+      ['Instance', ['Branding', 'Reverse proxy', 'Migration']],
       ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Analytics', 'System and support']],
     ])
   })
@@ -328,5 +329,23 @@ describe('the Administration tree of an administrator', () => {
     const groups = adminGroups(everything, { domains: ['audit'], titleOf: () => 'Audit' })
 
     expect(linksOf(groups, 'Monitoring and support')[1]).toMatchObject({ key: 'settings:audit', label: 'Audit settings' })
+  })
+})
+
+describe('finding a page of the Administration tree', () => {
+  afterEach(() => {
+    setContributions(null)
+    setSupportBundleOffered(false)
+  })
+
+  it('finds Analytics by Usage statistics, and the link opens the analytics page', () => {
+    setContributions({ version: 1, pages: [], sections: [], enabledPlugins: [] })
+    setSupportBundleOffered(true)
+    const groups = adminGroups(() => true, { domains: ['frontend', 'web', 'statistics'] })
+
+    const links = matchEntries(groups, 'usage statistics').groups.flatMap(group => group.links)
+
+    expect(links.map(link => link.key), 'the page that holds the settings is the one found').toEqual(['page:analytics'])
+    expect(links[0].to).toEqual({ name: 'analytics' })
   })
 })
