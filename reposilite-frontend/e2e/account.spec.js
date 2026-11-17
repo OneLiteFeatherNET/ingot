@@ -68,7 +68,7 @@ for (const width of WIDTHS) {
       await page.goto(siteUrl('/account'))
       await expect(page.getByRole('heading', { name: 'Your access', exact: true })).toBeVisible()
 
-      const headings = (await page.getByRole('heading', { level: 3 }).allTextContents()).filter((text) => SECTIONS.includes(text))
+      const headings = (await page.getByRole('heading', { level: 3 }).allTextContents()).map((text) => text.trim()).filter((text) => SECTIONS.includes(text))
 
       expect(headings, 'each section has its heading, in this order').toEqual(SECTIONS)
     })
