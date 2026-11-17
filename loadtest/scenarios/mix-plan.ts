@@ -18,10 +18,18 @@
 
 import type { Scenario } from '../lib/config.ts';
 
-/** Maven and Gradle clients read far more than they write. to be tuned by the maintainer: the weights are a placeholder. */
+/**
+ * Maven and Gradle clients read far more than they write. to be tuned by the maintainer: the weights are a placeholder.
+ * The mirror scenario joins the mix with its own group, after the upstream mock exists.
+ */
 export const MIX_WEIGHTS: Readonly<Partial<Record<Scenario, number>>> = {
-  resolve: 0.9,
-  deploy: 0.1,
+  resolve: 0.5,
+  'resolve-miss': 0.05,
+  metadata: 0.1,
+  deploy: 0.05,
+  auth: 0.1,
+  'search-browse': 0.1,
+  dashboard: 0.1,
 };
 
 /** Picks a scenario for a random value in [0, 1), walking the weights in their declared order. */

@@ -16,21 +16,48 @@
 
 // The mix scenario: each iteration runs one of the scenarios, picked by the weights in mix-plan.ts.
 
-import type { Coordinate } from './resolve-plan.ts';
+import { authIteration } from './auth.ts';
+import { dashboardIteration } from './dashboard.ts';
 import { deployIteration } from './deploy.ts';
 import { DEPLOY_SIZES } from './deploy-plan.ts';
+import { metadataIteration } from './metadata.ts';
 import { MIX_WEIGHTS, pickScenario } from './mix-plan.ts';
-import { resolveIteration } from './resolve.ts';
+import { missIteration } from './resolve-miss.ts';
+import { type Coordinate, RESOLVE_FIXTURE_COORDINATE } from './resolve-plan.ts';
+import { resolveIteration, seedResolveFixture } from './resolve.ts';
+import { PRIVATE_REPOSITORY } from './remaining-plan.ts';
+import { searchBrowseIteration } from './search-browse.ts';
 
-export { seedResolveFixture as setup } from './resolve.ts';
+export function setup(): Coordinate {
+  seedResolveFixture(PRIVATE_REPOSITORY);
+  return seedResolveFixture();
+}
 
 export default function (coordinate: Coordinate): void {
   const scenario = pickScenario(MIX_WEIGHTS, Math.random());
-  if (scenario === 'resolve') {
-    resolveIteration(coordinate, __ITER % 2 === 0 ? 'maven' : 'gradle');
-  } else if (scenario === 'deploy') {
-    deployIteration(__VU * 1_000_000 + __ITER, DEPLOY_SIZES[__ITER % DEPLOY_SIZES.length] ?? '1KB');
-  } else {
-    throw new Error(`the mix has no iteration for scenario ${scenario}`);
+  switch (scenario) {
+    case 'resolve':
+      resolveIteration(coordinate, __ITER % 2 === 0 ? 'maven' : 'gradle');
+      break;
+    case 'resolve-miss':
+      missIteration(RESOLVE_FIXTURE_COORDINATE);
+      break;
+    case 'metadata':
+      metadataIteration(coordinate);
+      break;
+    case 'deploy':
+      deployIteration(__VU * 1_000_000 + __ITER, DEPLOY_SIZES[__ITER % DEPLOY_SIZES.length] ?? '1KB');
+      break;
+    case 'auth':
+      authIteration();
+      break;
+    case 'search-browse':
+      searchBrowseIteration();
+      break;
+    case 'dashboard':
+      dashboardIteration();
+      break;
+    default:
+      throw new Error(`the mix has no iteration for scenario ${scenario}`);
   }
 }

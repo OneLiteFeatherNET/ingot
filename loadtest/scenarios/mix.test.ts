@@ -31,9 +31,11 @@ test('every scenario in the mix is a known scenario, and the mix never contains 
   }
 });
 
-test('the resolve and deploy scenarios are in the mix', () => {
-  assert.ok('resolve' in MIX_WEIGHTS);
-  assert.ok('deploy' in MIX_WEIGHTS);
+test('the mix holds the seven function scenarios that exist so far, and not mirror, which is still missing', () => {
+  assert.deepEqual(
+    Object.keys(MIX_WEIGHTS).sort(),
+    ['auth', 'dashboard', 'deploy', 'metadata', 'resolve', 'resolve-miss', 'search-browse'],
+  );
 });
 
 test('a random value of zero picks the first scenario of the mix', () => {
@@ -41,5 +43,5 @@ test('a random value of zero picks the first scenario of the mix', () => {
 });
 
 test('a random value at the top of the range picks the last scenario of the mix', () => {
-  assert.equal(pickScenario(MIX_WEIGHTS, 0.999_999), 'deploy');
+  assert.equal(pickScenario(MIX_WEIGHTS, 0.999_999), 'dashboard');
 });

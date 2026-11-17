@@ -24,6 +24,7 @@ import { statusIn, statusIs } from '../lib/checks.ts';
 import {
   RESOLVE_EXPECTED_STATUSES,
   RESOLVE_FIXTURE_COORDINATE,
+  RESOLVE_REPOSITORY,
   type Coordinate,
   type ResolveClient,
   resolveFixture,
@@ -37,9 +38,14 @@ const FIXTURE_SEED = 42;
 const FIXTURE_STATUSES = [200, 409];
 
 /** Uploads the fixture once, before the iterations. The uploader is the load test user, given by the runner. */
-export function seedResolveFixture(): Coordinate {
+export function seedResolveFixture(repository: string = RESOLVE_REPOSITORY): Coordinate {
   const auth = basicAuthHeader(__ENV.LOADTEST_USER ?? '', __ENV.LOADTEST_PASSWORD ?? '');
-  const files = resolveFixture(RESOLVE_FIXTURE_COORDINATE, FIXTURE_SEED, (bytes) => sha1(bytes.buffer as ArrayBuffer, 'hex'));
+  const files = resolveFixture(
+    RESOLVE_FIXTURE_COORDINATE,
+    FIXTURE_SEED,
+    (bytes) => sha1(bytes.buffer as ArrayBuffer, 'hex'),
+    repository,
+  );
   for (const file of files) {
     // The jar is a generated array that owns its buffer, so the buffer is exactly the body.
     const body = typeof file.body === 'string' ? file.body : (file.body.buffer as ArrayBuffer);
