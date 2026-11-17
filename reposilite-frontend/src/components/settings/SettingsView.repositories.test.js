@@ -116,7 +116,8 @@ describe('the Repositories page inside Settings', () => {
     const { router } = await mountSettings({ address: '/settings/repositories', server })
 
     expect(wrapper.text(), 'the unnamed repository is listed').toContain('Unnamed repository')
-    await wrapper.find('button[aria-label="Actions for Unnamed repository"]').trigger('click')
+    // The Actions button is an icon: its accessible name is its visually hidden text, so the button is found by that text.
+    wrapper.findAll('button').find(button => button.text() === 'Actions for Unnamed repository').trigger('click')
     await flushPromises()
     document.querySelector('[role="menu"] [aria-label="Edit Unnamed repository"]').click()
     await flushPromises()

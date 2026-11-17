@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import MdIcon from '../md/MdIcon.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import TypeBadge from './TypeBadge.vue'
 import { WRITE_CHOICES } from './writePolicy'
@@ -59,6 +60,9 @@ const emit = defineEmits<{
 
 const router = useRouter()
 
+// Three dots on one vertical line: zero-length strokes with round caps, drawn by MdIcon.
+const MORE_PATH = 'M12 5.25h.01M12 12h.01M12 18.75h.01'
+
 const SORT_ARROWS: Record<SortDirection, string> = { ascending: '▲', descending: '▼' }
 const VERSION_LABELS: Record<string, string> = { RELEASE: 'Release', SNAPSHOT: 'Snapshot', MIXED: 'Mixed' }
 const WRITE_LABELS: Record<string, string> = Object.fromEntries(WRITE_CHOICES.map(choice => [choice.value, choice.label]))
@@ -98,7 +102,7 @@ const onAction = (row: RepositoryRow, value: string) => {
     data-ingot-component="repositories-table"
   >
     <table class="w-full min-w-[40rem] border-collapse text-left">
-      <caption class="pb-2 text-left md-body-medium text-on-surface-variant">
+      <caption class="sr-only">
         {{ caption }}
       </caption>
       <thead data-ingot-part="header">
@@ -194,12 +198,12 @@ const onAction = (row: RepositoryRow, value: string) => {
           <th
             scope="row"
             data-ingot-part="cell-name"
-            class="min-w-48 w-full max-w-0 px-3 py-3 text-left md-body-large text-on-surface"
+            class="px-3 py-3 text-left md-body-large text-on-surface"
           >
             <RouterLink
               :to="{ name: 'settings-repository', params: { id: row.route } }"
               :title="row.name"
-              class="md-focus-ring md-touch-target relative block truncate rounded-corner-small text-primary"
+              class="md-focus-ring md-touch-target relative block max-w-80 truncate rounded-corner-small text-primary"
             >
               {{ row.name }}
             </RouterLink>
@@ -251,8 +255,14 @@ const onAction = (row: RepositoryRow, value: string) => {
             <MdOverflowMenu
               :label="`Actions for ${row.name}`"
               :items="actionsOf(row)"
+              trigger-class="!px-0 w-10"
               @select="(value) => onAction(row, value)"
-            />
+            >
+              <template #trigger>
+                <span class="sr-only">Actions for {{ row.name }}</span>
+                <MdIcon :path="MORE_PATH" />
+              </template>
+            </MdOverflowMenu>
           </td>
         </tr>
         <tr

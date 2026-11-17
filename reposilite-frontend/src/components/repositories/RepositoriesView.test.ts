@@ -69,8 +69,10 @@ const headerOf = (label: string) => wrapper.findAll('th').find(header => header.
 const sortButton = (label: string) => headerOf(label).find('button')
 // The Actions menu is teleported to the body, so its items are read from the document.
 const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+// The Actions button is an icon, so its accessible name is its visually hidden text.
+const actionsButton = (name: string) => wrapper.findAll('button').find(button => button.text() === `Actions for ${name}`)!
 const openActions = async (name: string) => {
-  wrapper.find(`button[aria-label="Actions for ${name}"]`).trigger('click')
+  actionsButton(name).trigger('click')
   await flushPromises()
 }
 const statusText = () => wrapper.findAll('[role="status"]').map(region => region.text()).join(' | ')
@@ -81,6 +83,20 @@ describe('the repositories table', () => {
     await mountPage()
 
     expect(wrapper.find('table caption').text(), 'the caption counts the rows').toBe('Repositories, 5 of 5 shown')
+  })
+
+  it('shows the count once, beside the filter, and keeps the caption visually hidden for assistive technology', async () => {
+    await mountPage()
+
+    const visible = wrapper.findAll('[role="status"]').filter(region => region.text().includes('shown'))
+    expect(visible.map(region => region.text()), 'one visible count').toEqual(['5 of 5 repositories shown'])
+    expect(wrapper.find('table caption').classes(), 'the caption is visually hidden').toContain('sr-only')
+    expect(wrapper.find('table caption').text(), 'the caption still names the count for screen readers').toBe('Repositories, 5 of 5 shown')
+
+    const row = wrapper.get('[data-test="filter-count"]').element.parentElement!
+    expect(row.className, 'the filter and the count share a row that wraps on narrow widths').toContain('flex-wrap')
+    expect(row.contains(filterInput().element), 'the count sits in the row of the filter').toBe(true)
+    expect(filterInput().element.closest('.max-w-md'), 'the filter field has a maximum width').not.toBeNull()
   })
 
   it('names the page with an h2 and marks the columns and the name cells as headers', async () => {
@@ -161,8 +177,17 @@ describe('the repositories table', () => {
     await mountPage()
 
     const row = rowOf('releases')
-    const names = row.findAll('a, button').map(control => control.attributes('aria-label'))
-    expect(names, 'the row has the name link and one Actions button').toEqual([undefined, 'Actions for releases'])
+    const names = row.findAll('a, button').map(control => control.text())
+    expect(names, 'the row has the name link and one Actions button').toEqual(['releases', 'Actions for releases'])
+  })
+
+  it('shows the Actions button as a three-dot icon, with the name as its only text', async () => {
+    await mountPage()
+
+    const button = actionsButton('releases')
+    expect(button.find('svg').attributes('aria-hidden'), 'the icon is decorative').toBe('true')
+    expect(button.find('.sr-only').text(), 'the visually hidden name names the repository').toBe('Actions for releases')
+    expect(button.text(), 'the word Actions is not the visible label').toBe('Actions for releases')
   })
 
   it('names the items of the Actions menu after the repository', async () => {
@@ -189,7 +214,7 @@ describe('the repositories table', () => {
 
     const controls = rowOf('releases').findAll('a, button')
     expect(controls[0].text(), 'the first control of the row is the name link').toBe('releases')
-    expect(controls[1].attributes('aria-label'), 'the next control is the Actions button').toBe('Actions for releases')
+    expect(controls[1].text(), 'the next control is the Actions button').toBe('Actions for releases')
   })
 
   it('copies the address, reports Copied and returns the focus to the Actions button', async () => {
@@ -197,7 +222,7 @@ describe('the repositories table', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     try {
       await mountPage()
-      const trigger = wrapper.find('button[aria-label="Actions for releases"]')
+      const trigger = actionsButton('releases')
       await openActions('releases')
 
       menuItems().find(item => item.getAttribute('aria-label') === 'Copy address of releases')!.click()
@@ -223,6 +248,15 @@ describe('the repositories table', () => {
     expect(address.classes(), 'the address is truncated with an ellipsis').toContain('truncate')
     expect(address.classes(), 'the address is never broken inside a word').not.toContain('break-all')
     expect(address.attributes('title'), 'the title is the full address').toBe('https://repo.example.net/releases')
+  })
+
+  it('gives the free width to the address, and the name only the width its text needs', async () => {
+    await mountPage()
+
+    const row = rowOf('releases')
+    expect(row.find('th[scope="row"]').classes(), 'the name cell does not claim a share of the width').not.toContain('w-full')
+    expect(row.find('code').element.closest('td')!.className, 'the address cell takes the free width').toContain('w-full')
+    expect(row.find('th[scope="row"] a').classes(), 'a long name is capped at a width, then truncated').toContain('max-w-80')
   })
 
   it('keeps the Write policy heading on one line', async () => {

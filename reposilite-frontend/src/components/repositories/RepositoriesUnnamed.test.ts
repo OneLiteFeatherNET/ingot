@@ -82,7 +82,8 @@ const mountList = async ({ address = '/settings/repositories' } = {}) => {
 
 const rowHeaders = () => wrapper.findAll('tbody th[scope="row"]').map(cell => cell.text())
 const unnamedRow = () => wrapper.findAll('tbody tr').find(row => row.text().includes('Unnamed repository'))
-const buttonLabelled = (label: string) => wrapper.find(`[aria-label="${label}"]`)
+// The Actions button is an icon: its accessible name is its visually hidden text, so the button is found by that text.
+const buttonLabelled = (label: string) => wrapper.findAll('button').find(button => button.text() === label)!
 // The Actions menu is teleported to the body: its items are read from the document, after the row's button opened it.
 const menuItemLabelled = (label: string) => document.querySelector<HTMLElement>(`[role="menu"] [aria-label="${label}"]`)!
 const openActionsOf = async (name: string) => {
@@ -126,7 +127,7 @@ describe('the repositories page with an entry that has no id', () => {
   it('names the Actions button and the Edit and Delete items of the unnamed row with the name Unnamed repository', async () => {
     await mountList()
 
-    expect(buttonLabelled('Actions for Unnamed repository').exists(), 'the actions button is named').toBe(true)
+    expect(wrapper.findAll('button').some(button => button.text() === 'Actions for Unnamed repository'), 'the actions button is named').toBe(true)
     await openActionsOf('Unnamed repository')
     expect(menuItemLabelled('Edit Unnamed repository') !== null, 'the edit item is named').toBe(true)
     expect(menuItemLabelled('Delete Unnamed repository') !== null, 'the delete item is named').toBe(true)

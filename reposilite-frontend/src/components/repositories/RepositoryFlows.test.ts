@@ -73,7 +73,8 @@ const mountList = async ({ address = '/settings/repositories', store }: { addres
   return { wrapper, router, store: configuration }
 }
 
-const buttonLabelled = (label: string) => wrapper.find(`button[aria-label="${label}"]`)
+// The Actions button is an icon: its accessible name is its visually hidden text, so the button is found by that text.
+const buttonLabelled = (label: string) => wrapper.findAll('button').find(button => button.text() === label)!
 // The Actions menu of a row is teleported to the body: its items are read from the document.
 const openActionsOf = async (name: string) => {
   buttonLabelled(`Actions for ${name}`).trigger('click')
