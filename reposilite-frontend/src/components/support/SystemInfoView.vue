@@ -60,7 +60,7 @@ const openFragment = async () => {
     await router.replace({ path: route.path, query: { ...route.query, tab }, hash: route.hash })
   }
   await nextTick()
-  root.value?.querySelector(`[id="${route.hash.slice(1)}"]`)?.scrollIntoView({ block: 'start' })
+  root.value?.querySelector(`[id="${route.hash.slice(1)}"]`)?.scrollIntoView?.({ block: 'start' })
 }
 
 const load = async () => {
