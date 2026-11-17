@@ -110,7 +110,7 @@ describe('WebAuthn support', () => {
   })
 
   it('refuses a registration in a browser without WebAuthn, saying the feature is not supported', async () => {
-    const request = createPasskey({ challenge: 'Y2hhbGxlbmdl', rpId: 'ingot.test', userName: 'alice' }, UNSUPPORTED)
+    const request = createPasskey({ challenge: 'Y2hhbGxlbmdl', rpId: 'ingot.test', userName: 'alice', userHandle: 'AAE' }, UNSUPPORTED)
 
     await expect(request).rejects.toThrow(/not supported/)
   })
@@ -163,12 +163,22 @@ describe('passkey registration', () => {
   it('passes the relying party, the decoded challenge and the user name to the browser', async () => {
     const { environment, create } = supportedEnvironment({ create: null })
 
-    await createPasskey({ challenge: '-_-_', rpId: 'ingot.test', userName: 'alice' }, environment).catch(() => undefined)
+    await createPasskey({ challenge: '-_-_', rpId: 'ingot.test', userName: 'alice', userHandle: 'AAE' }, environment).catch(() => undefined)
 
     const options = create.mock.calls[0][0] as { publicKey: { challenge: ArrayBuffer; rp: { id: string }; user: { name: string } } }
     expect(bytesOf(options.publicKey.challenge), 'the challenge the browser signs').toEqual([0xfb, 0xff, 0xbf])
     expect(options.publicKey.rp.id, 'the relying party identifier').toBe('ingot.test')
     expect(options.publicKey.user.name, 'the account the passkey belongs to').toBe('alice')
+  })
+
+  it('registers the passkey under the decoded user handle the server sent, not under the user name', async () => {
+    const { environment, create } = supportedEnvironment({ create: null })
+
+    await createPasskey({ challenge: 'AAE', rpId: 'ingot.test', userName: 'alice', userHandle: '-_-_' }, environment).catch(() => undefined)
+
+    const options = create.mock.calls[0][0] as { publicKey: { user: { id: ArrayBuffer } } }
+    expect(bytesOf(options.publicKey.user.id), 'the user id the authenticator stores').toEqual([0xfb, 0xff, 0xbf])
+    expect(bytesOf(options.publicKey.user.id), 'the user id is not the encoded user name').not.toEqual(Array.from(new TextEncoder().encode('alice')))
   })
 
   it('answers the client data and the attestation object in base64url', async () => {
@@ -180,7 +190,7 @@ describe('passkey registration', () => {
     }
     const { environment } = supportedEnvironment({ create: credential })
 
-    const attestation = await createPasskey({ challenge: 'AAE', rpId: 'ingot.test', userName: 'alice' }, environment)
+    const attestation = await createPasskey({ challenge: 'AAE', rpId: 'ingot.test', userName: 'alice', userHandle: 'AAE' }, environment)
 
     expect(attestation).toEqual({ clientDataJSON: 'AQ', attestationObject: 'AgM' })
   })

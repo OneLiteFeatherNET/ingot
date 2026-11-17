@@ -72,11 +72,13 @@ export interface AssertionOptions {
   allowCredentials: string[]
 }
 
-// The options the server returns for a registration. The user is the account name; the server sends no user handle.
+// The options the server returns for a registration. The user handle is the account's opaque id, which the passkey must store
+// so that a usernameless sign in can find the account again; the user name is only shown to the person.
 export interface RegistrationOptions {
   challenge: string
   rpId: string
   userName: string
+  userHandle: string
 }
 
 export const browserEnvironment = (): WebAuthnEnvironment => ({
@@ -174,7 +176,7 @@ export const createPasskey = async (
       challenge: base64urlToBuffer(options.challenge),
       rp: { id: options.rpId, name: RELYING_PARTY_NAME },
       user: {
-        id: new TextEncoder().encode(options.userName),
+        id: base64urlToBuffer(options.userHandle),
         name: options.userName,
         displayName: options.userName,
       },
