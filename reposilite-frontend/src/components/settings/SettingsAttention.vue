@@ -16,12 +16,16 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
+import CheckIcon from '../icons/CheckIcon.vue'
+import WarningIcon from '../icons/WarningIcon.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 
 /*
  * Needs attention on the Overview page of /settings: one row per settings page with an unsaved draft, a control that opens
- * the review of all drafts, and a row for a save conflict. With none of these it reads "Nothing needs attention.". The status
- * is text with an icon, never colour alone. The frame draws it above the index below 1240 pixels, and beside the page wider.
+ * the review of all drafts, and a row for a save conflict. With none of these it draws a slim outlined card that reads
+ * "Nothing needs attention."; with some, the rows sit in a tonal card. The status is text with an icon, never colour alone.
+ * The frame draws it above the index below 1240 pixels, and beside the page wider.
  *
  * Props:
  *   rows      [{ key, label, to }], the tree entries with an unsaved draft (attentionRows builds them)
@@ -46,78 +50,84 @@ defineEmits(['review', 'review-conflict'])
   >
     <h2
       id="settings-attention-title"
-      class="md-title-medium text-on-surface"
+      class="md-title-large text-on-surface"
     >
       Needs attention
     </h2>
 
-    <p
+    <MdCard
       v-if="rows.length === 0 && !conflict"
-      class="md-body-medium text-on-surface-variant"
+      variant="outlined"
+      class="flex items-center gap-3"
+      data-test="attention-empty"
     >
-      Nothing needs attention.
-    </p>
+      <CheckIcon
+        class="shrink-0 text-primary"
+        aria-hidden="true"
+      />
+      <p class="md-body-large text-on-surface">
+        Nothing needs attention.
+      </p>
+    </MdCard>
 
-    <ul
+    <div
       v-else
-      class="flex list-none flex-col gap-2 p-0"
+      class="flex flex-col gap-2 rounded-corner-medium bg-error-container p-2 text-on-error-container"
+      data-test="attention-card"
     >
-      <li
-        v-for="row in rows"
-        :key="row.key"
-      >
-        <RouterLink
-          :to="row.to"
-          :aria-label="`${row.label}, Unsaved changes`"
-          class="md-state-layer md-focus-ring relative flex min-h-12 items-center justify-between gap-3 rounded-corner-small px-3 py-2 no-underline text-on-surface"
-          data-test="attention-row"
+      <ul class="flex list-none flex-col gap-2 p-0">
+        <li
+          v-for="row in rows"
+          :key="row.key"
         >
-          <span class="md-body-large">{{ row.label }}</span>
-          <span class="inline-flex shrink-0 items-center gap-1 md-label-medium text-primary">
-            <svg
-              class="size-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="4"
-                fill="currentColor"
+          <RouterLink
+            :to="row.to"
+            :aria-label="`${row.label}, Unsaved changes`"
+            class="md-state-layer md-focus-ring relative flex min-h-12 items-center justify-between gap-3 rounded-corner-small px-3 py-2 no-underline text-on-error-container"
+            data-test="attention-row"
+          >
+            <span class="inline-flex min-w-0 items-center gap-2">
+              <WarningIcon
+                class="size-5 shrink-0"
+                aria-hidden="true"
               />
-            </svg>
-            Unsaved changes
-          </span>
-        </RouterLink>
-      </li>
+              <span class="md-body-large">{{ row.label }}</span>
+            </span>
+            <span class="shrink-0 md-label-medium">Unsaved changes</span>
+          </RouterLink>
+        </li>
 
-      <li
-        v-if="conflict"
-        class="flex flex-wrap items-center justify-between gap-3 rounded-corner-small px-3 py-2"
-        data-test="attention-conflict"
-      >
-        <span class="md-body-large text-error">{{ conflict.title }} changed elsewhere</span>
+        <li
+          v-if="conflict"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-corner-small px-3 py-2"
+          data-test="attention-conflict"
+        >
+          <span class="inline-flex min-w-0 items-center gap-2">
+            <WarningIcon
+              class="size-5 shrink-0"
+              aria-hidden="true"
+            />
+            <span class="md-body-large">{{ conflict.title }} changed elsewhere</span>
+          </span>
+          <MdButton
+            variant="text"
+            type="button"
+            @click="$emit('review-conflict')"
+          >
+            Review conflict
+          </MdButton>
+        </li>
+      </ul>
+
+      <div v-if="rows.length > 0">
         <MdButton
           variant="text"
           type="button"
-          @click="$emit('review-conflict')"
+          @click="$emit('review')"
         >
-          Review conflict
+          Review changes
         </MdButton>
-      </li>
-    </ul>
-
-    <div v-if="rows.length > 0">
-      <MdButton
-        variant="text"
-        type="button"
-        @click="$emit('review')"
-      >
-        Review changes
-      </MdButton>
+      </div>
     </div>
   </section>
 </template>

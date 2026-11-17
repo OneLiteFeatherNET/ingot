@@ -15,15 +15,20 @@
   -->
 
 <script setup lang="ts">
+import type { Component } from 'vue'
+
 /*
  * Material Design 3 card. A plain container: the content and its actions belong to the
  * slot. Pick the variant by how much the card must stand out from the page: elevated for
  * a card that floats, filled for grouped content, outlined for a quiet container.
+ * `as` draws the card as another element or component, such as a router link, with the same surface.
  */
 withDefaults(defineProps<{
   variant?: 'elevated' | 'filled' | 'outlined'
+  as?: string | Component
 }>(), {
-  variant: 'filled'
+  variant: 'filled',
+  as: 'div'
 })
 
 defineSlots<{
@@ -38,11 +43,12 @@ const VARIANTS = {
 </script>
 
 <template>
-  <div
+  <component
+    :is="as"
     :data-variant="variant"
     :class="['rounded-corner-medium p-4 text-on-surface', VARIANTS[variant] ?? VARIANTS.filled]"
     data-ingot-component="md-card"
   >
     <slot />
-  </div>
+  </component>
 </template>

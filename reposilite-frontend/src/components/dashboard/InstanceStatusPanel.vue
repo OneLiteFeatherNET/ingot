@@ -222,6 +222,18 @@ const readOnlyNote = computed(() => {
     ? 'Turned on from the Maintenance page or the API. Every instance of the cluster refuses writes.'
     : 'Turned on from the Maintenance page or the API. This instance refuses writes.'
 })
+
+// The cards of read-only mode say what the value means, where the banner says it in full.
+const readOnlyMeaning = computed(() => loaded().readOnly
+  ? 'Uploads and deletes are refused with 503'
+  : 'Uploads and deletes are accepted')
+const readOnlySourceLabel = computed(() => loaded().readOnlySource === 'environment'
+  ? 'Environment'
+  : 'Maintenance page or API')
+const readOnlyScope = computed(() => {
+  if (loaded().readOnlySource === 'environment') return 'This instance only'
+  return loaded().cluster?.instances?.length ? 'Every instance of the cluster' : 'This instance only'
+})
 </script>
 
 <template>
@@ -303,12 +315,21 @@ const readOnlyNote = computed(() => {
       </p>
     </div>
 
-    <div
-      data-testid="read-only-status"
-      class="flex flex-wrap items-baseline gap-2"
-    >
-      <span class="md-title-small text-on-surface">Read-only mode</span>
-      <span class="md-body-medium text-on-surface-variant">{{ instanceStatus.readOnly ? 'On' : 'Off' }}</span>
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <StatTile
+        data-testid="read-only-card"
+        label="Read-only mode"
+        :value="instanceStatus.readOnly ? 'On' : 'Off'"
+        :value-status="instanceStatus.readOnly ? 'warning' : null"
+        :detail="readOnlyMeaning"
+      />
+      <StatTile
+        v-if="instanceStatus.readOnly"
+        data-testid="read-only-source-card"
+        label="Read-only source"
+        :value="readOnlySourceLabel"
+        :detail="readOnlyScope"
+      />
     </div>
 
     <div
@@ -362,7 +383,7 @@ const readOnlyNote = computed(() => {
     >
       <h3
         id="cluster-heading"
-        class="md-title-medium text-on-surface"
+        class="md-title-large text-on-surface"
       >
         Cluster
       </h3>

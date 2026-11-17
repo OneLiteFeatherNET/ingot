@@ -15,15 +15,17 @@
   -->
 
 <script setup>
+import StatTile from '../dashboard/StatTile.vue'
 
 /*
  * The part of the Overview page of /settings below its heading that the tree cannot show: At a glance, the count of every
- * settings collection. The instance status is a section of Overview, not of this hub. The Administration pages themselves are
- * the tree beside the page, so this page lists none of them. The root carries the settings-hub anchor. Needs attention is
- * SettingsAttention, which the frame draws above the index on narrow widths.
+ * settings collection, each a stat card that links to its page. The instance status is a section of Overview, not of this
+ * hub. The Administration pages themselves are the tree beside the page, so this page lists none of them beyond the counts.
+ * The root carries the settings-hub anchor. Needs attention is SettingsAttention, which the frame draws above the index on
+ * narrow widths.
  *
  * Props:
- *   glance     [{ key, label, count }], as glanceRows builds them
+ *   glance     [{ key, label, count, to }], as glanceRows builds them; `to` is the router location of the page
  */
 defineProps({
   glance: { type: Array, required: true }
@@ -43,23 +45,20 @@ defineProps({
     >
       <h2
         id="settings-glance-title"
-        class="md-title-medium text-on-surface"
+        class="md-title-large text-on-surface"
       >
         At a glance
       </h2>
-      <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 md-body-large">
-        <template
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <StatTile
           v-for="row in glance"
           :key="row.key"
-        >
-          <dt class="text-on-surface">
-            {{ row.label }}
-          </dt>
-          <dd class="text-right text-on-surface-variant tabular-nums">
-            {{ row.count }}
-          </dd>
-        </template>
-      </dl>
+          data-test="glance-card"
+          :label="row.label"
+          :value="`${row.count}`"
+          :to="row.to"
+        />
+      </div>
     </section>
   </div>
 </template>

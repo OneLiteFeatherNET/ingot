@@ -18,12 +18,24 @@ import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 
 test.describe('instance status on Overview', () => {
-  test('shows read-only as a status without a switch control', async ({ adminPage: page }) => {
+  test('shows read-only as a stat card without a switch control', async ({ adminPage: page }) => {
     await page.goto(siteUrl('/settings'))
     const status = page.getByRole('region', { name: 'Instance status' })
     await expect(status).toBeVisible()
-    await expect(status.getByText('Read-only mode', { exact: true })).toBeVisible()
+    const card = status.locator('[data-testid="read-only-card"]')
+    await expect(card.getByText('Read-only mode', { exact: true })).toBeVisible()
+    // The value follows its label; the text of the two parts has no space between them.
+    await expect(card, 'the card states the value').toContainText(/Read-only mode\s*(On|Off)/)
     await expect(page.getByRole('switch', { name: /read-only/i }), 'a switch for the read-only state').toHaveCount(0)
+  })
+
+  test('draws each At a glance count as a card that opens its page', async ({ adminPage: page }) => {
+    await page.goto(siteUrl('/settings'))
+    const repositories = page.getByRole('link', { name: /^Repositories, \d+$/ })
+    await expect(repositories).toBeVisible()
+    await expect(repositories).toHaveAttribute('href', /\/settings\/repositories$/)
+    await repositories.click()
+    await expect(page).toHaveURL(siteUrl('/settings/repositories'))
   })
 
   test('draws the status above At a glance at 1440 pixels', async ({ adminPage: page }) => {

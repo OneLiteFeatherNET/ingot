@@ -570,19 +570,77 @@ describe('InstanceStatusPanel read-only banner', () => {
     wrapper.unmount()
   })
 
-  it('shows read-only mode as a status line that reads Off while the instance accepts writes', async () => {
+  it('shows read-only mode as a stat card that reads Off and says uploads and deletes are accepted', async () => {
     const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: false, readOnlySource: 'stored' })
 
-    const line = wrapper.find('[data-testid="read-only-status"]')
-    expect(line.exists(), 'the state is shown as a status even while it is off').toBe(true)
-    expect(line.findAll('span').map(span => span.text()), 'the status line names read-only mode and its state').toEqual(['Read-only mode', 'Off'])
+    const card = wrapper.find('[data-testid="read-only-card"]')
+    expect(card.text(), 'the label of the card').toContain('Read-only mode')
+    expect(card.find('p.md-headline-medium').text(), 'the value').toBe('Off')
+    expect(card.text(), 'what Off means').toContain('Uploads and deletes are accepted')
+    expect(card.find('svg').exists(), 'no warning icon while the instance accepts writes').toBe(false)
     wrapper.unmount()
   })
 
-  it('shows read-only mode as a status line that reads On while the instance is read-only', async () => {
+  it('shows read-only mode as a stat card that reads On in the warning colour, with an icon and what On means', async () => {
     const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'stored' })
 
-    expect(wrapper.find('[data-testid="read-only-status"]').findAll('span').map(span => span.text()), 'the status line reads On').toEqual(['Read-only mode', 'On'])
+    const card = wrapper.find('[data-testid="read-only-card"]')
+    const value = card.find('p.md-headline-medium')
+    expect(value.text(), 'the value').toBe('On')
+    expect(value.classes(), 'the warning role colour').toContain('text-warning')
+    expect(card.find('svg').exists(), 'an icon, so the state is not colour alone').toBe(true)
+    expect(card.text(), 'what On means').toContain('Uploads and deletes are refused with 503')
+    wrapper.unmount()
+  })
+
+  it('names the environment as the source of a read-only state on this instance only', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'environment' })
+
+    const card = wrapper.find('[data-testid="read-only-source-card"]')
+    expect(card.text(), 'the label of the card').toContain('Read-only source')
+    expect(card.find('p.md-headline-medium').text(), 'the value').toBe('Environment')
+    expect(card.text(), 'the scope of an environment setting').toContain('This instance only')
+    wrapper.unmount()
+  })
+
+  it('names the Maintenance page or API as the source of a stored state, which covers every instance of a cluster', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      readOnly: true,
+      readOnlySource: 'stored',
+      cluster: {
+        instances: [{
+          id: 'ingot-0', version: '1.0.0', uptimeStart: 0, usedMemory: 1, maxMemory: 2, usedThreads: 1, maxThreads: 2,
+          failuresCount: 0, health: 'up', stale: false, interval: 60000, samples: []
+        }]
+      }
+    })
+
+    const card = wrapper.find('[data-testid="read-only-source-card"]')
+    expect(card.find('p.md-headline-medium').text(), 'the value').toBe('Maintenance page or API')
+    expect(card.text(), 'the scope of a stored state').toContain('Every instance of the cluster')
+    wrapper.unmount()
+  })
+
+  it('shows no source card while the instance accepts writes', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: false, readOnlySource: 'stored' })
+
+    expect(wrapper.find('[data-testid="read-only-source-card"]').exists(), 'a source is named only for a read-only state').toBe(false)
+    wrapper.unmount()
+  })
+
+  it('draws the cluster heading in the same size as the other section headings', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: {
+        instances: [{
+          id: 'ingot-0', version: '1.0.0', uptimeStart: 0, usedMemory: 1, maxMemory: 2, usedThreads: 1, maxThreads: 2,
+          failuresCount: 0, health: 'up', stale: false, interval: 60000, samples: []
+        }]
+      }
+    })
+
+    expect(wrapper.find('#cluster-heading').classes(), 'the cluster heading is in the title large size').toContain('md-title-large')
     wrapper.unmount()
   })
 })

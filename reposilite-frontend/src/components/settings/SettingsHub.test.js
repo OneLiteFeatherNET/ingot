@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2026 OneLiteFeather
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -28,9 +12,12 @@ const routes = [
 
 // Each test builds its own counts and router, so no test can change what another one reads.
 const counts = () => [
-  { key: 'page:repositories', label: 'Repositories', count: 7 },
-  { key: 'settings:cleanup', label: 'Cleanup policies', count: 0 }
+  { key: 'page:repositories', label: 'Repositories', count: 7, to: { name: 'settings-repositories' } },
+  { key: 'settings:cleanup', label: 'Cleanup policies', count: 0, to: { name: 'settings', params: { domain: 'cleanup' } } }
 ]
+
+// The application is served under /repo/, so every link of the page must carry that base.
+const BASE = '/repo/'
 
 let wrapper
 
@@ -40,7 +27,7 @@ afterEach(() => {
 })
 
 const mountHub = async (props = {}) => {
-  const router = createRouter({ history: createMemoryHistory(), routes })
+  const router = createRouter({ history: createMemoryHistory(BASE), routes })
   await router.push('/settings')
   await router.isReady()
   wrapper = mount(SettingsHub, {
@@ -52,6 +39,8 @@ const mountHub = async (props = {}) => {
   return wrapper
 }
 
+const cardsOf = () => wrapper.findAll('[data-test="glance-card"]')
+
 describe('SettingsHub anchor', () => {
   it('carries the settings-hub anchor on its root element', async () => {
     await mountHub()
@@ -61,27 +50,40 @@ describe('SettingsHub anchor', () => {
 })
 
 describe('SettingsHub At a glance', () => {
-  it('draws each collection with its entry count, under the label of its tree entry', async () => {
+  it('draws each collection as a stat card with its label and count', async () => {
     await mountHub()
 
-    const terms = wrapper.findAll('dt').map(term => term.text())
-    const values = wrapper.findAll('dd').map(value => value.text())
-    expect(terms, 'the labels').toEqual(['Repositories', 'Cleanup policies'])
-    expect(values, 'the counts, rendered together').toEqual(['7', '0'])
+    const labels = cardsOf().map(card => card.get('.md-label-large').text())
+    const values = cardsOf().map(card => card.get('p.md-headline-medium').text())
+    expect(labels, 'the labels, under the labels of the tree').toEqual(['Repositories', 'Cleanup policies'])
+    expect(values, 'the counts').toEqual(['7', '0'])
   })
 
   it('draws a zero as 0 without a warning colour', async () => {
     await mountHub()
 
-    const zero = wrapper.findAll('dd').find(value => value.text() === '0')
-    expect(zero, 'the zero count is drawn').toBeDefined()
+    const zero = cardsOf()[1].get('p.md-headline-medium')
+    expect(zero.text()).toBe('0')
     expect(zero.classes(), 'no error or warning colour on a zero').not.toContain('text-error')
   })
 
-  it('draws the At a glance heading above the counts', async () => {
+  it('makes each whole card a link to its page, named by its label and count', async () => {
     await mountHub()
 
-    expect(wrapper.get('h2').text()).toBe('At a glance')
+    const links = wrapper.findAll('a')
+    expect(links.map(link => link.attributes('aria-label')), 'one accessible name per card').toEqual(['Repositories, 7', 'Cleanup policies, 0'])
+    expect(links.map(link => link.attributes('href')), 'the links carry the base of the application').toEqual([
+      '/repo/settings/repositories',
+      '/repo/settings/cleanup'
+    ])
+  })
+
+  it('draws the At a glance heading in the title large size of the page sections', async () => {
+    await mountHub()
+
+    const heading = wrapper.get('h2')
+    expect(heading.text()).toBe('At a glance')
+    expect(heading.classes(), 'the same size as Needs attention and Instance status').toContain('md-title-large')
   })
 })
 
@@ -95,12 +97,11 @@ describe('SettingsHub has no link to a Dashboard page', () => {
 })
 
 describe('SettingsHub content', () => {
-  it('draws no card grid and no copy of the Administration tree', async () => {
+  it('draws no card of a page beyond the counts, and no copy of the Administration tree', async () => {
     await mountHub()
 
-    expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card').toBe(false)
-    const links = wrapper.findAll('a').map(link => link.attributes('href'))
-    expect(links, 'the hub has no link of its own').toEqual([])
+    expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card of a page').toBe(false)
+    expect(wrapper.findAll('a').map(link => link.attributes('aria-label')), 'the only links are the counts').toEqual(['Repositories, 7', 'Cleanup policies, 0'])
   })
 
   it('does not repeat the removed line that sent sign in and security to Access', async () => {
