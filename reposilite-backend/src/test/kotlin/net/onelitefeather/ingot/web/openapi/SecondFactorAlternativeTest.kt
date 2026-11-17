@@ -19,7 +19,6 @@ package net.onelitefeather.ingot.web.openapi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 internal class SecondFactorAlternativeTest {
@@ -78,10 +77,66 @@ internal class SecondFactorAlternativeTest {
     }
 
     @Test
-    fun `fails when the login route is missing from the document`() {
-        assertThatThrownBy { SecondFactorAlternative.apply(document(LOGIN_RESPONSE_SCHEMA)) }
-            .describedAs("a missing login route must fail instead of silently dropping the MFA answer")
-            .isInstanceOf(IllegalStateException::class.java)
+    fun `returns the document unchanged when the login route is missing`() {
+        val before = document(paths = "", schemas = LOGIN_RESPONSE_SCHEMA)
+        val expected = before.deepCopy()
+
+        val processed = SecondFactorAlternative.apply(before)
+
+        assertThat(processed)
+            .describedAs("a document without the login route must be served as it is")
+            .isEqualTo(expected)
+    }
+
+    @Test
+    fun `does not add the MFA required schema when the login route is missing`() {
+        val processed = SecondFactorAlternative.apply(document(paths = "", schemas = LOGIN_RESPONSE_SCHEMA))
+
+        assertThat(processed.at("/components/schemas/SecondFactorRequiredResponse").isMissingNode)
+            .describedAs("the MFA schema must not be added when nothing references it")
+            .isTrue()
+    }
+
+    @Test
+    fun `returns the document unchanged when the login route has no 200 response`() {
+        val before = document(
+            paths = """$LOGIN_PATH_KEY:{"post":{"responses":{"401":{"description":"Unauthorized"}}}}""",
+            schemas = LOGIN_RESPONSE_SCHEMA,
+        )
+        val expected = before.deepCopy()
+
+        val processed = SecondFactorAlternative.apply(before)
+
+        assertThat(processed)
+            .describedAs("a login route without a 200 response must be served as it is")
+            .isEqualTo(expected)
+    }
+
+    @Test
+    fun `returns the document unchanged when the login 200 response has no JSON content`() {
+        val before = document(
+            paths = """$LOGIN_PATH_KEY:{"post":{"responses":{"200":{"description":"OK","content":{"text/plain":{"schema":{"type":"string"}}}}}}}""",
+            schemas = LOGIN_RESPONSE_SCHEMA,
+        )
+        val expected = before.deepCopy()
+
+        val processed = SecondFactorAlternative.apply(before)
+
+        assertThat(processed)
+            .describedAs("a 200 response without application/json content must be served as it is")
+            .isEqualTo(expected)
+    }
+
+    @Test
+    fun `returns the document unchanged when it has no component schemas`() {
+        val before = mapper.readTree("""{"openapi":"3.1.0","paths":{$LOGIN_PATH}}""") as ObjectNode
+        val expected = before.deepCopy()
+
+        val processed = SecondFactorAlternative.apply(before)
+
+        assertThat(processed)
+            .describedAs("a document without component schemas must be served as it is")
+            .isEqualTo(expected)
     }
 
     private fun loginDocument(extraPath: String? = null): ObjectNode {
@@ -91,11 +146,12 @@ internal class SecondFactorAlternativeTest {
         ) as ObjectNode
     }
 
-    private fun document(vararg schemas: String): ObjectNode =
-        mapper.readTree("""{"openapi":"3.1.0","paths":{},"components":{"schemas":{${schemas.joinToString(",")}}}}""") as ObjectNode
+    private fun document(paths: String, schemas: String): ObjectNode =
+        mapper.readTree("""{"openapi":"3.1.0","paths":{$paths},"components":{"schemas":{$schemas}}}""") as ObjectNode
 
     private companion object {
         const val LOGIN_RESPONSE_SCHEMA = """"LoginResponse":{"type":"object","properties":{"mustChangePassword":{"type":"boolean"}}}"""
-        const val LOGIN_PATH = """"/api/auth/login":{"post":{"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"${'$'}ref":"#/components/schemas/LoginResponse"}}}}}}}"""
+        const val LOGIN_PATH_KEY = """"/api/auth/login""""
+        const val LOGIN_PATH = """$LOGIN_PATH_KEY:{"post":{"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"${'$'}ref":"#/components/schemas/LoginResponse"}}}}}}}"""
     }
 }

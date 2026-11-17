@@ -49,17 +49,20 @@ object SecondFactorAlternative {
         }
     """.trimIndent()
 
+    /**
+     * Adds the MFA required answer to the login route. A document this does not recognise (no component schemas, no
+     * 200 response on the login route, or no JSON content there) is returned unchanged, so the OpenAPI endpoint keeps
+     * serving it and only the alternative is left out. All checks run before the first mutation.
+     */
     fun apply(document: ObjectNode): ObjectNode {
-        val schemas = document.path("components").path("schemas") as? ObjectNode
-            ?: throw IllegalStateException("The OpenAPI document has no component schemas")
+        val schemas = document.path("components").path("schemas") as? ObjectNode ?: return document
         val login = document.path("paths").path(LOGIN_PATH).path("post").path("responses").path("200")
-        check(login.isObject) { "The OpenAPI document has no 200 response for POST $LOGIN_PATH" }
+        if (!login.isObject) return document
+        val content = login.path("content").path("application/json") as? ObjectNode ?: return document
 
         schemas.set<ObjectNode>(MFA_SCHEMA, MAPPER.readTree(MFA_SCHEMA_JSON) as ObjectNode)
 
-        val schema = login.path("content").path("application/json") as? ObjectNode
-            ?: throw IllegalStateException("The 200 response of POST $LOGIN_PATH has no application/json content")
-        val alternatives = schema.putObject("schema").putArray("oneOf")
+        val alternatives = content.putObject("schema").putArray("oneOf")
         alternatives.addObject().put("\$ref", "#/components/schemas/$LOGIN_SCHEMA")
         alternatives.addObject().put("\$ref", "#/components/schemas/$MFA_SCHEMA")
         return document
