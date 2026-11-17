@@ -57,10 +57,10 @@ const loadAccess = async (): Promise<void> => {
 }
 watch([isLogged, principal], loadAccess, { immediate: true })
 
-// The username is shown only when it adds something to the display name shown in the bar.
+// The username is shown only when it adds something to the name shown in the bar, which falls back to the login name.
 const username = computed<string>(() => {
   const who = principal?.value
-  return who?.name && who.name !== who.displayName ? who.name : ''
+  return who?.name && who.name !== signedInName.value ? who.name : ''
 })
 const identityLine = computed<string>(() => {
   const kind = principal?.value?.kind ?? ''
