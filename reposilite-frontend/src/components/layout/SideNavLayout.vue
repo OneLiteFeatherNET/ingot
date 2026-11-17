@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type PropType } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, type RouteLocationRaw } from 'vue-router'
 import SideNavTree from './SideNavTree.vue'
 import { useTreeFits } from '../../helpers/useTreeFits'
 
@@ -79,6 +79,11 @@ const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow ||
 // The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
 const leadAbove = computed(() => props.narrow && props.overview)
 
+// The page column is keyed by the route name and the open entry: an entry change draws it again, so it plays its enter
+// animation. A query change (the tab of a repository, for one) keeps it, so a typed value keeps its focus.
+const route = useRoute()
+const pageKey = computed(() => `${String(route.name)}:${props.current ?? ''}`)
+
 const navTree = ref<InstanceType<typeof SideNavTree> | null>(null)
 const { fits, measure } = useTreeFits(() => navTree.value?.$el)
 // A save bar that appears or goes away changes the room between the bars, so the decision is taken again.
@@ -116,8 +121,9 @@ const navClasses = computed(() => (props.narrow
 
     <div
       v-if="showsPage"
+      :key="pageKey"
       data-ingot-part="page"
-      class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2"
+      class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2 animate-md-page-enter motion-reduce:animate-none"
       :class="reading ? 'large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]' : ''"
     >
       <div

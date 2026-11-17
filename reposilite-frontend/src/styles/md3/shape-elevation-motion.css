@@ -126,6 +126,7 @@
   --animate-md-linear-slide-reduced: md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite;
   --animate-md-snackbar-enter: md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
   --animate-md-snackbar-leave: md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
+  --animate-md-page-enter: md-page-enter var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) both;
   --animate-skeleton-fade-in: skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both;
 }
 
@@ -157,6 +158,18 @@
   to {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+
+@keyframes md-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
