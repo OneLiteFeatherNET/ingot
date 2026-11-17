@@ -10,10 +10,14 @@ Run from the repository root:
 """
 
 import hashlib
+import contextlib
+import io
 import os
 import tempfile
 import unittest
+from unittest import mock
 
+from rehearsal import rehearse as rehearsal_script
 from rehearsal.rehearse import RehearsalFailure, forwarded_port, upstream_revision, verify_sha256
 
 UPSTREAM_CHART = "reposilite-1.4.5"
@@ -64,3 +68,38 @@ class VerifySha256Test(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CLAIM_UID = "6f1c2a4e-0000-4000-8000-000000000001"
+SHA1 = "3a7bd3e2360a3d80c3e4b8d4b1f1f2e0c9a8b7d6"
+
+
+def record(token_status="valid"):
+    return {"claim_uid": CLAIM_UID, "artifact_sha1": SHA1, "token_status": token_status, "mounted_claims": ["reposilite"]}
+
+
+class SuccessReportTest(unittest.TestCase):
+
+    def test_passing_rehearsal_prints_the_three_stages_in_order(self):
+        # given: a rehearsal that reports no difference and observed the same values at the three stages
+        observed = [("before the upgrade", record()), ("after the upgrade", record()), ("after the rollback", record())]
+        out = io.StringIO()
+
+        # when: the script finishes, with the cluster calls replaced by no-ops
+        with mock.patch.object(rehearsal_script, "rehearse", return_value=([], observed)), \
+                mock.patch.object(rehearsal_script, "run", return_value=""), \
+                contextlib.redirect_stdout(out):
+            code = rehearsal_script.main(["--ingot-image", "ingot:ci"])
+
+        # then: the exit code is 0 and each stage prints its claim UID, artifact sha1 and token status
+        printed = out.getvalue().splitlines()
+        self.assertEqual(0, code)
+        self.assertEqual(
+            [
+                f"before the upgrade: claim UID {CLAIM_UID}, artifact sha1 {SHA1}, token status valid",
+                f"after the upgrade: claim UID {CLAIM_UID}, artifact sha1 {SHA1}, token status valid",
+                f"after the rollback: claim UID {CLAIM_UID}, artifact sha1 {SHA1}, token status valid",
+            ],
+            printed[:3],
+            f"the report must list the three stages in order, found {printed}",
+        )

@@ -20,3 +20,9 @@ def compare_identity(before, after):
             f"token status changed from {before['token_status']} to {after['token_status']}"
         )
     return problems
+
+
+def describe_identity(stage, record):
+    """The line the rehearsal prints for one stage: the three values it compared. The record holds the token status, never the secret."""
+    return (f"{stage}: claim UID {record['claim_uid']}, artifact sha1 {record['artifact_sha1']}, "
+            f"token status {record['token_status']}")

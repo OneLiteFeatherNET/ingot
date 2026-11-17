@@ -32,7 +32,7 @@ from contextlib import contextmanager
 if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from rehearsal.compare import compare_identity  # noqa: E402
+from rehearsal.compare import compare_identity, describe_identity  # noqa: E402
 
 UPSTREAM_CHART_REPO = "https://helm.reposilite.com/"
 UPSTREAM_CHART = "reposilite"
@@ -221,7 +221,8 @@ def check(problems, before, after, stage):
 
 
 def rehearse(namespace, ingot_image, workdir):
-    """Runs the three stages and returns the list of differences. An empty list means the rehearsal passed."""
+    """Runs the three stages. Returns the list of differences, empty when the rehearsal passed, and the observed
+    records of the three stages in order, for the report."""
     ingot_name, ingot_tag = split_image(ingot_image)
     upstream_chart = pull_upstream_chart(workdir)
     bootstrap = (BOOTSTRAP_NAME, secrets.token_urlsafe(24))
@@ -260,7 +261,8 @@ def rehearse(namespace, ingot_image, workdir):
     with port_forward(namespace) as base_url:
         after_rollback = observe(namespace, base_url, secret)
     check(problems, before, after_rollback, "after the rollback")
-    return problems
+    observed = [("before the upgrade", before), ("after the upgrade", after_upgrade), ("after the rollback", after_rollback)]
+    return problems, observed
 
 
 def pull_upstream_chart(workdir):
@@ -290,7 +292,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     with tempfile.TemporaryDirectory() as workdir:
         try:
-            problems = rehearse(args.namespace, args.ingot_image, workdir)
+            problems, observed = rehearse(args.namespace, args.ingot_image, workdir)
         except RehearsalFailure as failure:
             print(f"upgrade rehearsal failed: {failure}", file=sys.stderr)
             print_diagnostics(args.namespace)
@@ -299,6 +301,8 @@ def main(argv=None):
         for problem in problems:
             print(f"upgrade rehearsal: {problem}", file=sys.stderr)
         return 1
+    for stage, record in observed:
+        print(describe_identity(stage, record))
     run(["kubectl", "delete", "namespace", args.namespace, "--wait=false"], what="deleting the rehearsal namespace")
     print(f"upgrade rehearsal passed: claim UID, artifact sha1 and token status are unchanged after the upgrade "
           f"and after the rollback to {UPSTREAM_CHART}-{UPSTREAM_CHART_VERSION}")

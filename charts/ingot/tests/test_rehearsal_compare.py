@@ -11,7 +11,7 @@ Run from the repository root:
 
 import unittest
 
-from rehearsal.compare import compare_identity
+from rehearsal.compare import compare_identity, describe_identity
 
 CLAIM_UID = "6f1c2a4e-0000-4000-8000-000000000001"
 OTHER_CLAIM_UID = "9b7d3e51-0000-4000-8000-000000000002"
@@ -47,3 +47,18 @@ class CompareIdentityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DescribeIdentityTest(unittest.TestCase):
+
+    def test_line_names_the_stage_and_the_three_values(self):
+        line = describe_identity("after the upgrade", identity())
+        self.assertEqual(
+            f"after the upgrade: claim UID {CLAIM_UID}, artifact sha1 {SHA1}, token status valid",
+            line,
+            f"the line must name the stage and the three compared values, found {line!r}",
+        )
+
+    def test_rejected_token_is_described_by_its_status(self):
+        line = describe_identity("after the rollback", identity(token_status="rejected (HTTP 401)"))
+        self.assertIn("token status rejected (HTTP 401)", line, f"the status of the token must be printed, found {line!r}")
