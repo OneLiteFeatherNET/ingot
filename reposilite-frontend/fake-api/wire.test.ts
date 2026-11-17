@@ -19,7 +19,7 @@
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 import { instantOnWire, localDateOnWire } from "./wire"
-import identity from "./identity.cjs"
+import * as identity from "./identity"
 import { createFileDetails } from "./extensions"
 
 // The shapes ApiTimeWireFormatTest pins on the backend: an Instant is epoch seconds, a LocalDate a [y, m, d] array.
