@@ -129,7 +129,7 @@ const sheetOpen = ref(false)
 
 <template>
   <section
-    class="container mx-auto max-w-none pb-12 pt-7 large:grid large:grid-cols-[208px_minmax(0,1fr)] large:gap-x-10"
+    class="container mx-auto max-w-none pb-12 pt-7 large:grid large:grid-cols-(--grid-md-side-nav) large:gap-x-10"
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >

@@ -469,7 +469,7 @@ describe('AdministrationFrame header beside the side navigation', () => {
 
     const classes = wrapper.element.classList
     expect(classes, 'the frame is a grid from the 1240 pixel breakpoint').toContain('large:grid')
-    expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-[208px_minmax(0,1fr)]')
+    expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-(--grid-md-side-nav)')
   })
 
   it('puts the header in the page column on the first row from 1240 pixels', async () => {
@@ -499,13 +499,13 @@ describe('AdministrationFrame header beside the side navigation', () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: true })
 
     const page = wrapper.get('[data-test="page-column"]').element.classList
-    expect(page, 'the page column keeps the measure beside the 208 pixel side navigation and its 40 pixel gap').toContain('large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]')
+    expect(page, 'the page column keeps the measure beside the 208 pixel side navigation and its 40 pixel gap').toContain('large:max-w-md-reading-page')
   })
 
   it('does not cap a wide page from 1240 pixels', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: false })
 
     const page = wrapper.get('[data-test="page-column"]').element.classList
-    expect(page, 'a wide page takes the page column').not.toContain('large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]')
+    expect(page, 'a wide page takes the page column').not.toContain('large:max-w-md-reading-page')
   })
 })

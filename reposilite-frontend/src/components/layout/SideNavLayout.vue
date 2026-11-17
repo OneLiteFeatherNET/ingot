@@ -125,7 +125,7 @@ const navClasses = computed(() => (props.narrow
       data-ingot-part="page"
       data-test="page-column"
       class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2 animate-md-page-enter motion-reduce:animate-none"
-      :class="reading ? 'large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]' : ''"
+      :class="reading ? 'large:max-w-md-reading-page' : ''"
     >
       <div
         v-if="!leadAbove && $slots.lead"
