@@ -114,15 +114,16 @@ describe('the repository detail page', () => {
     expect(backs, 'no Back to control in the page content').toEqual([])
   })
 
-  it('keeps the type switch and the access card', async () => {
+  it('keeps the type switch above the tabs and the access card on Access', async () => {
     await mountDetail({ id: 'releases' })
 
     expect(document.querySelector('#entry-detail-type'), 'the type switch is shown').not.toBeNull()
+    await chooseTab('Access')
     expect(document.querySelector('[data-test="repository-access"]'), 'the access card is shown to an administrator').not.toBeNull()
   })
 
   it('offers the Write policy radio group on a hosted repository', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
 
     const choices = writePolicyRadios().map(radio => radio.value)
     expect(choices, 'the three choices of the write policy').toEqual(['allow', 'allowOnce', 'readOnly'])
@@ -135,13 +136,13 @@ describe('the repository detail page', () => {
   })
 
   it('offers only Allow and Allow once when the schema has no readOnly field', async () => {
-    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true }) })
+    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true }), address: '/settings/repositories/releases?tab=policy' })
 
     expect(writePolicyRadios().map(radio => radio.value), 'Read only needs the readOnly field').toEqual(['allow', 'allowOnce'])
   })
 
   it('explains each write policy choice in text', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
 
     const text = wrapper.text()
     expect(text, 'Allow is explained').toContain('Deploys are accepted.')
@@ -150,16 +151,16 @@ describe('the repository detail page', () => {
   })
 
   it('offers the Version policy field only when the schema has it', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
     expect(wrapper.text(), 'the field is drawn from the schema').toContain('Version policy')
 
     wrapper.unmount()
-    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true, readOnly: true }) })
+    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true, readOnly: true }), address: '/settings/repositories/releases?tab=policy' })
     expect(wrapper.text(), 'no field without the schema field').not.toContain('Version policy')
   })
 
   it('stores Allow once as redeployment false and adds no readOnly key', async () => {
-    const { store } = await mountDetail({ id: 'snapshots' })
+    const { store } = await mountDetail({ id: 'snapshots', address: '/settings/repositories/snapshots?tab=policy' })
 
     radioNamed('allowOnce').click()
     await flushPromises()
@@ -170,7 +171,7 @@ describe('the repository detail page', () => {
   })
 
   it('keeps redeployment through Read only, and Allow once takes the repository out of read only', async () => {
-    const { store } = await mountDetail({ id: 'snapshots' })
+    const { store } = await mountDetail({ id: 'snapshots', address: '/settings/repositories/snapshots?tab=policy' })
 
     radioNamed('readOnly').click()
     await flushPromises()
@@ -230,5 +231,175 @@ describe('the repository detail page', () => {
 
     expect(wrapper.find('h2').text(), 'the pane says it is not found').toBe('Repository not found')
     expect(wrapper.find('a[href="/settings/repositories"]').exists(), 'the page frame carries the way back').toBe(false)
+  })
+})
+
+// The six tabs of the repository page, in the order of the design (D5), and the keys of the address (D7).
+const TAB_LABELS = ['General', 'Storage', 'Access', 'Mirror and proxy', 'Policy', 'Advanced']
+
+const tabElements = () => wrapper.findAll('[role="tab"]')
+const selectedLabel = () => tabElements().find(tab => tab.attributes('aria-selected') === 'true')?.text()
+const chooseTab = async (label: string) => {
+  await tabElements().find(tab => tab.text() === label)!.trigger('click')
+  await flushPromises()
+}
+// The control a label names. The fields of the form are labelled, so the label is the way to reach a field.
+const fieldLabelled = (label: string) => {
+  const found = Array.from(document.querySelectorAll('label')).find(item => item.textContent?.trim() === label)
+  return (found?.control ?? null) as HTMLInputElement | null
+}
+const typeInto = async (label: string, value: string) => {
+  const field = fieldLabelled(label)!
+  field.value = value
+  field.dispatchEvent(new Event('input'))
+  await flushPromises()
+}
+// Replaces the releases entry of the draft with a copy that has the given values.
+const setReleases = (store: LoadedStore, values: Record<string, unknown>) => {
+  const repositories = store.configurations.value.maven.repositories as RepositoryRecord[]
+  const position = repositories.findIndex(entry => entry.id === 'releases')
+  store.setEntry('maven', 'repositories', position, { ...repositories[position], ...values })
+}
+
+describe('the repository tabs', () => {
+  it('draws the six tabs in the order of the design', async () => {
+    await mountDetail({ id: 'releases' })
+
+    expect(tabElements().map(tab => tab.text()), 'the six tabs, in order').toEqual(TAB_LABELS)
+  })
+
+  it('gives each tab the tab role, aria-selected, a panel it controls and a roving tab index', async () => {
+    await mountDetail({ id: 'releases' })
+
+    const tabs = tabElements()
+    expect(tabs.map(tab => tab.attributes('aria-selected')), 'General is selected by default').toEqual(['true', 'false', 'false', 'false', 'false', 'false'])
+    expect(tabs.map(tab => tab.attributes('tabindex')), 'only the selected tab is in the tab order').toEqual(['0', '-1', '-1', '-1', '-1', '-1'])
+    for (const tab of tabs) {
+      const panel = wrapper.get(`#${tab.attributes('aria-controls')}`)
+      expect(panel.attributes('role'), 'each tab controls a tab panel').toBe('tabpanel')
+      expect(panel.attributes('aria-labelledby'), 'the panel is labelled by its tab').toBe(tab.attributes('id'))
+    }
+  })
+
+  it('names the tab list for the repository settings', async () => {
+    await mountDetail({ id: 'releases' })
+
+    expect(wrapper.get('[role="tablist"]').attributes('aria-label')).toBe('Repository settings sections')
+  })
+
+  it('moves the selection and the focus with Right and Left, wrapping at the ends', async () => {
+    await mountDetail({ id: 'releases' })
+
+    await tabElements()[0].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
+    expect(selectedLabel(), 'Right selects the next tab').toBe('Storage')
+    expect(document.activeElement?.textContent?.trim(), 'the focus follows the selection').toBe('Storage')
+
+    await tabElements()[1].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
+    expect(selectedLabel(), 'Left selects the previous tab').toBe('General')
+
+    await tabElements()[0].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
+    expect(selectedLabel(), 'Left on the first tab wraps to the last').toBe('Advanced')
+
+    await tabElements()[5].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
+    expect(selectedLabel(), 'Right on the last tab wraps to the first').toBe('General')
+  })
+
+  it('moves the selection to the first and the last tab with Home and End', async () => {
+    await mountDetail({ id: 'releases' })
+
+    await tabElements()[0].trigger('keydown', { key: 'End' })
+    await flushPromises()
+    expect(selectedLabel(), 'End selects the last tab').toBe('Advanced')
+
+    await tabElements()[5].trigger('keydown', { key: 'Home' })
+    await flushPromises()
+    expect(selectedLabel(), 'Home selects the first tab').toBe('General')
+  })
+
+  it('opens the tab named by the tab query, Storage for tab=storage', async () => {
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=storage' })
+
+    expect(selectedLabel(), 'the Storage tab is selected').toBe('Storage')
+    expect(wrapper.text(), 'the Storage fields are drawn').toContain('File system')
+  })
+
+  it('opens General for a tab key that is not one of the six', async () => {
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=unknown' })
+
+    expect(selectedLabel(), 'an unknown key opens General').toBe('General')
+  })
+
+  it('replaces the history entry when the tab changes, so back does not step through the tabs', async () => {
+    const { router } = await mountDetail({ id: 'releases' })
+    const push = vi.spyOn(router, 'push')
+    const replace = vi.spyOn(router, 'replace')
+
+    await chooseTab('Storage')
+
+    expect(push, 'no history entry is added').not.toHaveBeenCalled()
+    expect(replace, 'the address is replaced').toHaveBeenCalled()
+    expect(router.currentRoute.value.query.tab, 'the address names the tab').toBe('storage')
+  })
+
+  it('keeps the delete action below the tabs on every tab', async () => {
+    await mountDetail({ id: 'releases' })
+
+    for (const label of TAB_LABELS) {
+      await chooseTab(label)
+      expect(buttonNamed('Delete repository'), `the delete action is drawn on ${label}`).toBeDefined()
+    }
+  })
+
+  it('shows the write policy on the Policy tab and not on General', async () => {
+    await mountDetail({ id: 'releases' })
+    expect(writePolicyRadios().length, 'no write policy on General').toBe(0)
+
+    await chooseTab('Policy')
+
+    expect(writePolicyRadios().map(radio => radio.value), 'the write policy is on the Policy tab').toEqual(['allow', 'allowOnce', 'readOnly'])
+  })
+
+  it('keeps a value typed on General when the tab moves to Storage and back', async () => {
+    const { store } = await mountDetail({ id: 'releases' })
+
+    await typeInto('Description', 'Typed before the switch')
+    await chooseTab('Storage')
+    await chooseTab('General')
+
+    expect(fieldLabelled('Description')?.value, 'the typed value is shown after the return').toBe('Typed before the switch')
+    expect(entryOf(store, 'releases').description, 'the typed value is in the draft').toBe('Typed before the switch')
+  })
+
+  it('keeps the values of the other tabs in the saved entry when a field of General changes', async () => {
+    const store = await loadedStore()
+    setReleases(store, { resolutionCacheMaxEntries: 7 })
+    await mountDetail({ id: 'releases', store })
+
+    await typeInto('Description', 'Changed on General')
+
+    expect(entryOf(store, 'releases').resolutionCacheMaxEntries, 'the Advanced value is kept').toBe(7)
+    expect(entryOf(store, 'releases').description).toBe('Changed on General')
+  })
+
+  it('counts a problem on another tab on that tab label', async () => {
+    const store = await loadedStore()
+    setReleases(store, { visibility: 'SECRET' })
+    await mountDetail({ id: 'releases', store })
+
+    expect(tabElements()[2].text(), 'the Access tab names its problem').toBe('Access, 1 problem')
+    expect(tabElements()[1].text(), 'a tab without a problem keeps its label').toBe('Storage')
+  })
+
+  it('keeps the tab of the address when the id is changed', async () => {
+    const { router } = await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=general' })
+
+    await typeInto('Id', 'renamed')
+
+    expect(router.currentRoute.value.params.id, 'the address follows the new id').toBe('renamed')
+    expect(router.currentRoute.value.query.tab, 'the tab of the address is kept').toBe('general')
   })
 })

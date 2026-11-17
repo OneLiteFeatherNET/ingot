@@ -68,4 +68,24 @@ test.describe('repositories page writes', () => {
     await expect(page.getByRole('row', { name: new RegExp(repository) }), 'the row after saving the delete').toHaveCount(0)
     expect(await listRepositoryIds(), 'the repositories of the server').not.toContain(repository)
   })
+
+  test('opens a repository at its tab and moves between the tabs with the keyboard', async ({ adminPage: page, seed }) => {
+    const repository = await seed.repository('tabs')
+
+    await page.goto(siteUrl(`/settings/repositories/${repository}?tab=storage`))
+    const tabs = page.getByRole('tablist', { name: 'Repository settings sections', exact: true })
+    await expect(tabs.getByRole('tab', { name: 'Storage', exact: true }), 'the deep link opens Storage').toHaveAttribute('aria-selected', 'true')
+
+    await tabs.getByRole('tab', { name: 'Storage', exact: true }).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(tabs.getByRole('tab', { name: 'Access', exact: true }), 'Right moves to Access and selects it').toBeFocused()
+    await expect(tabs.getByRole('tab', { name: 'Access', exact: true })).toHaveAttribute('aria-selected', 'true')
+
+    await page.keyboard.press('End')
+    await expect(tabs.getByRole('tab', { name: 'Advanced', exact: true }), 'End moves to the last tab').toBeFocused()
+
+    await page.keyboard.press('Home')
+    await expect(tabs.getByRole('tab', { name: 'General', exact: true }), 'Home moves to the first tab').toBeFocused()
+    await expect(page.getByRole('button', { name: 'Delete maven repository', exact: true }), 'delete stays below the tabs').toBeVisible()
+  })
 })

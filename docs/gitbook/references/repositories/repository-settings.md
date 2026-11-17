@@ -60,9 +60,34 @@ Blank references are ignored. The badge of an untyped repository says **derived*
 
 A repository with both local and remote references has the type **Mixed**. It has no **Declare type** action, because no single declared type gives the same result. The page shows this warning next to the badge and in the detail: "References local and remote repositories. Split it into a group and a proxy."
 
+### Tabs of the repository page
+
+The page of one repository, at `/settings/repositories/<id>`, shows the type section first, then its fields on six tabs. The type section and the **Delete** action are not tabs: the delete action is drawn below the tabs on every tab.
+
+| Tab | `tab` key | Fields |
+| --- | --- | --- |
+| General | `general` | `id`, `description`, `tags` |
+| Storage | `storage` | `storageProvider`, `preserveSnapshots` |
+| Access | `access` | `visibility`, and the access card |
+| Mirror and proxy | `mirror` | `proxied`, `storagePolicy`, `metadataMaxAge`, `protectedGroupPrefixes` |
+| Policy | `policy` | The write policy, `versionPolicy`, `uploadChecksumPolicy` |
+| Advanced | `advanced` | `resolutionCacheMaxEntries`, `format` |
+
+The open tab is the `tab` query of the address, so a link can open one tab, for example `/settings/repositories/releases?tab=storage`. A missing or unknown key opens General. Choosing a tab replaces the current history entry, so Back leaves the page instead of stepping through the tabs. Choosing General writes `tab=general` to the address, and a plain address opens General as well.
+
+The tabs follow the keyboard model of the WAI-ARIA tabs pattern:
+
+| Key | Moves to |
+| --- | --- |
+| Right, Left | The next or previous tab. The last tab wraps to the first, and the first to the last. |
+| Home, End | The first or the last tab. |
+| Tab, Shift+Tab | Leaves the tab list for the panel of the open tab, and back. |
+
+Every tab is one draft with the others. A value typed on one tab stays when another tab opens, and **Save** writes the whole repository, whichever tab is open. A tab that has a problem shows the number of problems on its label, for example "Storage, 1 problem", so the problem is found when the tab is not open. A tab whose fields do not apply to the type of the repository says so in its panel.
+
 ### Write policy
 
-The write policy of a hosted repository is a choice of three values. It is stored in two existing fields. No key is added for the choice itself.
+The write policy of a hosted repository, on the Policy tab, is a choice of three values. It is stored in two existing fields. No key is added for the choice itself.
 
 | Choice | Stored result |
 | --- | --- |

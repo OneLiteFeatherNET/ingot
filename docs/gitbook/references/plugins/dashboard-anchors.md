@@ -153,7 +153,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `header`, `row`, `cell-name`, `empty` | `empty` |
 | `repositories-view` | experimental | `src/components/repositories/RepositoriesView.vue` | none | none |
 | `repository-access-card` | stable | `src/components/settings/RepositoryAccessCard.vue` | none | `loading` |
-| `repository-detail` | experimental | `src/components/repositories/RepositoryDetail.vue` | `header` | `empty`, `loading` |
+| `repository-detail` | experimental | `src/components/repositories/RepositoryDetail.vue` | `header`, `tabs` | `empty`, `loading` |
 | `repository-members-picker` | stable | `src/components/settings/RepositoryMembersPicker.vue` | none | none |
 | `repository-overview` | experimental | `src/components/overview/RepositoryOverview.vue` | none | `loading` |
 | `repository-snippet` | experimental | `src/components/card/RepositorySnippet.vue` | none | none |

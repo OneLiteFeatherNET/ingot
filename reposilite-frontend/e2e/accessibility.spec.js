@@ -80,3 +80,30 @@ test.describe('accessibility of the covered pages', () => {
     })
   }
 })
+
+// The tabs of one repository, in the order they are drawn. Each tab is checked at the three widths of the design.
+const REPOSITORY_TABS = ['General', 'Storage', 'Access', 'Mirror and proxy', 'Policy', 'Advanced']
+
+test.describe('accessibility of the repository tabs', () => {
+  for (const width of [320, 600, 1440]) {
+    test(`has no serious or critical violations on each repository tab at ${width} pixels`, async ({ adminPage: page, seed }, testInfo) => {
+      const repository = await seed.repository('a11y-tabs')
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(siteUrl(`/settings/repositories/${repository}`))
+      const tabs = page.getByRole('tablist', { name: 'Repository settings sections', exact: true })
+      await expect(tabs.getByRole('tab', { name: 'General', exact: true }), 'the tab list is drawn').toBeVisible()
+
+      for (const label of REPOSITORY_TABS) {
+        await tabs.getByRole('tab', { name: label, exact: true }).click()
+        await expect(tabs.getByRole('tab', { name: new RegExp(`^${label}`) }), `${label} is selected`).toHaveAttribute('aria-selected', 'true')
+
+        const { gating, reported } = await analyzeAccessibility(page)
+        await testInfo.attach(`axe-findings-${label}-${width}`, {
+          body: JSON.stringify({ gating, reported }, null, 2),
+          contentType: 'application/json',
+        })
+        expect(gating, `serious and critical violations on the ${label} tab at ${width} pixels`).toEqual([])
+      }
+    })
+  }
+})

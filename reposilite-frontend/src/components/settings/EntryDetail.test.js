@@ -26,6 +26,7 @@ import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
 import { tester as tagsTester } from '../renderers/TagsFieldRenderer.vue'
 import TagsFieldRenderer from '../renderers/TagsFieldRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
+import mavenSchema from './fixtures/maven.schema.json'
 
 const renderers = markRaw([
   { tester: textTester, renderer: MdTextFieldRenderer },
@@ -208,5 +209,69 @@ describe('EntryDetail tag suggestions', () => {
 
     const suggestions = wrapper.findAll('[data-test="suggestion"]').map(button => button.text())
     expect(suggestions).toEqual(['ci', 'internal'])
+  })
+})
+
+// The tabs of a repository as design D5 places them. The test states them, so a field added to the schema has to be
+// placed on a tab before the page can pass.
+const REPOSITORY_TABS = {
+  general: ['id', 'description', 'tags'],
+  storage: ['storageProvider', 'preserveSnapshots'],
+  access: ['visibility'],
+  mirror: ['proxied', 'storagePolicy', 'metadataMaxAge', 'protectedGroupPrefixes'],
+  policy: ['redeployment', 'readOnly', 'versionPolicy', 'uploadChecksumPolicy'],
+  advanced: ['resolutionCacheMaxEntries', 'format']
+}
+const TYPE_SECTION_FIELDS = ['type']
+const repositoryFields = Object.keys(mavenSchema.properties.repositories.items.properties)
+const placedFields = [...Object.values(REPOSITORY_TABS).flat(), ...TYPE_SECTION_FIELDS]
+
+describe('EntryDetail sections of a repository', () => {
+  it('places every field of the repository schema on exactly one tab or in the type section', () => {
+    for (const field of repositoryFields) {
+      expect(placedFields.filter(placed => placed === field), `${field} is placed once`).toHaveLength(1)
+    }
+  })
+
+  it('names no field on a tab that the repository schema does not have', () => {
+    // The type is not a field of the item schema: the type section draws it from the entry itself.
+    for (const field of Object.values(REPOSITORY_TABS).flat()) {
+      expect(repositoryFields, `${field} is a field of the schema`).toContain(field)
+    }
+  })
+
+  it('draws the type section alone for the type section', () => {
+    mountDetail({ section: 'type', typed: true })
+
+    expect(wrapper.find('[data-test="repository-type"]').exists(), 'the type section is drawn').toBe(true)
+    expect(wrapper.find('#entry-detail-id').exists(), 'no Id field').toBe(false)
+    expect(wrapper.find('[data-test="entry-form"]').exists(), 'no form').toBe(false)
+    expect(wrapper.find('[data-test="danger-zone"]').exists(), 'no danger zone').toBe(false)
+  })
+
+  it('draws the Id field on General only', () => {
+    mountDetail({ section: 'general' })
+    expect(wrapper.find('#entry-detail-id').exists(), 'General has the Id field').toBe(true)
+
+    wrapper.unmount()
+    mountDetail({ section: 'storage' })
+    expect(wrapper.find('#entry-detail-id').exists(), 'Storage has no Id field').toBe(false)
+  })
+
+  it('draws the form of a tab without the type section', () => {
+    mountDetail({ section: 'storage', typed: true })
+
+    expect(wrapper.find('[data-test="entry-form"]').exists(), 'the form is drawn').toBe(true)
+    expect(wrapper.find('[data-test="repository-type"]').exists(), 'the type section is not drawn on a tab').toBe(false)
+  })
+
+  it('draws the danger zone in the danger section only', () => {
+    mountDetail({ section: 'danger' })
+    expect(wrapper.find('[data-test="danger-zone"]').exists(), 'the danger section draws the zone').toBe(true)
+    expect(wrapper.find('[data-test="entry-form"]').exists(), 'the danger section draws no form').toBe(false)
+
+    wrapper.unmount()
+    mountDetail({ section: 'advanced' })
+    expect(wrapper.find('[data-test="danger-zone"]').exists(), 'a tab draws no danger zone').toBe(false)
   })
 })
