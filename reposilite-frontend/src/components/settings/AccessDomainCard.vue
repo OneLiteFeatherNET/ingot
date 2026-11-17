@@ -16,6 +16,7 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
+import MdCard from '../md/MdCard.vue'
 import { ACCESS_DOMAINS } from './accessDomains'
 
 /*
@@ -31,9 +32,11 @@ const entry = () => ACCESS_DOMAINS[props.domain]
 </script>
 
 <template>
-  <section
+  <MdCard
+    as="section"
+    variant="low"
     aria-labelledby="access-domain-title"
-    class="flex flex-col gap-3 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4"
+    class="flex flex-col gap-3 border border-outline-variant"
     data-test="access-domain"
     data-ingot-component="access-domain-card"
   >
@@ -59,5 +62,5 @@ const entry = () => ACCESS_DOMAINS[props.domain]
         </RouterLink>
       </li>
     </ul>
-  </section>
+  </MdCard>
 </template>

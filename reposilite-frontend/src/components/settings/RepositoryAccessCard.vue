@@ -19,6 +19,7 @@ import { computed, ref, watch } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdDataTable from '../md/MdDataTable.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
@@ -178,11 +179,13 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <section
+  <MdCard
     v-if="allowed"
+    as="section"
+    variant="low"
     data-test="repository-access"
     aria-labelledby="repository-access-title"
-    class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
+    class="flex flex-col gap-4"
     data-ingot-component="repository-access-card"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -331,5 +334,5 @@ const rows = computed(() => {
         No principal matches the filter.
       </p>
     </div>
-  </section>
+  </MdCard>
 </template>
