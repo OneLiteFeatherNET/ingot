@@ -16,7 +16,7 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NodeEditor from './NodeEditor.vue'
 import type { NodeEntry } from './permissionNodesApi'
@@ -76,9 +76,13 @@ describe('NodeEditor', () => {
     return wrapper
   }
 
+  // jsdom has no layout. The reveal runs after a tick, so the stub stays until the next test replaces it.
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+
   afterEach(() => {
     wrapper?.unmount()
-    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
   })
 
   const input = () => wrapper.find('input[role="combobox"]')
