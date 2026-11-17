@@ -19,6 +19,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
 
 let wrapper
+const extraElements = []
 
 const openDialog = async (id = 'releases') => {
   wrapper = mount(DeleteEntryDialog, {
@@ -30,6 +31,11 @@ const openDialog = async (id = 'releases') => {
 }
 
 const confirmButton = () => document.getElementById('delete-entry-confirm')
+// The heading is found through the alertdialog that names it, because the heading id is generated per instance.
+const dialogHeading = () => {
+  const root = document.querySelector('[role="alertdialog"]')
+  return document.getElementById(root?.getAttribute('aria-labelledby') ?? '')
+}
 const typedInput = () => document.getElementById('delete-entry-confirm-input')
 const form = () => document.querySelector('#delete-entry-form')
 
@@ -42,13 +48,15 @@ const typeText = async (value) => {
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  extraElements.splice(0).forEach(element => element.remove())
+  document.querySelectorAll('.vfm').forEach(element => element.remove())
 })
 
 describe('DeleteEntryDialog', () => {
   it('names the entry it is about to delete', async () => {
     await openDialog('releases')
 
-    expect(document.getElementById('delete-entry-title')?.textContent).toContain('Delete releases?')
+    expect(dialogHeading()?.textContent).toContain('Delete releases?')
   })
 
   it('keeps the delete action disabled while nothing is typed', async () => {
@@ -117,5 +125,47 @@ describe('DeleteEntryDialog', () => {
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
     expect(wrapper.emitted('confirm')).toBeUndefined()
+  })
+
+  it('is announced as an alertdialog on the modal root', async () => {
+    await openDialog()
+
+    expect(document.querySelector('.vfm')?.getAttribute('role')).toBe('alertdialog')
+  })
+
+  it('uses no fixed id for its heading', async () => {
+    await openDialog()
+
+    expect(document.getElementById('delete-entry-title'), 'the heading id is generated per instance').toBeNull()
+  })
+
+  it('draws the scrim through the dialog frame, not as an inline style', async () => {
+    await openDialog()
+
+    const overlay = document.querySelector('.vfm__overlay')
+    expect(overlay?.getAttribute('style') ?? '', 'the overlay has no inline colour').not.toContain('color-mix')
+  })
+
+  it('puts the focus on Cancel when it opens, so that Enter does not delete', async () => {
+    await openDialog()
+
+    expect(document.activeElement?.id).toBe('delete-entry-cancel')
+  })
+
+  it('returns the focus to the control that opened it after the deletion is confirmed', async () => {
+    const opener = document.createElement('button')
+    opener.textContent = 'Delete releases'
+    document.body.appendChild(opener)
+    extraElements.push(opener)
+    opener.focus()
+    await openDialog()
+    await typeText('releases')
+
+    confirmButton().click()
+    await flushPromises()
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+
+    expect(document.activeElement, 'focus is not lost to the page body').toBe(opener)
   })
 })

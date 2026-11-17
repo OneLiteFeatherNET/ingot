@@ -159,7 +159,8 @@ describe('EntryDetail', () => {
     await wrapper.findAll('button').find(button => button.text() === 'Delete repository').trigger('click')
     await flushPromises()
 
-    expect(document.getElementById('delete-entry-title')?.textContent).toContain('Delete releases?')
+    const root = document.querySelector('[role="alertdialog"]')
+    expect(document.getElementById(root?.getAttribute('aria-labelledby') ?? '')?.textContent).toContain('Delete releases?')
     expect(wrapper.emitted('delete')).toBeUndefined()
   })
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import ConflictDialog from './ConflictDialog.vue'
 
 // The modal would teleport to the body; the stub keeps its slot inline so the buttons can be found.
@@ -137,5 +137,58 @@ describe('ConflictDialog', () => {
     await button(wrapper, 'Keep my draft').trigger('click')
 
     expect(wrapper.emitted('dismiss')).toHaveLength(1)
+  })
+})
+
+// The shared dialog frame is teleported to the body and read from the document, so these tests mount the real modal.
+describe('ConflictDialog in the shared dialog frame', () => {
+  let wrapper
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+    document.querySelectorAll('.vfm').forEach(element => element.remove())
+  })
+
+  const mountModal = async (conflict) => {
+    wrapper = mount(ConflictDialog, { props: { conflict }, attachTo: document.body })
+    await flushPromises()
+  }
+
+  const modalRoot = () => document.querySelector('.vfm')
+
+  it('is announced as an alertdialog named by its heading', async () => {
+    await mountModal(settingsConflict())
+
+    const root = modalRoot()
+    expect(root?.getAttribute('role'), 'the modal root carries the alertdialog role').toBe('alertdialog')
+    const name = document.getElementById(root?.getAttribute('aria-labelledby') ?? '')
+    expect(name?.textContent, 'the accessible name is the heading').toContain('Settings changed elsewhere')
+  })
+
+  it('uses no fixed id for its heading', async () => {
+    await mountModal(settingsConflict())
+
+    expect(document.getElementById('conflict-title'), 'the heading id is generated per instance').toBeNull()
+  })
+
+  it('draws the scrim through the dialog frame, not as an inline style', async () => {
+    await mountModal(settingsConflict())
+
+    const overlay = document.querySelector('.vfm__overlay')
+    expect(overlay?.getAttribute('style') ?? '', 'the overlay has no inline colour').not.toContain('color-mix')
+  })
+
+  it('is drawn at the 560px size of the shared frame', async () => {
+    await mountModal(settingsConflict())
+
+    const frame = document.querySelector('.vfm__content > div')
+    expect(frame?.classList.contains('max-w-140'), 'the frame caps the width at 560px').toBe(true)
+  })
+
+  it('puts the focus on Keep my draft when it opens', async () => {
+    await mountModal(settingsConflict())
+
+    expect(document.activeElement?.textContent?.trim(), 'the safe choice has the focus').toBe('Keep my draft')
   })
 })
