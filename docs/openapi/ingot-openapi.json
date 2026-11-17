@@ -1681,6 +1681,12 @@
           "name" : {
             "type" : "string"
           },
+          "origin" : {
+            "type" : "string"
+          },
+          "settingsDomain" : {
+            "type" : [ "string", "null" ]
+          },
           "tier" : {
             "type" : "string"
           },
@@ -1688,7 +1694,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "name", "version", "dependencies", "tier" ],
+        "required" : [ "name", "version", "dependencies", "tier", "origin" ],
         "type" : "object"
       },
       "PluginUiBlock" : {

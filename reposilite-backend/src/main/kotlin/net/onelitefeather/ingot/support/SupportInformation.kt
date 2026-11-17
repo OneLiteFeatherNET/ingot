@@ -58,7 +58,18 @@ data class DatabaseInformation(val kind: String, val endpoint: String?)
 
 data class StorageInformation(val repository: String, val kind: String, val region: String?, val details: Map<String, String> = emptyMap())
 
-data class PluginInformation(val name: String, val version: String, val dependencies: List<String>, val tier: String = "community")
+/**
+ * A plugin of the instance. The [origin] is a kind, never a path: built-in, bundled-image, plugins-directory or plugin-store.
+ * The [settingsDomain] is the name of the settings page of the plugin, or null when it has none.
+ */
+data class PluginInformation(
+    val name: String,
+    val version: String,
+    val dependencies: List<String>,
+    val tier: String = "community",
+    val origin: String = "plugins-directory",
+    val settingsDomain: String? = null,
+)
 
 data class ConfigurationInformation(val local: Map<String, String>, val shared: Map<String, JsonNode>)
 
