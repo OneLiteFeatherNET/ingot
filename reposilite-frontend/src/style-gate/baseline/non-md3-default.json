@@ -267,7 +267,7 @@
   {
     "file": "src/components/support/SystemInfoView.vue",
     "match": "text-sm",
-    "count": 5
+    "count": 2
   },
   {
     "file": "src/components/tokens/RepositoryTypeBadge.vue",

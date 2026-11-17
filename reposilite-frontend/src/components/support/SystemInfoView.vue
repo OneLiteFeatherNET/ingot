@@ -27,7 +27,9 @@ import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
-import { filterRows, tabForFragment } from './systemInfoTabs'
+import KeyValueTree from './KeyValueTree.vue'
+import { OPEN_GROUPS_UP_TO } from './keyTree'
+import { tabForFragment } from './systemInfoTabs'
 import { formatUptime } from './uptime'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
@@ -67,10 +69,18 @@ const TABS = [
 ]
 
 const entriesOf = (object: Record<string, string> | undefined) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
-const environmentRows = computed(() => filterRows(entriesOf(info.value?.environment), filter.value))
-const propertyRows = computed(() => filterRows(entriesOf(info.value?.systemProperties), filter.value))
-const localRows = computed(() => filterRows(entriesOf(info.value?.configuration.local), filter.value))
-const noMatch = (rows: unknown[]) => rows.length === 0 && filter.value.trim() !== ''
+const environmentEntries = computed(() => entriesOf(info.value?.environment))
+const propertyEntries = computed(() => entriesOf(info.value?.systemProperties))
+const localEntries = computed(() => entriesOf(info.value?.configuration.local))
+const sharedKeys = computed(() => Object.keys(info.value?.configuration.shared ?? {}).length)
+// The configuration sections start open with 20 keys or fewer, as the groups of the trees do.
+const configurationOpen = computed(() => localEntries.value.length + sharedKeys.value <= OPEN_GROUPS_UP_TO)
+// The Local section opens while the filter runs, so a match in it shows. Its own state is kept for when the filter clears.
+const localOpen = ref<boolean | null>(null)
+const localShown = computed(() => filter.value.trim() !== '' || (localOpen.value ?? configurationOpen.value))
+const onLocalToggle = (event: Event) => {
+  if (filter.value.trim() === '') localOpen.value = (event.target as HTMLDetailsElement).open
+}
 
 // The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
 const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
@@ -452,22 +462,12 @@ onMounted(() => {
               >
                 Environment
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
-                <template
-                  v-for="[name, value] in environmentRows"
-                  :key="name"
-                >
-                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ value }}
-                  </dd>
-                </template>
-              </dl>
-              <p
-                v-if="noMatch(environmentRows)"
-                class="md-body-medium text-on-surface-variant"
-              >
-                No entry matches the filter.
-              </p>
+              <KeyValueTree
+                :entries="environmentEntries"
+                split="underscore"
+                label="Environment variables"
+                :query="filter"
+              />
             </section>
 
             <section
@@ -480,22 +480,12 @@ onMounted(() => {
               >
                 System properties
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
-                <template
-                  v-for="[name, value] in propertyRows"
-                  :key="name"
-                >
-                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ value }}
-                  </dd>
-                </template>
-              </dl>
-              <p
-                v-if="noMatch(propertyRows)"
-                class="md-body-medium text-on-surface-variant"
-              >
-                No entry matches the filter.
-              </p>
+              <KeyValueTree
+                :entries="propertyEntries"
+                split="dot"
+                label="System properties"
+                :query="filter"
+              />
             </section>
           </div>
 
@@ -522,35 +512,38 @@ onMounted(() => {
                   class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
                 >
               </label>
-              <h3 class="md-title-small text-on-surface">
-                Local
-              </h3>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 font-mono text-sm">
-                <template
-                  v-for="[name, value] in localRows"
-                  :key="name"
-                >
-                  <dt>{{ name }}</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ value }}
-                  </dd>
-                </template>
-              </dl>
-              <p
-                v-if="noMatch(localRows)"
-                class="md-body-medium text-on-surface-variant"
+              <details
+                :open="localShown"
+                class="min-w-0"
+                @toggle="onLocalToggle"
               >
-                No entry matches the filter.
-              </p>
-              <h3 class="md-title-small text-on-surface">
-                Shared
-              </h3>
-              <p class="md-body-medium text-on-surface-variant">
-                The filter does not apply to the shared configuration.
-              </p>
-              <pre
-                tabindex="0"
-                class="overflow-x-auto font-mono text-sm"
-              >{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
+                <summary class="md-title-small w-fit cursor-pointer text-on-surface">
+                  Local, {{ localEntries.length }} keys
+                </summary>
+                <div class="mt-2">
+                  <KeyValueTree
+                    :entries="localEntries"
+                    split="camel"
+                    label="Local configuration"
+                    :query="filter"
+                  />
+                </div>
+              </details>
+              <details
+                :open="configurationOpen"
+                class="min-w-0"
+              >
+                <summary class="md-title-small w-fit cursor-pointer text-on-surface">
+                  Shared, {{ sharedKeys }} keys
+                </summary>
+                <p class="md-body-medium mt-2 text-on-surface-variant">
+                  The filter does not apply to the shared configuration.
+                </p>
+                <pre
+                  tabindex="0"
+                  class="mt-2 overflow-x-auto font-mono text-sm"
+                >{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
+              </details>
             </section>
           </div>
 

@@ -88,6 +88,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `instance-health-row` | experimental | `src/components/dashboard/InstanceHealthRow.vue` | none | none |
 | `instance-status-panel` | experimental | `src/components/dashboard/InstanceStatusPanel.vue` | `read-only-banner`, `cluster-summary`, `cluster-instances`, `cluster-instance` | none |
 | `job-progress` | experimental | `src/components/migration/JobProgress.vue` | none | none |
+| `key-value-tree` | experimental | `src/components/support/KeyValueTree.vue` | none | none |
 | `ldap-panel` | experimental | `src/components/access/LdapPanel.vue` | none | none |
 | `legacy-grants-panel` | experimental | `src/components/access/LegacyGrantsPanel.vue` | none | none |
 | `login-modal` | stable | `src/components/header/LoginModal.vue` | none | none |
