@@ -222,8 +222,8 @@ const sheetOpen = ref(false)
           {{ lineDescription }}
         </p>
       </div>
+      <!-- Drawn on every page, empty or not: its 48 pixel minimum keeps the header as high on a page without actions. -->
       <div
-        v-if="$slots.actions || shortcuts.length > 0 || showsSections"
         class="flex min-h-12 max-w-full flex-wrap items-center gap-2 medium:basis-full large:basis-auto"
       >
         <button

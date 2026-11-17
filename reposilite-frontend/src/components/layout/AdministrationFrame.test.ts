@@ -257,6 +257,14 @@ describe('AdministrationFrame page header', () => {
     expect(actions, 'beside the title again from 1240 pixels').toContain('large:basis-auto')
   })
 
+  it('keeps the actions row with its 48 pixel minimum on a page without actions, so the header keeps its height', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const actions = wrapper.get('header > div:last-child')
+    expect(actions.classes(), 'the empty actions row keeps the 48 pixel minimum').toContain('min-h-12')
+    expect(wrapper.find('[aria-label="Related pages"]').exists(), 'no shortcuts are drawn').toBe(false)
+  })
+
   it('keeps the actions row 48 pixels high, so the header keeps its height whichever buttons a page has', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
 
