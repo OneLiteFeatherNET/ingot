@@ -48,7 +48,7 @@ vi.mock('../../helpers/toast', () => ({
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
 
-const SECTIONS = ['Profile', 'Sign-in and security', 'My tokens', 'Your access']
+const SECTIONS = ['Profile', 'Your access', 'Sign-in and security', 'My tokens']
 
 // The answer of GET /api/identity/me/access for the signed in principal, built per test.
 const summaryOf = ({ admin = false, teams = ['developers'], nodes = ['ingot.repository.releases.read'], denials = [], grants = [], tokenNarrowed = false }: SessionOptions) => ({
@@ -125,15 +125,19 @@ describe('AccountView', () => {
   it('lets the account page use the full width, so its cards reach the edge of the window', async () => {
     await mountView()
 
-    expect(Array.from((wrapper.element as HTMLElement).classList), 'the page has no reading measure cap').not.toContain('max-w-md-reading')
+    const classes = Array.from((wrapper.element as HTMLElement).classList)
+
+    expect(classes, 'the page has no reading measure cap').not.toContain('max-w-md-reading')
+    expect(classes, 'the page keeps the shared container gutter').toContain('container')
+    expect(classes, 'the container width steps (1536 pixels from the 2xl window) are lifted with the important modifier, which beats the step in the stylesheet').toContain('max-w-none!')
   })
 
-  it('lays the profile and the password card in two columns from the expanded window size', async () => {
+  it('lays the cards out in one column, two from 840 pixels and three from 1240 pixels', async () => {
     await mountView()
 
-    const grid = wrapper.find('section[aria-labelledby="profile-title"]').element.parentElement as HTMLElement
-    expect(Array.from(grid.classList), 'the cards share one grid, one column in a compact window').toEqual(
-      expect.arrayContaining(['grid', 'grid-cols-1', 'expanded:grid-cols-2'])
+    const grid = (wrapper.find('[data-test="security-section"]').element as HTMLElement).parentElement as HTMLElement
+    expect(Array.from(grid.classList), 'one column in a compact window, two from the expanded window, three from the large window').toEqual(
+      expect.arrayContaining(['grid', 'grid-cols-1', 'expanded:grid-cols-2', 'large:grid-cols-3'])
     )
   })
 
@@ -158,7 +162,7 @@ describe('AccountView', () => {
     expect(wrapper.find('#account-title').element.tagName, 'the title keeps its id and is a level one heading').toBe('H1')
   })
 
-  it('shows the four sections in order: Profile, Sign-in and security, My tokens, Your access', async () => {
+  it('shows the four sections in order: Profile, Your access, Sign-in and security, My tokens', async () => {
     await mountView()
 
     const headings = wrapper.findAll('h3').map(heading => heading.text()).filter(text => SECTIONS.includes(text))

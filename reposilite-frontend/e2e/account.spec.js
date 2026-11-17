@@ -22,7 +22,7 @@ import { ACCOUNT_NAME } from './support/session'
 // Selectors are roles and accessible names only, and nothing waits for a fixed time: each expectation waits on its own state.
 const WIDTHS = [320, 600, 1440]
 
-const SECTIONS = ['Profile', 'Sign-in and security', 'My tokens', 'Your access']
+const SECTIONS = ['Profile', 'Your access', 'Sign-in and security', 'My tokens']
 
 const accountTrigger = (page) => page.getByRole('button', { name: `Account menu, ${ACCOUNT_NAME}`, exact: true })
 
@@ -64,7 +64,7 @@ for (const width of WIDTHS) {
       expect(overflow, 'the page is no wider than the window').toBeLessThanOrEqual(0)
     })
 
-    test('draws the four sections in order: Profile, Sign-in and security, My tokens, Your access', async ({ adminPage: page }) => {
+    test('draws the four sections in order: Profile, Your access, Sign-in and security, My tokens', async ({ adminPage: page }) => {
       await page.goto(siteUrl('/account'))
       await expect(page.getByRole('heading', { name: 'Your access', exact: true })).toBeVisible()
 
@@ -87,3 +87,24 @@ for (const width of WIDTHS) {
     })
   })
 }
+
+test.describe('the account page at 1920 pixels', () => {
+  test.use({ viewport: { width: 1920, height: 900 } })
+
+  test('spans the content area and draws Profile, Your access and Change password in one row', async ({ adminPage: page }) => {
+    await page.goto(siteUrl('/account'))
+    await expect(page.getByRole('heading', { name: 'Your access', exact: true })).toBeVisible()
+
+    const profile = await page.getByRole('region', { name: 'Profile', exact: true }).boundingBox()
+    const access = await page.getByRole('region', { name: 'Your access', exact: true }).boundingBox()
+    const security = await page.getByRole('region', { name: 'Sign-in and security', exact: true }).boundingBox()
+    const password = await page.getByRole('region', { name: 'Change password', exact: true }).boundingBox()
+    const tokens = await page.getByRole('region', { name: 'My tokens', exact: true }).boundingBox()
+
+    expect(security.x + security.width - profile.x, 'the content is wider than the 1536 pixel container step').toBeGreaterThan(1600)
+    expect(profile.x < access.x && access.x < security.x, 'three columns, in the order Profile, Your access, Sign-in and security').toBe(true)
+    expect(Math.abs(profile.y - access.y) < 1 && Math.abs(access.y - security.y) < 1, 'the three columns start on one row').toBe(true)
+    expect(password.x >= security.x, 'the password card sits in the security column').toBe(true)
+    expect(tokens.y > profile.y, 'the tokens sit below the row, across the page').toBe(true)
+  })
+})

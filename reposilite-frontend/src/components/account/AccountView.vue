@@ -35,7 +35,7 @@ const { principal, authMode, mustChangePassword, client } = useSession()
 
 const identity = computed(() => client.value.identity.me)
 const passwordAvailable = computed(() => authMode.value === 'cookie')
-const blocks = computed<string[]>(() => (mustChangePassword.value ? ['security', 'profile'] : ['profile', 'security']))
+const blocks = computed<string[]>(() => (mustChangePassword.value ? ['security', 'overview'] : ['overview', 'security']))
 
 const passwordChanged = () => {
   mustChangePassword.value = false
@@ -62,7 +62,7 @@ const sources = computed<string[]>(() => (answer.value
 
 <template>
   <section
-    class="container pb-12 pt-7"
+    class="container max-w-none! pb-12 pt-7"
     aria-labelledby="account-title"
     data-ingot-component="account-view"
   >
@@ -87,22 +87,33 @@ const sources = computed<string[]>(() => (answer.value
       Set a new password before you continue
     </p>
 
-    <div
-      class="grid grid-cols-1 items-start gap-4 expanded:grid-cols-2"
-    >
+    <div class="grid grid-cols-1 items-start gap-4 expanded:grid-cols-2 large:grid-cols-3">
       <template
         v-for="block in blocks"
         :key="block"
       >
-        <ProfileCard
-          v-if="block === 'profile' && principal"
-          :principal="principal"
-          :sources="sources"
-        />
+        <div
+          v-if="block === 'overview'"
+          class="flex min-w-0 flex-col gap-4 large:contents"
+        >
+          <ProfileCard
+            v-if="principal"
+            class="min-w-0"
+            :principal="principal"
+            :sources="sources"
+          />
+          <YourAccess
+            v-if="principal"
+            class="min-w-0"
+            :access="access"
+            :principal-name="principal.name"
+            :may-check="mayCheck"
+          />
+        </div>
         <section
-          v-else-if="block === 'security'"
+          v-else
           class="flex min-w-0 flex-col gap-4"
-          :class="mustChangePassword ? 'expanded:col-span-2' : ''"
+          :class="mustChangePassword ? 'col-span-full' : ''"
           aria-labelledby="security-title"
           data-test="security-section"
         >
@@ -136,14 +147,8 @@ const sources = computed<string[]>(() => (answer.value
           </section>
         </section>
       </template>
-      <div class="flex min-w-0 flex-col gap-4 col-span-full">
+      <div class="col-span-full min-w-0">
         <TokenList :api="identity.tokens" />
-        <YourAccess
-          v-if="principal"
-          :access="access"
-          :principal-name="principal.name"
-          :may-check="mayCheck"
-        />
       </div>
     </div>
   </section>
