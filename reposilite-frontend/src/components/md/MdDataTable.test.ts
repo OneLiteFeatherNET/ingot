@@ -32,7 +32,9 @@ const ROWS = [
   { name: 'docs', type: 'raw', size: 12 },
 ]
 
-const mountTable = (props: Record<string, unknown> = {}, slots: Record<string, () => unknown> = {}) =>
+type CellScope = { row: unknown, column: unknown, value: unknown }
+
+const mountTable = (props: Record<string, unknown> = {}, slots: Record<string, (scope: CellScope) => unknown> = {}) =>
   mount(MdDataTable, {
     props: { caption: 'Repositories', columns: COLUMNS, rows: ROWS, ...props },
     slots,
