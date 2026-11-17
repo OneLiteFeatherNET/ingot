@@ -129,6 +129,10 @@
   /* A label and its value in a card: the label takes the width its text needs, the value the rest of the card. */
   --grid-md-key-value: auto minmax(0, 1fr);
   --container-md-sheet: 20rem;
+  /* The wide side sheet of the trailing edge, for the review and the failure lists. */
+  --container-md-sheet-wide: 28rem;
+  /* The widest a side sheet gets: the window less the 56 pixel margin that the sheet leaves beside it. */
+  --container-md-sheet-max: calc(100vw - 3.5rem);
   --container-md-snackbar: 35rem;
   --container-md-crumb: 10rem;
   /* The key tree of the system information page: the indent of one level, and the offset of the guide line of a level. */

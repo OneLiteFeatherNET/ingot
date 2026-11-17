@@ -20,13 +20,15 @@ import MdIcon from './MdIcon.vue'
 import MdIconButton from './MdIconButton.vue'
 
 /*
- * A modal side sheet: a panel from the leading edge of the window, over a scrim, for one task that the page does not
- * need to stay visible for. It follows the WAI-ARIA dialog pattern. It is drawn in place, not teleported, so it sits in
- * the page it was opened from.
+ * A modal side sheet: a panel from the leading or the trailing edge of the window, over a scrim, for one task that the page
+ * does not need to stay visible for. It follows the WAI-ARIA dialog pattern. It is drawn in place, not teleported, so it
+ * sits in the page it was opened from.
  *
  * Props:
  *   open   whether the sheet is shown (v-model:open)
  *   title  the heading of the sheet, which is also its accessible name
+ *   side   the edge the panel is pinned to: start (the default) or end
+ *   width  the panel width token: default (the sheet width) or wide (the wide sheet width)
  * Slots:
  *   default  the content of the sheet
  * Emits:
@@ -41,8 +43,12 @@ import MdIconButton from './MdIconButton.vue'
 const props = withDefaults(defineProps<{
   open?: boolean
   title: string
+  side?: 'start' | 'end'
+  width?: 'default' | 'wide'
 }>(), {
-  open: false
+  open: false,
+  side: 'start',
+  width: 'default'
 })
 
 defineSlots<{
@@ -52,6 +58,10 @@ defineSlots<{
 const emit = defineEmits<{
   'update:open': [open: boolean]
 }>()
+
+// The edge the panel is pinned to, and its width token, by the prop value.
+const EDGE = Object.freeze({ start: 'start-0', end: 'end-0' })
+const WIDTH = Object.freeze({ default: 'w-md-sheet', wide: 'w-md-sheet-wide' })
 
 const sheet = ref<HTMLElement | null>(null)
 const titleId = useId()
@@ -112,9 +122,9 @@ const onKeydown = (event: KeyboardEvent) => {
 <template>
   <Transition
     appear
-    enter-active-class="motion-safe:transition-opacity motion-safe:duration-200 motion-reduce:transition-none"
+    enter-active-class="motion-safe:transition-opacity motion-safe:duration-md-short4 motion-reduce:transition-none"
     enter-from-class="opacity-0"
-    leave-active-class="motion-safe:transition-opacity motion-safe:duration-150 motion-reduce:transition-none"
+    leave-active-class="motion-safe:transition-opacity motion-safe:duration-md-short3 motion-reduce:transition-none"
     leave-to-class="opacity-0"
   >
     <div
@@ -124,15 +134,18 @@ const onKeydown = (event: KeyboardEvent) => {
       aria-modal="true"
       :aria-labelledby="titleId"
       data-ingot-component="md-side-sheet"
-      class="fixed inset-0 z-50 motion-reduce:transition-none"
+      class="fixed inset-0 z-md-dialog motion-reduce:transition-none"
       @keydown="onKeydown"
     >
       <div
-        class="absolute inset-0 bg-[color-mix(in_srgb,var(--md-sys-color-scrim)_32%,transparent)]"
+        class="absolute inset-0 bg-scrim/md-scrim"
         aria-hidden="true"
         @click="dismiss"
       />
-      <div class="absolute inset-y-0 start-0 flex w-[min(var(--container-md-sheet),calc(100vw-56px))] flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-2">
+      <div
+        class="absolute inset-y-0 flex max-w-md-sheet-max flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-2"
+        :class="[EDGE[side], WIDTH[width]]"
+      >
         <div class="flex items-center justify-between gap-2">
           <h2
             :id="titleId"
