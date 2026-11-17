@@ -790,6 +790,19 @@
         "required" : [ "value", "count" ],
         "type" : "object"
       },
+      "FactorCountsDto" : {
+        "properties" : {
+          "authenticator" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "passkey" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "FactorNameRequest" : {
         "properties" : {
           "name" : {
@@ -1806,6 +1819,23 @@
         "required" : [ "plugin", "path", "sha256" ],
         "type" : "object"
       },
+      "PolicyStatusDto" : {
+        "properties" : {
+          "covered" : {
+            "type" : "boolean"
+          },
+          "requiredForAdmins" : {
+            "type" : "boolean"
+          },
+          "requiredForTeams" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "PomDetails" : {
         "properties" : {
           "artifactId" : {
@@ -2335,6 +2365,32 @@
       "SecretType" : {
         "enum" : [ "RAW", "ENCRYPTED" ],
         "type" : "string"
+      },
+      "SecurityStatusDto" : {
+        "properties" : {
+          "factorCounts" : {
+            "$ref" : "#/components/schemas/FactorCountsDto"
+          },
+          "graceUntil" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "policy" : {
+            "$ref" : "#/components/schemas/PolicyStatusDto"
+          },
+          "recoveryCodesLeft" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "stepUpUntil" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
       },
       "SessionDetails" : {
         "properties" : {
@@ -4494,7 +4550,18 @@
     "/api/identity/me/security" : {
       "get" : {
         "description" : "The second factors of the signed-in user by kind, the recovery codes left, the policy that covers the user, the end of the grace period, the session scope and the end of the step-up window. A read, answered for a session and for a Basic or Bearer access token. The step-up end is set for a session only",
-        "responses" : { },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SecurityStatusDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
