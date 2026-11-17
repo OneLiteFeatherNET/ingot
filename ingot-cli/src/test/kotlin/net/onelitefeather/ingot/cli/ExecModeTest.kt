@@ -15,61 +15,14 @@
  */
 package net.onelitefeather.ingot.cli
 
-import com.sun.net.httpserver.HttpServer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
-import java.util.concurrent.CopyOnWriteArrayList
-
-/**
- * A stand-in for the console API, in process on an ephemeral port. It records every request and answers with what the
- * test's responder returns. Nothing here waits by time: each call returns when its response has been read.
- */
-private class StubIngot(private val responder: (Request) -> Pair<Int, String>) : AutoCloseable {
-
-    data class Request(val method: String, val path: String, val query: String?, val authorization: String?, val body: String)
-
-    val requests = CopyOnWriteArrayList<Request>()
-    private val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
-
-    init {
-        server.createContext("/") { exchange ->
-            val request = Request(
-                method = exchange.requestMethod,
-                path = exchange.requestURI.path,
-                query = exchange.requestURI.rawQuery,
-                authorization = exchange.requestHeaders.getFirst("Authorization"),
-                body = exchange.requestBody.readBytes().toString(StandardCharsets.UTF_8),
-            )
-            requests.add(request)
-            val (status, body) = responder(request)
-            val bytes = body.toByteArray(StandardCharsets.UTF_8)
-            exchange.responseHeaders.add("Content-Type", "application/json")
-            exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
-            if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
-            exchange.close()
-        }
-        server.start()
-    }
-
-    val url: String
-        get() = "http://127.0.0.1:${server.address.port}"
-
-    override fun close() {
-        server.stop(0)
-    }
-
-}
-
-private fun answer(exitCode: Int, status: String = "SUCCEEDED", stream: String = "stdout", text: String = "ok"): Pair<Int, String> =
-    200 to """{"status":"$status","exitCode":$exitCode,"output":[{"stream":"$stream","text":"$text"}],"data":null,"node":"node-1"}"""
 
 private class Run(val exit: Int, val out: String, val err: String)
 
