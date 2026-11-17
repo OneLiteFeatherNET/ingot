@@ -170,6 +170,30 @@ describe('SideNavLayout', () => {
     expect(wrapper.find(SIDE_NAV).classes(), 'the side navigation does not animate').not.toContain('animate-md-page-enter')
   })
 
+  it('gives the renewed page the enter animation when the entry changes', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+    const pageBefore = wrapper.get('[data-test="page-column"]').element
+
+    await wrapper.setProps({ current: 'machines' })
+    await flushPromises()
+
+    const renewed = wrapper.get('[data-test="page-column"]')
+    expect(renewed.element, 'an entry change renews the page element, so the animation plays again').not.toBe(pageBefore)
+    expect(renewed.classes(), 'the renewed page carries the enter animation class').toContain('animate-md-page-enter')
+  })
+
+  it('keeps the page element and its enter class when only the query changes, so the animation does not replay', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+    const pageBefore = wrapper.get('[data-test="page-column"]').element
+
+    await (wrapper.vm as unknown as { $router: Router }).$router.replace({ path: '/access/users', query: { tab: 'storage' } })
+    await flushPromises()
+
+    const kept = wrapper.get('[data-test="page-column"]')
+    expect(kept.element, 'a query change keeps the same page element').toBe(pageBefore)
+    expect(kept.classes(), 'and the kept page still carries the enter animation class').toContain('animate-md-page-enter')
+  })
+
   it('shows the side navigation and the page side by side on wide widths', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
