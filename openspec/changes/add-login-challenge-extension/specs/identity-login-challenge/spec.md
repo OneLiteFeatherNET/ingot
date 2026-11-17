@@ -1,12 +1,3 @@
-# Spec Delta
-
-**DEFERRED.** This change is deferred until a plugin needs a login challenge. The requirements below are not scheduled.
-
-## Purpose
-
-The login challenge extension point: a plugin may offer a challenge to a person whose dashboard name is delayed by the
-account throttle, and the rules that bound it. The wire format of the challenge is undecided (see `design.md`).
-
 ## ADDED Requirements
 
 ### Requirement: Login challenge extension point
