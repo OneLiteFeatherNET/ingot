@@ -44,4 +44,17 @@ describe('MdCard', () => {
 
     expect(wrapper.classes()).toContain('shadow-elevation-1')
   })
+
+  it('keeps the padding of the default card when no padding is given', () => {
+    const wrapper = mount(MdCard)
+
+    expect(wrapper.classes()).toContain('p-4')
+  })
+
+  it('removes the padding when padding is none and keeps the corner radius', () => {
+    const wrapper = mount(MdCard, { props: { padding: 'none' } })
+
+    expect(wrapper.classes(), 'a card without padding must not carry p-4').not.toContain('p-4')
+    expect(wrapper.classes(), 'a card without padding keeps the medium corner radius').toContain('rounded-corner-medium')
+  })
 })

@@ -21,19 +21,27 @@ import type { Component } from 'vue'
  * Material Design 3 card. A plain container: the content and its actions belong to the
  * slot. Pick the variant by how much the card must stand out from the page: elevated for
  * a card that floats, filled for grouped content, outlined for a quiet container.
+ * `padding` is `none` for a card whose content draws its own inset, such as a table or a code block.
  * `as` draws the card as another element or component, such as a router link, with the same surface.
  */
 withDefaults(defineProps<{
   variant?: 'elevated' | 'filled' | 'outlined'
+  padding?: 'default' | 'none'
   as?: string | Component
 }>(), {
   variant: 'filled',
+  padding: 'default',
   as: 'div'
 })
 
 defineSlots<{
   default?(): unknown
 }>()
+
+const PADDINGS = {
+  default: 'p-4',
+  none: ''
+}
 
 const VARIANTS = {
   elevated: 'bg-surface-container-low shadow-elevation-1',
@@ -46,7 +54,7 @@ const VARIANTS = {
   <component
     :is="as"
     :data-variant="variant"
-    :class="['rounded-corner-medium p-4 text-on-surface', VARIANTS[variant] ?? VARIANTS.filled]"
+    :class="['rounded-corner-medium text-on-surface', PADDINGS[padding], VARIANTS[variant] ?? VARIANTS.filled]"
     data-ingot-component="md-card"
   >
     <slot />
