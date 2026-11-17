@@ -711,6 +711,13 @@
       "states": []
     },
     {
+      "name": "md-breadcrumb",
+      "file": "src/components/md/MdBreadcrumb.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-button",
       "file": "src/components/md/MdButton.vue",
       "stability": "experimental",
@@ -790,6 +797,20 @@
     {
       "name": "md-overflow-menu",
       "file": "src/components/md/MdOverflowMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-page",
+      "file": "src/components/md/MdPage.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-page-header",
+      "file": "src/components/md/MdPageHeader.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
