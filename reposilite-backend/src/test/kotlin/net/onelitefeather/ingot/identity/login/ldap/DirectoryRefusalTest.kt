@@ -20,6 +20,7 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.token.AccessTokenSecurityProvider
 import net.onelitefeather.ingot.identity.login.MutableClock
+import net.onelitefeather.ingot.identity.model.PrincipalKind
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -107,6 +108,52 @@ internal class DirectoryRefusalTest {
 
             val log = environment.logs.messages.joinToString("\n") { it.value }
             assertThat(log).describedAs("the directory password stays out of the log").doesNotContain("alice-secret")
+        }
+    }
+
+    @Test
+    fun `a directory login of a user with a second factor is refused when another user owns the token of that name`() {
+        withEnvironment { environment ->
+            val alice = environment.createHuman("alice")
+            val bob = environment.createHuman("bob")
+            environment.identities.createToken(
+                principalId = bob.id,
+                name = "alice",
+                secretHash = AccessTokenSecurityProvider.encodeSecret("unused-secret", AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH),
+                scopes = null,
+                expiresAt = null,
+                createdAt = LocalDate.of(2026, 10, 15),
+                description = "",
+            )
+            environment.accessTokens.secondFactorGuard = { principalId -> principalId == alice.id }
+
+            val result = environment.authenticator.authenticate(Credentials(ip = "10.0.0.1", name = "alice", secret = "alice-secret"))
+
+            assertThat(result.isErr).describedAs("alice has a second factor, so her directory password must not sign in through bob's token").isTrue()
+        }
+    }
+
+    @Test
+    fun `a directory login of a user without a second factor is accepted when a machine principal owns the token of that name`() {
+        withEnvironment { environment ->
+            environment.createHuman("alice")
+            val machine = environment.identities.createPrincipal(
+                PrincipalKind.MACHINE, "ci-alice", "ci-alice", disabled = false, createdAt = clock.instant(),
+            )!!
+            environment.identities.createToken(
+                principalId = machine.id,
+                name = "alice",
+                secretHash = AccessTokenSecurityProvider.encodeSecret("unused-secret", AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH),
+                scopes = null,
+                expiresAt = null,
+                createdAt = LocalDate.of(2026, 10, 15),
+                description = "",
+            )
+            environment.accessTokens.secondFactorGuard = { false }
+
+            val result = environment.authenticator.authenticate(Credentials(ip = "10.0.0.1", name = "alice", secret = "alice-secret"))
+
+            assertThat(result.isOk).describedAs("a user without a second factor keeps the directory login through a machine token").isTrue()
         }
     }
 
