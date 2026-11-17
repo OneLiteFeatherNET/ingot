@@ -65,6 +65,8 @@ const mountPage = async ({ schema, fields }: { schema?: RepositorySchema; fields
 
 // A row is found by the text of its name link, since an unsaved row carries the Unsaved marker in the same cell.
 const rowOf = (id: string) => wrapper.findAll('tbody tr').find(row => row.find('th[scope="row"] a').text() === id)!
+// The body rows of the table: the rows that have a row header, so the empty-state row is left out.
+const bodyRows = () => wrapper.findAll('tbody tr').filter(row => row.find('th[scope="row"]').exists())
 const headerOf = (label: string) => wrapper.findAll('th').find(header => header.text().startsWith(label))!
 const sortButton = (label: string) => headerOf(label).find('button')
 // The Actions menu is teleported to the body, so its items are read from the document.
@@ -263,6 +265,52 @@ describe('the repositories table', () => {
     await mountPage()
 
     expect(headerOf('Write policy').classes(), 'the heading does not wrap').toContain('whitespace-nowrap')
+  })
+
+  it('centres every cell of a body row on one line, with the same padding', async () => {
+    await mountPage({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
+
+    const cells = bodyRows().flatMap(row => row.findAll('th, td'))
+    expect(cells.length, 'the table has body cells').toBeGreaterThan(0)
+    for (const cell of cells) {
+      expect(cell.classes(), `the cell "${cell.text()}" is centred vertically`).toContain('align-middle')
+      expect(cell.classes(), `the cell "${cell.text()}" is not top-aligned`).not.toContain('align-top')
+      expect(cell.classes(), `the cell "${cell.text()}" has the row padding`).toEqual(expect.arrayContaining(['px-3', 'py-3']))
+    }
+  })
+
+  it('centres the headings and keeps each one on a single line', async () => {
+    await mountPage({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
+
+    const headers = wrapper.findAll('th[scope="col"]')
+    expect(headers.length, 'the table has column headers').toBeGreaterThan(0)
+    for (const header of headers) {
+      expect(header.classes(), `the heading "${header.text()}" is centred vertically`).toContain('align-middle')
+      expect(header.classes(), `the heading "${header.text()}" does not wrap`).toContain('whitespace-nowrap')
+    }
+  })
+
+  it('keeps the type badge and its label on one line in the Type cell', async () => {
+    await mountPage()
+
+    const badge = rowOf('releases').find('[data-test="type-badge"]').element
+    expect(badge.closest('div')!.className, 'the badge is as wide as its label, so the two do not wrap apart').toContain('w-max')
+  })
+
+  it('does not round the corners of the table region, so its last divider is not clipped', async () => {
+    await mountPage()
+
+    const region = wrapper.find('[role="region"][aria-label="Repositories table"]')
+    expect(region.classes(), 'the scroll region has no rounded corners that would clip the bottom edge').not.toContain('rounded-corner-medium')
+  })
+
+  it('draws the same divider under every row, the last one included', async () => {
+    await mountPage({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
+
+    const rows = bodyRows()
+    expect(rows.length, 'the table has more than one row').toBeGreaterThan(1)
+    expect(new Set(rows.map(row => row.classes().join(' '))).size, 'every row carries the same classes').toBe(1)
+    expect(rows.at(-1)!.classes(), 'the last row has the divider').toEqual(expect.arrayContaining(['border-b', 'border-outline-variant']))
   })
 
   it('hides the low-priority columns below their breakpoint, Name, Type and Actions never', async () => {

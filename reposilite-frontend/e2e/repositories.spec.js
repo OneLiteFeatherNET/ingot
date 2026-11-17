@@ -47,6 +47,26 @@ test.describe('repositories table layout', () => {
       expect(actionsBox.height, 'the height of the Actions button').toBeLessThanOrEqual(56)
     })
   }
+
+  test('centres the type badge, the name and the Actions button of a row on one line at 1920 px', async ({ adminPage: page, seed }, testInfo) => {
+    const repository = await seed.create(unbrokenName(testInfo, 'centre'), { description: 'Centre line check' })
+    await page.setViewportSize({ width: 1920, height: 900 })
+    await page.goto(siteUrl('/settings/repositories'))
+
+    const row = page.getByRole('row', { name: new RegExp(repository) })
+    await expect(row).toBeVisible()
+    const badge = row.locator('[data-test="type-badge"]').first()
+    const name = row.getByRole('link', { name: repository, exact: true })
+    const actions = row.getByRole('button', { name: `Actions for ${repository}`, exact: true })
+
+    // The vertical centre of each element, from its box. Differing centres are the visible asymmetry of the row.
+    const centres = await Promise.all([badge, name, actions].map(async (locator) => {
+      const box = await locator.boundingBox()
+      return box.y + box.height / 2
+    }))
+    const spread = Math.max(...centres) - Math.min(...centres)
+    expect(spread, `the centres of the badge, the name and the Actions button of ${repository} differ by ${spread.toFixed(1)} px`).toBeLessThanOrEqual(2)
+  })
 })
 
 test.describe('repository page controls', () => {
