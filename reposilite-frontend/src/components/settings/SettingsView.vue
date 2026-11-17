@@ -486,7 +486,6 @@ watch(
     :index-to="sideNav.indexTo"
     :shortcuts="shortcutsOf(settingsCurrent, can)"
     :narrow="narrow"
-    :reading="!repositoriesPage && settingsCurrent !== OVERVIEW_TREE_KEY"
     :unsaved="unsavedKeys"
     :overview="settingsCurrent === OVERVIEW_TREE_KEY"
     replace
