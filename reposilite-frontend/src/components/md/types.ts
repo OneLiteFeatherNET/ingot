@@ -51,3 +51,6 @@ export interface MenuEntry {
 }
 
 export type MenuItem = MenuSeparator | MenuEntry
+
+// The navigate function that a router link passes to its slot. It takes the click event and resolves once the route has moved.
+export type RouterNavigate = (event?: MouseEvent) => Promise<unknown>
