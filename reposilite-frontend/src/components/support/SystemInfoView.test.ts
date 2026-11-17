@@ -207,7 +207,7 @@ describe('SystemInfoView tabs', () => {
 
     await filterOf(environment).setValue('no-such-row')
 
-    expect(environment.text()).toContain('No entry matches the filter.')
+    expect(environment.text()).toContain('No key matches')
   })
 
   it('shows the shared configuration whole, with a note that the filter does not apply to it', async () => {
@@ -475,5 +475,95 @@ describe('SystemInfoView uptime', () => {
     // then: the value of the Uptime row reads as a duration
     const term = panelsOf(wrapper)[0].findAll('dt').find(item => item.text() === 'Uptime')!
     expect(term.element.nextElementSibling?.textContent).toBe('11 min 40 s')
+  })
+})
+
+describe('SystemInfoView environment and configuration as trees', () => {
+  // Twelve Kubernetes service variables and the other variables: more than 20 keys, so the groups start collapsed.
+  const SERVICE_KEYS = ['ADDR', 'PORT', 'PROTO', 'ADDR_IPV6', 'ADDR_ZONE', 'PORT_NAME', 'TLS', 'WEIGHT', 'ID', 'NAME', 'MODE', 'LIMIT']
+  const longEnvironment = Object.fromEntries([
+    ...SERVICE_KEYS.map((suffix): [string, string] => [`INGOT_DASHBOARD_PORT_8080_TCP_${suffix}`, '[withheld]']),
+    ['PUID', '1000'],
+    ['PGID', '1000'],
+    ['JAVA_HOME', '/usr/lib/jvm/temurin'],
+    ['TZ', 'Europe/Berlin'],
+    ['HOSTNAME', 'ingot-0'],
+    ['LANG', 'C.UTF-8'],
+    ['KUBERNETES_SERVICE_HOST', '10.0.0.1'],
+    ['KUBERNETES_SERVICE_PORT', '443'],
+    ['REPOSILITE_OPTS', '--port=8080'],
+  ])
+  const longLocal = Object.fromEntries([
+    ['basePath', '/'],
+    ['bypassExternalCache', 'false'],
+    ['cachedLogSize', '512'],
+    ['compressionStrategy', 'gzip'],
+    ['database', 'sqlite'],
+    ['databaseConnectionTimeout', '30'],
+    ['databaseKeepalive', 'true'],
+    ['databaseMaxLifetime', '1800'],
+    ['databaseThreadPool', '10'],
+    ['hostname', '0.0.0.0'],
+    ['keyPassword', '[withheld]'],
+    ['port', '8080'],
+    ['proxyTimeout', '15'],
+    ['releaseOnly', 'false'],
+    ['retentionDays', '30'],
+    ['snapshotDays', '7'],
+    ['storageRoot', '/app/data'],
+    ['tokenTtl', '3600'],
+    ['uploadLimit', '100'],
+    ['webhookSecret', '[withheld]'],
+    ['zone', 'eu'],
+  ])
+  const treeOf = (panel: PanelOf) => panel.find('[role="region"]')
+  const groupNamed = (panel: PanelOf, label: string) => panel.findAll('details').find((item) => item.find('summary').text().includes(label))
+
+  it('groups the Kubernetes service variables under one collapsed group that shows its key count', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
+    await flushPromises()
+    const environment = panelsOf(wrapper)[2]
+
+    const group = groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')
+    expect(group?.find('summary').text(), 'the group names its prefix and counts its 12 keys').toContain('12')
+    expect(group?.attributes('open'), 'the group is collapsed above 20 keys').toBeUndefined()
+  })
+
+  it('opens the group of a typed key, so the matching variable is visible', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
+    await flushPromises()
+    const environment = panelsOf(wrapper)[2]
+
+    await filterOf(environment).setValue('TCP_TLS')
+
+    expect(groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')?.attributes('open'), 'the group opens for the match').toBeDefined()
+    expect(environment.findAll('mark').map((mark) => mark.text())).toContain('TCP_TLS')
+  })
+
+  it('keeps the keys of the environment in a region that scrolls on its own', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
+    await flushPromises()
+
+    expect(treeOf(panelsOf(wrapper)[2]).attributes('tabindex'), 'the region takes the keyboard focus').toBe('0')
+  })
+
+  it('shows the local configuration as a tree of camel case groups, with Local and Shared as collapsible sections', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, configuration: { local: longLocal, shared: FIXTURE.configuration.shared } }))
+    await flushPromises()
+    const configuration = panelsOf(wrapper)[3]
+
+    expect(groupNamed(configuration, 'Local')?.find('summary').text(), 'the Local section counts its 21 keys').toContain('21')
+    expect(groupNamed(configuration, 'database')?.find('summary').text(), 'the database group counts its five keys').toContain('5')
+    expect(groupNamed(configuration, 'Shared'), 'Shared is a collapsible section').toBeDefined()
+  })
+
+  it('does not merge basePath and bypassExternalCache into one group', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, configuration: { local: longLocal, shared: FIXTURE.configuration.shared } }))
+    await flushPromises()
+    const configuration = panelsOf(wrapper)[3]
+
+    expect(configuration.findAll('dt').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
+    expect(configuration.findAll('dt').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
+    expect(groupNamed(configuration, 'bypass'), 'no group named after the shared first letter').toBeUndefined()
   })
 })
