@@ -1,0 +1,70 @@
+# Container tests of the storage backends that are plugins: the Google Cloud Storage plugin, whose contract cases run against the
+# fake-gcs-server emulator through Testcontainers, and its shaded jar.
+#
+# The job runs on every pull request, so its check is never left pending. It runs the container suite only when the pull request
+# touches the plugin, and nightly it always runs, so that a change of the emulator image or of the SDK shows up on the next night.
+name: "Storage backends"
+
+on:
+  pull_request:
+  workflow_call:
+  schedule:
+    # Nightly, 03:37 UTC.
+    - cron: "37 3 * * *"
+
+# Read-only. The job needs no write scope: it neither publishes results nor comments on the pull request.
+permissions:
+  contents: read
+
+concurrency:
+  group: "storage-backends-${{ github.workflow }}-${{ github.ref }}"
+  # A newer push to a pull request makes an older run of the same branch obsolete.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gcs-storage:
+    name: "Storage backends (gcs)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # The full history is needed to compare the pull request with its base.
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Decide whether the plugin changed"
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" HEAD -- reposilite-plugins/gcs-storage-plugin | head -n 1)
+          if [ -n "$changed" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The integration source set holds the emulator contract cases and the shaded jar test. The shaded jar is built first by the task.
+      - name: "Run the Google Cloud Storage plugin tests"
+        if: steps.scope.outputs.changed == 'true'
+        run: ./gradlew :reposilite-plugins:gcs-storage-plugin:test :reposilite-plugins:gcs-storage-plugin:integration --max-workers=2
