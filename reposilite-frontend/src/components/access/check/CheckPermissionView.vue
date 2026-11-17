@@ -21,6 +21,7 @@ import { createErrorToast, errorMessage } from '../../../helpers/toast'
 import { textFromParam, textParam } from '../../../router/url-state'
 import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
+import MdIcon from '../../md/MdIcon.vue'
 import MdSelect from '../../md/MdSelect.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
@@ -50,6 +51,10 @@ const { client } = useSession()
 const identity = computed(() => client.value.identity)
 
 const SUGGESTIONS = 12
+
+// The verdict glyphs: a check circle for Allowed, a circle with a slash for Denied, both on a 24 by 24 grid.
+const ALLOWED_GLYPH = 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'
+const DENIED_GLYPH = 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9A7.902 7.902 0 014 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1A7.902 7.902 0 0120 12c0 4.42-3.58 8-8 8z'
 
 const principal = ref('')
 const node = ref('')
@@ -351,7 +356,8 @@ onMounted(() => {
         @update:model-value="onPrincipal"
       />
       <div
-        class="expanded:col-span-2"
+        class="w-fit expanded:col-span-2"
+        data-test="check-mode"
       >
         <SegmentedControl label="Check by">
           <SegmentedOption
@@ -459,32 +465,19 @@ onMounted(() => {
     >
       <div
         role="status"
-        class="flex items-center gap-4 rounded-corner-large px-6 py-5"
-        :class="allowed ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-on-error-container'"
+        class="flex items-start gap-3 rounded-corner-medium bg-surface-container-high px-4 py-3 text-on-surface"
         :data-allowed="allowed ? 'true' : 'false'"
         data-test="verdict"
       >
-        <svg
-          v-if="allowed"
-          class="size-12 shrink-0"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-        </svg>
-        <svg
-          v-else
-          class="size-12 shrink-0"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9A7.902 7.902 0 014 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1A7.902 7.902 0 0120 12c0 4.42-3.58 8-8 8z" />
-        </svg>
-        <div class="flex min-w-0 flex-col gap-1">
+        <MdIcon
+          :path="allowed ? ALLOWED_GLYPH : DENIED_GLYPH"
+          size="lg"
+          :class="['mt-0.5 shrink-0', allowed ? 'text-success' : 'text-error']"
+        />
+        <div class="flex min-w-0 flex-col gap-0.5">
           <p
-            class="md-display-small"
+            class="md-title-large m-0"
+            :class="allowed ? 'text-success' : 'text-error'"
             data-test="verdict-text"
           >
             {{ allowed ? 'Allowed' : 'Denied' }}
