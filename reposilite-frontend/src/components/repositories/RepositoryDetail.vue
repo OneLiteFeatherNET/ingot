@@ -123,7 +123,8 @@ const tabs = computed(() => REPOSITORY_TABS.map((tab) => {
   return { key: tab.key, label: count === 0 ? tab.label : `${tab.label}, ${count} ${count === 1 ? 'problem' : 'problems'}` }
 }))
 // The fields of the entry editor that every part of the page shares. Each tab leaves out the fields of the others.
-const entryProps = computed(() => ({
+// Null until both the schema and the entry are loaded; the template renders the page only when they are.
+const entryProps = computed(() => (collection.value && entry.value ? {
   collection: collection.value,
   id: props.id,
   entry: entry.value,
@@ -136,10 +137,13 @@ const entryProps = computed(() => ({
   omit: ['redeployment', 'readOnly'],
   references: groupsListingIt.value,
   serverError: serverError.value
-}))
+} : null))
 const omitFor = (key: string) => ['redeployment', 'readOnly', ...fieldsOutside(key)]
 // A tab whose fields are all hidden for the type of the repository says so, instead of showing an empty panel.
-const hiddenFor = computed(() => hiddenFormFields(entry.value?.type ?? ''))
+const hiddenFor = computed(() => {
+  const type = entry.value?.type
+  return hiddenFormFields(typeof type === 'string' ? type : '')
+})
 const appliesTo = (key: string) => REPOSITORY_TABS.find(tab => tab.key === key)!.fields.some(field => !hiddenFor.value.includes(field))
 
 // The draft entry at this position is replaced; the page never writes a key of its own besides the ones named here.
@@ -221,7 +225,7 @@ onMounted(() => {
   </div>
 
   <div
-    v-else
+    v-else-if="entryProps"
     class="flex flex-col gap-6"
     data-ingot-component="repository-detail"
   >

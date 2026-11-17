@@ -53,8 +53,9 @@ const props = defineProps({
     type: String,
     required: true
   },
+  // Null when the address names no entry; the pane then says so instead of showing a form.
   entry: {
-    type: Object,
+    type: [Object, null],
     default: null
   },
   // The ids of the other entries of the collection, which the id of this one must not repeat.
