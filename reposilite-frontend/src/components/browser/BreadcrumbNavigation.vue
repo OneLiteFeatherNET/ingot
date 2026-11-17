@@ -37,7 +37,7 @@ const trail = computed<MdBreadcrumbItem[]>(() => {
     to: browseLocation(segments.value.slice(0, index + 1).join('/')),
     title: segment
   }))
-  return [{ label: 'Index of', to: { name: 'overview' } }, ...directories]
+  return [{ label: 'Index of', to: { name: 'overview' }, muted: true }, ...directories]
 })
 
 const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))

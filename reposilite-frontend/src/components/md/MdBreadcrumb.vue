@@ -31,6 +31,8 @@ export interface MdBreadcrumbItem {
   to?: RouteLocationRaw
   href?: string
   title?: string
+  // A muted link is drawn in on-surface-variant, as the root of the file browser trail is.
+  muted?: boolean
 }
 
 // "default" is the MD3 label trail. "large" is the file browser trail: title-medium text, on-surface
@@ -52,8 +54,7 @@ defineSlots<{
 
 // Every crumb, the current one included, has the same minimum height, so the text lines up on one centre line.
 const CRUMB = 'flex min-h-12 min-w-0 items-center'
-const LINK = `md-touch-target md-focus-ring rounded-corner-small text-primary ${CRUMB}`
-const LARGE_LINK = `md-touch-target md-focus-ring rounded-corner-small px-1 py-1 text-on-surface hover:text-primary ${CRUMB}`
+const LINK = `md-touch-target md-focus-ring rounded-corner-small ${CRUMB}`
 const MIDDLE = 'min-w-0 max-w-md-crumb'
 
 const large = computed(() => props.size === 'large')
@@ -67,7 +68,10 @@ const listClass = computed(() => (large.value
 const itemClass = computed(() => (large.value
   ? 'flex min-w-0 max-w-full items-center'
   : 'flex min-w-0 max-w-full items-center gap-2'))
-const linkClass = (index: number) => [large.value ? LARGE_LINK : LINK, crumbClass(index)]
+const linkClass = (index: number) => {
+  const colour = props.items[index].muted ? 'text-on-surface-variant' : (large.value ? 'text-on-surface' : 'text-primary')
+  return [LINK, crumbClass(index), colour, large.value && 'px-1 py-1 hover:text-primary']
+}
 const currentClass = (index: number) => [CRUMB, crumbClass(index), 'text-on-surface', large.value && 'px-1 py-1']
 const separatorClass = computed(() => (large.value ? 'px-1 text-outline' : 'text-outline'))
 </script>

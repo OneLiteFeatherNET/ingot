@@ -231,4 +231,16 @@ describe('MdBreadcrumb size', () => {
 
     expect(wrapper.find('ol a').classes()).toContain('text-primary')
   })
+
+  it('colours a muted large link in on-surface-variant instead of on-surface', () => {
+    const router = createRouter({ history: createWebHistory(BASE), routes })
+    const wrapper = mount(MdBreadcrumb, {
+      props: { items: [{ label: 'Index of', to: '/', muted: true }, { label: 'releases' }], size: 'large' },
+      global: { plugins: [router] }
+    })
+    const link = wrapper.find('ol a').classes()
+
+    expect(link).toContain('text-on-surface-variant')
+    expect(link).not.toContain('text-on-surface')
+  })
 })
