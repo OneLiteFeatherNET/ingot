@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import MdIcon from '../md/MdIcon.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import TypeBadge from './TypeBadge.vue'
 import { WRITE_CHOICES } from './writePolicy'
@@ -58,6 +59,9 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+
+// Three dots on one vertical line: zero-length strokes with round caps, drawn by MdIcon.
+const MORE_PATH = 'M12 5.25h.01M12 12h.01M12 18.75h.01'
 
 const SORT_ARROWS: Record<SortDirection, string> = { ascending: '▲', descending: '▼' }
 const VERSION_LABELS: Record<string, string> = { RELEASE: 'Release', SNAPSHOT: 'Snapshot', MIXED: 'Mixed' }
@@ -251,8 +255,14 @@ const onAction = (row: RepositoryRow, value: string) => {
             <MdOverflowMenu
               :label="`Actions for ${row.name}`"
               :items="actionsOf(row)"
+              trigger-class="!px-0 w-10"
               @select="(value) => onAction(row, value)"
-            />
+            >
+              <template #trigger>
+                <span class="sr-only">Actions for {{ row.name }}</span>
+                <MdIcon :path="MORE_PATH" />
+              </template>
+            </MdOverflowMenu>
           </td>
         </tr>
         <tr

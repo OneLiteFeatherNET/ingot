@@ -69,8 +69,10 @@ const headerOf = (label: string) => wrapper.findAll('th').find(header => header.
 const sortButton = (label: string) => headerOf(label).find('button')
 // The Actions menu is teleported to the body, so its items are read from the document.
 const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+// The Actions button is an icon, so its accessible name is its visually hidden text.
+const actionsButton = (name: string) => wrapper.findAll('button').find(button => button.text() === `Actions for ${name}`)!
 const openActions = async (name: string) => {
-  wrapper.find(`button[aria-label="Actions for ${name}"]`).trigger('click')
+  actionsButton(name).trigger('click')
   await flushPromises()
 }
 const statusText = () => wrapper.findAll('[role="status"]').map(region => region.text()).join(' | ')
@@ -175,8 +177,17 @@ describe('the repositories table', () => {
     await mountPage()
 
     const row = rowOf('releases')
-    const names = row.findAll('a, button').map(control => control.attributes('aria-label'))
-    expect(names, 'the row has the name link and one Actions button').toEqual([undefined, 'Actions for releases'])
+    const names = row.findAll('a, button').map(control => control.text())
+    expect(names, 'the row has the name link and one Actions button').toEqual(['releases', 'Actions for releases'])
+  })
+
+  it('shows the Actions button as a three-dot icon, with the name as its only text', async () => {
+    await mountPage()
+
+    const button = actionsButton('releases')
+    expect(button.find('svg').attributes('aria-hidden'), 'the icon is decorative').toBe('true')
+    expect(button.find('.sr-only').text(), 'the visually hidden name names the repository').toBe('Actions for releases')
+    expect(button.text(), 'the word Actions is not the visible label').toBe('Actions for releases')
   })
 
   it('names the items of the Actions menu after the repository', async () => {
@@ -203,7 +214,7 @@ describe('the repositories table', () => {
 
     const controls = rowOf('releases').findAll('a, button')
     expect(controls[0].text(), 'the first control of the row is the name link').toBe('releases')
-    expect(controls[1].attributes('aria-label'), 'the next control is the Actions button').toBe('Actions for releases')
+    expect(controls[1].text(), 'the next control is the Actions button').toBe('Actions for releases')
   })
 
   it('copies the address, reports Copied and returns the focus to the Actions button', async () => {
@@ -211,7 +222,7 @@ describe('the repositories table', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     try {
       await mountPage()
-      const trigger = wrapper.find('button[aria-label="Actions for releases"]')
+      const trigger = actionsButton('releases')
       await openActions('releases')
 
       menuItems().find(item => item.getAttribute('aria-label') === 'Copy address of releases')!.click()

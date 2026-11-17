@@ -96,7 +96,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
 
     expect(positive(), 'the list has no positive tabindex').toEqual([])
 
-    wrapper.find('button[aria-label="Actions for releases"]').trigger('click')
+    wrapper.findAll('button').find(button => button.text() === 'Actions for releases')!.trigger('click')
     await flushPromises()
     expect(positive(), 'the open Actions menu has no positive tabindex').toEqual([])
 
