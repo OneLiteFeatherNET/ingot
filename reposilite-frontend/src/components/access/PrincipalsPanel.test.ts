@@ -117,6 +117,7 @@ describe('PrincipalsPanel', () => {
       revokeInstanceAdmin: vi.fn()
     }
     holder.session = {
+      passwordMinLength: ref(12),
       client: ref({
         identity: {
           principals,

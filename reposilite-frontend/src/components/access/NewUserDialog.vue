@@ -20,7 +20,8 @@ import { createErrorToast, createSuccessToast, errorMessage } from '../../helper
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DialogShell from '../identity/DialogShell.vue'
-import { MIN_PASSWORD_LENGTH, buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
+import { buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
+import { useSession } from '../../store/session'
 
 /*
  * Creates a user: the principal first, then its initial password. The user has to change that
@@ -53,8 +54,10 @@ const busy = ref(false)
 const failure = ref('')
 
 const nameProblem = computed(() => validatePrincipalName(name.value))
+const { passwordMinLength } = useSession()
+const minimumHint = computed(() => `At least ${passwordMinLength.value} characters`)
 const passwordProblem = computed(() =>
-  password.value.length < MIN_PASSWORD_LENGTH ? `Use at least ${MIN_PASSWORD_LENGTH} characters` : '')
+  password.value.length < passwordMinLength.value ? `Use at least ${passwordMinLength.value} characters` : '')
 
 const reset = () => {
   name.value = ''
@@ -138,7 +141,7 @@ const submit = async () => {
         label="Initial password"
         type="password"
         autocomplete="new-password"
-        supporting-text="At least 12 characters"
+        :supporting-text="minimumHint"
         required
         :error="submitted && passwordProblem !== ''"
         :error-text="passwordProblem"

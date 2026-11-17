@@ -20,6 +20,7 @@ import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import type { PasswordApi } from './passwordApi'
+import { useSession } from '../../store/session'
 
 
 /*
@@ -46,7 +47,9 @@ const emit = defineEmits<{
   changed: []
 }>()
 
-const MIN_PASSWORD_LENGTH = 12
+const { passwordMinLength } = useSession()
+const minimumHint = computed(() => `At least ${passwordMinLength.value} characters`)
+const minimumError = computed(() => `Use at least ${passwordMinLength.value} characters`)
 
 const current = ref('')
 const next = ref('')
@@ -56,7 +59,7 @@ const busy = ref(false)
 const failure = ref<string | null>(null)
 
 const currentError = computed(() => submitted.value && current.value === '')
-const nextError = computed(() => submitted.value && next.value.length < MIN_PASSWORD_LENGTH)
+const nextError = computed(() => submitted.value && next.value.length < passwordMinLength.value)
 const confirmError = computed(() => submitted.value && confirm.value !== next.value)
 
 onMounted(async () => {
@@ -132,10 +135,10 @@ const submit = async () => {
         label="New password"
         type="password"
         autocomplete="new-password"
-        supporting-text="At least 12 characters"
+        :supporting-text="minimumHint"
         required
         :error="nextError"
-        error-text="Use at least 12 characters"
+        :error-text="minimumError"
       />
       <MdTextField
         id="account-confirm-password"

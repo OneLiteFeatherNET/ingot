@@ -58,6 +58,7 @@ const fakeSession = ({ mode = 'cookie', mustChange = false, admin = false, teams
     instanceAdmin: computed(() => details.value.instanceAdmin === true),
     authMode: ref(mode),
     mustChangePassword: ref(mustChange),
+    passwordMinLength: ref(12),
     client: ref({ identity: { me } })
   }
 }

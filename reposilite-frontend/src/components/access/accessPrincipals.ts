@@ -153,8 +153,12 @@ const newestLastUsed = (tokens: TokenSummary[] | null | undefined): number | nul
     .reduce<number | null>((newest, value) => (newest === null || time(value) > time(newest) ? value : newest), null)
 
 /** The message for each password field, or an empty string where the field is fine. */
-const validateNewPassword = (password: string | null | undefined, confirm: string | null | undefined): { password: string; confirm: string } => ({
-  password: String(password ?? '').length < MIN_PASSWORD_LENGTH ? `Use at least ${MIN_PASSWORD_LENGTH} characters` : '',
+const validateNewPassword = (
+  password: string | null | undefined,
+  confirm: string | null | undefined,
+  minLength: number = MIN_PASSWORD_LENGTH
+): { password: string; confirm: string } => ({
+  password: String(password ?? '').length < minLength ? `Use at least ${minLength} characters` : '',
   confirm: confirm !== password ? 'Passwords do not match' : ''
 })
 
