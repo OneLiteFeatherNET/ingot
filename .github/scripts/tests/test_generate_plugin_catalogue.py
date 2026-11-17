@@ -80,15 +80,25 @@ class GeneratorTestCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.temp, True)
         self.repository = os.path.join(self.temp, "mirror")
         os.makedirs(self.repository)
+        self.tiers = os.path.join(self.temp, "plugin-tiers.json")
+        # The fixture lists 3.5.28 without a tier field, which the store reads as community.
+        self.write_tiers({"opensearch-plugin": "community"})
         self.last_stderr = ""
+
+    def write_tiers(self, tiers):
+        with open(self.tiers, "w", encoding="utf-8") as handle:
+            json.dump(tiers, handle)
 
     def seed_catalogue(self):
         """Copies the committed fixture catalogue, which lists 3.5.28, and its jar into the mirror."""
         shutil.copy(FIXTURE_CATALOGUE, os.path.join(self.repository, CATALOGUE))
         write_jar(self.repository, FIXTURE_VERSION, FIXTURE_JAR_BYTES)
 
-    def publish(self, version=NEW_VERSION, generated=GENERATED):
-        return self.run_generator("publish", "--repository", self.repository, "--version", version, "--generated", generated)
+    def publish(self, version=NEW_VERSION, generated=GENERATED, repository=None):
+        return self.run_generator(
+            "publish", "--repository", repository or self.repository, "--tiers", self.tiers,
+            "--version", version, "--generated", generated,
+        )
 
     def yank(self, version):
         return self.run_generator("yank", "--repository", self.repository, "--plugin", "opensearch-plugin", "--version", version)
@@ -212,7 +222,7 @@ class DeterminismTest(GeneratorTestCase):
         write_jar(second, FIXTURE_VERSION, FIXTURE_JAR_BYTES)
         write_jar(second, NEW_VERSION, NEW_JAR_BYTES)
         self.assertEqual(0, self.run_generator(
-            "publish", "--repository", second, "--version", NEW_VERSION, "--generated", GENERATED,
+            "publish", "--repository", second, "--tiers", self.tiers, "--version", NEW_VERSION, "--generated", GENERATED,
         ), self.last_stderr)
 
         self.assertEqual(first, read_bytes(os.path.join(second, CATALOGUE)))
@@ -289,23 +299,12 @@ class TierTest(GeneratorTestCase):
 
     def setUp(self):
         super().setUp()
-        self.tiers = os.path.join(self.temp, "plugin-tiers.json")
         self.write_tiers({"opensearch-plugin": "experimental"})
-
-    def write_tiers(self, tiers):
-        with open(self.tiers, "w", encoding="utf-8") as handle:
-            json.dump(tiers, handle)
-
-    def publish_with_tiers(self, repository=None, version=NEW_VERSION):
-        return self.run_generator(
-            "publish", "--repository", repository or self.repository, "--tiers", self.tiers,
-            "--version", version, "--generated", GENERATED,
-        )
 
     def test_new_entry_carries_the_tier_of_its_plugin_from_the_tier_file(self):
         write_jar(self.repository, NEW_VERSION, NEW_JAR_BYTES)
 
-        self.assertEqual(0, self.publish_with_tiers(), self.last_stderr)
+        self.assertEqual(0, self.publish(), self.last_stderr)
 
         self.assertEqual("experimental", read_catalogue(self.repository)["plugins"][0]["tier"])
 
@@ -317,7 +316,7 @@ class TierTest(GeneratorTestCase):
                 write_jar(repository, NEW_VERSION, NEW_JAR_BYTES)
                 self.write_tiers({"opensearch-plugin": name})
 
-                self.assertEqual(0, self.publish_with_tiers(repository), self.last_stderr)
+                self.assertEqual(0, self.publish(repository=repository), self.last_stderr)
 
                 self.assertEqual(name, read_catalogue(repository)["plugins"][0]["tier"])
 
@@ -327,7 +326,7 @@ class TierTest(GeneratorTestCase):
             repository = os.path.join(self.temp, run)
             os.makedirs(repository)
             write_jar(repository, NEW_VERSION, NEW_JAR_BYTES)
-            self.assertEqual(0, self.publish_with_tiers(repository), self.last_stderr)
+            self.assertEqual(0, self.publish(repository=repository), self.last_stderr)
             outputs.append(read_bytes(os.path.join(repository, CATALOGUE)))
 
         self.assertEqual(outputs[0], outputs[1])
@@ -338,7 +337,7 @@ class TierTest(GeneratorTestCase):
         self.write_tiers({})
         before = self.catalogue_bytes()
 
-        code = self.publish_with_tiers(version=NEW_VERSION)
+        code = self.publish(version=NEW_VERSION)
 
         self.assertEqual(1, code, "a plugin without a tier is refused, it is never listed as community by default")
         self.assertIn("opensearch-plugin", self.last_stderr)
@@ -350,7 +349,7 @@ class TierTest(GeneratorTestCase):
         os.remove(self.tiers)
         before = self.catalogue_bytes()
 
-        code = self.publish_with_tiers()
+        code = self.publish()
 
         self.assertEqual(1, code, "a release without the tier check output is refused")
         self.assertIn("plugin-tiers.json", self.last_stderr)
@@ -361,7 +360,7 @@ class TierTest(GeneratorTestCase):
         before = self.catalogue_bytes()
 
         # The fixture lists 3.5.28 without a tier field, which the server reads as community.
-        code = self.publish_with_tiers(version=FIXTURE_VERSION)
+        code = self.publish(version=FIXTURE_VERSION)
 
         self.assertEqual(1, code, "a listed version cannot change its tier")
         for fragment in (FIXTURE_VERSION, "community", "experimental"):
@@ -373,7 +372,7 @@ class TierTest(GeneratorTestCase):
         self.write_tiers({"opensearch-plugin": "community"})
         before = self.catalogue_bytes()
 
-        self.assertEqual(0, self.publish_with_tiers(version=FIXTURE_VERSION), self.last_stderr)
+        self.assertEqual(0, self.publish(version=FIXTURE_VERSION), self.last_stderr)
 
         self.assertEqual(before, self.catalogue_bytes())
 
