@@ -146,3 +146,4 @@ __pycache__/
 # Playwright reports of the dashboard end-to-end suite
 /reposilite-frontend/playwright-report/
 /reposilite-frontend/test-results/
+loadtest/node_modules/
