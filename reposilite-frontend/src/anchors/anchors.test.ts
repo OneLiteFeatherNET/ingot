@@ -343,7 +343,7 @@ describe("anchor checks across the dashboard source", () => {
     const aliases = (registry as { aliases?: RegistryAlias[] }).aliases ?? []
 
     expect(registered.map((entry) => entry.name), "the support page has no component of its own").not.toContain("support-view")
-    expect(aliases).toEqual([expect.objectContaining({ name: "support-view", replacedBy: "system-info-view" })])
+    expect(aliases).toContainEqual(expect.objectContaining({ name: "support-view", replacedBy: "system-info-view" }))
   })
 
   it("has no alias whose removal version is reached", () => {

@@ -32,10 +32,10 @@ const ROWS = [
   { name: 'docs', type: 'raw', size: 12 },
 ]
 
-const mountTable = (props: Record<string, unknown> = {}, slots: Record<string, unknown> = {}) =>
+const mountTable = (props: Record<string, unknown> = {}, slots: Record<string, () => unknown> = {}) =>
   mount(MdDataTable, {
     props: { caption: 'Repositories', columns: COLUMNS, rows: ROWS, ...props },
-    slots: slots as Record<string, () => unknown>,
+    slots,
   })
 
 const headers = (wrapper: ReturnType<typeof mountTable>) => wrapper.findAll('thead th')
@@ -74,7 +74,7 @@ describe('MdDataTable structure', () => {
 
   it('renders the cell slot in place of the plain value', () => {
     const wrapper = mountTable({}, {
-      cell: ({ value }: { value: unknown }) => h('b', `${value} items`),
+      cell: ({ value }: { value: unknown }) => h('b', `${String(value)} items`),
     })
 
     expect(wrapper.find('tbody td b').text()).toBe('maven items')
@@ -94,7 +94,7 @@ describe('MdDataTable structure', () => {
 
     expect(wrapper.attributes('data-ingot-component')).toBe('md-data-table')
     expect(wrapper.find('thead').attributes('data-ingot-part')).toBe('header')
-    expect(wrapper.find('tbody').attributes('data-ingot-part')).toBe('row')
+    expect(wrapper.find('tbody tr').attributes('data-ingot-part')).toBe('row')
   })
 })
 
