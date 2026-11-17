@@ -900,3 +900,12 @@ describe('IndexPage system information frame', () => {
     expect(frame.props('reading'), 'the frame is not a reading page').toBe(false)
   })
 })
+
+describe('IndexPage maintenance frame', () => {
+  it('lets the maintenance page use the full width, so its tabs and panels reach the edge', async () => {
+    const { wrapper } = await mountAt('/maintenance', { manager: true })
+
+    const frame = wrapper.findComponent({ name: 'AdministrationFrame' }) as StubWrapper
+    expect(frame.props('reading'), 'the frame is not a reading page').toBe(false)
+  })
+})
