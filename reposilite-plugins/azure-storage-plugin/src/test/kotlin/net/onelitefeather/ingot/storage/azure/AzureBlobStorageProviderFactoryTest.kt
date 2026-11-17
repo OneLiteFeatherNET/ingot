@@ -38,7 +38,8 @@ internal class AzureBlobStorageProviderFactoryTest {
     @TempDir
     lateinit var workingDirectory: Path
 
-    private fun context(): StorageProviderContext {
+    /** A context whose environment is [variables], keyed by the name without the INGOT_ or REPOSILITE_ prefix. */
+    private fun context(variables: Map<String, String> = emptyMap()): StorageProviderContext {
         val logger: Journalist = InMemoryLogger()
         val root = workingDirectory
         return object : StorageProviderContext {
@@ -46,6 +47,7 @@ internal class AzureBlobStorageProviderFactoryTest {
             override val failureFacade: FailureFacade = FailureFacade(logger)
             override val workingDirectory: Path = root
             override val repositoryName: String = "repository"
+            override fun environment(name: String): String? = variables[name]
         }
     }
 
@@ -99,6 +101,29 @@ internal class AzureBlobStorageProviderFactoryTest {
         refusal.isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("accountKey")
             .hasMessageNotContaining("hidden-sas-token-value")
+    }
+
+    @Test
+    fun `should take the account name from the environment when the settings leave it blank`() {
+        // when: the repository names no account, and the process variable of the account is set
+        val provider = factory.create(
+            context(mapOf("AZURE_BLOB_ACCOUNT_NAME" to "envaccount")),
+            AzureBlobStorageProviderSettings(container = "repositories"),
+        )
+
+        // then: the repository is built instead of being refused for a missing account
+        assertThat(provider).`as`("provider from the environment account").isNotNull()
+    }
+
+    @Test
+    fun `should refuse a blank account name when neither the settings nor the environment name one`() {
+        // when: the repository names no account and the environment is empty
+        val refusal = assertThatThrownBy {
+            factory.create(context(), AzureBlobStorageProviderSettings(container = "repositories"))
+        }
+
+        // then: the refusal still names the account field
+        refusal.isInstanceOf(IllegalStateException::class.java).hasMessageContaining("accountName")
     }
 
     @Test
