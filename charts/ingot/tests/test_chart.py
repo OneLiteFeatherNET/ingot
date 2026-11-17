@@ -1117,6 +1117,83 @@ class ScalableCiRepositoriesTest(unittest.TestCase):
                          "the scalable CI install must start with repositories on object storage, not the escape hatch")
 
 
+class ChartTestHookTest(unittest.TestCase):
+    """The `helm test` pod is opt-in: tests.enabled renders it, and tests.tokenSecret adds the token read from a Secret."""
+
+    def test_default_render_has_no_test_pod(self):
+        self.assertEqual(
+            [], test_hook_pods(render()),
+            "the default render must not contain a pod with the helm.sh/hook: test annotation",
+        )
+
+    def test_enabled_renders_one_test_pod_with_the_test_hook(self):
+        pods = test_hook_pods(render({"tests": {"enabled": True}}))
+        self.assertEqual(1, len(pods), "tests.enabled=true must render exactly one test pod")
+
+    def test_disabled_hook_with_a_token_secret_renders_no_test_pod(self):
+        values = {"tests": {"enabled": False, "tokenSecret": {"name": "ingot-test", "key": "token"}}}
+        self.assertEqual(
+            [], test_hook_pods(render(values)),
+            "tests.enabled=false must render no test pod, even when tests.tokenSecret is set",
+        )
+
+    def test_test_pod_checks_the_health_endpoint(self):
+        pod = test_hook_pods(render({"tests": {"enabled": True}}))[0]
+        script = " ".join(pod_container(pod)["command"])
+        self.assertIn(
+            "/api/status/health", script,
+            "the test pod must call the health endpoint of the server",
+        )
+
+    def test_test_pod_without_token_secret_sends_no_authorization_header(self):
+        pod = test_hook_pods(render({"tests": {"enabled": True}}))[0]
+        script = " ".join(pod_container(pod)["command"])
+        self.assertNotIn(
+            "Authorization", script,
+            "without tests.tokenSecret the test pod must check only public endpoints",
+        )
+        self.assertEqual(
+            [], pod_container(pod).get("env", []),
+            "without tests.tokenSecret the test pod must read no environment variable",
+        )
+
+    def test_test_pod_reads_the_token_from_the_named_secret_key(self):
+        values = {"tests": {"enabled": True, "tokenSecret": {"name": "ingot-test", "key": "token"}}}
+        pod = test_hook_pods(render(values))[0]
+        env = {entry["name"]: entry for entry in pod_container(pod).get("env", [])}
+        self.assertIn("INGOT_TOKEN", env, "the test pod must expose the token as INGOT_TOKEN")
+        reference = env["INGOT_TOKEN"]["valueFrom"]["secretKeyRef"]
+        self.assertEqual("ingot-test", reference["name"], "the token must come from the named Secret")
+        self.assertEqual("token", reference["key"], "the token must come from the named key")
+
+    def test_test_pod_with_a_token_secret_sends_the_bearer_token(self):
+        values = {"tests": {"enabled": True, "tokenSecret": {"name": "ingot-test", "key": "token"}}}
+        pod = test_hook_pods(render(values))[0]
+        script = " ".join(pod_container(pod)["command"])
+        self.assertIn(
+            "Authorization: Bearer", script,
+            "with tests.tokenSecret the test pod must send the token as a bearer header",
+        )
+
+    def test_test_hook_renders_no_secret_value(self):
+        values = {"tests": {"enabled": True, "tokenSecret": {"name": "ingot-test", "key": "token"}}}
+        self.assertEqual(
+            [], of_kind(render(values), "Secret"),
+            "the chart must reference the token Secret by name and key, never render a Secret",
+        )
+
+
+def test_hook_pods(manifests):
+    return [
+        doc for doc in of_kind(manifests, "Pod")
+        if doc["metadata"].get("annotations", {}).get("helm.sh/hook") == "test"
+    ]
+
+
+def pod_container(pod):
+    return pod["spec"]["containers"][0]
+
+
 def scalable_ci_values():
     with open(os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")) as handle:
         return yaml.safe_load(handle)
