@@ -109,7 +109,7 @@ const onAction = (row: RepositoryRow, value: string) => {
         <tr class="border-b border-outline-variant">
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
             :aria-sort="ariaSort('name')"
           >
             <button
@@ -122,7 +122,7 @@ const onAction = (row: RepositoryRow, value: string) => {
           </th>
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
             :aria-sort="ariaSort('type')"
           >
             <button
@@ -135,7 +135,7 @@ const onAction = (row: RepositoryRow, value: string) => {
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[1920px]:table-cell"
             :aria-sort="ariaSort('visibility')"
           >
             <button
@@ -149,20 +149,20 @@ const onAction = (row: RepositoryRow, value: string) => {
           <th
             v-if="versionPolicy"
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[1920px]:table-cell"
           >
             Version policy
           </th>
           <th
             v-if="writePolicy"
             scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 text-left md-label-large text-on-surface large:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface large:table-cell"
           >
             Write policy
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[2560px]:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[2560px]:table-cell"
             :aria-sort="ariaSort('storage')"
           >
             <button
@@ -175,13 +175,13 @@ const onAction = (row: RepositoryRow, value: string) => {
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface large:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface large:table-cell"
           >
             Address
           </th>
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
           >
             Actions
           </th>
@@ -193,12 +193,12 @@ const onAction = (row: RepositoryRow, value: string) => {
           :key="row.route"
           data-ingot-part="row"
           :data-ingot-repository="row.name"
-          class="border-b border-outline-variant align-top"
+          class="border-b border-outline-variant"
         >
           <th
             scope="row"
             data-ingot-part="cell-name"
-            class="px-3 py-3 text-left md-body-large text-on-surface"
+            class="px-3 py-3 align-middle text-left md-body-large text-on-surface"
           >
             <RouterLink
               :to="{ name: 'settings-repository', params: { id: row.route } }"
@@ -216,7 +216,7 @@ const onAction = (row: RepositoryRow, value: string) => {
               class="block md-body-small text-on-surface-variant"
             >Enter an id.</span>
           </th>
-          <td class="px-3 py-3">
+          <td class="px-3 py-3 align-middle">
             <div class="flex flex-col gap-2">
               <TypeBadge :type="row.type" />
               <p
@@ -227,31 +227,31 @@ const onAction = (row: RepositoryRow, value: string) => {
               </p>
             </div>
           </td>
-          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell">
+          <td class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[1920px]:table-cell">
             {{ row.visibility }}
           </td>
           <td
             v-if="versionPolicy"
-            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell"
+            class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[1920px]:table-cell"
           >
             {{ versionLabel(row) }}
           </td>
           <td
             v-if="writePolicy"
-            class="hidden px-3 py-3 md-body-medium text-on-surface large:table-cell"
+            class="hidden px-3 py-3 align-middle md-body-medium text-on-surface large:table-cell"
           >
             {{ writeLabel(row) }}
           </td>
-          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[2560px]:table-cell">
+          <td class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[2560px]:table-cell">
             {{ row.storage }}
           </td>
-          <td class="hidden w-full max-w-0 px-3 py-3 large:table-cell">
+          <td class="hidden w-full max-w-0 px-3 py-3 align-middle large:table-cell">
             <code
               :title="row.address"
               class="block truncate md-body-small text-on-surface-variant"
             >{{ row.address }}</code>
           </td>
-          <td class="px-3 py-2">
+          <td class="px-3 py-3 align-middle">
             <MdOverflowMenu
               :label="`Actions for ${row.name}`"
               :items="actionsOf(row)"
