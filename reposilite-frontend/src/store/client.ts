@@ -303,6 +303,10 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
             { ...defaultAuthorization() }
           )
         },
+        // The caller's own access summary. It takes no principal: the server answers for the caller only.
+        access() {
+          return axios.get<components["schemas"]["OwnAccessSummaryDto"]>(createURL("/api/identity/me/access"), { ...defaultAuthorization() })
+        },
         tokens: tokenEndpoints("/api/identity/me/tokens", { rotate: true }),
       },
       // The tokens of any principal, for an instance admin. The server has no rotate endpoint here.
