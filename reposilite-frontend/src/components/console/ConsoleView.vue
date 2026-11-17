@@ -246,6 +246,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
         title="Not connected to the remote console"
         :description="disconnectedReason"
         tone="container"
+        :announce="false"
       >
         <template #actions>
           <MdButton

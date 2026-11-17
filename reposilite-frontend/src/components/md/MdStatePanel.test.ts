@@ -65,6 +65,12 @@ describe('MdStatePanel', () => {
     expect(wrapper.classes(), 'the default panel keeps the surface text colour').toContain('text-on-surface')
   })
 
+  it('leaves role alert off the error state when announce is false', () => {
+    const wrapper = mount(MdStatePanel, { props: { state: 'error', title: 'Not connected', announce: false } })
+
+    expect(wrapper.attributes('role'), 'a caller that announces the state itself must not get a second live region').toBeUndefined()
+  })
+
   it('sets aria-busy while loading and shows skeleton lines instead of a spinner', () => {
     const wrapper = mount(MdStatePanel, { props: { state: 'loading', title: 'Loading members' } })
 

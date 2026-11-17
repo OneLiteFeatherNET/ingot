@@ -330,6 +330,14 @@ describe('ConsoleView', () => {
       expect(banner.className, 'the surface text colour must not win over the container').not.toContain('text-on-surface')
     })
 
+    it('announces the disconnect through exactly one live region', async () => {
+      await drop()
+
+      const liveRegions = wrapper.findAll('[role="alert"], [role="status"], [aria-live]')
+        .filter(region => region.text().includes('Not connected to the remote console'))
+      expect(liveRegions, 'the disconnect must be announced once, not by the status line and the banner together').toHaveLength(1)
+    })
+
     it('offers Reconnect in the banner after a plain stream failure', async () => {
       await drop()
 
