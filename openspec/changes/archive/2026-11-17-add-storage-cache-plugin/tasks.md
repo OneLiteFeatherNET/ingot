@@ -9,7 +9,7 @@ never the full suite of `reposilite-backend`.
 
 ## 0. Verify third-party facts (before the proposal pull request, results recorded in `proposal.md`)
 
-- [ ] 0.1 Verify each claim about JFrog Artifactory `cache-fs` against the current JFrog documentation and record the link and the date
+- [x] 0.1 Verify each claim about JFrog Artifactory `cache-fs` against the current JFrog documentation and record the link and the date
   in `proposal.md`: least recently used eviction; the default size (assumed 5 GB) and whether it is counted in decimal or binary units;
   the maximum file size option; the option to skip the cache during upload; checksum validation; the advice of one cache per node in a
   high availability setup; and the advice not to use a cache in front of a local store. Correct the proposal and open question 4 where a
@@ -119,6 +119,6 @@ never the full suite of `reposilite-backend`.
 
 ## 10. Code pull request
 
-- [ ] 10.1 Open the code pull request under the title `feat(storage): add a read-through local cache storage plugin`, from a branch of
+- [x] 10.1 Open the code pull request under the title `feat(storage): add a read-through local cache storage plugin`, from a branch of
   the remote main branch that already contains the merged proposal and the merged predecessor changes
   (`add-storage-provider-registration`, `add-storage-capability-hooks`), with no file under `openspec/`.
