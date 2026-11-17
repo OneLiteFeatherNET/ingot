@@ -28,8 +28,8 @@ a count never includes a file the viewer may not read and never drops a value th
 
 ### Out of scope
 
-- Full text search over attribute values, for example a description. Open question Q1.
-- Numeric, range and version-order comparison of values. Values are strings and compared as strings.
+- Full text search over attribute values, for example a description (design Q1, settled 2026-11-17).
+- Numeric, range and version-order comparison of values (design Q3, settled 2026-11-17). Values are strings and compared as strings.
 - Counting projects instead of files. The portal groups files into projects; the index counts files, as it does today (Q5).
 - Any change to the existing filters, facets and sort. They keep their meaning and their order.
 - A new configuration key.

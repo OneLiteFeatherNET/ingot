@@ -87,8 +87,8 @@ up to more than the number of files. The portal states this (Q5).
 - A facet on key `k` is a `GROUP BY a.attr_value` over `search_attribute` joined to the rows that satisfy the other filters and the access
   condition, with `COUNT` and the existing ordering and cap.
 - A sort on key `k` is a scalar subquery on `attr_value_lc` for the row, with `NULLS LAST`. This is bounded by the index on
-  `(attr_key, attr_value_lc)` created in `add-search-document-attributes`; the change records the cost and measures it on the test
-  fixture with the target row count (Q2).
+  `(attr_key, attr_value_lc)` created in `add-search-document-attributes`. The sort is allowed for declared sortable keys (Q2, settled
+  2026-11-17); its cost is measured on a fixture of the expected size before the change is merged.
 
 ### D5: Elasticsearch, OpenSearch and Meilisearch
 
@@ -148,14 +148,14 @@ previous version, apart from the field order of JSON, which the API does not pro
   measurement of Q2 before the change is merged.
 - **Multi-valued counts can exceed the file count.** Mitigation: the portal says so (Q5).
 
-## Open questions (each has a default)
+## Open questions (settled 2026-11-17 with the recommended default)
 
-- **Q1. Text search over one attribute.** Default: no. Alternative: a text capability (`ATTRIBUTE_TEXT`) with a bounded `LIKE` over a
-  lower-cased column in the database backend and a full text field in Elasticsearch and OpenSearch. Decided with the portal, not here.
-- **Q2. Sort cost on the database backend.** Default: allowed for declared sortable keys, measured on a fixture of the expected size before
-  merge. Alternative: no attribute sort on the database backend.
-- **Q3. Version and range comparison.** Default: no. Game versions are normalised minors stored as strings, as the Minecraft design (Q3)
-  decides; ranges stay text and are not facetable.
-- **Q4. Bucket cap.** Default: 20, the existing `FACET_BUCKETS`.
-- **Q5. Project counts.** Default: file counts, documented as such. Alternative: a distinct count by the portal's grouping key, which the
-  index cannot compute in one query today.
+- **Q1. Text search over one attribute.** Settled 2026-11-17: no. Text search is out of scope for this change. A later text capability
+  (`ATTRIBUTE_TEXT`) would be a separate change.
+- **Q2. Sort cost on the database backend.** Settled 2026-11-17: allowed for declared sortable keys, measured on a fixture of the expected
+  size before merge (D4).
+- **Q3. Version and range comparison.** Settled 2026-11-17: no. Game versions are normalised minors stored as strings, as the Minecraft
+  design (Q3) decides; ranges stay text and are not facetable.
+- **Q4. Bucket cap.** Settled 2026-11-17: 20, the existing `FACET_BUCKETS`.
+- **Q5. Project counts.** Settled 2026-11-17: file counts, documented as such. A distinct count by the portal's grouping key is not part
+  of this change, because the index cannot compute it in one query today.
