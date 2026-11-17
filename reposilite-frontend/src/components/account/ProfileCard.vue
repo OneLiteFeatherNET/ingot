@@ -41,6 +41,8 @@ const KINDS: Readonly<Record<string, string | undefined>> = { USER: 'User', MACH
 
 const kind = computed(() => KINDS[props.principal.kind] ?? props.principal.kind)
 const displayName = computed(() => props.principal.displayName || props.principal.name)
+// The username is drawn only when it adds something to the display name, so one value is never shown twice.
+const showsUsername = computed(() => displayName.value !== props.principal.name)
 </script>
 
 <template>
@@ -74,12 +76,14 @@ const displayName = computed(() => props.principal.displayName || props.principa
       >
         {{ displayName }}
       </dd>
-      <dt class="text-on-surface-variant">
-        Username
-      </dt>
-      <dd class="m-0 min-w-0 break-words text-on-surface">
-        {{ principal.name }}
-      </dd>
+      <template v-if="showsUsername">
+        <dt class="text-on-surface-variant">
+          Username
+        </dt>
+        <dd class="m-0 min-w-0 break-words text-on-surface">
+          {{ principal.name }}
+        </dd>
+      </template>
       <dt class="text-on-surface-variant">
         Kind
       </dt>
