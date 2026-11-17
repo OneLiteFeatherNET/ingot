@@ -70,7 +70,7 @@ Three facts from the code shape the design:
 - A new `@Plugin` element, a new environment variable or a configuration key. The rule reads only the jar manifest.
 - Any change to the plugin API, its binary surface or the plugin API dump. `PluginTier` and `@Plugin` stay as they are.
 - Changing how the plugins directory is created. A plugins directory that cannot be created stops the start as it does today.
-- Checking that the annotation version of a plugin equals its manifest version (open question 2).
+- Checking that the annotation version of a plugin equals its manifest version (maintainer decision 2).
 - Packages `com.reposilite.journalist` and `org.panda_lang.*`, as set out in `CLAUDE.md`.
 
 ## Operator impact
@@ -106,25 +106,23 @@ rather than a modification of that change.
 - **Order.** This change is the prerequisite of the two siblings. Its four code pull requests merge in the order above, and each
   one is buildable and passing alone.
 
-## Maintainer questions
+## Maintainer decisions
 
-Each question has the default that this proposal builds in. A maintainer who answers differently changes the matching
-requirement and task before the first code pull request is opened.
+Settled on 2026-11-17: the maintainer accepted the recommended default of each question below. The default is the answer this proposal builds in. A later change of answer updates the matching requirement and task before the first code pull request is opened.
 
-1. **Version source.** Default: the manifest attribute `Implementation-Version`. The alternative is the `version()` element of
+1. **Version source.** Settled 2026-11-17, default: the manifest attribute `Implementation-Version`. The alternative is the `version()` element of
    `@Plugin`, which needs the plugin author to set it and the build to keep it equal to the manifest. The annotation default is
    the server version, so an embedded plugin that did not set it would never be replaced.
-2. **Annotation and manifest disagree.** Default: the loader does not compare them. The support bundle reads the annotation
-   (`SupportPlugin.kt:88`), so an embedded plugin must set both. Checking it in `verifyEmbeddedPlugins` is possible, and the
-   maintainer decides whether to add it.
-3. **Extraction fallback.** Default: the temporary directory of the JVM, keyed by the working directory, and then a skipped
+2. **Annotation and manifest disagree.** Settled 2026-11-17, default: the loader does not compare them. The support bundle reads the annotation
+   (`SupportPlugin.kt:88`), so an embedded plugin must set both. Checking it in `verifyEmbeddedPlugins` is not part of this change.
+3. **Extraction fallback.** Settled 2026-11-17, default: the temporary directory of the JVM, keyed by the working directory, and then a skipped
    jar with one ERROR line. The alternative is to stop the start, which a read-only container would then hit after an upgrade.
-4. **Where the list lives.** Default: a Kotlin list in `reposilite-backend/build.gradle.kts`. The alternative is a Gradle property,
+4. **Where the list lives.** Settled 2026-11-17, default: a Kotlin list in `reposilite-backend/build.gradle.kts`. The alternative is a Gradle property,
    which a CI run could set without a commit.
 5. **Tier check.** `add-plugin-support-tiers` says a module that declares Core needs a jar in the image. An embedded jar is not
-   copied into `/app/bundled-plugins`. Default: the sibling changes declare no tier, so the check never sees the question. The
+   copied into `/app/bundled-plugins`. Settled 2026-11-17, default: the sibling changes declare no tier, so the check never sees the question. The
    tier check is extended in its own change if a maintainer wants embedded plugins to declare Core.
-6. **Commit type of the build hook.** Default: the hook is a `build(plugin)` commit inside the `feat(plugin)` pull request, as
+6. **Commit type of the build hook.** Settled 2026-11-17, default: the hook is a `build(plugin)` commit inside the `feat(plugin)` pull request, as
    the proposal says a change ships under one type. The alternative is a separate `build(plugin)` change.
 
 ## Verification

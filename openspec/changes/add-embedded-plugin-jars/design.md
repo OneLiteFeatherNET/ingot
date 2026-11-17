@@ -74,7 +74,7 @@ used for the rule, for two reasons:
 - Gradle writes the manifest from the module's `version`, so the value cannot drift from the jar's name.
 
 The annotation keeps its meaning, and the support bundle still reads it (`SupportPlugin.kt:88`). An embedded plugin sets it to the
-same value as the manifest, which is the author's duty and is documented in task 5.3. Open question 2 covers a check of that.
+same value as the manifest, which is the author's duty and is documented in task 5.3. Maintainer decision 2 (settled 2026-11-17) leaves that check out of this change.
 
 ### D3. Version grammar and comparison
 
@@ -190,9 +190,8 @@ plugin ABI gate of `plugin-abi-gate` runs unchanged.
 - **Two jars with the same file name.** The build fails when the list names two modules with the same jar name, because
   `verifyEmbeddedPlugins` requires one entry per name.
 - **Losing constructors.** A plugin's constructor runs even when its copy loses (D7). Documented for authors.
-- **Annotation and manifest versions differ.** The rule uses the manifest, and the support bundle shows the annotation (open
-  question 2).
-- **Tier check.** A module that declares Core would need a jar in the image (open question 5). The siblings declare no tier.
+- **Annotation and manifest versions differ.** The rule uses the manifest, and the support bundle shows the annotation (maintainer decision 2).
+- **Tier check.** A module that declares Core would need a jar in the image (maintainer decision 5, settled 2026-11-17). The siblings declare no tier.
 - **Slip of the sibling chain.** Both siblings wait for this change. Each pull request of this change stands alone, so the
   siblings can start on the merged parts.
 
@@ -210,6 +209,6 @@ Each step is one pull request, buildable and passing alone, in this order:
 
 The sibling `extract-javadoc-plugin` starts its code pull requests only after pull request 4 has merged, and its group 0.1 checks that.
 
-## Open questions
+## Settled questions
 
-Each one is listed in `proposal.md` with the default that this design builds in. The maintainer decides before pull request 1.
+The six maintainer decisions of `proposal.md` are settled on 2026-11-17 with the recommended default of each. No question is open. Question 1 is decided in D2, question 2 in Risks, question 3 in D5, question 4 in D1, question 5 in Risks, and question 6 in step 2 of the Migration plan.

@@ -20,8 +20,7 @@ request contains a file under `openspec/`. Checkboxes are ticked in a follow-up 
 - [ ] 0.3 Confirm that no Gradle cycle appears when a plugin module compiles against the backend and the backend's shadow jar takes the
   plugin's shadow jar. Run `./gradlew :reposilite-backend:shadowJar --dry-run` with a fixture module named, in a throwaway checkout.
   Record the result in design D1.
-- [ ] 0.4 Read `add-plugin-support-tiers` on `main`, the rule "Core requires a bundled jar", and record in open question 5 whether the tier
-  check would fail an embedded module that declares Core. Verify: the answer is written in `proposal.md`.
+- [ ] 0.4 Read `add-plugin-support-tiers` on `main`, the rule "Core requires a bundled jar", and record in `design.md` (Risks) whether the tier check would fail an embedded module that declares Core. Verify: the answer is written in `design.md`.
 
 ## 1. Proposal
 
@@ -51,7 +50,7 @@ PR title: `feat(plugin): embed a named plugin jar into the server jar`
   without embedded entries passes; a named module with no entry fails and the message names the module; an entry without
   `Implementation-Version` fails; an `embedded-plugins/` entry that no module names fails. Verify: they fail because
   `EmbeddedPluginJars.kt` does not exist. The test dependencies are declared in `buildSrc/build.gradle.kts`.
-- [ ] 3.2 `build(plugin)`: add `EmbeddedPluginJars.kt` to `buildSrc/src/main/kotlin/`, the list `embeddedPluginProjects` (empty), the
+- [ ] 3.2 `build(plugin)`: add `EmbeddedPluginJars.kt` to `buildSrc/src/main/kotlin/`, the list `embeddedPluginProjects` in `reposilite-backend/build.gradle.kts` (empty), the
   configuration `embeddedPlugin` and its dependencies, the `from` of the shadow jar into `embedded-plugins`, and the task
   `verifyEmbeddedPlugins` wired into `check` of `reposilite-backend`. Verify: `:buildSrc:test` passes, and
   `heavy ./gradlew :reposilite-backend:shadowJar :reposilite-backend:verifyEmbeddedPlugins --max-workers=2` produces a jar with no
