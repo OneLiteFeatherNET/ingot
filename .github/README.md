@@ -162,7 +162,8 @@ Add the matching token as a `<server>` entry in your `settings.xml`, then run
 
 ## Documentation
 
-The documentation is a GitBook space in the
+The documentation is published at [docs.onelitefeather.net/ingot](https://docs.onelitefeather.net/ingot).
+Its source is a GitBook space in the
 [`docs/gitbook`](https://github.com/OneLiteFeatherNET/ingot/tree/main/docs/gitbook)
 directory of this repository. Its table of contents is `docs/gitbook/SUMMARY.md`. The pages
 are split into tutorials, how-to guides, reference and explanation.
@@ -174,7 +175,8 @@ Bug reports, feature requests and pull requests are welcome. Start with
 Security issues should go through the [security policy](SECURITY.md) rather than a public
 issue.
 
-<!-- TODO(onelitefeather): community link for user questions and discussion. -->
+Questions, ideas and help from other users go to
+[GitHub Discussions](https://github.com/OneLiteFeatherNET/ingot/discussions).
 
 ### Building and running locally
 

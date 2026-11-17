@@ -9,9 +9,9 @@ Apache License 2.0. See the `NOTICE` file in the repository root for attribution
 
 ## Creating an issue
 
-Creating an issue to ask a question is fine. You can also reach the maintainers through our community channel:
-
-TODO(onelitefeather): community link
+Creating an issue to ask a question is fine. Questions, ideas and help from other users belong in
+[GitHub Discussions](https://github.com/OneLiteFeatherNET/ingot/discussions), where the maintainers and other
+users can answer them.
 
 Remember to include enough information if you're reporting a bug, so the problem can be reproduced.
 
