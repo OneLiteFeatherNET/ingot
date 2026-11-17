@@ -4,18 +4,20 @@ description: Choose and set the database of an Ingot instance (SQLite, MariaDB o
 
 # Configure a database
 
-Ingot keeps its state in one database: users, teams, tokens, shared settings, the search index, the audit log and the cleanup state. SQLite is the default and needs no setup. Use MariaDB or PostgreSQL when you run several instances or want a database server that you back up with your usual tools.
+Ingot keeps its state in one database: users, teams, tokens, shared settings, the search index, the audit log and the cleanup state. SQLite is the default and needs no setup. Use PostgreSQL when you run several instances or want a database server that you back up with your usual tools. PostgreSQL is the recommended shared database for several replicas and for production.
 
 ## Support status
 
 | Type | Connection string starts with | Status |
 |:-----|:------------------------------|:-------|
-| SQLite | `sqlite` | Supported. Default. |
-| MariaDB | `mariadb` | Supported. |
-| PostgreSQL | `postgresql` | Supported. |
+| SQLite | `sqlite` | Supported. Default, for one instance. |
+| MariaDB | `mariadb` | Supported, not recommended. |
+| PostgreSQL | `postgresql` | Recommended for several replicas and for production. |
 | MySQL | `mysql` | Experimental. Not covered by Ingot's integration tests. |
 | H2 | `h2` | Experimental. Not covered by Ingot's integration tests. |
 | Custom JDBC URL | `jdbc:` | Uses the database type of the URL. See [Custom JDBC URLs](#custom-jdbc-urls). |
+
+The project recommends PostgreSQL because its integration tests cover the schema lock and two instances on one database. The evidence for each setup is listed in [High availability support](../../references/architecture/high-availability-support.md). Existing installations keep the database they have, and SQLite stays the default.
 
 Use the experimental types only to evaluate Ingot. Back up before you try them.
 
@@ -146,6 +148,10 @@ Each replica opens at most `databaseThreadPool` connections to the database serv
 For example, three replicas on PostgreSQL with `databaseThreadPool` set to `5` need at least 18 connections during the start (3 × 6). In the steady state they need 15 (3 × 5), because the extra connection of the start is no longer needed.
 
 If a firewall or a load balancer closes idle connections, set `databaseKeepalive` and `databaseMaxLifetime` below the time after which it closes them. The keys are listed in the [configuration reference](../../references/configuration/configuration-and-startup.md#database).
+
+## Connection poolers
+
+Do not put a connection pooler in transaction mode, such as PgBouncer in transaction mode, between Ingot and PostgreSQL. The schema lock is a session-level advisory lock, and its `lock_timeout` is set on the same session. A pooler in transaction mode gives the server connection to another client after each transaction, so the lock and the timeout no longer belong to the replica that took them. Session mode keeps a server connection with one client for the whole session, and it is the mode to use. Ingot's tests do not run through a pooler, so the project does not test session mode.
 
 ## Result
 

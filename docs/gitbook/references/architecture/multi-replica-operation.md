@@ -27,7 +27,7 @@ flowchart LR
 
 ## What a replica needs
 
-Every replica must reach the same database server. SQLite is a single file on one machine, so it suits one instance only. For more than one replica, use a database server. MariaDB and PostgreSQL are the supported choices. MySQL and H2 are experimental.
+Every replica must reach the same database server. SQLite is a single file on one machine, so it suits one instance only. For more than one replica, use a database server. PostgreSQL is the recommended choice, and MariaDB is supported but not recommended. MySQL and H2 are experimental. Do not put a connection pooler in transaction mode in front of PostgreSQL, see [Connection poolers](../../set-up/cluster/configure-database.md#connection-poolers).
 
 Each replica should have its own data directory. The local configuration file and the health check file are written there at each start, so replicas that share one directory overwrite each other's files. See [Shared and local state](#shared-and-local-state) below.
 

@@ -27,7 +27,7 @@ Read the Nexus Repository and Artifactory columns as orientation only. Each vend
 * **Maven only.** Ingot hosts Maven repositories. It does not host npm, PyPI, container images, Go modules, NuGet or other formats. A repository format interface is proposed on the roadmap, and it is not part of the current release. If you need several formats from one server, Nexus Repository or Artifactory covers more.
 * **A smaller ecosystem.** Nexus Repository and Artifactory have vendor support, long track records at large scale and many integrations. Ingot is a young fork, and its scale evidence is the one on [High availability support](../references/architecture/high-availability-support.md).
 * **No commercial support.** There is no paid support contract. Help comes from the project and its community.
-* **Limited high availability.** Several replicas are supported on a shared MariaDB database and S3 storage. Some setups are explicitly not supported, and PostgreSQL with several replicas is not tested. The details are on the high availability page.
+* **Limited high availability.** Several replicas are supported on a shared database, PostgreSQL (recommended) or MariaDB, and S3 storage. Some setups are explicitly not supported. PostgreSQL with several replicas is tested in the heavy CI jobs, which run on a pull request only with a label. The details are on the high availability page.
 * **No vulnerability or licence scanning.** Ingot stores and serves artifacts. It does not analyse their contents the way a commercial platform can.
 
 ## Against Reposilite

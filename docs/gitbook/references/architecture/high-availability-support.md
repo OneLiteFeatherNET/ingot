@@ -8,7 +8,7 @@ An operator who runs more than one replica asks three questions: which setup is 
 
 "Supported" means three things on this page:
 
-* the topology runs in the project's CI on every pull request,
+* the topology runs in the project's CI: the unit tests on every pull request, and the heavy jobs on the pull requests that carry the job's label and on every release pull request,
 * a failure in that topology is treated as a bug,
 * the default configuration needs no workaround.
 
@@ -21,29 +21,30 @@ Each row has one state:
 | State | Meaning |
 | --- | --- |
 | tested on every pull request | A test named in the row runs in a CI job that runs on every pull request. |
-| partly tested | Some tests named in the row run in a CI job on every pull request. The rest of the statement has no test, and the row says which part it is. |
+| tested with a label | Every test named in the row runs in a heavy CI job. That job runs on a pull request only with its label (`ci:ha`, `ci:images`, `ci:integration`, or `ci:heavy` for all of them), and on every release pull request. |
+| partly tested | Some tests named in the row run in a CI job. The rest of the statement has no test, and the row says which part it is. |
 | not tested | No test or job asserts the statement. It may still be true, but this page does not promise it. |
 | not supported | The project makes no promise for this setup. No test is named, because a missing promise has no test. |
 
-The jobs that carry the evidence, all of which run on pull requests:
+The jobs that carry the evidence. The unit tests run on every pull request. The following jobs run on a pull request only with their label, and on every release pull request:
 
-* **HA smoke test** (`ha-smoke` job of `.github/workflows/ci.yml`, driver `charts/ingot/tests/ha_smoke.py`): two replicas on kind, with MariaDB, an S3 endpoint (Floci) and NATS.
-* **Container images** (`./gradlew :reposilite-backend:containerTest`): the built image, the bus between two replicas and the comparison with the previous release.
-* **Coverage** (`./gradlew :reposilite-backend:testCoverage`): the unit suite and the integration suite. The integration suite runs on SQLite and MariaDB, and the tests that name PostgreSQL also run on PostgreSQL.
+* **HA smoke test** (`ha` job of `.github/workflows/heavy.yml`, label `ci:ha`, driver `charts/ingot/tests/ha_smoke.py`): two replicas on kind, with MariaDB or PostgreSQL (one matrix leg each), an S3 endpoint (Floci) and NATS.
+* **Container images** (`images` job of `.github/workflows/heavy.yml`, label `ci:images`, `./gradlew :reposilite-backend:containerTest`): the built image, the bus between two replicas on MariaDB and on PostgreSQL, the PostgreSQL upgrade rehearsal (`PostgresUpgradeTest`) and the comparison with the previous release.
+* **Coverage** (`./gradlew :reposilite-backend:testCoverage`): the unit suite and the integration suite. The coverage step runs on pushes to main, not on pull requests. On a pull request the integration suite runs only in the `integration` job, with the label `ci:integration`. It runs on SQLite and MariaDB, and the tests that name PostgreSQL also run on PostgreSQL.
 * **Helm chart** (unit tests in `charts/ingot/tests`).
 
 ## Supported topology
 
 | Part of the topology | Evidence | State |
 | --- | --- | --- |
-| N replicas of one release line behind one Service | `ha_smoke.py` checks `check_rolling_restart`, `check_lease_takeover`, `check_concurrent_deploys`, `check_sessions` and `check_cluster_view`, run on two replicas of the same image | tested on every pull request |
-| MariaDB as the shared database | the HA smoke test uses MariaDB; `MetadataLeaseIntegrationTest` and `LeaseSchemaLockTakeoverIntegrationTest` run two instances on one MariaDB database | tested on every pull request |
-| PostgreSQL as the shared database, one instance | a set of integration tests runs on PostgreSQL through `PostgresSpecificationJunitExtension` (#121) | tested on every pull request |
-| PostgreSQL with several replicas | `ConcurrentSchemaInitialisationIntegrationTest` (PostgreSQL case) starts replicas together on one schema, `TwoInstanceClusterIntegrationTest` (`startPair(postgres = true)`) runs two instances on one PostgreSQL database, and `DatabaseClusterTransportIntegrationTest` (PostgreSQL case) covers the transport. `PostgresAdvisorySchemaLock` has no test of its own. The two-replica smoke test and the container suite have no PostgreSQL leg yet | partly tested |
-| S3 storage shared by all replicas | the HA smoke test stores its repositories on the S3 endpoint Floci, not on AWS | tested on every pull request |
+| N replicas of one release line behind one Service | `ha_smoke.py` checks `check_rolling_restart`, `check_lease_takeover`, `check_concurrent_deploys`, `check_sessions` and `check_cluster_view`, run on two replicas of the same image | tested with a label |
+| MariaDB as the shared database | the HA smoke test uses MariaDB; `MetadataLeaseIntegrationTest` and `LeaseSchemaLockTakeoverIntegrationTest` run two instances on one MariaDB database | tested with a label |
+| PostgreSQL as the shared database, one instance | a set of integration tests runs on PostgreSQL through `PostgresSpecificationJunitExtension` (#121) | tested with a label |
+| PostgreSQL with several replicas | The `ha` job's `postgresql` leg runs the two-replica smoke test on PostgreSQL. `PostgresUpgradeTest` runs the upgrade rehearsal on PostgreSQL, and the PostgreSQL case of `ClusterBusImageTest` runs two replicas on one PostgreSQL database and one NATS broker. The integration suite also starts replicas on one PostgreSQL database: `ConcurrentSchemaInitialisationIntegrationTest` (PostgreSQL case), `TwoInstanceClusterIntegrationTest` (`startPair(postgres = true)`) and `DatabaseClusterTransportIntegrationTest` (PostgreSQL case). `PostgresAdvisorySchemaLock` has no test of its own | partly tested |
+| S3 storage shared by all replicas | the HA smoke test stores its repositories on the S3 endpoint Floci, not on AWS | tested with a label |
 | A filesystem volume that several replicas mount (`ReadWriteMany`) | no test mounts one volume on two replicas | not tested |
-| Optional NATS cluster bus | `ClusterBusImageTest` "two replicas see each other through the bus"; the HA smoke test runs NATS | tested on every pull request |
-| Replicas of two adjacent releases on one database | `MixedVersionClusterTest`, see [the rolling upgrade rule](#rolling-upgrade-rule) | tested on every pull request, once `test-mixed-version-cluster` has merged |
+| Optional NATS cluster bus | `ClusterBusImageTest` "two replicas see each other through the bus"; the HA smoke test runs NATS | tested with a label |
+| Replicas of two adjacent releases on one database | `MixedVersionClusterTest`, see [the rolling upgrade rule](#rolling-upgrade-rule) | tested with a label, once `test-mixed-version-cluster` has merged |
 
 ## Not supported
 
@@ -96,8 +97,8 @@ The tests named in this section are in the open pull request for `test-mixed-ver
 | A replica stops while it holds a batch of search outbox rows | Nothing. The index catches up later | The batch lease runs out after 60 seconds, and another replica takes the rows | `an entry of an expired lease is taken over by another instance` (`OutboxClaimExclusivityTest`) | tested on every pull request |
 | A replica stops during a scheduled cleanup run | Nothing | A later check on the same UTC day takes the run over after the 60 second lease, and runs it once | `takes over a run whose instance stopped before it finished, and runs it once` (`CleanupSchedulerClaimTest`); `check_lease_takeover` in the HA smoke test | tested on every pull request |
 | A replica was not started at the scheduled minute | Nothing | Nothing. The run of that day is not caught up later | `does not start a run at a later tick when no instance started it at the scheduled minute` (`CleanupSchedulerClaimTest`) | tested on every pull request |
-| The holder of the schema lock on MariaDB stops | A replica that starts meanwhile waits for the lock | The lease expires after 60 seconds and the next replica takes it | `takes over a lease whose holder stopped renewing once it has expired` (`LeaseSchemaLockTakeoverIntegrationTest`) | tested on every pull request |
-| The holder of a metadata write lock stops | A write of another replica for the same artifact is refused while the lease is held | The lease is taken over once it has expired | `takes over the lease of an instance that stopped after the lease expired` (`MetadataLeaseIntegrationTest`) | tested on every pull request |
+| The holder of the schema lock on MariaDB stops | A replica that starts meanwhile waits for the lock | The lease expires after 60 seconds and the next replica takes it | `takes over a lease whose holder stopped renewing once it has expired` (`LeaseSchemaLockTakeoverIntegrationTest`) | tested with a label |
+| The holder of a metadata write lock stops | A write of another replica for the same artifact is refused while the lease is held | The lease is taken over once it has expired | `takes over the lease of an instance that stopped after the lease expired` (`MetadataLeaseIntegrationTest`) | tested with a label |
 | The lease of a metadata write is taken over before the commit | `503`, and nothing is written | The client retries | `refuses the commit with 503 and writes nothing when the lease is taken over before it` (`MetadataLocksTest`) | tested on every pull request |
 | A search rebuild or verify run is still live on another replica | A second run is refused | The run ends, or its lease expires and the abandoned run is failed | `a second rebuild is refused while the lease of the first is live` and `a rebuild can start once the lease of an abandoned run has expired and the abandoned run is failed` (`RebuildServiceTest`) | tested on every pull request |
 | The database does not answer | Readiness answers `503` while a check fails. Requests that need the database fail | The database returns | `should name a check that answers false` (`ReadinessProbeTest`) shows the mechanism. The database check itself is not tested | not tested for a database outage |
