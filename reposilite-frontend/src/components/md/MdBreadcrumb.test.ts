@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory, RouterLink } from 'vue-router'
 import MdBreadcrumb from './MdBreadcrumb.vue'
 
@@ -24,7 +24,9 @@ import MdBreadcrumb from './MdBreadcrumb.vue'
 const BASE = '/repo/'
 const routes = [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
 
-const mountWithRouter = (props: Record<string, unknown>): VueWrapper => {
+type BreadcrumbProps = { items: { label: string, to?: string, href?: string }[], label?: string }
+
+const mountWithRouter = (props: BreadcrumbProps) => {
   const router = createRouter({ history: createWebHistory(BASE), routes })
   return mount(MdBreadcrumb, { props, global: { plugins: [router] } })
 }
@@ -44,7 +46,7 @@ describe('MdBreadcrumb', () => {
   it('renders a nav with the given accessible name', () => {
     const wrapper = mountWithRouter({ items: trail, label: 'File browser trail' })
 
-    expect(wrapper.element.tagName).toBe('NAV')
+    expect((wrapper.element as HTMLElement).tagName).toBe('NAV')
     expect(wrapper.attributes('aria-label')).toBe('File browser trail')
   })
 

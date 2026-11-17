@@ -64,7 +64,9 @@ const isMiddle = (index: number) => index > 0 && !isLast(index)
           v-if="item.to !== undefined && !isLast(index)"
           :to="item.to"
           :class="[LINK, isMiddle(index) && TRUNCATE]"
-        >{{ item.label }}</RouterLink>
+        >
+          {{ item.label }}
+        </RouterLink>
         <a
           v-else-if="item.href && !isLast(index)"
           :href="item.href"
