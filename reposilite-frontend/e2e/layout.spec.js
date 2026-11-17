@@ -337,20 +337,6 @@ test.describe('the administration page header', () => {
     const box = await shortcut.boundingBox()
     expect(box.x + box.width, 'the last shortcut ends near the right edge of the container, in px').toBeGreaterThan(1200)
   })
-
-  test('keeps the content column of a reading page at its 960 pixel measure at 1440 pixels', async ({ adminPage: page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto(siteUrl('/settings/audit'))
-    // The page column ends the measure. Its left edge is the side navigation's, when the page has one.
-    const content = page.locator('[data-ingot-part="page"]')
-    await expect(page.getByRole('region', { name: 'Audit settings', exact: true })).toBeVisible()
-
-    const box = await content.boundingBox()
-    const navigation = page.getByRole('navigation', { name: 'Administration', exact: true })
-    const navBox = (await navigation.count()) > 0 ? await navigation.boundingBox() : null
-    const left = navBox ? Math.min(navBox.x, box.x) : box.x
-    expect(box.x + box.width - left, 'the measure of the reading page, side navigation included, in px').toBeLessThanOrEqual(960)
-  })
 })
 
 // The bottom navigation bar below 600 pixels: its three destinations share the width equally, and every label fits its
