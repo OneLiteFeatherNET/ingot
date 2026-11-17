@@ -465,3 +465,15 @@ describe('SystemInfoView support action placement', () => {
     expect(noteOf(wrapper).find('summary').classes(), 'the summary is fit to its content').toContain('w-fit')
   })
 })
+
+describe('SystemInfoView uptime', () => {
+  it('shows the uptime of the JVM in minutes and seconds, not as raw milliseconds', async () => {
+    // given: a JVM that has been up for 700926 milliseconds
+    const wrapper = await mountView(withInfo({ ...FIXTURE, jvm: { ...FIXTURE.jvm, uptimeMillis: 700926 } }))
+    await flushPromises()
+
+    // then: the value of the Uptime row reads as a duration
+    const term = panelsOf(wrapper)[0].findAll('dt').find(item => item.text() === 'Uptime')!
+    expect(term.element.nextElementSibling?.textContent).toBe('11 min 40 s')
+  })
+})
