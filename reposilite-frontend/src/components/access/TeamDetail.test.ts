@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
+import type { Router } from 'vue-router'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
   NODES,
@@ -57,6 +58,8 @@ describe('TeamDetail', () => {
   const mountDetail = async (name?: string) => {
     wrapper = await mountTeamDetail(name)
   }
+
+  const routeOf = (host: VueWrapper) => (host.vm as unknown as { $router: Router }).$router.currentRoute.value
 
   const conflictDialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
 
@@ -466,6 +469,38 @@ describe('TeamDetail', () => {
 
       expect(conflictDialog()).not.toBeNull()
       expect(document.querySelector('[data-test="confirm-button"]'), 'only the conflict dialog stays').toBeNull()
+    })
+  })
+
+  describe('the check permission action', () => {
+    it('links the team to the permission check with the team in the query', async () => {
+      await mountDetail('developers')
+
+      expect(wrapper!.find('[data-test="check-permission"]').attributes('href')).toBe('/access/check?principal=developers')
+    })
+
+    it('navigates to the permission check with the team as principal', async () => {
+      await mountDetail('developers')
+
+      await wrapper!.find('[data-test="check-permission"]').trigger('click')
+      await flushPromises()
+
+      const route = routeOf(wrapper!)
+      expect(route.name).toBe('access-check')
+      expect(route.query).toEqual({ principal: 'developers' })
+    })
+
+    it('is a tonal button', async () => {
+      await mountDetail('developers')
+
+      expect(wrapper!.find('[data-test="check-permission"]').attributes('data-variant')).toBe('tonal')
+    })
+
+    it('sits in the header next to the delete action', async () => {
+      await mountDetail('developers')
+
+      const deleteButton = wrapper!.find('[data-test="delete-team"]').element
+      expect(deleteButton.parentElement!.contains(wrapper!.find('[data-test="check-permission"]').element), 'the check is in the same header row as the delete action').toBe(true)
     })
   })
 
