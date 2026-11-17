@@ -220,6 +220,55 @@ const etagOf = (response: AxiosResponse | undefined): string | null =>
 const isPreconditionFailed = (error: AxiosError | undefined): boolean =>
   error?.response?.status === 412
 
+// The second factor problems the dashboard explains with a next step. The server names each one in the `message`
+// of its error answer: step_up_required and mfa_enrolment_required as a 403, and the authenticator start as a 409
+// whose message is the reason the server gives (for example a missing settings key).
+export type SecondFactorProblem = "step_up_required" | "mfa_enrolment_required" | "authenticator_enrolment_unavailable"
+
+export interface SecondFactorProblemInfo {
+  problem: SecondFactorProblem
+  message: string
+  // The methods a step-up can be confirmed with, as the server listed them. Empty for the other problems.
+  methods: SecondFactorMethod[]
+}
+
+const SECOND_FACTOR_METHOD_NAMES: readonly string[] = ["AUTHENTICATOR", "RECOVERY_CODE", "PASSKEY"]
+const AUTHENTICATOR_START_PATH = "/api/identity/me/factors/totp"
+const STEP_UP_MESSAGE = "Confirm with a second factor first, then try again."
+const ENROLMENT_REQUIRED_MESSAGE = "Your account needs a second factor before it can do this. Add one on the account page first."
+const AUTHENTICATOR_UNAVAILABLE_MESSAGE = "Authenticator apps are not available on this server yet."
+
+// The mapped problem of a refused call, or null for every other answer. The caller shows the message and
+// keeps every other error on the server's own text.
+export const secondFactorProblemOf = (error: unknown): SecondFactorProblemInfo | null => {
+  const refused = error as AxiosError | undefined
+  const status = refused?.response?.status
+  const data = refused?.response?.data as { message?: unknown; problems?: unknown } | undefined
+  if (typeof status !== "number" || !data) {
+    return null
+  }
+  const code = typeof data.message === "string" ? data.message : ""
+
+  if (status === 403 && code === "step_up_required") {
+    const problems = Array.isArray(data.problems) ? (data.problems as Array<{ node?: unknown }>) : []
+    const methods = problems
+      .map(problem => problem?.node)
+      .filter((node): node is SecondFactorMethod => typeof node === "string" && SECOND_FACTOR_METHOD_NAMES.includes(node))
+    return { problem: "step_up_required", message: STEP_UP_MESSAGE, methods }
+  }
+  if (status === 403 && code === "mfa_enrolment_required") {
+    return { problem: "mfa_enrolment_required", message: ENROLMENT_REQUIRED_MESSAGE, methods: [] }
+  }
+  if (status === 409 && String(refused?.config?.url || "").endsWith(AUTHENTICATOR_START_PATH)) {
+    return {
+      problem: "authenticator_enrolment_unavailable",
+      message: code || AUTHENTICATOR_UNAVAILABLE_MESSAGE,
+      methods: [],
+    }
+  }
+  return null
+}
+
 // The request config that carries an access token, or nothing for a cookie session. Requests made outside
 // createClient (the plugin manifest, the support availability) use it too, so a token session sends its token.
 const tokenCredentials = (
