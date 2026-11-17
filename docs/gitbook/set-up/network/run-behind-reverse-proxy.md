@@ -223,7 +223,7 @@ A subdomain such as `ingot.example.org` is simpler than a path. Use a path only 
    {% endhint %}
 
 {% hint style="warning" %}
-A dashboard under a path in the split container needs its own image build. See [Run the dashboard in a separate container](../deploy/run-split-dashboard-container.md#build-a-dashboard-for-a-sub-path). Combining that with a path in the proxy was not tested in this batch.
+A dashboard under a path in the split container needs its own image build. See [Run the dashboard in a separate container](../deploy/run-split-dashboard-container.md#serve-under-a-sub-path). Combining that with a path in the proxy was not tested in this batch.
 {% endhint %}
 
 ## Single sign-on redirect
