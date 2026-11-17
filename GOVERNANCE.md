@@ -7,24 +7,40 @@ Ingot relates to the upstream project it forks. The people involved are listed i
 
 - **Contributors** open issues and pull requests. No role is needed.
 - **Maintainers** review and merge changes, cut releases and handle security reports. Their list is
-  [MAINTAINERS.md](MAINTAINERS.md).
+  [MAINTAINERS.md](MAINTAINERS.md). The **lead maintainer** is the maintainer marked as lead there.
+
+## Drop-in changes
+
+A change touches the drop-in contract when it alters the container image, the configuration, the compatibility with
+Reposilite installations, or the plugin API. Operators and plugin authors rely on these, so such a change stays open
+for at least 7 days before it merges, which gives them time to object. Security fixes are exempt from this waiting
+period.
 
 ## How decisions are taken
 
-- An ordinary change is decided in its pull request. It merges once one maintainer has approved it and no other
-  maintainer has an open objection.
-- A change that alters what operators configure, the container image, or the compatibility with Reposilite
-  installations and plugins needs the approval of two maintainers.
-- If an objection stays open, the maintainers decide by majority vote. The outcome is recorded in the pull request
-  or the issue where the question was raised.
+While Ingot has one maintainer, the lead maintainer decides:
+
+- An ordinary change is decided by the lead maintainer. A pull request from outside the project merges only with
+  the lead maintainer's approval.
+- A drop-in change is open for at least 7 days before it merges.
+
+Once Ingot has two or more maintainers:
+
+- An ordinary change needs the approval of one maintainer.
+- A drop-in change needs the agreement of the second maintainer, or no objection within 7 days.
+- If an objection stays open, the lead maintainer decides. The outcome is recorded in the pull request or the issue
+  where the question was raised.
 
 ## Becoming and stopping being a maintainer
 
-- A current maintainer proposes a contributor by a pull request that adds an entry to [MAINTAINERS.md](MAINTAINERS.md).
-  The proposal passes with a majority of the current maintainers.
+- The lead maintainer appoints new maintainers. Once Ingot has two or more maintainers, a new maintainer needs the
+  agreement of all existing maintainers. An appointment is made by a pull request that adds an entry to
+  [MAINTAINERS.md](MAINTAINERS.md).
 - A maintainer steps down by a pull request that removes their entry.
-- A maintainer who has been inactive for twelve months may be removed by a majority vote of the other maintainers,
-  announced in the pull request that removes their entry.
+- A maintainer who has been inactive for twelve months becomes emeritus. An emeritus maintainer is recognised for
+  their work but has no rights in the project.
+- If the lead maintainer is inactive for twelve months, the administrators of the OneLiteFeather GitHub organisation
+  take over the project.
 
 ## Relation to upstream Reposilite
 
