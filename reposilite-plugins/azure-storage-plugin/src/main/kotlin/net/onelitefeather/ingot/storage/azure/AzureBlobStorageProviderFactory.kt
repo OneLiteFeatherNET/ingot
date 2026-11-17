@@ -41,22 +41,34 @@ class AzureBlobStorageProviderFactory :
     override val settingsType: Class<AzureBlobStorageProviderSettings> = AzureBlobStorageProviderSettings::class.java
 
     override fun create(context: StorageProviderContext, settings: AzureBlobStorageProviderSettings): AzureBlobStorageProvider {
-        check(settings.container.isNotBlank()) { "Azure Blob storage needs the field 'container'" }
-        check(settings.authentication == "connection-string" || settings.accountName.isNotBlank()) {
+        val resolved = settings.withEnvironment(context)
+        check(resolved.container.isNotBlank()) { "Azure Blob storage needs the field 'container'" }
+        check(resolved.authentication == "connection-string" || resolved.accountName.isNotBlank()) {
             "Azure Blob storage needs the field 'accountName' unless the authentication is connection-string"
         }
-        check(settings.blockSize > 0) { "Azure Blob storage needs a positive 'blockSize'" }
-        settings.authenticationError()?.let { error(it) }
+        check(resolved.blockSize > 0) { "Azure Blob storage needs a positive 'blockSize'" }
+        resolved.authenticationError()?.let { error(it) }
 
         return AzureBlobStorageProvider(
             failureFacade = context.failureFacade,
-            client = AzureSdkBlobClient(containerOf(settings)),
-            blobPrefix = settings.blobPrefix(),
-            blockSize = settings.blockSize.toInt(),
+            client = AzureSdkBlobClient(containerOf(resolved)),
+            blobPrefix = resolved.blobPrefix(),
+            blockSize = resolved.blockSize.toInt(),
         )
     }
 
 }
+
+/**
+ * The settings with the process variables applied to the fields that the repository leaves blank. The repository setting always wins,
+ * and the variable is only the fallback (`INGOT_AZURE_BLOB_ACCOUNT_NAME`, then `REPOSILITE_AZURE_BLOB_ACCOUNT_NAME`, read by the
+ * context). Only the account and the endpoint are read: credentials stay in the repository settings.
+ */
+internal fun AzureBlobStorageProviderSettings.withEnvironment(context: StorageProviderContext): AzureBlobStorageProviderSettings =
+    copy(
+        endpoint = endpoint.ifBlank { context.environment("AZURE_BLOB_ENDPOINT").orEmpty() },
+        accountName = accountName.ifBlank { context.environment("AZURE_BLOB_ACCOUNT_NAME").orEmpty() },
+    )
 
 /** The container client of [settings]. The builder is lazy, so no request is sent here. */
 internal fun containerOf(settings: AzureBlobStorageProviderSettings): BlobContainerClient =

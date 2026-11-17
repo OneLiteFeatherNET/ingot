@@ -80,6 +80,52 @@ internal class AzureBlobStorageProviderSettingsCapabilityTest {
     }
 
     @Test
+    fun `should share a namespace when two blank accounts resolve to the same container and prefix`() {
+        // given: two repositories that leave the account blank, so both take the environment account
+        val first = settings(accountName = "", prefix = "team").namespaceKey("a")!!
+        val second = settings(accountName = "", prefix = "team").namespaceKey("b")!!
+
+        // then: the keys overlap, and the refusal is reported
+        assertThat(settings(accountName = "").overlaps(first, second)).`as`("overlap").isTrue()
+    }
+
+    @Test
+    fun `should share a namespace when a blank account may resolve to the explicit account of another repository`() {
+        // given: one repository leaves the account blank, and another names an account in the same container and prefix
+        val blank = settings(accountName = "", prefix = "team").namespaceKey("a")!!
+        val explicit = settings(accountName = "account", prefix = "team").namespaceKey("b")!!
+
+        // then: the keys overlap, because the blank one may take the environment account of the other
+        assertThat(settings(accountName = "").overlaps(blank, explicit)).`as`("overlap").isTrue()
+    }
+
+    @Test
+    fun `should not share a namespace between two connection strings of different accounts`() {
+        // given: two repositories that authenticate with a connection string, each naming its own account
+        val first = connectionStringSettings("one").namespaceKey("a")!!
+        val second = connectionStringSettings("two").namespaceKey("b")!!
+
+        // then: the accounts differ, so the namespaces do not overlap
+        assertThat(connectionStringSettings("one").overlaps(first, second)).`as`("overlap").isFalse()
+    }
+
+    @Test
+    fun `should share a namespace between a connection string and an explicit account of the same name`() {
+        // given: a connection string for the account one and an explicit account one in the same container
+        val connection = connectionStringSettings("one").namespaceKey("a")!!
+        val explicit = settings(accountName = "one").namespaceKey("b")!!
+
+        // then: the keys overlap
+        assertThat(settings(accountName = "one").overlaps(connection, explicit)).`as`("overlap").isTrue()
+    }
+
+    private fun connectionStringSettings(account: String) = AzureBlobStorageProviderSettings(
+        container = "repositories",
+        authentication = "connection-string",
+        connectionString = "DefaultEndpointsProtocol=https;AccountName=$account;AccountKey=placeholder;EndpointSuffix=core.windows.net",
+    )
+
+    @Test
     fun `should not share a namespace between sibling prefixes`() {
         // given: two sibling prefixes of one container
         val first = settings(prefix = "team-a").namespaceKey("a")!!

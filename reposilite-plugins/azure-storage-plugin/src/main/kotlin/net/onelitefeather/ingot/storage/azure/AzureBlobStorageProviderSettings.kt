@@ -34,6 +34,9 @@ internal const val DEFAULT_BLOCK_SIZE: Long = 8L * 1024 * 1024
 
 private const val DEFAULT_AUTHENTICATION = "default-credential"
 
+/** The account part of a namespace key whose account is blank. See [AzureBlobStorageProviderSettings.overlaps]. */
+private const val BLANK_ACCOUNT_KEY = "azure:"
+
 @Doc(title = "Azure Blob Storage Provider", description = "Azure Blob container storage provider settings")
 data class AzureBlobStorageProviderSettings(
     @get:Doc(title = "Endpoint", description = "Blob endpoint of the account. Empty means the public endpoint of the account name (optional)")
@@ -73,14 +76,38 @@ data class AzureBlobStorageProviderSettings(
         if (container.isBlank()) {
             return null
         }
-        return "azure:${accountName.trim()}/${container.trim()}/${blobPrefix()}"
+        return "azure:${namespaceAccount()}/${container.trim()}/${blobPrefix()}"
     }
 
-    /** Two namespaces collide when they are in the same container of the same account, and one prefix equals or nests under the other. */
+    /**
+     * The account of the namespace key. In connection-string mode the account is the `AccountName` of the connection string, which
+     * is not a secret, and it is used whatever the account field says. Otherwise it is the account field. Blank when nothing supplies one.
+     */
+    private fun namespaceAccount(): String {
+        if (authentication == "connection-string") {
+            connectionStringAccount()?.let { return it }
+        }
+        return accountName.trim()
+    }
+
+    private fun connectionStringAccount(): String? =
+        connectionString.split(';')
+            .map { it.trim() }
+            .firstOrNull { it.substringBefore('=').trim().equals("AccountName", ignoreCase = true) }
+            ?.substringAfter('=')
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+    /**
+     * Two namespaces collide when they are in the same container of the same account, and one prefix equals or nests under the other.
+     * A blank account takes the environment account when the repository starts, a value that the namespace cannot read. So a blank
+     * account collides with the account of any other repository in the same container and prefix.
+     */
     override fun overlaps(key: String, otherKey: String): Boolean {
         val (account, container, prefix) = key.split('/', limit = 3)
         val (otherAccount, otherContainer, otherPrefix) = otherKey.split('/', limit = 3)
-        return account == otherAccount && container == otherContainer && (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix))
+        val sameAccount = account == otherAccount || account == BLANK_ACCOUNT_KEY || otherAccount == BLANK_ACCOUNT_KEY
+        return sameAccount && container == otherContainer && (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix))
     }
 
     override fun overlapMessage(): String =

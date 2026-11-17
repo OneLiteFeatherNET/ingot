@@ -418,6 +418,17 @@ These are JVM system properties. There is no environment variable form. Pass the
 
 The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](../repositories/storage-providers.md).
 
+### Azure Blob storage variables
+
+These are optional. A repository setting always wins, and the variable is read only for a field the repository leaves blank. Secrets are
+not read from the environment: the account key, the SAS token and the connection string stay in the repository settings. See
+[Storage providers](../repositories/storage-providers.md).
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_AZURE_BLOB_ACCOUNT_NAME` | `REPOSILITE_AZURE_BLOB_ACCOUNT_NAME`, read when the `INGOT_` variable is not set or blank | empty | The storage account of an `azure-blob` repository whose `accountName` is blank. |
+| `INGOT_AZURE_BLOB_ENDPOINT` | `REPOSILITE_AZURE_BLOB_ENDPOINT`, read when the `INGOT_` variable is not set or blank | empty | The blob endpoint of an `azure-blob` repository whose `endpoint` is blank, for example Azurite or a sovereign cloud. Empty means `https://<accountName>.blob.core.windows.net`. |
+
 ### Proxy upstream status
 
 Read once at startup, in this order: the system property `ingot.proxy.upstreamStatus`, the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, the system property `reposilite.proxy.upstreamStatus`, the environment variable `REPOSILITE_PROXY_UPSTREAM_STATUS`. The first one that is set wins. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
