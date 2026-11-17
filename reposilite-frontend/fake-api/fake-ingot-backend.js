@@ -23,12 +23,12 @@ const express = require("express")
 const expressWs = require("express-ws")
 const bodyParser = require('body-parser')
 const crypto = require("crypto")
-const audit = require("./audit.cjs")
+const audit = require("./audit")
 const identity = require("./identity.cjs")
 const { createSearch, sampleFiles } = require("./search.cjs")
 const { createIndexAdmin } = require("./search-index.cjs")
-const { localDateOnWire } = require("./wire.cjs")
-const { effectiveType, rejectionOf } = require("./repository-types.cjs")
+const { localDateOnWire } = require("./wire")
+const { effectiveType, rejectionOf } = require("./repository-types")
 
 const {
   respond,
@@ -38,7 +38,7 @@ const {
   createFileDetails,
   createDirectoryDetails,
   generateDayWiseTimeSeries
-} = require("./extensions.cjs")
+} = require("./extensions")
 
 const application = express()
 expressWs(application)

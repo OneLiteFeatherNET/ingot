@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-// Run it with: node --test fake-api/repository-types.test.cjs
-const { describe, it } = require("node:test")
-const assert = require("node:assert/strict")
-const { effectiveType, typeViolations, rejectionOf } = require("./repository-types.cjs")
+// Run it with: node --import tsx --test fake-api/repository-types.test.ts
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import { effectiveType, typeViolations, rejectionOf } from "./repository-types"
 
 const hosted = { id: "releases" }
 const external = { reference: "https://example.com/maven" }
@@ -90,6 +90,6 @@ describe("typeViolations", () => {
 
   it("formats a rejection the way the backend does", () => {
     const message = rejectionOf({ repositories: [{ id: "releases", type: "HOSTED", proxied: [external] }] })
-    assert.ok(message.startsWith("Invalid maven settings: repository 'releases': type HOSTED"), message)
+    assert.ok(message?.startsWith("Invalid maven settings: repository 'releases': type HOSTED"), message ?? undefined)
   })
 })

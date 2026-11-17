@@ -26,11 +26,11 @@
 
 const crypto = require("crypto")
 const express = require("express")
-const { basicAuth } = require("./extensions.cjs")
-const audit = require("./audit.cjs")
-const loginProviders = require("./login-providers.cjs")
+const { basicAuth } = require("./extensions")
+const audit = require("./audit")
+const loginProviders = require("./login-providers")
 const nodeLogic = require("./nodes.cjs")
-const { instantOnWire, localDateOnWire } = require("./wire.cjs")
+const { instantOnWire, localDateOnWire } = require("./wire")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
 const SETUP_CODE = "fake-setup-123456"

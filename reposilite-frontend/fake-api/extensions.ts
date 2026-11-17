@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-const { instantOnWire } = require('./wire.cjs')
+import type { Request, Response } from "express"
+import { instantOnWire } from "./wire"
 
-const respond = (response) =>
-  (_, res) => res.send(response)
+const respond = (response: unknown) =>
+  (_: Request, res: Response) => res.send(response)
 
-const basicAuth = (req) => {
+const basicAuth = (req: Request) => {
   const b64auth = (req.get('Authorization') || '').split(' ')[1] || ''
   return Buffer.from(b64auth, 'base64').toString().split(':')
 }
 
-const authorized = (req, success, failure) => {
+const authorized = (req: Request, success: () => void, failure?: () => void) => {
   const [login, password] = basicAuth(req)
 
   if (login === 'name' && password === 'secret') {
@@ -33,23 +34,23 @@ const authorized = (req, success, failure) => {
   } else failure && failure()
 }
 
-const invalidCredentials = (res) =>
+const invalidCredentials = (res: Response) =>
   res.status(401).send({message:'Invalid credentials'})
 
-const sendMessage = (connection, message) =>
+const sendMessage = (connection: { send(data: string): unknown }, message: string) =>
   connection.send(`${new Date().toDateString()} ${message}`)
 
-// A stored file carries the instant it was stored at, sent as epoch seconds like every Instant (see wire.cjs).
+// A stored file carries the instant it was stored at, sent as epoch seconds like every Instant (see wire.ts).
 const FAKE_STORED_AT = '2026-10-14T09:12:00Z'
-const createFileDetails = (name, contentType, contentLength) =>
+const createFileDetails = (name: string, contentType: string, contentLength: number) =>
   ({ type: 'FILE', name, contentType, contentLength, lastModifiedTime: instantOnWire(FAKE_STORED_AT) })
 
-const createDirectoryDetails = (name, files) =>
+const createDirectoryDetails = <T>(name: string, files?: T[]) =>
   ({ type: 'DIRECTORY', name, files })
 
-const generateDayWiseTimeSeries = (baseval, count, yrange) => {
+const generateDayWiseTimeSeries = (baseval: number, count: number, yrange: { min: number, max: number }) => {
   let i = 0
-  const series = []
+  const series: { date: number, count: number }[] = []
   while (i < count) {
     series.push({
       date: baseval,
@@ -61,7 +62,7 @@ const generateDayWiseTimeSeries = (baseval, count, yrange) => {
   return series
 }
    
-module.exports = {
+export {
   respond,
   basicAuth,
   authorized,

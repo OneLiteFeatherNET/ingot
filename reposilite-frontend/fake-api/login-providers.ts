@@ -1,14 +1,79 @@
 /*
  * The sign in providers of the fake backend: the list that the sign in dialog reads, the single sign
  * on logins (which sign the visitor in at once), the LDAP sign in, the two test endpoints, and the
- * `login` settings domain with its schema and entity tag. Mounted by identity.cjs, after its CSRF and
+ * `login` settings domain with its schema and entity tag. Mounted by identity.ts, after its CSRF and
  * actor middleware, so that these routes share the cookie and CORS handling of the identity routes.
  *
  * The answers mirror the backend (identity model, section 14): the same fields and defaults, the same
  * error texts, and no null fields, because the backend's mapper leaves them out.
  */
 
-const express = require("express")
+import express from "express"
+import type { NextFunction, Request, Response } from "express"
+
+interface OidcProvider {
+  id: string
+  enabled: boolean
+  label: string
+  icon: string
+  issuerUrl: string
+  clientId: string
+  clientSecret: string
+  scopes: string
+  usernameClaim: string
+  displayNameClaim: string
+  emailClaim: string
+  groupsClaim: string
+  allowedEmailDomains: string[]
+  autoCreateUsers: boolean
+  adminGroups: string[]
+}
+
+interface LdapSettings {
+  enabled: boolean
+  label: string
+  url: string
+  startTls: boolean
+  bindDn: string
+  bindPassword: string
+  userBaseDn: string
+  userFilter: string
+  usernameAttribute: string
+  displayNameAttribute: string
+  emailAttribute: string
+  groupBaseDn: string
+  groupFilter: string
+  groupNameAttribute: string
+  autoCreateUsers: boolean
+  adminGroups: string[]
+}
+
+interface LoginSettings {
+  sessionLifetimeMinutes: number
+  refreshLifetimeHours: number
+  refreshAbsoluteDays: number
+  maxFailedAttempts: number
+  lockoutMinutes: number
+  publicUrl: string
+  oidcProviders: OidcProvider[]
+  ldap: LdapSettings
+}
+
+interface LoginPrincipal {
+  lastSeenAt: string | null
+}
+
+interface LoginProviderDeps {
+  findPrincipal: (name: string) => LoginPrincipal | undefined
+  addPrincipal: (principal: { kind: string, name: string, displayName: string }) => LoginPrincipal
+  startSession: (res: Response, principal: LoginPrincipal) => unknown
+  fail: (res: Response, status: number, message: string, problems?: unknown) => unknown
+  bodyOf: (req: Request) => Record<string, unknown>
+  etagOf: (body: unknown) => string
+  setupRequired: () => boolean
+}
+
+type ActorRequest = Request & { actor?: { admin?: boolean } }
 
 const SECRET_PLACEHOLDER = "********"
 const LDAP_LOGIN = { username: "ldapuser", password: "ldap-password-12" }
@@ -25,7 +90,7 @@ const PUBLIC_URL_RULE = "Enter an absolute https:// address, or http:// for loca
 
 // The defaults of LoginSettings. The sample providers are the ones the dashboard shows; GitHub is an
 // OpenID Connect bridge here (it has an issuer of its own), so its test fails in the way a bridge does.
-const defaultSettings = () => ({
+const defaultSettings = (): LoginSettings => ({
   sessionLifetimeMinutes: 15,
   refreshLifetimeHours: 168,
   refreshAbsoluteDays: 30,
@@ -152,9 +217,10 @@ const LOGIN_SCHEMA = {
 
 // The dashboard the provider returns the visitor to: the page it came from, or the fake's own
 // dashboard address when the browser sends no referrer.
-const dashboardOrigin = (req) => {
+const dashboardOrigin = (req: Request) => {
   try {
-    if (req.get("Referer")) return new URL(req.get("Referer")).origin
+    const referer = req.get("Referer")
+    if (referer) return new URL(referer).origin
   } catch {
     // a malformed referrer falls through to the default below
   }
@@ -162,15 +228,15 @@ const dashboardOrigin = (req) => {
 }
 
 // Only a path of this dashboard may be the return address; anything else lands on the overview.
-const safeReturnPath = (value) =>
+const safeReturnPath = (value: unknown) =>
   typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : "/"
 
 // The rule of the backend's PublicUrl: blank is not set; otherwise an absolute https address, or http
 // for a loopback host, without a query, a fragment or a user name. Returns the rule when it is broken.
-const publicUrlProblem = (value) => {
+const publicUrlProblem = (value: unknown) => {
   if (typeof value !== "string" || value.trim() === "") return null
   if (value !== value.trim() || /\s/.test(value)) return PUBLIC_URL_RULE
-  let url
+  let url: URL
   try {
     url = new URL(value)
   } catch {
@@ -184,12 +250,12 @@ const publicUrlProblem = (value) => {
 
 // GitHub uses its own endpoints for an empty issuer or GitHub's own; a provider then needs a client id
 // and a secret. Any other provider needs an issuer and a client id. These are the backend's rules.
-const usesGitHub = (provider) => {
+const usesGitHub = (provider: OidcProvider) => {
   const issuer = String(provider.issuerUrl ?? "").trim()
   return provider.icon === "GITHUB" && (issuer === "" || issuer.replace(/\/$/, "") === GITHUB_ISSUER)
 }
 
-const missingField = (provider) => {
+const missingField = (provider: OidcProvider) => {
   if (usesGitHub(provider)) {
     if (!provider.clientId) return "clientId"
     return provider.clientSecret ? null : "clientSecret"
@@ -198,18 +264,18 @@ const missingField = (provider) => {
   return provider.clientId ? null : "clientId"
 }
 
-const ldapMissingField = (ldap) => {
+const ldapMissingField = (ldap: LdapSettings) => {
   if (!ldap.url) return "url"
   return ldap.userBaseDn ? null : "userBaseDn"
 }
 
-const isText = (value) => typeof value === "string" && value.trim() !== ""
+const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== ""
 
-const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagOf, setupRequired }) => {
+const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagOf, setupRequired }: LoginProviderDeps) => {
   const router = express.Router()
   let settings = defaultSettings()
   let settingsEtag = etagOf(settings)
-  const failedLdapLogins = new Map()
+  const failedLdapLogins = new Map<string, number>()
 
   // Providers that are enabled and have what they need: the ones the login page announces.
   const announcedOidc = () => settings.oidcProviders.filter(provider => provider.enabled && missingField(provider) === null)
@@ -239,8 +305,8 @@ const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagO
   })
 
   // A write keeps a stored secret when the placeholder comes back, and takes any other value as the new one.
-  const keepSecret = (next, current) => (next === SECRET_PLACEHOLDER ? current : next)
-  const mergeSettings = (body) => ({
+  const keepSecret = (next: string, current: string) => (next === SECRET_PLACEHOLDER ? current : next)
+  const mergeSettings = (body: Partial<LoginSettings>) => ({
     ...body,
     publicUrl: typeof body.publicUrl === "string" ? body.publicUrl : "",
     oidcProviders: (Array.isArray(body.oidcProviders) ? body.oidcProviders : []).map(provider => {
@@ -253,14 +319,15 @@ const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagO
     },
   })
 
-  const requireAdmin = (req, res, next) => {
-    if (!req.actor) return fail(res, 401, "Invalid credentials")
-    if (!req.actor.admin) return fail(res, 403, "Instance admin required")
+  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+    const actor = (req as ActorRequest).actor
+    if (!actor) return fail(res, 401, "Invalid credentials")
+    if (!actor.admin) return fail(res, 403, "Instance admin required")
     next()
   }
 
   // The account a provider sign in acts as. It is created on the first sign in.
-  const ensureUser = (name, displayName) => {
+  const ensureUser = (name: string, displayName: string) => {
     const principal = findPrincipal(name) ?? addPrincipal({ kind: "USER", name, displayName })
     principal.lastSeenAt = new Date().toISOString()
     return principal
@@ -325,10 +392,10 @@ const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagO
   router.put("/api/settings/domain/login", requireAdmin, (req, res) => {
     const ifMatch = req.get("If-Match")
     if (ifMatch && ifMatch !== settingsEtag) return fail(res, 412, "The settings changed since they were read")
-    const merged = mergeSettings(bodyOf(req))
+    const merged = mergeSettings(bodyOf(req) as Partial<LoginSettings>)
     const problem = publicUrlProblem(merged.publicUrl)
     if (problem) return fail(res, 400, `java.lang.IllegalArgumentException: Invalid login settings: publicUrl: ${problem}`)
-    settings = { ...defaultSettings(), ...merged }
+    settings = { ...defaultSettings(), ...merged } as LoginSettings
     settings.ldap = { ...defaultSettings().ldap, ...settings.ldap }
     settingsEtag = etagOf(settings)
     res.setHeader("ETag", settingsEtag)
@@ -379,4 +446,4 @@ const create = ({ findPrincipal, addPrincipal, startSession, fail, bodyOf, etagO
   return router
 }
 
-module.exports = { create }
+export { create }
