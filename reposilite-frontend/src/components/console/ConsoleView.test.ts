@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, type Ref } from 'vue'
+import { ref, type Component, type Ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 // Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
 // view's whole module graph on first use, which under load can outlast the test timeout. Each
@@ -99,6 +99,9 @@ const emitLine = (stream: FakeStream, text: string) => {
   if (!handler) throw new Error('the view did not listen for log lines')
   handler({ data: text })
 }
+
+// Loaded after the reset of beforeEach, so the panel is the same copy the view draws.
+const loadStatePanel = async (): Promise<Component> => (await import('../md/MdStatePanel.vue') as { default: Component }).default
 
 const buttonLabelled = (wrapper: VueWrapper, label: string) =>
   wrapper.findAll('button').find(button => button.text() === label)
@@ -194,6 +197,33 @@ describe('ConsoleView', () => {
 
       expect(wrapper.text(), 'a filter that hides everything should say so').toContain('No lines match the filter')
       expect(wrapper.text(), 'lines have arrived, so the view must not claim to be waiting for one').not.toContain('Waiting for the first log line')
+    })
+
+    it('shows the wait for the first line as an empty state panel', async () => {
+      await mountView()
+      FakeEventSource.instances[0].onopen()
+      await flushPromises()
+
+      const MdStatePanel = await loadStatePanel()
+      const panel = wrapper.findAllComponents(MdStatePanel).find(candidate => candidate.text().includes('Waiting for the first log line'))
+      expect(panel, 'the wait must be drawn by an MdStatePanel').toBeDefined()
+      expect((panel!.props() as { state: string }).state, 'the wait is the empty state of the panel').toBe('empty')
+    })
+
+    it('shows the no-match message as an empty state panel', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, 'hello')
+      await flushPromises()
+
+      await wrapper.find('input').setValue('zzz')
+      await flushPromises()
+
+      const MdStatePanel = await loadStatePanel()
+      const panel = wrapper.findAllComponents(MdStatePanel).find(candidate => candidate.text().includes('No lines match the filter'))
+      expect(panel, 'the no-match message must be drawn by an MdStatePanel').toBeDefined()
+      expect((panel!.props() as { state: string }).state, 'the no-match message is the empty state of the panel').toBe('empty')
     })
   })
 
