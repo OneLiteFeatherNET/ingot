@@ -18,30 +18,42 @@
 import { computed, inject, onMounted, provide } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
-import { entryLayout } from '../settings/collections'
+import { entryLayout, type SettingsSchema } from '../settings/collections'
 import MdButton from '../md/MdButton.vue'
 
 /*
- * One group of the `authentication` domain, drawn by the same generic form as the Settings page and saved by the
- * same store. The Access pages show the LDAP directory of Maven clients and the brute force protection with it, so
- * the fields, the validation and the save are the ones Settings had. The domain is written as a whole, as always.
+ * One group of a settings domain, drawn by the same generic form as the Settings page and saved by the same store.
+ * The Access pages show the LDAP directory of Maven clients, the brute force protection and the sign-in protection
+ * with it, so the fields, the validation and the save are the ones Settings had. The domain is written as a whole,
+ * as always, so a save of one tab also writes drafts of the other tabs of the same domain.
  *
  * Props:
+ *   domain     the settings domain the group belongs to (default authentication)
  *   group      the property of the domain to draw: ldap or bruteForceProtection
- *   saveLabel  the text of the save button
+ *   fields     several properties of the domain to draw instead of one group, for example the scalars of login
+ *   saveLabel  the text of the save button, which names the tab or the domain it saves
  */
-const DOMAIN = 'authentication'
-
 const props = defineProps({
+  domain: {
+    type: String,
+    default: 'authentication'
+  },
   group: {
     type: String,
-    required: true
+    default: ''
+  },
+  fields: {
+    type: Array as () => string[] | null,
+    default: null
   },
   saveLabel: {
     type: String,
     default: 'Save'
   }
 })
+
+const DOMAIN = props.domain
+const drawn = (): string[] => props.fields ?? [props.group]
 
 const { store: sharedStore, renderers, configurationStyles } = useConfiguration()
 const store = inject(configurationStoreKey, null) ?? sharedStore
@@ -66,18 +78,19 @@ const formsConfiguration = {
 
 const loaded = computed(() => domains.value.length > 0)
 
-// Only the group is drawn: the schema keeps the domain's shape, so the layout and the validation match Settings.
+// Only the drawn properties are shown: the schema keeps the domain's shape, so the layout and the validation match Settings.
 const form = computed(() => {
   const schema = schemas.value[DOMAIN]
-  const fields = (schema?.properties as Record<string, unknown> | undefined)?.[props.group]
-  if (!fields) return null
-  const groupSchema = { ...schema, properties: { [props.group]: fields } }
+  const properties = (schema?.properties ?? {}) as Record<string, SettingsSchema>
+  const picked: Record<string, SettingsSchema> = Object.fromEntries(drawn().filter(name => properties[name]).map(name => [name, properties[name]]))
+  if (Object.keys(picked).length === 0) return null
+  const groupSchema = { ...schema, properties: picked }
   return { schema: groupSchema, layout: entryLayout(groupSchema, { exclude: [] }) }
 })
 
-// The group is unsaved when its draft differs from what the server confirmed. The save writes the whole domain.
-const dirty = computed(() => JSON.stringify(configurations.value[DOMAIN]?.[props.group])
-  !== JSON.stringify(savedSettings.value[DOMAIN]?.[props.group]))
+// The drawn part is unsaved when its draft differs from what the server confirmed. The save writes the whole domain.
+const dirty = computed(() => drawn().some(name => JSON.stringify(configurations.value[DOMAIN]?.[name])
+  !== JSON.stringify(savedSettings.value[DOMAIN]?.[name])))
 
 const onChange = (event: { data: Record<string, unknown> }) => {
   store.setDomainData(DOMAIN, event.data)
@@ -109,7 +122,7 @@ onMounted(() => {
       role="alert"
       class="flex flex-wrap items-center gap-3"
     >
-      <span class="md-body-medium text-error">Could not load the authentication settings: {{ loadError }}</span>
+      <span class="md-body-medium text-error">Could not load the {{ DOMAIN }} settings: {{ loadError }}</span>
       <MdButton
         variant="text"
         @click="store.fetchConfiguration()"
@@ -125,7 +138,7 @@ onMounted(() => {
     </p>
     <template v-else>
       <JsonForms
-        :key="`authentication:${group}`"
+        :key="`${DOMAIN}:${drawn().join(',')}`"
         :config="formsConfiguration"
         :data="configurations[DOMAIN]"
         :schema="form.schema"
@@ -147,7 +160,7 @@ onMounted(() => {
           role="alert"
           class="md-body-medium text-error"
         >
-          The authentication settings changed elsewhere. Open Settings to review them before saving again.
+          The {{ DOMAIN }} settings changed elsewhere. Open Settings to review them before saving again.
         </p>
         <p
           v-else-if="saveError"

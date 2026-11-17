@@ -15,7 +15,32 @@
   -->
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
+import SignInSwitchNotice from './SignInSwitchNotice.vue'
+import AppTabs from '../tabs/AppTabs.vue'
+
+// The tabs in order. The tab in the address (?tab=) opens one; an unknown or missing one opens the first.
+// Each tab draws part of one settings domain. Its save writes that whole domain, and its button names it.
+const TABS = [
+  { key: 'ip', label: 'IP addresses' },
+  { key: 'accounts', label: 'Accounts' },
+  { key: 'passwords', label: 'Passwords' },
+  { key: 'sessions', label: 'Sessions' },
+]
+
+const ACCOUNT_FIELDS = ['maxFailedAttempts', 'lockoutMinutes', 'accountThrottle']
+const PASSWORD_FIELDS = ['passwordPolicy']
+const SESSION_FIELDS = ['idleTimeoutMinutes']
+
+// Only the open tab draws its form. AppTabs keeps every panel in the page, so the others would be drawn hidden.
+// A draft of a tab stays in the shared store, so switching tabs does not lose it.
+const route = useRoute()
+const selected = computed(() => {
+  const key = route.query.tab
+  return typeof key === 'string' && TABS.some(tab => tab.key === key) ? key : TABS[0].key
+})
 </script>
 
 <template>
@@ -33,14 +58,43 @@ import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
         Security
       </h3>
       <p class="md-body-medium text-on-surface-variant">
-        Limits repeated failed sign in attempts from one IP address. An address that exceeds the limit is blocked
-        for the ban duration.
+        Limits on repeated failed sign-ins, the rules for new passwords and the length of browser sessions.
       </p>
     </div>
 
-    <AuthenticationGroupForm
-      group="bruteForceProtection"
-      save-label="Save security settings"
-    />
+    <AppTabs
+      :tabs="TABS"
+      label="Sign-in protection sections"
+    >
+      <template #default="{ tab }">
+        <template v-if="tab === selected">
+          <AuthenticationGroupForm
+            v-if="tab === 'ip'"
+            group="bruteForceProtection"
+            save-label="Save IP address limits"
+          />
+          <template v-else-if="tab === 'accounts'">
+            <SignInSwitchNotice />
+            <AuthenticationGroupForm
+              domain="login"
+              :fields="ACCOUNT_FIELDS"
+              save-label="Save account limits"
+            />
+          </template>
+          <AuthenticationGroupForm
+            v-else-if="tab === 'passwords'"
+            domain="login"
+            :fields="PASSWORD_FIELDS"
+            save-label="Save password rules"
+          />
+          <AuthenticationGroupForm
+            v-else-if="tab === 'sessions'"
+            domain="login"
+            :fields="SESSION_FIELDS"
+            save-label="Save session limits"
+          />
+        </template>
+      </template>
+    </AppTabs>
   </section>
 </template>

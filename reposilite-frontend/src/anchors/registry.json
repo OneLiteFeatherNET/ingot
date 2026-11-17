@@ -118,6 +118,13 @@
       "states": []
     },
     {
+      "name": "sign-in-switch-notice",
+      "file": "src/components/access/SignInSwitchNotice.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "sso-provider-dialog",
       "file": "src/components/access/SsoProviderDialog.vue",
       "stability": "experimental",

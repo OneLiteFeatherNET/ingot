@@ -197,6 +197,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `settings-view` (no element of its own) | stable | `src/components/settings/SettingsView.vue` | none | none |
 | `side-nav-layout` | stable | `src/components/layout/SideNavLayout.vue` | `nav`, `page`, `lead` | none |
 | `side-nav-tree` | experimental | `src/components/layout/SideNavTree.vue` | none | none |
+| `sign-in-switch-notice` | experimental | `src/components/access/SignInSwitchNotice.vue` | none | none |
 | `site-footer` | stable | `src/components/footer/SiteFooter.vue` | none | none |
 | `site-legal` | stable | `src/components/footer/SiteLegal.vue` | none | none |
 | `skip-link` | stable | `src/components/layout/SkipLink.vue` | none | none |
