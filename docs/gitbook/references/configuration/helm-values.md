@@ -26,7 +26,7 @@ Set `image.digest` to pin the server image. The chart then renders `name@digest`
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `mode` | string, one of allInOne, split | `"allInOne"` | Deploy shape. `allInOne` runs one workload that serves the dashboard and the API. `split` runs the server and a separate dashboard workload in front of it. See [Run the dashboard split from the server with Helm](../../set-up/kubernetes/run-split-with-helm.md). |
+| `mode` | string, one of allInOne, split, scalable | `"allInOne"` | Deploy shape. `allInOne` runs one workload that serves the dashboard and the API. `split` runs the server and a separate dashboard workload in front of it. `scalable` runs read, write and worker workloads of the server and the dashboard, see [Scalable mode](#scalable-mode). See [Run the dashboard split from the server with Helm](../../set-up/kubernetes/run-split-with-helm.md). |
 | `image.name` | string | `"ghcr.io/onelitefeathernet/ingot"` | Repository of the server image. |
 | `image.tag` | string | `""` | Tag of the server image. Empty uses the chart `appVersion`. Ignored while `image.digest` is set. |
 | `image.digest` | string | `""` | Digest of the server image, for example `sha256:...`. When set, the image is rendered as `name@digest` and `image.tag` is not used. |
@@ -151,6 +151,29 @@ With more than one replica, the access mode must let pods on several nodes mount
 | `autoscaling.behavior.scaleDown.stabilizationWindowSeconds` | integer | `300` | Seconds of recommendations that the autoscaler considers before it scales down. |
 | `autoscaling.behavior.scaleDown.policies` | array | see below | Scale-down policies, passed through unchanged. |
 | `podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the server, and for the dashboard in `split` mode. See [Set a disruption budget](../../set-up/kubernetes/set-a-disruption-budget.md). |
+
+## Scalable mode
+
+`mode: scalable` renders a read Deployment and a write Deployment of the server, both with `INGOT_BACKGROUND_JOBS=false`, a worker Deployment with `INGOT_TARGET=worker` and one replica, and the dashboard. Each workload takes its own values under `scalable`. Everything else, such as `image`, `env`, `probes` and `jvm`, comes from the top-level keys. The mode needs `database.existingSecret`, `objectStorage.existingSecret` and `clusterBus.url`, and it refuses `persistence.enabled: true`. See [Run the scalable mode with Helm](../../set-up/kubernetes/run-scalable-with-helm.md).
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `scalable.read.replicas` | integer | `2` | Replicas of the read Deployment, which serves `GET` and `HEAD`. |
+| `scalable.read.resources` | object | `{}` | Resources of the read pods. Empty uses the top-level `resources`. |
+| `scalable.read.autoscaling.enabled` | boolean | `false` | Renders a HorizontalPodAutoscaler for the read Deployment. The top-level `autoscaling` is refused in this mode. |
+| `scalable.read.autoscaling.minReplicas` | integer | `2` | Lower bound of the read replica count. |
+| `scalable.read.autoscaling.maxReplicas` | integer | `10` | Upper bound of the read replica count. |
+| `scalable.read.autoscaling.metrics` | array | see `values.yaml` | Metrics of the read autoscaler, passed through unchanged. The default targets 60% average CPU utilization. |
+| `scalable.read.autoscaling.behavior` | object | `{}` | Scaling behavior of the read autoscaler, passed through unchanged. |
+| `scalable.read.podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the read pods. |
+| `scalable.write.replicas` | integer | `2` | Replicas of the write Deployment, which serves every method except `GET` and `HEAD`. The chart renders no autoscaler for it. |
+| `scalable.write.resources` | object | `{}` | Resources of the write pods. Empty uses the top-level `resources`. |
+| `scalable.write.podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the write pods. |
+| `scalable.worker.replicas` | integer | `1` | Replicas of the worker Deployment, which runs the scheduled jobs. Keep it at one. |
+| `scalable.worker.resources` | object | `{}` | Resources of the worker pod. Empty uses the top-level `resources`. |
+| `scalable.worker.podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the worker pod. |
+
+With `ingress.enabled`, a plain Ingress cannot match an HTTP method, so read and write traffic share the pods. Use `httpRoute` for method routing. The install notes print this limit.
 
 
 ## Routing and network
@@ -363,6 +386,7 @@ The chart reads these keys, but `values.yaml` has no entry for them. Set them on
 Helm stops with an error, and the message names the keys to change, when:
 
 * `ingress.enabled` and `httpRoute.enabled` are both `true`.
+* `mode` is `scalable` and `database.existingSecret`, `objectStorage.existingSecret` or `clusterBus.url` is empty, `persistence.enabled` is `true`, or the top-level `autoscaling` or `podDisruptionBudget` is enabled. The messages, which name the value to set, are listed in [Run the scalable mode with Helm](../../set-up/kubernetes/run-scalable-with-helm.md).
 * `deployment.securityProfile` is set and `deployment.podSecurityContext.enabled` or `deployment.containerSecurityContext.enabled` is `true`.
 * `networkPolicy.ingress.fromNamespaces` or `fromPods` contains an empty map.
 * `extraCaCerts.enabled` is `true` without exactly one of `configMapName` and `secretName`.

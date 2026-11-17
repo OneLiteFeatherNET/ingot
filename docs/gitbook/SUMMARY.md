@@ -35,6 +35,7 @@
   * [Route with a Gateway API HTTPRoute](set-up/kubernetes/route-with-gateway-api.md)
   * [Manage secrets with GitOps](set-up/kubernetes/manage-secrets-with-gitops.md)
   * [Terminate TLS at the gateway](set-up/kubernetes/terminate-tls-at-the-gateway.md)
+  * [Run the scalable mode with Helm](set-up/kubernetes/run-scalable-with-helm.md)
 * [Network](set-up/network/README.md)
   * [Run behind a reverse proxy](set-up/network/run-behind-reverse-proxy.md)
   * [Put a CDN in front](set-up/network/put-a-cdn-in-front.md)

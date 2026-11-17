@@ -26,6 +26,7 @@ NEW_GUIDES = [
     "set-up/kubernetes/manage-secrets-with-gitops.md",
     "set-up/size-the-deployment.md",
     "set-up/deployment-options-compared.md",
+    "set-up/kubernetes/run-scalable-with-helm.md",
 ]
 
 # Pages that carry a values block of this change: the new guides and the pages they update.

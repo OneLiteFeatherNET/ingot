@@ -423,6 +423,7 @@ jobs:
         run: |
           helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
           helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/tests/scalable/values.yaml
 
       - name: "Check the alert rules with promtool"
         run: |
@@ -467,6 +468,29 @@ jobs:
       # of both workloads, and waits until the pods are ready.
       - name: "Install the chart in both deploy modes"
         run: ct install --config ct.yaml --all
+
+      # The scalable profile is not installed by chart-testing, because the Secrets and the NATS broker it names must sit
+      # in the release namespace, and chart-testing creates a namespace with a random name per release. The dependencies
+      # are the throwaway CI manifests of the HA smoke test, applied into ingot-scalable first, and the release waits
+      # until its Deployments are available.
+      - name: "Install the scalable profile with its dependencies"
+        run: |
+          kubectl create namespace ingot-scalable
+          sed 's/ingot-ha/ingot-scalable/g' charts/ingot/tests/ha/dependencies.yaml | kubectl apply --namespace ingot-scalable --filename -
+          kubectl --namespace ingot-scalable wait --for=condition=available deployment/mariadb deployment/floci deployment/nats --timeout=300s
+          kubectl --namespace ingot-scalable wait --for=condition=complete job/ingot-smoke-bucket --timeout=300s
+          helm install ingot-scalable charts/ingot --namespace ingot-scalable \
+            -f charts/ingot/tests/scalable/values.yaml --wait --timeout 300s
+          kubectl -n ingot-scalable wait --for=condition=Ready pod -l app.kubernetes.io/instance=ingot-scalable --timeout=300s
+
+      # Prints the state of the scalable release and the logs of its pods when the install above fails, because a
+      # release that never becomes ready says nothing else.
+      - name: "Print the scalable pods when their install fails"
+        if: ${{ failure() }}
+        run: |
+          kubectl --namespace ingot-scalable get pods,deployments,events --output wide || true
+          kubectl --namespace ingot-scalable describe pods --selector app.kubernetes.io/instance=ingot-scalable || true
+          kubectl --namespace ingot-scalable logs --selector app.kubernetes.io/instance=ingot-scalable --all-containers --prefix --tail=300 || true
 
       # The restricted profile is installed into a namespace that enforces the Pod Security
       # restricted level, so the API server rejects the pod unless the render meets that level.

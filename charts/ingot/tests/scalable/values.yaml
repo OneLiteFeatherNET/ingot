@@ -1,0 +1,52 @@
+# CI only: installed by the Helm chart job of .github/workflows/heavy.yml into the namespace ingot-scalable, not by
+# chart-testing. chart-testing creates a namespace with a random name per release, and the Secrets and the NATS broker
+# named here must sit in the release namespace, so this file stays out of charts/ingot/ci/.
+# The dependencies come from charts/ingot/tests/ha/dependencies.yaml, applied into ingot-scalable before the install.
+# The images are the ones the job builds and loads into kind by their tag.
+mode: scalable
+image:
+  name: ingot
+  tag: ci
+dashboard:
+  image:
+    name: ingot-dashboard
+    tag: ci
+# Each workload takes these requests, because the kind node of the job cannot hold the chart default of one CPU per pod
+# next to the database and the broker. The heap is the one of the HA smoke values, and the path style lets the S3
+# client reach Floci by its host name.
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: 2.0
+    memory: 1024Mi
+# The scalable server refuses to start while a repository is on the local file system, so the repositories are on S3
+# from the first start. The shared settings file holds the maven domain, which the server reads before it checks the
+# shared state. The keys are empty, so the S3 client takes them from objectStorage.existingSecret, and the file holds
+# no key. The endpoint is the Floci service of the dependencies.
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx512M -Dreposilite.s3.pathStyleAccessEnabled=true"
+sharedConfiguration:
+  enabled: true
+  content: |
+    {
+      "maven": {
+        "repositories": [
+          {"id": "releases", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+          {"id": "snapshots", "visibility": "PUBLIC", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}},
+          {"id": "private", "visibility": "PRIVATE", "storageProvider": {"type": "s3", "bucketName": "ingot-smoke", "endpoint": "http://floci.ingot-scalable.svc.cluster.local:4566", "region": "us-east-1", "sharedBucket": true, "accessKey": "", "secretKey": ""}}
+        ]
+      }
+    }
+database:
+  existingSecret: ingot-database
+  secretKey: database
+objectStorage:
+  existingSecret: ingot-s3-keys
+clusterBus:
+  # Plain NATS without credentials, because the CI broker has no authentication.
+  url: nats://nats.ingot-scalable.svc.cluster.local:4222
+persistence:
+  enabled: false

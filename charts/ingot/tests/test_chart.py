@@ -1044,5 +1044,88 @@ class ScalableRefusalTest(unittest.TestCase):
         self.assertTrue(manifests, "the default of the top-level budget, enabled false, must keep rendering")
 
 
+class ScalableCiValuesTest(unittest.TestCase):
+
+    def test_ci_scalable_values_render_the_read_write_and_worker_deployments(self):
+        code, stdout, stderr = helm(
+            ["template", RELEASE, CHART_DIR, "--namespace", NAMESPACE, "-f", os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")]
+        )
+        self.assertEqual(0, code, f"tests/scalable/values.yaml must render with the refusals passing: {stderr}")
+        names = {doc["metadata"]["name"] for doc in yaml.safe_load_all(stdout) if doc and doc.get("kind") == "Deployment"}
+        self.assertLessEqual({"ingot-read", "ingot-write", "ingot-worker"}, names,
+                             "the scalable CI values must render the three server workloads")
+
+    def test_scalable_ci_values_stay_out_of_the_chart_ci_directory(self):
+        self.assertFalse(os.path.exists(os.path.join(CHART_DIR, "ci", "scalable-values.yaml")),
+                         "chart-testing installs ci/ values into a random namespace, which cannot see the Secrets")
+
+    def test_scalable_ci_secrets_are_created_by_the_dependencies(self):
+        secrets = {doc["metadata"]["name"] for doc in ha_dependency_documents() if doc.get("kind") == "Secret"}
+        values = scalable_ci_values()
+        self.assertLessEqual({values["database"]["existingSecret"], values["objectStorage"]["existingSecret"]}, secrets,
+                             "every Secret the scalable CI values name must be applied by the dependencies first")
+
+    def test_scalable_ci_database_key_exists_in_the_database_secret(self):
+        database = next(doc for doc in ha_dependency_documents()
+                        if doc.get("kind") == "Secret" and doc["metadata"]["name"] == "ingot-database")
+        key = scalable_ci_values()["database"]["secretKey"]
+        self.assertIn(key, database["stringData"], "database.secretKey must select a key of the database Secret")
+
+    def test_scalable_ci_cluster_bus_points_at_the_nats_service(self):
+        nats = next(doc for doc in ha_dependency_documents()
+                    if doc.get("kind") == "Service" and doc["metadata"]["name"] == "nats")
+        port = nats["spec"]["ports"][0]["port"]
+        self.assertEqual(f"nats://nats.ingot-scalable.svc.cluster.local:{port}", scalable_ci_values()["clusterBus"]["url"],
+                         "the cluster bus must name the NATS Service of the dependencies in ingot-scalable")
+
+
+def scalable_ci_repositories():
+    shared = yaml.safe_load(scalable_ci_values()["sharedConfiguration"]["content"])
+    return shared["maven"]["repositories"]
+
+
+class ScalableCiRepositoriesTest(unittest.TestCase):
+
+    def test_scalable_ci_repositories_are_on_s3_from_the_first_start(self):
+        self.assertEqual(
+            {"releases", "snapshots", "private"},
+            {repository["id"] for repository in scalable_ci_repositories()},
+            "the scalable CI values must put every maven repository on object storage",
+        )
+        for repository in scalable_ci_repositories():
+            self.assertEqual("s3", repository["storageProvider"]["type"],
+                             f"repository {repository['id']} must not be on the local file system")
+
+    def test_scalable_ci_repositories_use_the_floci_service_of_the_dependencies(self):
+        floci = next(doc for doc in ha_dependency_documents()
+                     if doc.get("kind") == "Service" and doc["metadata"]["name"] == "floci")
+        port = floci["spec"]["ports"][0]["port"]
+        for repository in scalable_ci_repositories():
+            self.assertEqual(f"http://floci.ingot-scalable.svc.cluster.local:{port}",
+                             repository["storageProvider"]["endpoint"],
+                             f"repository {repository['id']} must name the Floci Service in ingot-scalable")
+
+    def test_scalable_ci_shared_settings_hold_no_static_keys(self):
+        for repository in scalable_ci_repositories():
+            storage = repository["storageProvider"]
+            self.assertEqual("", storage["accessKey"] + storage["secretKey"],
+                             f"repository {repository['id']} must take its keys from the objectStorage Secret")
+
+    def test_scalable_ci_does_not_allow_repositories_on_the_shared_filesystem(self):
+        names = [entry.get("name") for entry in scalable_ci_values().get("env", [])]
+        self.assertNotIn("INGOT_ALLOW_SHARED_FILESYSTEM", names,
+                         "the scalable CI install must start with repositories on object storage, not the escape hatch")
+
+
+def scalable_ci_values():
+    with open(os.path.join(CHART_DIR, "tests", "scalable", "values.yaml")) as handle:
+        return yaml.safe_load(handle)
+
+
+def ha_dependency_documents():
+    with open(os.path.join(CHART_DIR, "tests", "ha", "dependencies.yaml")) as handle:
+        return [doc for doc in yaml.safe_load_all(handle) if doc]
+
+
 if __name__ == "__main__":
     unittest.main()
