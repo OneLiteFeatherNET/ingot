@@ -16,11 +16,15 @@
 
 <script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
+import { controlLabelGapClass, type ControlLabelGap } from './controlLabel'
 
 /*
  * Material Design 3 switch for a boolean setting. The switch is a button with role="switch",
  * so the state reaches assistive technology through aria-checked, and Space and Enter toggle
  * it. The default slot is the label, tied to the switch through <label for>.
+ *
+ * `labelGap` sets the gap between the track and the label (see controlLabel.ts). It defaults to
+ * the gap the switch has always had.
  *
  * Attributes that are not props (aria-labelledby, aria-describedby, name and so on) go to the
  * switch element, where assistive technology reads them. class and style stay on the root.
@@ -36,10 +40,12 @@ const props = withDefaults(defineProps<{
   modelValue?: boolean
   disabled?: boolean
   id?: string
+  labelGap?: ControlLabelGap
 }>(), {
   modelValue: false,
   disabled: false,
-  id: ''
+  id: '',
+  labelGap: 'loose'
 })
 
 defineSlots<{
@@ -107,6 +113,9 @@ const stateLayerClass = computed(() => {
   ]
 })
 
+// The root is a flex row; the gap between the control and its label comes from the shared part.
+const rootClass = computed(() => ['flex items-center', controlLabelGapClass(props.labelGap)])
+
 const labelClass = computed(() =>
   props.disabled ? 'cursor-not-allowed text-on-surface/38' : 'cursor-pointer text-on-surface'
 )
@@ -114,8 +123,7 @@ const labelClass = computed(() =>
 
 <template>
   <div
-    class="flex items-center gap-3"
-    :class="attrs.class"
+    :class="[rootClass, attrs.class]"
     :style="attrs.style"
     data-ingot-component="md-switch"
   >

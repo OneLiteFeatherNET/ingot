@@ -271,7 +271,7 @@ describe('MdRadio', () => {
     it('keeps the 8px gap between the circle and the label of the plain radio by default', () => {
       mounted = mountRadio()
 
-      expect(mounted.wrapper.element.className, 'the plain radio root has gap-2').toContain('gap-2')
+      expect((mounted.wrapper.element as HTMLElement).className, 'the plain radio root has gap-2').toContain('gap-2')
     })
 
     it('keeps the 12px gap between the circle and the text of the card radio by default', () => {
@@ -283,8 +283,8 @@ describe('MdRadio', () => {
     it('takes the loose label gap from the labelGap prop on the plain radio', () => {
       mounted = mountRadio({ attrs: { labelGap: 'loose' } })
 
-      expect(mounted.wrapper.element.className, 'labelGap loose gives gap-3').toContain('gap-3')
-      expect(mounted.wrapper.element.className, 'the tight gap is replaced').not.toContain('gap-2')
+      expect((mounted.wrapper.element as HTMLElement).className, 'labelGap loose gives gap-3').toContain('gap-3')
+      expect((mounted.wrapper.element as HTMLElement).className, 'the tight gap is replaced').not.toContain('gap-2')
     })
 
     it('takes the tight label gap from the labelGap prop on the card radio', () => {
