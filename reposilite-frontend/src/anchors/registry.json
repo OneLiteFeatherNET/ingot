@@ -1310,23 +1310,19 @@
       "states": []
     },
     {
-      "name": "support-view",
-      "file": "src/components/support/SupportView.vue",
-      "stability": "experimental",
-      "parts": [],
-      "states": []
-    },
-    {
       "name": "system-info-view",
       "file": "src/components/support/SystemInfoView.vue",
       "stability": "experimental",
       "parts": [
         "plugin-tier",
-        "filter"
+        "filter",
+        "support-action",
+        "support-note"
       ],
       "states": [
         "loading",
-        "error"
+        "error",
+        "empty"
       ]
     },
     {
@@ -1397,5 +1393,11 @@
       "states": []
     }
   ],
-  "aliases": []
+  "aliases": [
+    {
+      "name": "support-view",
+      "replacedBy": "system-info-view",
+      "removeIn": "3.0.0"
+    }
+  ]
 }

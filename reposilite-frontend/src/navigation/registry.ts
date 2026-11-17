@@ -359,8 +359,7 @@ const ADMIN_TREE: TreeGroup[] = [
       { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console }, description: 'The log lines of this instance, filtered by level and text.', keywords: 'logs' },
       { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance }, description: 'Storage usage, the search index and cleanup for this Ingot instance.', keywords: 'storage, rebuild index, cleanup run' },
       { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard }, description: 'Traffic and resource use of this instance over time.', keywords: 'traffic, charts' },
-      { key: 'system-info', route: 'system-info', label: 'System information', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What this instance runs on. Secrets are withheld or masked, and the page only reads.', keywords: 'version, java, environment' },
-      { key: 'support', route: 'support', label: 'Support bundle', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What a maintainer needs to look at this instance, as one zip.', keywords: 'zip, debug' },
+      { key: 'system-info', route: 'system-info', label: 'System and support', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What this instance runs on and what a maintainer needs to look at. Secrets are withheld or masked, and the page only reads.', keywords: 'version, java, environment, zip, debug' },
     ],
   },
 ]
@@ -431,8 +430,9 @@ const PAGES: Page[] = [
 
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
-// the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
+// the not found page, and the old support address, which redirects to the system information page. The detail routes
+// of Access are not listed here: each one is the `detail` of its child.
+const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'support', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
 
 const pageByKey = (key: string): Page | undefined => PAGES.find(page => page.key === key)
 

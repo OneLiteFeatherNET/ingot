@@ -339,6 +339,13 @@ describe("anchor checks across the dashboard source", () => {
     expect(missing).toEqual([])
   })
 
+  it("no longer registers support-view as a component, and declares it as an alias of the merged page", () => {
+    const aliases = (registry as { aliases?: RegistryAlias[] }).aliases ?? []
+
+    expect(registered.map((entry) => entry.name), "the support page has no component of its own").not.toContain("support-view")
+    expect(aliases).toEqual([expect.objectContaining({ name: "support-view", replacedBy: "system-info-view" })])
+  })
+
   it("has no alias whose removal version is reached", () => {
     const packageJson = JSON.parse(read("package.json")) as { version: string }
     const problems = aliasProblems(registry, packageJson.version)

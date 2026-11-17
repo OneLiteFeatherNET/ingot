@@ -310,7 +310,7 @@ describe('the labels and descriptions of the Administration tree', () => {
       'page:overview', 'page:repositories','settings:cleanup', 'settings:javadoc', 'settings:search',
       'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check',
       'settings:frontend', 'settings:web', 'settings:statistics', 'page:migration',
-      'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info', 'page:support',
+      'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info',
     ])
   })
 })

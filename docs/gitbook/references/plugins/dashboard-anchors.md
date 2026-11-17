@@ -193,10 +193,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `stat-tile` | experimental | `src/components/dashboard/StatTile.vue` | none | none |
 | `status-label` | experimental | `src/components/dashboard/StatusLabel.vue` | none | none |
 | `storage-usage-panel` | experimental | `src/components/maintenance/StorageUsagePanel.vue` | none | none |
-| `support-view` | experimental | `src/components/support/SupportView.vue` | none | none |
 | `switch-field` | stable | `src/components/renderers/SwitchField.vue` | none | none |
 | `sync-step` | experimental | `src/components/migration/SyncStep.vue` | none | none |
-| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier`, `filter` | `loading`, `error` |
+| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier`, `filter`, `support-action`, `support-note` | `loading`, `error`, `empty` |
 | `tags-field-renderer` (no element of its own) | stable | `src/components/renderers/TagsFieldRenderer.vue` | none | none |
 | `team-detail` | experimental | `src/components/access/TeamDetail.vue` | none | `loading` |
 | `team-legacy-grants` | experimental | `src/components/access/TeamLegacyGrants.vue` | none | none |
@@ -217,7 +216,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 
 ## Aliases
 
-No alias is in effect.
+| Old name | Replaced by | Removed in |
+| --- | --- | --- |
+| `support-view` | `system-info-view` | 3.0.0 |
 
 ## Selecting in tests
 

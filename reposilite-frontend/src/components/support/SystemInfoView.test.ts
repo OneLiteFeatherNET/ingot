@@ -51,8 +51,8 @@ const FIXTURE = {
 
 // The page reads its tab and its fragment from the address, so every mount gets a memory router at the given address.
 // The address is resolved before the mount: installing a router starts its own navigation, which would replace a pending one.
-const mountView = async (client: unknown, address = '/settings/system-info') => {
-  session.client = client
+const mountView = async (client: { support?: Record<string, unknown> }, address = '/settings/system-info') => {
+  session.client = { support: { availability: vi.fn(() => Promise.resolve({ data: { enabled: true } })), ...client.support } }
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -74,7 +74,7 @@ afterEach(() => {
 describe('SystemInfoView', () => {
   it('renders every section of the page from the system information', async () => {
     // when: the page is opened
-    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn() } })
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })) } })
     await flushPromises()
 
     // then: each section has its heading
@@ -154,7 +154,8 @@ describe('SystemInfoView tabs', () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
 
-    const disclosure = wrapper.find('details')
+    // The Overview holds the only disclosure of the cards; the note of the header is a disclosure too, and comes first.
+    const disclosure = panelsOf(wrapper)[0].find('details')
     expect(disclosure.find('summary').text()).toBe('Input arguments')
     expect(disclosure.attributes('open'), 'the disclosure is closed by default').toBeUndefined()
     expect(disclosure.text()).toContain('-Xmx512m')
@@ -222,17 +223,90 @@ describe('SystemInfoView tabs', () => {
   })
 
   it('lets a section anchor win over a tab parameter that disagrees with it', async () => {
-    const wrapper = await mountView(withInfo(), '/settings/system-info?tab=plugins#support-cluster')
-    await flushPromises()
+    const scrolled: string[] = []
+    const prototype = Element.prototype as { scrollIntoView?: unknown }
+    const original = prototype.scrollIntoView
+    prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id)
+    }
+    try {
+      const wrapper = await mountView(withInfo(), '/settings/system-info?tab=plugins#support-cluster')
+      await flushPromises()
 
-    expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
+      expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
+      expect(scrolled).toEqual(['support-cluster'])
+    } finally {
+      prototype.scrollIntoView = original
+    }
   })
 
-  it('shows the failure of the system information in place of the tabs', async () => {
+  it('shows the failure of the system information in the Overview, and keeps the tabs', async () => {
     const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.reject(new Error('The instance did not answer.'))) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('The instance did not answer.')
-    expect(wrapper.find('[role="tablist"]').exists(), 'no tab is drawn on a failure').toBe(false)
+    expect(tabsOf(wrapper), 'the four tabs stay, as the design keeps the Overview for the message').toHaveLength(4)
+  })
+})
+
+const DOWNLOAD = 'Download support bundle'
+const withAvailability = (availability: () => Promise<unknown>) => ({
+  support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn(availability) },
+})
+const partsIn = (wrapper: Page) => Array.from((wrapper.element as Element).querySelectorAll('*'), (element) => element.getAttribute('data-ingot-part')).filter(Boolean)
+const buttonNamed = (wrapper: Page, name: string) => wrapper.findAll('button').find((button) => button.text().includes(name))
+
+describe('SystemInfoView support action', () => {
+  it('offers the download in the header, outside every tab, while the support pages are on', async () => {
+    const wrapper = await mountView(withAvailability(() => Promise.resolve({ data: { enabled: true } })))
+    await flushPromises()
+
+    expect(buttonNamed(wrapper, DOWNLOAD), 'the download action is drawn').toBeDefined()
+    expect(panelsOf(wrapper).some((panel) => panel.text().includes(DOWNLOAD)), 'no tab holds the action').toBe(false)
+  })
+
+  it('keeps the note on what is removed in a disclosure in the header', async () => {
+    const wrapper = await mountView(withAvailability(() => Promise.resolve({ data: { enabled: true } })))
+    await flushPromises()
+
+    const disclosure = wrapper.find('details')
+    expect(disclosure.find('summary').text()).toBe('What is removed')
+    expect(disclosure.text()).toContain('Secrets are removed or masked')
+    expect(disclosure.text()).toContain('Read the zip before you attach it to a public issue.')
+  })
+
+  it('says the pages are turned off, and draws no tab and no action, when the availability check answers off', async () => {
+    const wrapper = await mountView(withAvailability(() => Promise.resolve({ data: { enabled: false } })))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('The support pages are turned off on this instance.')
+    expect(tabsOf(wrapper)).toHaveLength(0)
+    expect(buttonNamed(wrapper, DOWNLOAD), 'no download action').toBeUndefined()
+  })
+
+  it('says the bundle cannot be checked, and draws no tab and no action, when the availability check fails', async () => {
+    const wrapper = await mountView(withAvailability(() => Promise.reject(new Error('The check did not answer.'))))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('The support bundle cannot be checked right now.')
+    expect(tabsOf(wrapper)).toHaveLength(0)
+    expect(buttonNamed(wrapper, DOWNLOAD), 'no download action').toBeUndefined()
+  })
+})
+
+describe('SystemInfoView anchors of the merged page', () => {
+  it('carries the name of the page and the old support name as its alias', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    expect(wrapper.attributes('data-ingot-component')).toBe('system-info-view')
+    expect(wrapper.attributes('data-ingot-component-alias'), 'the old name keeps working as an alias').toBe('support-view')
+  })
+
+  it('has the parts of the support action, the note and the filter where the design puts them', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    expect(partsIn(wrapper)).toEqual(expect.arrayContaining(['support-action', 'support-note', 'filter']))
   })
 })

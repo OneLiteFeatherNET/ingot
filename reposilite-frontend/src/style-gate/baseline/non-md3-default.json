@@ -255,12 +255,12 @@
     "count": 1
   },
   {
-    "file": "src/components/support/SupportView.vue",
+    "file": "src/components/support/SystemInfoView.vue",
     "match": "disabled:opacity-60",
     "count": 1
   },
   {
-    "file": "src/components/support/SupportView.vue",
+    "file": "src/components/support/SystemInfoView.vue",
     "match": "rounded-full",
     "count": 1
   },
