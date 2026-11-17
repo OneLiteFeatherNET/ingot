@@ -63,13 +63,14 @@ export function resolveRequests(client: ResolveClient, coordinate: Coordinate): 
   return [{ kind: 'module', path: `${base}.module` }, jar, jarSha1];
 }
 
-/** The files that the resolve scenario reads. The checksum is computed by the caller, so this module hashes nothing. */
+/** The files of a fixture in one repository. The checksum is computed by the caller, so this module hashes nothing. */
 export function resolveFixture(
   coordinate: Coordinate,
   seed: number,
   sha1: (bytes: Uint8Array) => string,
+  repository: string = RESOLVE_REPOSITORY,
 ): FixtureFile[] {
-  const base = artifactBase(RESOLVE_REPOSITORY, coordinate);
+  const base = artifactBase(repository, coordinate);
   const jar = generateArtifact(seed, ARTIFACT_SIZES['1KB']);
   return [
     { path: `${base}.pom`, body: pomOf(coordinate) },
