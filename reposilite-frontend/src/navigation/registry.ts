@@ -144,6 +144,8 @@ export interface DomainEntry {
   label: string
   description: string
   keywords: string
+  // Opts the domain into showing the sections of its settings form as tabs (see sectionTabsOf).
+  sectionTabs?: boolean
   key?: undefined
   route?: undefined
   detail?: undefined
@@ -283,6 +285,9 @@ const sectionOf = (domain: string) => contributions.value.sections.find(section 
 
 const settingsLabelOf = (domain: string) => sectionOf(domain)?.label
 
+// Whether a built-in settings domain shows the sections of its form as tabs. Only domains whose entry opts in do.
+const sectionTabsOf = (domain: string): boolean => ADMIN_TREE.some(group => group.entries.some(entry => entry.domain === domain && entry.sectionTabs === true))
+
 const enabledPlugins = () => contributions.value.enabledPlugins
 
 // Whether a server plugin is enabled, as the manifest of the plugin UI lists it. False until a session has read it.
@@ -326,7 +331,7 @@ const ADMIN_TREE: TreeGroup[] = [
       { key: 'repositories', route: 'settings-repositories', detail: 'settings-repository', label: 'Repositories', permission: { node: ADMIN_NODES.settings }, description: 'Hosted, proxied and group repositories, their policies and Maven options.', keywords: 'maven, hosted, proxy, mirror, group' },
       { domain: 'cleanup', label: 'Cleanup policies', description: 'Rules that delete old versions from the repositories they list.', keywords: 'cleanup, retention, delete, snapshots' },
       { domain: 'javadoc', label: 'Javadoc', description: 'Whether Javadoc archives are served, and which file suffixes count as Javadoc.', keywords: 'docs, groovydoc' },
-      { domain: 'search', label: 'Search index', description: 'The index behind artifact search: its nightly check against storage and scheduled rebuilds.', keywords: 'search, index, rebuild, reindex, verify' },
+      { domain: 'search', label: 'Search index', description: 'The index behind artifact search: its nightly check against storage and scheduled rebuilds.', keywords: 'search, index, rebuild, reindex, verify', sectionTabs: true },
     ],
   },
   {
@@ -663,6 +668,7 @@ export {
   contributedRailGroups,
   pluginPageRedirect,
   settingsLabelOf,
+  sectionTabsOf,
   enabledPlugins,
   pluginEnabled,
   NEXUS_IMPORT_PLUGIN,

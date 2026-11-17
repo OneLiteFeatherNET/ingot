@@ -35,10 +35,15 @@ const props = defineProps({
   saving: {
     type: Boolean,
     default: false
+  },
+  // When set and the page can show the tab of an error, a button with this label moves to that tab.
+  firstErrorLabel: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['save', 'discard', 'review'])
+const emit = defineEmits(['save', 'discard', 'review', 'show-error'])
 
 const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? 'change' : 'changes'}`)
 </script>
@@ -71,6 +76,14 @@ const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? '
       >
         Fix the errors before saving.
       </p>
+      <MdButton
+        v-if="invalid && firstErrorLabel"
+        variant="text"
+        type="button"
+        @click="emit('show-error')"
+      >
+        {{ firstErrorLabel }}
+      </MdButton>
       <p class="md-body-medium text-on-surface-variant">
         Other instances pick up saved changes within 10 seconds.
       </p>

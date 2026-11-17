@@ -90,9 +90,13 @@ const setup = async ({ domain = 'search', tab } = {}) => {
   return { store, router, update: fake.update }
 }
 
-const tabsOf = () => wrapper.findAll('[data-ingot-component="app-tabs"] [role="tab"]')
+const tabsOf = () => wrapper.findAll('[role="tablist"] [role="tab"]')
 const tabLabelled = (label) => tabsOf().find(tab => tab.text() === label)
-const shownPanel = () => wrapper.get('[data-ingot-component="app-tabs"] [role="tabpanel"]:not([hidden])').text()
+// The text of the panel of the selected tab. Panels of other tabs are hidden and their content is not drawn.
+const shownPanel = () => {
+  const selected = tabsOf().find(tab => tab.attributes('aria-selected') === 'true')
+  return document.getElementById(selected.attributes('aria-controls')).textContent
+}
 const buttonLabelled = (label) => wrapper.findAll('button').find(button => button.text() === label)
 
 // Writes a draft the way an edit does: the domain's data is replaced, then validated as the page does.
@@ -116,7 +120,7 @@ describe('the sections of a settings page as tabs', () => {
 
     await setup({ domain: 'frontend' })
 
-    expect(wrapper.find('[data-ingot-component="app-tabs"]').exists()).toBe(false)
+    expect(tabsOf()).toHaveLength(0)
   })
 
   it('shows only the fields of the General section until another tab is chosen', async () => {
