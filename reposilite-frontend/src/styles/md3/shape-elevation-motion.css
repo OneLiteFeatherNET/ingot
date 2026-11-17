@@ -119,6 +119,9 @@
   --container-md-reading-page: calc(60rem - 15.5rem);
   /* The columns of the administration frame from 1240 pixels: the side navigation and the page. */
   --grid-md-side-nav: 208px minmax(0, 1fr);
+  /* The rows of the same frame: the header row is as high as the header, the page row takes the rest. The side navigation
+     spans both rows, and an auto row would take a share of its height and stretch the header. */
+  --grid-md-administration-rows: auto minmax(0, 1fr);
   --container-md-sheet: 20rem;
   --container-md-snackbar: 35rem;
 

@@ -472,6 +472,13 @@ describe('AdministrationFrame header beside the side navigation', () => {
     expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-(--grid-md-side-nav)')
   })
 
+  it('sizes the header row on its own, so the side navigation spanning both rows does not stretch the header', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const classes = (wrapper.element as Element).classList
+    expect(classes, 'the header row is auto and the page row takes the rest of the height').toContain('large:grid-rows-(--grid-md-administration-rows)')
+  })
+
   it('puts the header in the page column on the first row from 1240 pixels', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
