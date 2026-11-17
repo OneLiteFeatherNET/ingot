@@ -21,12 +21,13 @@ import { JsonForms } from '@jsonforms/vue'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, indexRebuildLinkOf, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import AppTabs from '../tabs/AppTabs.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsAttention from './SettingsAttention.vue'
+import SearchRebuildNote from './SearchRebuildNote.vue'
 import SettingsHub from './SettingsHub.vue'
 import DashboardView from '../dashboard/DashboardView.vue'
 import { attentionRows, glanceRows, unsavedTreeKeys } from './settingsHub'
@@ -200,6 +201,8 @@ const sectionLabels = computed(() => sectionTabs.value.map(tab => ({
   label: labelWithErrors(tab.label, sectionErrors.value[tab.key] ?? 0)
 })))
 const activeSection = computed(() => activeTabKey(sectionTabs.value, route.query.tab))
+// The rebuild of the search index runs on Maintenance: the General section links there, beside what a rebuild does.
+const indexRebuild = computed(() => (activeDomain.value === 'search' ? indexRebuildLinkOf(can) : undefined))
 const activeSectionLayout = computed(() => sectionTabs.value.find(tab => tab.key === activeSection.value)?.layout)
 const firstErrorSection = computed(() => firstErrorTab(sectionTabs.value, sectionErrors.value))
 
@@ -490,6 +493,10 @@ watch(
               :label="`${store.titleOf(activeDomain)} sections`"
             >
               <template #default="{ tab }">
+                <SearchRebuildNote
+                  v-if="tab === 'general' && indexRebuild"
+                  :to="indexRebuild"
+                />
                 <JsonForms
                   v-if="tab === activeSection"
                   :key="`domain-fields:${activeDomain}:${tab}`"

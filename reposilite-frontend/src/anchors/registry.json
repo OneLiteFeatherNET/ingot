@@ -1441,6 +1441,13 @@
       "states": []
     },
     {
+      "name": "search-rebuild-note",
+      "file": "src/components/settings/SearchRebuildNote.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "settings-attention",
       "file": "src/components/settings/SettingsAttention.vue",
       "stability": "experimental",

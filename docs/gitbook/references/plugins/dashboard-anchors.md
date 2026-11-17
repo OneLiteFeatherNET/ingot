@@ -193,6 +193,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `run-now-dialog` | experimental | `src/components/maintenance/RunNowDialog.vue` | none | `error` |
 | `search-bar` | experimental | `src/components/search/SearchBar.vue` | none | none |
 | `search-filters` | experimental | `src/components/search/SearchFilters.vue` | none | none |
+| `search-rebuild-note` | experimental | `src/components/settings/SearchRebuildNote.vue` | none | none |
 | `search-result-row` | experimental | `src/components/search/SearchResultRow.vue` | none | none |
 | `search-view` | experimental | `src/components/search/SearchView.vue` | none | `loading` |
 | `secret-once-dialog` | experimental | `src/components/identity/SecretOnceDialog.vue` | none | none |
