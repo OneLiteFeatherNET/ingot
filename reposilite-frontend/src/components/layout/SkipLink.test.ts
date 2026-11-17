@@ -22,7 +22,7 @@ import App from '../../App.vue'
 // The app shell is mounted for the placement test only. Its stores and the head manager are replaced, so the test
 // reads nothing from the network, the browser storage or the system clock.
 vi.mock('@unhead/vue', () => ({ useHead: () => {} }))
-vi.mock('../../store/session', () => ({ useSession: () => ({ initializeSession: () => Promise.resolve() }) }))
+vi.mock('../../store/session', () => ({ useSession: () => ({ initializeSession: () => Promise.resolve(), loadProviders: () => Promise.resolve(undefined) }) }))
 vi.mock('../../store/theme', async () => {
   const { reactive: reactiveState } = await import('vue')
   return { default: () => ({ theme: reactiveState({ isDark: false }), fetchColorMode: () => {} }) }
