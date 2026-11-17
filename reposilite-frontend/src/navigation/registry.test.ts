@@ -30,7 +30,7 @@ import {
   shortcutsOf
 } from './registry'
 import { ROUTES } from '../router/routes'
-import { ACCESS_NODES, canUse } from '../store/nodeAccess'
+import { ACCESS_NODES, ADMIN_NODES, canUse } from '../store/nodeAccess'
 
 // A session answers for a node from its node list, as the session store does.
 const canWith = (nodes: string[]) => (node: string) => canUse(nodes, node)
@@ -74,7 +74,6 @@ describe('registry entries', () => {
     )
 
     expect(nodes).toMatchObject({
-      analytics: 'ingot.admin.dashboard',
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
       audit: 'ingot.admin.audit',
@@ -234,6 +233,14 @@ describe('routeMeta', () => {
 
   it('gives a manager page its node and the manager flag', () => {
     expect(routeMeta('settings')).toEqual(expect.objectContaining({ section: 'settings', manager: true }))
+  })
+
+  it('gives Analytics the settings node or the dashboard node, as its alternatives', () => {
+    expect(routeMeta('analytics')).toEqual({
+      section: 'analytics',
+      manager: true,
+      anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard]
+    })
   })
 
   it('gives the Access page its alternative nodes', () => {

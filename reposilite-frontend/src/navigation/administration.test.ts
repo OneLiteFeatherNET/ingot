@@ -349,3 +349,30 @@ describe('finding a page of the Administration tree', () => {
     expect(links[0].to).toEqual({ name: 'analytics' })
   })
 })
+
+// The Analytics entry of the tree and its search, for the four principals: the settings node, the dashboard node, both, neither.
+describe('Analytics in the Administration tree, for either node', () => {
+  afterEach(() => {
+    setContributions(null)
+    setSupportBundleOffered(false)
+  })
+
+  const principals = [
+    { name: 'the dashboard node only', can: only(ADMIN_NODES.dashboard), opens: true },
+    { name: 'the settings node only', can: only(ADMIN_NODES.settings), opens: true },
+    { name: 'both nodes', can: only(ADMIN_NODES.dashboard, ADMIN_NODES.settings), opens: true },
+    { name: 'neither node', can: only(ADMIN_NODES.console), opens: false },
+  ]
+
+  it.each(principals)('lists Analytics in the navigation for $name: $opens', ({ can, opens }) => {
+    const labels = allLinks(adminGroups(can)).map(link => link.label)
+
+    expect(labels.includes('Analytics'), 'the Analytics entry of the tree').toBe(opens)
+  })
+
+  it.each(principals)('finds Analytics by Usage statistics for $name: $opens', ({ can, opens }) => {
+    const links = matchEntries(adminGroups(can, { domains: ['statistics'] }), 'usage statistics').groups.flatMap(group => group.links)
+
+    expect(links.map(link => link.key), 'the search entry for Usage statistics').toEqual(opens ? ['page:analytics'] : [])
+  })
+})

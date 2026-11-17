@@ -20,6 +20,16 @@ import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
 import { ROUTES } from './routes'
+import { ADMIN_NODES, canUse, routeAllowed } from '../store/nodeAccess'
+
+// The four principals of Analytics: the node lists a session may carry, and whether the page opens for them.
+const analyticsPrincipals = [
+  { name: 'the dashboard node only', nodes: [ADMIN_NODES.dashboard], opens: true },
+  { name: 'the settings node only', nodes: [ADMIN_NODES.settings], opens: true },
+  { name: 'both nodes', nodes: [ADMIN_NODES.dashboard, ADMIN_NODES.settings], opens: true },
+  { name: 'neither node', nodes: [ADMIN_NODES.console], opens: false },
+]
+const canWith = (nodes: string[]) => (node: string) => canUse(nodes, node)
 
 // Every route renders the same shell in the application. Here the shell is an empty stub,
 // because what it shows is tested with the page itself.
@@ -145,11 +155,21 @@ describe('route names and parameters', () => {
 })
 
 describe('analytics route', () => {
-  it('gives analytics the dashboard node, so the same people see the traffic page', () => {
+  it('names either the settings node or the dashboard node for analytics', () => {
     const analytics = ROUTES.find(route => route.name === 'analytics')
 
     expect(analytics?.path).toBe('/analytics')
-    expect(analytics?.meta).toEqual({ section: 'analytics', manager: true, node: 'ingot.admin.dashboard' })
+    expect(analytics?.meta).toEqual({
+      section: 'analytics',
+      manager: true,
+      anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard]
+    })
+  })
+
+  it.each(analyticsPrincipals)('lets $name open the analytics page: $opens', ({ nodes, opens }) => {
+    const analytics = ROUTES.find(route => route.name === 'analytics')
+
+    expect(routeAllowed(analytics?.meta, canWith(nodes), false), 'the route access of analytics').toBe(opens)
   })
 
   it('keeps a signed in user without the manager permission on the analytics address', async () => {
@@ -180,6 +200,16 @@ describe('the usage statistics address', () => {
 
     expect(router.currentRoute.value.name, 'the old address leads to Analytics').toBe('analytics')
     expect(router.currentRoute.value.query).toEqual({ from: 'bookmark' })
+  })
+
+  it.each(analyticsPrincipals)('gives $name the same access through the old address: $opens', async ({ nodes, opens }) => {
+    const can = canWith(nodes)
+    const router = makeRouter({ can, isLogged: () => true, whenSessionKnown: () => Promise.resolve() })
+
+    await router.push('/settings/statistics')
+
+    expect(router.currentRoute.value.name, 'the old address leads to Analytics').toBe('analytics')
+    expect(routeAllowed(router.currentRoute.value.meta, can, false), 'the route access after the redirect').toBe(opens)
   })
 })
 
