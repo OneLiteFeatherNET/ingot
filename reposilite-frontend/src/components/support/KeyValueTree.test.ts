@@ -69,7 +69,7 @@ describe('KeyValueTree', () => {
     const wrapper = mountTree({ entries: smallRows() })
 
     expect(table(wrapper).exists(), 'the rows sit in one table').toBe(true)
-    expect(table(wrapper).findAll('[role="row"]').length, 'one row per key').toBe(3)
+    expect(table(wrapper).findAll('[role="cell"]').length, 'one value cell per key, the group row has none').toBe(3)
   })
 
   it('keeps the keys in a monospace font', () => {
@@ -122,12 +122,12 @@ describe('KeyValueTree', () => {
 
   it('toggles one group with its own button and shows or hides its keys', async () => {
     const wrapper = mountTree({ entries: serviceRows() })
-    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_ADDR'), 'the keys of a collapsed group are hidden').toBeUndefined()
+    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS'), 'the keys of a collapsed group are hidden').toBeUndefined()
 
     await groupButton(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.trigger('click')
 
     expect(isExpanded(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP'), 'the group reports that it is open').toBe(true)
-    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_ADDR'), 'the keys of the open group are shown').toBeDefined()
+    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS'), 'the keys of the open group are shown').toBeDefined()
   })
 
   it('opens the path to a match and marks the matching text', () => {

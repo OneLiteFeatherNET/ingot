@@ -198,7 +198,7 @@ describe('SystemInfoView tabs', () => {
 
     await filterOf(environment).setValue('puid')
 
-    expect(environment.findAll('dt').map(term => term.text())).toEqual(['PUID'])
+    expect(environment.findAll('[role="rowheader"]').map(term => term.text())).toEqual(['PUID'])
   })
 
   it('says that no entry matches when the filter keeps no row', async () => {
@@ -585,8 +585,8 @@ describe('SystemInfoView environment and configuration as trees', () => {
     await flushPromises()
     const configuration = panelsOf(wrapper)[3]
 
-    expect(configuration.findAll('dt').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
-    expect(configuration.findAll('dt').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
+    expect(configuration.findAll('[role="rowheader"]').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
+    expect(configuration.findAll('[role="rowheader"]').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
     expect(groupNamed(configuration, 'bypass'), 'no group named after the shared first letter').toBeUndefined()
   })
 })

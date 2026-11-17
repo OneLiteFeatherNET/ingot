@@ -15,18 +15,39 @@
   -->
 
 <script setup lang="ts">
-import { computed, reactive, h, type FunctionalComponent, type VNode } from 'vue'
+import { computed, reactive } from 'vue'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
+import MdIcon from '../md/MdIcon.vue'
 import { buildKeyTree, filterTree, groupLabels, OPEN_GROUPS_UP_TO, splitMatch, type KeySplit, type TreeNode } from './keyTree'
 
-// A list of keys and values, grouped by prefix into native disclosures. The values are shown exactly as they were given.
+// One section of keys and values, grouped by prefix. The rows form one table, so every value starts in the same column.
+// A group is a row with a toggle and its key count; its keys follow it while it is open. Values are shown exactly as given.
 // The filter is owned by the page: a query opens the groups on the path to each match and marks the matching text.
 const props = withDefaults(defineProps<{
   entries: [string, string][]
   split: KeySplit
   label: string
+  title: string
+  headingId?: string
   query?: string
-}>(), { query: '' })
+}>(), { headingId: undefined, query: '' })
+
+// One row of the table. A group row has no value; a leaf row has no count.
+interface Row {
+  kind: 'leaf' | 'group'
+  key: string
+  depth: number
+  value: string
+  count: number
+  open: boolean
+}
+
+const CHEVRON = 'M6 9l6 6 6-6'
+// The indent of a level is a style utility (md-tree-depth-N), so the classes are written out here for the style gate.
+const DEPTH_CLASSES = ['md-tree-depth-0', 'md-tree-depth-1', 'md-tree-depth-2', 'md-tree-depth-3', 'md-tree-depth-4', 'md-tree-depth-5', 'md-tree-depth-6']
+const depthClass = (depth: number) => DEPTH_CLASSES[Math.min(depth, DEPTH_CLASSES.length - 1)]
+const MARK_CLASS = 'rounded-corner-small bg-primary-container text-on-primary-container'
 
 const filtering = computed(() => props.query.trim() !== '')
 const tree = computed(() => buildKeyTree(props.entries, props.split))
@@ -42,69 +63,149 @@ const isOpen = (label: string) => {
   return userOpen.get(label) ?? defaultOpen.value
 }
 
-// A toggle the user made differs from what the tree shows. The toggles that the tree makes itself match it and are skipped.
-const onToggle = (label: string, event: Event) => {
-  const open = (event.target as HTMLDetailsElement).open
-  if (open !== isOpen(label)) userOpen.set(label, open)
-}
-
+const toggle = (label: string, open: boolean) => userOpen.set(label, !open)
 const expandAll = () => groupLabels(tree.value).forEach((label) => userOpen.set(label, true))
 const collapseAll = () => groupLabels(tree.value).forEach((label) => userOpen.set(label, false))
 
-const marked = (text: string): (string | VNode)[] => splitMatch(text, props.query).map((part) =>
-  part.hit ? h('mark', { class: 'rounded-corner-small bg-primary-container text-on-primary-container' }, part.text) : part.text,
-)
-
-const renderNode = (node: TreeNode): VNode => {
-  if (node.kind === 'leaf') {
-    return h('dl', { class: 'grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1 py-1' }, [
-      h('dt', { class: 'min-w-0 wrap-anywhere text-on-surface' }, marked(node.key)),
-      h('dd', { class: 'min-w-0 wrap-anywhere text-on-surface-variant' }, marked(node.value)),
-    ])
+// The rows in reading order: a group, then its keys when it is open, then the next group.
+const rows = computed<Row[]>(() => {
+  const out: Row[] = []
+  const walk = (nodes: TreeNode[], depth: number) => {
+    for (const node of nodes) {
+      if (node.kind === 'leaf') {
+        out.push({ kind: 'leaf', key: node.key, depth, value: node.value, count: 0, open: false })
+        continue
+      }
+      const open = isOpen(node.label)
+      out.push({ kind: 'group', key: node.label, depth, value: '', count: node.count, open })
+      if (open) walk(node.children, depth + 1)
+    }
   }
-  return h('details', {
-    class: 'min-w-0 border-l border-outline pl-3',
-    open: isOpen(node.label),
-    onToggle: (event: Event) => onToggle(node.label, event),
-  }, [
-    h('summary', { class: 'cursor-pointer py-1 wrap-anywhere text-on-surface' }, [
-      ...marked(node.label),
-      h('span', { class: 'ml-2 text-on-surface-variant' }, `${node.count} keys`),
-    ]),
-    h(Nodes, { nodes: node.children }),
-  ])
-}
+  walk(shown.value, 0)
+  return out
+})
 
-// The nodes of one level. It calls itself for the children of a group.
-const Nodes: FunctionalComponent<{ nodes: TreeNode[] }> = (nodeProps) => nodeProps.nodes.map(renderNode)
+const parts = (text: string) => splitMatch(text, props.query)
 </script>
 
 <template>
   <div
-    class="flex min-w-0 flex-col gap-2"
+    class="flex min-w-0 flex-col gap-3"
     data-ingot-component="key-value-tree"
   >
-    <div class="flex flex-wrap gap-2">
-      <MdButton
-        variant="text"
-        @click="expandAll"
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <h2
+        :id="headingId"
+        class="md-title-large text-on-surface"
       >
-        Expand all
-      </MdButton>
-      <MdButton
-        variant="text"
-        @click="collapseAll"
-      >
-        Collapse all
-      </MdButton>
+        {{ title }}
+      </h2>
+      <MdBadge>{{ entries.length }} keys</MdBadge>
+      <div class="ml-auto flex flex-wrap gap-1">
+        <MdButton
+          variant="text"
+          @click="expandAll"
+        >
+          Expand all
+        </MdButton>
+        <MdButton
+          variant="text"
+          @click="collapseAll"
+        >
+          Collapse all
+        </MdButton>
+      </div>
     </div>
     <div
-      role="region"
+      role="table"
       :aria-label="label"
-      tabindex="0"
-      class="max-h-(--container-md-key-tree) min-w-0 overflow-y-auto font-mono md-code-small"
+      class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 font-mono md-code-small"
     >
-      <Nodes :nodes="shown" />
+      <div
+        v-for="row in rows"
+        :key="`${row.kind}:${row.key}`"
+        role="row"
+        class="col-span-full grid min-w-0 grid-cols-subgrid"
+      >
+        <div
+          v-if="row.kind === 'group'"
+          role="rowheader"
+          class="col-span-full min-w-0 py-0.5"
+          :class="depthClass(row.depth)"
+        >
+          <button
+            type="button"
+            class="md-state-layer md-focus-ring flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-corner-small py-1 text-left md-title-small text-on-surface"
+            :aria-expanded="row.open"
+            @click="toggle(row.key, row.open)"
+          >
+            <MdIcon
+              :path="CHEVRON"
+              size="md"
+              class="shrink-0 transition-transform duration-md-short3"
+              :class="row.open ? 'rotate-180' : ''"
+            />
+            <span class="min-w-0 break-all">
+              <template
+                v-for="(part, index) in parts(row.key)"
+                :key="index"
+              >
+                <mark
+                  v-if="part.hit"
+                  :class="MARK_CLASS"
+                >{{ part.text }}</mark>
+                <template v-else>{{ part.text }}</template>
+              </template>
+            </span>
+            <MdBadge class="shrink-0">
+              {{ row.count }} keys
+            </MdBadge>
+          </button>
+        </div>
+        <template v-else>
+          <div
+            role="rowheader"
+            class="min-w-0 break-all py-1 text-on-surface-variant"
+            :class="depthClass(row.depth)"
+          >
+            <template
+              v-for="(part, index) in parts(row.key)"
+              :key="index"
+            >
+              <mark
+                v-if="part.hit"
+                :class="MARK_CLASS"
+              >{{ part.text }}</mark>
+              <template v-else>
+                {{ part.text }}
+              </template>
+            </template>
+          </div>
+          <div
+            role="cell"
+            class="min-w-0 break-all py-1"
+            :class="row.value === '' ? 'italic text-on-surface-variant' : 'text-on-surface'"
+          >
+            <template v-if="row.value === ''">
+              (empty)
+            </template>
+            <template v-else>
+              <template
+                v-for="(part, index) in parts(row.value)"
+                :key="index"
+              >
+                <mark
+                  v-if="part.hit"
+                  :class="MARK_CLASS"
+                >{{ part.text }}</mark>
+                <template v-else>
+                  {{ part.text }}
+                </template>
+              </template>
+            </template>
+          </div>
+        </template>
+      </div>
     </div>
     <p
       v-if="filtering && shown.length === 0"

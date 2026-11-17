@@ -108,7 +108,8 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     ['--container-md-sheet', '20rem'],
     ['--container-md-snackbar', '35rem'],
     ['--container-md-crumb', '10rem'],
-    ['--container-md-key-tree', '24rem'],
+    ['--spacing-md-tree-indent', '1.25rem'],
+    ['--spacing-md-tree-guide', '0.625rem'],
     ['--grid-md-key-value', 'auto minmax(0, 1fr)'],
     ['--spacing-md-node-region', '28rem'],
   ])('declares the layout token %s as %s', (name, value) => {
