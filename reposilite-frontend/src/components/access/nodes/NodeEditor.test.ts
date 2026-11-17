@@ -78,6 +78,7 @@ describe('NodeEditor', () => {
 
   afterEach(() => {
     wrapper?.unmount()
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
   })
 
   const input = () => wrapper.find('input[role="combobox"]')
@@ -149,6 +150,7 @@ describe('NodeEditor', () => {
     })
 
     it('focuses the listed row on Enter instead of adding a second row', async () => {
+      Element.prototype.scrollIntoView = vi.fn()
       mountEditor()
 
       await type('ingot.admin.users')
@@ -490,7 +492,6 @@ describe('NodeEditor', () => {
     const details = (key: string) => wrapper.find(`[data-key="${key}"] > details`).element as HTMLDetailsElement
 
     afterEach(() => {
-      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
       delete (window as { matchMedia?: unknown }).matchMedia
     })
 
@@ -551,10 +552,9 @@ describe('NodeEditor', () => {
       mountEditor({ nodes: MANY(), savedNodes: MANY() })
       await wrapper.find('[data-test="view-tree"]').trigger('click')
 
-      await wrapper.find('input[type="search"]').setValue('area-2')
+      await wrapper.find('input[type="search"]').setValue('repo-1')
 
-      // With only admin nodes left, the root merges into the admin group, which the filter opens.
-      expect(details('ingot.admin').open, 'the group of the match is open').toBe(true)
+      expect(details('ingot.repository').open, 'the group of the matches is open').toBe(true)
     })
 
     it('keeps the groups open for 20 nodes or fewer', async () => {
@@ -620,7 +620,7 @@ describe('NodeEditor', () => {
     it('scrolls without smooth motion when reduced motion is preferred', async () => {
       const scrollIntoView = vi.fn()
       Element.prototype.scrollIntoView = scrollIntoView
-      window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true })
       mountEditor({ nodes: MANY(), savedNodes: MANY() })
 
       await type('ingot.admin.teams')
@@ -631,6 +631,7 @@ describe('NodeEditor', () => {
     })
 
     it('focuses the existing row for a duplicate in the tree view', async () => {
+      Element.prototype.scrollIntoView = vi.fn()
       mountEditor({ nodes: MANY(), savedNodes: MANY() })
       await wrapper.find('[data-test="view-tree"]').trigger('click')
 
@@ -639,7 +640,7 @@ describe('NodeEditor', () => {
       await flushPromises()
 
       expect(wrapper.emitted('update:nodes'), 'nothing was added').toBeUndefined()
-      expect(document.activeElement).toBe(row('ingot.admin.area-1').element)
+      expect(document.activeElement).toBe(wrapper.find('[data-node="ingot.admin.area-1"]').element)
     })
   })
 
