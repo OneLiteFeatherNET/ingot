@@ -575,14 +575,6 @@
       "states": []
     },
     {
-      "name": "identity-dialog-shell",
-      "file": "src/components/identity/DialogShell.vue",
-      "stability": "experimental",
-      "parts": [],
-      "states": [],
-      "ownElement": false
-    },
-    {
       "name": "md-dialog-actions",
       "file": "src/components/md/MdDialogActions.vue",
       "stability": "experimental",

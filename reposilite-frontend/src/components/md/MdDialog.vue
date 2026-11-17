@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<{
   dismissable?: boolean
 }>(), {
   modelValue: false,
+  describedby: undefined,
   role: 'dialog',
   size: 'lg',
   dismissable: true

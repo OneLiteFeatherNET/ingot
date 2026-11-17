@@ -19,7 +19,7 @@ import { computed, ref, type PropType } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import { validateNewPassword, type PrincipalSummary, type PrincipalsApi } from './accessPrincipals'
 import { useSession } from '../../store/session'
 
@@ -89,7 +89,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="reset-password-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -159,5 +159,5 @@ const submit = async () => {
         Reset password
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

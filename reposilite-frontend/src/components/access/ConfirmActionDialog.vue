@@ -18,7 +18,7 @@
 import { computed, ref, useId } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 
 /*
  * A confirmation before a change that matters. With `typeToConfirm` the user has to type that
@@ -87,7 +87,7 @@ const submit = () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     :labelledby="titleId"
     @update:model-value="emit('update:modelValue', $event)"
@@ -144,5 +144,5 @@ const submit = () => {
         {{ confirmLabel }}
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

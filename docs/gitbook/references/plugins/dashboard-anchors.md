@@ -83,7 +83,6 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `file-upload` | experimental | `src/components/browser/FileUpload.vue` | none | none |
 | `getting-started-card` | experimental | `src/components/dashboard/GettingStartedCard.vue` | none | `error` |
 | `header-hero` | stable | `src/components/header/HeaderHero.vue` | none | none |
-| `identity-dialog-shell` (no element of its own) | experimental | `src/components/identity/DialogShell.vue` | none | none |
 | `index-page` | experimental | `src/pages/IndexPage.vue` | none | none |
 | `index-panel` | experimental | `src/components/maintenance/IndexPanel.vue` | none | none |
 | `instance-health-row` | experimental | `src/components/dashboard/InstanceHealthRow.vue` | none | none |

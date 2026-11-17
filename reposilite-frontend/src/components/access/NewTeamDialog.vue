@@ -19,7 +19,7 @@ import { computed, ref, type PropType } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import { buildTeamCreateBody, validateTeamName, type TeamsApi } from './accessTeams'
 
 /*
@@ -86,7 +86,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="new-team-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -160,5 +160,5 @@ const submit = async () => {
         Create team
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

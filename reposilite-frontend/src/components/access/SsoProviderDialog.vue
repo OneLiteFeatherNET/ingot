@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type PropType } from 'vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChipInput from '../md/MdChipInput.vue'
 import MdIconButton from '../md/MdIconButton.vue'
@@ -160,7 +160,7 @@ const validateDomain = (text: string, existing: string[]) => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="sso-dialog-title"
     @update:model-value="$emit('update:modelValue', $event)"
@@ -518,5 +518,5 @@ const validateDomain = (text: string, existing: string[]) => {
         </MdButton>
       </div>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

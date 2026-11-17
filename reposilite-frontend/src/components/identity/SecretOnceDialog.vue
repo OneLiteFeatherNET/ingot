@@ -19,7 +19,7 @@ import { computed } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import CopyIcon from '../icons/CopyIcon.vue'
 import MdButton from '../md/MdButton.vue'
-import DialogShell from './DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 
 type Snippet = {
   key: 'bearer' | 'basic'
@@ -103,7 +103,7 @@ const copySnippet = async (snippet: Snippet) => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="secret-once-title"
     :dismissable="false"
@@ -188,5 +188,5 @@ const copySnippet = async (snippet: Snippet) => {
         Close
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>
