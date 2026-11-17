@@ -130,6 +130,28 @@ describe('MdListItem', () => {
     expect(wrapper.findComponent(MdListItem).emitted('select')).toHaveLength(1)
   })
 
+  it('emits select when Enter is pressed on a selectable option', async () => {
+    const wrapper = mount(MdList, {
+      props: { selectable: true },
+      slots: { default: () => [h(MdListItem, () => 'Maven')] }
+    })
+
+    await wrapper.get('[role="option"]').trigger('keydown', { key: 'Enter' })
+
+    expect(wrapper.findComponent(MdListItem).emitted('select')).toHaveLength(1)
+  })
+
+  it('leaves the Enter key of a button row to the browser when the list is not selectable', () => {
+    const wrapper = mount(MdList, {
+      slots: { default: () => h(MdListItem, { button: true }, () => 'Delete') }
+    })
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+
+    wrapper.get('button').element.dispatchEvent(enter)
+
+    expect(enter.defaultPrevented).toBe(false)
+  })
+
   it('carries the md-list-item anchor on its root', () => {
     const wrapper = mount(MdList, { slots: { default: () => h(MdListItem, () => 'Item') } })
 

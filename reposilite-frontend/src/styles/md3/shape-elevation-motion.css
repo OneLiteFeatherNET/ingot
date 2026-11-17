@@ -113,6 +113,8 @@
   --spacing-md-top-bar: 4rem;
   --spacing-md-rail: 6rem;
   --spacing-md-bottom-bar: 5rem;
+  --spacing-md-inset-16: 1rem;
+  --spacing-md-inset-72: 4.5rem;
 
   --container-md-reading: 60rem;
   /* The page column of a reading page beside the side navigation: the reading measure less the 208 pixel navigation and the 40 pixel gap. */
