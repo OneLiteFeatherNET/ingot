@@ -245,3 +245,8 @@ describe('PolicyDialog dialog contract', () => {
     expect(alert?.getAttribute('data-tone'), 'the alert is in the error tone').toBe('error')
   })
 })
+
+// Type contract, checked by vue-tsc: saving is a flag. Never called at runtime.
+// @ts-expect-error saving is a boolean flag, not a text
+const mountWithTextFlag = () => mount(PolicyDialog, { props: { modelValue: false, saving: 'yes' } })
+void mountWithTextFlag

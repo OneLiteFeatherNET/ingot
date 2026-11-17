@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
@@ -27,20 +26,15 @@ import MdSelect from '../md/MdSelect.vue'
  * answers with the request body of POST /api/maven/search/index/rebuild: `{}` for all, otherwise
  * `{ repositories: [name] }`. A rebuild only reads storage, so the confirmation is a plain one.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   /** The configured repository names the scope offers. */
-  repositories: {
-    type: Array as PropType<string[]>,
-    default: () => []
-  },
-  running: {
-    type: Boolean,
-    default: false
-  }
+  repositories?: string[]
+  running?: boolean
+}>(), {
+  modelValue: false,
+  repositories: () => [],
+  running: false
 })
 
 const emit = defineEmits<{

@@ -185,3 +185,8 @@ describe('AuditEventRow identity events', () => {
     expect(row.text()).toContain('machine:ci-bot')
   })
 })
+
+// Type contract, checked by vue-tsc: expanded is a boolean flag. Never called at runtime.
+// @ts-expect-error expanded is a boolean flag, not a text
+const mountWithTextFlag = () => mount(AuditEventRow, { props: { event: {} as AuditEvent, expanded: 'yes' }, global: { plugins: [createRouter({ history: createMemoryHistory(), routes: [] })] } })
+void mountWithTextFlag

@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PropType } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -30,29 +29,19 @@ import type { CleanupRun } from './cleanup'
  * stays disabled until the policy id is typed exactly. After the run the dialog shows its result
  * in place of the form.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  policyId: {
-    type: String,
-    required: true
-  },
-  running: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  policyId: string
+  running?: boolean
   /** The run record the server returned, once the run has finished. */
-  result: {
-    type: Object as PropType<CleanupRun | null>,
-    default: null
-  },
+  result?: CleanupRun | null
   /** The readable failure of the run, when it did not start. */
-  error: {
-    type: String as PropType<string | null>,
-    default: null
-  }
+  error?: string | null
+}>(), {
+  modelValue: false,
+  running: false,
+  result: null,
+  error: null
 })
 
 const emit = defineEmits<{

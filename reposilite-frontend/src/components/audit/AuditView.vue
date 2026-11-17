@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PropType } from 'vue'
 import type { AxiosResponse } from 'axios'
 import download from 'downloadjs'
 import { useSession } from '../../store/session'
@@ -30,16 +29,13 @@ import type { ActionGroup, AuditEvent, AuditFilters, AuditPage, AuditQuery, Audi
  * list the reader is looking at. Text fields are drafts until they are applied, so typing does not
  * send a request for each key.
  */
-const props = defineProps({
-  query: {
-    type: Object as PropType<AuditQuery>,
-    default: () => ({})
-  },
+const props = withDefaults(defineProps<{
+  query?: AuditQuery
   /** The reference time, in epoch milliseconds, for the presets. Tests pass a fixed value. */
-  now: {
-    type: Number,
-    default: undefined
-  }
+  now?: number
+}>(), {
+  query: () => ({}),
+  now: undefined
 })
 
 const emit = defineEmits<{

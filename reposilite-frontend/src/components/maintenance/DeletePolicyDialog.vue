@@ -23,15 +23,11 @@ import { SCRIM_STYLE } from '../settings/dialog'
  * Removes a policy from the settings. It does not touch any artifact: the policy is only the rule
  * that a run would apply, and a run is the only thing that deletes.
  */
-defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  policyId: {
-    type: String,
-    required: true
-  }
+withDefaults(defineProps<{
+  modelValue?: boolean
+  policyId: string
+}>(), {
+  modelValue: false
 })
 
 const emit = defineEmits<{
