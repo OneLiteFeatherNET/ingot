@@ -718,6 +718,13 @@
       ]
     },
     {
+      "name": "settings-backup-panel",
+      "file": "src/components/maintenance/SettingsBackupPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "storage-usage-panel",
       "file": "src/components/maintenance/StorageUsagePanel.vue",
       "stability": "experimental",

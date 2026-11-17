@@ -338,11 +338,12 @@ describe('the Overview page at /settings', () => {
 })
 
 describe('the settings file actions', () => {
-  it('draws Import settings and Download as JSON in the header of Overview', async () => {
+  it('draws neither Import settings nor Download as JSON in the header of Overview', async () => {
     await mountAt()
 
-    const header = wrapper.get('header')
-    expect(header.findAll('button').map(button => button.text()), 'the two actions of the whole configuration').toEqual(expect.arrayContaining(['Import settings', 'Download as JSON']))
+    const labels = wrapper.get('header').findAll('button').map(button => button.text())
+    expect(labels, 'the actions moved to the Settings backup tab of Maintenance').not.toContain('Import settings')
+    expect(labels, 'the actions moved to the Settings backup tab of Maintenance').not.toContain('Download as JSON')
   })
 
   it('draws neither action on a domain page', async () => {

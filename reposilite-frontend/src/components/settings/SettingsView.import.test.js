@@ -20,7 +20,7 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
-import SettingsView from './SettingsView.vue'
+import MaintenanceView from '../maintenance/MaintenanceView.vue'
 
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
@@ -81,11 +81,10 @@ const mountView = async () => {
   writes = []
   const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => false })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
-  // Import is an action of Overview, so the view is opened at /settings.
+  // Import is an action of the Settings backup tab, so the view is opened at /maintenance?tab=backup.
   const router = namedRouter()
-  await router.push('/settings')
-  wrapper = mount(SettingsView, {
-    props: { selectedTab: 'Settings' },
+  await router.push('/maintenance?tab=backup')
+  wrapper = mount(MaintenanceView, {
     global: {
       plugins: [router],
       provide: { [configurationStoreKey]: store }
@@ -117,13 +116,19 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+// The read-only switch of Maintenance has its own tests; here it is a marker, so these tests read no mode.
+vi.mock('../dashboard/ReadOnlyToggle.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { render: () => h('div') } }
+})
+
 // The status block of Overview has its own tests (DashboardView); here it is a marker, so these tests fetch no status.
 vi.mock('../dashboard/DashboardView.vue', async () => {
   const { h } = await import('vue')
   return { default: { render: () => h('div', { 'data-test': 'status-block' }) } }
 })
 
-describe('SettingsView import', () => {
+describe('Settings backup import', () => {
   it('loads a valid file into the draft and opens the review, without saving', async () => {
     const store = await mountView()
 
@@ -136,13 +141,12 @@ describe('SettingsView import', () => {
     expect(sheet().textContent).toContain('Visibility')
   })
 
-  it('lists the imported domain under Needs attention as unsaved, and writes nothing to the server', async () => {
+  it('counts the imported change as unsaved on the tab, and writes nothing to the server', async () => {
     await mountView()
 
     await pickFile(JSON.stringify({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } }))
 
-    const attention = wrapper.get('[data-test="settings-attention"]')
-    expect(attention.get('[data-test="attention-row"]').attributes('aria-label'), 'the imported domain is listed as unsaved').toBe('Repositories, Unsaved changes')
+    expect(wrapper.text(), 'the imported change is a draft until Save').toContain('1 unsaved change')
     expect(writes, 'the import is a draft until Save').toEqual([])
   })
 

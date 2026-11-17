@@ -319,7 +319,7 @@ test.describe('the administration page header', () => {
 
   test('keeps the description at least 300 pixels wide at 600 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 600, height: 900 })
-    await page.goto(siteUrl('/settings'))
+    await page.goto(siteUrl('/maintenance?tab=backup'))
     await expect(page.getByRole('button', { name: 'Download as JSON', exact: true })).toBeVisible()
 
     const text = page.locator('section[data-ingot-component="administration-frame"] > header > div').first()

@@ -18,14 +18,12 @@
 import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
-import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
 import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import AppTabs from '../tabs/AppTabs.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
-import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsAttention from './SettingsAttention.vue'
@@ -41,15 +39,10 @@ import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
 import { collectionsOf, entryAddresses, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
-import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
-import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
-import PasswordDialog from './PasswordDialog.vue'
-import { isEncryptedExport } from './settingsEncryption'
+import { settingsByDomain } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
 import ConflictDialog from './ConflictDialog.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
-import { overlayImport, parseSettingsFile, validateImport } from './settingsImport'
-import SettingsImportErrors from './SettingsImportErrors.vue'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -99,7 +92,6 @@ const {
   changeCount,
   invalidDomains,
   savedSettings,
-  secretsHidden,
   conflict,
   conflictChanges,
   reviewConflict,
@@ -272,50 +264,6 @@ const onDomainChange = (domain, event) => {
 }
 
 /*
- * The file is named after the day it is made and holds the saved state, which the server reads. It is encrypted
- * with a password the user types, so a copy of the file does not carry the secrets in clear. The draft is never
- * downloaded: it is not stored on the server, and it may hold a secret the browser has not seen in clear.
- */
-const clock = inject(settingsClockKey, systemClock)
-const hasDomains = computed(() => domains.value.length > 0)
-
-/* The password dialog: an export or the opening of an import file. `exported` holds the file while it waits for its password. */
-const passwordDialog = ref({ open: false, mode: 'export', busy: false, error: '', exported: null })
-
-const downloadSaved = () => {
-  passwordDialog.value = { open: true, mode: 'export', busy: false, error: '', exported: null }
-}
-// Not reachable: the menu disables the draft, because the draft is not part of the file.
-const downloadDraft = () => {}
-
-const cancelPassword = () => {
-  passwordDialog.value = { open: false, mode: 'export', busy: false, error: '', exported: null }
-}
-
-const submitPassword = async (password) => {
-  const dialog = passwordDialog.value
-  passwordDialog.value = { ...dialog, busy: true, error: '' }
-  try {
-    if (dialog.mode === 'export') {
-      const exported = await store.exportSaved(password)
-      download(serializeSettings(exported), settingsFileName(clock()), 'application/json')
-      cancelPassword()
-      return
-    }
-
-    const document = await store.openExport(password, dialog.exported)
-    cancelPassword()
-    applyImportedDocument(document)
-  } catch (error) {
-    passwordDialog.value = {
-      ...dialog,
-      busy: false,
-      error: error?.response?.data?.message ?? 'The settings file could not be opened.'
-    }
-  }
-}
-
-/*
  * The bar is sticky at the bottom of the window, so the last card would scroll under it. While it is
  * shown the page keeps the bar's height free below its content, and on phones also the height of the
  * bottom navigation, which the bar sits above. The height is measured, because a wrapped line adds to it.
@@ -381,7 +329,7 @@ const attentionList = computed(() => attentionRows(treeLinks.value, unsavedKeys.
 const glanceList = computed(() => glanceRows({ links: treeLinks.value, schemas: store.schemas.value, saved: savedSettings.value }))
 const canEdit = computed(() => can(ADMIN_NODES.settings))
 const canDashboard = computed(() => can(ADMIN_NODES.dashboard))
-// Overview is the page of /settings without a domain. Its header actions and its content are for a visitor who may edit.
+// Overview is the page of /settings without a domain. Its content is for a visitor who may edit.
 const overviewPage = computed(() => canEdit.value && settingsCurrent.value === OVERVIEW_TREE_KEY)
 // The instance status is a section of Overview for the dashboard node. A visitor without the settings node sees only that.
 const statusShown = computed(() => canDashboard.value && settingsCurrent.value === OVERVIEW_TREE_KEY)
@@ -445,48 +393,6 @@ const takeStoredSettings = async () => {
 const onSheetRevert = (change) => (reviewingConflict.value ? useStoredChange(change) : revertChange(change))
 const onSheetDiscard = () => (reviewingConflict.value ? takeStoredSettings() : discardAll())
 
-/*
- * A settings file goes into the draft only when every domain in it is valid. Then the review opens
- * with the imported changes, so the user checks them before anything is saved. Otherwise the errors
- * are listed and the draft stays as it was.
- */
-const importInput = ref(null)
-const importErrors = ref([])
-
-const importFile = async (event) => {
-  const input = event.target
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-
-  const parsed = parseSettingsFile(await file.text())
-  if (!parsed.ok) {
-    importErrors.value = [{ domain: '', label: '', message: parsed.error }]
-    return
-  }
-  // An export is opened with its password first. A plain file is applied as it always was.
-  if (isEncryptedExport(parsed.value)) {
-    passwordDialog.value = { open: true, mode: 'import', busy: false, error: '', exported: parsed.value }
-    return
-  }
-  applyImportedDocument(parsed.value)
-}
-
-const applyImportedDocument = (document) => {
-  const result = validateImport(overlayImport(document, configurations.value), {
-    domains: domains.value,
-    schemas: store.schemas.value,
-    validator: store.configurationValidator
-  })
-  if (!result.ok) {
-    importErrors.value = result.errors
-    return
-  }
-  importErrors.value = []
-  store.importDomains(result.domains)
-  reviewOpen.value = true
-}
-
 /* JsonForms configuration */
 const formsConfiguration = {
   showUnfocusedDescription: true
@@ -523,44 +429,6 @@ watch(
     replace
   >
     <template
-      v-if="overviewPage"
-      #actions
-    >
-      <MdButton
-        variant="outlined"
-        type="button"
-        :disabled="!hasDomains"
-        @click="importInput?.click()"
-      >
-        Import settings
-      </MdButton>
-      <input
-        ref="importInput"
-        type="file"
-        accept=".json,application/json"
-        class="hidden"
-        aria-label="Settings file to import"
-        @change="importFile"
-      >
-      <SettingsDownloadMenu
-        :disabled="!hasDomains"
-        :has-unsaved="hasUnsavedChanges"
-        :can-include-unsaved="false"
-        :secrets-hidden="secretsHidden"
-        @saved="downloadSaved"
-        @draft="downloadDraft"
-      />
-      <PasswordDialog
-        :open="passwordDialog.open"
-        :mode="passwordDialog.mode"
-        :busy="passwordDialog.busy"
-        :error="passwordDialog.error"
-        @submit="submitPassword"
-        @cancel="cancelPassword"
-      />
-    </template>
-
-    <template
       v-if="attentionShown"
       #lead
     >
@@ -579,12 +447,6 @@ watch(
     >
       {{ loadError }}
     </p>
-
-    <SettingsImportErrors
-      v-if="importErrors.length > 0"
-      :errors="importErrors"
-      @dismiss="importErrors = []"
-    />
 
     <DashboardView v-if="statusShown" />
 
