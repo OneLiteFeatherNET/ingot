@@ -93,6 +93,7 @@ describe('the forms', () => {
     await flushPromises()
 
     expect(document.activeElement?.id).toBe('migration-connect-errors')
+    expect(document.getElementById('migration-connect-errors')!.getAttribute('data-tone'), 'the summary is the shared error alert').toBe('error')
     expect(wrapper.find('#migration-connect-errors a[href="#migration-connect-url"]').exists()).toBe(true)
     expect(wrapper.find('#migration-connect-errors a[href="#migration-connect-user"]').exists()).toBe(true)
   })
