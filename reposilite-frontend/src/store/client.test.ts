@@ -357,3 +357,113 @@ describe('client search index calls', () => {
     expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/runs\/42\/cancel$/)
   })
 })
+
+// A refused call as axios hands it over: the status, the server's body (ErrorResponse) and the request url.
+const refusal = (status: number, data: unknown, url = 'http://ingot.test/api/identity/me/tokens'): AxiosError =>
+  Object.assign(new Error(`Request failed with status code ${status}`), {
+    config: { url, method: 'post' },
+    response: { status, data, headers: {} }
+  }) as unknown as AxiosError
+
+const TOTP_START_URL = 'http://ingot.test/api/identity/me/factors/totp'
+
+describe('client second factor error mapping', () => {
+  let client: typeof Client
+
+  beforeEach(async () => {
+    vi.resetModules()
+    client = await import('./client')
+  })
+
+  it('maps a 403 step_up_required answer to the step-up problem', () => {
+    const error = refusal(403, { status: 403, message: 'step_up_required', problems: [] })
+
+    expect(client.secondFactorProblemOf(error)?.problem, 'a refused sensitive action names the step-up problem').toBe('step_up_required')
+  })
+
+  it('lists the second factor methods of a step-up answer in the order the server gave them', () => {
+    const error = refusal(403, {
+      status: 403,
+      message: 'step_up_required',
+      problems: [
+        { node: 'AUTHENTICATOR', message: 'Confirm with this second factor at /api/identity/me/step-up' },
+        { node: 'RECOVERY_CODE', message: 'Confirm with this second factor at /api/identity/me/step-up' },
+      ],
+    })
+
+    expect(client.secondFactorProblemOf(error)?.methods, 'the dialog offers the methods the user has').toEqual(['AUTHENTICATOR', 'RECOVERY_CODE'])
+  })
+
+  it('leaves out a step-up method name the client does not know', () => {
+    const error = refusal(403, {
+      status: 403,
+      message: 'step_up_required',
+      problems: [{ node: 'SMS', message: 'unknown' }, { node: 'PASSKEY', message: 'ok' }],
+    })
+
+    expect(client.secondFactorProblemOf(error)?.methods, 'only known methods reach the dialog').toEqual(['PASSKEY'])
+  })
+
+  it('gives a step-up answer without a method list an empty list of methods', () => {
+    const error = refusal(403, { status: 403, message: 'step_up_required' })
+
+    expect(client.secondFactorProblemOf(error)?.methods, 'a missing list is not an error').toEqual([])
+  })
+
+  it('gives the step-up message a next step rather than the raw code', () => {
+    const error = refusal(403, { status: 403, message: 'step_up_required' })
+
+    const message = client.secondFactorProblemOf(error)?.message ?? ''
+
+    expect(message, 'the user reads a reason and a next step').toMatch(/second factor/i)
+    expect(message, 'the raw problem code is not shown to the user').not.toContain('step_up_required')
+  })
+
+  it('maps a 403 mfa_enrolment_required answer to the enrolment problem', () => {
+    const error = refusal(403, { status: 403, message: 'mfa_enrolment_required' })
+
+    expect(client.secondFactorProblemOf(error)?.problem, 'a restricted session names the enrolment problem').toBe('mfa_enrolment_required')
+  })
+
+  it('tells a restricted session to add a second factor on the account page', () => {
+    const error = refusal(403, { status: 403, message: 'mfa_enrolment_required' })
+
+    expect(client.secondFactorProblemOf(error)?.message, 'the next step is named').toMatch(/account page/i)
+  })
+
+  it('maps the 409 of an authenticator enrolment without a settings key to its problem', () => {
+    const reason = 'Authenticator codes need the settings key: set INGOT_SETTINGS_KEY first.'
+    const error = refusal(409, { status: 409, message: reason }, TOTP_START_URL)
+
+    expect(client.secondFactorProblemOf(error)?.problem, 'the 409 of the start names its own problem').toBe('authenticator_enrolment_unavailable')
+  })
+
+  it('shows the server reason for the 409 of an authenticator enrolment', () => {
+    const reason = 'Authenticator codes need the settings key: set INGOT_SETTINGS_KEY first.'
+    const error = refusal(409, { status: 409, message: reason }, TOTP_START_URL)
+
+    expect(client.secondFactorProblemOf(error)?.message, 'the reason the server gave is what the dialog shows').toBe(reason)
+  })
+
+  it('does not map a 409 of another second factor route', () => {
+    const error = refusal(409, { status: 409, message: 'No authenticator is waiting for a code' }, `${TOTP_START_URL}/confirm`)
+
+    expect(client.secondFactorProblemOf(error), 'the confirm answer keeps its own message').toBeNull()
+  })
+
+  it('does not map a 403 wrong code answer', () => {
+    const error = refusal(403, { status: 403, message: 'The code is not valid' }, `${TOTP_START_URL}/confirm`)
+
+    expect(client.secondFactorProblemOf(error), 'a wrong code is shown with the server message').toBeNull()
+  })
+
+  it('does not map a 401 that carries the step-up code', () => {
+    const error = refusal(401, { status: 401, message: 'step_up_required' })
+
+    expect(client.secondFactorProblemOf(error), 'only a 403 is a refused sensitive action').toBeNull()
+  })
+
+  it('returns null for an error that is not an answer of the server', () => {
+    expect(client.secondFactorProblemOf(new Error('Network Error')), 'a network failure has no problem code').toBeNull()
+  })
+})
