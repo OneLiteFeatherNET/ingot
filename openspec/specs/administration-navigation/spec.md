@@ -47,16 +47,10 @@ with the settings node. The route, its name and the forward of `/settings` to th
 
 ### Requirement: Administration tree
 
-Administration SHALL group its pages under four group ids, shown with these headings and entries, in this order:
+Administration SHALL group its pages under four group ids, shown with these headings and entries, in this order. The first two groups are:
 
 - `Repository`, shown as Artifacts: Repositories, Cleanup policies, Javadoc, Search index.
 - `Security`, shown as Access: Users, Machine accounts, Teams, Single sign-on, LDAP directory, Sign-in protection, Permission check.
-- `System`, shown as Instance: Branding, Reverse proxy, Usage statistics, Migration, and every other settings domain, a plugin domain included.
-- `Support`, shown as Monitoring and support: Audit log, Audit settings, Console, Maintenance, Analytics, System information, Support bundle.
-
-Migration is listed only while the nexus-import plugin is enabled. System information and Support bundle are listed only while the instance offers the support bundle. Overview is listed before the first group.
-
-Plugin entries SHALL follow the built-in entries of their group. A plugin page whose group is none of the four ids SHALL be listed under Plugins, after every built-in group. A page SHALL be listed only when it exists and the visitor may open it. A group without a listed page SHALL be left out. The `maven` domain SHALL NOT be listed. Every route and route name SHALL keep its address; only the group, the label and the description of an entry are set by the tree.
 
 #### Scenario: Full administrator
 
@@ -67,6 +61,13 @@ Plugin entries SHALL follow the built-in entries of their group. A plugin page w
 
 - **WHEN** a full administrator opens the tree
 - **THEN** Search index is listed under Artifacts and links to `/settings/search`, and no entry under Instance is labelled Search
+
+### Requirement: Administration tree groups for System and Support
+
+The last two groups SHALL follow, in the same order:
+
+- `System`, shown as Instance: Branding, Reverse proxy, Usage statistics, Migration, and every other settings domain, a plugin domain included.
+- `Support`, shown as Monitoring and support: Audit log, Audit settings, Console, Maintenance, Analytics, System information, Support bundle.
 
 #### Scenario: Audit entries are adjacent
 
@@ -83,6 +84,19 @@ Plugin entries SHALL follow the built-in entries of their group. A plugin page w
 - **WHEN** a plugin adds a settings domain without a section group
 - **THEN** it is listed under Instance at `/settings/<domain>`, labelled with its plugin section label or, when it has none, its schema title
 
+### Requirement: Conditional Administration tree entries
+
+The tree SHALL list its conditional entries under these rules. Migration is listed only while the nexus-import plugin is enabled. System information and Support bundle are listed only while the instance offers the support bundle. Overview is listed before the first group.
+
+#### Scenario: Migration hidden without the plugin
+
+- **WHEN** a full administrator opens the tree on an instance where the nexus-import plugin is disabled
+- **THEN** Migration is not listed under Instance
+
+### Requirement: Plugin entries in the Administration tree
+
+Plugin entries SHALL follow the built-in entries of their group. A plugin page whose group is none of the four ids SHALL be listed under Plugins, after every built-in group. A page SHALL be listed only when it exists and the visitor may open it. A group without a listed page SHALL be left out. The `maven` domain SHALL NOT be listed. Every route and route name SHALL keep its address; only the group, the label and the description of an entry are set by the tree.
+
 #### Scenario: Limited role
 
 - **WHEN** a visitor may open only Console and Maintenance
@@ -97,10 +111,9 @@ Plugin entries SHALL follow the built-in entries of their group. A plugin page w
 
 - **WHEN** a visitor opens `/settings/web`, `/settings/frontend`, `/settings/search`, `/settings/audit` or `/access/security`
 - **THEN** the page opens at that address, under its entry label in the tree
-
 ### Requirement: One tree on every Administration page
 
-The side navigation of Access, Settings, Audit, Console, Maintenance, Analytics and Migration pages, of the support pages (System information and Support bundle) and of the plugin pages SHALL show the same Administration tree, including every settings domain the visitor may open, with the current page marked by `aria-current="page"`. Below 1240 CSS pixels the tree SHALL be an index, and a page of a section SHALL show a back arrow to that index. From 600 CSS pixels a Sections button opens the same tree in a side sheet.
+The side navigation of Access, Settings, Audit, Console, Maintenance, Analytics and Migration pages, of the support pages (System information and Support bundle) and of the plugin pages SHALL show the same Administration tree, including every settings domain the visitor may open, with the current page marked by `aria-current="page"`.
 
 #### Scenario: Console page lists the settings domains
 
@@ -117,11 +130,14 @@ The side navigation of Access, Settings, Audit, Console, Maintenance, Analytics 
 - **WHEN** the same visitor opens each Administration page in turn
 - **THEN** every page shows an identical tree, apart from the marked entry
 
+### Requirement: Narrow screen tree index
+
+Below 1240 CSS pixels the tree SHALL be an index, and a page of a section SHALL show a back arrow to that index. From 600 CSS pixels a Sections button opens the same tree in a side sheet.
+
 #### Scenario: Narrow screen
 
 - **WHEN** a visitor opens `/settings/web` below 1240 pixels
 - **THEN** the tree is not drawn beside the page, the page shows a back arrow to the index of the tree, and the index lists the same groups and entries
-
 ### Requirement: Find an administration page
 
 The tree SHALL begin with a search field labelled "Find an administration page". Typing SHALL keep the entries whose label, group
@@ -251,12 +267,16 @@ by that heading. The tree landmark SHALL keep the name Administration.
 
 ### Requirement: Breadcrumb shows where the page sits
 
-The breadcrumb SHALL sit above the level one heading. Its first crumb SHALL be Administration. On Overview the first crumb is plain text and the breadcrumb holds no other crumb. On every other page the first crumb SHALL link to the index of the page's section: `/settings` on the settings and plugin pages, and `/access` on the Access pages. On every other page the second crumb SHALL be the heading of the current entry's group, as plain text and not a link. On a detail page the trail SHALL add the list page of the current entry as a link. The page itself SHALL be named by the level one heading and SHALL NOT be repeated as a crumb. Below 1240 CSS pixels the trail SHALL show its last crumb on one line after the back arrow, truncated with an ellipsis, with the full trail as its title and accessible name; a page without a back arrow SHALL show its trail without one.
+The breadcrumb SHALL sit above the level one heading. Its first crumb SHALL be Administration. On Overview the first crumb is plain text and the breadcrumb holds no other crumb. On every other page the first crumb SHALL link to the index of the page's section: `/settings` on the settings and plugin pages, and `/access` on the Access pages.
 
 #### Scenario: Overview
 
 - **WHEN** a full administrator opens `/settings`
 - **THEN** the breadcrumb reads Administration only, that crumb is not a link, and the level one heading reads Overview
+
+### Requirement: Breadcrumb second crumb and detail trail
+
+On every other page the second crumb SHALL be the heading of the current entry's group, as plain text and not a link. On a detail page the trail SHALL add the list page of the current entry as a link. The page itself SHALL be named by the level one heading and SHALL NOT be repeated as a crumb.
 
 #### Scenario: Audit settings
 
@@ -268,11 +288,14 @@ The breadcrumb SHALL sit above the level one heading. Its first crumb SHALL be A
 - **WHEN** a full administrator opens `/access/users/alice`
 - **THEN** the breadcrumb reads Administration, Access, Users, where Users links to `/access/users`, and Access is not a link
 
+### Requirement: Breadcrumb on a narrow screen
+
+Below 1240 CSS pixels the trail SHALL show its last crumb on one line after the back arrow, truncated with an ellipsis, with the full trail as its title and accessible name; a page without a back arrow SHALL show its trail without one.
+
 #### Scenario: Narrow screen
 
 - **WHEN** a visitor opens `/settings/web` at 320 pixels wide
 - **THEN** the back arrow and the last crumb are drawn on one line, the back arrow has a target of at least 48 by 48 pixels, and the page does not scroll horizontally
-
 ### Requirement: Unique entry keys
 
 Every entry of the Administration tree SHALL have a key that no other entry of the tree has, including the entries that a settings
@@ -349,18 +372,21 @@ The group ids `Repository`, `Security`, `System` and `Support` SHALL remain the 
 
 ### Requirement: Labels and descriptions per entry
 
-Every built-in entry SHALL have a label and a one-line description defined in the frontend registry. A settings domain the registry does not name SHALL use its plugin section label when one is registered, and otherwise its schema title as the label, and its schema description as the description. A plugin page SHALL use its manifest title and description. An entry without a description SHALL draw no empty description line. The settings schema, the settings API and the exported settings JSON SHALL NOT change.
+Every built-in entry SHALL have a label and a one-line description defined in the frontend registry. A settings domain the registry does not name SHALL use its plugin section label when one is registered, and otherwise its schema title as the label, and its schema description as the description. A plugin page SHALL use its manifest title and description. The settings schema, the settings API and the exported settings JSON SHALL NOT change.
 
 #### Scenario: Renamed domain
 
 - **WHEN** a full administrator opens `/settings/web`
 - **THEN** the tree entry and the level one heading read Reverse proxy, the description says that it covers the headers that carry the client address and the path prefix behind a proxy, and the schema of the `web` domain still carries the title Web
 
+### Requirement: Entry without a description
+
+An entry without a description SHALL draw no empty description line.
+
 #### Scenario: Plugin domain without a description
 
 - **WHEN** a plugin domain's schema has an empty description
 - **THEN** its page shows the heading and no description line
-
 ### Requirement: Propagation notice at the save step
 
 The statement that saved settings reach every instance within 10 seconds SHALL be shown as supporting text of the save bar and in the message that confirms a save. It SHALL NOT be the description of a settings page.
