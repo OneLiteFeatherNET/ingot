@@ -740,6 +740,19 @@ The circle stays at the top left of the card. The slot content sits to its right
 card has a `not-allowed` cursor and dims its text; it cannot be chosen. The keyboard focus ring
 is drawn around the whole card.
 
+### MdDataTable
+
+Props:
+
+- `caption`: string, the visible caption and the name of the scroll region
+- `columns`: `{ key, label, sortable?, priority?, align? }` per column. `priority: 'low'` hides the column below the `md` breakpoint. `align` is `'start'` (the default), `'end'` or `'center'`, and applies to the header and every body cell of the column. The first column is the row header.
+- `rows`: one object per row, keyed by the column keys
+- `modelValue`: `{ key, direction }` for the sort (v-model). Without it the table keeps the sort itself. Emits `update:modelValue` when a sortable header is chosen.
+- `captionHidden`: boolean, default `false`. The caption stays in the DOM for screen readers and is visually hidden (`sr-only`).
+- `stickyHeader`: boolean, default `false`. The header cells stick to the top of the scroll region, on the `bg-surface` background so scrolled rows do not show through. Use it with a region that has a height limit of its own.
+
+All three options are opt-in. With the defaults the table renders as it did before they existed. The table scrolls sideways inside a named region when the page is narrow, and the cell slot `cell` takes `{ row, column, value }`.
+
 ## Administration information architecture
 
 The Administration tree is the one navigation of the operator area. These rules hold for every page in it:

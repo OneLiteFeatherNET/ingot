@@ -164,3 +164,88 @@ describe('MdDataTable priority', () => {
     expect(classes[2], 'a low-priority column is hidden on narrow widths').toContain('hidden')
   })
 })
+
+describe('MdDataTable caption', () => {
+  it('shows the caption by default', () => {
+    const wrapper = mountTable()
+
+    expect(wrapper.find('caption').classes(), 'a visible caption is not hidden for screen readers').not.toContain('sr-only')
+  })
+
+  it('keeps the caption in the DOM but visually hidden when captionHidden is set', () => {
+    const wrapper = mountTable({ captionHidden: true })
+
+    expect(wrapper.find('caption').text(), 'the caption stays for screen readers').toBe('Repositories')
+    expect(wrapper.find('caption').classes()).toContain('sr-only')
+  })
+})
+
+describe('MdDataTable sticky header', () => {
+  it('does not pin the header cells by default', () => {
+    const wrapper = mountTable()
+
+    expect(headers(wrapper).map((header) => header.classes().includes('sticky'))).toEqual([false, false, false])
+  })
+
+  it('pins every header cell to the top of the scroll region when stickyHeader is set', () => {
+    const wrapper = mountTable({ stickyHeader: true })
+
+    const classes = headers(wrapper).map((header) => header.classes())
+
+    expect(classes.map((names) => names.includes('sticky') && names.includes('top-0'))).toEqual([true, true, true])
+  })
+
+  it('gives the pinned header an opaque background, so scrolled rows do not show through it', () => {
+    const wrapper = mountTable({ stickyHeader: true })
+
+    expect(headers(wrapper)[0].classes()).toContain('bg-surface')
+  })
+
+  it('leaves the body cells in place when stickyHeader is set', () => {
+    const wrapper = mountTable({ stickyHeader: true })
+
+    const pinnedBodyCells = wrapper.findAll('tbody th, tbody td').filter((cell) => cell.classes().includes('sticky'))
+
+    expect(pinnedBodyCells).toEqual([])
+  })
+})
+
+describe('MdDataTable alignment', () => {
+  // The alignment of a cell as its text-start, text-end or text-center class, or undefined when it has none.
+  const alignmentOf = (cell: { classes(): string[] }) =>
+    (['start', 'end', 'center'] as const).find((align) => cell.classes().includes(`text-${align}`))
+
+  it('aligns every header and body cell to the start edge when no column sets an align', () => {
+    const wrapper = mountTable()
+
+    const cells = [...wrapper.findAll('thead th'), ...wrapper.findAll('tbody th'), ...wrapper.findAll('tbody td')]
+
+    expect(cells.map(alignmentOf)).toEqual(Array(cells.length).fill('start'))
+  })
+
+  it('aligns a column to the end edge in its header and in every body cell', () => {
+    const wrapper = mountTable({
+      columns: [COLUMNS[0], COLUMNS[1], { ...COLUMNS[2], align: 'end' as const }],
+    })
+
+    expect(wrapper.findAll('thead th').map(alignmentOf)).toEqual(['start', 'start', 'end'])
+    expect(wrapper.findAll('tbody tr').map((row) => alignmentOf(row.findAll('td')[1]))).toEqual(['end', 'end', 'end'])
+  })
+
+  it('aligns a column to the center edge in its header and in every body cell', () => {
+    const wrapper = mountTable({
+      columns: [COLUMNS[0], { ...COLUMNS[1], align: 'center' as const }, COLUMNS[2]],
+    })
+
+    expect(wrapper.findAll('thead th').map(alignmentOf)).toEqual(['start', 'center', 'start'])
+    expect(wrapper.findAll('tbody tr').map((row) => alignmentOf(row.findAll('td')[0]))).toEqual(['center', 'center', 'center'])
+  })
+
+  it('aligns the row header by the align of the first column', () => {
+    const wrapper = mountTable({
+      columns: [{ ...COLUMNS[0], align: 'end' as const }, COLUMNS[1], COLUMNS[2]],
+    })
+
+    expect(wrapper.findAll('tbody th').map(alignmentOf)).toEqual(['end', 'end', 'end'])
+  })
+})

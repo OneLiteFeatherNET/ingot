@@ -25,6 +25,8 @@
  *   rows        one object per row, keyed by the column keys. The first column is the row header (th scope row).
  *   modelValue  the sort, { key, direction } with direction ascending or descending (v-model). Without it the table
  *               keeps the sort itself.
+ *   captionHidden  the caption stays in the DOM for screen readers but is visually hidden (default false)
+ *   stickyHeader   the header cells stick to the top of the scroll region (default false)
  * Emits update:modelValue with the next sort when a sortable header is chosen.
  * Slot cell: { row, column, value }, for a cell that is more than its text.
  */
@@ -32,11 +34,13 @@ import { computed, ref } from 'vue'
 import MdIcon from './MdIcon.vue'
 
 type Direction = 'ascending' | 'descending'
+type Align = 'start' | 'end' | 'center'
 interface Column {
   key: string
   label: string
   sortable?: boolean
   priority?: 'high' | 'low'
+  align?: Align
 }
 interface Sort {
   key: string
@@ -49,8 +53,10 @@ const props = withDefaults(
     columns: Column[]
     rows: Record<string, unknown>[]
     modelValue?: Sort | null
+    captionHidden?: boolean
+    stickyHeader?: boolean
   }>(),
-  { modelValue: undefined },
+  { modelValue: undefined, captionHidden: false, stickyHeader: false },
 )
 
 const emit = defineEmits<{ 'update:modelValue': [sort: Sort] }>()
@@ -88,6 +94,10 @@ const ariaSort = (column: Column) => {
 const CHEVRON = 'M6 9l6 6 6-6'
 const priorityClass = (column: Column) => (column.priority === 'low' ? 'hidden md:table-cell' : '')
 const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'rotate-180' : '')
+// The classes are written out in full, so Tailwind finds them in the source. A column without an align starts its text.
+const ALIGN_CLASS: Record<Align, string> = { start: 'text-start', end: 'text-end', center: 'text-center' }
+const alignClass = (column?: Column) => ALIGN_CLASS[column?.align ?? 'start']
+const headerClass = computed(() => (props.stickyHeader ? 'sticky top-0 z-md-sticky bg-surface' : ''))
 </script>
 
 <template>
@@ -99,7 +109,10 @@ const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'r
     data-ingot-component="md-data-table"
   >
     <table class="w-full min-w-120 border-collapse text-left text-on-surface">
-      <caption class="md-title-small px-4 py-3 text-left text-on-surface">
+      <caption
+        class="md-title-small px-4 py-3 text-left text-on-surface"
+        :class="{ 'sr-only': captionHidden }"
+      >
         {{ caption }}
       </caption>
       <thead data-ingot-part="header">
@@ -110,7 +123,7 @@ const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'r
             scope="col"
             :aria-sort="ariaSort(column)"
             class="md-label-large px-4 py-3 text-on-surface-variant"
-            :class="priorityClass(column)"
+            :class="[priorityClass(column), alignClass(column), headerClass]"
           >
             <button
               v-if="column.sortable"
@@ -142,7 +155,8 @@ const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'r
           <th
             v-if="columns[0]"
             scope="row"
-            class="md-body-medium px-4 py-3 text-left text-on-surface"
+            class="md-body-medium px-4 py-3 text-on-surface"
+            :class="alignClass(columns[0])"
           >
             <slot
               name="cell"
@@ -157,7 +171,7 @@ const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'r
             v-for="column in columns.slice(1)"
             :key="column.key"
             class="md-body-medium px-4 py-3 text-on-surface-variant"
-            :class="priorityClass(column)"
+            :class="[priorityClass(column), alignClass(column)]"
           >
             <slot
               name="cell"
