@@ -174,7 +174,8 @@ Bug reports, feature requests and pull requests are welcome. Start with
 Security issues should go through the [security policy](SECURITY.md) rather than a public
 issue.
 
-<!-- TODO(onelitefeather): community link for user questions and discussion. -->
+Questions, ideas and help from other users go to
+[GitHub Discussions](https://github.com/OneLiteFeatherNET/ingot/discussions).
 
 ### Building and running locally
 
