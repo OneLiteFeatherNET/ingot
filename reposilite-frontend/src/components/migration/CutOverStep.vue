@@ -333,6 +333,7 @@ onMounted(() => {
         <MdButton
           id="migration-cutover-delete-confirm"
           variant="filled"
+          error
           @click="removeVerifyJob"
         >
           Remove
