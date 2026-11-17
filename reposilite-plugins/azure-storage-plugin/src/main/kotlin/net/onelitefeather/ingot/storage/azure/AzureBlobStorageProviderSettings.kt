@@ -76,8 +76,27 @@ data class AzureBlobStorageProviderSettings(
         if (container.isBlank()) {
             return null
         }
-        return "azure:${accountName.trim()}/${container.trim()}/${blobPrefix()}"
+        return "azure:${namespaceAccount()}/${container.trim()}/${blobPrefix()}"
     }
+
+    /**
+     * The account of the namespace key. In connection-string mode the account is the `AccountName` of the connection string, which
+     * is not a secret, and it is used whatever the account field says. Otherwise it is the account field. Blank when nothing supplies one.
+     */
+    private fun namespaceAccount(): String {
+        if (authentication == "connection-string") {
+            connectionStringAccount()?.let { return it }
+        }
+        return accountName.trim()
+    }
+
+    private fun connectionStringAccount(): String? =
+        connectionString.split(';')
+            .map { it.trim() }
+            .firstOrNull { it.substringBefore('=').trim().equals("AccountName", ignoreCase = true) }
+            ?.substringAfter('=')
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
 
     /**
      * Two namespaces collide when they are in the same container of the same account, and one prefix equals or nests under the other.
