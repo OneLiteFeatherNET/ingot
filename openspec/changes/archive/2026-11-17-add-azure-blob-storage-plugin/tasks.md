@@ -10,7 +10,7 @@ The SDK adapter is always behind the internal interface `AzureBlobClient`, so th
 
 ## 0. Verify third-party facts (before the proposal pull request, results recorded in `proposal.md`)
 
-- [ ] 0.1 Verify each claim about Azure and other products against the vendor's current documentation, record the source link and the
+- [x] 0.1 Verify each claim about Azure and other products against the vendor's current documentation, record the source link and the
   date in `proposal.md`, and correct the proposal and design where a claim is wrong: Microsoft's stance on an S3-compatible API for Blob
   Storage; that Nexus Repository and Artifactory offer Azure blob stores, and in which editions; the first `azure-identity` release with
   AKS workload identity support (assumed 1.9.0); the order of the `DefaultAzureCredential` chain in the pinned SDK; the retention period
@@ -93,6 +93,6 @@ The SDK adapter is always behind the internal interface `AzureBlobClient`, so th
 
 ## 6. Code pull request
 
-- [ ] 6.1 Open the code pull request under the title `feat(storage): add an azure blob storage provider plugin`, from a branch of the
+- [x] 6.1 Open the code pull request under the title `feat(storage): add an azure blob storage provider plugin`, from a branch of the
   remote main branch that already contains the merged proposal and the merged predecessor changes
   (`add-storage-provider-registration` and `add-storage-capability-hooks`), with no file under `openspec/`.
