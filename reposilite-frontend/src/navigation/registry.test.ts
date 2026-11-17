@@ -30,7 +30,7 @@ import {
   shortcutsOf
 } from './registry'
 import { ROUTES } from '../router/routes'
-import { ACCESS_NODES, canUse } from '../store/nodeAccess'
+import { ACCESS_NODES, ADMIN_NODES, canUse } from '../store/nodeAccess'
 
 // A session answers for a node from its node list, as the session store does.
 const canWith = (nodes: string[]) => (node: string) => canUse(nodes, node)
@@ -74,7 +74,6 @@ describe('registry entries', () => {
     )
 
     expect(nodes).toMatchObject({
-      analytics: 'ingot.admin.dashboard',
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
       audit: 'ingot.admin.audit',
@@ -236,6 +235,14 @@ describe('routeMeta', () => {
     expect(routeMeta('settings')).toEqual(expect.objectContaining({ section: 'settings', manager: true }))
   })
 
+  it('gives Analytics the settings node or the dashboard node, as its alternatives', () => {
+    expect(routeMeta('analytics')).toEqual({
+      section: 'analytics',
+      manager: true,
+      anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard]
+    })
+  })
+
   it('gives the Access page its alternative nodes', () => {
     expect(routeMeta('access')).toEqual({ section: 'access', manager: true, anyNode: ACCESS_NODES })
   })
@@ -287,7 +294,6 @@ describe('the labels and descriptions of the Administration tree', () => {
     expect(labels).toEqual({
       'settings:frontend': 'Branding',
       'settings:web': 'Reverse proxy',
-      'settings:statistics': 'Usage statistics',
       'settings:search': 'Search index',
       'settings:cleanup': 'Cleanup policies',
       'settings:javadoc': 'Javadoc',
@@ -309,7 +315,7 @@ describe('the labels and descriptions of the Administration tree', () => {
     expect(linksWith({ domains: BUILT_IN_DOMAINS }).map(link => link.key)).toEqual([
       'page:overview', 'page:repositories','settings:cleanup', 'settings:javadoc', 'settings:search',
       'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check',
-      'settings:frontend', 'settings:web', 'settings:statistics', 'page:migration',
+      'settings:frontend', 'settings:web', 'page:migration',
       'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info',
     ])
   })
@@ -336,10 +342,8 @@ describe('shortcuts between the pages of the Administration tree', () => {
     expect(shortcutsOf('settings:audit', canWith(['ingot.admin.settings']))).toEqual([])
   })
 
-  it('links Analytics to Usage statistics for a visitor with the settings node', () => {
-    expect(shortcutsOf('page:analytics', canWith(['ingot.admin.dashboard', 'ingot.admin.settings']))).toEqual([
-      { label: 'Usage statistics', to: { name: 'settings', params: { domain: 'statistics' } } },
-    ])
+  it('draws no shortcut on Analytics, because the usage statistics settings are on the page itself', () => {
+    expect(shortcutsOf('page:analytics', canWith(['ingot.admin.dashboard', 'ingot.admin.settings']))).toEqual([])
   })
 
   it('draws no shortcut on Maintenance, whose tabs replace the links to Search index and Cleanup policies', () => {

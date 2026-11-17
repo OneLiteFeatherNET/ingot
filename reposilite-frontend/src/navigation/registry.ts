@@ -302,7 +302,8 @@ const BAR_SIZE = 4
 
 // The settings domains that have a page of their own, so they are not a settings tab or a settings card. The maven domain is
 // edited on the Repositories page. It is still loaded, saved, exported and imported with the other domains.
-const DOMAINS_ON_OTHER_PAGES: readonly string[] = ['maven']
+// The statistics domain is edited on Analytics, where the collection is, so it is no entry of the tree either.
+const DOMAINS_ON_OTHER_PAGES: readonly string[] = ['maven', 'statistics']
 
 // The page names under /settings that a settings domain may not take as its id, since the page is served first.
 const RESERVED_SETTINGS_PAGES: readonly string[] = ['repositories']
@@ -351,7 +352,6 @@ const ADMIN_TREE: TreeGroup[] = [
     entries: [
       { domain: 'frontend', label: 'Branding', description: 'Name, description, logo, colours and links shown on this instance.', keywords: 'frontend, logo, colour, color, theme, title, privacy' },
       { domain: 'web', label: 'Reverse proxy', description: 'The headers that carry the client address and the path prefix behind a proxy.', keywords: 'web, nginx, traefik, x-forwarded, header' },
-      { domain: 'statistics', label: 'Usage statistics', description: 'Whether resolved requests are counted, and per which period.', keywords: 'statistics, stats, downloads' },
       // The nexus import wizard. Listed only while the nexus-import plugin is enabled, so an installation without it sees
       // no entry and the address answers as an unknown one.
       { key: 'migration', route: 'settings-migration', label: 'Migration', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN), description: 'Import the repositories of another instance, step by step.', keywords: 'nexus, import' },
@@ -364,7 +364,7 @@ const ADMIN_TREE: TreeGroup[] = [
       { domain: 'audit', label: 'Audit settings', description: 'How long audit events are kept, and whether the client address is recorded.', keywords: 'audit, retention, client address' },
       { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console }, description: 'The log lines of this instance, filtered by level and text.', keywords: 'logs' },
       { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance }, description: 'Storage usage, the search index and cleanup for this Ingot instance.', keywords: 'storage, rebuild index, cleanup run' },
-      { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard }, description: 'Traffic and resource use of this instance over time.', keywords: 'traffic, charts' },
+      { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] }, description: 'What this instance collects about its usage, and the metrics it exposes.', keywords: 'usage statistics, stats, traffic, metrics, prometheus, collection, charts' },
       { key: 'system-info', route: 'system-info', label: 'System and support', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What this instance runs on and what a maintainer needs to look at. Secrets are withheld or masked, and the page only reads.', keywords: 'version, java, environment, zip, debug' },
     ],
   },
@@ -424,7 +424,7 @@ const PAGES: Page[] = [
       { key: 'check', route: 'access-check', label: 'Check', group: 'Tools', permission: { anyNode: ACCESS_NODES } },
     ],
   },
-  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'none', permission: { node: ADMIN_NODES.dashboard } },
+  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'none', permission: { anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] } },
   { key: 'audit', route: 'audit', label: 'Audit log', area: 'none', permission: { node: ADMIN_NODES.audit } },
   { key: 'console', route: 'console', label: 'Console', area: 'none', permission: { node: ADMIN_NODES.console } },
   { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'none', permission: { node: ADMIN_NODES.maintenance } },
@@ -438,7 +438,7 @@ const PAGES: Page[] = [
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
 // the not found page, and the old support address, which redirects to the system information page. The detail routes
 // of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'support', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
+const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'support', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-statistics', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
 
 const pageByKey = (key: string): Page | undefined => PAGES.find(page => page.key === key)
 
@@ -564,7 +564,6 @@ interface Shortcut {
 const SHORTCUTS: Record<string, Shortcut[]> = {
   'page:audit': [{ label: 'Audit settings', to: settingsTo('audit'), node: ADMIN_NODES.settings }],
   'settings:audit': [{ label: 'Open the audit log', to: { name: 'audit' }, node: ADMIN_NODES.audit }],
-  'page:analytics': [{ label: 'Usage statistics', to: settingsTo('statistics'), node: ADMIN_NODES.settings }],
   'settings:search': [{ label: 'Rebuild now on Maintenance', to: { name: 'maintenance', query: { tab: 'index' } }, node: ADMIN_NODES.maintenance }],
 }
 

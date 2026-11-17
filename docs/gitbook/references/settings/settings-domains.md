@@ -270,6 +270,8 @@ Validated: `verifyAt` and `rebuildSchedule.at` are times `HH:mm`, `verifySampleS
 
 ## statistics
 
+Edited on the Analytics page (`/analytics`) in the Administration section, which also names the metrics endpoint. The old address `/settings/statistics` redirects there.
+
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `enabled` | Boolean | `true` | Records request statistics. They can use much space on public repositories with many artifacts. |

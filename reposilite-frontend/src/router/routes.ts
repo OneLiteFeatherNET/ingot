@@ -51,7 +51,7 @@ const ROUTES: AppRoute[] = [
   // The retired Dashboard page: its address shows Overview, which holds the instance status. The query and the hash
   // stay, and the redirect replaces the history entry (create.ts), so the back button skips the old address.
   { name: 'dashboard', path: '/dashboard', redirect: to => ({ name: 'settings', query: to.query, hash: to.hash }) },
-  // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
+  // What the instance collects: the usage statistics settings and the metrics endpoint. Its permission is the settings node or the dashboard node.
   { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
   // the team in `:name`. `/access` is forwarded by the router (create.ts) or shows the index of the pages.
@@ -85,6 +85,9 @@ const ROUTES: AppRoute[] = [
   { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: routeMeta('access', 'ldap') },
   // The sign in settings are edited under Access too. Placed before the generic settings route, which would take `login` as a domain.
   { name: 'settings-login', path: '/settings/login', redirect: { name: 'access-sso' }, meta: routeMeta('access', 'sso') },
+  // The usage statistics settings are collected on Analytics now. The old address keeps working, with its query and fragment,
+  // and the redirect replaces the history entry. Placed before the generic settings route, which would take `statistics` as a domain.
+  { name: 'settings-statistics', path: '/settings/statistics', redirect: to => ({ name: 'analytics', query: to.query, hash: to.hash }) },
   // The nexus import wizard, one address per step. Placed before the settings entry, which would take `migration` as a domain.
   // It is shown only while the nexus-import plugin is enabled (IndexPage answers the address with not found otherwise).
   { name: 'settings-migration', path: '/settings/migration/:step?', meta: routeMeta('migration') },
