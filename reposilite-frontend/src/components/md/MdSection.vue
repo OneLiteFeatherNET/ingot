@@ -36,20 +36,33 @@ defineSlots<{
 </script>
 
 <template>
-  <section class="flex flex-col gap-4 text-on-surface" data-ingot-component="md-section">
-    <div data-test="section-header" class="flex flex-wrap items-end justify-between gap-4">
+  <section
+    class="flex flex-col gap-4 text-on-surface"
+    data-ingot-component="md-section"
+  >
+    <div
+      data-test="section-header"
+      class="flex flex-wrap items-end justify-between gap-4"
+    >
       <div class="min-w-0">
         <component
           :is="level === 3 ? 'h3' : 'h2'"
           :class="level === 3 ? 'md-title-medium' : 'md-title-large'"
-        >{{ title }}</component>
+        >
+          {{ title }}
+        </component>
         <p
           v-if="description"
           data-test="section-description"
           class="md-body-medium text-on-surface-variant"
-        >{{ description }}</p>
+        >
+          {{ description }}
+        </p>
       </div>
-      <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2">
+      <div
+        v-if="$slots.actions"
+        class="flex shrink-0 items-center gap-2"
+      >
         <slot name="actions" />
       </div>
     </div>

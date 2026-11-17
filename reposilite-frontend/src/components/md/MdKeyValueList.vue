@@ -32,10 +32,22 @@ defineSlots<{
 </script>
 
 <template>
-  <dl class="grid grid-cols-2 gap-4 text-on-surface" data-ingot-component="md-key-value-list">
-    <div v-for="item in items" :key="item.label" data-test="key-value-row" class="contents">
-      <dt class="md-label-large text-on-surface-variant">{{ item.label }}</dt>
-      <dd class="m-0 min-w-0 wrap-break-word md-body-large">{{ item.value }}</dd>
+  <dl
+    class="grid grid-cols-2 gap-4 text-on-surface"
+    data-ingot-component="md-key-value-list"
+  >
+    <div
+      v-for="item in items"
+      :key="item.label"
+      data-test="key-value-row"
+      class="contents"
+    >
+      <dt class="md-label-large text-on-surface-variant">
+        {{ item.label }}
+      </dt>
+      <dd class="m-0 min-w-0 wrap-break-word md-body-large">
+        {{ item.value }}
+      </dd>
     </div>
     <slot />
   </dl>

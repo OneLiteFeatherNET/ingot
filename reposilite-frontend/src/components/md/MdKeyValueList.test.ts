@@ -28,7 +28,7 @@ describe('MdKeyValueList', () => {
   it('renders a definition list with a term and a description for each item', () => {
     const wrapper = mount(MdKeyValueList, { props: { items: rows } })
 
-    expect(wrapper.element.tagName).toBe('DL')
+    expect((wrapper.element as HTMLElement).tagName).toBe('DL')
     expect(wrapper.findAll('dt').map(term => term.text())).toEqual(['Name', 'Version'])
     expect(wrapper.findAll('dd').map(detail => detail.text())).toEqual(['ingot', '1.0.0'])
   })

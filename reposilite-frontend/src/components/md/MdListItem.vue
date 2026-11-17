@@ -71,7 +71,7 @@ const contentAttrs = computed(() => {
 })
 
 // Only an option takes the keys. A link or a button in a plain list keeps its own Enter and Space.
-const select = (event?: KeyboardEvent) => {
+const select = (event?: Event) => {
   if (!isOption.value) return
   event?.preventDefault()
   emit('select')
@@ -81,7 +81,7 @@ const select = (event?: KeyboardEvent) => {
 <template>
   <li
     :role="isOption ? 'option' : undefined"
-    :aria-selected="isOption ? String(selected) : undefined"
+    :aria-selected="isOption ? (selected ? 'true' : 'false') : undefined"
     :tabindex="isOption ? 0 : undefined"
     :class="[
       'group relative',
@@ -97,13 +97,19 @@ const select = (event?: KeyboardEvent) => {
       v-bind="contentAttrs"
       class="md-state-layer md-focus-ring md-touch-target relative flex min-h-14 w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large"
     >
-      <span v-if="$slots.leading" class="shrink-0">
+      <span
+        v-if="$slots.leading"
+        class="shrink-0"
+      >
         <slot name="leading" />
       </span>
       <span class="min-w-0 flex-1">
         <slot />
       </span>
-      <span v-if="$slots.trailing" class="shrink-0">
+      <span
+        v-if="$slots.trailing"
+        class="shrink-0"
+      >
         <slot name="trailing" />
       </span>
     </component>

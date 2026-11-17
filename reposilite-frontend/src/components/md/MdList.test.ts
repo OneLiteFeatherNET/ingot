@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -36,7 +36,7 @@ describe('MdList', () => {
       slots: { default: () => [h(MdListItem, () => 'First'), h(MdListItem, () => 'Second')] }
     })
 
-    expect(wrapper.element.tagName).toBe('UL')
+    expect((wrapper.element as HTMLElement).tagName).toBe('UL')
     expect(wrapper.findAll('li')).toHaveLength(2)
   })
 
@@ -120,25 +120,27 @@ describe('MdListItem', () => {
   })
 
   it('emits select when a selectable option is clicked', async () => {
+    const onSelect = vi.fn()
     const wrapper = mount(MdList, {
       props: { selectable: true },
-      slots: { default: () => [h(MdListItem, () => 'Maven')] }
+      slots: { default: () => [h(MdListItem, { onSelect }, () => 'Maven')] }
     })
 
     await wrapper.get('[role="option"]').trigger('click')
 
-    expect(wrapper.findComponent(MdListItem).emitted('select')).toHaveLength(1)
+    expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
   it('emits select when Enter is pressed on a selectable option', async () => {
+    const onSelect = vi.fn()
     const wrapper = mount(MdList, {
       props: { selectable: true },
-      slots: { default: () => [h(MdListItem, () => 'Maven')] }
+      slots: { default: () => [h(MdListItem, { onSelect }, () => 'Maven')] }
     })
 
     await wrapper.get('[role="option"]').trigger('keydown', { key: 'Enter' })
 
-    expect(wrapper.findComponent(MdListItem).emitted('select')).toHaveLength(1)
+    expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
   it('leaves the Enter key of a button row to the browser when the list is not selectable', () => {

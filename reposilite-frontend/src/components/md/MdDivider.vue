@@ -43,10 +43,21 @@ const INSET: Record<string, string> = {
     :class="['flex items-center gap-4', INSET[String(props.inset)]]"
     data-ingot-component="md-divider"
   >
-    <span data-test="divider-rule" aria-hidden="true" class="h-px flex-1 bg-outline-variant" />
+    <span
+      data-test="divider-rule"
+      aria-hidden="true"
+      class="h-px flex-1 bg-outline-variant"
+    />
     <template v-if="label">
-      <span data-test="divider-label" class="md-label-medium text-on-surface-variant">{{ label }}</span>
-      <span data-test="divider-rule" aria-hidden="true" class="h-px flex-1 bg-outline-variant" />
+      <span
+        data-test="divider-label"
+        class="md-label-medium text-on-surface-variant"
+      >{{ label }}</span>
+      <span
+        data-test="divider-rule"
+        aria-hidden="true"
+        class="h-px flex-1 bg-outline-variant"
+      />
     </template>
   </div>
 </template>
