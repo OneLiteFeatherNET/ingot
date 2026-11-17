@@ -16,7 +16,7 @@
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import { treeObserverKey } from '../../helpers/useTreeFits'
 
@@ -68,7 +68,7 @@ describe('SideNavLayout', () => {
       },
       slots: { default: '<p class="page-body">Page body</p>' },
       global: { plugins: [router] }
-    })
+    }) as VueWrapper
   }
 
   it('renders the links of each group as a list, named by the visible heading of that group', async () => {
@@ -125,7 +125,7 @@ describe('SideNavLayout', () => {
   it('joins the grid of the frame from 1240 pixels, with no row of its own', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
-    const classes = wrapper.element.classList
+    const classes = (wrapper.element as Element).classList
     expect(classes, 'the layout has no box of its own from the 1240 pixel breakpoint').toContain('large:contents')
     expect(classes, 'the row of the old layout is gone').not.toContain('large:flex-row')
     expect(classes, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
@@ -153,7 +153,7 @@ describe('SideNavLayout', () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
     const pageBefore = wrapper.get('[data-test="page-column"]').element
 
-    await wrapper.vm.$router.replace({ path: '/access/users', query: { tab: 'storage' } })
+    await (wrapper.vm as unknown as { $router: Router }).$router.replace({ path: '/access/users', query: { tab: 'storage' } })
     await flushPromises()
     expect(wrapper.get('[data-test="page-column"]').element, 'a query change keeps the page, so a typed value keeps its focus').toBe(pageBefore)
 
