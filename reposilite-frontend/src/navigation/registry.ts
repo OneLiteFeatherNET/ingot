@@ -564,8 +564,13 @@ interface Shortcut {
 const SHORTCUTS: Record<string, Shortcut[]> = {
   'page:audit': [{ label: 'Audit settings', to: settingsTo('audit'), node: ADMIN_NODES.settings }],
   'settings:audit': [{ label: 'Open the audit log', to: { name: 'audit' }, node: ADMIN_NODES.audit }],
-  'settings:search': [{ label: 'Rebuild now on Maintenance', to: { name: 'maintenance', query: { tab: 'index' } }, node: ADMIN_NODES.maintenance }],
 }
+
+// The rebuild of the search index runs on the Index tab of Maintenance. The Search index page links there from its
+// content, beside an explanation of what a rebuild does, so the link is not a header shortcut (see SettingsView).
+export const indexRebuildLinkOf = (can: Can): NamedLocation | undefined => (can(ADMIN_NODES.maintenance)
+  ? { name: 'maintenance', query: { tab: 'index' } }
+  : undefined)
 
 const shortcutsOf = (treeKey: string, can: Can): { label: string; to: NamedLocation }[] => (SHORTCUTS[treeKey] ?? [])
   .filter(shortcut => can(shortcut.node))
