@@ -24,7 +24,8 @@ test.describe('instance status on Overview', () => {
     await expect(status).toBeVisible()
     const card = status.locator('[data-testid="read-only-card"]')
     await expect(card.getByText('Read-only mode', { exact: true })).toBeVisible()
-    await expect(card, 'the card states the value').toContainText(/\b(On|Off)\b/)
+    // The value follows its label; the text of the two parts has no space between them.
+    await expect(card, 'the card states the value').toContainText(/Read-only mode\s*(On|Off)/)
     await expect(page.getByRole('switch', { name: /read-only/i }), 'a switch for the read-only state').toHaveCount(0)
   })
 
