@@ -103,13 +103,15 @@ is not used for any edge.
 ### D2. The page shell: `MdPage`
 
 `MdPage` renders the page container, and the gutter stays the shared `container` class (`src/style.css:164-175`, which `window-margins.test.js`
-guards). Its variants:
+guards). `MdPage` has one width: `container mx-auto max-w-none` with the page's top and bottom padding. Every page takes the full width after
+the side navigation: lists, tables, detail panes, the account page, the dashboard, the file browser and Overview. The `reading` variant and
+its centred column go (D11), so the reading branch of the frame (`AdministrationFrame.vue:103`) and the account page (`AccountView.vue:43`)
+stop being a difference of kind between pages.
 
-- `wide` (default): `container mx-auto max-w-none` with the page's top and bottom padding. Lists, tables, the dashboard, the file
-  browser and Overview draw it.
-- `reading`: `container mx-auto max-w-[960px]`. Text, forms and detail panes draw it. The column is centred (question 2).
+Running text and forms do not use the page width. A block of prose or a form inside a page takes the reading measure of D11
+(`max-w-[960px]`, left-aligned, no `mx-auto`). The measure is set on the block, never on the page container.
 
-No view writes `container` itself, and no view writes `mx-auto` or `max-w-*` on the page. `MdPage` owns the top and bottom spacing so
+No view writes `container` itself, and no view writes `mx-auto` or `max-w-*` on the page container. `MdPage` owns the top and bottom spacing so
 that `pb-12` and `mb-12` cannot disagree. A test reads the sources of the views and fails on a `container` class outside `MdPage`
 (the same pattern as the gutter test in `window-margins.test.js`).
 
@@ -164,8 +166,8 @@ its place changes, which is the fix. The "Back to repositories" text button (`:1
 with an `aria-label` of "Back to repositories". Its label is no longer a visible text button, so the 24 pixel inset that misaligned the
 title goes with it. The `heading` ref and its focus behaviour keep working on the frame's `h1`.
 
-Because the repository detail is a `reading` page (`SettingsView.vue:473`), the name is centred with the rest of the page at widths
-where the side navigation is not shown.
+The repository detail is a full width page like every other page, so its name starts at the page's left edge at every width, with its
+trail and its back control. Its type section and its lists take the full width too.
 
 ### D6. Detail panes share one inset
 
@@ -207,6 +209,19 @@ Each visual change is measured, not judged. The pull request records:
 - the position of the back control on a detail page, which must lie in the gutter and not move the title,
 - the screenshots of the design's pages at 320, 600, 1440 pixels (the brief's widths) and at 390, 840, 1280 and 1920 pixels, before and
   after, in light and dark.
+
+### D11. Page width and reading measure (question 2, resolved 2026-11-17)
+
+Decided by the maintainer on 2026-11-17. This answers question 2 of `proposal.md`, which asked whether the reading column is centred or
+left-aligned.
+
+- Pages are full width. Dashboard pages hold lists, tables, account settings, detail panes and the file browser, and each needs the width
+  after the side navigation. A page container carries no `max-w-*` and no `mx-auto`.
+- A reading measure of 960 pixels applies to running text and form blocks only. The block carries `max-w-[960px]` and is left-aligned to
+  the page's left edge, so the title, the trail, the description and the text share one edge at every width. The left alignment follows
+  the header rule of D3.
+- The centred 960 pixel page column, which was the default of question 2 before this decision, is rejected for pages. It puts a page's
+  title and its tables at different edges, and it moves the title that this change aligns.
 
 ## Risks
 

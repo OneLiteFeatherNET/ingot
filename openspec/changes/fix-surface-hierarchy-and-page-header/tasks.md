@@ -29,7 +29,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   page, a detail page, `/settings` without an entry): exactly one `h1`; the trail is a `nav` with an `ol`; each separator is an
   `aria-hidden` element; no crumb class contains `after:` or `before:`; the last crumb is the only `aria-current="page"`; below 1240
   pixels the trail draws its last crumb only and its `title` is the full trail; the back control is not inside the text column; the
-  reading page root carries `MdPage` with the reading variant. Verify: it fails on `AdministrationFrame.vue:98`, `:103`, `:156`,
+  page root is `MdPage` with no `mx-auto` and no `max-w-*` class. Verify: it fails on `AdministrationFrame.vue:98`, `:103`, `:156`,
   `:170-173` and `:178`.
 - [ ] 2.5 `test(ui)`: in `src/components/browser/BreadcrumbNavigation.test.js`, assert that the trail renders `MdBreadcrumb` (its root
   carries the `breadcrumb-navigation` anchor), that the current crumb and the links share one minimum height class, that the parent
@@ -38,8 +38,8 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 2.6 `test(ui)`: in `src/components/repositories/RepositoryDetail.test.js`, assert that no `h2` repeats the repository name, that
   the element with `data-ingot-part="header"` and `data-ingot-repository` holds the repository type section, and that the page emits the
   name through its title. Verify: it fails on `RepositoryDetail.vue:200-212`.
-- [ ] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root carries the reading variant of `MdPage`
-  and that the page has one `h1`. Verify: it fails on `AccountView.vue:43` and `:47`.
+- [ ] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root is `MdPage` with no `mx-auto` or `max-w-*` class,
+  that its form blocks carry the reading measure, and that the page has one `h1`. Verify: it fails on `AccountView.vue:43` and `:47`.
 - [ ] 2.8 `test(ui)`: in `src/components/settings/EntryDetail.test.js`, assert that the back button is in its own row above the `h3` at
   every width (no `min-[840px]:hidden` on the row that holds the heading). Verify: it fails on `EntryDetail.vue:280`.
 - [ ] 2.9 `test(ui)`: in `src/components/access/TeamsPanel.test.js`, `src/components/access/PrincipalsPanel.test.js` and a new
@@ -54,13 +54,13 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   `src/components/layout/AdministrationFrame.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
   fails, because the registry has no `administration-breadcrumb` entry.
 - [ ] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
-  edges of the repository detail title and its trail match within 0.5 pixel; at 1920 pixels the reading page is centred; at 390 pixels
+  edges of the repository detail title and its trail match within 0.5 pixel; at 1920 pixels the page container has no `max-w-*` class and a form block is no wider than 960 pixels; at 390 pixels
   the back control of a detail page does not move the title. Replace the level 2 "Repositories" heading check at `layout.spec.js:35`
   with level 1. Selectors are roles and accessible names. Verify: they fail against the current build.
 
 ## 3. Refactor (refactor(ui))
 
-- [ ] 3.1 `refactor(ui)`: move every page container that already renders the same spacing onto `MdPage` (`wide` or `reading`), with no
+- [ ] 3.1 `refactor(ui)`: move every page container that already renders the same spacing onto `MdPage`, with no
   change of pixels: `DashboardView.vue:37`, `FileBrowserView.vue:208`, `DefaultHeader.vue:37`, `HeaderHero.vue:42`, `NotFoundView.vue:23`,
   `ViewLoadError.vue:27`, `ViewLoading.vue:23`, `IndexPage.vue:378` and `:399`, and `AnalyticsView.vue` (which has none). Verify: the
   before and after screenshots of these pages at 390 and 1280 pixels are identical, pixel for pixel, in light and dark.
@@ -85,7 +85,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   of D7. Verify: the nested-step test of the spec passes for each file, and the contrast values are recorded.
 - [ ] 4.5 `fix(ui)`: draw the content sheet edge in `IndexPage.vue:359-360` with a 1 pixel `outline` border from 600 pixels. Verify: the
   content sheet requirement passes at 1280 pixels in light and dark.
-- [ ] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` (reading or wide) and `MdPageHeader`; put the back control in the back
+- [ ] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` and `MdPageHeader`; put the back control in the back
   row (`-ms-3`); draw the trail with `MdBreadcrumb`, with the Overview crumb as the current section name; keep the Sections button and the
   shortcuts in the actions; give the trail the anchor `administration-breadcrumb` and register it in `src/anchors/registry.json` in the
   same commit. Verify: 2.4 and 2.12 pass.
@@ -94,12 +94,12 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   back control with an `aria-label`; `SettingsView.vue:464-473` passes the title and the back target. Verify: 2.6 and 2.13 pass.
 - [ ] 4.8 `fix(ui)`: `settings/EntryDetail.vue`: move the back button into its own row above the `h3` (`:272-295`), with the same offset as
   the frame, so the heading stays put at 840 pixels. Verify: 2.8 passes, and `SettingsView.entries.test.js` still passes.
-- [ ] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` (reading) and `MdPageHeader` with the one `h1`. Verify: 2.7 passes.
+- [ ] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` and `MdPageHeader` with the one `h1`, and its form blocks take the reading measure. Verify: 2.7 passes.
 - [ ] 4.10 `fix(ui)`: `TeamsPanel.vue`, `PrincipalsPanel.vue` and `CollectionEditor.vue`: take the inset of `MdListDetail` on both panes
   at every width. Verify: 2.9 passes.
 - [ ] 4.11 `fix(ui)`: the remaining page containers that differ from `MdPage` today: `SearchView.vue:250` (wide, `max-w-none`),
-  `SiteFooter.vue:31` (centred), `RepositoryOverview.vue:202` (`pb-12` instead of `mb-12`), and the frame's reading variant. Verify: 2.11
-  passes, and the screenshot of each at 1280 pixels shows the centred or aligned result.
+  `SiteFooter.vue:31` (centred), `RepositoryOverview.vue:202` (`pb-12` instead of `mb-12`), and the frame's reading branch, removed with 4.6. Verify: 2.11
+  passes, and the screenshot of each at 1280 pixels shows the full width page or the aligned result.
 - [ ] 4.12 `fix(ui)`: `SnippetsCard.vue:178`: draw the card title as a heading of level two or three. Verify: 2.10 passes.
 
 ## 5. Docs (docs(ui) and docs(gitbook))

@@ -8,8 +8,8 @@ Each question has a default. The tasks implement the default; an answer that dif
    frame it is 3.84:1 in light and 5.16:1 in dark, which is the 3:1 that a visible boundary needs. `outline-variant` reaches only
    1.62:1 in light and 1.97:1 in dark, so it cannot carry the edge. Alternative: `shadow-elevation-1` and no edge. A shadow is
    barely visible in dark mode, so the alternative is weaker there.
-2. **Reading measure: centred or left-aligned.** Default: centred, a 960 pixel column with `mx-auto` on every reading page.
-   Alternative: left-aligned to the container edge, so the text sits under the top bar's left edge at every width.
+2. **Reading measure: resolved 2026-11-17.** Pages use the full width. Running text and form blocks take a 960 pixel
+   measure, left-aligned to the page's left edge. See `design.md` D11.
 3. **Card default: may it change globally?** Default: yes. `MdCard` is used by ten dashboard components and no plugin. Plugins
    cannot import Vue components; they reach the dashboard through anchors and the `ingot-plugins` stylesheet layer, and every
    anchored element keeps its name. The default card becomes `surface-container-low` with a 1 pixel `outline` edge. Alternative:
@@ -31,8 +31,8 @@ and maintainers describe one underlying problem: each view decides its own width
   element. When a crumb is long, the slash wraps onto a line of its own or ends a line. The Overview page shows a plain text
   trail, a group without a heading shows none, and the last crumb carries no `aria-current`. The file browser has a second trail
   with its own spacing, so the same kind of navigation looks different on two pages.
-- **The repository detail title sits too far left, and the indent is wrong.** The reading column of the Administration frame
-  has no `mx-auto`, so it hugs the left edge while the wide variant centres. The repository detail draws its name a second
+- **The repository detail title sits too far left, and the indent is wrong.** The Administration frame centres its wide pages and not its
+  reading pages, so the same frame puts its title at two different edges. The repository detail draws its name a second
   time, as an `h2`, in the page column of the side navigation, which starts about 248 pixels to the right of the frame's
   heading. The "Back to repositories" text button insets its label, so the label and the title do not share an edge. The back
   arrow of the settings detail pages appears at 839 pixels and below, so the title jumps when it appears.
@@ -54,9 +54,9 @@ The MD3 tokens are already there. What is missing is one rule per role and one p
   Cards are `surface-container-low` with a 1 pixel `outline` edge. Nested blocks step up one role, never the same role and never
   down. Menus are `surface-container` with `shadow-elevation-2`, side sheets `surface-container-low` with `shadow-elevation-1`,
   dialogs `surface-container-high` with `shadow-elevation-3`, and every floating panel carries an elevation.
-- **One page shell.** Every page of the dashboard renders `MdPage` with one of two variants: `wide` (lists, tables and the
-  dashboard, the full width after the side navigation) or `reading` (a centred 960 pixel column for text and forms). Both centre
-  with `mx-auto`. The nine or more hand-written container classes go.
+- **One page shell.** Every page of the dashboard renders `MdPage`, which takes the full width after the side navigation.
+  Running text and form blocks inside a page take a 960 pixel reading measure, left-aligned (design D11). No page container is
+  centred. The nine or more hand-written container classes go.
 - **One page header.** Every page heading is `MdPageHeader`: the back control in its own slot, the trail, the one `h1`, the
   description and the actions. The title, the description and the trail share one left edge with or without a back control.
 - **One trail.** The Administration trail and the file browser trail both render `MdBreadcrumb`. The separator is an
@@ -72,7 +72,7 @@ The MD3 tokens are already there. What is missing is one rule per role and one p
   now sits in the page content, and its `data-ingot-repository` value does not change.
 
 Not BREAKING. No configuration key, environment variable, deployment manifest, route, permission node, stored data or plugin
-API changes. The visible changes are the surfaces, the header alignment, the centred reading column and the breadcrumb shape.
+API changes. The visible changes are the surfaces, the header alignment, the 960 pixel reading measure of text and forms and the breadcrumb shape.
 Plugins that style an anchored element keep the same selector; the element may sit at a different place on the page, which is
 the fix. The 600, 840 and 1240 pixel breakpoints stay.
 
@@ -124,7 +124,7 @@ for the container and header swaps that must not change a pixel outside the fix,
 ## Impact
 
 - **Operators:** nothing to configure. The pages look different: the frame reads as a frame, the cards have an edge, the repository
-  detail title lines up with its breadcrumb, and the reading pages sit in the middle.
+  detail title lines up with its breadcrumb, and text and forms sit in a 960 pixel measure at the left edge of the page.
 - **Plugin authors:** nothing to change. Anchored elements keep their names. A plugin stylesheet in the `ingot-plugins` layer that
   sets a background on a plugin element is not overridden by the new defaults, because the primitives are not anchored. The
   surface table is documented for plugins that want to match the frame.
