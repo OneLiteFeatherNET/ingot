@@ -48,6 +48,7 @@ const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
     <!-- The anchor stays on the trail's nav, so plugin stylesheets keep matching it. -->
     <MdBreadcrumb
       :items="trail"
+      size="large"
       class="min-w-0"
       data-ingot-component="breadcrumb-navigation"
     />

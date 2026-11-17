@@ -167,3 +167,68 @@ describe('MdBreadcrumb', () => {
     expect(wrapper.findAllComponents(RouterLink)).toHaveLength(1)
   })
 })
+
+describe('MdBreadcrumb size', () => {
+  const mountSized = (size?: 'default' | 'large') => {
+    const router = createRouter({ history: createWebHistory(BASE), routes })
+    return mount(MdBreadcrumb, { props: { items: trail, size }, global: { plugins: [router] } })
+  }
+
+  it('sets the default trail in the label-large typography', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('nav > ol').classes()).toContain('md-label-large')
+  })
+
+  it('sets the large trail in the title-medium typography', () => {
+    const wrapper = mountSized('large')
+    const list = wrapper.find('nav > ol').classes()
+
+    expect(list, 'the large trail uses title-medium').toContain('md-title-medium')
+    expect(list, 'the large trail does not use label-large').not.toContain('md-label-large')
+  })
+
+  it('spaces the default crumbs with a gap', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('ol > li').classes()).toContain('gap-2')
+  })
+
+  it('does not gap the large crumbs', () => {
+    const wrapper = mountSized('large')
+
+    expect(wrapper.find('nav > ol').classes()).not.toContain('gap-2')
+    expect(wrapper.find('ol > li').classes()).not.toContain('gap-2')
+  })
+
+  it('pads each large link like the file browser trail', () => {
+    const wrapper = mountSized('large')
+    const link = wrapper.find('ol > li a').classes()
+
+    expect(link, 'the large link has horizontal padding').toContain('px-1')
+    expect(link, 'the large link has vertical padding').toContain('py-1')
+  })
+
+  it('colours the large links in on-surface instead of primary', () => {
+    const wrapper = mountSized('large')
+    const links = wrapper.findAll('ol a').map(link => link.classes())
+
+    expect(links.length, 'the trail has links').toBeGreaterThan(0)
+    for (const classes of links) {
+      expect(classes).toContain('text-on-surface')
+      expect(classes).not.toContain('text-primary')
+    }
+  })
+
+  it('turns the large links to primary on hover, as the file browser trail did', () => {
+    const wrapper = mountSized('large')
+
+    expect(wrapper.find('ol a').classes()).toContain('hover:text-primary')
+  })
+
+  it('keeps the default links in primary', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('ol a').classes()).toContain('text-primary')
+  })
+})
