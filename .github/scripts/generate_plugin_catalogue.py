@@ -13,7 +13,8 @@ flag of one entry. The generation time is an argument, so two runs with the same
 
 The tier of each plugin comes from the tier file that the tier check writes (`build/plugin-tiers.json`: plugin id to tier).
 A plugin without an entry, a missing file or an unknown tier stops the run. A listed version keeps the tier it was published
-with, so a changed tier stops the run as a changed digest does.
+with, so an explicit tier that differs from the file stops the run as a changed digest does. A listed entry without any tier
+field predates tiers: it gets the file's tier once, and the run logs that line.
 
 Each entry is the format of schema 1 that the plugin store reads (see PluginCatalogue.kt): id, name, publisher, description,
 coordinates, sha256, compatibility, yanked and tier. The compatibility range of a release is its own version: `min` is the
@@ -46,10 +47,8 @@ OFFICIAL_PLUGINS = {
 VERSION_PATTERN = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 GENERATED_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 
-# The tier names the plugin store reads: the PluginTier constants in lower case. A listed entry without a tier field is
-# read as community by the store, and the generator compares it the same way.
+# The tier names the plugin store reads: the PluginTier constants in lower case.
 TIERS = ("core", "official", "community", "experimental")
-DEFAULT_TIER = "community"
 
 
 class Refusal(Exception):
@@ -137,6 +136,7 @@ def publish(arguments):
     plugins = arguments.plugin or sorted(OFFICIAL_PLUGINS)
 
     additions = []
+    backfilled = False
     for plugin in plugins:
         if plugin not in OFFICIAL_PLUGINS:
             raise Refusal(f"plugin {plugin!r} is not an official plugin of this release")
@@ -157,10 +157,15 @@ def publish(arguments):
                     f"{coordinates(plugin, arguments.version)} is listed with another sha256 than the rebuilt jar, "
                     "so the run stops and nothing is written"
                 )
-            listed_tier = listed[0].get("tier", DEFAULT_TIER)
-            if listed_tier != tier:
+            if "tier" not in listed[0]:
+                # Written before tiers existed, so its tier is unknown rather than community: take the tier file's once.
+                listed[0]["tier"] = tier
+                backfilled = True
+                print(f"backfilled tier={tier} of {coordinates(plugin, arguments.version)}, which was listed before tiers")
+                continue
+            if listed[0]["tier"] != tier:
                 raise Refusal(
-                    f"{coordinates(plugin, arguments.version)} is listed as {listed_tier} but the tier file says {tier}, "
+                    f"{coordinates(plugin, arguments.version)} is listed as {listed[0]['tier']} but the tier file says {tier}, "
                     "so the run stops and nothing is written: a published version keeps its tier"
                 )
             print(f"unchanged {coordinates(plugin, arguments.version)}")
@@ -169,10 +174,11 @@ def publish(arguments):
         additions.append(entry_for(plugin, arguments.version, digest, arguments.plugin_api, tier))
         print(f"added {coordinates(plugin, arguments.version)} sha256={digest} tier={tier}")
 
-    if not additions:
+    if not additions and not backfilled:
         return 0
-    document["plugins"].extend(additions)
-    document["generated"] = arguments.generated
+    if additions:
+        document["plugins"].extend(additions)
+        document["generated"] = arguments.generated
     write_catalogue(path, document)
     return 0
 

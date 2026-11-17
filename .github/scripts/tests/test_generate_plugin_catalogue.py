@@ -81,7 +81,6 @@ class GeneratorTestCase(unittest.TestCase):
         self.repository = os.path.join(self.temp, "mirror")
         os.makedirs(self.repository)
         self.tiers = os.path.join(self.temp, "plugin-tiers.json")
-        # The fixture lists 3.5.28 without a tier field, which the store reads as community.
         self.write_tiers({"opensearch-plugin": "community"})
         self.last_stderr = ""
 
@@ -105,9 +104,11 @@ class GeneratorTestCase(unittest.TestCase):
 
     def run_generator(self, *argv):
         stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+        stdout = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(stdout):
             code = generator.main(list(argv))
         self.last_stderr = stderr.getvalue()
+        self.last_stdout = stdout.getvalue()
         return code
 
     def catalogue_bytes(self):
@@ -359,7 +360,6 @@ class TierTest(GeneratorTestCase):
         self.seed_catalogue()
         before = self.catalogue_bytes()
 
-        # The fixture lists 3.5.28 without a tier field, which the server reads as community.
         code = self.publish(version=FIXTURE_VERSION)
 
         self.assertEqual(1, code, "a listed version cannot change its tier")
@@ -375,6 +375,21 @@ class TierTest(GeneratorTestCase):
         self.assertEqual(0, self.publish(version=FIXTURE_VERSION), self.last_stderr)
 
         self.assertEqual(before, self.catalogue_bytes())
+
+    def test_legacy_entry_without_tier_is_backfilled_from_the_tier_file_not_refused(self):
+        self.seed_catalogue()
+        document = read_catalogue(self.repository)
+        del document["plugins"][0]["tier"]
+        with open(os.path.join(self.repository, CATALOGUE), "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        self.write_tiers({"opensearch-plugin": "experimental"})
+
+        self.assertEqual(0, self.publish(version=FIXTURE_VERSION), self.last_stderr)
+
+        self.assertEqual("experimental", read_catalogue(self.repository)["plugins"][0]["tier"],
+                         "the unknown tier of a legacy entry is taken from the tier file")
+        self.assertIn("backfilled", self.last_stdout, "the backfill is logged in one line")
+        self.assertIn("net.onelitefeather.ingot:opensearch-plugin:3.5.28", self.last_stdout)
 
     def test_yanked_version_keeps_its_tier(self):
         self.seed_catalogue()

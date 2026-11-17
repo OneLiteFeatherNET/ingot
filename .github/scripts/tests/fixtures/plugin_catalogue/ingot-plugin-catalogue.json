@@ -15,6 +15,7 @@
       "name": "OpenSearch search backend",
       "publisher": "OneLiteFeather",
       "sha256": "246818cf5e838c80367ead4c7644c60b13c2183e817c7f88ec92f6fb9f7efb40",
+      "tier": "community",
       "yanked": false
     }
   ],
