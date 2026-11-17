@@ -36,6 +36,8 @@ import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
+import io.javalin.openapi.OpenApiContent
+import io.javalin.openapi.OpenApiResponse
 import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.api.TokenDto
@@ -121,8 +123,11 @@ internal class SelfServiceEndpoints(
             "the grace period, the session scope and the end of the step-up window. A read, answered for a session and for a Basic or " +
             "Bearer access token. The step-up end is set for a session only",
         tags = ["Identity"],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = SecurityStatusDto::class) ]),
+        ],
     )
-    private val securityStatus = ReposiliteRoute<SecurityStatusDto>("/api/identity/me/security", Route.GET) {
+    private val securityStatus =ReposiliteRoute<SecurityStatusDto>("/api/identity/me/security", Route.GET) {
         authenticated {
             response = callerOf(identifier).flatMap { user ->
                 facade.securityStatusOf(user.principalId, sessionClaims()).toDto().asSuccess()

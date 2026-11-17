@@ -82,6 +82,20 @@ internal class OpenApiSnapshotIntegrationTest : ReposiliteSpecification() {
             .contains("exit code")
     }
 
+    @Test
+    fun `own security status describes its 200 answer`() {
+        // given: the OpenAPI document the server serves
+        val document = MAPPER.readTree(Unirest.get("$base/openapi").asString().body)
+
+        // when: the 200 response of the own security status is read
+        val security = document.path("paths").path("/api/identity/me/security").path("get").path("responses").path("200")
+
+        // then: it names the security status schema
+        assertThat(security.path("content").path("application/json").path("schema").path("\$ref").asText())
+            .describedAs("schema of the 200 response of GET /api/identity/me/security")
+            .isEqualTo("#/components/schemas/SecurityStatusDto")
+    }
+
     private fun refreshRequested(): Boolean = System.getProperty(REFRESH_PROPERTY) == "true"
 
     private fun canonical(document: String): String {

@@ -2452,7 +2452,17 @@ export interface paths {
                 cookie?: never;
             };
             requestBody?: never;
-            responses: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SecurityStatusDto"];
+                    };
+                };
+            };
         };
         put?: never;
         post?: never;
@@ -5828,6 +5838,12 @@ export interface components {
             count: number;
             value: string;
         };
+        FactorCountsDto: {
+            /** Format: int32 */
+            authenticator?: number;
+            /** Format: int32 */
+            passkey?: number;
+        };
         FactorNameRequest: {
             name?: string | null;
         };
@@ -6177,6 +6193,11 @@ export interface components {
             plugin: string;
             sha256: string;
         };
+        PolicyStatusDto: {
+            covered?: boolean;
+            requiredForAdmins?: boolean;
+            requiredForTeams?: string[];
+        };
         PomDetails: {
             artifactId: string;
             groupId: string;
@@ -6353,6 +6374,17 @@ export interface components {
         };
         /** @enum {string} */
         SecretType: "RAW" | "ENCRYPTED";
+        SecurityStatusDto: {
+            factorCounts?: components["schemas"]["FactorCountsDto"];
+            /** Format: date-time */
+            graceUntil?: string | null;
+            policy?: components["schemas"]["PolicyStatusDto"];
+            /** Format: int32 */
+            recoveryCodesLeft?: number;
+            scope?: string;
+            /** Format: date-time */
+            stepUpUntil?: string | null;
+        };
         SessionDetails: {
             accessToken: components["schemas"]["AccessTokenDto"];
             grants: components["schemas"]["SessionGrant"][];
