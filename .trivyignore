@@ -1,7 +1,7 @@
 # Advisories the vulnerability scan is told to skip.
 #
-# Empty on purpose. Every advisory Trivy reports today has a released fix and has been
-# taken, so nothing needs suppressing.
+# Kept short on purpose. Every advisory Trivy reports has a released fix and has been
+# taken, except the few entries below that have none.
 #
 # Add an entry only when the advisory cannot be fixed, not when fixing it is inconvenient.
 # That is roughly two cases: no fixed version exists yet, or the vulnerable code path is
@@ -15,3 +15,7 @@
 #   CVE-0000-00000 exp:2026-12-31
 #
 # The scan itself lives in .github/workflows/ci.yml and fails on CRITICAL, HIGH and MEDIUM.
+# picomatch has no patched release (GHSA-fc5q-39xc-vjpf affects <= 4.0.7). It only runs in
+# the frontend build and test tooling on patterns from our own configuration.
+CVE-2026-112366 exp:2027-01-31
+GHSA-fc5q-39xc-vjpf exp:2027-01-31
