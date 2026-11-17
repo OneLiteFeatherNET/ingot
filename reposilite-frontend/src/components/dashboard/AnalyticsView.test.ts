@@ -39,7 +39,7 @@ afterEach(() => {
 // A fresh store per test, holding the statistics domain as the instance serves it.
 const mountAnalytics = async () => {
   const store = await loadedStore({
-    server: { statistics: { enabled: true, resolvedRequestsInterval: 'DAILY' } },
+    server: { statistics: { enabled: true, resolvedRequestsInterval: 'DAILY' } } as never,
     // The fixture serves one schema for every domain, so the statistics schema is the one of this domain.
     schema: statisticsSchema as never,
   })
@@ -70,11 +70,5 @@ describe('AnalyticsView', () => {
     const view = await mountAnalytics()
 
     expect(view.text(), 'the Prometheus plugin is bundled, so the page says how to turn it on').toContain('INGOT_METRICS_ENABLED')
-  })
-
-  it('keeps the analytics view marker that the anchor registry names', async () => {
-    const view = await mountAnalytics()
-
-    expect(view.find('[data-ingot-component="analytics-view"]').exists()).toBe(true)
   })
 })

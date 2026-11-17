@@ -398,6 +398,13 @@
       "states": []
     },
     {
+      "name": "domain-settings-panel",
+      "file": "src/components/settings/DomainSettingsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "chart-card",
       "file": "src/components/dashboard/ChartCard.vue",
       "stability": "experimental",

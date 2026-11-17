@@ -72,6 +72,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `detailed-list-entry` | experimental | `src/components/browser/DetailedListEntry.vue` | none | none |
 | `dialog-shell` | experimental | `src/components/md/MdDialog.vue` | none | none |
 | `discover-step` | experimental | `src/components/migration/DiscoverStep.vue` | none | none |
+| `domain-settings-panel` | experimental | `src/components/settings/DomainSettingsPanel.vue` | none | none |
 | `dry-run-result` | experimental | `src/components/maintenance/DryRunResult.vue` | none | none |
 | `dry-run-step` | experimental | `src/components/migration/DryRunStep.vue` | none | none |
 | `entry-detail` | stable | `src/components/settings/EntryDetail.vue` | `header` | none |
