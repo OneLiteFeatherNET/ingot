@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref, useId } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { useAdjustments } from '../../store/adjustments'

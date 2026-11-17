@@ -23,7 +23,14 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
  * The size of a file as shown in a row. Directories and files of unknown length have none,
  * rather than a size of zero bytes.
  */
-const describeSize = (file) => {
+// The fields of a listed file that the size and the date read.
+interface DescribedFile {
+  type?: string
+  contentLength?: number
+  lastModifiedTime?: number
+}
+
+const describeSize = (file?: DescribedFile | null): string => {
   if (file?.type === 'DIRECTORY') {
     return ''
   }
@@ -38,7 +45,7 @@ const describeSize = (file) => {
  * carry neither, so their line is empty. Unknown values are left out rather than shown as
  * zero bytes or the epoch.
  */
-const describeEntry = (file) => {
+const describeEntry = (file?: DescribedFile | null): string => {
   if (file?.type === 'DIRECTORY') {
     return ''
   }

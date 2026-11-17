@@ -14,15 +14,15 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed } from 'vue'
-import { GLYPHS } from './glyphs'
+<script setup lang="ts">
+import { computed, type PropType } from 'vue'
+import { GLYPHS, type GlyphName } from './glyphs'
 
 const props = defineProps({
   name: {
-    type: String,
+    type: String as PropType<GlyphName>,
     required: true,
-    validator: (value) => Object.hasOwn(GLYPHS, value)
+    validator: (value: unknown) => typeof value === 'string' && Object.hasOwn(GLYPHS, value)
   }
 })
 

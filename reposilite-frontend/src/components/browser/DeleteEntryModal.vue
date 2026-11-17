@@ -14,19 +14,25 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { computed, useId } from 'vue'
 import useQualifier from '../../store/qualifier'
-import { property } from '../../helpers/vue-extensions'
 import MdButton from '../md/MdButton.vue'
 
-const props = defineProps({
-  value: property(Object, false),
-  close: property(Function, true)
-})
+// The entry the modal asks about: its repository path, its name and whether it is a folder.
+interface DeleteTarget {
+  path: string
+  file: string
+  directory: boolean
+}
+
+const props = defineProps<{
+  value?: DeleteTarget
+  close: () => void
+}>()
 
 const { client } = useSession()
 const { refreshQualifier } = useQualifier()
@@ -34,14 +40,15 @@ const { refreshQualifier } = useQualifier()
 const titleId = useId()
 const bodyId = useId()
 
-const deleteEntry = ({ path, file }) => {
+const deleteEntry = ({ path, file }: DeleteTarget) => {
   client.value.maven.delete(path + '/' + file)
     .then(() => refreshQualifier())
     .catch(error => createErrorToast(`Cannot delete file: ${errorMessage(error)}`))
 }
 
 const deleteAndClose = () => {
-  deleteEntry(props.value)
+  // The button is only shown while the modal is open, so there is a target to delete.
+  deleteEntry(props.value as DeleteTarget)
   props.close()
 }
 

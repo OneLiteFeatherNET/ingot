@@ -26,12 +26,21 @@
  * an error that carries a request but no response; a plain exception with neither is a bug,
  * and it stays "unknown" rather than being reported as a connection problem.
  */
-const classifyListingError = (error) => {
-  const status = error?.response?.status
+export type ListingFailure = 'not-found' | 'forbidden' | 'network' | 'unknown'
+
+// The parts of an HTTP client error that the classification reads.
+interface FailedRequest {
+  response?: { status?: number } | null
+  request?: unknown
+}
+
+const classifyListingError = (error: unknown): ListingFailure => {
+  const failed = error as FailedRequest | null | undefined
+  const status = failed?.response?.status
 
   if (status === 404) return 'not-found'
   if (status === 403) return 'forbidden'
-  if (!error?.response && error?.request) return 'network'
+  if (!failed?.response && failed?.request) return 'network'
 
   return 'unknown'
 }

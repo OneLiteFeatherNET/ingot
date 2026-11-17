@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { createRouter, createMemoryHistory, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import BreadcrumbNavigation from './BreadcrumbNavigation.vue'
 
@@ -25,7 +25,7 @@ import BreadcrumbNavigation from './BreadcrumbNavigation.vue'
 const mountBreadcrumb = async (path = 'releases/net/example') => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => ({ ...route, component: { render: () => null } }))
+    routes: ROUTES.map(route => ({ ...route, component: { render: () => null } }) as RouteRecordRaw)
   })
   // The page being shown is the browse URL of the path, as it is in the application.
   await router.push(`/browse/${path}`)
@@ -38,7 +38,7 @@ const mountBreadcrumb = async (path = 'releases/net/example') => {
 }
 
 describe('BreadcrumbNavigation', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
   beforeEach(() => {
     wrapper?.unmount()
@@ -61,8 +61,8 @@ describe('BreadcrumbNavigation', () => {
     wrapper = await mountBreadcrumb()
     const index = wrapper.findAll('a').find(link => link.text() === 'Index of')
 
-    expect(index.classes(), 'the link is at least 48px tall').toContain('min-h-12')
-    expect(index.classes(), 'the text stays centred in the taller target').toContain('items-center')
+    expect(index!.classes(), 'the link is at least 48px tall').toContain('min-h-12')
+    expect(index!.classes(), 'the text stays centred in the taller target').toContain('items-center')
   })
 
   it('gives every ancestor crumb a 48px touch target', async () => {
@@ -130,7 +130,7 @@ describe('BreadcrumbNavigation', () => {
   it('names the trail as breadcrumb navigation', async () => {
     wrapper = await mountBreadcrumb()
 
-    expect(wrapper.element.tagName, 'the trail is a nav element').toBe('NAV')
+    expect((wrapper.element as Element).tagName, 'the trail is a nav element').toBe('NAV')
     expect(wrapper.attributes('aria-label')).toBe('Breadcrumb')
     expect(wrapper.find('nav ol').exists(), 'the segments form an ordered list').toBe(true)
   })
@@ -174,14 +174,14 @@ describe('BreadcrumbNavigation', () => {
     wrapper = await mountBreadcrumb()
     const net = wrapper.findAll('ol a').find(link => link.text() === 'net')
 
-    expect(net.attributes('href'), 'the crumb links to the browse URL of its directory').toBe('/browse/releases/net')
+    expect(net!.attributes('href'), 'the crumb links to the browse URL of its directory').toBe('/browse/releases/net')
   })
 
   it('points the Index of crumb at overview', async () => {
     wrapper = await mountBreadcrumb()
     const root = wrapper.findAll('a').find(link => link.text() === 'Index of')
 
-    expect(root.attributes('href')).toBe('/')
+    expect(root!.attributes('href')).toBe('/')
   })
 
   it('resolves the parent control to the parent directory', async () => {

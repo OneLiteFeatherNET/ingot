@@ -24,21 +24,24 @@ import { reactive } from 'vue'
  * Statuses are 'uploading', 'done' or 'failed', keyed by the task's key. Byte-level progress
  * would need a progress hook in the API client; the queue reports per-file state without it.
  */
+export type UploadStatus = 'uploading' | 'done' | 'failed'
+
+export interface UploadTask {
+  key: string
+  run: () => Promise<unknown>
+}
+
 const createUploadQueue = () => {
-  const state = reactive({
+  const state = reactive<{ busy: boolean; statuses: Record<string, UploadStatus> }>({
     busy: false,
     statuses: {}
   })
 
-  const runTask = (task) => {
+  const runTask = (task: UploadTask): Promise<void> => {
     state.statuses[task.key] = 'uploading'
 
-    let upload
-    try {
-      upload = Promise.resolve(task.run())
-    } catch (error) {
-      upload = Promise.reject(error)
-    }
+    // A run that throws before it returns a promise fails the task just like a rejected one.
+    const upload = new Promise<unknown>(resolve => resolve(task.run()))
 
     return upload.then(
       () => { state.statuses[task.key] = 'done' },
@@ -46,7 +49,7 @@ const createUploadQueue = () => {
     )
   }
 
-  const start = (tasks) => {
+  const start = (tasks: UploadTask[]): false | Promise<PromiseSettledResult<void>[]> => {
     if (state.busy) {
       return false
     }

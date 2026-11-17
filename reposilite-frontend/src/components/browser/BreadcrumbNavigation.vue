@@ -14,29 +14,37 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
-import { property } from '../../helpers/vue-extensions'
+import type { RouteLocationRaw } from 'vue-router'
 import { browseLocation, parentPathOf } from '../../router/paths'
 import MdIconButton from '../md/MdIconButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 
 // The repository path being browsed, without a leading slash, as the file browser knows it.
-const props = defineProps({
-  path: property(String, true)
-})
+const props = defineProps<{
+  path: string
+}>()
 
 const segments = computed(() => props.path.split('/').filter(segment => segment !== ''))
 
 // "Index of" first, then one crumb per directory. The last crumb is the directory being viewed and
 // is the current page, so it is text rather than a link. A long name is cut with an ellipsis, so its
 // full name is kept as a title.
+interface Crumb {
+  key: string
+  to: RouteLocationRaw
+  name: string
+  title?: string
+  root?: boolean
+}
+
 const trail = computed(() => {
-  const directories = segments.value.map((segment, index) => {
+  const directories: Crumb[] = segments.value.map((segment, index) => {
     const path = segments.value.slice(0, index + 1).join('/')
     return { key: path, to: browseLocation(path), name: segment, title: segment }
   })
-  const crumbs = [
+  const crumbs: Crumb[] = [
     { key: '', to: { name: 'overview' }, name: 'Index of', root: true },
     ...directories
   ]
