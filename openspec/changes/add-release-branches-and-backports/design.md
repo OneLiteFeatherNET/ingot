@@ -77,7 +77,7 @@ Consequence: changing the window means changing one file and running one command
   `versioning-strategy: always-bump-patch`, and the existing `concurrency` group per ref.
 - Each branch keeps its own `.release-please-manifest.json` (value `1.1.1` at the cut, then `1.1.2` after the first patch) and
   its own `CHANGELOG.md`, which starts as a copy of the old line's changelog.
-- Versions on a branch always have the branch's major and minor. `always-bump-patch` makes a backported `feat:` a patch
+- Versions on a branch always have the branch's major and minor. `always-bump-patch` makes a backported security fix a patch
   release, so a backport never moves a line to a new minor.
 - Tags: `v1.1.2` on the branch commit. The tag namespace is shared with `main`, which is safe because `main` never produces a
   version below its own manifest value and a branch never produces a version outside its line. The changelog of `main`
@@ -135,10 +135,11 @@ The image job keeps `X.Y.Z` on every release. Whether `X.Y` and `X` move is deci
 - The trigger is `pull_request_target` with `types: [closed, labeled]`, restricted to merged pull requests into `main` with the
   `backport:<line>` label. The workflow never checks out the pull request head. It works on the squashed commit on `main`
   (`merge_commit_sha`), so no code from a fork runs with write access. The helper script is loaded from `main`.
-- Allowed types: `fix`, `perf` and `revert`. A `feat` or any change with `!` or a `BREAKING CHANGE:` footer is refused with a
-  comment, because a backport must not change the API (the `plugin-api` job checks that again on the backport pull request).
-  `docs`, `test`, `build`, `ci`, `refactor` and `chore` need a second label, `backport:force`, so an accidental label does
-  not spread a change that was never meant for the line.
+- Eligible: only a `fix` with the scope `security` (`fix(security): ...`), without `!` and without a `BREAKING CHANGE:` footer.
+  The previous line receives security fixes only. `fix` and `perf` stay on `main`, the current line, and ship with its next
+  release. Every other type, including `revert`, is refused with a comment, and a breaking marker is refused even on a security
+  fix, because a backport must not change the API (the `plugin-api` job checks that again on the backport pull request).
+  There is no force label: an accidental label on a non-security change cannot spread it to a line it was never meant for.
 - The cherry-pick: `git cherry-pick -x -s <sha>` on a branch `backport/<pr-number>-<line>` created from `origin/release/<line>.x`.
   `-x` adds the `(cherry picked from commit ...)` trailer and `-s` a sign-off. The sign-off names the label actor, because the
   Developer Certificate of Origin certification has to come from a person (open question 5).
@@ -225,3 +226,5 @@ pull requests.
 8. **Archive by rename or by deletion.** Settled 2026-11-17: rename to `archive/<line>.x`.
 9. **Confirmation of the window.** Settled 2026-11-17: the window stays as `SUPPORT.md` states it. The latest line receives every
    fix, the previous line receives security fixes for 90 days after the next line ships, and older lines receive nothing.
+10. **Scope of backports.** Settled 2026-11-17: only security fixes go to a previous line, marked as `fix(security)` in the pull
+    request title. `fix` and `perf` reach users through `main` and its next release only. The `backport:force` label is dropped.

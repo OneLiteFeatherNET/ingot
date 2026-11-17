@@ -49,9 +49,9 @@ line's last tag, not at the tip of `main`.
 Release Please SHALL run for each release branch with that branch as its target, its own manifest and its own changelog, and with
 the `always-bump-patch` versioning strategy. Every version it produces on a branch SHALL have the branch's major and minor.
 
-#### Scenario: A backported feature is a patch release
+#### Scenario: A backported security fix is a patch release
 
-- **WHEN** a `feat` commit is backported to `release/1.1.x` and released
+- **WHEN** a `fix(security)` commit is backported to `release/1.1.x` and released
 - **THEN** the version is `1.1.<patch + 1>`
 
 #### Scenario: A version outside the line is refused

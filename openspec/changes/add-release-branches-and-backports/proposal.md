@@ -19,8 +19,8 @@ this change.
 - **Release Please on release branches.** Each release branch runs Release Please with `target-branch` set to the branch,
   its own manifest and changelog, and `always-bump-patch` versioning. Such a branch only produces patch releases, and its
   tags never collide with `main`.
-- **Backports.** A label `backport:<major>.<minor>` on a merged pull request into `main` makes a bot cherry-pick the squashed
-  commit onto the release branch and open a pull request. A conflict is reported on the source pull request with the steps
+- **Backports.** A label `backport:<major>.<minor>` on a merged `fix(security)` pull request into `main` makes a bot cherry-pick the squashed
+  commit onto the release branch and open a pull request. No other change type is backported. A conflict is reported on the source pull request with the steps
   to resolve it by hand.
 - **CI, images and releases on release branches.** The checks that run for `main` run for release branches too, including
   the image builds for both architectures and the drop-in contract checks. Release images carry SBOM and provenance as

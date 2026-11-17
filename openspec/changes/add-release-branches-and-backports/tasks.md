@@ -80,8 +80,8 @@ builds and passes on its own.
 
 ## 10. Backport decisions
 
-- [ ] 10.1 `ci(release)`: add `.github/scripts/backport_decision.py` and its tests: label parsing, the allowed types, `backport:force`,
-  the breaking marker, and the refusal of a label for a line without a branch. Verify: each rule in the backports spec has a
+- [ ] 10.1 `ci(release)`: add `.github/scripts/backport_decision.py` and its tests: label parsing, the security-only rule (`fix(security)`
+  accepted, every other type refused, the breaking marker), and the refusal of a label for a line without a branch. Verify: each rule in the backports spec has a
   failing test first.
 
 ## 11. Backport workflow
