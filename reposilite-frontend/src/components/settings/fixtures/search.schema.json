@@ -1,0 +1,58 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Artifact search keeps an index of the stored files and checks it against storage.",
+  "title" : "Search",
+  "properties" : {
+    "verifyEnabled" : {
+      "type" : "boolean",
+      "description" : "Run the nightly check that compares a sample of index rows with storage and repairs what differs.",
+      "title" : "Verify enabled",
+      "default" : true
+    },
+    "verifyAt" : {
+      "type" : "string",
+      "description" : "Time of day (UTC, HH:mm) at which the nightly verify run starts.",
+      "title" : "Verify at",
+      "default" : "02:30"
+    },
+    "verifySampleSize" : {
+      "type" : "integer",
+      "description" : "Number of index rows one verify run compares with storage.",
+      "title" : "Verify sample size",
+      "default" : 2000
+    },
+    "rebuildSchedule" : {
+      "type" : "object",
+      "description" : "A full walk of storage on a fixed number of days. Off by default, because a full walk is expensive.",
+      "title" : "Rebuild schedule",
+      "properties" : {
+        "enabled" : {
+          "type" : "boolean",
+          "description" : "Start the rebuild on the schedule.",
+          "title" : "Enabled",
+          "default" : false
+        },
+        "at" : {
+          "type" : "string",
+          "description" : "Time of day (UTC, HH:mm) at which a scheduled rebuild starts.",
+          "title" : "At",
+          "default" : "03:30"
+        },
+        "everyDays" : {
+          "type" : "integer",
+          "description" : "Days between two scheduled rebuilds.",
+          "title" : "Every days",
+          "default" : 7
+        }
+      },
+      "default" : { "enabled" : false, "at" : "03:30", "everyDays" : 7 }
+    },
+    "gapRebuild" : {
+      "type" : "boolean",
+      "description" : "Start a rebuild after a start that finds a gap in the heartbeat, for example after a downgrade.",
+      "title" : "Gap rebuild",
+      "default" : true
+    }
+  }
+}
