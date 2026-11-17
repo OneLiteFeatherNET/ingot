@@ -214,6 +214,15 @@ describe('AppTabs without the address', () => {
   })
 })
 
+describe('AppTabs anchors', () => {
+  it('renders the md tabs root, which keeps the app-tabs name as an alias', async () => {
+    const { wrapper } = await mountAt('/settings/system-info')
+
+    expect(wrapper.attributes('data-ingot-component'), 'the root is the md tabs').toBe('md-tabs')
+    expect(wrapper.attributes('data-ingot-component-alias'), 'the old name keeps working as an alias').toBe('app-tabs')
+  })
+})
+
 describe('AppTabs ids', () => {
   it('gives two instances on one page different ids', () => {
     // One app holds both instances, as one page does, so Vue scopes their ids to the same app.
