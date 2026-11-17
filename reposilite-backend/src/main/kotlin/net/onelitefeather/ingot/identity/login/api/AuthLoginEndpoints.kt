@@ -80,6 +80,7 @@ internal class AuthLoginEndpoints(
             providers = facade.providers().map { LoginProviderDto(id = it.id, type = it.type.name, label = it.label, icon = it.icon, loginUrl = it.loginUrl) },
             tokenLogin = true,
             setupRequired = facade.setupRequired(),
+            passwordMinLength = facade.passwordMinLength(),
         ).asSuccess()
     }
 

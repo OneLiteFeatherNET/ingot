@@ -30,12 +30,16 @@ data class LoginProviderDto(
     val loginUrl: String? = null,
 )
 
-/** `GET /api/auth/providers`. [setupRequired] is true while no human user exists, see the setup code. */
+/**
+ * `GET /api/auth/providers`. [setupRequired] is true while no human user exists, see the setup code. [passwordMinLength]
+ * is the shortest password the server accepts for a new password, see `login.passwordPolicy.minLength`.
+ */
 @JsonSchema(requireNonNulls = false)
 data class LoginProvidersResponse(
     val providers: List<LoginProviderDto>,
     val tokenLogin: Boolean,
     val setupRequired: Boolean,
+    val passwordMinLength: Int,
 )
 
 @JsonSchema(requireNonNulls = false)

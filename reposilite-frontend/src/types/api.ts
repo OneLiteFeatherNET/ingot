@@ -6013,6 +6013,8 @@ export interface components {
             type?: string;
         };
         LoginProvidersResponse: {
+            /** Format: int32 */
+            passwordMinLength?: number;
             providers?: components["schemas"]["LoginProviderDto"][];
             setupRequired?: boolean;
             tokenLogin?: boolean;
