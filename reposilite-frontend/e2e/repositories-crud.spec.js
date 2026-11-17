@@ -86,6 +86,6 @@ test.describe('repositories page writes', () => {
 
     await page.keyboard.press('Home')
     await expect(tabs.getByRole('tab', { name: 'General', exact: true }), 'Home moves to the first tab').toBeFocused()
-    await expect(page.getByRole('button', { name: 'Delete repository', exact: true }), 'delete stays below the tabs').toBeVisible()
+    await expect(page.getByRole('button', { name: 'Delete maven repository', exact: true }), 'delete stays below the tabs').toBeVisible()
   })
 })
