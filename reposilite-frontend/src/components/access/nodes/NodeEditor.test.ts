@@ -16,8 +16,8 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, afterEach } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NodeEditor from './NodeEditor.vue'
 import type { NodeEntry } from './permissionNodesApi'
 
@@ -140,22 +140,23 @@ describe('NodeEditor', () => {
       expect(wrapper.text()).toContain('Use ingot.repository.<repository>.<read|deploy|delete|manage>')
     })
 
-    it('refuses a node that is already listed with the message "Already listed"', async () => {
+    it('says "Already listed" for a node that is in the list', async () => {
       mountEditor()
 
       await type('ingot.admin.users')
 
       expect(wrapper.text()).toContain('Already listed')
-      expect(wrapper.find('[data-test="add-node"]').attributes('disabled'), 'Add is off').toBeDefined()
     })
 
-    it('does not add a second row for a listed node on Enter', async () => {
+    it('focuses the listed row on Enter instead of adding a second row', async () => {
       mountEditor()
 
       await type('ingot.admin.users')
       await input().trigger('keydown', { key: 'Enter' })
+      await flushPromises()
 
-      expect(wrapper.emitted('update:nodes')).toBeUndefined()
+      expect(wrapper.emitted('update:nodes'), 'nothing was added').toBeUndefined()
+      expect(document.activeElement, 'the listed row has the focus').toBe(row('ingot.admin.users').element)
     })
   })
 
@@ -431,12 +432,7 @@ describe('NodeEditor', () => {
       await showTree()
 
       const groups = wrapper.findAll('[data-test="tree-group"]').map(group => group.attributes('data-key'))
-      expect(groups).toEqual(expect.arrayContaining([
-        'ingot',
-        'ingot.admin',
-        'ingot.repository',
-        'ingot.repository.releases'
-      ]))
+      expect(groups, 'ingot is the only group, the other levels are single children').toEqual(['ingot'])
     })
 
     it('shows the allow state on each leaf', async () => {
@@ -477,6 +473,173 @@ describe('NodeEditor', () => {
       await wrapper.find('[data-test="view-list"]').trigger('click')
 
       expect(wrapper.find('[data-test="node-list"]').exists()).toBe(true)
+    })
+  })
+
+  describe('many nodes', () => {
+    // 24 nodes: 20 repository nodes, three of them denied, and 4 admin nodes, all allowed.
+    const MANY = () => [
+      ...Array.from({ length: 20 }, (_, index) => ({
+        node: `ingot.repository.repo-${index}.read`,
+        allowed: ![0, 8, 16].includes(index)
+      })),
+      ...['area-0', 'area-1', 'area-2', 'area-3'].map(name => ({ node: `ingot.admin.${name}`, allowed: true }))
+    ]
+    const summary = () => wrapper.find('[data-test="node-summary"]').text()
+    const region = () => wrapper.find('[role="region"][aria-label="Permission nodes"]')
+    const details = (key: string) => wrapper.find(`[data-key="${key}"] > details`).element as HTMLDetailsElement
+
+    afterEach(() => {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
+      delete (window as { matchMedia?: unknown }).matchMedia
+    })
+
+    it('bounds the node list in a region that scrolls and is named', () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      expect(region().exists(), 'the region is there').toBe(true)
+      expect(region().attributes('tabindex'), 'the region takes the keyboard').toBe('0')
+      expect(region().classes()).toEqual(expect.arrayContaining(['max-h-md-node-region', 'overflow-y-auto']))
+    })
+
+    it('counts the nodes and their states in a summary line', () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      expect(summary()).toBe('24 nodes: 21 allow, 3 deny')
+    })
+
+    it('says how many nodes a filter shows out of the total', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      await wrapper.find('input[type="search"]').setValue('area-2')
+
+      expect(summary()).toContain('showing 1 of 24')
+    })
+
+    it('filters the rows with the Allow and Deny chips', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      await wrapper.find('[data-test="state-deny"]').trigger('click')
+
+      expect(rowTexts()).toHaveLength(3)
+      expect(summary()).toContain('showing 3 of 24')
+
+      await wrapper.find('[data-test="state-allow"]').trigger('click')
+
+      expect(rowTexts()).toHaveLength(21)
+    })
+
+    it('shows every node again with the All chip', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="state-deny"]').trigger('click')
+
+      await wrapper.find('[data-test="state-all"]').trigger('click')
+
+      expect(rowTexts()).toHaveLength(24)
+    })
+
+    it('keeps the groups of a tree collapsed above 20 nodes', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      expect(details('ingot').open, 'the root group').toBe(false)
+      expect(details('ingot.admin').open, 'the admin group').toBe(false)
+      expect(details('ingot.repository').open, 'the repository group').toBe(false)
+    })
+
+    it('opens the groups on the path to every match of the filter', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      await wrapper.find('input[type="search"]').setValue('area-2')
+
+      // With only admin nodes left, the root merges into the admin group, which the filter opens.
+      expect(details('ingot.admin').open, 'the group of the match is open').toBe(true)
+    })
+
+    it('keeps the groups open for 20 nodes or fewer', async () => {
+      mountEditor({ nodes: MANY().slice(20), savedNodes: MANY().slice(20) })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      expect(details('ingot.admin').open).toBe(true)
+    })
+
+    it('shows the count and the state of each group', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      const admin = wrapper.find('[data-key="ingot.admin"] > details > summary').text()
+      const repository = wrapper.find('[data-key="ingot.repository"] > details > summary').text()
+      expect(admin, 'the admin group holds four nodes, all allowed').toContain('4 nodes')
+      expect(admin).toContain('All allow')
+      expect(repository, 'the repository group holds 20 nodes with denied ones').toContain('20 nodes')
+      expect(repository).toContain('Mixed')
+    })
+
+    it('shows a leaf on one row with its full node and its controls', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      const leaf = wrapper.find('[data-node="ingot.admin.area-0"]')
+      expect(leaf.find('code').text(), 'the full node is shown').toBe('ingot.admin.area-0')
+      expect(leaf.find('button[aria-label="Remove ingot.admin.area-0"]').exists(), 'the remove control is on the same row').toBe(true)
+      expect(leaf.findAll('[role="radio"]')).toHaveLength(2)
+    })
+
+    it('marks a wildcard leaf as covering everything below it', async () => {
+      const nodes = [{ node: 'ingot.admin.*', allowed: true }, { node: 'ingot.admin.users', allowed: false }]
+      mountEditor({ nodes, savedNodes: nodes })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      expect(wrapper.find('[data-node="ingot.admin.*"] [data-test="wildcard-hint"]').text()).toBe('all below')
+      expect(wrapper.find('[data-node="ingot.admin.users"] [data-test="wildcard-hint"]').exists()).toBe(false)
+    })
+
+    it('shows a lone wildcard as one row without groups', async () => {
+      const nodes = [{ node: 'ingot.admin.*', allowed: true }]
+      mountEditor({ nodes, savedNodes: nodes })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      expect(wrapper.findAll('[data-test="tree-group"]')).toHaveLength(0)
+      expect(wrapper.findAll('[data-test="tree-leaf"]').map(leaf => leaf.find('code').text())).toEqual(['ingot.admin.*'])
+    })
+
+    it('scrolls a new node into view and highlights it', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      await type('ingot.admin.teams')
+      await wrapper.find('[data-test="add-node"]').trigger('click')
+      await flushPromises()
+
+      expect(scrollIntoView, 'the new row is scrolled to').toHaveBeenCalled()
+      expect(row('ingot.admin.teams').attributes('data-highlighted'), 'the new row is highlighted').toBe('true')
+    })
+
+    it('scrolls without smooth motion when reduced motion is preferred', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+
+      await type('ingot.admin.teams')
+      await wrapper.find('[data-test="add-node"]').trigger('click')
+      await flushPromises()
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
+    })
+
+    it('focuses the existing row for a duplicate in the tree view', async () => {
+      mountEditor({ nodes: MANY(), savedNodes: MANY() })
+      await wrapper.find('[data-test="view-tree"]').trigger('click')
+
+      await type('ingot.admin.area-1')
+      await input().trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+
+      expect(wrapper.emitted('update:nodes'), 'nothing was added').toBeUndefined()
+      expect(document.activeElement).toBe(row('ingot.admin.area-1').element)
     })
   })
 
