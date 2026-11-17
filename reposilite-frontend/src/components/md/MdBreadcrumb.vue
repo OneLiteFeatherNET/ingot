@@ -23,30 +23,57 @@
  * technology. The middle crumbs truncate below the crumb width token, so a long trail keeps its
  * first and last crumbs.
  */
+import { computed } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 export interface MdBreadcrumbItem {
   label: string
   to?: RouteLocationRaw
   href?: string
+  title?: string
+  // A muted link is drawn in on-surface-variant, as the root of the file browser trail is.
+  muted?: boolean
 }
+
+// "default" is the MD3 label trail. "large" is the file browser trail: title-medium text, on-surface
+// links with primary on hover, and tighter spacing without the gap between crumbs.
+export type MdBreadcrumbSize = 'default' | 'large'
 
 const props = withDefaults(defineProps<{
   items: MdBreadcrumbItem[]
   label?: string
+  size?: MdBreadcrumbSize
 }>(), {
-  label: 'Breadcrumb'
+  label: 'Breadcrumb',
+  size: 'default'
 })
 
 defineSlots<{
   default?(): unknown
 }>()
 
-const LINK = 'md-touch-target md-focus-ring rounded-corner-small text-primary'
-const TRUNCATE = 'truncate max-w-md-crumb'
+// Every crumb, the current one included, has the same minimum height, so the text lines up on one centre line.
+const CRUMB = 'flex min-h-12 min-w-0 items-center'
+const LINK = `md-touch-target md-focus-ring rounded-corner-small ${CRUMB}`
+const MIDDLE = 'min-w-0 max-w-md-crumb'
 
+const large = computed(() => props.size === 'large')
 const isLast = (index: number) => index === props.items.length - 1
 const isMiddle = (index: number) => index > 0 && !isLast(index)
+const crumbClass = (index: number) => (isMiddle(index) ? MIDDLE : 'min-w-0')
+
+const listClass = computed(() => (large.value
+  ? 'md-title-medium flex flex-wrap items-center text-on-surface'
+  : 'md-label-large flex flex-wrap items-center gap-2 text-on-surface-variant'))
+const itemClass = computed(() => (large.value
+  ? 'flex min-w-0 max-w-full items-center'
+  : 'flex min-w-0 max-w-full items-center gap-2'))
+const linkClass = (index: number) => {
+  const colour = props.items[index].muted ? 'text-on-surface-variant' : (large.value ? 'text-on-surface' : 'text-primary')
+  return [LINK, crumbClass(index), colour, large.value && 'px-1 py-1 hover:text-primary']
+}
+const currentClass = (index: number) => [CRUMB, crumbClass(index), 'text-on-surface', large.value && 'px-1 py-1']
+const separatorClass = computed(() => (large.value ? 'px-1 text-outline' : 'text-outline'))
 </script>
 
 <template>
@@ -54,34 +81,37 @@ const isMiddle = (index: number) => index > 0 && !isLast(index)
     :aria-label="label"
     data-ingot-component="md-breadcrumb"
   >
-    <ol class="md-label-large flex flex-wrap items-center gap-2 text-on-surface-variant">
+    <ol :class="listClass">
       <li
         v-for="(item, index) in items"
         :key="index"
-        class="flex min-w-0 items-center gap-2"
+        :class="itemClass"
       >
         <RouterLink
           v-if="item.to !== undefined && !isLast(index)"
           :to="item.to"
-          :class="[LINK, isMiddle(index) && TRUNCATE]"
+          :title="item.title"
+          :class="linkClass(index)"
         >
-          {{ item.label }}
+          <span class="min-w-0 truncate">{{ item.label }}</span>
         </RouterLink>
         <a
           v-else-if="item.href && !isLast(index)"
           :href="item.href"
-          :class="[LINK, isMiddle(index) && TRUNCATE]"
-        >{{ item.label }}</a>
+          :title="item.title"
+          :class="linkClass(index)"
+        ><span class="min-w-0 truncate">{{ item.label }}</span></a>
         <span
           v-else
           :aria-current="isLast(index) ? 'page' : undefined"
-          :class="isMiddle(index) && TRUNCATE"
-        >{{ item.label }}</span>
+          :title="item.title"
+          :class="currentClass(index)"
+        ><span class="min-w-0 truncate">{{ item.label }}</span></span>
         <span
           v-if="!isLast(index)"
           aria-hidden="true"
           data-test="breadcrumb-separator"
-          class="text-outline"
+          :class="separatorClass"
         >/</span>
       </li>
     </ol>

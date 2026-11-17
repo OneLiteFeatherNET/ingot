@@ -49,7 +49,9 @@ vi.mock('../../store/session', async () => {
   }
 })
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async () => ({
+  // MdBreadcrumb imports RouterLink from vue-router, so the mock keeps the name and renders it as the test stub.
+  RouterLink: (await import('@vue/test-utils')).RouterLinkStub,
   useRoute: () => ({ path: '/releases/net/example' }),
   useRouter: () => ({ push: () => {} })
 }))

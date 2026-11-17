@@ -24,7 +24,7 @@ import MdBreadcrumb from './MdBreadcrumb.vue'
 const BASE = '/repo/'
 const routes = [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
 
-type BreadcrumbProps = { items: { label: string, to?: string, href?: string }[], label?: string }
+type BreadcrumbProps = { items: { label: string, to?: string, href?: string, title?: string }[], label?: string }
 
 const mountWithRouter = (props: BreadcrumbProps) => {
   const router = createRouter({ history: createWebHistory(BASE), routes })
@@ -89,16 +89,42 @@ describe('MdBreadcrumb', () => {
     const crumbs = wrapper.findAll('ol > li')
 
     for (const crumb of [crumbs[1], crumbs[2]]) {
-      expect(crumb.find('a, span').classes()).toEqual(expect.arrayContaining(['truncate', 'max-w-md-crumb']))
+      expect(crumb.find('a').classes(), 'the crumb is capped at the width token').toContain('max-w-md-crumb')
+      expect(crumb.find('a > span').classes(), 'the name is cut with an ellipsis').toEqual(expect.arrayContaining(['truncate', 'min-w-0']))
     }
   })
 
-  it('does not truncate the first and the last crumb', () => {
+  it('does not cap the first and the last crumb', () => {
     const wrapper = mountWithRouter({ items: trail })
     const crumbs = wrapper.findAll('ol > li')
 
     expect(crumbs[0].find('a').classes()).not.toContain('max-w-md-crumb')
     expect(crumbs[crumbs.length - 1].find('span').classes()).not.toContain('max-w-md-crumb')
+  })
+
+  it('gives the current crumb and every link the same minimum height class', () => {
+    const wrapper = mountWithRouter({ items: trail })
+    const crumbs = [...wrapper.findAll('a'), ...wrapper.findAll('[aria-current="page"]')]
+
+    expect(crumbs.length, 'the trail has links and a current crumb').toBeGreaterThan(1)
+    for (const crumb of crumbs) {
+      expect(crumb.classes(), `the crumb ${crumb.text()} has the 48px minimum height`).toContain('min-h-12')
+    }
+  })
+
+  it('shows the full name of a crumb as its title when the item gives one', () => {
+    const wrapper = mountWithRouter({
+      items: [{ label: 'Home', to: '/', title: 'Index of the repository' }, { label: 'long-name', title: 'a-very-long-name' }]
+    })
+
+    expect(wrapper.find('a').attributes('title'), 'the link carries its title').toBe('Index of the repository')
+    expect(wrapper.find('[aria-current="page"]').attributes('title'), 'the current crumb carries its title').toBe('a-very-long-name')
+  })
+
+  it('truncates the current crumb so a long name keeps the row', () => {
+    const wrapper = mountWithRouter({ items: trail })
+
+    expect(wrapper.find('[aria-current="page"] > span').classes(), 'the current name is cut with an ellipsis').toContain('truncate')
   })
 
   it('carries the md-breadcrumb anchor on the nav', () => {
@@ -139,5 +165,82 @@ describe('MdBreadcrumb', () => {
     expect(last.find('a').exists()).toBe(false)
     expect(last.find('[aria-current="page"]').exists()).toBe(true)
     expect(wrapper.findAllComponents(RouterLink)).toHaveLength(1)
+  })
+})
+
+describe('MdBreadcrumb size', () => {
+  const mountSized = (size?: 'default' | 'large') => {
+    const router = createRouter({ history: createWebHistory(BASE), routes })
+    return mount(MdBreadcrumb, { props: { items: trail, size }, global: { plugins: [router] } })
+  }
+
+  it('sets the default trail in the label-large typography', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('nav > ol').classes()).toContain('md-label-large')
+  })
+
+  it('sets the large trail in the title-medium typography', () => {
+    const wrapper = mountSized('large')
+    const list = wrapper.find('nav > ol').classes()
+
+    expect(list, 'the large trail uses title-medium').toContain('md-title-medium')
+    expect(list, 'the large trail does not use label-large').not.toContain('md-label-large')
+  })
+
+  it('spaces the default crumbs with a gap', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('ol > li').classes()).toContain('gap-2')
+  })
+
+  it('does not gap the large crumbs', () => {
+    const wrapper = mountSized('large')
+
+    expect(wrapper.find('nav > ol').classes()).not.toContain('gap-2')
+    expect(wrapper.find('ol > li').classes()).not.toContain('gap-2')
+  })
+
+  it('pads each large link like the file browser trail', () => {
+    const wrapper = mountSized('large')
+    const link = wrapper.find('ol > li a').classes()
+
+    expect(link, 'the large link has horizontal padding').toContain('px-1')
+    expect(link, 'the large link has vertical padding').toContain('py-1')
+  })
+
+  it('colours the large links in on-surface instead of primary', () => {
+    const wrapper = mountSized('large')
+    const links = wrapper.findAll('ol a').map(link => link.classes())
+
+    expect(links.length, 'the trail has links').toBeGreaterThan(0)
+    for (const classes of links) {
+      expect(classes).toContain('text-on-surface')
+      expect(classes).not.toContain('text-primary')
+    }
+  })
+
+  it('turns the large links to primary on hover, as the file browser trail did', () => {
+    const wrapper = mountSized('large')
+
+    expect(wrapper.find('ol a').classes()).toContain('hover:text-primary')
+  })
+
+  it('keeps the default links in primary', () => {
+    const wrapper = mountSized()
+
+    expect(wrapper.find('ol a').classes()).toContain('text-primary')
+  })
+
+  it('colours a muted large link in on-surface-variant instead of on-surface', () => {
+    const router = createRouter({ history: createWebHistory(BASE), routes })
+    const wrapper = mount(MdBreadcrumb, {
+      props: { items: [{ label: 'Index of', to: '/', muted: true }, { label: 'releases' }], size: 'large' },
+      global: { plugins: [router] }
+    })
+    const link = wrapper.find('ol a').classes()
+
+    expect(link).toContain('text-on-surface-variant')
+    expect(link).not.toContain('text-on-surface')
   })
 })

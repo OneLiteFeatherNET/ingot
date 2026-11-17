@@ -16,8 +16,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
 import { browseLocation, parentPathOf } from '../../router/paths'
+import MdBreadcrumb, { type MdBreadcrumbItem } from '../md/MdBreadcrumb.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 
@@ -29,67 +29,31 @@ const props = defineProps<{
 const segments = computed(() => props.path.split('/').filter(segment => segment !== ''))
 
 // "Index of" first, then one crumb per directory. The last crumb is the directory being viewed and
-// is the current page, so it is text rather than a link. A long name is cut with an ellipsis, so its
+// is the current page, so MdBreadcrumb draws it as text. A long name is cut with an ellipsis, so its
 // full name is kept as a title.
-interface Crumb {
-  key: string
-  to: RouteLocationRaw
-  name: string
-  title?: string
-  root?: boolean
-}
-
-const trail = computed(() => {
-  const directories: Crumb[] = segments.value.map((segment, index) => {
-    const path = segments.value.slice(0, index + 1).join('/')
-    return { key: path, to: browseLocation(path), name: segment, title: segment }
-  })
-  const crumbs: Crumb[] = [
-    { key: '', to: { name: 'overview' }, name: 'Index of', root: true },
-    ...directories
-  ]
-  return crumbs.map((crumb, index) => ({ ...crumb, current: index === crumbs.length - 1 }))
+const trail = computed<MdBreadcrumbItem[]>(() => {
+  const directories = segments.value.map((segment, index) => ({
+    label: segment,
+    to: browseLocation(segments.value.slice(0, index + 1).join('/')),
+    title: segment
+  }))
+  return [{ label: 'Index of', to: { name: 'overview' }, muted: true }, ...directories]
 })
 
 const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
 </script>
 
 <template>
-  <nav
-    aria-label="Breadcrumb"
+  <div
     class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium"
     data-ingot-component="breadcrumb-navigation"
   >
-    <ol class="flex min-w-0 max-w-full flex-wrap items-center">
-      <li
-        v-for="(crumb, index) of trail"
-        :key="crumb.key"
-        class="flex min-w-0 max-w-full items-center"
-      >
-        <!-- Between two crumbs only. Hidden from assistive technology, because the list already gives the order. -->
-        <span
-          v-if="index > 0"
-          aria-hidden="true"
-          class="px-1 text-outline"
-        >/</span>
-        <span
-          v-if="crumb.current"
-          class="block min-w-0 truncate px-1 py-1 text-on-surface"
-          :title="crumb.title"
-          aria-current="page"
-        >{{ crumb.name }}</span>
-        <router-link
-          v-else
-          :to="crumb.to"
-          :title="crumb.title"
-          class="md-state-layer md-focus-ring inline-flex min-h-12 min-w-0 max-w-full items-center rounded-corner-small px-1 py-1 hover:text-primary"
-          :class="crumb.root ? 'text-on-surface-variant' : 'text-on-surface'"
-        >
-          <span class="min-w-0 truncate">{{ crumb.name }}</span>
-        </router-link>
-      </li>
-    </ol>
-    <!-- The icon button is the link itself, so a click still navigates through the router. -->
+    <MdBreadcrumb
+      :items="trail"
+      size="large"
+      class="min-w-0"
+    />
+    <!-- The parent control is an action beside the trail, not a crumb. Its link is the icon button itself. -->
     <router-link
       v-slot="{ href, navigate }"
       :to="parentLocation"
@@ -105,5 +69,5 @@ const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
         <BrowserIcon name="arrowUp" />
       </MdIconButton>
     </router-link>
-  </nav>
+  </div>
 </template>
