@@ -144,27 +144,27 @@ describe('SideNavLayout', () => {
   it('places the page in the second column, below the header row, from 1240 pixels', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
-    const classes = wrapper.get('[data-ingot-part="page"]').classes()
+    const classes = wrapper.get('[data-test="page-column"]').classes()
     expect(classes, 'the second column').toContain('large:col-start-2')
     expect(classes, 'the row under the header').toContain('large:row-start-2')
   })
 
   it('keeps the page element when only the query changes, and renews it when the entry changes', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
-    const pageBefore = wrapper.get('[data-ingot-part="page"]').element
+    const pageBefore = wrapper.get('[data-test="page-column"]').element
 
     await wrapper.vm.$router.replace({ path: '/access/users', query: { tab: 'storage' } })
     await flushPromises()
-    expect(wrapper.get('[data-ingot-part="page"]').element, 'a query change keeps the page, so a typed value keeps its focus').toBe(pageBefore)
+    expect(wrapper.get('[data-test="page-column"]').element, 'a query change keeps the page, so a typed value keeps its focus').toBe(pageBefore)
 
     await wrapper.setProps({ current: 'machines' })
-    expect(wrapper.get('[data-ingot-part="page"]').element, 'an entry change renews the page element').not.toBe(pageBefore)
+    expect(wrapper.get('[data-test="page-column"]').element, 'an entry change renews the page element').not.toBe(pageBefore)
   })
 
   it('plays the page enter animation on the page column only, and turns it off under reduced motion', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
-    const page = wrapper.get('[data-ingot-part="page"]').classes()
+    const page = wrapper.get('[data-test="page-column"]').classes()
     expect(page, 'the page column has the enter animation').toContain('animate-md-page-enter')
     expect(page, 'reduced motion removes it').toContain('motion-reduce:animate-none')
     expect(wrapper.find(SIDE_NAV).classes(), 'the side navigation does not animate').not.toContain('animate-md-page-enter')
