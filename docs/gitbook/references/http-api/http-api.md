@@ -31,7 +31,7 @@ The compatibility rule is the one the pull request check enforces. Removing an e
 | Refresh cookie | The refresh cookie of a browser session is required. |
 | Path permission | A token or session that may perform the action on the path. Instance admins pass. The action is read for GET and HEAD, deploy for PUT and POST, and delete for DELETE. |
 | Instance admin | The caller holds `ingot.admin.*` (or `*`). Token narrowing applies. |
-| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console` and `audit` are checked this way, and the support endpoints use `console`. |
+| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console`, `audit`, `settings`, `maintenance`, `dashboard` and `idp` are checked this way, and the support endpoints use `console`. The `idp` area is checked when a team is linked to an identity provider group while the IdP guard is on. |
 
 Wrong or missing credentials answer with `401`. A valid caller without the right answers with `403`. Read [Permission nodes](../identity/permission-nodes.md) and [Access tokens and routes](../identity/access-tokens-and-routes.md) for what the rights are.
 
@@ -201,7 +201,7 @@ Every write answers `503` while read-only mode is on. No route takes a credentia
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/database/snapshots` | Maintenance area (`ingot.admin.maintenance`) | Writes a consistent snapshot of the SQLite database into `backups/` in the working directory while the instance runs. Answers with `fileName`, `sizeBytes` and `createdAt`, never with a path. Answers `409` for a database that is not SQLite or a name that is already taken. |
+| POST | `/api/database/snapshots` | Admin area `maintenance` | Writes a consistent snapshot of the SQLite database into `backups/` in the working directory while the instance runs. Answers with `fileName`, `sizeBytes` and `createdAt`, never with a path. Answers `409` for a database that is not SQLite or a name that is already taken. |
 
 ## Audit
 
