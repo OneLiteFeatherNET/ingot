@@ -214,6 +214,16 @@ describe('AppTabs without the address', () => {
   })
 })
 
+describe('AppTabs anchors', () => {
+  it('mounts an element named app-tabs that contains the tablist and the tabs, as on main', async () => {
+    const { wrapper } = await mountAt('/settings/system-info')
+
+    expect(wrapper.attributes('data-ingot-component'), 'plugins select on the app-tabs name').toBe('app-tabs')
+    expect(wrapper.find('[role="tablist"]').exists(), 'the tablist is inside the named element').toBe(true)
+    expect(wrapper.findAll('[role="tab"]'), 'every tab is inside the named element').toHaveLength(TABS.length)
+  })
+})
+
 describe('AppTabs ids', () => {
   it('gives two instances on one page different ids', () => {
     // One app holds both instances, as one page does, so Vue scopes their ids to the same app.

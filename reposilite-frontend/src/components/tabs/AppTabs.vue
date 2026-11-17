@@ -15,20 +15,14 @@
   -->
 
 <script setup lang="ts">
-// A general tabs component that follows the WAI-ARIA tabs pattern. It knows nothing about the page it is used on.
-// The selected tab is the query parameter `queryParam` of the current route (default `tab`) when a router is
-// installed and the parameter is named; otherwise it is the `modelValue`. Choosing a tab replaces the history entry.
-import { computed, inject, useId } from 'vue'
-import { routeLocationKey, routerKey } from 'vue-router'
+// The tabs of the system information and repository pages. The tabs live in MdTabs; this wrapper keeps the selected tab
+// on the `?tab=` address, which both pages rely on, so their imports and their behaviour do not change.
+// The wrapper owns the app-tabs anchor that plugins select on. Its class `contents` keeps it out of the layout.
+import MdTabs from '../md/MdTabs.vue'
 
-export interface AppTab {
-  key: string
-  label: string
-}
-
-const props = withDefaults(
+withDefaults(
   defineProps<{
-    tabs: AppTab[]
+    tabs: { key: string; label: string }[]
     label: string
     modelValue?: string
     // The query parameter that holds the selected key. Null or an empty value keeps the selection off the address.
@@ -38,100 +32,29 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ 'update:modelValue': [key: string] }>()
-
-// Injected without a default warning, so the component also mounts where no router is installed.
-const router = inject(routerKey, null)
-const route = inject(routeLocationKey, null)
-const uid = useId()
-const buttons = new Map<string, HTMLElement>()
-
-const addressName = computed(() => (router && route && props.queryParam ? props.queryParam : null))
-const requested = computed(() => {
-  const name = addressName.value
-  return name && route ? route.query[name] : props.modelValue
-})
-const selected = computed(() => {
-  const key = props.tabs.find((tab) => tab.key === requested.value)?.key
-  return key ?? props.tabs[0]?.key
-})
-
-const tabId = (key: string) => `${uid}-tab-${key}`
-const panelId = (key: string) => `${uid}-panel-${key}`
-
-const choose = (key: string) => {
-  emit('update:modelValue', key)
-  const name = addressName.value
-  if (name && router && route && route.query[name] !== key) {
-    void router.replace({ path: route.path, query: { ...route.query, [name]: key }, hash: route.hash })
-  }
-}
-
-const focusAt = (index: number) => {
-  const count = props.tabs.length
-  const target = props.tabs[(index + count) % count]
-  choose(target.key)
-  buttons.get(target.key)?.focus()
-}
-
-// Right and Left wrap at the ends. Home and End go to the first and the last tab. Every other key is left alone.
-const onKeydown = (event: KeyboardEvent, index: number) => {
-  const last = props.tabs.length - 1
-  const moves: Record<string, number> = {
-    ArrowRight: index === last ? 0 : index + 1,
-    ArrowLeft: index === 0 ? last : index - 1,
-    Home: 0,
-    End: last,
-  }
-  const target = moves[event.key]
-  if (target === undefined) return
-  event.preventDefault()
-  focusAt(target)
-}
-
-const remember = (key: string, element: unknown) => {
-  if (element instanceof HTMLElement) buttons.set(key, element)
-}
 </script>
 
 <template>
   <div
-    class="flex flex-col gap-4"
+    class="contents"
     data-ingot-component="app-tabs"
   >
-    <div
-      role="tablist"
-      :aria-label="label"
-      class="flex flex-wrap gap-1 border-b border-outline-variant"
+    <MdTabs
+      :tabs="tabs"
+      :label="label"
+      :model-value="modelValue"
+      :query-param="queryParam"
+      @update:model-value="emit('update:modelValue', $event)"
     >
-      <button
-        v-for="(tab, index) in tabs"
-        :id="tabId(tab.key)"
-        :ref="(element) => remember(tab.key, element)"
-        :key="tab.key"
-        type="button"
-        role="tab"
-        :aria-selected="tab.key === selected"
-        :aria-controls="panelId(tab.key)"
-        :tabindex="tab.key === selected ? 0 : -1"
-        class="md-label-large -mb-px min-h-6 min-w-6 border-b-2 px-4 py-2 focus-visible:outline-2 focus-visible:outline-primary"
-        :class="tab.key === selected ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'"
-        @click="choose(tab.key)"
-        @keydown="onKeydown($event, index)"
+      <template
+        v-for="(_, name) in $slots"
+        #[name]="slotProps"
       >
-        {{ tab.label }}
-      </button>
-    </div>
-
-    <div
-      v-for="tab in tabs"
-      :id="panelId(tab.key)"
-      :key="tab.key"
-      role="tabpanel"
-      tabindex="0"
-      :aria-labelledby="tabId(tab.key)"
-      :hidden="tab.key !== selected"
-    >
-      <slot :tab="tab.key" />
-    </div>
+        <slot
+          :name="name"
+          v-bind="slotProps"
+        />
+      </template>
+    </MdTabs>
   </div>
 </template>

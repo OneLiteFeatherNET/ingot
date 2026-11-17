@@ -103,7 +103,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-chip` | experimental | `src/components/md/MdChip.vue` | none | none |
 | `md-chip-input` | experimental | `src/components/md/MdChipInput.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
+| `md-data-table` | experimental | `src/components/md/MdDataTable.vue` | `header`, `row` | none |
 | `md-dialog-actions` | experimental | `src/components/md/MdDialogActions.vue` | none | none |
+| `md-disclosure` | experimental | `src/components/md/MdDisclosure.vue` | none | none |
 | `md-divider` | experimental | `src/components/md/MdDivider.vue` | none | none |
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none |
@@ -127,6 +129,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-snackbar` | experimental | `src/components/md/MdSnackbar.vue` | none | none |
 | `md-state-panel` | experimental | `src/components/md/MdStatePanel.vue` | none | `empty`, `loading`, `error` |
 | `md-switch` | experimental | `src/components/md/MdSwitch.vue` | none | none |
+| `md-tabs` | experimental | `src/components/md/MdTabs.vue` | none | none |
 | `md-text-area` | experimental | `src/components/md/MdTextArea.vue` | none | none |
 | `md-text-area-renderer` (no element of its own) | stable | `src/components/renderers/MdTextAreaRenderer.vue` | none | none |
 | `md-text-field` | experimental | `src/components/md/MdTextField.vue` | none | none |

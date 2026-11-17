@@ -767,6 +767,23 @@
       "states": []
     },
     {
+      "name": "md-data-table",
+      "file": "src/components/md/MdDataTable.vue",
+      "stability": "experimental",
+      "parts": [
+        "header",
+        "row"
+      ],
+      "states": []
+    },
+    {
+      "name": "md-disclosure",
+      "file": "src/components/md/MdDisclosure.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-divider",
       "file": "src/components/md/MdDivider.vue",
       "stability": "experimental",
@@ -920,6 +937,13 @@
     {
       "name": "md-switch",
       "file": "src/components/md/MdSwitch.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-tabs",
+      "file": "src/components/md/MdTabs.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
