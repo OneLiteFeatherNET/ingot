@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RULES, type Rule } from './rules'
 import { collectSources } from './sources'
-import { scanSources } from './scan'
+import { scanSources, type Resolver } from './scan'
 import { createResolver } from './tailwind'
 import { checkRatchet, parseList, type Problem } from './ratchet'
 
@@ -31,10 +31,28 @@ const GATE = join(SRC, 'style-gate')
 
 const readGateFile = (folder: string, ruleId: string): string => readFileSync(join(GATE, folder, `${ruleId}.json`), 'utf8')
 
-const problemsOf = async (ruleId: string) => {
+// The sources and the compiled stylesheet are read once per file and shared by every rule. The cache is read-only and
+// holds what is on disk, so a test gets the same answer whatever order the tests run in.
+let sourcesOnce: ReturnType<typeof collectSources> | undefined
+let resolverOnce: Promise<Resolver> | undefined
+const sourcesOf = () => (sourcesOnce ??= collectSources(SRC))
+const resolverOf = () => (resolverOnce ??= createResolver(SRC))
+
+const scanOnce = new Map<string, Promise<Problem[]>>()
+
+// The three tests of a rule ask the same question, so the scan of a rule runs once per file, not once per test.
+const problemsOf = (ruleId: string): Promise<Problem[]> => {
+  let problems = scanOnce.get(ruleId)
+  if (problems === undefined) {
+    problems = computeProblems(ruleId)
+    scanOnce.set(ruleId, problems)
+  }
+  return problems
+}
+
+const computeProblems = async (ruleId: string): Promise<Problem[]> => {
   const rule = RULES.find((candidate) => candidate.id === ruleId)!
-  const resolver = await createResolver(SRC)
-  const occurrences = scanSources(rule, collectSources(SRC), resolver)
+  const occurrences = scanSources(rule, sourcesOf(), await resolverOf())
   const baseline = parseList(readGateFile('baseline', ruleId), 'baseline')
   const allowlist = parseList(readGateFile('allowlist', ruleId), 'allowlist')
 
@@ -44,8 +62,13 @@ const problemsOf = async (ruleId: string) => {
 const messagesOf = (problems: Problem[], kind: Problem['kind'], rule: Rule): string[] =>
   problems.filter((problem) => problem.kind === kind).map((problem) => `${problem.message}. ${rule.hint}`)
 
+// The first test of a rule runs its scan: compiling the stylesheet and reading the whole source tree. That is about a
+// second on an idle machine and several times longer under load, so the default test timeout is too short for it.
+// The timeout is set for these suites only, and the global timeout stays as it is.
+const FULL_TREE_SCAN_TIMEOUT_MS = 30_000
+
 for (const rule of RULES) {
-  describe(`style gate rule ${rule.number} (${rule.id})`, () => {
+  describe(`style gate rule ${rule.number} (${rule.id})`, { timeout: FULL_TREE_SCAN_TIMEOUT_MS }, () => {
     it('has no violation that the baseline does not record', async () => {
       const problems = await problemsOf(rule.id)
 

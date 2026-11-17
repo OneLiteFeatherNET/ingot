@@ -166,7 +166,9 @@ describe('any budget', () => {
     expect(checkAnyBudget(src, {}), 'JavaScript has no type annotations to count').toEqual([])
   })
 
-  it('holds for the committed sources and the committed budget', () => {
+  // A full-tree scan: every .ts and .vue file of src/ is read and parsed. That is well above the default test timeout
+  // under load, so this one test gets a longer timeout. The global timeout stays as it is.
+  it('holds for the committed sources and the committed budget', { timeout: 30_000 }, () => {
     const budget = JSON.parse(readFileSync(join(process.cwd(), 'src', 'types', 'any-budget.json'), 'utf8')) as Record<string, number>
 
     expect(checkAnyBudget(join(process.cwd(), 'src'), budget), 'the budget file matches the sources').toEqual([])
