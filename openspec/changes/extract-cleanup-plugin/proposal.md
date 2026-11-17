@@ -71,7 +71,7 @@ key, the routes, the audit actions, the metric names, the worker behaviour and t
 
 - The prerequisite `add-embedded-plugin-jars`, which is its own `feat(plugin)` change.
 - The release of the cleanup jar, its catalogue entry and its release-please component (`add-cleanup-plugin-release`, `ci(plugin)`).
-- A new environment variable or switch for cleanup, and a build without the embedded copy (open question O3).
+- A new environment variable or switch for cleanup, and a build without the embedded copy (decision O3).
 - Removing the `cleanup` entry from the dependencies of the cluster plugin (O3). The entry names the plugin id only, so it needs no cleanup class.
 - A tier element on the module (the embedded copy is Core by origin, see O1).
 - Changing routes, the JSON API, the settings schema, the run table `cleanup_run`, the audit action `CLEANUP_RUN`, the metric names, the

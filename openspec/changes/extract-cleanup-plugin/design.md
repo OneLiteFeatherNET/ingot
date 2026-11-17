@@ -81,13 +81,13 @@ for an unknown domain. Task 0.3 records that state.
 ### D5. Without the embedded copy, cleanup is absent and nothing else breaks
 
 Cleanup is active in every build of the server jar. An operator cannot take it out with a file, and the only removal is a build without the
-embedded jar (open question O3). In such a build:
+embedded jar (decision O3). In such a build:
 
 - No cleanup run starts, no cleanup route answers, and the `cleanup` settings domain is not listed.
 - The stored `cleanup` domain in `configuration.shared.json` is kept untouched, provided the shared configuration keeps domains it does not know.
   Task 0.2 verifies that.
 - The `cleanup` dependency of the cluster plugin is not satisfied, so the loader stops with `Unknown dependency 'cleanup'`. Dropping that entry
-  is a follow-up that O3 decides. This change does not touch the cluster plugin.
+  is a follow-up change, which this change does not make. This change does not touch the cluster plugin.
 
 ### D6. Routes, events, audit, metrics, worker target and data do not change
 
@@ -167,17 +167,17 @@ Each step is one pull request, buildable and passing alone:
 3. The docs of the module, the embedded copy and the update path.
 4. The replacement test of group 7, which is written after the prerequisite and passes against it.
 
-## Open questions
+## Settled questions
 
-Each question has a proposed default that the tasks follow unless the maintainer decides otherwise.
+Settled on 2026-11-17: the maintainer accepted the default of each question below, and the tasks follow it.
 
 - **O1. Tier of a replacing jar.** Until the release change declares a tier, a jar in the plugins directory without a tier element reads as
-  Community, and the start log shows `cleanup (community)` after an update, with the server's embedded copy still Core. Default: the release
+  Community, and the start log shows `cleanup (community)` after an update, with the server's embedded copy still Core. Settled 2026-11-17, default: the release
   change `add-cleanup-plugin-release` decides, and the module keeps no tier element until then.
-- **O2. Received cache events and the cluster dependency.** The cluster plugin names the id `cleanup`. Default: the entry stays until O3 is decided.
+- **O2. Received cache events and the cluster dependency.** The cluster plugin names the id `cleanup`. Settled 2026-11-17, default: the entry stays in this change, because the embedded copy is not removed.
 - **O3. Removing the embedded copy.** An operator cannot take the embedded copy out with a file. Options: a switch such as
   `INGOT_CLEANUP_ENABLED=false` read by the loader, or a server build without the embedded jar. The second needs the cluster entry of O2
-  removed first. Default: no switch in this change, and removal is a build decision.
+  removed first. Settled 2026-11-17, default: no switch in this change, and the embedded copy is not removed by this change.
 - **O4. Development runs.** Runs from an IDE or `./gradlew run` use the server classes, which contain no cleanup classes, so cleanup needs the
-  nested jar in `embedded-plugins/` or the module jar in the plugins directory of the workspace. Default: the integration task places the module
+  nested jar in `embedded-plugins/` or the module jar in the plugins directory of the workspace. Settled 2026-11-17, default: the integration task places the module
   jar into the workspace plugins directory, as the other plugin modules do, and the IDE setup is unchanged.

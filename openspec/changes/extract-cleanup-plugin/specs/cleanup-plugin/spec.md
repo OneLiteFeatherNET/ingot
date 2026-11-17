@@ -120,7 +120,7 @@ The cleanup plugin module SHALL have its own version, `1.0.0`, independent of th
 
 ### Requirement: Absent embedded copy leaves the rest working
 
-When the embedded copy is absent, no cleanup run SHALL start, no cleanup route SHALL answer, and the stored `cleanup` domain in `configuration.shared.json` SHALL stay unchanged. Removing the copy SHALL NOT delete the policies or the run table. The server SHALL start in such a build only after the cluster plugin no longer names `cleanup` as a dependency (open question O3).
+When the embedded copy is absent, no cleanup run SHALL start, no cleanup route SHALL answer, and the stored `cleanup` domain in `configuration.shared.json` SHALL stay unchanged. Removing the copy SHALL NOT delete the policies or the run table. The server SHALL start in such a build only after the cluster plugin no longer names `cleanup` as a dependency (decision O3).
 
 #### Scenario: Stored domain kept
 
