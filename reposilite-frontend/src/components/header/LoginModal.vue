@@ -19,8 +19,9 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
 import type { AxiosError } from 'axios'
-import { useSession, type LoginProvider } from '../../store/session'
-import { createURL } from '../../store/client'
+import { secondFactorFailureMessage, useSession, type LoginProvider } from '../../store/session'
+import { createURL, type SecondFactorChallenge } from '../../store/client'
+import { isWebAuthnSupported } from '../../store/webauthn'
 import { loginRequests } from '../../store/login'
 import { now } from '../../helpers/clock'
 import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
@@ -38,11 +39,17 @@ import { providerLoginHref } from './providerLinks'
  * and a link to the older access token form. A provider button is a link that starts the provider's
  * login with the current page as the return address. A password never leaves these refs: they are
  * cleared whenever the dialog closes, and nothing is written to a storage.
+ *
+ * A password sign in that the server answers with mfaRequired opens a second step in the same dialog.
+ * The step offers the methods the server listed: an authenticator code, a recovery code, and a passkey
+ * when the browser supports one. No session exists until the second step succeeds.
  */
 const {
   signInWithPassword,
   signInWithToken,
   completeSetup,
+  completeSecondFactor,
+  completePasskeySecondFactor,
   loadProviders,
   providers,
   setupRequired,
@@ -60,11 +67,27 @@ watch(loginRequests, () => {
   showLogin.value = true
 })
 
-const view = ref<'password' | 'token'>('password')
+const view = ref<'password' | 'token' | 'second'>('password')
 const busy = ref(false)
 const failure = ref<string | null>(null)
 const providersFailed = ref(false)
 const root = ref<HTMLDivElement | null>(null)
+
+// The second step. The challenge is what the password answer listed; the fields are the two ways to type a second factor.
+const challenge = ref<SecondFactorChallenge | null>(null)
+const secondCode = ref('')
+const recoveryCode = ref('')
+const useRecovery = ref(false)
+const titleRef = ref<HTMLHeadingElement | null>(null)
+const offersCode = computed(() => challenge.value?.methods.includes('AUTHENTICATOR') ?? false)
+const offersRecovery = computed(() => challenge.value?.methods.includes('RECOVERY_CODE') ?? false)
+const offersPasskey = computed(() => (challenge.value?.methods.includes('PASSKEY') ?? false) && isWebAuthnSupported())
+// The recovery field shows when the visitor picks it, or when the server lists no authenticator code.
+const showRecovery = computed(() => useRecovery.value || (!offersCode.value && offersRecovery.value))
+const hasCodeField = computed(() => offersCode.value || offersRecovery.value)
+const stepHint = computed(() => (offersCode.value
+  ? 'Enter the code from your authenticator app.'
+  : 'Enter one of your recovery codes. Each code works once.'))
 
 const username = ref('')
 const password = ref('')
@@ -105,11 +128,12 @@ const ssoHref = (provider: LoginProvider): string | undefined => (provider.login
   ? providerLoginHref(provider.loginUrl, route?.fullPath ?? '/', createURL)
   : undefined)
 
-const mode = computed<'setup' | 'password' | 'token'>(() => (setupRequired.value ? 'setup' : view.value))
+const mode = computed<'setup' | 'password' | 'token' | 'second'>(() => (setupRequired.value ? 'setup' : view.value))
 const title = computed<string>(() => ({
   setup: 'Set up Ingot',
   password: 'Sign in',
-  token: 'Sign in with access token'
+  token: 'Sign in with access token',
+  second: 'Two-step verification'
 }[mode.value]))
 const formId = computed(() => `login-form-${mode.value}`)
 
@@ -175,6 +199,10 @@ const forgetInput = () => {
   failure.value = null
   view.value = 'password'
   selectedProviderId.value = null
+  challenge.value = null
+  secondCode.value = ''
+  recoveryCode.value = ''
+  useRecovery.value = false
 }
 
 const close = () => {
@@ -230,17 +258,98 @@ const attempt = (
     })
 }
 
+// The first step. A user with a second factor gets the second step in place of a closed dialog.
 const signinWithPassword = (): Promise<void> => {
   if (isLocked()) return Promise.resolve()
   const provider = activeProvider.value.id
-  return attempt(
-    () => signInWithPassword({ provider, username: username.value, password: password.value }),
-    (error) => {
+  busy.value = true
+  failure.value = null
+  return signInWithPassword({ provider, username: username.value, password: password.value })
+    .then(next => {
+      if (next) {
+        return enterSecondStep(next)
+      }
+      close()
+      return undefined
+    })
+    .catch((error: AxiosError<{ message?: string }>) => {
       lockFrom(error)
-      return passwordFailureMessage(error)
-    },
-    'login-password'
-  )
+      failure.value = passwordFailureMessage(error)
+      return focusField('login-password')
+    })
+    .finally(() => {
+      busy.value = false
+    })
+}
+
+// The password is no longer needed once the server has checked it, so it is dropped as the step opens.
+const enterSecondStep = (next: SecondFactorChallenge): Promise<void> => {
+  challenge.value = next
+  view.value = 'second'
+  useRecovery.value = false
+  secondCode.value = ''
+  recoveryCode.value = ''
+  password.value = ''
+  return focusStepHeading()
+}
+
+// Focus goes to the step heading, so that the step and any message in it are read out from the top.
+const focusStepHeading = (): Promise<void> => nextTick().then(() => titleRef.value?.focus())
+
+// Both ways into the second step end the same way: success closes the dialog; a failure is announced in the step,
+// the typed codes are cleared, and a rate limit locks the step for the server's Retry-After.
+const finishSecondStep = (action: Promise<void>): Promise<void> => {
+  busy.value = true
+  failure.value = null
+  return action
+    .then(() => close())
+    .catch((error: unknown) => {
+      lockFrom(error)
+      failure.value = secondFactorFailureMessage(error)
+      secondCode.value = ''
+      recoveryCode.value = ''
+      return focusStepHeading()
+    })
+    .finally(() => {
+      busy.value = false
+    })
+}
+
+const verifySecondStep = (): Promise<void> => {
+  if (isLocked()) return Promise.resolve()
+  const value = (showRecovery.value ? recoveryCode.value : secondCode.value).trim()
+  return finishSecondStep(completeSecondFactor(value))
+}
+
+const verifyPasskey = (): Promise<void> => {
+  if (isLocked()) return Promise.resolve()
+  return finishSecondStep(completePasskeySecondFactor())
+}
+
+// Shows the other field of the step: the authenticator code or the recovery code. The focus moves to the field it shows.
+const toggleRecovery = (): void => {
+  useRecovery.value = !useRecovery.value
+  failure.value = null
+  focusField(showRecovery.value ? 'login-recovery-code' : 'login-code')
+}
+
+// Cancel on the second step returns to the password form. The username stays, and the password was dropped on entry.
+const backToPassword = (): void => {
+  view.value = 'password'
+  challenge.value = null
+  secondCode.value = ''
+  recoveryCode.value = ''
+  useRecovery.value = false
+  failure.value = null
+  nextTick().then(focusFirst)
+}
+
+const cancel = (): void => {
+  if (view.value === 'second') {
+    backToPassword()
+    return
+  }
+  close()
 }
 
 const signinWithToken = (): Promise<void> =>
@@ -266,11 +375,13 @@ const setup = (): Promise<void> => {
 const submit = (): Promise<void> => {
   if (mode.value === 'setup') return setup()
   if (mode.value === 'token') return signinWithToken()
+  if (mode.value === 'second') return verifySecondStep()
   return signinWithPassword()
 }
 
 const submitLabel = computed(() => {
   if (mode.value === 'setup') return busy.value ? 'Setting up...' : 'Set up'
+  if (mode.value === 'second') return busy.value ? 'Verifying...' : 'Verify'
   return busy.value ? 'Signing in...' : 'Sign in'
 })
 
@@ -306,6 +417,8 @@ const overlayStyle = {
       >
         <h2
           id="login-title"
+          ref="titleRef"
+          tabindex="-1"
           class="md-headline-small"
         >
           {{ title }}
@@ -397,6 +510,69 @@ const overlayStyle = {
             :error-text="failure || ''"
           />
         </form>
+
+        <template v-else-if="mode === 'second'">
+          <p class="mt-4 md-body-medium text-on-surface-variant">
+            {{ stepHint }}
+          </p>
+
+          <form
+            v-if="hasCodeField"
+            :id="formId"
+            class="mt-6 flex flex-col gap-4"
+            @submit.prevent="submit()"
+          >
+            <MdTextField
+              v-if="!showRecovery"
+              id="login-code"
+              v-model="secondCode"
+              label="Authenticator code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              required
+              :error="failure !== null"
+            />
+            <MdTextField
+              v-else
+              id="login-recovery-code"
+              v-model="recoveryCode"
+              label="Recovery code"
+              type="text"
+              autocomplete="off"
+              required
+              :error="failure !== null"
+            />
+          </form>
+
+          <p
+            v-if="failure"
+            role="alert"
+            class="mt-4 md-body-medium text-error"
+          >
+            {{ failure }}
+          </p>
+
+          <div class="mt-6 flex flex-col gap-2">
+            <MdButton
+              v-if="offersCode && offersRecovery"
+              variant="text"
+              class="self-start"
+              @click="toggleRecovery()"
+            >
+              {{ showRecovery ? 'Use an authenticator code' : 'Use a recovery code' }}
+            </MdButton>
+            <MdButton
+              v-if="offersPasskey"
+              variant="outlined"
+              class="w-full"
+              :disabled="busy || isLocked()"
+              @click="verifyPasskey()"
+            >
+              Use a passkey
+            </MdButton>
+          </div>
+        </template>
 
         <template v-else>
           <SegmentedControl
@@ -515,15 +691,15 @@ const overlayStyle = {
           <div class="flex justify-end gap-2">
             <MdButton
               variant="text"
-              @click="close()"
+              @click="cancel()"
             >
               Cancel
             </MdButton>
             <MdButton
-              v-if="mode !== 'password'"
+              v-if="mode !== 'password' && (mode !== 'second' || hasCodeField)"
               type="submit"
               :form="formId"
-              :disabled="busy"
+              :disabled="busy || (mode === 'second' && isLocked())"
             >
               {{ submitLabel }}
             </MdButton>
