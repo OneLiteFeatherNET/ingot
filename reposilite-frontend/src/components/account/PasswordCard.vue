@@ -18,6 +18,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdTextField from '../md/MdTextField.vue'
 import type { PasswordApi } from './passwordApi'
 import { useSession } from '../../store/session'
@@ -93,78 +94,83 @@ const submit = async () => {
 
 <template>
   <section
-    class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4"
+    class="flex flex-col"
     aria-labelledby="password-title"
     data-ingot-component="password-card"
   >
-    <h3
-      id="password-title"
-      class="md-title-large text-on-surface"
+    <MdCard
+      variant="low"
+      class="flex flex-col gap-4"
     >
-      Change password
-    </h3>
-
-    <p
-      v-if="!available"
-      class="md-body-medium text-on-surface-variant"
-    >
-      You are signed in with an access token, so there is no password to change here.
-      Sign in with your username and password to change it.
-    </p>
-
-    <form
-      v-else
-      id="account-password-form"
-      class="flex max-w-xl flex-col gap-4"
-      novalidate
-      @submit.prevent="submit()"
-    >
-      <MdTextField
-        id="account-current-password"
-        v-model="current"
-        label="Current password"
-        type="password"
-        autocomplete="current-password"
-        required
-        :error="currentError"
-        error-text="Enter your current password"
-      />
-      <MdTextField
-        id="account-new-password"
-        v-model="next"
-        label="New password"
-        type="password"
-        autocomplete="new-password"
-        :supporting-text="minimumHint"
-        required
-        :error="nextError"
-        :error-text="minimumError"
-      />
-      <MdTextField
-        id="account-confirm-password"
-        v-model="confirm"
-        label="Confirm new password"
-        type="password"
-        autocomplete="new-password"
-        required
-        :error="confirmError"
-        error-text="Passwords do not match"
-      />
-      <p
-        v-if="failure"
-        role="alert"
-        class="md-body-medium text-error"
+      <h3
+        id="password-title"
+        class="md-title-large text-on-surface"
       >
-        {{ failure }}
+        Change password
+      </h3>
+
+      <p
+        v-if="!available"
+        class="md-body-medium text-on-surface-variant"
+      >
+        You are signed in with an access token, so there is no password to change here.
+        Sign in with your username and password to change it.
       </p>
-      <div class="flex justify-end">
-        <MdButton
-          type="submit"
-          :disabled="busy"
+
+      <form
+        v-else
+        id="account-password-form"
+        class="flex max-w-xl flex-col gap-4"
+        novalidate
+        @submit.prevent="submit()"
+      >
+        <MdTextField
+          id="account-current-password"
+          v-model="current"
+          label="Current password"
+          type="password"
+          autocomplete="current-password"
+          required
+          :error="currentError"
+          error-text="Enter your current password"
+        />
+        <MdTextField
+          id="account-new-password"
+          v-model="next"
+          label="New password"
+          type="password"
+          autocomplete="new-password"
+          :supporting-text="minimumHint"
+          required
+          :error="nextError"
+          :error-text="minimumError"
+        />
+        <MdTextField
+          id="account-confirm-password"
+          v-model="confirm"
+          label="Confirm new password"
+          type="password"
+          autocomplete="new-password"
+          required
+          :error="confirmError"
+          error-text="Passwords do not match"
+        />
+        <p
+          v-if="failure"
+          role="alert"
+          class="md-body-medium text-error"
         >
-          {{ busy ? 'Changing...' : 'Change password' }}
-        </MdButton>
-      </div>
-    </form>
+          {{ failure }}
+        </p>
+        <div class="flex justify-end">
+          <MdButton
+            type="submit"
+            :disabled="busy"
+          >
+            {{ busy ? 'Changing...' : 'Change password' }}
+          </MdButton>
+        </div>
+      </form>
+    </MdCard>
   </section>
 </template>
