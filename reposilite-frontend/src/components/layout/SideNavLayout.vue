@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type PropType } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, type RouteLocationRaw } from 'vue-router'
 import SideNavTree from './SideNavTree.vue'
 import { useTreeFits } from '../../helpers/useTreeFits'
 
@@ -40,7 +40,8 @@ interface NavGroup {
  * section is a real link to its own address. The caller decides the narrow state from a media query,
  * so this component reads no window. On narrow widths the side navigation is an index of the groups
  * when no section is open; with a section open, the page is shown beside the back arrow of the frame (see
- * AdministrationFrame, which also draws the heading and the trail above this layout).
+ * AdministrationFrame, which also draws the heading and the trail: above this layout below 1240 pixels, and beside the
+ * side navigation from 1240 pixels, where this layout has no box of its own and its two parts are grid items of the frame).
  *
  * Props:
  *   label        the accessible name of the side navigation
@@ -65,7 +66,9 @@ const props = defineProps({
   // The keys of the entries whose domain has an unsaved draft (see unsavedTreeKeys in settingsHub.js).
   unsaved: { type: Array as PropType<string[]>, default: () => [] },
   // True on the Overview page: below 1240 pixels it draws the page beside the index, and the index marks Overview.
-  overview: { type: Boolean, default: false }
+  overview: { type: Boolean, default: false },
+  // True on a reading page: from 1240 pixels the page column keeps the 960 pixel measure beside the side navigation.
+  reading: { type: Boolean, default: false }
 })
 
 // On narrow widths the index replaces the page while no section is open. Overview is the page and the index at once:
@@ -76,6 +79,11 @@ const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow ||
 // The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
 const leadAbove = computed(() => props.narrow && props.overview)
 
+// The page column is keyed by the route name and the open entry: an entry change draws it again, so it plays its enter
+// animation. A query change (the tab of a repository, for one) keeps it, so a typed value keeps its focus.
+const route = useRoute()
+const pageKey = computed(() => `${String(route.name)}:${props.current ?? ''}`)
+
 const navTree = ref<InstanceType<typeof SideNavTree> | null>(null)
 const { fits, measure } = useTreeFits(() => navTree.value?.$el)
 // A save bar that appears or goes away changes the room between the bars, so the decision is taken again.
@@ -83,12 +91,12 @@ watch(() => props.unsaved.length, () => nextTick(measure))
 
 const navClasses = computed(() => (props.narrow
   ? 'w-full'
-  : ['w-52 shrink-0', fits.value ? 'sticky top-[calc(var(--spacing-md-top-bar)+--spacing(4))]' : '']))
+  : ['w-52 shrink-0 large:col-start-1 large:row-span-2 large:row-start-1 large:self-start', fits.value ? 'sticky top-[calc(var(--spacing-md-top-bar)+--spacing(4))]' : '']))
 </script>
 
 <template>
   <div
-    class="flex min-w-0 flex-col gap-6 large:flex-row large:items-start large:gap-10"
+    class="flex min-w-0 flex-col gap-6 large:contents"
     data-ingot-component="side-nav-layout"
   >
     <div
@@ -113,8 +121,11 @@ const navClasses = computed(() => (props.narrow
 
     <div
       v-if="showsPage"
+      :key="pageKey"
       data-ingot-part="page"
-      class="flex min-w-0 flex-1 flex-col gap-4"
+      data-test="page-column"
+      class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2 animate-md-page-enter motion-reduce:animate-none"
+      :class="reading ? 'large:max-w-md-reading-page' : ''"
     >
       <div
         v-if="!leadAbove && $slots.lead"

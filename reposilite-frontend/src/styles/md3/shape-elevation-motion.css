@@ -115,6 +115,13 @@
   --spacing-md-bottom-bar: 5rem;
 
   --container-md-reading: 60rem;
+  /* The page column of a reading page beside the side navigation: the reading measure less the 208 pixel navigation and the 40 pixel gap. */
+  --container-md-reading-page: calc(60rem - 15.5rem);
+  /* The columns of the administration frame from 1240 pixels: the side navigation and the page. */
+  --grid-md-side-nav: 208px minmax(0, 1fr);
+  /* The rows of the same frame: the header row is as high as the header, the page row takes the rest. The side navigation
+     spans both rows, and an auto row would take a share of its height and stretch the header. */
+  --grid-md-administration-rows: auto minmax(0, 1fr);
   --container-md-sheet: 20rem;
   --container-md-snackbar: 35rem;
 
@@ -126,6 +133,7 @@
   --animate-md-linear-slide-reduced: md-linear-slide 4s var(--md-sys-motion-easing-standard) infinite;
   --animate-md-snackbar-enter: md-snackbar-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
   --animate-md-snackbar-leave: md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
+  --animate-md-page-enter: md-page-enter var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) both;
   --animate-skeleton-fade-in: skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both;
 }
 
@@ -157,6 +165,18 @@
   to {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+
+@keyframes md-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

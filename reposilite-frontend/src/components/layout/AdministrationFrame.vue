@@ -51,7 +51,8 @@ interface Crumb {
  * the description of the page, and the page actions with the shortcuts of the page on the right. Beside it, below the
  * header, the Administration tree and the page content. The heading is the label of the current tree entry unless a
  * title is given (a detail page names its item, a plugin page its manifest title). The description is the one of the
- * current entry unless one is given.
+ * current entry unless one is given. From 1240 pixels the header sits in the page column, beside the side navigation,
+ * which starts at the same top edge (a grid of the frame); below 1240 pixels the header stays above the side navigation.
  *
  * Props:
  *   title        the heading, when it is not the label of the current entry
@@ -128,11 +129,11 @@ const sheetOpen = ref(false)
 
 <template>
   <section
-    class="container mx-auto max-w-none pb-12 pt-7"
+    class="container mx-auto max-w-none pb-12 pt-7 large:grid large:grid-cols-(--grid-md-side-nav) large:grid-rows-(--grid-md-administration-rows) large:gap-x-10"
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >
-    <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between">
+    <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between large:col-start-2 large:row-start-1">
       <div class="flex min-w-0 flex-col gap-1 medium:basis-80 medium:grow">
         <div
           data-test="title-row"
@@ -276,7 +277,7 @@ const sheetOpen = ref(false)
 
     <!-- The reading measure caps the layout (side navigation and page content), never the header: the header spans the
          container on every page, and a reading page only keeps its content column at 960 pixels. -->
-    <div :class="reading ? 'max-w-md-reading' : 'min-w-0'">
+    <div :class="reading ? 'max-w-md-reading large:contents' : 'min-w-0 large:contents'">
       <SideNavLayout
         :label="label"
         :groups="groups"
@@ -285,6 +286,7 @@ const sheetOpen = ref(false)
         :replace="replace"
         :unsaved="unsaved"
         :overview="overview"
+        :reading="reading"
       >
         <template
           v-if="$slots.lead"
