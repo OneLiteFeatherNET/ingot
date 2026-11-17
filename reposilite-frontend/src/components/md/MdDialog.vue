@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 
 /*
@@ -71,6 +71,12 @@ const SIZES = {
   lg: 'max-w-140',
   compact: 'max-medium:h-dvh max-medium:max-h-dvh max-medium:max-w-none max-medium:rounded-none medium:max-w-140'
 } as const
+
+// The compact size is full screen below the medium window, so its wrapper drops the 24px side inset there and keeps it
+// from 600px. The other sizes keep the inset at every window width.
+const contentClass = computed(() => props.size === 'compact'
+  ? 'w-full max-medium:px-0 medium:px-6'
+  : 'w-full px-6')
 
 const frame = ref<HTMLElement | null>(null)
 let openerChain: HTMLElement[] = []
@@ -146,7 +152,7 @@ const onKeydown = (event: KeyboardEvent) => {
     :model-value="modelValue"
     class="z-md-dialog flex items-center justify-center"
     overlay-class="bg-scrim/md-scrim!"
-    content-class="w-full px-6"
+    :content-class="contentClass"
     teleport-to="body"
     :aria-labelledby="labelledby"
     :aria-describedby="describedby"
