@@ -499,13 +499,13 @@ describe('AdministrationFrame header beside the side navigation', () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: true })
 
     const page = wrapper.get('[data-ingot-part="page"]').element.classList
-    expect(page, 'the page column keeps the measure beside the 208 pixel side navigation and its 40 pixel gap').toContain('large:max-w-[calc(var(--container-md-reading)-15.5rem)]')
+    expect(page, 'the page column keeps the measure beside the 208 pixel side navigation and its 40 pixel gap').toContain('large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]')
   })
 
   it('does not cap a wide page from 1240 pixels', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: false })
 
     const page = wrapper.get('[data-ingot-part="page"]').element.classList
-    expect(page, 'a wide page takes the page column').not.toContain('large:max-w-[calc(var(--container-md-reading)-15.5rem)]')
+    expect(page, 'a wide page takes the page column').not.toContain('large:max-w-[calc(var(--container-md-reading)_-_15.5rem)]')
   })
 })
