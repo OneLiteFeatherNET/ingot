@@ -101,6 +101,12 @@ const result = ref<CheckAnswer | null>(null)
 // The question of the last answer. The template reads it only while `result` is set, so the placeholder is never shown.
 const checked = ref<CheckTarget>({ principal: '' })
 
+// The question the form holds, as one key. A result is shown only while the form still holds the question it answers.
+const formKey = computed(() => JSON.stringify(mode.value === 'path'
+  ? ['path', principal.value, token.value, repositoryText.value, pathText.value, actionText.value]
+  : ['node', principal.value, token.value, node.value]))
+let checkedKey = ''
+
 const nodeServerError = ref('')
 const principalError = ref('')
 const tokenError = ref('')
@@ -250,6 +256,7 @@ const run = async () => {
     ? { principal: trimmedPrincipal.value, ...pathCheck.value.query, token: token.value || undefined }
     : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
   clearErrors()
+  checkedKey = formKey.value
   result.value = null
   status.value = 'loading'
   try {
@@ -311,6 +318,14 @@ const applyQuery = () => {
 
 watch(queryKey, (key) => {
   if (route.name === 'access-check' && key !== handledKey) applyQuery()
+})
+
+// Changing the question drops the answer to it, and any check still on its way, so an old verdict never reads as the new one.
+watch(formKey, (key) => {
+  if (key === checkedKey) return
+  latest++
+  result.value = null
+  status.value = 'idle'
 })
 
 onMounted(() => {
