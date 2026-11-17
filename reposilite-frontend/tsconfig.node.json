@@ -8,7 +8,9 @@
     "eslint.config.js",
     "nitro.config.mjs",
     "scripts/**/*",
-    "server/**/*"
+    "server/**/*",
+    // The dashboard plugin imports the segment list of the router. A composite project must list every file it imports.
+    "src/router/dashboard-segments.json"
   ],
   "compilerOptions": {
     "composite": true,
@@ -17,6 +19,6 @@
     "allowJs": true,
     "checkJs": false,
     "strict": true,
-    "types": []
+    "types": ["node"]
   }
 }
