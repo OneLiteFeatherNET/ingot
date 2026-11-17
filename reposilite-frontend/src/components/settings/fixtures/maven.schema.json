@@ -184,7 +184,7 @@
           "readOnly" : {
             "type" : "boolean",
             "description" : "Refuses every upload to the repository.",
-            "title" : "Read only"
+            "title" : "Read-only"
           },
           "format" : {
             "type" : "string",
