@@ -22,7 +22,7 @@ If you have spotted a security vulnerability, or something that could be treated
 [Security Advisory](https://github.com/OneLiteFeatherNET/ingot/security/advisories/new) form on this
 repository. Alternatively you can reach the maintainers privately at:
 
-TODO(onelitefeather): security contact address
+[security@onelitefeather.net](mailto:security@onelitefeather.net)
 
 Please include the affected version or commit, a description of the issue, and steps to reproduce it if possible.
 

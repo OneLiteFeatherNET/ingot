@@ -33,7 +33,7 @@ That is why having empathy is very important.
 If you experience or witness behaviour that violates this code of conduct, report it to the OneLiteFeather
 maintainers at:
 
-TODO(onelitefeather): code of conduct contact address
+[conduct@onelitefeather.net](mailto:conduct@onelitefeather.net)
 
 Reports are handled confidentially. Please do not use public issues to report a code of conduct violation.
 
