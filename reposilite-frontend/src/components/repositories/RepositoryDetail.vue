@@ -15,8 +15,9 @@
   -->
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, provide, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, inject, nextTick, onMounted, provide, ref, unref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
 import EntryDetail from '../settings/EntryDetail.vue'
 import { collectionsOf, entryAddresses, idText, validateNewId } from '../settings/collections'
@@ -27,9 +28,11 @@ import {
   blankEntriesRemovedBy,
   blankEntriesNotice,
   effectiveTypeOf,
+  hiddenFormFields,
   isBlankEntry,
   type Entry
 } from '../../store/maven/repositoryTypes'
+import { REPOSITORY_TABS, fieldsOutside } from './repositoryTabs'
 import TypeBadge from './TypeBadge.vue'
 import WritePolicyField from './WritePolicyField.vue'
 import DeclareTypeDialog from './DeclareTypeDialog.vue'
@@ -57,6 +60,7 @@ const { renderers, configurationStyles } = useConfiguration()
 provide('styles', configurationStyles)
 
 const router = useRouter()
+const route = useRoute()
 // The first heading of the content: the page heading is the frame's, so the focus goes to the type section.
 const heading = ref<HTMLElement | null>(null)
 const declareOpen = ref(false)
@@ -94,6 +98,50 @@ const writeChoice = computed(() => writePolicyOf(entry.value ?? {}))
 const offerReadOnly = computed(() => Boolean(collection.value?.itemSchema?.properties?.readOnly))
 const groupsListingIt = computed(() => groupsReferencing(entries.value, idText(entry.value)))
 
+// The open tab is the `tab` query of the address. A missing or unknown key opens General, and the tab list does the same.
+const section = computed(() => {
+  const key = route.query.tab
+  return typeof key === 'string' && REPOSITORY_TABS.some(tab => tab.key === key) ? key : 'general'
+})
+// The problems of the entry, counted per tab, so a tab that is not open says it has one. A field is on one tab only.
+const problems = computed<Record<string, number>>(() => {
+  const counts: Record<string, number> = {}
+  const schema = collection.value?.itemSchema
+  if (!entry.value || !schema) return counts
+  const validate = store.configurationValidator.compile(schema)
+  validate(JSON.parse(JSON.stringify(entry.value)))
+  for (const error of validate.errors ?? []) {
+    const missing = (error.params as { missingProperty?: string }).missingProperty
+    const field = error.instancePath.split('/')[1] || missing || ''
+    const tab = REPOSITORY_TABS.find(item => item.fields.includes(field))
+    if (tab) counts[tab.key] = (counts[tab.key] ?? 0) + 1
+  }
+  return counts
+})
+const tabs = computed(() => REPOSITORY_TABS.map((tab) => {
+  const count = problems.value[tab.key] ?? 0
+  return { key: tab.key, label: count === 0 ? tab.label : `${tab.label}, ${count} ${count === 1 ? 'problem' : 'problems'}` }
+}))
+// The fields of the entry editor that every part of the page shares. Each tab leaves out the fields of the others.
+const entryProps = computed(() => ({
+  collection: collection.value,
+  id: props.id,
+  entry: entry.value,
+  otherIds: otherIds.value,
+  otherTags: otherTags.value,
+  renderers: unref(renderers),
+  validator: store.configurationValidator,
+  showAccess: true,
+  typed: true,
+  omit: ['redeployment', 'readOnly'],
+  references: groupsListingIt.value,
+  serverError: serverError.value
+}))
+const omitFor = (key: string) => ['redeployment', 'readOnly', ...fieldsOutside(key)]
+// A tab whose fields are all hidden for the type of the repository says so, instead of showing an empty panel.
+const hiddenFor = computed(() => hiddenFormFields(entry.value?.type ?? ''))
+const appliesTo = (key: string) => REPOSITORY_TABS.find(tab => tab.key === key)!.fields.some(field => !hiddenFor.value.includes(field))
+
 // The draft entry at this position is replaced; the page never writes a key of its own besides the ones named here.
 const write = (next: Entry) => store.setEntry('maven', 'repositories', index.value, next)
 
@@ -109,7 +157,8 @@ const onChange = (next: Entry) => {
   const problem = validateNewId(id, otherIds.value, collection.value?.noun ?? 'repository')
   write(next)
   if (id === props.id || problem !== '') return
-  router.replace({ name: 'settings-repository', params: { id } })
+  // The query is kept, so a rename does not move the page to General.
+  router.replace({ name: 'settings-repository', params: { id }, query: route.query })
 }
 
 const applyDeclare = async () => {
@@ -214,27 +263,49 @@ onMounted(() => {
       </section>
     </header>
 
-    <WritePolicyField
-      v-if="isHosted"
-      :model-value="writeChoice"
-      :offer-read-only="offerReadOnly"
-      @update:model-value="onWritePolicy"
+    <EntryDetail
+      v-bind="entryProps"
+      section="type"
+      @change="onChange"
     />
 
+    <div data-ingot-part="tabs">
+      <AppTabs
+        :tabs="tabs"
+        label="Repository settings sections"
+      >
+        <template #default="{ tab }">
+          <div
+            v-if="tab === section"
+            class="flex flex-col gap-6"
+          >
+            <p
+              v-if="!appliesTo(tab)"
+              data-test="no-applicable-settings"
+              class="md-body-medium text-on-surface-variant"
+            >
+              None of the settings of this tab applies to this type of repository.
+            </p>
+            <WritePolicyField
+              v-if="tab === 'policy' && isHosted"
+              :model-value="writeChoice"
+              :offer-read-only="offerReadOnly"
+              @update:model-value="onWritePolicy"
+            />
+            <EntryDetail
+              v-bind="entryProps"
+              :section="tab"
+              :omit="omitFor(tab)"
+              @change="onChange"
+            />
+          </div>
+        </template>
+      </AppTabs>
+    </div>
+
     <EntryDetail
-      :id="id"
-      :collection="collection"
-      :entry="entry"
-      :other-ids="otherIds"
-      :other-tags="otherTags"
-      :renderers="renderers"
-      :validator="store.configurationValidator"
-      :show-access="true"
-      :typed="true"
-      :omit="['redeployment', 'readOnly']"
-      :references="groupsListingIt"
-      :server-error="serverError"
-      @change="onChange"
+      v-bind="entryProps"
+      section="danger"
       @delete="onDelete"
     />
 

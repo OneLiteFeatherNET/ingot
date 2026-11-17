@@ -573,7 +573,7 @@ watch(
         </h2>
 
         <div
-          role="tabpanel"
+          :role="repositoryPage ? null : 'tabpanel'"
           class="mt-6 flex flex-col gap-8"
         >
           <RepositoriesView

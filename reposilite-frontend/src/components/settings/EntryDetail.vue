@@ -99,12 +99,22 @@ const props = defineProps({
   references: {
     type: Array,
     default: () => []
+  },
+  // The part of a page this pane draws. Empty draws every part, as before. The repository page draws each part in
+  // its own pane: 'type' (the type section), 'danger' (the danger zone), or the key of a tab, which draws the Id
+  // field on General, the access card on Access and the form of the fields the tab names.
+  section: {
+    type: String,
+    default: ''
   }
 })
 
 const emit = defineEmits(['change', 'delete'])
 
 const noun = computed(() => props.collection.noun)
+const whole = computed(() => props.section === '')
+const shows = name => whole.value || props.section === name
+const drawsForm = computed(() => whole.value || (props.section !== 'type' && props.section !== 'danger'))
 const layout = computed(() => entryLayout(props.collection.itemSchema))
 const deleteOpen = ref(false)
 
@@ -250,7 +260,10 @@ const formLayout = computed(() => {
     class="flex flex-col gap-6"
     data-ingot-component="entry-detail"
   >
-    <div data-ingot-part="header">
+    <div
+      v-if="shows('general')"
+      data-ingot-part="header"
+    >
       <MdTextField
         id="entry-detail-id"
         label="Id"
@@ -266,7 +279,7 @@ const formLayout = computed(() => {
     </div>
 
     <section
-      v-if="typed"
+      v-if="typed && shows('type')"
       data-test="repository-type"
       aria-labelledby="entry-type-title"
       class="flex flex-col gap-4"
@@ -400,7 +413,10 @@ const formLayout = computed(() => {
       </div>
     </section>
 
-    <div data-test="entry-form">
+    <div
+      v-if="drawsForm"
+      data-test="entry-form"
+    >
       <!-- The form holds the latest value, so a change of the type is never answered with the value before it. -->
       <JsonForms
         :key="id"
@@ -415,11 +431,12 @@ const formLayout = computed(() => {
     </div>
 
     <RepositoryAccessCard
-      v-if="showAccess && idText(entry)"
+      v-if="showAccess && idText(entry) && shows('access')"
       :repository="idText(entry)"
     />
 
     <section
+      v-if="shows('danger')"
       data-test="danger-zone"
       aria-labelledby="entry-danger-title"
       class="flex flex-col gap-3 rounded-corner-medium border border-error p-4"
@@ -455,6 +472,7 @@ const formLayout = computed(() => {
     </section>
 
     <DeleteEntryDialog
+      v-if="shows('danger')"
       :id="idText(entry) || 'unnamed'"
       v-model="deleteOpen"
       :references="references"

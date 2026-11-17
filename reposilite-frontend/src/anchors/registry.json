@@ -1102,7 +1102,8 @@
       "file": "src/components/repositories/RepositoryDetail.vue",
       "stability": "experimental",
       "parts": [
-        "header"
+        "header",
+        "tabs"
       ],
       "states": [
         "empty",

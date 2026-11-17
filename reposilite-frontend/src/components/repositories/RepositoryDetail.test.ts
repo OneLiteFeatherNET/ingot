@@ -114,15 +114,16 @@ describe('the repository detail page', () => {
     expect(backs, 'no Back to control in the page content').toEqual([])
   })
 
-  it('keeps the type switch and the access card', async () => {
+  it('keeps the type switch above the tabs and the access card on Access', async () => {
     await mountDetail({ id: 'releases' })
 
     expect(document.querySelector('#entry-detail-type'), 'the type switch is shown').not.toBeNull()
+    await chooseTab('Access')
     expect(document.querySelector('[data-test="repository-access"]'), 'the access card is shown to an administrator').not.toBeNull()
   })
 
   it('offers the Write policy radio group on a hosted repository', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
 
     const choices = writePolicyRadios().map(radio => radio.value)
     expect(choices, 'the three choices of the write policy').toEqual(['allow', 'allowOnce', 'readOnly'])
@@ -135,13 +136,13 @@ describe('the repository detail page', () => {
   })
 
   it('offers only Allow and Allow once when the schema has no readOnly field', async () => {
-    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true }) })
+    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true }), address: '/settings/repositories/releases?tab=policy' })
 
     expect(writePolicyRadios().map(radio => radio.value), 'Read only needs the readOnly field').toEqual(['allow', 'allowOnce'])
   })
 
   it('explains each write policy choice in text', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
 
     const text = wrapper.text()
     expect(text, 'Allow is explained').toContain('Deploys are accepted.')
@@ -150,16 +151,16 @@ describe('the repository detail page', () => {
   })
 
   it('offers the Version policy field only when the schema has it', async () => {
-    await mountDetail({ id: 'releases' })
+    await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=policy' })
     expect(wrapper.text(), 'the field is drawn from the schema').toContain('Version policy')
 
     wrapper.unmount()
-    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true, readOnly: true }) })
+    await mountDetail({ id: 'releases', schema: repositorySchema({ redeployment: true, readOnly: true }), address: '/settings/repositories/releases?tab=policy' })
     expect(wrapper.text(), 'no field without the schema field').not.toContain('Version policy')
   })
 
   it('stores Allow once as redeployment false and adds no readOnly key', async () => {
-    const { store } = await mountDetail({ id: 'snapshots' })
+    const { store } = await mountDetail({ id: 'snapshots', address: '/settings/repositories/snapshots?tab=policy' })
 
     radioNamed('allowOnce').click()
     await flushPromises()
@@ -170,7 +171,7 @@ describe('the repository detail page', () => {
   })
 
   it('keeps redeployment through Read only, and Allow once takes the repository out of read only', async () => {
-    const { store } = await mountDetail({ id: 'snapshots' })
+    const { store } = await mountDetail({ id: 'snapshots', address: '/settings/repositories/snapshots?tab=policy' })
 
     radioNamed('readOnly').click()
     await flushPromises()
@@ -290,16 +291,20 @@ describe('the repository tabs', () => {
     await mountDetail({ id: 'releases' })
 
     await tabElements()[0].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
     expect(selectedLabel(), 'Right selects the next tab').toBe('Storage')
     expect(document.activeElement?.textContent?.trim(), 'the focus follows the selection').toBe('Storage')
 
     await tabElements()[1].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
     expect(selectedLabel(), 'Left selects the previous tab').toBe('General')
 
     await tabElements()[0].trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
     expect(selectedLabel(), 'Left on the first tab wraps to the last').toBe('Advanced')
 
     await tabElements()[5].trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
     expect(selectedLabel(), 'Right on the last tab wraps to the first').toBe('General')
   })
 
@@ -307,9 +312,11 @@ describe('the repository tabs', () => {
     await mountDetail({ id: 'releases' })
 
     await tabElements()[0].trigger('keydown', { key: 'End' })
+    await flushPromises()
     expect(selectedLabel(), 'End selects the last tab').toBe('Advanced')
 
     await tabElements()[5].trigger('keydown', { key: 'Home' })
+    await flushPromises()
     expect(selectedLabel(), 'Home selects the first tab').toBe('General')
   })
 
@@ -317,7 +324,7 @@ describe('the repository tabs', () => {
     await mountDetail({ id: 'releases', address: '/settings/repositories/releases?tab=storage' })
 
     expect(selectedLabel(), 'the Storage tab is selected').toBe('Storage')
-    expect(wrapper.text(), 'the Storage fields are drawn').toContain('Storage provider')
+    expect(wrapper.text(), 'the Storage fields are drawn').toContain('File system')
   })
 
   it('opens General for a tab key that is not one of the six', async () => {
@@ -380,10 +387,10 @@ describe('the repository tabs', () => {
 
   it('counts a problem on another tab on that tab label', async () => {
     const store = await loadedStore()
-    setReleases(store, { metadataMaxAge: 'soon' })
+    setReleases(store, { visibility: 'SECRET' })
     await mountDetail({ id: 'releases', store })
 
-    expect(tabElements()[3].text(), 'the Mirror and proxy tab names its problem').toBe('Mirror and proxy, 1 problem')
+    expect(tabElements()[2].text(), 'the Access tab names its problem').toBe('Access, 1 problem')
     expect(tabElements()[1].text(), 'a tab without a problem keeps its label').toBe('Storage')
   })
 
