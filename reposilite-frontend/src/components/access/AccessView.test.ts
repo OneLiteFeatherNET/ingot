@@ -85,11 +85,23 @@ describe('AccessView', () => {
     }
   })
 
-  it('links a user detail page to the permission check with the principal filled in', async () => {
+  it('draws no permission check link in the header of a user detail page, the detail pane offers it', async () => {
     await mountView({ tab: 'users', name: 'alice' }, '/access/users/alice')
 
-    const link = wrapper.findAll('[aria-label="Related pages"] a').find(item => item.text() === 'Check a permission')
-    expect(link?.attributes('href'), 'the check opens for alice').toBe('/access/check?principal=alice')
+    const links = wrapper.findAll('a').map(item => item.text())
+    expect(links, 'the header has no Check a permission link').not.toContain('Check a permission')
+  })
+
+  it('keeps the page title on a user detail page: the one h1 is the name of the list, not the user', async () => {
+    await mountView({ tab: 'users', name: 'alice' }, '/access/users/alice')
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Users'])
+  })
+
+  it('keeps the page title on a team detail page: the one h1 is the name of the list, not the team', async () => {
+    await mountView({ tab: 'teams', name: 'developers' }, '/access/teams/developers')
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Teams'])
   })
 
   it('names the open tab in the one heading, and draws the description of that tab', async () => {

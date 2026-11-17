@@ -82,11 +82,10 @@ describe('TeamDetail', () => {
       expect(wrapper!.find('[data-test="description"]').text()).toBe('Everyone who writes code')
     })
 
-    it('does not repeat the name of the team as a heading, the page heading names it', async () => {
+    it('names the team in the second level heading of the detail', async () => {
       await mountDetail('developers')
 
-      const headings = wrapper!.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
-      expect(headings, 'no heading of the detail is the team name').not.toContain('developers')
+      expect(wrapper!.find('h2').text(), 'the first heading of the detail is the team name').toBe('developers')
     })
 
     it('starts the headings of the detail at the second level, under the page heading', async () => {

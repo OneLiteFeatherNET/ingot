@@ -301,10 +301,10 @@ test.describe('the administration page header', () => {
     expect(Math.max(...gaps) - Math.min(...gaps), 'the space on both sides of each slash is the same, in px').toBeLessThan(1)
   })
 
-  test('keeps a detail title on whole words at 320 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
+  test('keeps the name of a detail on whole words at 320 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 900 })
     await page.goto(siteUrl('/access/users/e2e-operator'))
-    const title = page.locator('#administration-title')
+    const title = page.locator('h2').first()
     await expect(title).toBeVisible()
 
     const lineHeight = await title.evaluate(element => parseFloat(getComputedStyle(element).lineHeight))
