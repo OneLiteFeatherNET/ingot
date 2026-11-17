@@ -22,7 +22,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import download from 'downloadjs'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import { settingsClockKey } from './settingsExport'
-import SettingsView from './SettingsView.vue'
+import MaintenanceView from '../maintenance/MaintenanceView.vue'
 
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
@@ -84,11 +84,10 @@ let wrapper
 const mountWith = async ({ secretsHidden = false } = {}) => {
   const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => secretsHidden })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
-  // The download is an action of Overview, so the view is opened at /settings.
+  // The download is an action of the Settings backup tab, so the view is opened at /maintenance?tab=backup.
   const router = namedRouter()
-  await router.push('/settings')
-  wrapper = mount(SettingsView, {
-    props: { selectedTab: 'Settings' },
+  await router.push('/maintenance?tab=backup')
+  wrapper = mount(MaintenanceView, {
     global: {
       plugins: [router],
       provide: { [configurationStoreKey]: store, [settingsClockKey]: () => FIXED_NOW }
@@ -129,13 +128,19 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+// The read-only switch of Maintenance has its own tests; here it is a marker, so these tests read no mode.
+vi.mock('../dashboard/ReadOnlyToggle.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { render: () => h('div') } }
+})
+
 // The status block of Overview has its own tests (DashboardView); here it is a marker, so these tests fetch no status.
 vi.mock('../dashboard/DashboardView.vue', async () => {
   const { h } = await import('vue')
   return { default: { render: () => h('div', { 'data-test': 'status-block' }) } }
 })
 
-describe('SettingsView download', () => {
+describe('Settings backup download', () => {
   it('asks for a password before the saved state is downloaded', async () => {
     await mountWith()
 

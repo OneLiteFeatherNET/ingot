@@ -244,7 +244,7 @@ describe('the Settings backup tab', () => {
 
     const text = shownPanelOf(wrapper).text()
     expect(text, 'the download sentence says how secrets are handled').toContain('encrypted with a password')
-    expect(text, 'the import sentence says what it replaces').toContain('replaces')
+    expect(text, 'the import sentence says what it replaces').toContain('Replaces')
   })
 
   it('links to the factory reset on System and support', async () => {

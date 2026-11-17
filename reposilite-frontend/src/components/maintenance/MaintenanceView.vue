@@ -22,18 +22,27 @@ import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'
 import IndexPanel from './IndexPanel.vue'
 import ReadOnlyToggle from '../dashboard/ReadOnlyToggle.vue'
 import AppTabs from '../tabs/AppTabs.vue'
+import SettingsBackupPanel from './SettingsBackupPanel.vue'
+import { useSession } from '../../store/session'
+import { ADMIN_NODES } from '../../store/nodeAccess'
 
 // The sections of the page, one tab each, in this order. The tab in the address opens one; an unknown or missing one opens the first.
 const TABS = [
   { key: 'storage', label: 'Storage usage' },
   { key: 'index', label: 'Search index' },
   { key: 'cleanup', label: 'Cleanup policies' },
+  // The settings file actions. Only a principal who may edit the settings sees this tab, as only they saw the buttons on Overview.
+  { key: 'backup', label: 'Settings backup', node: ADMIN_NODES.settings },
 ]
+
+const session = useSession()
+const can = (node: string): boolean => (typeof session.can === 'function' ? session.can(node) : true)
+const shownTabs = TABS.filter(tab => tab.node === undefined || can(tab.node))
 
 const route = useRoute()
 const selected = computed(() => {
   const key = route.query.tab
-  return typeof key === 'string' && TABS.some(tab => tab.key === key) ? key : TABS[0].key
+  return typeof key === 'string' && shownTabs.some(tab => tab.key === key) ? key : shownTabs[0].key
 })
 
 // A panel loads its data when its tab is first shown. It stays mounted after that, so switching back shows it as it was.
@@ -51,7 +60,7 @@ const storageRevision = ref(0)
   >
     <ReadOnlyToggle />
     <AppTabs
-      :tabs="TABS"
+      :tabs="shownTabs"
       label="Maintenance sections"
     >
       <template #default="{ tab }">
@@ -65,6 +74,7 @@ const storageRevision = ref(0)
             v-else-if="tab === 'cleanup'"
             @ran="storageRevision += 1"
           />
+          <SettingsBackupPanel v-else-if="tab === 'backup'" />
         </template>
       </template>
     </AppTabs>

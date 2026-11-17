@@ -194,6 +194,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `segmented-control` | experimental | `src/components/tokens/SegmentedControl.vue` | none | none |
 | `segmented-option` | experimental | `src/components/tokens/SegmentedOption.vue` | none | none |
 | `settings-attention` | experimental | `src/components/settings/SettingsAttention.vue` | none | none |
+| `settings-backup-panel` | experimental | `src/components/maintenance/SettingsBackupPanel.vue` | none | none |
 | `settings-download-menu` | stable | `src/components/settings/SettingsDownloadMenu.vue` | none | none |
 | `settings-encryption-alert` | experimental | `src/components/support/SettingsEncryptionAlert.vue` | none | none |
 | `settings-hub` | stable | `src/components/settings/SettingsHub.vue` | none | none |

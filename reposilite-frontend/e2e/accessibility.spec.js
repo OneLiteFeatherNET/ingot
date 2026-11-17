@@ -39,9 +39,9 @@ const COVERED_PAGES = [
   { name: 'the access users page', path: '/access/users', signedIn: true },
   // The repositories table is the settle marker: its region is named for a screen reader, and the rows arrive with the page.
   { name: 'the repositories page', path: '/settings/repositories', signedIn: true, settledRegion: 'Repositories table' },
-  // The header buttons turn enabled when the settings domains arrive, and fade to their enabled colours over a
+  // The buttons turn enabled when the settings domains arrive, and fade to their enabled colours over a
   // transition: the check waits for that state (see settled).
-  { name: 'the Overview page', path: '/settings', signedIn: true, settled: 'Import settings' },
+  { name: 'the Settings backup tab', path: '/maintenance?tab=backup', signedIn: true, settled: 'Import settings' },
   { name: 'the audit page', path: '/audit', signedIn: true },
 ]
 
