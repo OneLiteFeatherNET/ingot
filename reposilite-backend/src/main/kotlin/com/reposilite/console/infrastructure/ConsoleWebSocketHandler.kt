@@ -49,6 +49,7 @@ private data class WsSession(
     val tokenName: String,
     val address: String,
     val subscriberId: Int,
+    val outbox: ConsoleSocketOutbox,
 )
 
 /** The identity of an authenticated connection: the token name, and the host it connected from. */
@@ -85,24 +86,22 @@ internal class ConsoleWebSocketHandler(
                             val identifier = identity.identifier
                             journalist.logger.info("CLI | $identifier accessed remote console")
 
-                            // Subscribers run on the thread that logs, which is often an unrelated request or job. A failure
-                            // here must never reach that thread, so the connection is closed instead, and its close callback
-                            // releases the subscription.
-                            val subscriberId = journalist.subscribe {
-                                try {
-                                    ctx.send(it.value)
-                                } catch (_: ClosedChannelException) {
-                                    journalist.logger.debug("CLI | $identifier tried to write to closed channel")
-                                } catch (failure: Exception) {
-                                    runCatching { ctx.session.disconnect() }
-                                }
-                            }
+                            // Subscribers run on the thread that logs, which is often an unrelated request or job, so they only
+                            // queue the line. The outbox's own writer sends it, and a client that reads too slowly loses lines
+                            // instead of stalling the logs. Its close callback releases the writer and the subscription.
+                            val outbox = ConsoleSocketOutbox(
+                                send = { ctx.send(it) },
+                                onFailure = { failure -> handleSendFailure(ctx, identifier, failure) },
+                            )
+                            outbox.start()
 
-                            users[ctx] = WsSession(identifier, identity.tokenName, identity.address, subscriberId)
+                            val subscriberId = journalist.subscribe { outbox.offer(it.value) }
+
+                            users[ctx] = WsSession(identifier, identity.tokenName, identity.address, subscriberId, outbox)
 
                             journalist.cachedLogger.messages
                                 .filter { it.key.priority >= journalist.visibleThreshold.priority }
-                                .forEach { message -> ctx.send(message.value) }
+                                .forEach { message -> outbox.put(message.value) }
                         }
                         .onError {
                             journalist.logger.info("CLI | ${it.message} (${it.status})")
@@ -112,7 +111,7 @@ internal class ConsoleWebSocketHandler(
                 else ->
                     when (val message = ctx.message()) {
                         "keep-alive" ->
-                            ctx.send("keep-alive")
+                            session.outbox.put("keep-alive")
                         else ->
                             consoleFacade.prepareCommand(message).peek { command ->
                                 journalist.logger.info("CLI | ${session.identifier}> ${command.redactedCommand}")
@@ -132,11 +131,23 @@ internal class ConsoleWebSocketHandler(
                     }
             }
         }
-        ws.onClose { ctx ->
-            val session = users.remove(ctx) ?: return@onClose
-            journalist.logger.info("CLI | ${session.identifier} closed connection")
-            journalist.unsubscribe(session.subscriberId)
+        ws.onClose { ctx -> release(ctx) }
+        ws.onError { ctx -> release(ctx) }
+    }
+
+    /** Releases the writer and the subscription of a connection. Both close callbacks may run, and only the first one finds the session. */
+    private fun release(ctx: WsContext) {
+        val session = users.remove(ctx) ?: return
+        session.outbox.close()
+        journalist.logger.info("CLI | ${session.identifier} closed connection")
+        journalist.unsubscribe(session.subscriberId)
+    }
+
+    private fun handleSendFailure(ctx: WsContext, identifier: String, failure: Exception) {
+        if (failure is ClosedChannelException) {
+            journalist.logger.debug("CLI | $identifier tried to write to closed channel")
         }
+        runCatching { ctx.session.disconnect() }
     }
 
     private fun authenticateContext(connection: WsMessageContext): Result<WsIdentity, ErrorResponse> {
