@@ -198,4 +198,66 @@ describe('ReadOnlyToggle', () => {
     expect(switchOf().attributes('disabled'), 'a forced state cannot be changed here').toBeDefined()
     expect(wrapper.text(), 'the reason is shown before the click').toContain('INGOT_READ_ONLY')
   })
+
+  it('names the confirmation by its heading', async () => {
+    session.client = ref(clientWith({ get: answeringWith({ enabled: false, source: 'stored' }) }))
+    mountToggle()
+    await flushPromises()
+    await switchOf().trigger('click')
+    await flushPromises()
+
+    const labelledBy = dialog()?.getAttribute('aria-labelledby') ?? ''
+    expect(document.getElementById(labelledBy)?.textContent?.trim(), 'the dialog is named by its question').toBe('Turn on read-only mode?')
+  })
+
+  it('moves focus to Cancel when the confirmation opens, so an accidental Enter does not confirm', async () => {
+    session.client = ref(clientWith({ get: answeringWith({ enabled: false, source: 'stored' }) }))
+    mountToggle()
+    await flushPromises()
+    await switchOf().trigger('click')
+    await flushPromises()
+
+    expect(document.activeElement?.id, 'focus starts on the cancel button').toBe('read-only-cancel')
+  })
+
+  it('returns focus to the switch when the confirmation is cancelled', async () => {
+    session.client = ref(clientWith({ get: answeringWith({ enabled: false, source: 'stored' }) }))
+    mountToggle()
+    await flushPromises()
+    await switchOf().trigger('click')
+    await flushPromises()
+
+    document.getElementById('read-only-cancel')?.click()
+    await flushPromises()
+
+    expect(document.activeElement?.id, 'focus returns to the switch').toBe('read-only-switch')
+  })
+
+  it('offers exactly one filled button in the confirmation, the confirm action', async () => {
+    session.client = ref(clientWith({ get: answeringWith({ enabled: false, source: 'stored' }) }))
+    mountToggle()
+    await flushPromises()
+    await switchOf().trigger('click')
+    await flushPromises()
+
+    const filled = [...(dialog()?.querySelectorAll('[data-variant="filled"]') ?? [])].map(button => button.textContent?.trim())
+    expect(filled, 'the only filled button turns the mode on').toEqual(['Turn on read-only mode'])
+  })
+
+  it('shows a failed change as an alert in the error tone', async () => {
+    const refused = vi.fn(() => Promise.reject(Object.assign(new Error('Request failed'), {
+      response: { status: 409, data: { message: 'INGOT_READ_ONLY forces the state.' } }
+    })))
+    session.client = ref(clientWith({ get: answeringWith({ enabled: false, source: 'stored' }), enable: refused }))
+    mountToggle()
+    await flushPromises()
+    await switchOf().trigger('click')
+    await flushPromises()
+    document.getElementById('read-only-confirm')?.click()
+    await flushPromises()
+
+    const alert = wrapper.find('[role="alert"][data-tone="error"]')
+    expect(alert.exists(), 'the refusal is announced as an error alert').toBe(true)
+    expect(alert.text(), 'the alert carries the text the server sent').toContain('INGOT_READ_ONLY forces the state.')
+  })
 })
