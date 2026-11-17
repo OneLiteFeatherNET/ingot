@@ -91,19 +91,20 @@ generated from an operator seed colour.
 
 ### Requirement: Every page uses the page shell
 
-Every page of the dashboard SHALL render `MdPage` with the `wide` or the `reading` variant. A `reading` page SHALL be centred with a
-maximum width of 960 pixels. A `wide` page SHALL take the full width after the side navigation. No view SHALL write its own `container`
-class, and no view SHALL set `mx-auto` or `max-w-*` on its page container.
+Every page of the dashboard SHALL render `MdPage`, which takes the full width after the side navigation. A page container SHALL NOT be
+centred, SHALL NOT carry a `max-w-*` class, and no view SHALL write its own `container` class. Running text and form blocks inside a page
+SHALL carry a reading measure of at most 960 pixels, left-aligned to the page's left edge. The measure SHALL be set on the block, not on the
+page container.
 
-#### Scenario: Reading page is centred
+#### Scenario: Page takes the full width
 
-- **WHEN** a visitor opens the repository detail, the account page or a settings form at 1920 pixels
-- **THEN** the page column is centred in the window, and its left and right margins are equal
+- **WHEN** a visitor opens the repositories list, the repository detail, the account page or a team detail at 1920 pixels
+- **THEN** the page takes the full width after the side navigation, and its page container carries no `max-w-*` and no `mx-auto` class
 
-#### Scenario: Wide page takes the width
+#### Scenario: Reading measure on text and forms
 
-- **WHEN** a visitor opens the repositories list at 1920 pixels
-- **THEN** the page takes the full width after the side navigation, and its page container carries the `wide` variant
+- **WHEN** a visitor opens the account page at 1920 pixels
+- **THEN** each form block is no wider than 960 pixels, and its left edge equals the left edge of the page title
 
 #### Scenario: No hand-written container
 
