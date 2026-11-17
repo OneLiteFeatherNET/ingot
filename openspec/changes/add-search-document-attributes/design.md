@@ -43,7 +43,7 @@ right to the file (the search access layer already filters rows and the attribut
 
 - An attribute key is `<enricher-id>.<name>`. The enricher id matches `[a-z0-9-]{2,32}`. The name matches `[a-z][a-z0-9_]{0,31}`.
 - The namespace `core` is reserved. An enricher whose id is `core` is refused by the registry (`add-artifact-enrichment-hook`, D2).
-- The core writes one attribute per enricher that ran or that matched: `core.enricher.<enricher-id>` with the enricher `version`.
+- The core writes one attribute per enricher that ran: `core.enricher.<enricher-id>` with the enricher `version`.
   This is the only key the core writes, and it is what the rebuild rule of D5 reads.
 - A row carries at most 32 keys, at most 16 values per key, at most 2000 characters per value and at most 8 KiB of key and value text
   together. These limits are constants. The core refuses an attribute set that exceeds them, and does not truncate it.
@@ -52,8 +52,8 @@ right to the file (the search access layer already filters rows and the attribut
   them. Values are case preserved; the database backend keeps a lower-cased copy for later filters.
 - Values are strings. Numbers and booleans are written as strings by the enricher.
 
-A refused attribute set counts as `Failed("invalid attributes: <rule>")`, where the rule is one of a fixed list of names (for example
-`too-many-keys`, `control-character`, `foreign-namespace`), never the value.
+A refused attribute set counts as `Failed("invalid attributes: <rule>")`, where the rule is one of this fixed list: `too-many-keys`, `too-many-values`,
+`value-too-long`, `set-too-large`, `control-character`, `foreign-namespace` and `invalid-key`. The message never contains a value.
 
 ### D2: the enrichment result
 
@@ -165,12 +165,13 @@ version changes. The change does not start a rebuild by itself (Q5).
 - **A backend declares the capability and then loses attributes.** Mitigation: the contract suite of `search-backend-registration`
   includes attribute cases and runs for every declared backend.
 
-## Open questions (each has a default)
+## Open questions (settled 2026-11-17 with the recommended default)
 
-- **Q1. Response parameter.** Default: `attributes=true` opts in (D7). Alternative: attributes in every file result.
-- **Q2. Lucene.** Default: Lucene declares `ATTRIBUTES` in the pull request that adds the attribute field to its mapping version, owned
+- **Q1. Response parameter.** Settled 2026-11-17: `attributes=true` opts in (D7). Attributes in every file result are rejected, so the
+  default response does not change.
+- **Q2. Lucene.** Settled 2026-11-17: Lucene declares `ATTRIBUTES` in the pull request that adds the attribute field to its mapping version, owned
   by the Lucene pull request author. Not a blocker for this change.
-- **Q3. Limits.** Defaults: 32 keys, 16 values per key, 2000 characters per value, 8 KiB per row, 256 distinct keys per index.
-- **Q4. Rebuild by version.** Default: yes (D5). Alternative: only an explicit operator rebuild.
-- **Q5. Automatic run on a new enricher version.** Default: no automatic rebuild. An operator starts it, or the next scheduled rebuild
-  picks rows up. Alternative: a run with a trigger for enricher changes, as the backend registration does for a backend change.
+- **Q3. Limits.** Settled 2026-11-17: 32 keys, 16 values per key, 2000 characters per value, 8 KiB per row, 256 distinct keys per index.
+- **Q4. Rebuild by version.** Settled 2026-11-17: yes (D5). An explicit operator rebuild only is rejected.
+- **Q5. Automatic run on a new enricher version.** Settled 2026-11-17: no automatic rebuild. An operator starts it, or the next
+  scheduled rebuild picks rows up. A run triggered by enricher changes is not part of this change.

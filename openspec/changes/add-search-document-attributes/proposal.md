@@ -30,7 +30,7 @@ when files are touched, moved or deleted. It does not add filters, facets or sor
   at the core boundary for a backend that does not declare the capability, and that is counted.
 - Storage in the database backend (a child table written in the same transaction as the row), in Elasticsearch and OpenSearch (keyword
   fields under `attributes.*` through a dynamic template), and in Meilisearch (a document object). Lucene declares the capability only
-  after its mapping version is in place (open question Q2).
+  after its mapping version is in place (design.md Q2, settled 2026-11-17).
 - The search response includes attributes only when the caller asks for them with `attributes=true`.
 
 ### Out of scope
