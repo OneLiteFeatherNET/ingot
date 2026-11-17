@@ -340,12 +340,15 @@ test.describe('the administration page header', () => {
   test('keeps the content column of a reading page at its 960 pixel measure at 1440 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(siteUrl('/maintenance'))
-    // The wrapper of the layout is the element after the header of the frame.
-    const measure = page.locator('section[data-ingot-component="administration-frame"] > header + div')
+    // The page column ends the measure. Its left edge is the side navigation's, when the page has one.
+    const content = page.locator('[data-ingot-part="page"]')
     await expect(page.getByRole('heading', { name: 'Maintenance', level: 1 })).toBeVisible()
 
-    const box = await measure.boundingBox()
-    expect(box.width, 'the measure of the reading page in px').toBeLessThanOrEqual(960)
+    const box = await content.boundingBox()
+    const navigation = page.getByRole('navigation', { name: 'Administration', exact: true })
+    const navBox = (await navigation.count()) > 0 ? await navigation.boundingBox() : null
+    const left = navBox ? Math.min(navBox.x, box.x) : box.x
+    expect(box.x + box.width - left, 'the measure of the reading page, side navigation included, in px').toBeLessThanOrEqual(960)
   })
 })
 
@@ -457,5 +460,49 @@ test.describe('the administration header does not move between pages', () => {
     const leftWithout = (await boxOf(frameHeader(page))).left
 
     expect(Math.abs(leftWith - leftWithout), 'the frame does not shift when the scrollbar appears or goes').toBeLessThanOrEqual(0.5)
+  })
+})
+
+// From 1240 pixels the header sits beside the side navigation, in the page column. Below it the header stays above the index.
+test.describe('the administration header beside the side navigation', () => {
+  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] > header')
+  const boxOf = (locator) => locator.evaluate(element => {
+    const { top, left, bottom } = element.getBoundingClientRect()
+    return { top, left, bottom }
+  })
+
+  for (const width of [1280, 1920]) {
+    test(`aligns the heading with the page column and the top of the side navigation at ${width} pixels`, async ({ adminPage: page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(siteUrl('/settings/audit'))
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+      const heading = await boxOf(page.locator('#administration-title'))
+      const content = await boxOf(page.locator('[data-ingot-part="page"]'))
+      const navigation = await boxOf(page.getByRole('navigation', { name: 'Administration', exact: true }))
+      expect(Math.abs(heading.left - content.left), 'the heading and the page column share their left edge, in px').toBeLessThanOrEqual(0.5)
+      expect(Math.abs(heading.top - navigation.top), 'the heading and the side navigation share their top edge, in px').toBeLessThanOrEqual(0.5)
+    })
+  }
+
+  test('draws the heading above the index at 1000 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1000, height: 900 })
+    await page.goto(siteUrl('/settings'))
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+    const header = await boxOf(frameHeader(page))
+    const index = await boxOf(page.getByRole('navigation', { name: 'Administration', exact: true }))
+    expect(header.bottom, 'the index starts below the header, in px').toBeLessThanOrEqual(index.top + 0.5)
+  })
+
+  test('has no page animation under reduced motion', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(siteUrl('/settings/audit'))
+    const content = page.locator('[data-ingot-part="page"]')
+    await expect(content).toBeVisible()
+
+    const animation = await content.evaluate(element => getComputedStyle(element).animationName)
+    expect(animation, 'the page column has no animation under reduced motion').toBe('none')
   })
 })

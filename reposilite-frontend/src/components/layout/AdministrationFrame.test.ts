@@ -460,3 +460,52 @@ describe('AdministrationFrame on the settings pages', () => {
     expect(wrapper.get('h1').text(), 'the page is named by its heading').toBe('Audit settings')
   })
 })
+
+// The placement of design D2: from 1240 pixels the header sits in the page column, beside the side navigation, and
+// below 1240 pixels the three stack in DOM order (header, side navigation, page).
+describe('AdministrationFrame header beside the side navigation', () => {
+  it('places the frame in a grid with a side navigation column and a page column from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const classes = wrapper.element.classList
+    expect(classes, 'the frame is a grid from the 1240 pixel breakpoint').toContain('large:grid')
+    expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-[208px_minmax(0,1fr)]')
+  })
+
+  it('puts the header in the page column on the first row from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const header = wrapper.find('header').classes()
+    expect(header, 'the header starts in the page column').toContain('large:col-start-2')
+    expect(header, 'and sits on the first row, above the page').toContain('large:row-start-1')
+  })
+
+  it('lets the layout join the grid of the frame from 1240 pixels, so the side navigation can start with the header', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(measureOf(wrapper).classList, 'the wrapper of the layout has no box of its own from 1240 pixels').toContain('large:contents')
+  })
+
+  it('keeps the header above the side navigation and the page below 1240 pixels, in DOM order, with no grid', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(wrapper.element.classList.contains('grid'), 'no grid below 1240 pixels').toBe(false)
+    const header = wrapper.get('header').element
+    const layout = measureOf(wrapper)
+    expect(header.compareDocumentPosition(layout) & Node.DOCUMENT_POSITION_FOLLOWING, 'the header comes before the layout in the document').toBeTruthy()
+  })
+
+  it('caps a reading page at the 960 pixel measure including the side navigation, from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const page = wrapper.get('[data-ingot-part="page"]').element.classList
+    expect(page, 'the page column keeps the measure beside the 208 pixel side navigation and its 40 pixel gap').toContain('large:max-w-[calc(var(--container-md-reading)-15.5rem)]')
+  })
+
+  it('does not cap a wide page from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: false })
+
+    const page = wrapper.get('[data-ingot-part="page"]').element.classList
+    expect(page, 'a wide page takes the page column').not.toContain('large:max-w-[calc(var(--container-md-reading)-15.5rem)]')
+  })
+})

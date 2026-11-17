@@ -122,12 +122,52 @@ describe('SideNavLayout', () => {
     expect(wrapper.find(SIDE_NAV).classes()).not.toContain('sticky')
   })
 
-  it('lays the side navigation and the page in a row only from 1240 pixels', async () => {
+  it('joins the grid of the frame from 1240 pixels, with no row of its own', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
     const classes = wrapper.element.classList
-    expect(classes, 'the row starts at the 1240 pixel breakpoint').toContain('large:flex-row')
+    expect(classes, 'the layout has no box of its own from the 1240 pixel breakpoint').toContain('large:contents')
+    expect(classes, 'the row of the old layout is gone').not.toContain('large:flex-row')
     expect(classes, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
+  })
+
+  it('places the side navigation in the first column, over the header and the page rows, from 1240 pixels', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+
+    const classes = wrapper.find(SIDE_NAV).classes()
+    expect(classes, 'the first column').toContain('large:col-start-1')
+    expect(classes, 'the header row and the page row').toContain('large:row-span-2')
+    expect(classes, 'it starts at the top row, with the header').toContain('large:row-start-1')
+    expect(classes, 'and keeps its own height, so it sticks inside its area').toContain('large:self-start')
+  })
+
+  it('places the page in the second column, below the header row, from 1240 pixels', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+
+    const classes = wrapper.get('[data-ingot-part="page"]').classes()
+    expect(classes, 'the second column').toContain('large:col-start-2')
+    expect(classes, 'the row under the header').toContain('large:row-start-2')
+  })
+
+  it('keeps the page element when only the query changes, and renews it when the entry changes', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+    const pageBefore = wrapper.get('[data-ingot-part="page"]').element
+
+    await wrapper.vm.$router.replace({ path: '/access/users', query: { tab: 'storage' } })
+    await flushPromises()
+    expect(wrapper.get('[data-ingot-part="page"]').element, 'a query change keeps the page, so a typed value keeps its focus').toBe(pageBefore)
+
+    await wrapper.setProps({ current: 'machines' })
+    expect(wrapper.get('[data-ingot-part="page"]').element, 'an entry change renews the page element').not.toBe(pageBefore)
+  })
+
+  it('plays the page enter animation on the page column only, and turns it off under reduced motion', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+
+    const page = wrapper.get('[data-ingot-part="page"]').classes()
+    expect(page, 'the page column has the enter animation').toContain('animate-md-page-enter')
+    expect(page, 'reduced motion removes it').toContain('motion-reduce:animate-none')
+    expect(wrapper.find(SIDE_NAV).classes(), 'the side navigation does not animate').not.toContain('animate-md-page-enter')
   })
 
   it('shows the side navigation and the page side by side on wide widths', async () => {
