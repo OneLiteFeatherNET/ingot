@@ -19,6 +19,8 @@ import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.AccountThrottle
+import net.onelitefeather.ingot.identity.login.LoginAttemptPolicy
+import net.onelitefeather.ingot.identity.login.SharedFailedAddressStore
 import net.onelitefeather.ingot.identity.login.JdkBreachRangeClient
 import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.LoginFacade
@@ -56,6 +58,7 @@ import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import java.security.SecureRandom
 import java.time.Clock
+import java.time.Duration
 import java.util.Base64
 
 @Plugin(
@@ -165,6 +168,19 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
         accountThrottle?.let { facade<AuthenticationFacade>().installAccountGuard(it) }
+
+        // While the account throttle is on, the per-address counter of Basic and Bearer requests lives in the login tables, so
+        // that replicas count together. Off, each instance counts in its own memory, as before.
+        if (accountThrottleOn) {
+            database?.let { database ->
+                facade<AuthenticationFacade>().installSharedFailedAddresses(
+                    SharedFailedAddressStore(
+                        store = LoginStore(database, clock),
+                        purgeFloor = { maxOf(Duration.ofMinutes(loginSettings.get().lockoutMinutes), LoginAttemptPolicy.MAX_LOCKOUT) },
+                    )
+                )
+            }
+        }
 
         // The breached-password check reads its settings on every password change. The offline list of its mode OFFLINE is
         // loaded here, so that an unreadable file stops the start rather than the first password change. Off by default.

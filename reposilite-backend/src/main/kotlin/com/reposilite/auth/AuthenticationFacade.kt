@@ -51,6 +51,7 @@ import panda.std.reactive.Reference
 import panda.std.reactive.Subscriber
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.SortedSet
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit.NANOSECONDS
@@ -123,45 +124,103 @@ class AuthenticationFacade(
     @Volatile
     private var installedSignInObserver: SignInObserver = SignInObserver.OFF
 
+    /** The failure counter of this instance. It is used unless a shared counter is installed. */
+    private val localFailedAddresses = LocalFailedAddresses()
+
+    /** The shared failure counter of the login tables. Installed only while the account throttle is on, see [installSharedFailedAddresses]. */
+    @Volatile
+    private var sharedFailedAddresses: FailedAddressStore? = null
+
+    private fun failedAddresses(): FailedAddressStore =
+        sharedFailedAddresses ?: localFailedAddresses
+
+    /** The ban rules, read on every use, so that a changed setting applies at once. */
+    private fun failedAttemptRules(): FailedAddressRules =
+        bruteForceProtectionSettings.map {
+            val banDuration = Duration.ofSeconds(it.banDurationSeconds)
+            FailedAddressRules(
+                maxAttempts = it.maxAttempts,
+                banDuration = banDuration,
+                lifetime = maxOf(FAILED_ATTEMPT_MIN_LIFETIME, banDuration),
+            )
+        }
+
     /**
-     * Failure records run on the injected clock. A record lives at least as long as the current ban, so it is never
-     * forgotten while the ban it started is still running, also when the ban duration is changed at runtime.
+     * The failure counter of one instance. Records sit in a Caffeine cache on the injected clock. A record lives at least as
+     * long as the current ban, so it is never forgotten while the ban it started is still running, also when the ban duration
+     * is changed at runtime.
      */
-    private val failedAttempts: CaffeineCache<String, FailedAttempt> by lazy {
-        Caffeine
-            .newBuilder()
-            .ticker(CaffeineTicker { clock.millis() * 1_000_000L })
-            .expireAfter(failedAttemptExpiry)
-            .build()
+    private inner class LocalFailedAddresses : FailedAddressStore {
+
+        private val expiry = object : Expiry<String, FailedAttempt> {
+
+            override fun expireAfterCreate(key: String, value: FailedAttempt, currentTime: Long): Long =
+                failedAttemptRules().lifetime.toNanos()
+
+            override fun expireAfterUpdate(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long =
+                failedAttemptRules().lifetime.toNanos()
+
+            override fun expireAfterRead(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long {
+                val remainingMillis = value.writtenAtMillis + failedAttemptRules().lifetime.toMillis() - clock.millis()
+                return maxOf(0L, remainingMillis) * 1_000_000L
+            }
+
         }
 
-    private val failedAttemptExpiry = object : Expiry<String, FailedAttempt> {
-
-        override fun expireAfterCreate(key: String, value: FailedAttempt, currentTime: Long): Long =
-            failedAttemptLifetime().toNanos()
-
-        override fun expireAfterUpdate(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long =
-            failedAttemptLifetime().toNanos()
-
-        override fun expireAfterRead(key: String, value: FailedAttempt, currentTime: Long, currentDuration: Long): Long {
-            val remainingMillis = value.writtenAtMillis + failedAttemptLifetime().toMillis() - clock.millis()
-            return maxOf(0L, remainingMillis) * 1_000_000L
+        private val attempts: CaffeineCache<String, FailedAttempt> by lazy {
+            Caffeine
+                .newBuilder()
+                .ticker(CaffeineTicker { clock.millis() * 1_000_000L })
+                .expireAfter(expiry)
+                .build()
         }
+
+        override fun read(address: String, now: Instant, rules: FailedAddressRules): FailedAddressAttempt? =
+            attempts.getIfPresent(address)?.toAttempt(rules)
+
+        override fun countFailure(address: String, now: Instant, rules: FailedAddressRules): FailedAddressAttempt {
+            val current = attempts.getIfPresent(address)
+            val count = (current?.count ?: 0) + 1
+            val nowMillis = now.toEpochMilli()
+            val updated = FailedAttempt(
+                count = count,
+                limitReachedMillis = if (count >= rules.maxAttempts) current?.limitReachedMillis ?: nowMillis else null,
+                writtenAtMillis = nowMillis,
+            )
+            attempts.put(address, updated)
+            return updated.toAttempt(rules)
+        }
+
+        override fun forget(address: String) {
+            attempts.invalidate(address)
+        }
+
+        /** Rewrites every record, so that its lifetime is counted again with the current ban duration. */
+        fun refreshLifetimes() {
+            attempts.asMap().forEach { (address, attempt) -> attempts.put(address, attempt) }
+        }
+
+        private fun FailedAttempt.toAttempt(rules: FailedAddressRules): FailedAddressAttempt =
+            FailedAddressAttempt(
+                count = count,
+                bannedUntil = limitReachedMillis?.let { Instant.ofEpochMilli(it).plus(rules.banDuration) },
+                writtenAt = Instant.ofEpochMilli(writtenAtMillis),
+            )
 
     }
 
-    /** Rewrites every failure record, so that its lifetime is counted again with the current ban duration. */
-    private fun refreshFailedAttemptLifetimes() {
-        failedAttempts.asMap().forEach { (ip, attempt) -> failedAttempts.put(ip, attempt) }
+    /**
+     * Installs the shared failure counter of the login tables, so that every replica on the database counts the same
+     * failures. Until one is installed, each instance counts its own failures in memory.
+     */
+    fun installSharedFailedAddresses(store: FailedAddressStore) {
+        sharedFailedAddresses = store
     }
-
-    private fun failedAttemptLifetime(): Duration =
-        maxOf(FAILED_ATTEMPT_MIN_LIFETIME, Duration.ofSeconds(bruteForceProtectionSettings.map { it.banDurationSeconds }))
 
     init {
         accessTokenFacade.onTokenChanged { forgetCachedCredentials(it) }
         // A longer ban must also keep the records that were written before the change
-        bruteForceProtectionSettings.subscribe(Subscriber { refreshFailedAttemptLifetimes() })
+        bruteForceProtectionSettings.subscribe(Subscriber { localFailedAddresses.refreshLifetimes() })
     }
 
     fun registerAuthenticator(authenticator: Authenticator) {
@@ -318,31 +377,23 @@ class AuthenticationFacade(
             return false
         }
 
-        val attempt = failedAttempts.getIfPresent(ip) ?: return false
+        val rules = failedAttemptRules()
+        val store = failedAddresses()
+        val now = clock.instant()
+        val attempt = store.read(ip, now, rules) ?: return false
 
-        if (attempt.count < bruteForceProtectionSettings.map { it.maxAttempts }) {
+        if (attempt.count < rules.maxAttempts) {
             return false
         }
 
-        if (attempt.limitReachedMillis == null) {
-            return false
-        }
+        val bannedUntil = attempt.bannedUntil ?: return false
 
-        if (isBanned(attempt)) {
+        if (now.isBefore(bannedUntil)) {
             return true // Host is still blocked
         }
 
-        failedAttempts.invalidate(ip) // Ban duration has passed, unblocking the host
+        store.forget(ip) // Ban duration has passed, unblocking the host
         return false
-    }
-
-    /**
-     * The ban lasts the configured duration counted from the attempt that reached the limit, on the injected clock.
-     */
-    private fun isBanned(attempt: FailedAttempt): Boolean {
-        val reachedAt = attempt.limitReachedMillis ?: return false
-        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
-        return clock.millis() - reachedAt < banDuration
     }
 
     private fun trackBruteForceAttempt(ip: String, success: Boolean) {
@@ -350,31 +401,29 @@ class AuthenticationFacade(
             return
         }
 
+        val rules = failedAttemptRules()
+        val store = failedAddresses()
+        val now = clock.instant()
+
         if (success) {
-            val current = failedAttempts.getIfPresent(ip)
+            val current = store.read(ip, now, rules)
             // A valid login from a shared address must not lift a ban that is still running
-            if (current == null || !isBanned(current)) {
-                failedAttempts.invalidate(ip)
+            if (current == null || !current.isBannedAt(now)) {
+                store.forget(ip)
             }
             return
         }
 
-        val current = failedAttempts.getIfPresent(ip)
-        val count = (current?.count ?: 0) + 1
-        val maxAttempts = bruteForceProtectionSettings.map { it.maxAttempts }
-        val now = clock.millis()
-        val updated =
-            FailedAttempt(
-                count = count,
-                limitReachedMillis = if (count >= maxAttempts) current?.limitReachedMillis ?: now else null,
-                writtenAtMillis = now,
-            )
-        failedAttempts.put(ip, updated)
+        val updated = store.countFailure(ip, now, rules)
 
-        if (updated.count == bruteForceProtectionSettings.map { it.maxAttempts }) {
-            logger.warn("Brute force protection: IP $ip has been blocked after ${bruteForceProtectionSettings.map { it.maxAttempts }} failed authentication attempts")
+        if (updated.count == rules.maxAttempts) {
+            logger.warn("Brute force protection: IP $ip has been blocked after ${rules.maxAttempts} failed authentication attempts")
         }
     }
+
+    /** Whether the ban of this record is still running at [now]. */
+    private fun FailedAddressAttempt.isBannedAt(now: Instant): Boolean =
+        bannedUntil?.let { now.isBefore(it) } ?: false
 
     fun getSessionDetails(identifier: AccessTokenIdentifier): Result<SessionDetails, ErrorResponse> =
         accessTokenFacade.getAccessTokenById(identifier)

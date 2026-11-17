@@ -104,7 +104,7 @@ internal class SharedBasicAddressCounterTest {
             bruteForceProtectionSettings = settings,
             clock = clock,
         )
-        store?.let { facade.installSharedFailedAddresses(SharedFailedAddressStore(it, clock)) }
+        store?.let { facade.installSharedFailedAddresses(SharedFailedAddressStore(it)) }
         return Replica(facade, authenticator)
     }
 

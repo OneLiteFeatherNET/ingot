@@ -95,7 +95,7 @@ internal class LoginAttemptLimiter(
      */
     private fun purgeQuietKeys(now: Instant, lockout: Duration) {
         val longest = if (lockout > LoginAttemptPolicy.MAX_LOCKOUT) lockout else LoginAttemptPolicy.MAX_LOCKOUT
-        store.deleteAttemptsBefore(now.minus(longest))
+        store.deleteAttemptsBefore(now.minus(longest), now)
     }
 
     companion object {
@@ -109,6 +109,13 @@ internal class LoginAttemptLimiter(
         /** The key of an address, across all user names. */
         fun addressKey(address: String): String =
             digest("address|$address")
+
+        /**
+         * The key of the legacy per-address counter of Basic authentication. It is not [addressKey]: the dashboard counts
+         * under that key, and the two counters must not refuse each other's requests.
+         */
+        fun basicAddressKey(address: String): String =
+            digest("basic-address|$address")
 
         /**
          * The key of a user name across every address. It delays guesses from addresses the name never signed in from, and
