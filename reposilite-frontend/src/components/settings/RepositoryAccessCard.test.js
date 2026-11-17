@@ -421,4 +421,31 @@ describe('RepositoryAccessCard', () => {
     expect(wrapper.find('[data-test="repository-access"]').exists()).toBe(false)
     expect(repositoryAccess).not.toHaveBeenCalled()
   })
+
+  describe('as a card of the card primitive', () => {
+    beforeEach(async () => {
+      install()
+      wrapper = await mountCard()
+    })
+
+    const card = () => wrapper.get('[data-test="repository-access"]')
+
+    it('is drawn as the low variant of the card, a flat tinted panel on the page', () => {
+      expect(card().attributes('data-variant')).toBe('low')
+    })
+
+    it('keeps the medium corner radius and the default padding of the card', () => {
+      expect(card().classes()).toContain('rounded-corner-medium')
+      expect(card().classes()).toContain('p-4')
+    })
+
+    it('draws no shadow and no outline, as the low variant does', () => {
+      expect(card().classes(), 'the low card lies flat on the page').not.toContain('shadow-elevation-1')
+      expect(card().classes(), 'the low card has no outline').not.toContain('border-outline-variant')
+    })
+
+    it('keeps the repository-access-card anchor on the card root', () => {
+      expect(card().attributes('data-ingot-component')).toBe('repository-access-card')
+    })
+  })
 })
