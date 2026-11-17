@@ -27,7 +27,8 @@ import {
   routeMeta,
   setContributions,
   setSupportBundleOffered,
-  shortcutsOf
+  shortcutsOf,
+  indexRebuildLinkOf
 } from './registry'
 import { ROUTES } from '../router/routes'
 import { ACCESS_NODES, ADMIN_NODES, canUse } from '../store/nodeAccess'
@@ -350,10 +351,13 @@ describe('shortcuts between the pages of the Administration tree', () => {
     expect(shortcutsOf('page:maintenance', canWith(['ingot.admin.maintenance', 'ingot.admin.settings']))).toEqual([])
   })
 
-  it('links Search index to the Search index tab of Maintenance for a visitor with the maintenance node', () => {
-    expect(shortcutsOf('settings:search', canWith(['ingot.admin.maintenance']))).toEqual([
-      { label: 'Rebuild now on Maintenance', to: { name: 'maintenance', query: { tab: 'index' } } },
-    ])
+  it('draws no header shortcut on Search index, whose rebuild link sits in the page content with its explanation', () => {
+    expect(shortcutsOf('settings:search', canWith(['ingot.admin.maintenance']))).toEqual([])
+  })
+
+  it('offers the rebuild link to the Index tab of Maintenance only to a visitor with the maintenance node', () => {
+    expect(indexRebuildLinkOf(canWith(['ingot.admin.maintenance']))).toEqual({ name: 'maintenance', query: { tab: 'index' } })
+    expect(indexRebuildLinkOf(canWith(['ingot.admin.settings']))).toBeUndefined()
   })
 
   it('shows no shortcut on a page without a related page', () => {

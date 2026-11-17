@@ -257,6 +257,15 @@ describe('AdministrationFrame page header', () => {
     expect(actions, 'beside the title again from 1240 pixels').toContain('large:basis-auto')
   })
 
+  it('keeps the header actions container out of the tab order and draws no focus outline on it', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
+
+    const actions = wrapper.get('header > div:last-child')
+    expect(actions.attributes('tabindex'), 'a container is not a focus stop').toBeUndefined()
+    const focusClasses = actions.classes().filter(name => /outline|ring|focus/.test(name))
+    expect(focusClasses, 'no focus style on the container: only the focused control draws its ring').toEqual([])
+  })
+
   it('keeps the actions row with its 48 pixel minimum on a page without actions, so the header keeps its height', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
