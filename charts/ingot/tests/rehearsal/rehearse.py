@@ -109,11 +109,10 @@ def upstream_values(bootstrap):
         "image": {"name": UPSTREAM_IMAGE_NAME, "tag": f"{UPSTREAM_IMAGE_TAG}@{UPSTREAM_IMAGE_DIGEST}"},
         "persistence": {"enabled": True},
         "resources": {"requests": {"cpu": "100m", "memory": "256Mi"}, "limits": {"memory": "768Mi"}},
-        # The upstream image reads REPOSILITE_ARGS, this chart reads REPOSILITE_OPTS. Both carry the bootstrap
-        # token, so the same values work for both images and only the image line changes in the upgrade.
+        # Both entrypoints read REPOSILITE_OPTS, so the same values work for both images and only the image
+        # line changes in the upgrade.
         "env": [
             {"name": "JAVA_OPTS", "value": "-Xmx256M"},
-            {"name": "REPOSILITE_ARGS", "value": options},
             {"name": "REPOSILITE_OPTS", "value": options},
         ],
     }
