@@ -17,13 +17,13 @@
 // The address of a request on the server, and the headers that travel with it.
 
 // A path prefix of the backend stays in front of the request path.
-export function upstreamUrl(backend, path, search = '') {
+export function upstreamUrl(backend: string, path: string, search = ''): string {
   const url = new URL(backend)
   const prefix = url.pathname.replace(/\/$/, '')
   return `${url.origin}${prefix}${path}${search}`
 }
 
-const HOP_BY_HOP = new Set([
+const HOP_BY_HOP: ReadonlySet<string> = new Set([
   'connection',
   'keep-alive',
   'proxy-authenticate',
@@ -34,13 +34,21 @@ const HOP_BY_HOP = new Set([
   'upgrade',
 ])
 
-export function isHopByHop(name) {
+export function isHopByHop(name: string): boolean {
   return HOP_BY_HOP.has(name.toLowerCase())
 }
 
 // The forwarding headers of the nginx location: the host, the address of the client, the chain of
 // addresses it came through, and the scheme it used to reach this container.
-export function forwardedHeaders({ host, remoteAddress, forwardedFor = '', protocol, upgrade }) {
+export interface ForwardedSource {
+  host: string
+  remoteAddress: string
+  forwardedFor?: string
+  protocol: string
+  upgrade?: string
+}
+
+export function forwardedHeaders({ host, remoteAddress, forwardedFor = '', protocol, upgrade }: ForwardedSource): Headers {
   const headers = new Headers()
   headers.set('Host', host)
   headers.set('X-Real-IP', remoteAddress)

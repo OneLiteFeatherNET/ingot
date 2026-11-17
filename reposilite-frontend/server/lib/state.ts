@@ -14,15 +14,26 @@
  * limitations under the License.
  */
 
+import type { useStorage } from 'nitropack/runtime'
+import type { DashboardConfig } from './config'
+
 // What the process learns once at start: the validated configuration, the document with its base path
 // applied, and the storage of the bundled assets. The start plugin sets it before the server listens.
 
-let current = null
+export interface DashboardState {
+  config: DashboardConfig
+  segments: readonly string[]
+  storage: ReturnType<typeof useStorage>
+  // Resolves to the document once the base path is applied. It rejects only when the process has to stop.
+  document: () => Promise<string>
+}
 
-export function setDashboard(state) {
+let current: Readonly<DashboardState> | null = null
+
+export function setDashboard(state: DashboardState): void {
   current = Object.freeze(state)
 }
 
-export function dashboardOrNull() {
+export function dashboardOrNull(): Readonly<DashboardState> | null {
   return current
 }

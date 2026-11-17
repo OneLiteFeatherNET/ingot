@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+import type { IncomingHttpHeaders, IncomingMessage } from 'node:http'
 import { Readable, Transform, pipeline } from 'node:stream'
+import type { TransformCallback } from 'node:stream'
 import { Agent, request } from 'undici'
 import { securityHeaders } from './security-headers'
 import { isHopByHop } from './upstream'
@@ -31,14 +33,19 @@ const NO_BODY = new Set([101, 103, 204, 205, 304])
 
 // A limit on the request body. It counts the bytes as they stream, so a chunked upload without a length is
 // stopped too. The returned state says whether the limit was the reason the upload ended.
-export function limitBody(stream, maxBytes) {
+export interface LimitedBody {
+  body: Readable
+  state: { exceeded: boolean }
+}
+
+export function limitBody(stream: Readable, maxBytes: number): LimitedBody {
   const state = { exceeded: false }
   if (!Number.isFinite(maxBytes)) {
     return { body: stream, state }
   }
   let seen = 0
   const limiter = new Transform({
-    transform(chunk, _encoding, done) {
+    transform(chunk: Buffer, _encoding: BufferEncoding, done: TransformCallback) {
       seen += chunk.length
       if (seen > maxBytes) {
         state.exceeded = true
@@ -54,8 +61,8 @@ export function limitBody(stream, maxBytes) {
 
 // Headers of the request to the server: the client's own, without the hop by hop ones, and the forwarding
 // headers rebuilt from the connection.
-export function outgoingRequestHeaders(incoming, forwarded) {
-  const headers = {}
+export function outgoingRequestHeaders(incoming: IncomingHttpHeaders, forwarded: Headers): Record<string, string> {
+  const headers: Record<string, string> = {}
   for (const [name, value] of Object.entries(incoming)) {
     if (value === undefined || isHopByHop(name) || name === 'host' || name.startsWith('x-forwarded-') || name === 'x-real-ip') {
       continue
@@ -68,7 +75,7 @@ export function outgoingRequestHeaders(incoming, forwarded) {
   return headers
 }
 
-function responseHeaders(upstreamHeaders) {
+function responseHeaders(upstreamHeaders: IncomingHttpHeaders): Headers {
   const headers = new Headers()
   for (const [name, value] of Object.entries(upstreamHeaders)) {
     if (isHopByHop(name)) {
@@ -77,7 +84,7 @@ function responseHeaders(upstreamHeaders) {
     if (Array.isArray(value)) {
       value.forEach(item => headers.append(name, item))
     } else {
-      headers.set(name, value)
+      headers.set(name, String(value))
     }
   }
   for (const [name, value] of Object.entries(securityHeaders())) {
@@ -86,7 +93,7 @@ function responseHeaders(upstreamHeaders) {
   return headers
 }
 
-function plain(status, text) {
+function plain(status: number, text: string): Response {
   return new Response(text, {
     status,
     headers: { ...securityHeaders(), 'Content-Type': 'text/plain; charset=utf-8' },
@@ -95,7 +102,21 @@ function plain(status, text) {
 
 // Sends the request to the server and answers with what it answers. `req` is the incoming Node request, so
 // its body streams through without being read here.
-export async function proxyRequest({ req, method, target, headers, maxUploadBytes }) {
+export interface ProxyRequest {
+  req: IncomingMessage
+  method: string
+  target: string
+  headers: Record<string, string>
+  maxUploadBytes: number
+}
+
+// The code of a failed connection, or its message when it has no code.
+function failureReason(error: unknown): string {
+  const failure = error as { code?: string; message?: string }
+  return String(failure.code ?? failure.message)
+}
+
+export async function proxyRequest({ req, method, target, headers, maxUploadBytes }: ProxyRequest): Promise<Response> {
   const sendsBody = method !== 'GET' && method !== 'HEAD'
   const limited = sendsBody ? limitBody(req, maxUploadBytes) : null
 
@@ -111,13 +132,13 @@ export async function proxyRequest({ req, method, target, headers, maxUploadByte
     if (limited?.state.exceeded) {
       return plain(413, 'Request Entity Too Large')
     }
-    return plain(502, `Bad Gateway: ${error.code ?? error.message}`)
+    return plain(502, `Bad Gateway: ${failureReason(error)}`)
   }
 
   const { statusCode, headers: upstreamHeaders, body } = upstream
   const empty = method === 'HEAD' || NO_BODY.has(statusCode)
   if (empty) {
-    body.dump()
+    void body.dump()
   }
   return new Response(empty ? null : Readable.toWeb(body), {
     status: statusCode,

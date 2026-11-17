@@ -15,7 +15,7 @@
  */
 
 // The types of the files a dashboard build contains. Anything else is sent as an opaque download.
-const TYPES = {
+const TYPES: Readonly<Record<string, string>> = {
   html: 'text/html; charset=utf-8',
   js: 'text/javascript; charset=utf-8',
   css: 'text/css; charset=utf-8',
@@ -33,7 +33,7 @@ const TYPES = {
   ttf: 'font/ttf',
 }
 
-export function contentTypeFor(path) {
+export function contentTypeFor(path: string): string {
   const extension = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
   return TYPES[extension] ?? 'application/octet-stream'
 }

@@ -18,9 +18,7 @@
 // throws here and the process exits with the message before it answers a request. The document is read from
 // the bundled assets as soon as the process starts; a document missing from the image ends the process too.
 
-/* global defineNitroPlugin */
-
-import { useStorage } from 'nitropack/runtime'
+import { defineNitroPlugin, useStorage } from 'nitropack/runtime'
 import segments from '../../src/router/dashboard-segments.json'
 import { readDashboardConfig } from '../lib/config'
 import { applyBasePath } from '../lib/index-html'
@@ -34,10 +32,10 @@ export default defineNitroPlugin(() => {
 
   const storage = useStorage('assets:dashboard')
 
-  let document = null
-  const loadDocument = () => {
+  let document: Promise<string> | null = null
+  const loadDocument = (): Promise<string> => {
     if (!document) {
-      document = storage.getItemRaw('index.html').then((raw) => {
+      document = storage.getItemRaw<Uint8Array>('index.html').then((raw) => {
         if (raw === null) {
           throw new Error('the dashboard document index.html is missing from the image')
         }
@@ -46,7 +44,7 @@ export default defineNitroPlugin(() => {
     }
     return document
   }
-  loadDocument().catch((error) => {
+  loadDocument().catch((error: Error) => {
     console.error(`ingot-dashboard: ${error.message}`)
     process.exit(1)
   })

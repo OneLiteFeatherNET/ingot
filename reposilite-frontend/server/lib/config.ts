@@ -21,10 +21,19 @@ const DEFAULT_BACKEND = 'http://ingot-backend:8080'
 const DEFAULT_BASE_PATH = '/'
 const DEFAULT_MAX_UPLOAD_SIZE = '1024m'
 
-const UNITS = { '': 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 }
+const UNITS: Readonly<Record<string, number>> = { '': 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 }
+
+export interface DashboardConfig {
+  backend: string
+  basePath: string
+  maxUploadBytes: number
+  warnings: string[]
+}
 
 export class DashboardConfigError extends Error {
-  constructor(variable, reason) {
+  readonly variable: string
+
+  constructor(variable: string, reason: string) {
     super(`${variable}: ${reason}`)
     this.name = 'DashboardConfigError'
     this.variable = variable
@@ -33,7 +42,7 @@ export class DashboardConfigError extends Error {
 
 // A size such as `1024m`, `512k` or a plain byte count. Zero means no limit, as it does for nginx.
 // Returns null for anything else.
-export function parseByteSize(value) {
+export function parseByteSize(value: string | number): number | null {
   const match = /^(\d+)([kmg]?)b?$/i.exec(String(value).trim())
   if (!match) {
     return null
@@ -46,8 +55,8 @@ export function parseByteSize(value) {
 }
 
 // `env` is a plain map, so the caller decides where the values come from. An empty value counts as not set.
-export function readDashboardConfig(env = {}) {
-  const warnings = []
+export function readDashboardConfig(env: Readonly<Record<string, string | undefined>> = {}): DashboardConfig {
+  const warnings: string[] = []
 
   const backend = normalizeBackend(env.INGOT_BACKEND || DEFAULT_BACKEND)
 
@@ -76,8 +85,8 @@ export function readDashboardConfig(env = {}) {
   }
 }
 
-function normalizeBackend(value) {
-  let url
+function normalizeBackend(value: string): string {
+  let url: URL
   try {
     url = new URL(value)
   } catch {

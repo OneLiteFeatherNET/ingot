@@ -19,7 +19,7 @@
 // a dashboard word that continues it (settingsfoo) is proxied.
 
 // Returns the path below the base path, or null when the request is outside it.
-function stripBase(pathname, basePath) {
+function stripBase(pathname: string, basePath: string): string | null {
   if (basePath === '/') {
     return pathname
   }
@@ -33,7 +33,21 @@ function stripBase(pathname, basePath) {
   return null
 }
 
-export function classify(pathname, { segments, basePath = '/' }) {
+export interface RouteOptions {
+  segments: readonly string[]
+  basePath?: string
+}
+
+// The answer for one request: the kind decides who serves it, and the path is the part below the base path.
+export type Route =
+  | { kind: 'health' }
+  | { kind: 'outside' }
+  | { kind: 'document'; path: string }
+  | { kind: 'asset'; path: string }
+  | { kind: 'favicon'; path: string }
+  | { kind: 'proxy'; path: string }
+
+export function classify(pathname: string, { segments, basePath = '/' }: RouteOptions): Route {
   if (pathname === '/healthz') {
     return { kind: 'health' }
   }
