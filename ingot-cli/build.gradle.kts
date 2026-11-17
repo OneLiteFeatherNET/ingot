@@ -42,3 +42,18 @@ tasks.shadowJar {
 tasks.jar {
     enabled = false
 }
+
+
+// The start scripts and the distributions copy the shaded jar, so they must run after it. Without these edges Gradle
+// reports an implicit dependency and the build fails.
+tasks.startScripts {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.distZip {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.distTar {
+    dependsOn(tasks.shadowJar)
+}
