@@ -4,7 +4,7 @@ description: Reference for the storage providers of Ingot, the file system (fs) 
 
 # Storage providers
 
-A storage provider holds the files of one repository. Each repository chooses its provider in the `storageProvider` field of its settings, see [Settings domains](../settings/settings-domains.md#maven). Ingot ships two providers.
+A storage provider holds the files of one repository. Each repository chooses its provider in the `storageProvider` field of its settings, see [Settings domains](../settings/settings-domains.md#maven). Ingot ships two providers, and the optional plugins add more.
 
 | Provider | `type` | Holds the files in |
 | --- | --- | --- |
@@ -12,6 +12,7 @@ A storage provider holds the files of one repository. Each repository chooses it
 | S3 | `s3` | A bucket of an S3-compatible object store. |
 | Cache | `cache` | A local copy of immutable files in front of another provider. Installed as the storage cache plugin, see [Cache provider](#cache-provider). |
 | Azure Blob | `azure-blob` | A container of an Azure storage account. This is the optional `azure-storage` plugin, tier [Experimental](../plugins/plugin-tiers.md#experimental), see [Use Azure Blob storage](../../set-up/cluster/use-azure-blob-storage.md). |
+| Google Cloud Storage | `gcs` | A bucket of Google Cloud Storage, through the optional `gcs-storage` plugin. See [Google Cloud Storage provider](#google-cloud-storage-provider). |
 
 When a stored `storageProvider` has no `type`, Ingot uses `s3` if the document contains `bucketName` and `fs` otherwise. A repository without a `storageProvider` uses the file system provider with its defaults.
 
@@ -231,3 +232,29 @@ Response fields:
 * [Settings domains](../settings/settings-domains.md)
 * [Environment variables](../configuration/environment-variables.md)
 * [Configuration file and startup parameters](../configuration/configuration-and-startup.md)
+
+## Google Cloud Storage provider
+
+The provider of type `gcs` is not part of the image. It is the optional `gcs-storage` plugin, and it is installed as described in [Use Google Cloud Storage](../../set-up/cluster/use-google-cloud-storage.md). Without the plugin, a repository of type `gcs` does not load.
+
+### Settings
+
+| Field | Type | Default | Secret | Meaning |
+| --- | --- | --- | --- | --- |
+| `type` | String | `gcs` | no | Fixed value. |
+| `projectId` | String | empty | no | Project for billing and quota. Empty leaves the client default. |
+| `bucket` | String | empty | no | Required. Bucket that holds the repository. |
+| `prefix` | String | empty | no | Prefix of every object name. Leading and trailing slashes are removed. |
+| `authentication` | String | `adc` | no | `adc` for Application Default Credentials, including GKE workload identity, or `service-account-key`. |
+| `credentialsJson` | String | empty | yes | Service account key as JSON. Required with `service-account-key`, refused with `adc`. |
+| `chunkSize` | Long | `8388608` | no | Bytes per resumable upload chunk. A multiple of 256 KiB, from 256 KiB to 64 MiB. |
+
+### Rules
+
+| Rule | Behavior |
+| --- | --- |
+| Invalid settings | A repository whose settings fail a rule does not load, and the failure names the key. |
+| Refused identity | A missing permission is answered with `403` and logged. It is never reported as an empty repository. |
+| Quota | None. The provider reports its usage as unknown and does not refuse an upload for lack of space. |
+
+For the limits of removal, uploads and archived objects, see [Use Google Cloud Storage](../../set-up/cluster/use-google-cloud-storage.md#limits).
