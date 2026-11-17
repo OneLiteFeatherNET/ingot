@@ -29,6 +29,7 @@ export interface MdBreadcrumbItem {
   label: string
   to?: RouteLocationRaw
   href?: string
+  title?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -42,11 +43,14 @@ defineSlots<{
   default?(): unknown
 }>()
 
-const LINK = 'md-touch-target md-focus-ring rounded-corner-small text-primary'
-const TRUNCATE = 'truncate max-w-md-crumb'
+// Every crumb, the current one included, has the same minimum height, so the text lines up on one centre line.
+const CRUMB = 'flex min-h-12 min-w-0 items-center'
+const LINK = `md-touch-target md-focus-ring rounded-corner-small text-primary ${CRUMB}`
+const MIDDLE = 'min-w-0 max-w-md-crumb'
 
 const isLast = (index: number) => index === props.items.length - 1
 const isMiddle = (index: number) => index > 0 && !isLast(index)
+const crumbClass = (index: number) => (isMiddle(index) ? MIDDLE : 'min-w-0')
 </script>
 
 <template>
@@ -58,25 +62,28 @@ const isMiddle = (index: number) => index > 0 && !isLast(index)
       <li
         v-for="(item, index) in items"
         :key="index"
-        class="flex min-w-0 items-center gap-2"
+        class="flex min-w-0 max-w-full items-center gap-2"
       >
         <RouterLink
           v-if="item.to !== undefined && !isLast(index)"
           :to="item.to"
-          :class="[LINK, isMiddle(index) && TRUNCATE]"
+          :title="item.title"
+          :class="[LINK, crumbClass(index)]"
         >
-          {{ item.label }}
+          <span class="min-w-0 truncate">{{ item.label }}</span>
         </RouterLink>
         <a
           v-else-if="item.href && !isLast(index)"
           :href="item.href"
-          :class="[LINK, isMiddle(index) && TRUNCATE]"
-        >{{ item.label }}</a>
+          :title="item.title"
+          :class="[LINK, crumbClass(index)]"
+        ><span class="min-w-0 truncate">{{ item.label }}</span></a>
         <span
           v-else
           :aria-current="isLast(index) ? 'page' : undefined"
-          :class="isMiddle(index) && TRUNCATE"
-        >{{ item.label }}</span>
+          :title="item.title"
+          :class="[CRUMB, crumbClass(index), 'text-on-surface']"
+        ><span class="min-w-0 truncate">{{ item.label }}</span></span>
         <span
           v-if="!isLast(index)"
           aria-hidden="true"
