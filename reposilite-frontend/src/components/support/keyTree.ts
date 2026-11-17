@@ -53,10 +53,16 @@ const segmentsOf = (key: string, split: KeySplit): string[] => {
   return key.split('_')
 }
 
-// The offset in the key where each segment ends, so a group label can be cut from the key as it was written.
+// The offset in the key where each segment ends, so a group label can be cut from the key as it was written. An empty
+// segment, as left by a leading or a doubled separator, sits after its separator, so it ends one character further on.
+// Otherwise a key that starts with a separator would name its group with an empty label.
 const endsOf = (key: string, segments: readonly string[]): number[] => {
   let position = 0
   return segments.map((segment) => {
+    if (segment === '') {
+      position = Math.min(position + 1, key.length)
+      return position
+    }
     const at = key.indexOf(segment, position)
     position = at === -1 ? position : at + segment.length
     return position
