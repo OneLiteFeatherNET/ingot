@@ -25,6 +25,7 @@ import MdTextField from '../md/MdTextField.vue'
 import ProviderIcon from '../icons/ProviderIcon.vue'
 import CopyIcon from '../icons/CopyIcon.vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
+import { copyToClipboard } from '../card/copySnippet'
 import {
   PROVIDER_ID_PATTERN,
   PROVIDER_TYPES,
@@ -127,11 +128,13 @@ const chooseKind = (type: ProviderType) => {
   form.value = emptyProvider(type)
 }
 
-const copyCallback = () => {
-  const write = navigator.clipboard?.writeText(callbackUrl.value)
-  Promise.resolve(write)
-    .then(() => createSuccessToast('Callback URL copied'))
-    .catch(() => createErrorToast('The callback URL could not be copied, select it and copy it by hand'))
+const copyCallback = async () => {
+  const copied = await copyToClipboard(callbackUrl.value, globalThis.navigator?.clipboard)
+  if (copied) {
+    createSuccessToast('Callback URL copied')
+  } else {
+    createErrorToast('Could not copy the callback URL, select it and copy it by hand')
+  }
 }
 
 const save = () => {
