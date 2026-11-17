@@ -19,6 +19,7 @@ import { computed } from 'vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { isNothingToDelete } from './cleanup'
 import type { CleanupPreview } from './cleanup'
+import MdDataTable from '../md/MdDataTable.vue'
 
 /*
  * What a dry run of a policy would delete. Nothing is deleted by showing it; the list is the
@@ -29,6 +30,31 @@ const props = defineProps<{
 }>()
 
 const empty = computed(() => isNothingToDelete(props.preview))
+
+const COLUMNS = [
+  { key: 'repository', label: 'Repository' },
+  { key: 'path', label: 'Path' },
+  { key: 'version', label: 'Version' },
+  { key: 'size', label: 'Size' },
+  { key: 'reason', label: 'Reason' },
+]
+
+const rows = computed(() => props.preview.deletions.map((row) => ({
+  repository: row.repository,
+  path: row.path,
+  version: row.version ?? '',
+  size: row.sizeBytes,
+  reason: row.reason,
+})))
+
+// The table gives every cell the same classes, so the path, the size and the reason get theirs here.
+const CELL_CLASS: Record<string, string> = {
+  repository: 'block text-on-surface',
+  path: 'block font-mono md-body-small break-words text-on-surface',
+  version: 'block text-on-surface',
+  size: 'block text-right whitespace-nowrap text-on-surface',
+  reason: 'block md-body-small',
+}
 </script>
 
 <template>
@@ -71,68 +97,15 @@ const empty = computed(() => isNothingToDelete(props.preview))
       v-if="!empty"
       class="max-h-[60dvh] overflow-auto rounded-corner-small border border-outline-variant"
     >
-      <table class="w-full min-w-[32rem] border-collapse text-left">
-        <caption class="sr-only">
-          Artifacts a run would delete
-        </caption>
-        <thead class="sticky top-0 bg-surface-container-high">
-          <tr class="md-label-large text-on-surface-variant">
-            <th
-              scope="col"
-              class="px-3 py-2"
-            >
-              Repository
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-2"
-            >
-              Path
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-2"
-            >
-              Version
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-2 text-right"
-            >
-              Size
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-2"
-            >
-              Reason
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in preview.deletions"
-            :key="`${row.repository}:${row.path}`"
-            class="border-t border-outline-variant align-top md-body-medium text-on-surface"
-          >
-            <td class="px-3 py-2">
-              {{ row.repository }}
-            </td>
-            <td class="px-3 py-2 font-mono md-body-small break-words">
-              {{ row.path }}
-            </td>
-            <td class="px-3 py-2">
-              {{ row.version ?? '' }}
-            </td>
-            <td class="px-3 py-2 text-right whitespace-nowrap">
-              {{ formatBytes(row.sizeBytes) }}
-            </td>
-            <td class="px-3 py-2 md-body-small text-on-surface-variant">
-              {{ row.reason }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <MdDataTable
+        caption="Artifacts a run would delete"
+        :columns="COLUMNS"
+        :rows="rows"
+      >
+        <template #cell="{ column, value }">
+          <span :class="CELL_CLASS[column.key]">{{ column.key === 'size' ? formatBytes(value) : value }}</span>
+        </template>
+      </MdDataTable>
     </div>
   </div>
 </template>

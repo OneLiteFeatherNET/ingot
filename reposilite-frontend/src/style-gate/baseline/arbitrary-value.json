@@ -280,11 +280,6 @@
     "count": 1
   },
   {
-    "file": "src/components/maintenance/DryRunResult.vue",
-    "match": "min-w-[32rem]",
-    "count": 1
-  },
-  {
     "file": "src/components/maintenance/PolicyDialog.vue",
     "match": "max-h-[90dvh]",
     "count": 1
