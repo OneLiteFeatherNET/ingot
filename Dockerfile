@@ -20,7 +20,7 @@
 # tens of minutes, and emulated JVM builds fail in ways a native one never does. Only the
 # run stage below is built per target, and all it does there is create an account and copy
 # files.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk-noble@sha256:a871f3e3caddad75608fd4531ed8bbca5cc42a27dc1da3ea3a2e554772b0ee15 AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21.0.13.1_1-jdk-noble AS build
 COPY --exclude=entrypoint.sh . /home/ingot-build
 WORKDIR /home/ingot-build
 
@@ -37,7 +37,7 @@ EOF
 # revision in one place instead of duplicating them into build arguments.
 
 # Run stage
-FROM eclipse-temurin:21-jre-noble@sha256:000fd431958bc81a24abe1e8e5f0f0fd3ae365a594bd50aadb20696805f9408c AS run
+FROM eclipse-temurin:21.0.13.1_1-jre-noble AS run
 
 # The pinned base still ships apt and libapt-pkg 2.8.3 (CVE-2026-109518, fixed in 2.8.4) and
 # libbrotli1 1.1.0 (CVE-2026-111497, fixed in 1.1.0-2ubuntu0.1). Upgrade just those packages.
