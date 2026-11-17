@@ -89,9 +89,9 @@ describe('settings tabs without authentication', () => {
     expect(links, 'no Maven link, the domain is edited on the Repositories page').not.toContain('Maven')
   })
 
-  it('still renders the danger zone below the page', async () => {
+  it('does not render a danger zone below the page', async () => {
     await mountSettings('maven')
 
-    expect(wrapper.find('#settings-danger-title').text()).toBe('Danger zone')
+    expect(wrapper.find('#settings-danger-title').exists()).toBe(false)
   })
 })

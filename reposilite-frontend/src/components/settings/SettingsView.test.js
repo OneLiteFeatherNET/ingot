@@ -211,12 +211,11 @@ describe('SettingsView page', () => {
     expect(links).not.toContain('Maven')
   })
 
-  it('puts the factory reset in a danger zone at the end of the page', async () => {
+  it('keeps the factory reset off the settings pages, which reset every instance from the system and support page', async () => {
     await mountSettings({ props: { domain: 'maven' } })
 
-    const zone = wrapper.get('section[aria-labelledby="settings-danger-title"]')
-    expect(zone.text()).toContain('Danger zone')
-    expect(zone.findAll('button').map(button => button.text())).toContain('Factory reset')
+    expect(wrapper.find('#settings-danger-title').exists(), 'no danger zone on a settings page').toBe(false)
+    expect(wrapper.text(), 'no factory reset button on a settings page').not.toContain('Factory reset')
   })
 
   it('hides the action bar while nothing is unsaved', async () => {
