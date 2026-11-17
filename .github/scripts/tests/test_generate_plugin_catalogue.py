@@ -281,6 +281,116 @@ class EntryContentTest(GeneratorTestCase):
         self.assertFalse(os.path.exists(os.path.join(self.repository, CATALOGUE)), "nothing is written for a refused version")
 
 
+SERVER_TIER_NAMES = ("core", "official", "community", "experimental")
+
+
+class TierTest(GeneratorTestCase):
+    """The tier of each jar comes from the tier file that the tier check writes, as the lower case name the server reads."""
+
+    def setUp(self):
+        super().setUp()
+        self.tiers = os.path.join(self.temp, "plugin-tiers.json")
+        self.write_tiers({"opensearch-plugin": "experimental"})
+
+    def write_tiers(self, tiers):
+        with open(self.tiers, "w", encoding="utf-8") as handle:
+            json.dump(tiers, handle)
+
+    def publish_with_tiers(self, repository=None, version=NEW_VERSION):
+        return self.run_generator(
+            "publish", "--repository", repository or self.repository, "--tiers", self.tiers,
+            "--version", version, "--generated", GENERATED,
+        )
+
+    def test_new_entry_carries_the_tier_of_its_plugin_from_the_tier_file(self):
+        write_jar(self.repository, NEW_VERSION, NEW_JAR_BYTES)
+
+        self.assertEqual(0, self.publish_with_tiers(), self.last_stderr)
+
+        self.assertEqual("experimental", read_catalogue(self.repository)["plugins"][0]["tier"])
+
+    def test_each_tier_is_written_as_the_lower_case_name_the_server_reads(self):
+        for name in SERVER_TIER_NAMES:
+            with self.subTest(tier=name):
+                repository = os.path.join(self.temp, name)
+                os.makedirs(repository)
+                write_jar(repository, NEW_VERSION, NEW_JAR_BYTES)
+                self.write_tiers({"opensearch-plugin": name})
+
+                self.assertEqual(0, self.publish_with_tiers(repository), self.last_stderr)
+
+                self.assertEqual(name, read_catalogue(repository)["plugins"][0]["tier"])
+
+    def test_two_runs_with_the_same_tier_file_write_identical_bytes(self):
+        outputs = []
+        for run in ("first", "second"):
+            repository = os.path.join(self.temp, run)
+            os.makedirs(repository)
+            write_jar(repository, NEW_VERSION, NEW_JAR_BYTES)
+            self.assertEqual(0, self.publish_with_tiers(repository), self.last_stderr)
+            outputs.append(read_bytes(os.path.join(repository, CATALOGUE)))
+
+        self.assertEqual(outputs[0], outputs[1])
+
+    def test_plugin_missing_from_the_tier_file_stops_the_run_and_names_it(self):
+        self.seed_catalogue()
+        write_jar(self.repository, NEW_VERSION, NEW_JAR_BYTES)
+        self.write_tiers({})
+        before = self.catalogue_bytes()
+
+        code = self.publish_with_tiers(version=NEW_VERSION)
+
+        self.assertEqual(1, code, "a plugin without a tier is refused, it is never listed as community by default")
+        self.assertIn("opensearch-plugin", self.last_stderr)
+        self.assertEqual(before, self.catalogue_bytes(), "nothing is uploaded when a plugin has no tier")
+
+    def test_missing_tier_file_stops_the_run(self):
+        self.seed_catalogue()
+        write_jar(self.repository, NEW_VERSION, NEW_JAR_BYTES)
+        os.remove(self.tiers)
+        before = self.catalogue_bytes()
+
+        code = self.publish_with_tiers()
+
+        self.assertEqual(1, code, "a release without the tier check output is refused")
+        self.assertIn("plugin-tiers.json", self.last_stderr)
+        self.assertEqual(before, self.catalogue_bytes())
+
+    def test_listed_version_with_another_tier_stops_the_run_and_writes_nothing(self):
+        self.seed_catalogue()
+        before = self.catalogue_bytes()
+
+        # The fixture lists 3.5.28 without a tier field, which the server reads as community.
+        code = self.publish_with_tiers(version=FIXTURE_VERSION)
+
+        self.assertEqual(1, code, "a listed version cannot change its tier")
+        for fragment in (FIXTURE_VERSION, "community", "experimental"):
+            self.assertIn(fragment, self.last_stderr, "the message names the version and both tiers")
+        self.assertEqual(before, self.catalogue_bytes(), "nothing is written when the tier differs")
+
+    def test_listed_version_with_the_same_tier_is_unchanged(self):
+        self.seed_catalogue()
+        self.write_tiers({"opensearch-plugin": "community"})
+        before = self.catalogue_bytes()
+
+        self.assertEqual(0, self.publish_with_tiers(version=FIXTURE_VERSION), self.last_stderr)
+
+        self.assertEqual(before, self.catalogue_bytes())
+
+    def test_yanked_version_keeps_its_tier(self):
+        self.seed_catalogue()
+        document = read_catalogue(self.repository)
+        document["plugins"][0]["tier"] = "experimental"
+        with open(os.path.join(self.repository, CATALOGUE), "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+
+        self.assertEqual(0, self.yank(FIXTURE_VERSION), self.last_stderr)
+
+        entry = read_catalogue(self.repository)["plugins"][0]
+        self.assertTrue(entry["yanked"])
+        self.assertEqual("experimental", entry["tier"], "a yank never changes the tier of a released version")
+
+
 class NoNetworkTest(GeneratorTestCase):
 
     def test_run_opens_no_socket(self):
