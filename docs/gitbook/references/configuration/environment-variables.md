@@ -233,7 +233,7 @@ The variable is read when the access token plugin starts, so a change takes effe
 
 ## Identity variables
 
-The guard of external references decides whether linking a team to a provider group needs the admin area `ingot.admin.idp`, see [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md#the-external-reference-of-a-team).
+The guard of external references decides whether linking a team to a provider group needs the admin area `ingot.admin.idp`, see [Map provider groups to teams](../../configure/authentication/map-provider-groups-to-teams.md#the-external-reference-of-a-team).
 
 | Environment variable | Legacy environment variable | Default | Meaning |
 | --- | --- | --- | --- |
@@ -241,7 +241,7 @@ The guard of external references decides whether linking a team to a provider gr
 
 ## Cleanup variables
 
-The cleanup plugin reads this variable at start. See [Cleanup policies](cleanup-policies.md#schedule) for what it changes.
+The cleanup plugin reads this variable at start. See [Cleanup policies](../repositories/cleanup-policies.md#schedule) for what it changes.
 
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
@@ -331,7 +331,7 @@ Each variable reads its `INGOT_` name first and falls back to its `REPOSILITE_` 
 | Variable | Legacy | Default | Accepted values | Effect |
 | --- | --- | --- | --- | --- |
 | `INGOT_LOG_FILE` | `REPOSILITE_LOG_FILE` | `true` | `true` or `false` | `false` stops the rolling log file, so no file is created or written. The console still shows every line. Use it with a read-only root filesystem and no volume for the logs. |
-| `INGOT_LOG_FORMAT` | `REPOSILITE_LOG_FORMAT` | `text` | `text` or `json` | `json` writes one JSON object per console line with `time`, `level` and `message`, and `trace_id` and `span_id` while a span is active. The log files stay in text form. See [Monitor status and failures](../how-to/monitor-status-and-failures.md#structured-console-output). |
+| `INGOT_LOG_FORMAT` | `REPOSILITE_LOG_FORMAT` | `text` | `text` or `json` | `json` writes one JSON object per console line with `time`, `level` and `message`, and `trace_id` and `span_id` while a span is active. The log files stay in text form. See [Monitor status and failures](../../manage/monitor/monitor-status-and-failures.md#structured-console-output). |
 | `INGOT_LOG_LEVEL` | `REPOSILITE_LOG_LEVEL` | `INFO` | `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG` or `TRACE` | The console threshold. The `--level` flag wins over it. |
 | `INGOT_LOG_LEVELS` | `REPOSILITE_LOG_LEVELS` | none | Comma-separated `package=level` pairs, with `trace`, `debug`, `info`, `warn` or `error` | Level of the named package and its sub-packages, for messages that come through SLF4J from that package. Packages that are not listed keep the levels of `tinylog.properties`. Ingot's own console lines have no package of their own in the log, so they follow `INGOT_LOG_LEVEL`. |
 | `INGOT_ACCESS_LOG` | `REPOSILITE_ACCESS_LOG` | `false` | `true` | `true` writes one INFO line per request: method, path without the query string, status, duration in milliseconds, response size in bytes when the response has a `Content-Length`, client address and user. The line never holds the query string, the `Authorization` header or a cookie. Any other value keeps it off. |

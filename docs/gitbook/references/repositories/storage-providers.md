@@ -175,7 +175,7 @@ The support details of a repository whose provider is a cache show the settings 
 
 ## Storage capabilities
 
-A provider from a plugin gets the behaviour of `fs` and `s3` by implementing the interfaces of `net.onelitefeather.ingot.storage.capability`. Core asks the interface and never the concrete class, so a provider that does not implement an interface does not get that behaviour. The package is experimental, see [Plugin API](plugin-api.md#storage-capabilities-experimental).
+A provider from a plugin gets the behaviour of `fs` and `s3` by implementing the interfaces of `net.onelitefeather.ingot.storage.capability`. Core asks the interface and never the concrete class, so a provider that does not implement an interface does not get that behaviour. The package is experimental, see [Plugin API](../plugins/plugin-api.md#storage-capabilities-experimental).
 
 | Interface | Implemented on | What it changes |
 | --- | --- | --- |
@@ -183,7 +183,7 @@ A provider from a plugin gets the behaviour of `fs` and `s3` by implementing the
 | `QuotaSettings` | The settings | The configured quota is reported. |
 | `UsageCapability` | The provider | `reportsUsage` false reports usage `-1` and no room limit. `supportsQuota` decides whether a configured quota is reported. `totalCapacityBytes()` is the base of a percentage quota. |
 | `ReadinessProbe` | The provider | Replaces the listing of the root in the readiness check. |
-| `ClusterCacheAware` | The provider | Bound to the cluster bus with a maximum age, see [Head cache in cluster mode](../explanation/storage-and-mirror-caching.md#head-cache-in-cluster-mode). |
+| `ClusterCacheAware` | The provider | Bound to the cluster bus with a maximum age, see [Head cache in cluster mode](../architecture/storage-and-mirror-caching.md#head-cache-in-cluster-mode). |
 | `SupportDetails` | The settings or the provider | Adds the `details` map of the repository storage in the support bundle. Only non-sensitive values. |
 | `RelatedKeyAware` | The provider | Gives the related keys of the repository format to the S3 head cache. |
 

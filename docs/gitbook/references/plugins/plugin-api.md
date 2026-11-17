@@ -165,7 +165,7 @@ Every type carries `@ExperimentalIngotFormatApi`, a Kotlin opt-in marker. Code t
 
 ## Storage capabilities (experimental)
 
-A storage provider or its settings states what it can do by implementing an interface of `net.onelitefeather.ingot.storage.capability`. Core asks the interface, so a provider that implements none of them keeps the defaults. The rules are in [Storage capabilities](storage-providers.md#storage-capabilities).
+A storage provider or its settings states what it can do by implementing an interface of `net.onelitefeather.ingot.storage.capability`. Core asks the interface, so a provider that implements none of them keeps the defaults. The rules are in [Storage capabilities](../repositories/storage-providers.md#storage-capabilities).
 
 | Type | Implemented on | Purpose |
 | --- | --- | --- |
