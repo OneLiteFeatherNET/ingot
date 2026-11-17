@@ -104,6 +104,14 @@ describe('the Repositories page inside Settings', () => {
     expect(wrapper.get('[data-test="danger-zone"]').text()).toContain('Delete repository')
   })
 
+  it('draws no tab panel around the detail of one repository, the tab list of the page names its own panels', async () => {
+    await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
+
+    expect(wrapper.get('[role="tablist"]').exists(), 'the repository page has its tab list').toBe(true)
+    expect(wrapper.findAll('[role="tabpanel"]').every(panel => panel.attributes('aria-labelledby')), 'no panel without its tab').toBe(true)
+    expect(wrapper.find('[role="tabpanel"]:not([aria-labelledby])').exists(), 'the outer panel of the page is gone').toBe(false)
+  })
+
   it('lists a repository without an id as Unnamed repository, and its Edit item opens its detail', async () => {
     const server = {
       maven: {

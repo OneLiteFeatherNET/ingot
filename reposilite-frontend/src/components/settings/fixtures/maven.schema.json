@@ -163,6 +163,34 @@
             "description" : "Caches routing decisions for metadata reads (maven-metadata.xml, *.pom, *.module, Ivy XML)\nto speed up repeated requests. Size scales with the number of distinct GAVs touched\nthrough your mirrors, not with user traffic:<br/>\n0 — disabled (no mirrors, or caching not needed)<br/>\n128 — proxying a small fixed set of artifacts (single vendor SDK, internal repos)<br/>\n512 — proxying focused ecosystems (BOM + transitives, a few curated mirrors)<br/>\n2048+ — proxying broad ecosystems like Maven Central<br/>\n(Default: 0)",
             "title" : "Resolution cache size"
           },
+          "protectedGroupPrefixes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Group prefixes that only authenticated users may deploy to.",
+            "title" : "Protected group prefixes"
+          },
+          "uploadChecksumPolicy" : {
+            "type" : "string",
+            "description" : "How the checksums sent with an upload are checked.",
+            "title" : "Upload checksum policy"
+          },
+          "versionPolicy" : {
+            "type" : "string",
+            "description" : "Which versions the repository accepts.",
+            "title" : "Version policy"
+          },
+          "readOnly" : {
+            "type" : "boolean",
+            "description" : "Refuses every upload to the repository.",
+            "title" : "Read only"
+          },
+          "format" : {
+            "type" : "string",
+            "description" : "The layout of the repository.",
+            "title" : "Format"
+          },
           "proxied" : {
             "type" : "array",
             "items" : {
