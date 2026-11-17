@@ -1321,10 +1321,12 @@
       "file": "src/components/support/SystemInfoView.vue",
       "stability": "experimental",
       "parts": [
-        "plugin-tier"
+        "plugin-tier",
+        "filter"
       ],
       "states": [
-        "loading"
+        "loading",
+        "error"
       ]
     },
     {

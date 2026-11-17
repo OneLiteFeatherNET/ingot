@@ -15,23 +15,53 @@
   -->
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import type { components } from '../../types/api'
+import AppTabs from '../tabs/AppTabs.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
+import { filterRows, tabForFragment } from './systemInfoTabs'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
 const { client } = useSession()
+const route = useRoute()
+const router = useRouter()
+const root = ref<HTMLElement | null>(null)
 const info = ref<components['schemas']['SystemInformation'] | null>(null)
 // loading, ready, off (the opt-out answers 404) or failed
 const state = ref<'loading' | 'ready' | 'off' | 'failed'>('loading')
 const failure = ref('')
+// The filter of the Environment and Configuration tabs. It is kept here only, so a reload starts without one.
+const filter = ref('')
 
-const entriesOf = (object: Record<string, unknown> | undefined) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'plugins', label: 'Plugins' },
+  { key: 'environment', label: 'Environment' },
+  { key: 'configuration', label: 'Configuration' },
+]
+
+const entriesOf = (object: Record<string, string> | undefined) => Object.entries(object ?? {}).sort(([left], [right]) => left.localeCompare(right))
+const environmentRows = computed(() => filterRows(entriesOf(info.value?.environment), filter.value))
+const propertyRows = computed(() => filterRows(entriesOf(info.value?.systemProperties), filter.value))
+const localRows = computed(() => filterRows(entriesOf(info.value?.configuration.local), filter.value))
+const noMatch = (rows: unknown[]) => rows.length === 0 && filter.value.trim() !== ''
 
 // The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
 const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
 const tierLabel = (tier: string | undefined) => TIER_LABELS[tier ?? 'community'] ?? 'Community'
+
+// A section anchor opens the tab that holds its section, writes it into the address, and scrolls the section into view.
+const openFragment = async () => {
+  const tab = tabForFragment(route.hash)
+  if (!tab) return
+  if (route.query.tab !== tab) {
+    await router.replace({ path: route.path, query: { ...route.query, tab }, hash: route.hash })
+  }
+  await nextTick()
+  root.value?.querySelector(`[id="${route.hash.slice(1)}"]`)?.scrollIntoView?.({ block: 'start' })
+}
 
 const load = async () => {
   try {
@@ -46,13 +76,22 @@ const load = async () => {
       failure.value = (error as Error | undefined)?.message ?? 'The system information cannot be read.'
     }
   }
+  if (state.value === 'ready') await openFragment()
 }
+
+watch(
+  () => route.hash,
+  () => {
+    if (state.value === 'ready') void openFragment()
+  },
+)
 
 onMounted(load)
 </script>
 
 <template>
   <div
+    ref="root"
     class="flex flex-col gap-6"
     data-ingot-component="system-info-view"
   >
@@ -73,238 +112,303 @@ onMounted(load)
     </p>
     <p
       v-else-if="state === 'failed'"
+      data-ingot-state="error"
       class="md-body-medium text-error"
     >
       {{ failure }}
     </p>
 
-    <template v-else-if="info">
-      <section
-        aria-labelledby="support-ingot"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-ingot"
-          class="md-title-large text-on-surface"
+    <AppTabs
+      v-else-if="info"
+      :tabs="TABS"
+      label="System information sections"
+    >
+      <template #default="{ tab }">
+        <div
+          v-if="tab === 'overview'"
+          class="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3"
         >
-          Ingot
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-          <dt>Instance</dt><dd>{{ info.instance }}</dd>
-          <dt>Version</dt><dd>{{ info.ingot.version }}</dd>
-          <dt>Build time</dt><dd>{{ info.ingot.buildTime }}</dd>
-          <dt>Commit</dt><dd>{{ info.ingot.commit }}</dd>
-          <dt>Generated</dt><dd>{{ info.generatedAt }}</dd>
-        </dl>
-      </section>
-
-      <section
-        aria-labelledby="support-java"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-java"
-          class="md-title-large text-on-surface"
-        >
-          Java
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-          <dt>Vendor</dt><dd>{{ info.jvm.vendor }}</dd>
-          <dt>Version</dt><dd>{{ info.jvm.version }}</dd>
-          <dt>Uptime</dt><dd>{{ info.jvm.uptimeMillis }} ms</dd>
-          <dt>Heap</dt><dd>{{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB</dd>
-          <dt>Processors</dt><dd>{{ info.jvm.processors }}</dd>
-          <dt>Threads</dt><dd>{{ info.jvm.threads }}</dd>
-        </dl>
-        <h3 class="md-title-small text-on-surface">
-          Input arguments
-        </h3>
-        <ul class="font-mono text-sm">
-          <li
-            v-for="argument in info.jvm.inputArguments"
-            :key="argument"
+          <article
+            aria-labelledby="support-ingot"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
           >
-            {{ argument }}
-          </li>
-        </ul>
-      </section>
+            <h2
+              id="support-ingot"
+              class="md-title-medium text-on-surface"
+            >
+              Ingot
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
+              <dt>Instance</dt><dd>{{ info.instance }}</dd>
+              <dt>Version</dt><dd>{{ info.ingot.version }}</dd>
+              <dt>Build time</dt><dd>{{ info.ingot.buildTime }}</dd>
+              <dt>Commit</dt><dd>{{ info.ingot.commit }}</dd>
+              <dt>Generated</dt><dd>{{ info.generatedAt }}</dd>
+            </dl>
+          </article>
 
-      <section
-        aria-labelledby="support-os"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-os"
-          class="md-title-large text-on-surface"
-        >
-          Operating system
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-          <dt>Name</dt><dd>{{ info.operatingSystem.name }}</dd>
-          <dt>Version</dt><dd>{{ info.operatingSystem.version }}</dd>
-          <dt>Architecture</dt><dd>{{ info.operatingSystem.architecture }}</dd>
-          <dt>Container</dt><dd>{{ info.operatingSystem.container ? 'yes' : 'no' }}</dd>
-        </dl>
-      </section>
-
-      <section
-        aria-labelledby="support-database"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-database"
-          class="md-title-large text-on-surface"
-        >
-          Database
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-          <dt>Kind</dt><dd>{{ info.database.kind }}</dd>
-          <dt>Endpoint</dt><dd>{{ info.database.endpoint ?? 'none' }}</dd>
-        </dl>
-      </section>
-
-      <section
-        aria-labelledby="support-storage"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-storage"
-          class="md-title-large text-on-surface"
-        >
-          Storage
-        </h2>
-        <ul>
-          <li
-            v-for="storage in info.storage"
-            :key="storage.repository"
+          <article
+            aria-labelledby="support-java"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
           >
-            {{ storage.repository }}: {{ storage.kind }}
-            <template v-if="storage.region">
-              ({{ storage.region }})
+            <h2
+              id="support-java"
+              class="md-title-medium text-on-surface"
+            >
+              Java
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
+              <dt>Vendor</dt><dd>{{ info.jvm.vendor }}</dd>
+              <dt>Version</dt><dd>{{ info.jvm.version }}</dd>
+              <dt>Uptime</dt><dd>{{ info.jvm.uptimeMillis }} ms</dd>
+              <dt>Heap</dt><dd>{{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB</dd>
+              <dt>Processors</dt><dd>{{ info.jvm.processors }}</dd>
+              <dt>Threads</dt><dd>{{ info.jvm.threads }}</dd>
+            </dl>
+            <details>
+              <summary class="md-label-large cursor-pointer text-on-surface-variant">
+                Input arguments
+              </summary>
+              <ul class="font-mono text-sm">
+                <li
+                  v-for="argument in info.jvm.inputArguments"
+                  :key="argument"
+                >
+                  {{ argument }}
+                </li>
+              </ul>
+            </details>
+          </article>
+
+          <article
+            aria-labelledby="support-os"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+          >
+            <h2
+              id="support-os"
+              class="md-title-medium text-on-surface"
+            >
+              Operating system
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
+              <dt>Name</dt><dd>{{ info.operatingSystem.name }}</dd>
+              <dt>Version</dt><dd>{{ info.operatingSystem.version }}</dd>
+              <dt>Architecture</dt><dd>{{ info.operatingSystem.architecture }}</dd>
+              <dt>Container</dt><dd>{{ info.operatingSystem.container ? 'yes' : 'no' }}</dd>
+            </dl>
+          </article>
+
+          <article
+            aria-labelledby="support-database"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+          >
+            <h2
+              id="support-database"
+              class="md-title-medium text-on-surface"
+            >
+              Database
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
+              <dt>Kind</dt><dd>{{ info.database.kind }}</dd>
+              <dt>Endpoint</dt><dd>{{ info.database.endpoint ?? 'none' }}</dd>
+            </dl>
+          </article>
+
+          <article
+            aria-labelledby="support-storage"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+          >
+            <h2
+              id="support-storage"
+              class="md-title-medium text-on-surface"
+            >
+              Storage
+            </h2>
+            <ul>
+              <li
+                v-for="storage in info.storage"
+                :key="storage.repository"
+              >
+                {{ storage.repository }}: {{ storage.kind }}
+                <template v-if="storage.region">
+                  ({{ storage.region }})
+                </template>
+              </li>
+            </ul>
+          </article>
+
+          <article
+            aria-labelledby="support-cluster"
+            class="flex flex-col gap-2 rounded-corner-medium bg-surface-container-low p-4"
+          >
+            <h2
+              id="support-cluster"
+              class="md-title-medium text-on-surface"
+            >
+              Cluster
+            </h2>
+            <p v-if="!info.cluster">
+              No cluster bus is configured. This instance runs alone.
+            </p>
+            <template v-else>
+              <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
+                <dt>Bus</dt><dd>{{ info.cluster.bus.state }} ({{ info.cluster.bus.transport }}, {{ info.cluster.bus.url }})</dd>
+              </dl>
+              <ul>
+                <li
+                  v-for="member in info.cluster.instances"
+                  :key="member.id"
+                >
+                  {{ member.id }}: {{ member.version }}, {{ member.health }}
+                </li>
+              </ul>
             </template>
-          </li>
-        </ul>
-      </section>
+          </article>
+        </div>
 
-      <section
-        aria-labelledby="support-cluster"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-cluster"
-          class="md-title-large text-on-surface"
+        <section
+          v-else-if="tab === 'plugins'"
+          aria-labelledby="support-plugins"
+          class="flex flex-col gap-2"
         >
-          Cluster
-        </h2>
-        <p v-if="!info.cluster">
-          No cluster bus is configured. This instance runs alone.
-        </p>
-        <template v-else>
-          <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
-            <dt>Bus</dt><dd>{{ info.cluster.bus.state }} ({{ info.cluster.bus.transport }}, {{ info.cluster.bus.url }})</dd>
-          </dl>
+          <h2
+            id="support-plugins"
+            class="md-title-large text-on-surface"
+          >
+            Plugins
+          </h2>
           <ul>
             <li
-              v-for="member in info.cluster.instances"
-              :key="member.id"
+              v-for="plugin in info.plugins"
+              :key="plugin.name"
+              class="flex flex-wrap items-center gap-2"
             >
-              {{ member.id }}: {{ member.version }}, {{ member.health }}
+              {{ plugin.name }} {{ plugin.version }}
+              <span
+                class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
+                data-ingot-part="plugin-tier"
+              >{{ tierLabel(plugin.tier) }}</span>
             </li>
           </ul>
-        </template>
-      </section>
+        </section>
 
-      <section
-        aria-labelledby="support-plugins"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-plugins"
-          class="md-title-large text-on-surface"
+        <div
+          v-else-if="tab === 'environment'"
+          class="flex flex-col gap-6"
         >
-          Plugins
-        </h2>
-        <ul>
-          <li
-            v-for="plugin in info.plugins"
-            :key="plugin.name"
-            class="flex flex-wrap items-center gap-2"
-          >
-            {{ plugin.name }} {{ plugin.version }}
-            <span
-              class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
-              data-ingot-part="plugin-tier"
-            >{{ tierLabel(plugin.tier) }}</span>
-          </li>
-        </ul>
-      </section>
+          <label class="md-body-medium flex flex-col gap-1 text-on-surface-variant">
+            Filter by key or value
+            <input
+              v-model="filter"
+              type="search"
+              data-ingot-part="filter"
+              class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
+            >
+          </label>
 
-      <section
-        aria-labelledby="support-environment"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-environment"
-          class="md-title-large text-on-surface"
-        >
-          Environment
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
-          <template
-            v-for="[name, value] in entriesOf(info.environment)"
-            :key="name"
+          <section
+            aria-labelledby="support-environment"
+            class="flex flex-col gap-2"
           >
-            <dt>{{ name }}</dt><dd>{{ value }}</dd>
-          </template>
-        </dl>
-      </section>
+            <h2
+              id="support-environment"
+              class="md-title-large text-on-surface"
+            >
+              Environment
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <template
+                v-for="[name, value] in environmentRows"
+                :key="name"
+              >
+                <dt>{{ name }}</dt><dd>{{ value }}</dd>
+              </template>
+            </dl>
+            <p
+              v-if="noMatch(environmentRows)"
+              class="md-body-medium text-on-surface-variant"
+            >
+              No entry matches the filter.
+            </p>
+          </section>
 
-      <section
-        aria-labelledby="support-properties"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-properties"
-          class="md-title-large text-on-surface"
-        >
-          System properties
-        </h2>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
-          <template
-            v-for="[name, value] in entriesOf(info.systemProperties)"
-            :key="name"
+          <section
+            aria-labelledby="support-properties"
+            class="flex flex-col gap-2"
           >
-            <dt>{{ name }}</dt><dd>{{ value }}</dd>
-          </template>
-        </dl>
-      </section>
+            <h2
+              id="support-properties"
+              class="md-title-large text-on-surface"
+            >
+              System properties
+            </h2>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <template
+                v-for="[name, value] in propertyRows"
+                :key="name"
+              >
+                <dt>{{ name }}</dt><dd>{{ value }}</dd>
+              </template>
+            </dl>
+            <p
+              v-if="noMatch(propertyRows)"
+              class="md-body-medium text-on-surface-variant"
+            >
+              No entry matches the filter.
+            </p>
+          </section>
+        </div>
 
-      <section
-        aria-labelledby="support-configuration"
-        class="flex flex-col gap-2"
-      >
-        <h2
-          id="support-configuration"
-          class="md-title-large text-on-surface"
+        <div
+          v-else-if="tab === 'configuration'"
+          class="flex flex-col gap-6"
         >
-          Configuration
-        </h2>
-        <h3 class="md-title-small text-on-surface">
-          Local
-        </h3>
-        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
-          <template
-            v-for="[name, value] in entriesOf(info.configuration.local)"
-            :key="name"
+          <section
+            aria-labelledby="support-configuration"
+            class="flex flex-col gap-2"
           >
-            <dt>{{ name }}</dt><dd>{{ value }}</dd>
-          </template>
-        </dl>
-        <h3 class="md-title-small text-on-surface">
-          Shared
-        </h3>
-        <pre class="overflow-x-auto font-mono text-sm">{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
-      </section>
-    </template>
+            <h2
+              id="support-configuration"
+              class="md-title-large text-on-surface"
+            >
+              Configuration
+            </h2>
+            <label class="md-body-medium flex flex-col gap-1 text-on-surface-variant">
+              Filter by key or value
+              <input
+                v-model="filter"
+                type="search"
+                data-ingot-part="filter"
+                class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
+              >
+            </label>
+            <h3 class="md-title-small text-on-surface">
+              Local
+            </h3>
+            <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 font-mono text-sm">
+              <template
+                v-for="[name, value] in localRows"
+                :key="name"
+              >
+                <dt>{{ name }}</dt><dd>{{ value }}</dd>
+              </template>
+            </dl>
+            <p
+              v-if="noMatch(localRows)"
+              class="md-body-medium text-on-surface-variant"
+            >
+              No entry matches the filter.
+            </p>
+            <h3 class="md-title-small text-on-surface">
+              Shared
+            </h3>
+            <p class="md-body-medium text-on-surface-variant">
+              The filter does not apply to the shared configuration.
+            </p>
+            <pre class="overflow-x-auto font-mono text-sm">{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
+          </section>
+        </div>
+      </template>
+    </AppTabs>
   </div>
 </template>

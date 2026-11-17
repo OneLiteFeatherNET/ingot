@@ -196,7 +196,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `support-view` | experimental | `src/components/support/SupportView.vue` | none | none |
 | `switch-field` | stable | `src/components/renderers/SwitchField.vue` | none | none |
 | `sync-step` | experimental | `src/components/migration/SyncStep.vue` | none | none |
-| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier` | `loading` |
+| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier`, `filter` | `loading`, `error` |
 | `tags-field-renderer` (no element of its own) | stable | `src/components/renderers/TagsFieldRenderer.vue` | none | none |
 | `team-detail` | experimental | `src/components/access/TeamDetail.vue` | none | `loading` |
 | `team-legacy-grants` | experimental | `src/components/access/TeamLegacyGrants.vue` | none | none |

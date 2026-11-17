@@ -16,7 +16,12 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import SystemInfoView from './SystemInfoView.vue'
+
+const BLANK = { render: () => null }
+type Page = Awaited<ReturnType<typeof mountView>>
+type PanelOf = ReturnType<Page['findAll']>[number]
 
 // The client is swapped per test through this holder. The view reads it through the session.
 const session = vi.hoisted((): { client: unknown } => ({ client: null }))
@@ -44,10 +49,23 @@ const FIXTURE = {
   }
 }
 
-const mountView = (client: unknown) => {
+// The page reads its tab and its fragment from the address, so every mount gets a memory router at the given address.
+// The address is resolved before the mount: installing a router starts its own navigation, which would replace a pending one.
+const mountView = async (client: unknown, address = '/settings/system-info') => {
   session.client = client
-  return mount(SystemInfoView)
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/settings/system-info', name: 'system-info', component: BLANK },
+      { path: '/:pathMatch(.*)*', component: BLANK },
+    ],
+  })
+  await router.push(address)
+  await router.isReady()
+  return mount(SystemInfoView, { global: { plugins: [router] } })
 }
+
+const tabsOf = (wrapper: Page) => wrapper.findAll('[role="tab"]')
 
 afterEach(() => {
   session.client = null
@@ -56,7 +74,7 @@ afterEach(() => {
 describe('SystemInfoView', () => {
   it('renders every section of the page from the system information', async () => {
     // when: the page is opened
-    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn() } })
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), availability: vi.fn() } })
     await flushPromises()
 
     // then: each section has its heading
@@ -67,7 +85,7 @@ describe('SystemInfoView', () => {
   })
 
   it('shows the withheld values as written, never a value that was not sent', async () => {
-    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })) } })
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })) } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('[withheld]')
@@ -76,7 +94,7 @@ describe('SystemInfoView', () => {
   })
 
   it('tells the visitor that the pages are turned off when the server answers 404', async () => {
-    const wrapper = mountView({
+    const wrapper = await mountView({
       support: { systemInfo: vi.fn(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } }))) }
     })
     await flushPromises()
@@ -87,7 +105,7 @@ describe('SystemInfoView', () => {
   it('shows the tier label of a plugin next to its version', async () => {
     // given: a plugin that declares the official tier
     const plugins = [{ name: 'checksum', version: '2.0.0', dependencies: [], tier: 'official' }]
-    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
     await flushPromises()
 
     // then: the row names the plugin, its version and the label as text
@@ -99,11 +117,122 @@ describe('SystemInfoView', () => {
   it('shows Community for a plugin without a tier', async () => {
     // given: a plugin that sends no tier
     const plugins = [{ name: 'metrics', version: '1.2.3', dependencies: [] }]
-    const wrapper = mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
     await flushPromises()
 
     // then: the row shows the community label
     const row = wrapper.findAll('li').find(item => item.text().includes('metrics'))
     expect(row?.text()).toContain('Community')
+  })
+})
+
+const withInfo = (data = FIXTURE) => ({ support: { systemInfo: vi.fn(() => Promise.resolve({ data })) } })
+const panelsOf = (wrapper: Page) => wrapper.findAll('[role="tabpanel"]')
+const filterOf = (panel: PanelOf) => panel.find('input[type="search"]')
+
+describe('SystemInfoView tabs', () => {
+  it('shows four tabs in the order Overview, Plugins, Environment and Configuration, with Overview selected', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const tabs = tabsOf(wrapper)
+    expect(tabs.map(tab => tab.text())).toEqual(['Overview', 'Plugins', 'Environment', 'Configuration'])
+    expect(tabs[0].attributes('aria-selected'), 'Overview is selected by default').toBe('true')
+  })
+
+  it('draws the six overview cards, each labelled by its heading', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const cards = panelsOf(wrapper)[0].findAll('article')
+    expect(cards.map(card => card.attributes('aria-labelledby'))).toEqual([
+      'support-ingot', 'support-java', 'support-os', 'support-database', 'support-storage', 'support-cluster',
+    ])
+  })
+
+  it('keeps the Java input arguments behind a disclosure labelled Input arguments', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const disclosure = wrapper.find('details')
+    expect(disclosure.find('summary').text()).toBe('Input arguments')
+    expect(disclosure.attributes('open'), 'the disclosure is closed by default').toBeUndefined()
+    expect(disclosure.text()).toContain('-Xmx512m')
+  })
+
+  it('shows the filter on Environment and Configuration only', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const panels = panelsOf(wrapper)
+    expect(filterOf(panels[0]).exists(), 'Overview has no filter').toBe(false)
+    expect(filterOf(panels[1]).exists(), 'Plugins has no filter').toBe(false)
+    expect(filterOf(panels[2]).exists(), 'Environment has the filter').toBe(true)
+    expect(filterOf(panels[3]).exists(), 'Configuration has the filter').toBe(true)
+  })
+
+  it('narrows the environment and system property rows to the typed text', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+    const environment = panelsOf(wrapper)[2]
+
+    await filterOf(environment).setValue('puid')
+
+    expect(environment.findAll('dt').map(term => term.text())).toEqual(['PUID'])
+  })
+
+  it('says that no entry matches when the filter keeps no row', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+    const environment = panelsOf(wrapper)[2]
+
+    await filterOf(environment).setValue('no-such-row')
+
+    expect(environment.text()).toContain('No entry matches the filter.')
+  })
+
+  it('shows the shared configuration whole, with a note that the filter does not apply to it', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+    const configuration = panelsOf(wrapper)[3]
+
+    await filterOf(configuration).setValue('no-such-row')
+
+    expect(configuration.text()).toContain('The filter does not apply to the shared configuration.')
+    expect(configuration.text(), 'the shared block is not narrowed').toContain('secretKey')
+  })
+
+  it('opens the tab of a section anchor and scrolls the section into view', async () => {
+    // jsdom has no layout, so the scroll is replaced for the test and put back afterwards.
+    const scrolled: string[] = []
+    const prototype = Element.prototype as { scrollIntoView?: unknown }
+    const original = prototype.scrollIntoView
+    prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id)
+    }
+    try {
+      const wrapper = await mountView(withInfo(), '/settings/system-info#support-properties')
+      await flushPromises()
+
+      expect(tabsOf(wrapper)[2].attributes('aria-selected'), 'the system properties are on Environment').toBe('true')
+      expect(scrolled).toEqual(['support-properties'])
+    } finally {
+      prototype.scrollIntoView = original
+    }
+  })
+
+  it('lets a section anchor win over a tab parameter that disagrees with it', async () => {
+    const wrapper = await mountView(withInfo(), '/settings/system-info?tab=plugins#support-cluster')
+    await flushPromises()
+
+    expect(tabsOf(wrapper)[0].attributes('aria-selected'), 'the cluster card is on Overview').toBe('true')
+  })
+
+  it('shows the failure of the system information in place of the tabs', async () => {
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.reject(new Error('The instance did not answer.'))) } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('The instance did not answer.')
+    expect(wrapper.find('[role="tablist"]').exists(), 'no tab is drawn on a failure').toBe(false)
   })
 })
