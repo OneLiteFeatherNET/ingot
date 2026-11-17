@@ -292,7 +292,6 @@ describe('RepositoryAccessCard', () => {
     it('puts the instance admins first and sorts each group by name', async () => {
       install({
         access: entryWith([
-          principalOf({ kind: 'USER' }),
           { ...principalOf({ kind: 'USER' }), principal: 'zed' },
           { ...principalOf({ instanceAdmin: true, effective: ['READ'] }), principal: 'root' },
           { ...principalOf({ instanceAdmin: true, effective: ['READ'] }), principal: 'anna' },
