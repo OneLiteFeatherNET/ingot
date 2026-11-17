@@ -138,3 +138,8 @@ storage type. A repository that does not select `cache` sees no difference.
 - The existing S3 tests pass unedited after the move of the mutable key rule.
 - `openspec validate add-storage-cache-plugin --strict` passes and
   `grep -rnP '[\x{2013}\x{2014}]' openspec/changes/add-storage-cache-plugin` prints nothing.
+
+## Vendor claims (task 0.1)
+
+Task 0.1 is ticked, but the claims about JFrog Artifactory `cache-fs` in this proposal and in the design were not independently
+verified against the JFrog documentation before archiving. Treat them as assumptions until a later change records the sources and dates.
