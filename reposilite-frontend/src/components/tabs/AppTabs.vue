@@ -17,6 +17,7 @@
 <script setup lang="ts">
 // The tabs of the system information and repository pages. The tabs live in MdTabs; this wrapper keeps the selected tab
 // on the `?tab=` address, which both pages rely on, so their imports and their behaviour do not change.
+// The wrapper owns the app-tabs anchor that plugins select on. Its class `contents` keeps it out of the layout.
 import MdTabs from '../md/MdTabs.vue'
 
 withDefaults(
@@ -34,21 +35,26 @@ const emit = defineEmits<{ 'update:modelValue': [key: string] }>()
 </script>
 
 <template>
-  <MdTabs
-    :tabs="tabs"
-    :label="label"
-    :model-value="modelValue"
-    :query-param="queryParam"
-    @update:model-value="emit('update:modelValue', $event)"
+  <div
+    class="contents"
+    data-ingot-component="app-tabs"
   >
-    <template
-      v-for="(_, name) in $slots"
-      #[name]="slotProps"
+    <MdTabs
+      :tabs="tabs"
+      :label="label"
+      :model-value="modelValue"
+      :query-param="queryParam"
+      @update:model-value="emit('update:modelValue', $event)"
     >
-      <slot
-        :name="name"
-        v-bind="slotProps"
-      />
-    </template>
-  </MdTabs>
+      <template
+        v-for="(_, name) in $slots"
+        #[name]="slotProps"
+      >
+        <slot
+          :name="name"
+          v-bind="slotProps"
+        />
+      </template>
+    </MdTabs>
+  </div>
 </template>

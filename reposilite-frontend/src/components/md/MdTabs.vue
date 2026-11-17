@@ -105,7 +105,6 @@ const remember = (key: string, element: unknown) => {
   <div
     class="flex flex-col gap-4"
     data-ingot-component="md-tabs"
-    data-ingot-component-alias="app-tabs"
   >
     <div
       role="tablist"

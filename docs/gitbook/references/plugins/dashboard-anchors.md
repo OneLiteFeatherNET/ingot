@@ -37,7 +37,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `all-of-renderer` | stable | `src/components/renderers/AllOfRenderer.vue` | none | none |
 | `analytics-view` | experimental | `src/components/dashboard/AnalyticsView.vue` | none | none |
 | `app-shell` | experimental | `src/App.vue` | none | none |
-| `app-tabs-address` (no element of its own) | experimental | `src/components/tabs/AppTabs.vue` | none | none |
+| `app-tabs` | experimental | `src/components/tabs/AppTabs.vue` | none | none |
 | `appearance-preview` | stable | `src/components/settings/AppearancePreview.vue` | none | none |
 | `appearance-section-renderer` | stable | `src/components/renderers/AppearanceSectionRenderer.vue` | none | none |
 | `array-list-renderer` | stable | `src/components/renderers/ArrayListRenderer.vue` | none | none |
@@ -237,7 +237,6 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 
 | Old name | Replaced by | Removed in |
 | --- | --- | --- |
-| `app-tabs` | `md-tabs` | 3.0.0 |
 | `support-view` | `system-info-view` | 3.0.0 |
 
 ## Selecting in tests

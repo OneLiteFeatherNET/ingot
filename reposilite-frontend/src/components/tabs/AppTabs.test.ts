@@ -215,11 +215,12 @@ describe('AppTabs without the address', () => {
 })
 
 describe('AppTabs anchors', () => {
-  it('renders the md tabs root, which keeps the app-tabs name as an alias', async () => {
+  it('mounts an element named app-tabs that contains the tablist and the tabs, as on main', async () => {
     const { wrapper } = await mountAt('/settings/system-info')
 
-    expect(wrapper.attributes('data-ingot-component'), 'the root is the md tabs').toBe('md-tabs')
-    expect(wrapper.attributes('data-ingot-component-alias'), 'the old name keeps working as an alias').toBe('app-tabs')
+    expect(wrapper.attributes('data-ingot-component'), 'plugins select on the app-tabs name').toBe('app-tabs')
+    expect(wrapper.find('[role="tablist"]').exists(), 'the tablist is inside the named element').toBe(true)
+    expect(wrapper.findAll('[role="tab"]'), 'every tab is inside the named element').toHaveLength(TABS.length)
   })
 })
 

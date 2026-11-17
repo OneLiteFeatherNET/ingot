@@ -149,10 +149,9 @@ describe('MdTabs address', () => {
 })
 
 describe('MdTabs anchors', () => {
-  it('names its root md-tabs and keeps the old app-tabs name as an alias', () => {
+  it('names its root md-tabs', () => {
     const tabs = mountTabs()
 
     expect(tabs.attributes('data-ingot-component')).toBe('md-tabs')
-    expect(tabs.attributes('data-ingot-component-alias'), 'the old name is kept as an alias').toBe('app-tabs')
   })
 })

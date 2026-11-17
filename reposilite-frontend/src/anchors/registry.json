@@ -1467,12 +1467,11 @@
       ]
     },
     {
-      "name": "app-tabs-address",
+      "name": "app-tabs",
       "file": "src/components/tabs/AppTabs.vue",
       "stability": "experimental",
       "parts": [],
-      "states": [],
-      "ownElement": false
+      "states": []
     },
     {
       "name": "repository-type-badge",
@@ -1539,11 +1538,6 @@
     {
       "name": "support-view",
       "replacedBy": "system-info-view",
-      "removeIn": "3.0.0"
-    },
-    {
-      "name": "app-tabs",
-      "replacedBy": "md-tabs",
       "removeIn": "3.0.0"
     }
   ]
