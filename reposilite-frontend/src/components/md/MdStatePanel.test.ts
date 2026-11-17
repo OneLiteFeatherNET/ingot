@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MdStatePanel from './MdStatePanel.vue'
+import MdSkeleton from './MdSkeleton.vue'
 
 describe('MdStatePanel', () => {
   it('renders the empty state with its title and no retry action', () => {
@@ -54,7 +55,7 @@ describe('MdStatePanel', () => {
 
     expect(wrapper.attributes('aria-busy'), 'the loading state must set aria-busy').toBe('true')
     expect(
-      wrapper.findAll('[data-ingot-component="md-skeleton"]').length,
+      wrapper.findAllComponents(MdSkeleton).length,
       'the loading state must render skeleton lines'
     ).toBeGreaterThan(0)
   })
