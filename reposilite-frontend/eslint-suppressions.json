@@ -108,9 +108,6 @@
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     },
-    "@typescript-eslint/require-await": {
-      "count": 4
-    },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
     }

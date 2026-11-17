@@ -34,6 +34,15 @@ describe('MdButton', () => {
     expect(wrapper.attributes('href')).toBe('/tokens')
   })
 
+  it('gives a disabled filled button its own disabled colour classes, not one merged class', () => {
+    const wrapper = mount(MdButton, { props: { disabled: true }, slots: { default: 'Check' } })
+
+    expect(wrapper.classes(), 'the container and the content each have their own class').toEqual(expect.arrayContaining([
+      'bg-on-surface/md-disabled-container',
+      'text-on-surface/md-disabled-content'
+    ]))
+  })
+
   it('disables a button element through the disabled attribute', () => {
     const wrapper = mount(MdButton, { props: { disabled: true }, slots: { default: 'Save' } })
 

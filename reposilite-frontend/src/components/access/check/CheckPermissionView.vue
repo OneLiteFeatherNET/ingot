@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createErrorToast, errorMessage } from '../../../helpers/toast'
 import { textFromParam, textParam } from '../../../router/url-state'
@@ -23,7 +23,6 @@ import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
 import MdIcon from '../../md/MdIcon.vue'
 import MdSelect from '../../md/MdSelect.vue'
-import MdTextField from '../../md/MdTextField.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
 import SegmentedOption from '../../tokens/SegmentedOption.vue'
 import { detailOf, filterPrincipals } from '../accessPrincipals'
@@ -94,12 +93,20 @@ interface CheckTarget {
 const principals = ref<PrincipalChoice[]>([])
 const catalog = ref<CatalogItem[]>([])
 const tokenNames = ref<string[]>([])
+const repositoryIds = ref<string[]>([])
+const pathOptions = ref<{ value: string, description: string }[]>([])
 
 // idle: nothing asked yet. loading: a check is on its way. ready: `result` answers `checked`.
 const status = ref<'idle' | 'loading' | 'ready'>('idle')
 const result = ref<CheckAnswer | null>(null)
 // The question of the last answer. The template reads it only while `result` is set, so the placeholder is never shown.
 const checked = ref<CheckTarget>({ principal: '' })
+
+// The question the form holds, as one key. A result is shown only while the form still holds the question it answers.
+const formKey = computed(() => JSON.stringify(mode.value === 'path'
+  ? ['path', principal.value, token.value, repositoryText.value, pathText.value, actionText.value]
+  : ['node', principal.value, token.value, node.value]))
+let checkedKey = ''
 
 const nodeServerError = ref('')
 const principalError = ref('')
@@ -220,6 +227,68 @@ const onNode = (value: string) => {
   nodeServerError.value = ''
 }
 
+// The repository suggestions: the ids the server lists, filtered by the typed text.
+const repositoryOptions = computed(() => {
+  const typed = repositoryText.value.trim().toLowerCase()
+  return repositoryIds.value
+    .filter(id => id.toLowerCase().includes(typed))
+    .slice(0, SUGGESTIONS)
+    .map(id => ({ value: id }))
+})
+
+// The path suggestions complete one segment at a time: the directory of the typed part is listed by the browse
+// endpoint, and the entries that start with the segment being typed are offered. A folder is offered with its slash.
+const PATH_PAUSE_MS = 200
+let pathTimer: ReturnType<typeof setTimeout> | undefined
+let pathRequest = 0
+
+const lookUpPath = async () => {
+  const request = ++pathRequest
+  const repository = repositoryText.value.trim()
+  if (repository === '') {
+    pathOptions.value = []
+    return
+  }
+  const typed = pathText.value
+  const slash = typed.lastIndexOf('/')
+  const parent = slash >= 0 ? typed.slice(0, slash) : ''
+  const segment = typed.slice(slash + 1).toLowerCase()
+  try {
+    const response = await client.value.maven.details(parent === '' ? repository : `${repository}/${parent}`)
+    if (request !== pathRequest) return
+    const entries: { name: string, type: string }[] = response.data.files ?? []
+    pathOptions.value = entries
+      .filter(file => file.name.toLowerCase().startsWith(segment))
+      .slice(0, SUGGESTIONS)
+      .map(file => {
+        const folder = file.type === 'DIRECTORY'
+        return {
+          value: `${parent === '' ? '' : `${parent}/`}${file.name}${folder ? '/' : ''}`,
+          description: folder ? 'Folder' : 'File'
+        }
+      })
+  } catch {
+    // The suggestions are a convenience: the path can still be typed.
+    if (request === pathRequest) pathOptions.value = []
+  }
+}
+
+const schedulePathLookUp = () => {
+  clearTimeout(pathTimer)
+  pathTimer = setTimeout(lookUpPath, PATH_PAUSE_MS)
+}
+
+const onRepository = (value: string) => {
+  repositoryText.value = value
+  pathOptions.value = []
+  schedulePathLookUp()
+}
+
+const onPath = (value: string) => {
+  pathText.value = value
+  schedulePathLookUp()
+}
+
 const onToken = (value: string) => {
   token.value = value
   tokenError.value = ''
@@ -250,6 +319,7 @@ const run = async () => {
     ? { principal: trimmedPrincipal.value, ...pathCheck.value.query, token: token.value || undefined }
     : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
   clearErrors()
+  checkedKey = formKey.value
   result.value = null
   status.value = 'loading'
   try {
@@ -313,11 +383,33 @@ watch(queryKey, (key) => {
   if (route.name === 'access-check' && key !== handledKey) applyQuery()
 })
 
+// Changing the question drops the answer to it, and any check still on its way, so an old verdict never reads as the new one.
+watch(formKey, (key) => {
+  if (key === checkedKey) return
+  latest++
+  result.value = null
+  status.value = 'idle'
+})
+
+const loadRepositories = async () => {
+  try {
+    const response = await client.value.maven.repositories()
+    const entries: { id: string }[] = response.data.repositories ?? []
+    repositoryIds.value = entries.map(entry => entry.id)
+  } catch {
+    // The picker is a convenience: the repository can still be typed.
+    repositoryIds.value = []
+  }
+}
+
 onMounted(() => {
   loadPrincipals()
   loadCatalog()
+  loadRepositories()
   applyQuery()
 })
+
+onBeforeUnmount(() => clearTimeout(pathTimer))
 </script>
 
 <template>
@@ -391,27 +483,30 @@ onMounted(() => {
       />
       <template v-else>
         <div data-test="artifact-repository">
-          <MdTextField
-            v-model="repositoryText"
+          <ComboboxField
+            :model-value="repositoryText"
             label="Repository"
-            variant="outlined"
-            autocomplete="off"
-            spellcheck="false"
+            mono
+            :options="repositoryOptions"
+            listbox-label="Repository suggestions"
+            supporting-text="The repository the path is in"
             :error="repositoryError !== ''"
             :error-text="repositoryError"
-            supporting-text="The repository the path is in"
+            @update:model-value="onRepository"
           />
         </div>
         <div data-test="artifact-path">
-          <MdTextField
-            v-model="pathText"
+          <ComboboxField
+            :model-value="pathText"
             label="Path"
-            variant="outlined"
-            autocomplete="off"
-            spellcheck="false"
+            mono
+            :disabled="repositoryText.trim() === ''"
+            :options="pathOptions"
+            listbox-label="Path suggestions"
+            supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
             :error="pathError !== ''"
             :error-text="pathError"
-            supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+            @update:model-value="onPath"
           />
         </div>
         <div data-test="artifact-action">

@@ -46,7 +46,7 @@ const VARIANTS = {
   filled: {
     base: 'bg-primary text-on-primary',
     error: 'bg-error text-on-error',
-    disabled: 'bg-on-surface/md-disabled-containertext-on-surface/md-disabled-content'
+    disabled: 'bg-on-surface/md-disabled-container text-on-surface/md-disabled-content'
   },
   tonal: {
     base: 'bg-secondary-container text-on-secondary-container',
@@ -56,7 +56,7 @@ const VARIANTS = {
   outlined: {
     base: 'border border-outline bg-transparent text-primary',
     error: 'border border-error bg-transparent text-error',
-    disabled: 'border border-on-surface/md-disabled-containerbg-transparent text-on-surface/md-disabled-content'
+    disabled: 'border border-on-surface/md-disabled-container bg-transparent text-on-surface/md-disabled-content'
   },
   text: {
     base: 'bg-transparent text-primary',
@@ -66,7 +66,7 @@ const VARIANTS = {
   elevated: {
     base: 'bg-surface-container-low text-primary shadow-elevation-1',
     error: 'bg-surface-container-low text-error shadow-elevation-1',
-    disabled: 'bg-on-surface/md-disabled-containertext-on-surface/md-disabled-content shadow-none'
+    disabled: 'bg-on-surface/md-disabled-container text-on-surface/md-disabled-content shadow-none'
   }
 }
 

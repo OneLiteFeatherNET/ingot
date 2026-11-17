@@ -29,6 +29,7 @@ import MdTextField from '../../md/MdTextField.vue'
  *   modelValue    the text
  *   options       [{ value, description }] to suggest; the parent has already filtered them
  *   mono          shows the option values in the monospace face (nodes)
+ *   disabled      turns the field off and hides its list
  *   listboxLabel  the accessible name of the list
  * Emits update:modelValue for typing and for a chosen option.
  */
@@ -61,6 +62,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
   listboxLabel: {
     type: String,
     required: true
@@ -76,7 +81,7 @@ const optionId = (index: number): string => `${inputId}-option-${index}`
 const open = ref(false)
 const active = ref(-1)
 
-const showList = computed(() => open.value && props.options.length > 0)
+const showList = computed(() => !props.disabled && open.value && props.options.length > 0)
 const activeDescendant = computed(() => (showList.value && active.value >= 0 ? optionId(active.value) : undefined))
 
 const choose = (value: string) => {
@@ -148,6 +153,7 @@ const onBlur = () => {
       :error="error"
       :error-text="errorText"
       :supporting-text="supportingText"
+      :disabled="disabled"
       role="combobox"
       aria-autocomplete="list"
       :aria-expanded="showList ? 'true' : 'false'"
