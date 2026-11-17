@@ -60,7 +60,7 @@ requirement on the plugin, documented, reviewed, and covered by the tests of `ex
 | T2 | Plugin A makes its reader source open a route of plugin B | The exemption set is keyed by the plugin segment of the request path and holds only paths that plugin declared. Another plugin's path is never in it. |
 | T3 | An anonymous request reaches an admin route of the same plugin | The exemption is exact: method `GET` or `HEAD` and a path equal to a declared source. Any other method, any other path, and any path that contains `..`, `//`, an empty segment or a percent-encoded character fails closed, so the admin floor applies and the answer is `401`. |
 | T4 | A reader page writes state | Registration refuses `form`, `action` and `status` in a reader page. The dashboard refuses to draw them and sends no request. Sources must be `GET` paths. |
-| T5 | Existence leak: a reader learns that a repository or item exists | Reader pages list only the page, never data. The source decides: an item the viewer may not read answers `404` (`expose-plugin-access-checks`, D4). A reader manifest is public by declaration; the risk is listed under Open questions. |
+| T5 | Existence leak: a reader learns that a repository or item exists | Reader pages list only the page, never data. The source decides: an item the viewer may not read answers `404` (`expose-plugin-access-checks`, D4). A reader manifest is public by declaration; the risk is accepted under Q5. |
 | T6 | A cached answer for one viewer reaches another | The guard adds `Vary: Cookie, Authorization` to answers of reader sources and `Cache-Control: private, no-cache` unless the plugin set its own header. |
 | T7 | Plugin CSS changes the look of pages for anonymous visitors, or hides content | The reader manifest carries no stylesheet (D8). A signed-in visitor gets the sheet as before. |
 | T8 | An anonymous request exhausts the server | Reader sources run under the server's existing request limits and overload protection (`openspec/specs/http-overload-protection`). This change adds no bypass. A source should bound its own work, which is a documented requirement. |
@@ -72,8 +72,8 @@ requirement on the plugin, documented, reviewed, and covered by the tests of `ex
 
 `FrontendFacade.registerPlaceholder` (`frontend/FrontendFacade.kt:50`) lets any plugin splice a value into the dashboard files that
 contain the placeholder. Only the JavaScript path escapes the value (`escapeForJsString`, line 63). That is an existing channel that
-this change neither opens nor closes. The reader security model does not rely on it. An open question asks the maintainers whether it
-should be restricted to asset files.
+this change neither opens nor closes. The reader security model does not rely on it. Restricting it to asset files is not part of this change (Q6, settled
+2026-11-17).
 
 ## Decisions
 
@@ -114,7 +114,7 @@ Reader pages live at `/plugins/<plugin>/<page>`. The segment `plugins` is new. I
    without reader pages gets no new warning.
 
 The known trade-off is the one that `browse` already has. A browser that opens a repository named `plugins` is shown the dashboard
-while a reader page exists. Open question Q2 proposes another address if the maintainers prefer no trade-off.
+while a reader page exists. Q2 is settled: the address stays and the trade-off is accepted.
 
 ### D4: the anonymous manifest
 
@@ -170,7 +170,7 @@ page, is drawn as "Unsupported block".
 
 The reader manifest carries no stylesheet. An anonymous visitor sees the dashboard's own styles on a reader page, and a signed-in visitor
 sees the sheet as before. This keeps the sheet decision of `plugin-stylesheet-channel` for the signed-in dashboard, and it means that a
-plugin sheet is never the only thing an anonymous visitor sees. Open question Q3 asks whether the sheet should be listed for readers too.
+plugin sheet is never the only thing an anonymous visitor sees. Q3 is settled: no sheet is listed for readers.
 
 ### D9: the switch
 
@@ -179,7 +179,7 @@ as `pluginUi` (`frontend/application/PluginUiPlugin.kt`). `false` empties the re
 and leaves the address unclaimed (D3). `INGOT_LOCAL_PLUGINUI=false` already switches every contribution off, and it also covers readers.
 
 The default is `true` because installing a plugin is the opt-in, and the switch exists for an operator who does not want readers at all.
-Open question Q1 asks whether `false` is the better default.
+Q1 is settled: the default stays `true`.
 
 ### D10: the browser policy
 
@@ -206,13 +206,16 @@ Open question Q1 asks whether `false` is the better default.
 - **The reserved segment surprises a browser user** on an instance with a repository named `plugins` and a reader page. Mitigation: the
   warning (D3) and Q2.
 
-## Open questions (each has a default)
+## Open questions, settled 2026-11-17
 
-- **Q1. Switch default.** Default `true`, because the plugin is the opt-in. `false` would make readers an explicit operator decision.
-- **Q2. Address.** Default `/plugins/<plugin>/<page>` with the trade-off of D3. Alternatives: a query on `/browse`, which needs no new
-  segment but puts plugin pages inside the repository view.
-- **Q3. Stylesheet for readers.** Default none (D8).
-- **Q4. Where readers sit.** Default the Browse section, under "Plugins". A top-level tab is the alternative and changes the top bar.
-- **Q5. Plugin names for anonymous visitors.** Default: reader pages name their plugin, so the names of installed reader plugins are
-  public. `enabledPlugins` stays signed-in only.
-- **Q6. The placeholder channel.** Default: left as it is and raised with the maintainers (see Known channel).
+The maintainer settled every question with the default recommended here. The answers are binding for the code pull requests.
+
+- **Q1. Switch default.** Settled 2026-11-17: `true`. Readers are an explicit opt-in by installing a plugin that registers a reader
+  page, and `false` remains available to the operator.
+- **Q2. Address.** Settled 2026-11-17: `/plugins/<plugin>/<page>`, with the trade-off of D3. A query on `/browse` is not used.
+- **Q3. Stylesheet for readers.** Settled 2026-11-17: none (D8).
+- **Q4. Where readers sit.** Settled 2026-11-17: the Browse section, under "Plugins". No top-level tab is added.
+- **Q5. Plugin names for anonymous visitors.** Settled 2026-11-17: reader pages name their plugin, so the names of installed reader
+  plugins are public. `enabledPlugins` stays signed-in only.
+- **Q6. The placeholder channel.** Settled 2026-11-17: left as it is. Restricting `registerPlaceholder` to asset files is not part of
+  this change.
