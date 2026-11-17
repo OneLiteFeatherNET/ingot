@@ -583,6 +583,13 @@
       "ownElement": false
     },
     {
+      "name": "md-dialog-actions",
+      "file": "src/components/md/MdDialogActions.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "revoke-token-dialog",
       "file": "src/components/identity/RevokeTokenDialog.vue",
       "stability": "experimental",
