@@ -27,7 +27,7 @@
  *               When a name is given and a router is installed, choosing a tab replaces the history entry.
  * Emits update:modelValue with the key of the tab that was chosen.
  */
-import { computed, inject, onMounted, useId, watch } from 'vue'
+import { computed, inject, onMounted, ref, useId, watch } from 'vue'
 import { routeLocationKey, routerKey } from 'vue-router'
 
 export interface AppTab {
@@ -78,7 +78,8 @@ const focusAt = (index: number) => {
   const count = props.tabs.length
   const target = props.tabs[(index + count) % count]
   choose(target.key)
-  buttons.get(target.key)?.focus()
+  // preventScroll: the list is scrolled sideways by the selection, and focus must not scroll the page.
+  buttons.get(target.key)?.focus({ preventScroll: true })
 }
 
 // Right and Left wrap at the ends. Home and End go to the first and the last tab. Every other key is left alone.
@@ -100,15 +101,30 @@ const remember = (key: string, element: unknown) => {
   if (element instanceof HTMLElement) buttons.set(key, element)
 }
 
-// A tab row that is wider than the screen scrolls sideways, so the selected tab is brought into view on the first render
-// (a deep link such as ?tab=configuration) and whenever the selection changes.
-const scrollSelectedIntoView = () => {
+// A tab row that is wider than the screen scrolls sideways. The selected tab is brought fully into view on the first
+// render (a deep link such as ?tab=configuration) and whenever the selection changes. Only the tab list moves: the page
+// keeps its vertical position, because scrollIntoView would scroll every ancestor, the page included.
+const listRef = ref<HTMLElement | null>(null)
+
+const reducedMotion = () =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const showSelectedTab = (behavior: 'auto' | 'smooth') => {
   const key = selected.value
-  if (key) buttons.get(key)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  const list = listRef.value
+  const tab = key ? buttons.get(key) : undefined
+  if (!list || !tab) return
+  const bounds = list.getBoundingClientRect()
+  const box = tab.getBoundingClientRect()
+  let offset = 0
+  if (box.left < bounds.left) offset = box.left - bounds.left
+  else if (box.right > bounds.right) offset = box.right - bounds.right
+  if (offset === 0) return
+  list.scrollTo?.({ left: list.scrollLeft + offset, behavior })
 }
 
-onMounted(scrollSelectedIntoView)
-watch(selected, scrollSelectedIntoView, { flush: 'post' })
+onMounted(() => showSelectedTab('auto'))
+watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { flush: 'post' })
 </script>
 
 <template>
@@ -117,6 +133,7 @@ watch(selected, scrollSelectedIntoView, { flush: 'post' })
     data-ingot-component="md-tabs"
   >
     <div
+      ref="listRef"
       role="tablist"
       :aria-label="label"
       class="flex flex-nowrap gap-1 overflow-x-auto border-b border-outline-variant pb-px scrollbar-hidden"

@@ -122,6 +122,7 @@ test.describe('system information and support page', () => {
     await page.goto(siteUrl('/settings/system-info?tab=configuration'))
     await expect(tab(page, 'Configuration')).toHaveAttribute('aria-selected', 'true')
     await expect(tab(page, 'Configuration')).toBeInViewport()
+    expect(await page.evaluate(() => window.scrollY), 'a deep link does not scroll the page vertically').toBe(0)
 
     const rows = await Promise.all(TABS.map(async (name) => Math.round((await tab(page, name).boundingBox()).y)))
     expect(new Set(rows).size, 'every tab sits on the same row').toBe(1)
