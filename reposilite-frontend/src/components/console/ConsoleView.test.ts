@@ -321,6 +321,15 @@ describe('ConsoleView', () => {
       expect(wrapper.findComponent({ name: 'MdStatePanel' }).text(), 'the panel must name the disconnection').toContain('Not connected to the remote console')
     })
 
+    it('draws the banner on the error container with the matching text colour', async () => {
+      await drop()
+
+      const banner = wrapper.findComponent({ name: 'MdStatePanel' }).element as HTMLElement
+      expect(banner.className, 'the banner must sit on the error container').toContain('bg-error-container')
+      expect(banner.className, 'the banner text must pair with the error container').toContain('text-on-error-container')
+      expect(banner.className, 'the surface text colour must not win over the container').not.toContain('text-on-surface')
+    })
+
     it('offers Reconnect in the banner after a plain stream failure', async () => {
       await drop()
 

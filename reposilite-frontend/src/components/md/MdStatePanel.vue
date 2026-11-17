@@ -25,17 +25,22 @@ import MdSkeleton from './MdSkeleton.vue'
  *
  * A panel that needs more than one action passes them through the `actions` slot. The slot
  * replaces the default Retry in the error state, and it is drawn in the empty state too.
+ *
+ * The container tone draws the error state on the error container, with the text colour that
+ * pairs with it, for a banner that sits above content.
  */
 withDefaults(defineProps<{
   state?: 'empty' | 'loading' | 'error'
   title?: string
   description?: string
   retryLabel?: string
+  tone?: 'surface' | 'container'
 }>(), {
   state: 'empty',
   title: undefined,
   description: undefined,
-  retryLabel: 'Retry'
+  retryLabel: 'Retry',
+  tone: 'surface'
 })
 
 const emit = defineEmits<{
@@ -67,7 +72,8 @@ const emit = defineEmits<{
     v-else-if="state === 'error'"
     role="alert"
     data-ingot-state="error"
-    class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
+    :class="tone === 'container' ? 'bg-error-container text-on-error-container' : 'text-on-surface'"
+    class="flex flex-col items-center gap-3 px-6 py-8 text-center"
     data-ingot-component="md-state-panel"
   >
     <p
