@@ -144,7 +144,7 @@ describe('SystemInfoView', () => {
   })
 })
 
-const withInfo = (data = FIXTURE) => ({ support: { systemInfo: vi.fn(() => Promise.resolve({ data })) } })
+const withInfo = (data: object = FIXTURE) => ({ support: { systemInfo: vi.fn(() => Promise.resolve({ data })) } })
 const panelsOf = (wrapper: Page) => wrapper.findAll('[role="tabpanel"]')
 const filterOf = (panel: PanelOf) => panel.find('input[type="search"]')
 

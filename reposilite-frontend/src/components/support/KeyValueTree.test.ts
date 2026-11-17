@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import KeyValueTree from './KeyValueTree.vue'
+import type { KeySplit } from './keyTree'
 
 type Row = [string, string]
 
@@ -41,7 +42,7 @@ const smallRows = (): Row[] => [
   ['PUID', '1000'],
 ]
 
-const mountTree = (props: Partial<{ entries: Row[], split: string, query: string, label: string }> = {}) =>
+const mountTree = (props: Partial<{ entries: Row[], split: KeySplit, query: string, label: string }> = {}) =>
   mount(KeyValueTree, {
     props: { entries: serviceRows(), split: 'underscore', query: '', label: 'Environment variables', ...props },
   })

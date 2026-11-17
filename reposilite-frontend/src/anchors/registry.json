@@ -1406,6 +1406,13 @@
       "states": []
     },
     {
+      "name": "key-value-tree",
+      "file": "src/components/support/KeyValueTree.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "system-info-view",
       "file": "src/components/support/SystemInfoView.vue",
       "stability": "experimental",

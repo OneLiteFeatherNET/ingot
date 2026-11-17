@@ -129,6 +129,8 @@
   --container-md-sheet: 20rem;
   --container-md-snackbar: 35rem;
   --container-md-crumb: 10rem;
+  /* The tree of keys on the system information page: it scrolls within this height, so a long list does not run on. */
+  --container-md-key-tree: 24rem;
 
   /*
    * Animations. Each token is built from the motion tokens, and its keyframes sit next to it, so a token and the

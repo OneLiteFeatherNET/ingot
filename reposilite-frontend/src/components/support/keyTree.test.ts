@@ -15,10 +15,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { buildKeyTree, filterTree, groupLabels, splitMatch, type GroupNode, type TreeNode } from './keyTree'
+import { buildKeyTree, filterTree, groupLabels, splitMatch, type GroupNode, type LeafNode, type TreeNode } from './keyTree'
 
 // Pure grouping of key/value rows into a tree: no component, no router and no clock.
-const leaf = (key: string) => ({ kind: 'leaf', key, value: 'v' })
+const leaf = (key: string): LeafNode => ({ kind: 'leaf', key, value: 'v' })
 const group = (label: string, count: number, children: TreeNode[]): GroupNode => ({ kind: 'group', label, count, children })
 const rows = (keys: string[]): [string, string][] => keys.map((key) => [key, 'v'])
 
@@ -148,7 +148,9 @@ describe('filterTree', () => {
   it('matches a value as well as a key', () => {
     const valued: [string, string][] = [['PUID', '1000'], ['GID', '2000']]
 
-    expect(filterTree(buildKeyTree(valued, 'underscore'), '2000'), 'the value 2000 selects GID').toEqual([leaf('GID')])
+    expect(filterTree(buildKeyTree(valued, 'underscore'), '2000'), 'the value 2000 selects GID').toEqual([
+      { kind: 'leaf', key: 'GID', value: '2000' },
+    ])
   })
 
   it('returns no nodes when nothing matches', () => {
