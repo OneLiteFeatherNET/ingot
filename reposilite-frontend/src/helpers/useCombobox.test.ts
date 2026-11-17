@@ -126,7 +126,7 @@ describe('filterOptions', () => {
   })
 
   it('keeps the options whose value contains the query, ignoring case', () => {
-    expect(filterOptions(options, 'AM'), 'the match is a case-insensitive substring').toEqual([{ value: 'gamma' }])
+    expect(filterOptions(options, 'AM'), 'the match is a case-insensitive substring').toEqual([{ value: 'beta-team' }, { value: 'gamma' }])
   })
 })
 

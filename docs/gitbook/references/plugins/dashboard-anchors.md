@@ -103,6 +103,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none |
 | `md-linear-progress` | experimental | `src/components/md/MdLinearProgress.vue` | none | none |
+| `md-listbox` | experimental | `src/components/md/MdListbox.vue` | none | none |
 | `md-navigation-bar` | experimental | `src/components/md/MdNavigationBar.vue` | none | none |
 | `md-navigation-rail` | experimental | `src/components/md/MdNavigationRail.vue` | none | none |
 | `md-overflow-menu` | experimental | `src/components/md/MdOverflowMenu.vue` | none | none |
