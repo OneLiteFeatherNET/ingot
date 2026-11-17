@@ -82,6 +82,9 @@ const isNonMd3Default = (token: string): boolean => {
 // every other class selector is a finding.
 const DOCUMENTED_HOOKS = ['dark', 'vfm']
 const DOCUMENTED_SHEETS = [/^src\/style\.css$/, /^src\/styles\/md3\/[^/]+\.css$/]
+// The classes that Vue <Transition> adds to an element, named by the patterns of MdTransition (motion-transitions.css).
+// They exist only while a transition runs, so a stylesheet has to name them. Only these exact names are documented.
+const TRANSITION_HOOK = /^motion-(?:fade-through|shared-x|shared-y|menu|dialog|sheet|snackbar|expand|fade)(?:-back)?-(?:enter|leave)-(?:active|from|to)$/
 
 const selectorFindings = ({ file, text }: { file: string; text: string }): string[] => {
   if (file.endsWith('.vue')) {
@@ -90,7 +93,7 @@ const selectorFindings = ({ file, text }: { file: string; text: string }): strin
   if (file.endsWith('.css')) {
     const documentedSheet = DOCUMENTED_SHEETS.some((pattern) => pattern.test(file))
     return stylesheetSelectorNames(text)
-      .filter((name) => !(documentedSheet && DOCUMENTED_HOOKS.includes(name)))
+      .filter((name) => !(documentedSheet && (DOCUMENTED_HOOKS.includes(name) || TRANSITION_HOOK.test(name))))
       .map((name) => `.${name}`)
   }
   return scriptSelectorNames(text)
