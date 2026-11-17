@@ -42,7 +42,9 @@ test.describe('repositories table layout', () => {
 
       expect(await linesOfText(name), `lines of the name ${repository}`).toBe(1)
       expect(await linesOfText(address), 'lines of the address').toBe(1)
-      expect(await linesOfText(actions), 'lines of the Actions button').toBe(1)
+      // The Actions button is an icon with no visible text, so it cannot wrap: its box stays one touch target tall.
+      const actionsBox = await actions.boundingBox()
+      expect(actionsBox.height, 'the height of the Actions button').toBeLessThanOrEqual(56)
     })
   }
 })
