@@ -65,21 +65,6 @@
     "count": 1
   },
   {
-    "file": "src/components/account/AccountView.vue",
-    "match": "[&>*:first-child]:min-[960px]:col-span-2",
-    "count": 1
-  },
-  {
-    "file": "src/components/account/AccountView.vue",
-    "match": "min-[960px]:col-span-2",
-    "count": 1
-  },
-  {
-    "file": "src/components/account/AccountView.vue",
-    "match": "min-[960px]:grid-cols-2",
-    "count": 1
-  },
-  {
     "file": "src/components/account/ProfileCard.vue",
     "match": "grid-cols-[auto_1fr]",
     "count": 1
