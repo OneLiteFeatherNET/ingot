@@ -340,10 +340,10 @@ test.describe('the administration page header', () => {
 
   test('keeps the content column of a reading page at its 960 pixel measure at 1440 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto(siteUrl('/maintenance'))
+    await page.goto(siteUrl('/settings/audit'))
     // The page column ends the measure. Its left edge is the side navigation's, when the page has one.
     const content = page.locator('[data-ingot-part="page"]')
-    await expect(page.getByRole('heading', { name: 'Maintenance', level: 1 })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Audit settings', exact: true })).toBeVisible()
 
     const box = await content.boundingBox()
     const navigation = page.getByRole('navigation', { name: 'Administration', exact: true })
