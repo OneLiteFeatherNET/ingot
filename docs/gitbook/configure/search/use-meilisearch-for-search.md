@@ -58,7 +58,7 @@ When the server reports a settings change, for example after an upgrade of the p
 
 The switch to a new backend starts a full rebuild of all repositories by itself, with the trigger `BACKEND`. The Meilisearch index is empty at that point, so search results are partial until the rebuild completes.
 
-1. Open **Maintenance** and find the **Search index** panel.
+1. Open **Maintenance** and select the **Search index** tab.
 2. Check that a run is live. The panel lists each repository as **Done**, **In progress** or **Waiting**.
 3. If no run is live and the index state reads **Empty**, select **Rebuild index**, choose all repositories and select **Rebuild**. The rebuild only reads storage, and it never changes a file.
 4. Wait until the index state reads **Ready**. Then compare a few known artifacts with a search.

@@ -18,7 +18,7 @@ A rebuild only reads storage. It never deletes or changes a file. Search keeps a
 
 ## Rebuild from the Maintenance page
 
-1. Open **Maintenance** and find the **Search index** panel.
+1. Open **Maintenance** and select the **Search index** tab.
 2. Read the state, the lag and the date of the last full rebuild. See [Index states](#index-states).
 3. Select **Rebuild index**. Choose all repositories or one repository, then select **Rebuild**.
 4. The panel lists each repository of the run as **Done**, **In progress** or **Waiting**. It refreshes every two seconds while the run is live.
