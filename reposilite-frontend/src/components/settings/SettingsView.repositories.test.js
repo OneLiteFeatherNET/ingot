@@ -89,6 +89,20 @@ describe('the Repositories page inside Settings', () => {
     expect(wrapper.get('h1').text(), 'the page heading is the id').toBe('releases')
   })
 
+  it('lifts the reading measure from the page of one repository, so its frame takes the full width', async () => {
+    await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
+
+    expect(wrapper.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
+  })
+
+  it('leaves the root of the repository detail without a max width class', async () => {
+    await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
+
+    // The root is the block that holds the type section, the tabs and the danger zone.
+    const root = wrapper.get('#repository-type-title').element.closest('.gap-6')
+    expect(root.className.split(' ').filter(name => name.startsWith('max-w')), 'no width cap on the detail root').toEqual([])
+  })
+
   it('keeps the instance-wide factory reset off the detail of one repository', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 

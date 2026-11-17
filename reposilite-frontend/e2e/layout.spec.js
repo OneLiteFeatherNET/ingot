@@ -53,7 +53,7 @@ test.describe('administration page header while scrolling', () => {
 })
 
 // The wide screens of use-wide-screens (D2 and D4): the repository table shows more columns, the dashboard lays its
-// charts out in more columns, a settings form stays at the reading measure, and the overview keeps the snippet card
+// charts out in more columns, a settings form takes the content width, and the overview keeps the snippet card
 // beside the browse list. The cases run at 1920 and 2560 pixels only.
 test.describe('wide screens', () => {
   for (const width of [1920, 2560]) {
@@ -106,14 +106,14 @@ test.describe('wide screens', () => {
         expect(box.x + box.width, 'the checklist reaches well past the middle of the window').toBeGreaterThan(width * 0.6)
       })
 
-      test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {
+      test('lets a settings form use the content width, past the 960 pixel measure', async ({ adminPage: page }) => {
         await page.goto(siteUrl('/settings/audit'))
         const frame = page.getByRole('region', { name: 'Audit settings', exact: true })
         await expect(frame).toBeVisible()
 
-        // From 1240 pixels the wrapper of the layout has no box of its own, so the page column carries the reading measure.
+        // The administration forms take the full width of the container; the page column is the content beside the side navigation.
         const box = await frame.locator('[data-ingot-part="page"]').boundingBox()
-        expect(box.width, 'the width of the settings page in px').toBeLessThanOrEqual(960)
+        expect(box.width, 'the width of the settings page in px').toBeGreaterThan(960)
       })
 
       test('places the snippet card beside the browse list on the overview', async ({ adminPage: page, seed }) => {
