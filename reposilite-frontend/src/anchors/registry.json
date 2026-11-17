@@ -1477,6 +1477,8 @@
       "stability": "experimental",
       "parts": [
         "plugin-tier",
+        "plugin-grid",
+        "plugin-card",
         "filter",
         "support-action",
         "support-note"
