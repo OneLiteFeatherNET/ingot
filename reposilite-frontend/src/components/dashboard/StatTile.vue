@@ -17,13 +17,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PropType } from 'vue'
+import { RouterLink } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { STATUS } from '../../store/palette'
 import LinkIcon from '../icons/LinkIcon.vue'
+import WarningIcon from '../icons/WarningIcon.vue'
 import MdCard from '../md/MdCard.vue'
 import StatusLabel from './StatusLabel.vue'
 
 // The reserved state names of the palette. Declared at runtime below, so the validator stays in place.
 type StatusName = keyof typeof STATUS
+
+// A value in a warning or error state is coloured and carries an icon, so the state never rests on colour alone.
+const VALUE_TONE: Partial<Record<StatusName, string>> = {
+  warning: 'text-warning',
+  critical: 'text-error'
+}
 
 const props = defineProps({
   label: {
@@ -65,6 +74,17 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  /** Colours the value and puts an icon before it, for a value that needs the reader's attention. */
+  valueStatus: {
+    type: String as PropType<StatusName | null>,
+    default: null,
+    validator: (value: StatusName | null) => value === null || value in STATUS
+  },
+  /** Makes the whole card a link to a page inside the application, named by its label and value. */
+  to: {
+    type: [String, Object] as PropType<RouteLocationRaw | null>,
+    default: null
+  },
   link: {
     type: String,
     default: ''
@@ -89,8 +109,11 @@ const meterColor = computed(() => {
 
 <template>
   <MdCard
+    :as="to ? RouterLink : 'div'"
+    :to="to || undefined"
+    :aria-label="to ? `${label}, ${value}` : undefined"
     variant="outlined"
-    class="flex min-w-0 flex-col"
+    :class="['flex min-w-0 flex-col', to ? 'no-underline md-focus-ring hover:border-outline' : '']"
   >
     <div
       class="flex items-center gap-1.5"
@@ -113,7 +136,14 @@ const meterColor = computed(() => {
       Tabular figures on purpose: several of these values are replaced while the reader is
       looking at them, and proportional digits make the whole tile twitch on every poll.
     -->
-    <p class="pt-1 md-headline-medium tabular-nums text-on-surface">
+    <p
+      :class="['pt-1 md-headline-medium tabular-nums', valueStatus ? VALUE_TONE[valueStatus] : 'text-on-surface']"
+    >
+      <WarningIcon
+        v-if="valueStatus && VALUE_TONE[valueStatus]"
+        class="mr-2 inline-block size-6 align-text-bottom"
+        aria-hidden="true"
+      />
       {{ value }}
     </p>
 

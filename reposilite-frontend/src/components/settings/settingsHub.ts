@@ -56,6 +56,7 @@ const glanceRows = ({ links, schemas, saved }: {
     key: several ? `${link.key}:${collection.key}` : link.key,
     label: several ? `${link.label}, ${collection.title}` : link.label,
     count: (saved?.[domain]?.[collection.key] as { length?: number } | undefined)?.length ?? 0,
+    to: link.to,
   }))
 })
 

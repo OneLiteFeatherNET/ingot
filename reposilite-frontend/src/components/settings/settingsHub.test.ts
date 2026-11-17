@@ -65,7 +65,8 @@ describe('glanceRows', () => {
     expect(rows.find(row => row.key === 'page:repositories'), 'the Repositories page counts the maven domain').toEqual({
       key: 'page:repositories',
       label: 'Repositories',
-      count: 7
+      count: 7,
+      to: { name: 'settings-repositories' }
     })
   })
 
@@ -87,8 +88,8 @@ describe('glanceRows', () => {
     })
 
     expect(rows).toEqual([
-      { key: 'settings:cleanup:policies', label: 'Cleanup policies, Policies', count: 3 },
-      { key: 'settings:cleanup:exclusions', label: 'Cleanup policies, Exclusions', count: 0 }
+      { key: 'settings:cleanup:policies', label: 'Cleanup policies, Policies', count: 3, to: { name: 'settings', params: { domain: 'cleanup' } } },
+      { key: 'settings:cleanup:exclusions', label: 'Cleanup policies, Exclusions', count: 0, to: { name: 'settings', params: { domain: 'cleanup' } } }
     ])
   })
 
@@ -105,7 +106,7 @@ describe('glanceRows', () => {
       saved: { acme: { repositories: entries(2) } }
     })
 
-    expect(rows).toEqual([{ key: 'settings:acme', label: 'Acme mirrors', count: 2 }])
+    expect(rows).toEqual([{ key: 'settings:acme', label: 'Acme mirrors', count: 2, to: { name: 'settings', params: { domain: 'acme' } } }])
   })
 })
 
