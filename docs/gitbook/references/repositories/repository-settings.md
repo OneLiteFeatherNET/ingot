@@ -254,9 +254,11 @@ The support bundle lists the storage of each repository in `system-info.json`, w
 | `s3` | `region`, only when a region is set. |
 | `gcs` | `bucket`, `projectId`, `prefix`, `authentication`. |
 | `azure-blob` | `accountName`, `container`, `prefix`, `authentication`. |
-| `cache` | The keys of the storage that the cache wraps, because the cache reports the details of its delegate. |
+| `cache` | The keys of the storage that the cache wraps, plus the counters of the cache: `hits`, `misses`, `fills`, `skippedFills`, `fillFailures`, `evictions`, `bytes` (the size of the copies held) and `maxBytes` (the limit). |
 
 A cache has the kind `cache` and no `region`, even when its delegate is an S3 provider. The region of that delegate appears in the `details` map instead. See [Storage providers](storage-providers.md) for the `cache` type.
+
+The cache counters count from the start of the replica and reset on restart. Every replica has its own counters, so a cluster reports one set per instance. No counter holds a path.
 
 ## Storage policy
 

@@ -27,6 +27,7 @@ import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
 import net.onelitefeather.ingot.storage.capability.ClusterBus
 import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
 import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
+import net.onelitefeather.ingot.storage.capability.SupportDetails
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
@@ -43,6 +44,7 @@ import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.LongAdder
 import panda.std.Result
 
 /** The file that holds the exclusive lock of a cache directory. */
@@ -64,7 +66,7 @@ internal class CacheStorageProvider(
     private val repositoryName: String = "",
     @Volatile private var publishInvalidation: (Collection<String>) -> Unit = {},
     private val onFailure: (String) -> Unit = {},
-) : StorageProvider, ClusterCacheAware, RelatedKeyAware {
+) : StorageProvider, ClusterCacheAware, RelatedKeyAware, SupportDetails {
 
     /**
      * Called once the cluster bus is open. From then on every removal and overwrite is published under the repository name, so that the
@@ -87,15 +89,52 @@ internal class CacheStorageProvider(
     /** The copies in the data folder, by key. Guarded by [commitLock]. */
     private val index = HashMap<String, Entry>()
 
-    /** Fills and uploads that were ready but could not make room under [maxSize]. Guarded by [commitLock]. */
-    private var skipped = 0L
+    /*
+     * The counters of this replica, read by [describe]. Adders are updated without a lock, so counting never waits for a commit.
+     */
+
+    /** Reads answered from a committed copy. */
+    private val hits = LongAdder()
+
+    /** Reads of a cacheable key that had no committed copy when they arrived, including ranged reads. */
+    private val misses = LongAdder()
+
+    /** Copies committed by a read that missed. */
+    private val fills = LongAdder()
+
+    /** Fills that the delegate could not supply in full, or whose copy did not match its size. */
+    private val fillFailures = LongAdder()
+
+    /** Copies removed to make room for another one. */
+    private val evictions = LongAdder()
+
+    /** Fills and uploads that were ready but could not make room under [maxSize]. */
+    private val skipped = LongAdder()
 
     /** Holds the exclusive lock of the cache directory for the life of the provider, see [shutdown]. */
     private var lockChannel: FileChannel? = null
 
     /** The number of fills and uploads that were skipped because no copy could be evicted to make room. */
     val skippedFills: Long
-        get() = synchronized(commitLock) { skipped }
+        get() = skipped.sum()
+
+    /**
+     * The counters of this replica and the size of the cache. `bytes` is the size of the committed copies and `maxBytes` the limit.
+     * No path is part of the values.
+     */
+    override fun describe(): Map<String, String> {
+        val bytes = synchronized(commitLock) { totalBytes() }
+        return linkedMapOf(
+            "hits" to hits.sum().toString(),
+            "misses" to misses.sum().toString(),
+            "fills" to fills.sum().toString(),
+            "skippedFills" to skipped.sum().toString(),
+            "fillFailures" to fillFailures.sum().toString(),
+            "evictions" to evictions.sum().toString(),
+            "bytes" to bytes.toString(),
+            "maxBytes" to maxSize.toString(),
+        )
+    }
 
     private val dataDirectory: Path = directory.resolve("data")
     private val fillDirectory: Path = directory.resolve("fill")
@@ -134,8 +173,9 @@ internal class CacheStorageProvider(
         }
         val cached = dataFile(key)
         if (Files.isRegularFile(cached)) {
-            return openCopy(cached, location)
+            return openCopy(cached, location, hit = true)
         }
+        misses.increment()
         if (!fitsFileSizeLimit(location)) {
             return delegate.getFile(location)
         }
@@ -147,11 +187,15 @@ internal class CacheStorageProvider(
         val cached = dataFile(key)
         if (isCacheMutableKey(key) || !Files.isRegularFile(cached)) {
             // A ranged miss never starts a fill, see the spec of the storage cache.
+            if (!isCacheMutableKey(key)) {
+                misses.increment()
+            }
             return delegate.getFile(location, offset, length)
         }
         return try {
             val channel = FileChannel.open(cached, StandardOpenOption.READ)
             channel.position(offset)
+            hits.increment()
             Result.ok(pinned(key, BoundedInputStream(Channels.newInputStream(channel), length)))
         } catch (exception: IOException) {
             onFailure("Cannot read the cached copy of $key: ${exception.message}")
@@ -261,12 +305,12 @@ internal class CacheStorageProvider(
      */
     private fun makeRoomFor(size: Long): Boolean {
         if (size > maxSize) {
-            skipped++
+            skipped.increment()
             return false
         }
         while (totalBytes() + size > maxSize) {
             if (!evictLeastRecentlyUsed()) {
-                skipped++
+                skipped.increment()
                 return false
             }
         }
@@ -280,6 +324,7 @@ internal class CacheStorageProvider(
             .minByOrNull { it.value.lastAccess }
             ?: return false
         index.remove(victim.key)
+        evictions.increment()
         runCatching { Files.deleteIfExists(dataFile(victim.key)) }
             .onFailure { onFailure("Cannot evict the cached copy of ${victim.key}: ${it.message}") }
         return true
@@ -384,9 +429,13 @@ internal class CacheStorageProvider(
     }
 
     /** Serves a committed copy. A copy that cannot be opened is reported and the request goes to the delegate. */
-    private fun openCopy(cached: Path, location: Location): Result<InputStream, ErrorResponse> =
+    private fun openCopy(cached: Path, location: Location, hit: Boolean): Result<InputStream, ErrorResponse> =
         try {
-            Result.ok(pinned(location.toString(), Files.newInputStream(cached)))
+            val stream = pinned(location.toString(), Files.newInputStream(cached))
+            if (hit) {
+                hits.increment()
+            }
+            Result.ok(stream)
         } catch (exception: IOException) {
             onFailure("Cannot open the cached copy of $location: ${exception.message}")
             forget(location.toString())
@@ -433,7 +482,7 @@ internal class CacheStorageProvider(
         val pending = CompletableFuture<Boolean>()
         val owner = inFlight.putIfAbsent(key, pending)
         if (owner != null) {
-            return if (owner.join()) openCopy(dataFile(key), location) else delegate.getFile(location)
+            return if (owner.join()) openCopy(dataFile(key), location, hit = false) else delegate.getFile(location)
         }
         var committed = false
         try {
@@ -442,7 +491,7 @@ internal class CacheStorageProvider(
             inFlight.remove(key, pending)
             pending.complete(committed)
         }
-        return if (committed) openCopy(dataFile(key), location) else delegate.getFile(location)
+        return if (committed) openCopy(dataFile(key), location, hit = false) else delegate.getFile(location)
     }
 
     /**
@@ -454,12 +503,17 @@ internal class CacheStorageProvider(
         val expected = delegate.getFileSize(location)
         val source = delegate.getFile(location)
         if (!expected.isOk || !source.isOk) {
+            if (expected.isOk) {
+                // The delegate knows the size of the file but could not supply its bytes
+                fillFailures.increment()
+            }
             return false
         }
         val temporary = Files.createTempFile(fillDirectory, "fill-", ".part")
         try {
             val copied = source.get().use { input -> Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING) }
             if (copied != expected.get()) {
+                fillFailures.increment()
                 onFailure("A copy of $key has $copied bytes, the delegate reports ${expected.get()}, so it is not cached")
                 return false
             }
@@ -472,11 +526,13 @@ internal class CacheStorageProvider(
                         Files.createDirectories(target.parent)
                         Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                         index[key] = Entry(copied, clock.millis())
+                        fills.increment()
                         true
                     }
                 }
             }
         } catch (exception: IOException) {
+            fillFailures.increment()
             onFailure("Cannot cache $key: ${exception.message}")
             return false
         } finally {
