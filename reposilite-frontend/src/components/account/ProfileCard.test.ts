@@ -21,8 +21,10 @@ import type { Principal } from '../../store/session'
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
 
-const render = (props: { principal?: Principal; teams?: string[]; instanceAdmin?: boolean } = {}) =>
-  mount(ProfileCard, { props: { principal: ALICE, teams: [], instanceAdmin: false, ...props } })
+const render = (props: { principal?: Principal; sources?: string[] } = {}) =>
+  mount(ProfileCard, { props: { principal: ALICE, sources: ['Local'], ...props } })
+
+const labels = (wrapper: ReturnType<typeof render>) => wrapper.findAll('dt').map(term => term.text())
 
 describe('ProfileCard', () => {
   it('shows the display name, the username and the kind', () => {
@@ -33,22 +35,33 @@ describe('ProfileCard', () => {
     expect(text).toContain('User')
   })
 
-  it('shows every team as a chip', () => {
-    const wrapper = render({ teams: ['developers', 'release'] })
+  it('shows the username only when it differs from the display name', () => {
+    const wrapper = render({ principal: { ...ALICE, displayName: 'alice' } })
 
-    expect(wrapper.findAll('[data-test="team"]').map(chip => chip.text())).toEqual(['developers', 'release'])
+    expect(labels(wrapper), 'the same value is not drawn on a second row').not.toContain('Username')
+    expect(wrapper.text().match(/alice/g) ?? [], 'the value appears once').toHaveLength(1)
   })
 
-  it('says so when the principal is in no team', () => {
-    expect(render().text()).toContain('No teams')
+  it('keeps the username row when the display name differs', () => {
+    expect(labels(render())).toContain('Username')
   })
 
-  it('shows the instance admin badge for an instance admin', () => {
-    expect(render({ instanceAdmin: true }).find('[data-test="instance-admin"]').exists()).toBe(true)
+  it('leaves the teams to the Your access section, so no team is drawn in the profile', () => {
+    const wrapper = render()
+
+    expect(labels(wrapper), 'the profile has no Teams row').not.toContain('Teams')
+    expect(wrapper.findAll('[data-test="team"]'), 'no team chip').toHaveLength(0)
   })
 
-  it('shows no badge for an ordinary account', () => {
-    expect(render().find('[data-test="instance-admin"]').exists(), 'only an instance admin gets the badge').toBe(false)
+  it('leaves the instance admin tag to the Your access section', () => {
+    expect(render().find('[data-test="instance-admin"]').exists(), 'the profile carries no admin tag').toBe(false)
+  })
+
+  it('names the sign-in sources of the principal, such as Local and LDAP', () => {
+    const wrapper = render({ sources: ['Local', 'LDAP'] })
+
+    expect(labels(wrapper), 'the profile names how the principal signs in').toContain('Sign-in')
+    expect(wrapper.find('[data-test="sign-in-sources"]').text()).toBe('Local, LDAP')
   })
 
   it('falls back to the username when there is no display name', () => {

@@ -16,31 +16,29 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import TokenTag from '../tokens/TokenTag.vue'
 import type { Principal } from '../../store/session'
 
 /*
  * The read-only profile of the signed in principal. The server offers no self service profile
- * edit, so there is nothing to change here.
+ * edit, so there is nothing to change here. Each value is drawn once: the username only when it
+ * differs from the display name, and the teams and the instance admin tag are in Your access.
  *
  * Props:
- *   principal      { id, kind, name, displayName }
- *   teams          the names of the principal's teams
- *   instanceAdmin  whether the principal administers the instance (shows a badge)
+ *   principal  { id, kind, name, displayName }
+ *   sources    the sign-in sources, such as Local or LDAP (see accessView.ts)
  */
 const props = withDefaults(defineProps<{
   principal: Principal
-  teams?: string[]
-  instanceAdmin?: boolean
+  sources?: string[]
 }>(), {
-  teams: () => [],
-  instanceAdmin: false
+  sources: () => []
 })
 
 const KINDS: Readonly<Record<string, string | undefined>> = { USER: 'User', MACHINE: 'Machine' }
 
 const kind = computed(() => KINDS[props.principal.kind] ?? props.principal.kind)
 const displayName = computed(() => props.principal.displayName || props.principal.name)
+const username = computed(() => (props.principal.name === displayName.value ? '' : props.principal.name))
 </script>
 
 <template>
@@ -49,21 +47,12 @@ const displayName = computed(() => props.principal.displayName || props.principa
     aria-labelledby="profile-title"
     data-ingot-component="profile-card"
   >
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h3
-        id="profile-title"
-        class="md-title-large text-on-surface"
-      >
-        Profile
-      </h3>
-      <TokenTag
-        v-if="instanceAdmin"
-        accent
-        data-test="instance-admin"
-      >
-        Instance admin
-      </TokenTag>
-    </div>
+    <h3
+      id="profile-title"
+      class="md-title-large text-on-surface"
+    >
+      Profile
+    </h3>
     <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">
       <dt class="text-on-surface-variant">
         Display name
@@ -74,38 +63,34 @@ const displayName = computed(() => props.principal.displayName || props.principa
       >
         {{ displayName }}
       </dd>
-      <dt class="text-on-surface-variant">
-        Username
-      </dt>
-      <dd class="m-0 min-w-0 break-words text-on-surface">
-        {{ principal.name }}
-      </dd>
+      <template v-if="username">
+        <dt class="text-on-surface-variant">
+          Username
+        </dt>
+        <dd
+          class="m-0 min-w-0 break-words text-on-surface"
+          data-test="username"
+        >
+          {{ username }}
+        </dd>
+      </template>
       <dt class="text-on-surface-variant">
         Kind
       </dt>
       <dd class="m-0 text-on-surface">
         {{ kind }}
       </dd>
-      <dt class="text-on-surface-variant">
-        Teams
-      </dt>
-      <dd class="m-0 flex min-w-0 flex-wrap items-center gap-2 text-on-surface">
-        <template v-if="teams.length > 0">
-          <TokenTag
-            v-for="team in teams"
-            :key="team"
-            data-test="team"
-          >
-            {{ team }}
-          </TokenTag>
-        </template>
-        <span
-          v-else
-          class="text-on-surface-variant"
+      <template v-if="sources.length > 0">
+        <dt class="text-on-surface-variant">
+          Sign-in
+        </dt>
+        <dd
+          class="m-0 min-w-0 break-words text-on-surface"
+          data-test="sign-in-sources"
         >
-          No teams
-        </span>
-      </dd>
+          {{ sources.join(', ') }}
+        </dd>
+      </template>
     </dl>
   </section>
 </template>

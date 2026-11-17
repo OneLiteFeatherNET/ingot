@@ -62,6 +62,7 @@ export interface RegistryEntry {
   stability: string
   parts: string[]
   states: string[]
+  slots?: string[]
   ownElement?: boolean
 }
 
@@ -97,6 +98,7 @@ export const KNOWN_ATTRIBUTES: readonly string[] = Object.freeze([
   "data-ingot-component-alias",
   "data-ingot-part",
   "data-ingot-state",
+  "data-ingot-slot",
   "data-ingot-block",
   "data-ingot-repository",
   "data-ingot-plugin-page",
@@ -274,6 +276,29 @@ export function partAndStateProblems(file: string, source: string, entry: Regist
   for (const state of entry.states) {
     if (!states.some((anchor) => anchor.value === state)) {
       problems.push(`${file}: registered state "${state}" is not used by "${entry.name}"`)
+    }
+  }
+  return problems
+}
+
+// The named slots of one component: an element with a literal data-ingot-slot is a place where a later change puts its
+// own content. The registry lists each slot of the component, and each listed slot is in the template.
+export function slotProblems(file: string, source: string, entry: RegistryEntry): string[] {
+  const { anchors } = inspectTemplate(source, file)
+  const slots = anchors.filter((anchor) => anchor.attribute === "data-ingot-slot")
+  const registered = entry.slots ?? []
+  const problems: string[] = []
+
+  for (const slot of slots) {
+    if (slot.dynamic) {
+      problems.push(`${file}: data-ingot-slot must be a literal`)
+    } else if (!registered.includes(slot.value)) {
+      problems.push(`${file}: slot "${slot.value}" is not in the registry for "${entry.name}"`)
+    }
+  }
+  for (const name of registered) {
+    if (!slots.some((anchor) => anchor.value === name)) {
+      problems.push(`${file}: registered slot "${name}" is not used by "${entry.name}"`)
     }
   }
   return problems

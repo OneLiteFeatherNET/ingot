@@ -28,6 +28,7 @@ import {
   partAndStateProblems,
   registryProblems,
   selectorProblems,
+  slotProblems,
 } from "./checks"
 import registry from "./registry.json"
 import type { RegistryAlias, RegistryEntry } from "./checks"
@@ -220,6 +221,44 @@ describe("anchor checks on a single template", () => {
   })
 })
 
+describe("anchor checks on the named slots of a component", () => {
+  const SLOT_SOURCE = `<template><nav data-ingot-component="side-nav-layout"><section data-ingot-slot="add-thing"></section></nav></template>`
+
+  it("accepts the slot attribute as a known anchor on a component that names it", () => {
+    const entry = entryFor("side-nav-layout", { slots: ["add-thing"] })
+
+    expect(nameProblems(NAVIGATION_FILE, SLOT_SOURCE, entry, registryOf([]))).toEqual([])
+  })
+
+  it("accepts a slot that the registry lists and the template uses", () => {
+    const entry = entryFor("side-nav-layout", { slots: ["add-thing"] })
+
+    expect(slotProblems(NAVIGATION_FILE, SLOT_SOURCE, entry)).toEqual([])
+  })
+
+  it("reports a slot that the registry does not list", () => {
+    const problems = slotProblems(NAVIGATION_FILE, SLOT_SOURCE, entryFor("side-nav-layout"))
+
+    expect(problems).toEqual([expect.stringContaining("add-thing")])
+  })
+
+  it("reports a registered slot that the template never uses", () => {
+    const source = `<template><nav data-ingot-component="side-nav-layout"></nav></template>`
+
+    const problems = slotProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout", { slots: ["add-thing"] }))
+
+    expect(problems).toEqual([expect.stringContaining("add-thing")])
+  })
+
+  it("reports a slot value that is bound dynamically, because a slot name is a literal", () => {
+    const source = `<template><nav data-ingot-component="side-nav-layout"><section :data-ingot-slot="name"></section></nav></template>`
+
+    const problems = slotProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"))
+
+    expect(problems).toEqual([expect.stringContaining("must be a literal")])
+  })
+})
+
 describe("anchor checks on the registry", () => {
   it("reports a component name that is not kebab-case", () => {
     const problems = registryProblems(registryOf([entryFor("SideNavLayout")]), [NAVIGATION_FILE], [])
@@ -310,6 +349,12 @@ describe("anchor checks across the dashboard source", () => {
 
   it("uses only parts and states that the registry lists, and lists only those the template uses", () => {
     const problems = registered.flatMap((entry) => partAndStateProblems(entry.file, sourceOf[entry.file], entry))
+
+    expect(problems, problems.join("\n")).toEqual([])
+  })
+
+  it("uses only slots that the registry lists, and lists only those the template uses", () => {
+    const problems = registered.flatMap((entry) => slotProblems(entry.file, sourceOf[entry.file], entry))
 
     expect(problems, problems.join("\n")).toEqual([])
   })

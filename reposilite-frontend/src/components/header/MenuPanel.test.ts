@@ -145,6 +145,14 @@ describe('MenuPanel, signed in', () => {
     expect(header.match(/alice/g) ?? [], 'the same value is not shown twice').toHaveLength(0)
   })
 
+  it('does not repeat the login name in the menu when the principal has no display name', async () => {
+    state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: '' }
+    await open()
+    expect(accountTrigger(mounted!.wrapper).text(), 'the bar shows the login name as its name').toContain('alice')
+    const menuText = document.querySelector('[role="menu"]')!.textContent
+    expect(menuText, 'the menu does not repeat the name the bar shows').not.toContain('alice')
+  })
+
   it('shows the kind and the sign-in source in the menu header, such as User, LDAP', async () => {
     state.access = { principal: { name: 'alice', displayName: 'Alice Example', kind: 'USER', providers: ['ldap'] } }
 
