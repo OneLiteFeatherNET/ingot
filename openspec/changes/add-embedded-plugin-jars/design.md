@@ -201,8 +201,8 @@ Each step is one pull request, buildable and passing alone, in this order:
 
 1. `feat(plugin): add the embedded origin and the plugin version rule`. The origin, the version parser and the resolver rows.
    Nothing reads them yet, so the behaviour is unchanged.
-2. `feat(plugin): embed a named plugin jar into the server jar`. The list, the configuration, the copy and `verifyEmbeddedPlugins`.
-   With the list empty the server jar is unchanged, so the step can merge before the loader changes.
+2. `build(plugin): embed a named plugin jar into the server jar`, its own pull request. The list, the configuration, the copy and
+   `verifyEmbeddedPlugins`. With the list empty the server jar is unchanged, so the step can merge before the loader changes.
 3. `feat(plugin): load plugin jars embedded in the server`. Extraction, cleanup, the fallback, the own loaders, the origin and the
    registration of candidates without a plugins-directory copy.
 4. `feat(plugin): let a newer plugins directory jar replace the embedded copy`. The precedence, the INFO line and the operator page.
@@ -211,4 +211,4 @@ The sibling `extract-javadoc-plugin` starts its code pull requests only after pu
 
 ## Settled questions
 
-The six maintainer decisions of `proposal.md` are settled on 2026-11-17 with the recommended default of each. No question is open. Question 1 is decided in D2, question 2 in Risks, question 3 in D5, question 4 in D1, question 5 in Risks, and question 6 in step 2 of the Migration plan.
+The six maintainer decisions of `proposal.md` are settled on 2026-11-17. Five take the recommended default of each. Question 6 ships the build hook as its own pull request of type `build(plugin)`, merged before the loader. No question is open. Question 1 is decided in D2, question 2 in Risks, question 3 in D5, question 4 in D1, question 5 in Risks, and question 6 in step 2 of the Migration plan.

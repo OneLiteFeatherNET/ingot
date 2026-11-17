@@ -36,11 +36,11 @@ Three facts from the code shape the design:
 - Conventional Commits type and scope: `feat(plugin)`. The change adds a capability to the loader and changes nothing that an
   operator already uses, so it is a feature and not a `refactor`.
 - The proposal pull request is `docs(openspec): propose add-embedded-plugin-jars`.
-- The code ships as four pull requests, in this order. Each title starts with `feat(plugin):`, and each has about 400 changed
-  lines. Inside a pull request the commits have one type each (a failing test is `test(plugin)`, the Gradle file is
+- The code ships as four pull requests, in this order. Each title starts with `feat(plugin):`, except the build hook, which
+  ships as its own pull request titled with `build(plugin):`. Each has about 400 changed lines. Inside a pull request the commits have one type each (a failing test is `test(plugin)`, the Gradle file is
   `build(plugin)`, the change is `feat(plugin)`, the operator page is `docs(plugin)`), and squash-merging makes the pull request title the one commit on main.
   1. `feat(plugin): add the embedded origin and the plugin version rule`
-  2. `feat(plugin): embed a named plugin jar into the server jar`
+  2. `build(plugin): embed a named plugin jar into the server jar`
   3. `feat(plugin): load plugin jars embedded in the server`
   4. `feat(plugin): let a newer plugins directory jar replace the embedded copy`
 
@@ -108,7 +108,7 @@ rather than a modification of that change.
 
 ## Maintainer decisions
 
-Settled on 2026-11-17: the maintainer accepted the recommended default of each question below. The default is the answer this proposal builds in. A later change of answer updates the matching requirement and task before the first code pull request is opened.
+Settled on 2026-11-17: the maintainer accepted the recommended default of each question below, except question 6, which ships the build hook as its own pull request. The answer of each question is the one this proposal builds in. A later change of answer updates the matching requirement and task before the first code pull request is opened.
 
 1. **Version source.** Settled 2026-11-17, default: the manifest attribute `Implementation-Version`. The alternative is the `version()` element of
    `@Plugin`, which needs the plugin author to set it and the build to keep it equal to the manifest. The annotation default is
@@ -122,8 +122,9 @@ Settled on 2026-11-17: the maintainer accepted the recommended default of each q
 5. **Tier check.** `add-plugin-support-tiers` says a module that declares Core needs a jar in the image. An embedded jar is not
    copied into `/app/bundled-plugins`. Settled 2026-11-17, default: the sibling changes declare no tier, so the check never sees the question. The
    tier check is extended in its own change if a maintainer wants embedded plugins to declare Core.
-6. **Commit type of the build hook.** Settled 2026-11-17, default: the hook is a `build(plugin)` commit inside the `feat(plugin)` pull request, as
-   the proposal says a change ships under one type. The alternative is a separate `build(plugin)` change.
+6. **Commit type of the build hook.** Settled 2026-11-17: the hook ships as its own pull request, titled `build(plugin): embed a named
+   plugin jar into the server jar`, merged after the origin pull request and before the loader pull request. Its commits keep one type each
+   (the failing test is `test(plugin)`, the Gradle file is `build(plugin)`), and the `feat(plugin)` pull requests do not carry it.
 
 ## Verification
 

@@ -42,9 +42,9 @@ PR title: `feat(plugin): add the embedded origin and the plugin version rule`
   `PluginOrigin` and the mapping in `PluginTierResolver`. Verify: the tests of 2.1 and 2.2 pass, the existing tests of the plugin
   package pass unedited, and the plugin ABI gate reports no change.
 
-## 3. Build hook (pull request 2)
+## 3. Build hook (pull request 2, its own pull request)
 
-PR title: `feat(plugin): embed a named plugin jar into the server jar`
+PR title: `build(plugin): embed a named plugin jar into the server jar`
 
 - [ ] 3.1 `test(plugin)`: failing tests `EmbeddedPluginJarsTest` in `buildSrc/src/test/kotlin/`, each with a temporary jar: a server jar
   without embedded entries passes; a named module with no entry fails and the message names the module; an entry without
@@ -104,9 +104,10 @@ PR title: `feat(plugin): let a newer plugins directory jar replace the embedded 
 
 - [ ] 6.1 Open pull request 1 under `feat(plugin): add the embedded origin and the plugin version rule`, after the proposal has merged.
   Verify: the title is the one of group 2 and the description follows the repository template.
-- [ ] 6.2 Open pull request 2 under `feat(plugin): embed a named plugin jar into the server jar`, after pull request 1 has merged.
-  Verify: the title is the one of group 3, and the result of 0.2 and 0.3 is linked in the description.
-- [ ] 6.3 Open pull request 3 under `feat(plugin): load plugin jars embedded in the server`, after pull request 2 has merged.
+- [ ] 6.2 Open the build hook pull request (pull request 2) under `build(plugin): embed a named plugin jar into the server jar`, after
+  pull request 1 has merged and before pull request 3. Verify: the title is the one of group 3, and the result of 0.2 and 0.3 is linked
+  in the description.
+- [ ] 6.3 Open pull request 3 under `feat(plugin): load plugin jars embedded in the server`, after the build hook pull request has merged.
   Verify: the title is the one of group 4.
 - [ ] 6.4 Open pull request 4 under `feat(plugin): let a newer plugins directory jar replace the embedded copy`, after pull request 3 has
   merged. This is the last task of the change. Verify: the title is the one of group 5, and the pull request states that
