@@ -27,6 +27,8 @@ import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
@@ -190,9 +192,17 @@ open class LoginStore(
         transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.attemptKey eq attemptKey } }
     }
 
-    /** Removes the rows whose last failure is older than [cutoff]. Such a row can no longer hold a lock. */
-    internal fun deleteAttemptsBefore(cutoff: Instant): Int =
-        transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.lastFailureAt less cutoff } }
+    /**
+     * Removes the rows whose last failure is older than [cutoff] and whose lock, if any, has ended by [now]. A row that is
+     * still locked is kept, which matters for a ban longer than the cutoff.
+     */
+    internal fun deleteAttemptsBefore(cutoff: Instant, now: Instant): Int =
+        transaction(database) {
+            LoginAttemptTable.deleteWhere {
+                (LoginAttemptTable.lastFailureAt less cutoff) and
+                    (LoginAttemptTable.lockedUntil.isNull() or (LoginAttemptTable.lockedUntil lessEq now))
+            }
+        }
 
     /** Whether [subject] signed in from the address with [addressHash] at or after [since]. */
     internal fun isKnownAddress(subject: String, addressHash: String, since: Instant): Boolean =
