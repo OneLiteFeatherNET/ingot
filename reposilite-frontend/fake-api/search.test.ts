@@ -16,15 +16,16 @@
 
 /*
  * Tests of the artifact search of the fake backend. They use the test runner that ships with Node:
- *   node --test fake-api/search.test.cjs
+ *   node --import tsx --test fake-api/search.test.ts
  * Every test builds its own search over its own files and nothing reads a clock or the environment.
  */
 
-const { describe, it } = require("node:test")
-const assert = require("node:assert/strict")
-const { createSearch, sampleFiles } = require("./search.cjs")
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import { createSearch, sampleFiles } from "./search"
+import type { Failure, FileRow, FilesOk, Query, SearchOk } from "./search"
 
-const file = (overrides = {}) => ({
+const file = (overrides: Partial<FileRow> = {}): FileRow => ({
   repository: "releases",
   origin: "HOSTED",
   sourceHost: null,
@@ -39,9 +40,31 @@ const file = (overrides = {}) => ({
   ...overrides
 })
 
-const search = (files, options = {}) => createSearch({ files, publicRepositories: ["releases", "snapshots", "central-proxy"], ...options })
-const ask = (files, query = {}, who = { signedIn: true }, options = {}) => search(files, options).search(query, who)
-const items = (files, query, who) => ask(files, query, who).body.items
+interface SearchOptions {
+  state?: string
+  windowCap?: number
+}
+
+const search = (files: FileRow[], options: SearchOptions = {}) => createSearch({ files, publicRepositories: ["releases", "snapshots", "central-proxy"], ...options })
+const ask = (files: FileRow[], query: Query = {}, who = { signedIn: true }, options: SearchOptions = {}) => search(files, options).search(query, who)
+const ok = (answer: SearchOk | Failure): SearchOk => {
+  assert.ok(answer.status === 200, "the search answers 200")
+  return answer
+}
+const okFiles = (answer: FilesOk | Failure): FilesOk => {
+  assert.ok(answer.status === 200, "the files answer 200")
+  return answer
+}
+const failed = (answer: SearchOk | FilesOk | Failure): Failure => {
+  assert.ok(answer.status !== 200, "the answer is an error")
+  return answer
+}
+const facetsOf = (answer: SearchOk | Failure) => {
+  const { facets } = ok(answer).body
+  assert.ok(facets, "the facets are present")
+  return facets
+}
+const items = (files: FileRow[], query?: Query, who?: { signedIn: boolean }) => ok(ask(files, query, who)).body.items
 
 describe("access", () => {
   it("shows an anonymous caller only the public repositories", () => {
@@ -59,7 +82,7 @@ describe("access", () => {
   it("never names a repository the caller cannot see in the facets", () => {
     const files = [file(), file({ repository: "private", artifactId: "secret" })]
 
-    const facet = ask(files, {}, { signedIn: false }).body.facets.repository
+    const facet = facetsOf(ask(files, {}, { signedIn: false })).repository
 
     assert.deepEqual(facet.map(bucket => bucket.value), ["releases"])
   })
@@ -122,7 +145,7 @@ describe("filters", () => {
     file({ groupId: "org.apache.commons", artifactId: "commons-io", version: "2.16.1", repository: "snapshots" }),
     file({ groupId: "com.google", artifactId: "guava", version: "33.0.0" })
   ]
-  const names = (query) => items(files, query).map(item => item.artifactId)
+  const names = (query: Query) => items(files, query).map(item => item.artifactId)
 
   it("matches a text token by group prefix, artifact prefix or exact version", () => {
     assert.deepEqual(names({ q: "org.apache" }), ["commons-io", "commons-lang3"])
@@ -157,7 +180,7 @@ describe("filters", () => {
     const answer = ask(files, { version: "1", versionPrefix: "1" })
 
     assert.equal(answer.status, 400)
-    assert.match(answer.body.message, /versionPrefix/)
+    assert.match(failed(answer).body.message, /versionPrefix/)
   })
 
   it("combines repeated values of one parameter with OR", () => {
@@ -209,7 +232,7 @@ describe("filters", () => {
       const answer = ask(files, query)
 
       assert.equal(answer.status, 400, JSON.stringify(query))
-      assert.match(answer.body.message, new RegExp(Object.keys(query)[0]))
+      assert.match(failed(answer).body.message, new RegExp(Object.keys(query)[0]))
     }
   })
 
@@ -233,7 +256,7 @@ describe("sort and paging", () => {
   it("pages the rows and reports the page, the size and the total", () => {
     const many = Array.from({ length: 45 }, (_, index) => file({ artifactId: `a${String(index).padStart(2, "0")}` }))
 
-    const body = ask(many, { page: "2", size: "20" }).body
+    const body = ok(ask(many, { page: "2", size: "20" })).body
 
     assert.equal(body.items.length, 5)
     assert.deepEqual([body.page, body.size, body.total, body.totalCapped], [2, 20, 45, false])
@@ -242,18 +265,18 @@ describe("sort and paging", () => {
   it("caps the size at 100", () => {
     const many = Array.from({ length: 150 }, (_, index) => file({ artifactId: `a${index}` }))
 
-    assert.equal(ask(many, { size: "500" }).body.size, 100)
+    assert.equal(ok(ask(many, { size: "500" })).body.size, 100)
   })
 
   it("answers a page beyond the result window with a 400 and the hint", () => {
     const answer = ask([file()], { page: "500", size: "20" })
 
     assert.equal(answer.status, 400)
-    assert.equal(answer.body.message, "Result window is limited to 10000 entries, narrow the filters")
+    assert.equal(failed(answer).body.message, "Result window is limited to 10000 entries, narrow the filters")
   })
 
   it("reports a capped total once the window is full", () => {
-    const body = ask([file()], {}, { signedIn: true }, { windowCap: 0 }).body
+    const body = ok(ask([file()], {}, { signedIn: true }, { windowCap: 0 })).body
 
     assert.equal(body.totalCapped, true)
   })
@@ -266,26 +289,26 @@ describe("facets", () => {
   ]
 
   it("counts files per bucket, most files first", () => {
-    const { extension } = ask(files).body.facets
+    const { extension } = facetsOf(ask(files))
 
     assert.deepEqual(extension, [{ value: "jar", count: 3 }, { value: "pom", count: 1 }])
   })
 
   it("counts files without a classifier as the bucket dash", () => {
-    const { classifier } = ask(files).body.facets
+    const { classifier } = facetsOf(ask(files))
 
     assert.deepEqual(classifier, [{ value: "-", count: 3 }, { value: "sources", count: 1 }])
   })
 
   it("spells the origin buckets as the rows spell them", () => {
-    const { origin, snapshot } = ask(files).body.facets
+    const { origin, snapshot } = facetsOf(ask(files))
 
     assert.deepEqual(origin, [{ value: "HOSTED", count: 3 }, { value: "MIRROR", count: 1 }])
     assert.deepEqual(snapshot, [{ value: "false", count: 4 }])
   })
 
   it("applies every filter but its own, so the alternatives stay visible", () => {
-    const { extension, repository } = ask(files, { extension: "pom", repository: "central-proxy" }).body.facets
+    const { extension, repository } = facetsOf(ask(files, { extension: "pom", repository: "central-proxy" }))
 
     assert.deepEqual(extension, [{ value: "jar", count: 1 }], "the extension facet ignores the extension filter")
     assert.deepEqual(repository, [{ value: "releases", count: 1 }], "the repository facet ignores the repository filter")
@@ -294,11 +317,11 @@ describe("facets", () => {
   it("holds at most 20 buckets", () => {
     const many = Array.from({ length: 30 }, (_, index) => file({ extension: `e${String(index).padStart(2, "0")}` }))
 
-    assert.equal(ask(many).body.facets.extension.length, 20)
+    assert.equal(facetsOf(ask(many)).extension.length, 20)
   })
 
   it("leaves the facets out when facets=false", () => {
-    assert.equal(ask(files, { facets: "false" }).body.facets, undefined)
+    assert.equal(ok(ask(files, { facets: "false" })).body.facets, undefined)
   })
 })
 
@@ -313,7 +336,7 @@ describe("index state", () => {
   })
 
   it("reports a ready index with no lag", () => {
-    const { indexStatus } = ask(files).body
+    const { indexStatus } = ok(ask(files)).body
 
     assert.equal(indexStatus.state, "READY")
     assert.equal(indexStatus.lagSeconds, 0)
@@ -321,7 +344,7 @@ describe("index state", () => {
   })
 
   it("reports an index that is being built, with its progress, and a partial result", () => {
-    const body = ask(files, {}, { signedIn: true }, { state: "building" }).body
+    const body = ok(ask(files, {}, { signedIn: true }, { state: "building" })).body
 
     assert.deepEqual(
       [body.indexStatus.state, body.indexStatus.repositoriesDone, body.indexStatus.repositoriesTotal],
@@ -331,14 +354,14 @@ describe("index state", () => {
   })
 
   it("reports a missing index with nothing in it", () => {
-    const body = ask(files, {}, { signedIn: true }, { state: "missing" }).body
+    const body = ok(ask(files, {}, { signedIn: true }, { state: "missing" })).body
 
     assert.equal(body.indexStatus.state, "MISSING")
     assert.deepEqual([body.items.length, body.total], [0, 0])
   })
 
   it("reports a degraded index with its lag", () => {
-    const body = ask(files, {}, { signedIn: true }, { state: "degraded" }).body
+    const body = ok(ask(files, {}, { signedIn: true }, { state: "degraded" })).body
 
     assert.equal(body.indexStatus.state, "DEGRADED")
     assert.ok(body.indexStatus.lagSeconds > 0)
@@ -353,13 +376,13 @@ describe("files of a version", () => {
     file({ version: "2.0.0" })
   ]
   const coordinates = { groupId: "org.example", artifactId: "core", version: "1.0.0" }
-  const filesOf = (query, who = { signedIn: true }) => search(files).files({ ...coordinates, ...query }, who)
+  const filesOf = (query: Query, who = { signedIn: true }) => okFiles(search(files).files({ ...coordinates, ...query }, who))
 
   it("requires the three coordinates and names the one that is missing", () => {
     const answer = search(files).files({ groupId: "org.example", artifactId: "core" }, { signedIn: true })
 
     assert.equal(answer.status, 400)
-    assert.match(answer.body.message, /version/)
+    assert.match(failed(answer).body.message, /version/)
   })
 
   it("lists the files of that version only, ordered by path", () => {

@@ -40,17 +40,145 @@ const MAX_FILES_SIZE = 200
 const RESULT_WINDOW = 10000
 const MAX_BUCKETS = 20
 
-const NOT_FOUND = { status: 404, body: { status: 404, message: "Not found" } }
-const bad = (parameter, message) => ({ status: 400, body: { status: 400, message: `Invalid parameter '${parameter}': ${message}` } })
+export interface FileRow {
+  repository: string
+  origin: string
+  sourceHost: string | null
+  groupId: string
+  artifactId: string
+  version: string
+  classifier: string
+  extension: string
+  size: number
+  lastModified: string
+  sha1: string
+}
 
-const list = (value) => [value ?? []].flat().map(String).filter(entry => entry.trim() !== "")
-const single = (value) => (Array.isArray(value) ? value[value.length - 1] : value)
+export type Query = Record<string, string | string[] | undefined>
 
-const isSnapshot = (version) => version.toLowerCase().endsWith("-snapshot")
+interface Who {
+  signedIn: boolean
+}
+
+export interface Failure {
+  status: 400 | 404
+  body: { status: number; message: string }
+}
+
+interface Params {
+  tokens: string[]
+  groupId: string
+  artifactId: string
+  version: string
+  versionPrefix: string
+  repository: string[]
+  extension: string[]
+  classifier: string[]
+  sha1: string
+  snapshot: string
+  origin: string
+  sort: string
+  order: string
+  page: number
+  size: number
+  modifiedAfter: number | undefined
+  modifiedBefore: number | undefined
+  sizeMin: number | undefined
+  sizeMax: number | undefined
+  facets: boolean
+}
+
+interface Valid {
+  snapshot: string
+  origin: string
+  sort: string
+  order: string
+  page: number
+  size: number
+  modifiedAfter: number | undefined
+  modifiedBefore: number | undefined
+  sizeMin: number | undefined
+  sizeMax: number | undefined
+}
+
+interface Row {
+  groupId: string
+  artifactId: string
+  version: string
+  latestVersion: string | null
+  snapshot: boolean
+  repositories: { name: string; origin: string }[]
+  fileCount: number
+  lastModified: string | undefined
+  browseLink: string
+  totalSize: number
+}
+
+interface Bucket {
+  value: string
+  count: number
+}
+
+interface IndexStatus {
+  state: string
+  lagSeconds: number
+  lastFullRebuild?: string
+  repositoriesDone?: number
+  repositoriesTotal?: number
+}
+
+interface SearchBody {
+  items: Omit<Row, "totalSize">[]
+  page: number
+  size: number
+  total: number
+  totalCapped: boolean
+  indexStatus: IndexStatus
+  facets?: Record<string, Bucket[]>
+}
+
+export interface SearchOk {
+  status: 200
+  body: SearchBody
+}
+
+interface FileItem {
+  repository: string
+  path: string
+  name: string | undefined
+  classifier: string | null
+  extension: string
+  size: number
+  lastModified: string
+  origin: string
+  sourceHost: string | null
+  sha1: string
+  browseLink: string
+}
+
+interface FilesBody {
+  items: FileItem[]
+  page: number
+  size: number
+  total: number
+}
+
+export interface FilesOk {
+  status: 200
+  body: FilesBody
+}
+
+const NOT_FOUND: Failure = { status: 404, body: { status: 404, message: "Not found" } }
+const bad = (parameter: string, message: string): Failure => ({ status: 400, body: { status: 400, message: `Invalid parameter '${parameter}': ${message}` } })
+
+const list = (value: string | string[] | undefined) => [value ?? []].flat().map(String).filter(entry => entry.trim() !== "")
+const single = (value: string | string[] | undefined) => (Array.isArray(value) ? value[value.length - 1] : value)
+
+const isSnapshot = (version: string) => version.toLowerCase().endsWith("-snapshot")
 
 // Maven-like ordering: numeric segments compare as numbers, a qualifier sorts before the plain release.
-const compareVersions = (left, right) => {
-  const parts = (version) => version.toLowerCase().replace(/-snapshot$/, "").split(/[.-]/)
+const compareVersions = (left: string, right: string) => {
+  const parts = (version: string) => version.toLowerCase().replace(/-snapshot$/, "").split(/[.-]/)
     .map(part => (/^\d+$/.test(part) ? Number(part) : part))
   const a = parts(left)
   const b = parts(right)
@@ -64,32 +192,32 @@ const compareVersions = (left, right) => {
   return 0
 }
 
-const compareText = (left, right) => (left < right ? -1 : left > right ? 1 : 0)
+const compareText = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0)
 
-const encodePath = (path) => path.split("/").map(encodeURIComponent).join("/")
+const encodePath = (path: string) => path.split("/").map(encodeURIComponent).join("/")
 
-const pathOf = (entry) => {
+const pathOf = (entry: FileRow) => {
   const classifier = entry.classifier ? `-${entry.classifier}` : ""
   return `${entry.groupId.split(".").join("/")}/${entry.artifactId}/${entry.version}/${entry.artifactId}-${entry.version}${classifier}.${entry.extension}`
 }
 
-const instantMs = (value) => Date.parse(value)
+const instantMs = (value: string | undefined) => Date.parse(String(value))
 
 // The query, checked as the real endpoint checks it: a value that does not fit is a 400 that names the parameter.
-const readQuery = (query) => {
+const readQuery = (query: Query) => {
   const text = single(query.q) ?? ""
   if (text.length > MAX_QUERY_TEXT) return { error: bad("q", `at most ${MAX_QUERY_TEXT} characters`) }
-  const oneOf = (name, allowed, fallback) => {
+  const oneOf = (name: string, allowed: string[], fallback: string) => {
     const value = single(query[name])
     if (value === undefined || value === "") return fallback
     return allowed.includes(value) ? value : null
   }
-  const whole = (name, fallback, minimum) => {
+  const whole = (name: string, fallback: number | undefined, minimum: number) => {
     const value = single(query[name])
     if (value === undefined || value === "") return fallback
     return /^\d+$/.test(value) && Number(value) >= minimum ? Number(value) : null
   }
-  const instant = (name) => {
+  const instant = (name: string) => {
     const value = single(query[name])
     if (value === undefined || value === "") return undefined
     return Number.isNaN(instantMs(value)) ? null : instantMs(value)
@@ -108,6 +236,7 @@ const readQuery = (query) => {
   for (const [name, value] of Object.entries(checks)) {
     if (value === null) return { error: bad(name, "the value is not allowed") }
   }
+  const valid = checks as Valid
   const version = single(query.version)
   const versionPrefix = single(query.versionPrefix)
   if (version && versionPrefix) return { error: bad("versionPrefix", "cannot be combined with version") }
@@ -122,9 +251,9 @@ const readQuery = (query) => {
       extension: list(query.extension).map(value => value.toLowerCase()),
       classifier: list(query.classifier),
       sha1: (single(query.sha1) ?? "").toLowerCase(),
-      snapshot, origin, sort, order, page,
-      size: Math.min(size, MAX_SIZE),
-      modifiedAfter, modifiedBefore, sizeMin, sizeMax,
+      snapshot: valid.snapshot, origin: valid.origin, sort: valid.sort, order: valid.order, page: valid.page,
+      size: Math.min(valid.size, MAX_SIZE),
+      modifiedAfter: valid.modifiedAfter, modifiedBefore: valid.modifiedBefore, sizeMin: valid.sizeMin, sizeMax: valid.sizeMax,
       facets: single(query.facets) !== "false"
     }
   }
@@ -132,7 +261,7 @@ const readQuery = (query) => {
 
 // One token matches a version row when the group or the artifact starts with it or the version equals it.
 // A token with a colon is a coordinates query, each part optional (spec section 4.2).
-const tokenMatches = (token, entry) => {
+const tokenMatches = (token: string, entry: FileRow) => {
   const group = entry.groupId.toLowerCase()
   const artifact = entry.artifactId.toLowerCase()
   const version = entry.version.toLowerCase()
@@ -144,7 +273,7 @@ const tokenMatches = (token, entry) => {
 }
 
 // Whether a file passes the filters. `skip` names a facet whose own filter is ignored (spec section 4.4).
-const passes = (entry, p, skip = "") => {
+const passes = (entry: FileRow, p: Params, skip = "") => {
   if (!p.tokens.every(token => tokenMatches(token, entry))) return false
   if (p.groupId && !entry.groupId.toLowerCase().startsWith(p.groupId)) return false
   if (p.artifactId && !entry.artifactId.toLowerCase().startsWith(p.artifactId)) return false
@@ -163,7 +292,7 @@ const passes = (entry, p, skip = "") => {
   return true
 }
 
-const FACET_KEYS = {
+const FACET_KEYS: Record<string, (entry: FileRow) => string> = {
   repository: entry => entry.repository,
   extension: entry => entry.extension,
   classifier: entry => entry.classifier || "-",
@@ -171,8 +300,8 @@ const FACET_KEYS = {
   snapshot: entry => String(isSnapshot(entry.version))
 }
 
-const facetsOf = (visible, p) => Object.fromEntries(Object.entries(FACET_KEYS).map(([name, keyOf]) => {
-  const counts = new Map()
+const facetsOf = (visible: FileRow[], p: Params): Record<string, Bucket[]> => Object.fromEntries(Object.entries(FACET_KEYS).map(([name, keyOf]): [string, Bucket[]] => {
+  const counts = new Map<string, number>()
   for (const entry of visible.filter(candidate => passes(candidate, p, name))) {
     counts.set(keyOf(entry), (counts.get(keyOf(entry)) ?? 0) + 1)
   }
@@ -183,34 +312,34 @@ const facetsOf = (visible, p) => Object.fromEntries(Object.entries(FACET_KEYS).m
   return [name, buckets]
 }))
 
-const groupKey = (entry) => [entry.groupId, entry.artifactId, entry.version].map(part => part.toLowerCase()).join("\u0000")
+const groupKey = (entry: FileRow) => [entry.groupId, entry.artifactId, entry.version].map(part => part.toLowerCase()).join("\u0000")
 
 // The highest version of an artifact among what the caller may see, a release in preference to a snapshot.
-const latestVersions = (visible) => {
-  const byArtifact = new Map()
+const latestVersions = (visible: FileRow[]) => {
+  const byArtifact = new Map<string, Set<string>>()
   for (const entry of visible) {
     const key = `${entry.groupId.toLowerCase()}\u0000${entry.artifactId.toLowerCase()}`
     if (!byArtifact.has(key)) byArtifact.set(key, new Set())
-    byArtifact.get(key).add(entry.version)
+    byArtifact.get(key)?.add(entry.version)
   }
-  return new Map([...byArtifact.entries()].map(([key, versions]) => {
+  return new Map([...byArtifact.entries()].map(([key, versions]): [string, string | undefined] => {
     const all = [...versions].sort(compareVersions)
     const releases = all.filter(version => !isSnapshot(version))
     return [key, (releases.length > 0 ? releases : all).at(-1)]
   }))
 }
 
-const rowsOf = (matching, visible) => {
+const rowsOf = (matching: FileRow[], visible: FileRow[]): Row[] => {
   const latest = latestVersions(visible)
-  const groups = new Map()
+  const groups = new Map<string, FileRow[]>()
   for (const entry of matching) {
     const key = groupKey(entry)
     if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(entry)
+    groups.get(key)?.push(entry)
   }
   return [...groups.values()].map(entries => {
     const [first] = entries
-    const repositories = new Map()
+    const repositories = new Map<string, { name: string; origin: string }>()
     for (const entry of entries) repositories.set(`${entry.origin}:${entry.repository}`, { name: entry.repository, origin: entry.origin })
     const ordered = [...repositories.values()].sort((left, right) =>
       compareText(left.origin, right.origin) || compareText(left.name, right.name))
@@ -230,7 +359,7 @@ const rowsOf = (matching, visible) => {
   })
 }
 
-const SORTS = {
+const SORTS: Record<string, (a: Row, b: Row) => number> = {
   groupId: (a, b) => compareText(a.groupId.toLowerCase(), b.groupId.toLowerCase()),
   artifactId: (a, b) => compareText(a.artifactId.toLowerCase(), b.artifactId.toLowerCase()),
   version: (a, b) => compareText(a.version.toLowerCase(), b.version.toLowerCase()),
@@ -238,16 +367,16 @@ const SORTS = {
   size: (a, b) => a.totalSize - b.totalSize
 }
 
-const sortRows = (rows, p) => {
+const sortRows = (rows: Row[], p: Params): Row[] => {
   const direction = p.order === "desc" ? -1 : 1
   // The coordinates are the tie-breakers, so the order is total and paging is stable. The default sort
   // lists the newest version of an artifact first, as the real query does.
-  const ties = (a, b) => SORTS.groupId(a, b) || SORTS.artifactId(a, b)
+  const ties = (a: Row, b: Row) => SORTS.groupId(a, b) || SORTS.artifactId(a, b)
     || (p.sort === "groupId" && p.order === "asc" ? -SORTS.version(a, b) : SORTS.version(a, b))
   return [...rows].sort((a, b) => direction * SORTS[p.sort](a, b) || ties(a, b))
 }
 
-const STATUS = {
+const STATUS: Record<string, () => IndexStatus> = {
   ready: () => ({ state: "READY", lagSeconds: 0, lastFullRebuild: "2026-10-20T03:30:12Z" }),
   building: () => ({ state: "BUILDING", lagSeconds: 0, repositoriesDone: 2, repositoriesTotal: 5 }),
   missing: () => ({ state: "MISSING", lagSeconds: 0 }),
@@ -259,11 +388,11 @@ const STATUS = {
  * groupId, artifactId, version, classifier ("" for none), extension, size (bytes), lastModified (ISO
  * instant) and sha1. `publicRepositories` are the repositories an anonymous caller may browse.
  */
-const createSearch = ({ files, publicRepositories = [], state = "ready", windowCap = RESULT_WINDOW }) => {
+const createSearch = ({ files, publicRepositories = [], state = "ready", windowCap = RESULT_WINDOW }: { files: FileRow[]; publicRepositories?: string[]; state?: string; windowCap?: number }) => {
   const indexed = state === "missing" ? [] : state === "building" ? files.filter((_, index) => index % 2 === 0) : files
-  const visibleTo = ({ signedIn }) => indexed.filter(entry => signedIn || publicRepositories.includes(entry.repository))
+  const visibleTo = ({ signedIn }: Who) => indexed.filter(entry => signedIn || publicRepositories.includes(entry.repository))
 
-  const search = (query, who) => {
+  const search = (query: Query, who: Who): SearchOk | Failure => {
     if (state === "disabled") return NOT_FOUND
     const { params: p, error } = readQuery(query)
     if (error) return error
@@ -273,7 +402,7 @@ const createSearch = ({ files, publicRepositories = [], state = "ready", windowC
     const visible = visibleTo(who)
     const rows = sortRows(rowsOf(visible.filter(entry => passes(entry, p)), visible), p)
     const capped = rows.length > windowCap
-    const body = {
+    const body: SearchBody = {
       items: rows.slice(p.page * p.size, p.page * p.size + p.size).map(({ totalSize, ...row }) => row),
       page: p.page,
       size: p.size,
@@ -285,7 +414,7 @@ const createSearch = ({ files, publicRepositories = [], state = "ready", windowC
     return { status: 200, body }
   }
 
-  const filesOf = (query, who) => {
+  const filesOf = (query: Query, who: Who): FilesOk | Failure => {
     if (state === "disabled") return NOT_FOUND
     for (const name of ["groupId", "artifactId", "version"]) {
       if (!single(query[name])) return bad(name, "required")
@@ -298,9 +427,9 @@ const createSearch = ({ files, publicRepositories = [], state = "ready", windowC
     if (size === null || size < 1) return bad("size", "the value is not allowed")
     const repositories = list(query.repository)
     const matching = visibleTo(who)
-      .filter(entry => entry.groupId.toLowerCase() === single(query.groupId).toLowerCase()
-        && entry.artifactId.toLowerCase() === single(query.artifactId).toLowerCase()
-        && entry.version.toLowerCase() === single(query.version).toLowerCase())
+      .filter(entry => entry.groupId.toLowerCase() === (single(query.groupId) ?? "").toLowerCase()
+        && entry.artifactId.toLowerCase() === (single(query.artifactId) ?? "").toLowerCase()
+        && entry.version.toLowerCase() === (single(query.version) ?? "").toLowerCase())
       .filter(entry => origin === "all" || entry.origin.toLowerCase() === origin)
       .filter(entry => repositories.length === 0 || repositories.includes(entry.repository))
       .sort((a, b) => compareText(pathOf(a), pathOf(b)) || compareText(a.repository, b.repository))
@@ -332,7 +461,7 @@ const createSearch = ({ files, publicRepositories = [], state = "ready", windowC
 }
 
 // A small deterministic number from a text, so the sample sizes and dates do not change between runs.
-const spread = (text) => [...text].reduce((sum, character) => (sum * 31 + character.charCodeAt(0)) % 1000003, 7)
+const spread = (text: string) => [...text].reduce((sum, character) => (sum * 31 + character.charCodeAt(0)) % 1000003, 7)
 
 const SAMPLE = [
   { g: "org.apache.commons", a: "commons-lang3", v: ["3.12.0", "3.13.0", "3.14.0", "3.17.0"], repos: [["releases"], ["mirror-cache", "repo.maven.apache.org"]], kinds: ["jar", "pom", "sources", "javadoc"] },
@@ -348,7 +477,7 @@ const SAMPLE = [
   { g: "net.onelitefeather.legacy", a: "old-tool", v: ["0.1.0"], repos: [["archive"]], kinds: ["jar", "pom"] }
 ]
 
-const KIND = {
+const KIND: Record<string, { extension: string; classifier: string }> = {
   jar: { extension: "jar", classifier: "" },
   pom: { extension: "pom", classifier: "" },
   sources: { extension: "jar", classifier: "sources" },
@@ -356,7 +485,7 @@ const KIND = {
   module: { extension: "module", classifier: "" }
 }
 
-const SIZE_OF = { jar: 400000, pom: 2500, sources: 160000, javadoc: 900000, module: 5000 }
+const SIZE_OF: Record<string, number> = { jar: 400000, pom: 2500, sources: 160000, javadoc: 900000, module: 5000 }
 
 /** Deterministic sample rows for the fake backend: hosted and cached copies, snapshots and hidden repositories. */
 const sampleFiles = () => SAMPLE.flatMap(entry => entry.v.flatMap((version, versionIndex) =>
@@ -378,4 +507,4 @@ const sampleFiles = () => SAMPLE.flatMap(entry => entry.v.flatMap((version, vers
     }
   }))))
 
-module.exports = { createSearch, sampleFiles }
+export { createSearch, sampleFiles }
