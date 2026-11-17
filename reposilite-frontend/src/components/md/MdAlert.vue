@@ -58,15 +58,28 @@ const style = computed(() => TONES[props.tone])
     :class="['flex items-start gap-3 rounded-corner-medium p-4', style.container]"
     data-ingot-component="md-alert"
   >
-    <MdIcon :path="style.path" size="md" :class="['mt-0.5 shrink-0', style.icon]" />
+    <MdIcon
+      :path="style.path"
+      size="md"
+      :class="['mt-0.5 shrink-0', style.icon]"
+    />
     <div class="flex min-w-0 flex-1 flex-col gap-2">
-      <p v-if="title" class="md-title-small m-0">
+      <p
+        v-if="title"
+        class="md-title-small m-0"
+      >
         {{ title }}
       </p>
-      <div v-if="$slots.default" class="md-body-medium">
+      <div
+        v-if="$slots.default"
+        class="md-body-medium"
+      >
         <slot />
       </div>
-      <div v-if="$slots.action" class="flex flex-wrap gap-2">
+      <div
+        v-if="$slots.action"
+        class="flex flex-wrap gap-2"
+      >
         <slot name="action" />
       </div>
     </div>

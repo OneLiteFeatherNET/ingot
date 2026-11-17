@@ -20,7 +20,7 @@
  * is hidden from assistive technology; the loading state of the page is announced by the
  * element that wraps it (aria-busy). The fade runs only when the user allows motion.
  */
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   shape?: 'bar' | 'circle'
   width?: 'sm' | 'md' | 'full'
 }>(), {

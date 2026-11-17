@@ -48,7 +48,10 @@ const emit = defineEmits<{
     class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
     data-ingot-component="md-state-panel"
   >
-    <p v-if="title" class="md-title-small m-0">
+    <p
+      v-if="title"
+      class="md-title-small m-0"
+    >
       {{ title }}
     </p>
     <div class="flex w-full max-w-sm flex-col gap-3">
@@ -64,13 +67,22 @@ const emit = defineEmits<{
     class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
     data-ingot-component="md-state-panel"
   >
-    <p v-if="title" class="md-title-small m-0">
+    <p
+      v-if="title"
+      class="md-title-small m-0"
+    >
       {{ title }}
     </p>
-    <p v-if="description" class="md-body-medium m-0 text-on-surface-variant">
+    <p
+      v-if="description"
+      class="md-body-medium m-0 text-on-surface-variant"
+    >
       {{ description }}
     </p>
-    <MdButton variant="tonal" @click="emit('retry')">
+    <MdButton
+      variant="tonal"
+      @click="emit('retry')"
+    >
       {{ retryLabel }}
     </MdButton>
   </div>
@@ -80,10 +92,16 @@ const emit = defineEmits<{
     class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
     data-ingot-component="md-state-panel"
   >
-    <p v-if="title" class="md-title-small m-0">
+    <p
+      v-if="title"
+      class="md-title-small m-0"
+    >
       {{ title }}
     </p>
-    <p v-if="description" class="md-body-medium m-0 text-on-surface-variant">
+    <p
+      v-if="description"
+      class="md-body-medium m-0 text-on-surface-variant"
+    >
       {{ description }}
     </p>
   </div>
