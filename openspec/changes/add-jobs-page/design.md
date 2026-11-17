@@ -98,7 +98,7 @@ simply has no rows.
 
 ### D2. Aggregation on the server, with keyset paging
 
-**Recommendation: one paged endpoint on the server, `GET /api/jobs`, merging the sources in the server.** Not a client-side
+**Decision (2026-11-17): one paged endpoint on the server, `GET /api/jobs`, merging the sources in the server.** Not a client-side
 merge of the existing endpoints.
 
 Reasons:
@@ -154,7 +154,6 @@ Each run of any source is one `JobRun`:
 | `durationMs` | long, nullable | The duration of a finished run. |
 | `counts` | list of `{key, label, value}` | The counters, in the order the source chooses. The labels are the source's. |
 | `failures` | list of `{message}` | The failures, at most 50 in a detail, with `failuresTruncated` when more. |
-| `cancellable` | boolean | True when `POST /api/jobs/{id}/cancel` would act. |
 
 Normalised states:
 
@@ -175,11 +174,10 @@ The shape is additive: a source adds counts and failures and never removes a fie
 
 ### D4. How a plugin registers a job source
 
-**Recommendation: a new registration event, not a facade.**
+**Decision (2026-11-17): a new registration event, not a facade.**
 
 - New API in `com.reposilite.plugin.api.jobs` (the package name stays `com.reposilite.*`, as the Ingot contract requires):
-  `JobSource` (an interface with `id`, `requiredNode`, `page(query, before, limit)`, `detail(localId)` and an optional
-  `cancel(localId)` that defaults to "not cancellable"), the data classes `JobRun`, `JobQuery`, `JobCursor`, `JobPage`, and
+  `JobSource` (an interface with `id`, `requiredNode`, `page(query, before, limit)`, `detail(localId)`), the data classes `JobRun`, `JobQuery`, `JobCursor`, `JobPage`, and
   `JobRegistrationEvent`, an `Event` that carries a `JobRegistry`. The registry has one method, `register(source: JobSource)`.
 - Core fires `JobRegistrationEvent` after the plugins have initialised, at `ReposilitePostInitializeEvent` (`LifecycleEvents.kt:23`).
   A plugin listens for it in its `initialize()`. A plugin that registers later (after the event) is an error that the core logs,
@@ -216,8 +214,8 @@ The shape is additive: a source adds counts and failures and never removes a fie
 | `index` | every run (`RunStore.kt` has no delete); the endpoint shows 20 | nobody | unchanged in this change; see below |
 | `migration` | every job | the operator, with `DELETE` on a finished job (`NexusImportEndpoints.kt:105`) | unchanged |
 
-**The search run table is the open retention problem, and it is not fixed here.** Every scheduled verify adds a row, and the table
-is never pruned. The Jobs page shows the rows that exist, so it is correct with or without a prune. The recommendation is a
+**The retention of the search run table is not changed here.** Every scheduled verify adds a row, and the table
+is never pruned. The Jobs page shows the rows that exist, so it is correct with or without a prune. The planned follow-up is a
 keep-newest of 200 runs per kind, run by the verify scheduler after each run, in its own `feat` change (`prune-search-run-history`).
 That keeps about six months of a daily verify and makes the table bounded. It is a separate change because it is a different
 scope (search, not jobs) and a different type (a data change), and the proposal ships as one type.
@@ -242,7 +240,7 @@ Rules:
 2. `kinds` in the answer lists only the kinds the visitor may read. The kind filter offers no other kind.
 3. `GET /api/jobs/{id}` for a run of a source the visitor may not read answers `404`, the same as a run that does not exist. The
    visitor learns nothing about it.
-4. `POST /api/jobs/{id}/cancel` requires the same node as the source's own cancel route, and delegates to it. The existing cancel
+4. The Jobs page does not cancel a run, and no Jobs endpoint does. Cancel stays on the source pages. The existing cancel
    routes (`SearchApiEndpoints.kt:290`, `NexusImportEndpoints.kt:123`) keep their paths and their nodes.
 5. Failures and counts can name paths and URLs of the instance. They are shown only to the nodes above. A failure never carries a
    credential: the nexus routes already never echo one (`openspec/specs/nexus-import-jobs`, "Credentials after a replica loss").
@@ -258,22 +256,22 @@ No new permission node is added.
   and a page entry in `PAGES` (near line 425) with `area: 'none'`. The route name `jobs` and the detail route are added to
   `src/router/routes.ts`. The address `/settings/jobs` is new; no existing address changes.
 - **The list:** filters for kind, state and trigger, held in the address (`?kind=index&state=FAILED`). A "Load more" button continues
-  from `nextCursor`, appends the next page and announces the count in a live region. There is no infinite scroll. A "Refresh"
+  from `nextCursor`, appends the next page and announces the count in a live region. There is no infinite scroll and no live job list: the page loads on open and on Refresh. A "Refresh"
   action reloads the first page.
 - **The detail:** `/settings/jobs/:id`, with the id URL-encoded. It shows the fields of D3, the counts, the failures (with
-  `failuresTruncated`), and a Cancel action when `cancellable` is true. Cancel is a `POST` to `/api/jobs/{id}/cancel`, and a
-  `409` shows the message "The run has already finished."
+  `failuresTruncated`), and no Cancel action. A live run is cancelled on its source
+  page, as today.
 - **Maintenance, Search index tab:** `IndexPanel.vue` stops drawing the list at lines 404-440. It shows the active run (unchanged,
   lines 331-355), the latest rebuild and the latest verify, each from `GET /api/jobs?kind=index.rebuild&size=1` and
   `?kind=index.verify&size=1`, and an "All runs" link to `{ name: 'jobs', query: { kind: 'index' } }`. The drift report of the last
   verify stays where it is.
 - **Maintenance, Cleanup tab:** `RunHistory.vue` stops drawing every run. It shows the latest run of each policy and an "All runs"
-  link to `{ name: 'jobs', query: { kind: 'cleanup' } }`. The policy select on the tab is an open question (question 3).
+  link to `{ name: 'jobs', query: { kind: 'cleanup' } }`. The policy select on the tab is removed, since the tab shows one run per policy (question 3).
 - The index endpoint keeps its `runs` array (D8). The frontend stops reading it; it can be removed in a later major version.
 
 ### D8. Drop-in impact
 
-- **Additive:** `GET /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/cancel`, the types in `com.reposilite.plugin.api.jobs`,
+- **Additive:** `GET /api/jobs`, `GET /api/jobs/{id}`, the types in `com.reposilite.plugin.api.jobs`,
   and the Jobs address in the frontend.
 - **Unchanged:** every existing path, method and response shape. `GET /api/maven/search/index` keeps its 20 runs.
   `GET /api/cleanup/runs` keeps its list. The nexus job routes keep their behaviour, and `/maintenance?tab=index` keeps opening
@@ -282,32 +280,25 @@ No new permission node is added.
   endpoints read the existing tables.
 - **Nothing is BREAKING.**
 
-## Open questions
+## Open questions (settled 2026-11-17)
 
-Each question has a default. The tasks implement the default; a different answer changes the matching task and nothing else.
+Every question is settled with its recommended default, except question 9. Question 9 follows the maintainer's constraint that cancel
+happens only on the source pages, so its answer is the alternative of that question. The tasks and the specs implement these answers.
 
-1. **Page size and paging style.** Default: 50 per page with "Load more" and a cursor (D2). Alternative: numbered pages, which
-   need a total count. A total across sources is expensive, so the default has none.
-2. **The filter value for an index run.** Default: `kind=index` for the source and `kind=index.verify` for one kind. The
-   maintainer's example `?kind=index` is that default. Alternative: a separate `source=` parameter, which keeps the two apart.
-3. **A policy filter on the cleanup source.** The Cleanup tab loses its policy select, since it shows one run per policy.
-   Default: no policy filter on the Jobs page in this change; `kind=cleanup` lists all policies. Alternative: a source-specific
-   `policy=` parameter that the cleanup source reads.
-4. **Search run retention.** Default: unchanged in this change (D5). The recommended number is 200 runs per kind, in
-   `prune-search-run-history`. Alternative: keep the table as it is and accept the growth.
-5. **Storage usage, javadoc, settings sync and the status snapshot.** Default: not listed (D1). Alternative: a live "running now" row
-   for these, without history. That is a separate feature.
-6. **Nexus jobs and instance admins.** Default: the migration source is visible to instance admins only, as its routes are today.
-   Alternative: `ingot.admin.maintenance` may also list them. That widens who can read the job parameters, so the default keeps
-   them narrow.
-7. **Plugin source registration.** Default: a registration event at `ReposilitePostInitializeEvent` (D4). Alternative: a facade
-   that a plugin fetches at `ReposiliteStartedEvent`. The event fits better, because the core is the caller.
-8. **Detail address.** Default: `/settings/jobs/:id` with the id URL-encoded, since the id contains a colon. Alternative: a query
-   `?run=<id>` on the list, which keeps the list and the detail in one route.
-9. **Cancel from the Jobs page.** Default: cancel where the source supports it; a cleanup run is synchronous and has no cancel
-   (D3). Alternative: no cancel on the Jobs page at all, so every cancel stays on its own page.
-10. **Trigger of a migration job.** Default: `MANUAL`, because every nexus job is created by an operator. The job has no trigger
-    field, so this is a rule, not a stored value.
-11. **The latest run on the maintenance tabs.** Default: one request per kind (`size=1`) from the Jobs endpoint. Alternative: read
-    `runs[0]` from the index endpoint and stop there. That keeps one request fewer and ties the tab to the 20-run window, which D5
-    removes from the reasoning.
+1. **Page size and paging style.** Resolved: 50 per page with "Load more" and a cursor (D2), with no total count, as the maintainer asks.
+2. **The filter value for an index run.** Resolved: `kind=index` for the source and `kind=index.verify` for one kind (D2, D3).
+3. **A policy filter on the cleanup source.** Resolved: no policy filter in this change. `kind=cleanup` lists all policies, and the
+   Cleanup tab drops its policy select.
+4. **Search run retention.** Resolved: unchanged in this change (D5). The keep-newest of 200 runs per kind is the planned follow-up
+   `prune-search-run-history`, in its own change.
+5. **Storage usage, javadoc, settings sync and the status snapshot.** Resolved: not listed (D1). A live "running now" row is a separate
+   feature and is not part of this change.
+6. **Nexus jobs and instance admins.** Resolved: the migration source is visible to instance admins only (`ingot.admin.*`), as the
+   maintainer asks.
+7. **Plugin source registration.** Resolved: a registration event at `ReposilitePostInitializeEvent` (D4).
+8. **Detail address.** Resolved: `/settings/jobs/:id` with the id URL-encoded (D7).
+9. **Cancel from the Jobs page.** Resolved: no cancel on the Jobs page. Cancel stays on the source pages, as the maintainer requires.
+   This is the alternative of the original question, not its default. The `cancellable` field, the cancel endpoint and the Cancel
+   action are removed from the change (D3, D6, D7).
+10. **Trigger of a migration job.** Resolved: `MANUAL` (D3).
+11. **The latest run on the maintenance tabs.** Resolved: one request per kind (`size=1`) from the Jobs endpoint (D7).

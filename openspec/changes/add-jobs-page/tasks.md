@@ -41,15 +41,12 @@ dark, before and after the change.
 ### 2b. The endpoints and the core sources
 
 - [ ] 2.6 `test(jobs)`: in `JobsEndpointsIntegrationTest.kt`, against the SQLite fixture with search and cleanup rows, assert the
-  paging of `GET /api/jobs`, the filters `kind=index` and `state=FAILED`, `GET /api/jobs/{id}`, and the cancel answers `204` for a
-  running verify, `409` for a finished one and `404` for an unknown one. Verify: it fails. Run through `heavy`.
-- [ ] 2.7 `feat(jobs)`: add `JobsEndpoints.kt` with the OpenAPI annotations of `GET /api/jobs`, `GET /api/jobs/{id}` and
-  `POST /api/jobs/{id}/cancel`, and the core sources `index` (over `RunStore`, keyset on id) and `cleanup` (over the cleanup run
-  repository, keyset on start time). The cancel delegates to `SearchIndexAdmin.cancel`. Verify: 2.6 passes, and the OpenAPI
-  compatibility gate reports the three endpoints as additions only.
+  paging of `GET /api/jobs`, the filters `kind=index` and `state=FAILED`, `GET /api/jobs/{id}`, and `404` for an unknown run id. Verify: it fails. Run through `heavy`.
+- [ ] 2.7 `feat(jobs)`: add `JobsEndpoints.kt` with the OpenAPI annotations of `GET /api/jobs` and `GET /api/jobs/{id}`, and the core sources `index` (over `RunStore`, keyset on id) and `cleanup` (over the cleanup run
+  repository, keyset on start time). Verify: 2.6 passes, and the OpenAPI
+  compatibility gate reports the two endpoints as additions only.
 - [ ] 2.8 `test(jobs)`: in `reposilite-plugins/nexus-import-plugin`, add `JobSourceTest.kt`, asserting that the migration source lists
-  the job rows with the states of 2.1, that a visitor without `ingot.admin.*` gets no migration run, and that the cancel delegates to
-  the existing job cancel. Verify: it fails.
+  the job rows with the states of 2.1, that a visitor without `ingot.admin.*` gets no migration run. Verify: it fails.
 - [ ] 2.9 `feat(jobs)`: register the migration source from `reposilite-plugins/nexus-import-plugin` on `JobRegistrationEvent`, with
   `requiredNode` `ingot.admin.*`. Verify: 2.8 passes, and the existing nexus import tests still pass.
 - [ ] 2.10 Check, no commit of its own: run the plugin ABI check (`plugin-abi-gate`) and the existing cleanup and search tests through
@@ -62,7 +59,7 @@ dark, before and after the change.
   Verify: it fails.
 - [ ] 3.2 `test(jobs)`: in `reposilite-frontend/src/components/jobs/JobsView.test.ts`, assert that `?kind=index&state=FAILED` is read from
   the address and sent to the server, that "Load more" appends the next page without refetching the first, that the detail lists the
-  failures with the truncation note, and that Cancel is drawn only when `cancellable` is true. Verify: it fails.
+  failures with the truncation note, and that no Cancel action is drawn. Verify: it fails.
 - [ ] 3.3 `test(jobs)`: in `IndexPanel.test.ts` and `RunHistory.test.ts`, assert that the tabs draw the latest run of each kind and one
   run per policy, that "All runs" links to `{ name: 'jobs', query: { kind: 'index' } }` and to `{ name: 'jobs', query: { kind: 'cleanup' } }`,
   and that no run list is drawn. The existing assertions on the full lists are replaced by these. Verify: it fails.

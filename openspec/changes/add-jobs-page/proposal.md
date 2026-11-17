@@ -28,8 +28,8 @@ the Jobs page for the rest.
   filters are in the address, so `/settings/jobs?kind=index` opens the index runs.
 - **Paging, never an endless list.** The list loads 50 runs at a time with a "Load more" button that continues from a cursor.
   The server returns at most 100 runs per request.
-- **A run detail.** The detail shows the counts, the failures with their reasons, and the Cancel action where the source
-  supports cancelling a live run.
+- **A run detail.** The detail shows the counts and the failures with their reasons. It has no cancel: a live run is
+  cancelled on its source page, as today.
 - **Maintenance tabs keep the latest run.** The Search index tab shows the latest rebuild and the latest verify, plus the live
   run. The Cleanup policies tab shows the latest run of each policy. Both have an "All runs" link to the Jobs page,
   pre-filtered by kind (`?kind=index` and `?kind=cleanup`).
@@ -41,11 +41,11 @@ the Jobs page for the rest.
 
 The first sources are the three that keep a record of their runs today. The table is the scope; nothing outside it is listed.
 
-| Source (`kind` filter) | Records | Trigger | Cancel | Who may see it |
+| Source (`kind` filter) | Records | Trigger | Cancel on its source page | Who may see it |
 | --- | --- | --- | --- | --- |
-| Search index, `index` (kinds `index.rebuild`, `index.verify`) | `search_rebuild_run` | manual, scheduled, startup, gap, backend | yes, while running | `ingot.admin.maintenance` |
+| Search index, `index` (kinds `index.rebuild`, `index.verify`) | `search_rebuild_run` | manual, scheduled, startup, gap, backend | yes, while running, on the Search index tab | `ingot.admin.maintenance` |
 | Cleanup policies, `cleanup` (kind `cleanup.policy`) | `cleanup_run` | manual, scheduled | no, a run is synchronous | `ingot.admin.maintenance` |
-| Migration, `migration` (kind `migration.nexus`) | the nexus import job store | manual (created by an operator) | yes, while queued, running or paused | instance admins (`ingot.admin.*`) |
+| Migration, `migration` (kind `migration.nexus`) | the nexus import job store | manual (created by an operator) | yes, while queued, running or paused, on the migration page | instance admins (`ingot.admin.*`) |
 
 Storage usage, javadoc extraction, settings sync and the status snapshot do not keep a record of their runs. They are not
 listed. Design D1 gives the reasons.
@@ -68,10 +68,10 @@ it would ship as its own `feat` change under the search scope.
 
 - Pruning the search run table. The Jobs page reads what the sources keep; it does not decide how long they keep it.
 - Listing storage usage, javadoc extraction, settings sync and the status snapshot as runs. None of them keeps a record today.
-- Starting, pausing or resuming a run from the Jobs page. The page cancels; the existing actions stay where they are.
+- Starting, pausing, resuming or cancelling a run from the Jobs page. The existing actions stay on their source pages.
 - Live updates over a stream. The page reloads on open and on the "Refresh" action, and the live run card on the maintenance
   tab keeps its polling.
-- A policy filter on the cleanup source. It is an open question (design, question 3).
+- A policy filter on the cleanup source. It is not part of this change (design, question 3).
 - The move of the cleanup and javadoc features into plugins (#598, #599). This change only makes that move possible: a moved
   source registers the same way as the nexus import does.
 - Notifications, retention settings in the configuration, and a new permission node.
@@ -80,7 +80,7 @@ it would ship as its own `feat` change under the search scope.
 
 ### New Capabilities
 
-- `background-jobs`: the Jobs list across sources, its paging and filters, the run shape, the run detail and cancel, the
+- `background-jobs`: the Jobs list across sources, its paging and filters, the run shape, the run detail, the
   permission per source, the plugin source contract, and the rule that the Jobs page never deletes a run.
 
 ### Modified Capabilities
@@ -97,7 +97,7 @@ it would ship as its own `feat` change under the search scope.
   `/maintenance?tab=index`.
 - **Configuration and data:** no configuration key, environment variable, deployment manifest, permission node or stored
   data changes, and no migration step runs. The Jobs endpoints only read the run tables. Nothing here is BREAKING.
-- **API (drop-in):** additive only. New endpoints `GET /api/jobs`, `GET /api/jobs/{id}` and `POST /api/jobs/{id}/cancel`. Every
+- **API (drop-in):** additive only. New endpoints `GET /api/jobs` and `GET /api/jobs/{id}`. Every
   existing endpoint keeps its path, its method, its response shape and its bound: `GET /api/maven/search/index` keeps the
   `runs` array, `GET /api/cleanup/runs` keeps its list, and the nexus job routes keep their behaviour.
 - **Plugin authors:** no change is required. A plugin that wants its runs listed implements the new `JobSource` type and
@@ -116,7 +116,7 @@ it would ship as its own `feat` change under the search scope.
 - Every group starts with failing tests that are seen to fail on the current build. The backend tests are unit tests with
   in-memory sources and a fixed clock; one integration test reads the SQLite fixture of the search and cleanup tables.
 - `./gradlew :reposilite-backend:integration --tests` for the targeted integration test, run through `heavy`, and the
-  OpenAPI compatibility gate, which must show the three new endpoints as additions only.
+  OpenAPI compatibility gate, which must show the two new endpoints as additions only.
 - `npm test` in `reposilite-frontend`, targeted with a file pattern while working.
 - Playwright (`--workers=2`, through `heavy`) for the navigation entry, the `?kind=index` address, Load more, the detail and
   the links from both maintenance tabs.

@@ -24,7 +24,7 @@ total count. The list SHALL NOT load every run at once and SHALL NOT scroll endl
 ### Requirement: One run shape for every source
 
 Every run SHALL carry the fields `id`, `source`, `kind`, `label`, `trigger`, `state`, `startedAt`, `finishedAt`, `durationMs`,
-`counts`, `failures` and `cancellable`. The `id` SHALL be `<source>:<local id>` and unique across sources.
+`counts` and `failures`. The `id` SHALL be `<source>:<local id>` and unique across sources.
 
 #### Scenario: Run of two sources in one list
 
@@ -73,27 +73,21 @@ apply the filters before it pages, so that a filtered page is full while matchin
 - **WHEN** a request filters by a kind that no visible source has
 - **THEN** the server answers an empty list and the kinds the visitor may read, and no error
 
-### Requirement: Run detail and cancel
+### Requirement: Run detail
 
 The Jobs page SHALL show a run detail for each run, with its counts and its failures. A failure list SHALL show at most 50 failures,
-with a note when more exist. A run whose source supports cancelling SHALL show a Cancel action while the run is live, and a cancel of
-a live run SHALL answer `204`. A cancel of a finished run SHALL answer `409`, and a run that does not exist or that the visitor may not read
-SHALL answer `404`.
+with a note when more exist. The Jobs page SHALL NOT cancel a run and no Jobs endpoint SHALL cancel one: a live run is cancelled on
+its source page with the existing route and node. A run that does not exist or that the visitor may not read SHALL answer `404`.
 
-#### Scenario: Cancel a running verify
+#### Scenario: Detail of a running verify
 
-- **WHEN** a visitor cancels a running verify from its detail
-- **THEN** the run stops after the batch in flight, and the detail shows the state `CANCELLED`
+- **WHEN** a visitor opens the detail of a running verify
+- **THEN** the detail shows the state `RUNNING`, its counts so far and no Cancel action
 
-#### Scenario: Cleanup run has no cancel
+#### Scenario: Cancel stays on the source page
 
-- **WHEN** a visitor opens the detail of a cleanup run
-- **THEN** the detail shows no Cancel action, because the run is synchronous and its `cancellable` is false
-
-#### Scenario: Cancel of a finished run
-
-- **WHEN** a visitor cancels a run that has finished
-- **THEN** the server answers `409` and the page says the run has already finished
+- **WHEN** a visitor cancels a running verify on the Search index tab
+- **THEN** the run stops after the batch in flight, and the Jobs page shows the state `CANCELLED` for it
 
 ### Requirement: Visibility follows the node of each source
 
