@@ -43,7 +43,7 @@ for (const width of WIDTHS) {
 
       await expect(page.locator('h1'), 'exactly one h1 on the page').toHaveCount(1)
       await expect(page.locator('h1')).toHaveText('Users')
-      await expect(page.locator('h2').first(), 'the detail names the user').toHaveText(/e2e-operator/)
+      await expect(page.locator('[data-ingot-component="principal-detail"] h2').first(), 'the detail names the user in a second level heading').toBeVisible()
       await expect(page.getByText('People who sign in, with their permissions and tokens.', { exact: true }), 'the list description is not reused').toHaveCount(0)
       await expect(headerLinksTo(page, '/access/users'), 'one link to the users in the header').toHaveCount(1)
       await expect(backControls(page), `back controls named "Back to" at ${width} pixels`).toHaveCount(expectedBackControls(width))

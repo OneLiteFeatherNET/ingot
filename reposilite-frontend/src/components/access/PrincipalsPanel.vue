@@ -19,6 +19,7 @@ import { computed, onMounted, ref, type PropType } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdIcon from '../md/MdIcon.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import NewMachineDialog from './NewMachineDialog.vue'
@@ -132,14 +133,36 @@ const deleted = (principal: PrincipalSummary) => {
       class="flex min-w-0 flex-col gap-3 expanded:border-r expanded:border-outline-variant expanded:p-3"
       :class="name ? 'max-expanded:hidden' : ''"
     >
-      <MdButton
-        data-test="new-principal"
-        variant="tonal"
-        class="self-start"
-        @click="newOpen = true"
-      >
-        {{ COPY.newLabel }}
-      </MdButton>
+      <div class="flex flex-wrap gap-2">
+        <MdButton
+          data-test="new-principal"
+          variant="tonal"
+          @click="newOpen = true"
+        >
+          {{ COPY.newLabel }}
+        </MdButton>
+        <router-link
+          v-if="!name"
+          v-slot="{ href, navigate }"
+          :to="{ name: 'access-check' }"
+          custom
+        >
+          <MdButton
+            variant="tonal"
+            :href="href"
+            data-test="check-list"
+            @click="navigate"
+          >
+            <template #icon>
+              <MdIcon
+                name="shield-check"
+                size="md"
+              />
+            </template>
+            Check a permission
+          </MdButton>
+        </router-link>
+      </div>
 
       <div role="search">
         <MdTextField

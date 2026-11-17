@@ -171,8 +171,21 @@ const admin = computed(() => isInstanceAdmin(detail.value))
 
     <template v-else-if="detail">
       <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
-        <div class="flex flex-wrap items-start justify-between gap-2">
+        <div
+          class="flex flex-wrap items-start justify-between gap-2"
+          data-test="heading-row"
+        >
           <div class="flex min-w-0 flex-col gap-2">
+            <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">
+              {{ detail.displayName || detail.name }}
+            </h2>
+            <p
+              v-if="detail.displayName && detail.displayName !== detail.name"
+              data-test="heading-username"
+              class="m-0 min-w-0 break-words md-body-medium text-on-surface-variant"
+            >
+              {{ detail.name }}
+            </p>
             <div class="flex flex-wrap items-center gap-2">
               <TokenTag
                 v-if="detail.disabled"

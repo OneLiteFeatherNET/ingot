@@ -63,15 +63,9 @@ const settings = useSettingsDomains()
 const groups = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
 const sideNav = sideNavOf('access')
 
-// The heading of the page: the item name on a detail page, the Access name on the index, and otherwise the label of the tab.
-const heading = computed(() => props.name ?? (props.tab === undefined ? 'Access' : ''))
-// A detail page links to the permission check. A user or a machine account goes there with the principal filled in; a
-// team has no principal of the check, so the link opens the check alone.
-const shortcuts = computed(() => {
-  if (props.name === undefined) return []
-  const to = props.tab === 'teams' ? { name: 'access-check' } : { name: 'access-check', query: { principal: props.name } }
-  return [{ label: 'Check a permission', to }]
-})
+// The heading of the page: the Access name on the index, and otherwise the label of the tab. A selected item is named by
+// its detail pane, so the page keeps the name of its list whatever is open.
+const heading = computed(() => (props.tab === undefined ? 'Access' : ''))
 </script>
 
 <template>
@@ -83,7 +77,6 @@ const shortcuts = computed(() => {
     :groups="groups"
     :current="pageTreeKey(tab)"
     :index-to="sideNav.indexTo"
-    :shortcuts="shortcuts"
     :narrow="narrow"
   >
     <div data-ingot-component="access-view">
