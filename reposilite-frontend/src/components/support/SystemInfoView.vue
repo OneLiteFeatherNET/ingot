@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import download from 'downloadjs'
 import { useSession } from '../../store/session'
 import { ADMIN_NODES } from '../../store/nodeAccess'
@@ -25,6 +25,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 import KeyValueTree from './KeyValueTree.vue'
@@ -85,6 +86,29 @@ const onLocalToggle = (event: Event) => {
 // The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
 const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
 const tierLabel = (tier: string | undefined) => TIER_LABELS[tier ?? 'community'] ?? 'Community'
+
+// The cards list Core first, then Official, Community and Experimental, and by name within each group. The filter appears above 12 plugins.
+const TIER_ORDER: Record<string, number> = { core: 0, official: 1, community: 2, experimental: 3 }
+const tierRank = (tier: string | undefined) => TIER_ORDER[tier ?? 'community'] ?? TIER_ORDER.community
+const PLUGIN_FILTER_ABOVE = 12
+// Where a plugin was loaded from, in words. The server sends the kind of place, never a path.
+const ORIGIN_LABELS: Record<string, string> = {
+  'built-in': 'Built into the server',
+  'bundled-image': 'Bundled with the image',
+  'plugins-directory': 'Plugins directory',
+  'plugin-store': 'Plugin store',
+}
+const originLabel = (origin: string | undefined) => (origin && ORIGIN_LABELS[origin]) || 'Unknown'
+// The filter of the plugin cards. It is its own, so the filter of the other tabs does not narrow the cards.
+const pluginFilter = ref('')
+const orderedPlugins = computed(() =>
+  [...(info.value?.plugins ?? [])].sort((left, right) => tierRank(left.tier) - tierRank(right.tier) || left.name.localeCompare(right.name)),
+)
+const showPluginFilter = computed(() => orderedPlugins.value.length > PLUGIN_FILTER_ABOVE)
+const shownPlugins = computed(() => {
+  const text = pluginFilter.value.trim().toLowerCase()
+  return text === '' ? orderedPlugins.value : orderedPlugins.value.filter(plugin => plugin.name.toLowerCase().includes(text))
+})
 
 // A section anchor opens the tab that holds its section, writes it into the address, and scrolls the section into view.
 const openFragment = async () => {
@@ -415,7 +439,7 @@ onMounted(() => {
           <section
             v-else-if="tab === 'plugins' && info"
             aria-labelledby="support-plugins"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-4"
           >
             <h2
               id="support-plugins"
@@ -423,19 +447,73 @@ onMounted(() => {
             >
               Plugins
             </h2>
-            <ul>
-              <li
-                v-for="plugin in info.plugins"
+            <MdTextField
+              v-if="showPluginFilter"
+              v-model="pluginFilter"
+              type="search"
+              label="Filter plugins"
+            />
+            <p
+              v-if="orderedPlugins.length === 0"
+              data-ingot-state="empty"
+              class="md-body-medium text-on-surface-variant"
+            >
+              No plugins are loaded.
+            </p>
+            <p
+              v-else-if="shownPlugins.length === 0"
+              data-ingot-state="empty"
+              class="md-body-medium text-on-surface-variant"
+            >
+              No plugin matches the filter.
+            </p>
+            <div
+              v-else
+              data-ingot-part="plugin-grid"
+              class="grid grid-cols-1 gap-4 medium:grid-cols-2 expanded:grid-cols-3"
+            >
+              <article
+                v-for="(plugin, index) in shownPlugins"
                 :key="plugin.name"
-                class="flex flex-wrap items-center gap-2"
+                :aria-labelledby="`support-plugin-${index}`"
+                data-ingot-part="plugin-card"
+                class="flex min-w-0 flex-col gap-2 wrap-anywhere rounded-corner-medium bg-surface-container-low p-4"
               >
-                {{ plugin.name }} {{ plugin.version }}
-                <span
-                  class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
-                  data-ingot-part="plugin-tier"
-                >{{ tierLabel(plugin.tier) }}</span>
-              </li>
-            </ul>
+                <header class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  <h3
+                    :id="`support-plugin-${index}`"
+                    class="md-title-medium min-w-0 wrap-anywhere text-on-surface"
+                  >
+                    {{ plugin.name }}
+                  </h3>
+                  <span class="md-body-medium text-on-surface-variant">{{ plugin.version }}</span>
+                  <span
+                    class="md-label-medium rounded-corner-small border border-outline px-2 text-on-surface-variant"
+                    data-ingot-part="plugin-tier"
+                  >{{ tierLabel(plugin.tier) }}</span>
+                </header>
+                <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
+                  <dt>Origin</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ originLabel(plugin.origin) }}
+                  </dd>
+                  <dt>Depends on</dt><dd class="min-w-0 wrap-anywhere">
+                    {{ plugin.dependencies.length > 0 ? plugin.dependencies.join(', ') : 'None' }}
+                  </dd>
+                  <dt>Settings</dt><dd class="min-w-0 wrap-anywhere">
+                    <RouterLink
+                      v-if="plugin.settingsDomain"
+                      :to="`/settings/${plugin.settingsDomain}`"
+                      class="md-label-large text-primary underline-offset-4 hover:underline"
+                    >
+                      Open settings
+                    </RouterLink>
+                    <template v-else>
+                      None
+                    </template>
+                  </dd>
+                </dl>
+              </article>
+            </div>
           </section>
 
           <div

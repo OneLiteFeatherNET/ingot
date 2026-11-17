@@ -74,6 +74,7 @@ const mountView = async (
     history: createMemoryHistory(),
     routes: [
       { path: '/settings/system-info', name: 'system-info', component: BLANK },
+      { path: '/settings/:domain?', name: 'settings', component: BLANK },
       { path: '/:pathMatch(.*)*', component: BLANK },
     ],
   })
@@ -126,10 +127,10 @@ describe('SystemInfoView', () => {
     const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
     await flushPromises()
 
-    // then: the row names the plugin, its version and the label as text
-    const row = wrapper.findAll('li').find(item => item.text().includes('checksum'))
-    expect(row?.text()).toContain('2.0.0')
-    expect(row?.text()).toContain('Official')
+    // then: the card names the plugin, its version and the label as text
+    const card = cardsIn(wrapper).find(item => item.text().includes('checksum'))
+    expect(card?.text()).toContain('2.0.0')
+    expect(card?.text()).toContain('Official')
   })
 
   it('shows Community for a plugin without a tier', async () => {
@@ -138,9 +139,9 @@ describe('SystemInfoView', () => {
     const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: { ...FIXTURE, plugins } })) } })
     await flushPromises()
 
-    // then: the row shows the community label
-    const row = wrapper.findAll('li').find(item => item.text().includes('metrics'))
-    expect(row?.text()).toContain('Community')
+    // then: the card shows the community label
+    const card = cardsIn(wrapper).find(item => item.text().includes('metrics'))
+    expect(card?.text()).toContain('Community')
   })
 })
 
@@ -565,5 +566,126 @@ describe('SystemInfoView environment and configuration as trees', () => {
     expect(configuration.findAll('dt').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
     expect(configuration.findAll('dt').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
     expect(groupNamed(configuration, 'bypass'), 'no group named after the shared first letter').toBeUndefined()
+  })
+})
+
+// The Plugins tab draws one card per plugin. The tier, origin, dependencies and settings come from the system information.
+const plugin = (name: string, tier: string, origin: string, extra: Record<string, unknown> = {}) => ({
+  name, version: '1.0.0', dependencies: [], tier, origin, settingsDomain: null, ...extra,
+})
+const PLUGINS = [
+  plugin('zeta', 'community', 'plugins-directory'),
+  plugin('alpha', 'core', 'built-in', { version: '2.0.0', dependencies: ['status'], settingsDomain: 'audit' }),
+  plugin('beta', 'experimental', 'plugin-store', { version: '0.9.0' }),
+  plugin('gamma', 'official', 'bundled-image', { dependencies: ['alpha', 'zeta'], settingsDomain: 'gamma_settings' }),
+]
+const pluginsTab = async (plugins: ReturnType<typeof plugin>[]) => {
+  const wrapper = await mountView(withInfo({ ...FIXTURE, plugins }), '/settings/system-info?tab=plugins')
+  await flushPromises()
+  return wrapper
+}
+const pluginSection = (wrapper: Page) => wrapper.find('[aria-labelledby="support-plugins"]')
+const cardsIn = (wrapper: Page) => pluginSection(wrapper).findAll('article')
+const titlesIn = (wrapper: Page) => cardsIn(wrapper).map(card => card.find('h3').text())
+const cardNamed = (wrapper: Page, name: string) => cardsIn(wrapper).find(card => card.find('h3').text() === name)!
+// The value of a row of the card's key and value list, read from the element that follows its term.
+const valueOf = (card: PanelOf, label: string) =>
+  card.findAll('dt').find(term => term.text() === label)?.element.nextElementSibling?.textContent?.trim()
+
+describe('SystemInfoView plugin cards', () => {
+  it('draws each plugin as a card titled with its name', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    expect(titlesIn(wrapper), 'one card per plugin, named by the plugin').toHaveLength(4)
+    expect(titlesIn(wrapper)).toEqual(expect.arrayContaining(['alpha', 'beta', 'gamma', 'zeta']))
+  })
+
+  it('orders the cards Core, Official, Community and Experimental, and by name within each group', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    expect(titlesIn(wrapper)).toEqual(['alpha', 'gamma', 'zeta', 'beta'])
+  })
+
+  it('shows the version and the tier badge in the header of each card', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    const alpha = cardNamed(wrapper, 'alpha')
+    expect(alpha.text()).toContain('2.0.0')
+    expect(alpha.findAll('span').map(badge => badge.text())).toContain('Core')
+  })
+
+  it('names where each plugin comes from in words, never a file path', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    expect(valueOf(cardNamed(wrapper, 'alpha'), 'Origin')).toBe('Built into the server')
+    expect(valueOf(cardNamed(wrapper, 'gamma'), 'Origin')).toBe('Bundled with the image')
+    expect(valueOf(cardNamed(wrapper, 'zeta'), 'Origin')).toBe('Plugins directory')
+    expect(valueOf(cardNamed(wrapper, 'beta'), 'Origin')).toBe('Plugin store')
+    for (const card of cardsIn(wrapper)) {
+      expect(card.text(), `the card ${card.find('h3').text()} shows no jar file`).not.toMatch(/\.jar|\\|\/plugins\//)
+    }
+  })
+
+  it('lists the dependencies of a plugin by name, and None when it has none', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    expect(valueOf(cardNamed(wrapper, 'gamma'), 'Depends on')).toBe('alpha, zeta')
+    expect(valueOf(cardNamed(wrapper, 'beta'), 'Depends on')).toBe('None')
+  })
+
+  it('links the settings of a plugin to its settings page', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    const link = cardNamed(wrapper, 'alpha').find('a')
+    expect(link.exists(), 'the card of a plugin with settings has a link').toBe(true)
+    expect(link.attributes('href')).toBe('/settings/audit')
+    expect(link.text()).toBe('Open settings')
+  })
+
+  it('shows no settings link for a plugin without settings', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    const card = cardNamed(wrapper, 'zeta')
+    expect(card.find('a').exists(), 'the card of a plugin without settings has no link').toBe(false)
+    expect(valueOf(card, 'Settings')).toBe('None')
+  })
+
+  it('lays the cards out in one column on phones, two from medium and three from expanded widths', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    // The first grid of the section is the card grid; the key and value lists of the cards come after it.
+    const grid = pluginSection(wrapper).find('.grid')
+    expect(grid.classes()).toEqual(expect.arrayContaining(['grid-cols-1', 'medium:grid-cols-2', 'expanded:grid-cols-3']))
+    for (const card of cardsIn(wrapper)) {
+      expect(card.classes(), `the card ${card.find('h3').text()} may shrink below its content`).toContain('min-w-0')
+      expect(card.classes(), `the card ${card.find('h3').text()} wraps its values`).toContain('wrap-anywhere')
+    }
+  })
+
+  it('shows no filter for twelve plugins or fewer', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    expect(pluginSection(wrapper).find('input[type="search"]').exists()).toBe(false)
+  })
+
+  it('shows a filter labelled Filter plugins above more than twelve plugins', async () => {
+    const many = Array.from({ length: 13 }, (_, index) => plugin(`metrics-${index}`, 'community', 'plugins-directory'))
+    const wrapper = await pluginsTab(many)
+
+    const input = pluginSection(wrapper).find('input[type="search"]')
+    expect(input.exists(), 'the filter exists').toBe(true)
+    expect(pluginSection(wrapper).findAll('label').map(label => label.text())).toContain('Filter plugins')
+  })
+
+  it('narrows the cards to the plugins whose name contains the typed text', async () => {
+    const many = [
+      ...Array.from({ length: 12 }, (_, index) => plugin(`metrics-${index}`, 'community', 'plugins-directory')),
+      plugin('checksum', 'official', 'plugin-store'),
+    ]
+    const wrapper = await pluginsTab(many)
+
+    await pluginSection(wrapper).find('input[type="search"]').setValue('checksum')
+
+    expect(titlesIn(wrapper)).toEqual(['checksum'])
   })
 })

@@ -217,7 +217,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `storage-usage-panel` | experimental | `src/components/maintenance/StorageUsagePanel.vue` | none | none |
 | `switch-field` | stable | `src/components/renderers/SwitchField.vue` | none | none |
 | `sync-step` | experimental | `src/components/migration/SyncStep.vue` | none | none |
-| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier`, `filter`, `support-action`, `support-note` | `loading`, `error`, `empty` |
+| `system-info-view` | experimental | `src/components/support/SystemInfoView.vue` | `plugin-tier`, `plugin-grid`, `plugin-card`, `filter`, `support-action`, `support-note` | `loading`, `error`, `empty` |
 | `tags-field-renderer` (no element of its own) | stable | `src/components/renderers/TagsFieldRenderer.vue` | none | none |
 | `team-detail` | experimental | `src/components/access/TeamDetail.vue` | none | `loading` |
 | `team-legacy-grants` | experimental | `src/components/access/TeamLegacyGrants.vue` | none | none |
