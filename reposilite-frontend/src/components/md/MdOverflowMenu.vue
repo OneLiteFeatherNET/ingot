@@ -24,10 +24,7 @@ import type { MenuItem } from './types'
  * is teleported to the body and placed from the bounding rect of the button, so a scrolling table cannot clip it.
  *
  * Props:
- *   label  the accessible name of the button, such as "Actions for releases". With a trigger slot the button is
- *          named by its content instead, unless triggerLabel is given
- *   triggerLabel  the accessible name of a button that has a trigger slot, such as "Account menu, Alice", so that
- *          a screen reader says the button opens a menu and whose; the visible content may then be shorter
+ *   label  the accessible name of the button, such as "Actions for releases"
  *   items  [{ value, label, ariaLabel, error, href }]: the text of each item, its accessible name, whether it is
  *          a destructive action (drawn in the error colour), and an optional address. An item with an address is a
  *          link with the menuitem role, so middle click and open in new tab work. A plain click on it is reported
@@ -50,12 +47,9 @@ import type { MenuItem } from './types'
 withDefaults(defineProps<{
   label: string
   items: MenuItem[]
-  // The accessible name of a trigger slot, when the content alone does not say that the button opens a menu.
-  triggerLabel?: string
   // Classes for the trigger button, such as the width of an account button.
   triggerClass?: string
 }>(), {
-  triggerLabel: '',
   triggerClass: ''
 })
 
@@ -194,7 +188,7 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
       variant="text"
       type="button"
       :class="triggerClass"
-      :aria-label="$slots.trigger ? triggerLabel || undefined : label"
+      :aria-label="$slots.trigger ? undefined : label"
       aria-haspopup="menu"
       :aria-expanded="menuOpen ? 'true' : 'false'"
       @click="toggle"

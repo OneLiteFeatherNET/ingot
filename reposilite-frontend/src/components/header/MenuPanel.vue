@@ -114,7 +114,6 @@ const onAccountSelect = (value: string): void => {
     <MdOverflowMenu
       v-if="isLogged"
       :label="`Account menu for ${signedInName}`"
-      :trigger-label="`Account menu, ${signedInName}`"
       :items="accountItems"
       trigger-class="min-w-0 max-w-full gap-2 !px-2"
       @select="onAccountSelect"
@@ -124,7 +123,8 @@ const onAccountSelect = (value: string): void => {
           class="flex size-8 shrink-0 items-center justify-center rounded-corner-full bg-primary-container md-title-small text-on-primary-container"
           aria-hidden="true"
         >{{ initial }}</span>
-        <!-- The button is named by its trigger label. Below 900px the name leaves the layout; the full name is the title. -->
+        <!-- The words before the name say that the button opens the account menu. Below 900px the name leaves the layout; the full name is the title. -->
+        <span class="sr-only">Account menu,</span>{{ ' ' }}
         <span
           data-test="account-name"
           :title="signedInName"

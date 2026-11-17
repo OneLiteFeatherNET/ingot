@@ -58,19 +58,7 @@ describe('MdOverflowMenu', () => {
     expect(trigger().attributes('aria-expanded'), 'the menu is closed at first').toBe('false')
   })
 
-  it('names a trigger that has its own content by triggerLabel, so the button says it opens a menu', async () => {
-    wrapper = mount(MdOverflowMenu, {
-      props: { label: 'Account menu for Alice', items: ITEMS, triggerLabel: 'Account menu, Alice' },
-      slots: { trigger: '<span>Alice</span>' },
-      attachTo: document.body
-    })
-    await flushPromises()
-
-    expect(trigger().attributes('aria-label'), 'the trigger carries the trigger label').toBe('Account menu, Alice')
-    expect(computeAccessibleName(trigger().element), 'the accessible name is the trigger label').toBe('Account menu, Alice')
-  })
-
-  it('keeps the trigger named by its content when a trigger slot has no triggerLabel', async () => {
+  it('keeps the trigger named by its content when a trigger slot is given', async () => {
     wrapper = mount(MdOverflowMenu, {
       props: { label: 'Account menu for Alice', items: ITEMS },
       slots: { trigger: '<span>Alice</span>' },
