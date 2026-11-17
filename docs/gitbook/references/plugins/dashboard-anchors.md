@@ -105,7 +105,10 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-checkbox` | experimental | `src/components/md/MdCheckbox.vue` | none | none |
 | `md-chip` | experimental | `src/components/md/MdChip.vue` | none | none |
 | `md-chip-input` | experimental | `src/components/md/MdChipInput.vue` | none | none |
+| `md-code` | experimental | `src/components/md/MdCode.vue` | none | none |
+| `md-code-block` | experimental | `src/components/md/MdCodeBlock.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
+| `md-copyable-code` | experimental | `src/components/md/MdCopyableCode.vue` | none | none |
 | `md-data-table` | experimental | `src/components/md/MdDataTable.vue` | `header`, `row` | none |
 | `md-dialog-actions` | experimental | `src/components/md/MdDialogActions.vue` | none | none |
 | `md-disclosure` | experimental | `src/components/md/MdDisclosure.vue` | none | none |
