@@ -342,16 +342,13 @@ describe('shortcuts between the pages of the Administration tree', () => {
     ])
   })
 
-  it('links Maintenance to Search index and Cleanup policies, in that order', () => {
-    expect(shortcutsOf('page:maintenance', canWith(['ingot.admin.maintenance', 'ingot.admin.settings']))).toEqual([
-      { label: 'Search index', to: { name: 'settings', params: { domain: 'search' } } },
-      { label: 'Cleanup policies', to: { name: 'settings', params: { domain: 'cleanup' } } },
-    ])
+  it('draws no shortcut on Maintenance, whose tabs replace the links to Search index and Cleanup policies', () => {
+    expect(shortcutsOf('page:maintenance', canWith(['ingot.admin.maintenance', 'ingot.admin.settings']))).toEqual([])
   })
 
-  it('links Search index to Maintenance for a visitor with the maintenance node', () => {
+  it('links Search index to the Search index tab of Maintenance for a visitor with the maintenance node', () => {
     expect(shortcutsOf('settings:search', canWith(['ingot.admin.maintenance']))).toEqual([
-      { label: 'Rebuild now on Maintenance', to: { name: 'maintenance' } },
+      { label: 'Rebuild now on Maintenance', to: { name: 'maintenance', query: { tab: 'index' } } },
     ])
   })
 

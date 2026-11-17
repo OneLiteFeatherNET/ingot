@@ -329,7 +329,8 @@ test.describe('the administration page header', () => {
 
   test('spans the shortcuts of a reading page to the edge of the header, as a wide page does, at 1440 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto(siteUrl('/maintenance'))
+    // Maintenance draws no shortcuts since its tabs replaced them, so the audit log carries the related-pages block.
+    await page.goto(siteUrl('/audit'))
     const shortcut = page.getByRole('navigation', { name: 'Related pages', exact: true }).getByRole('link').last()
     await expect(shortcut).toBeVisible()
 

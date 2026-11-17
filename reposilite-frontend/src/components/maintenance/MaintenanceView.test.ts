@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import MaintenanceView from './MaintenanceView.vue'
 
 const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient> }))
@@ -72,6 +73,8 @@ const fakeClient = () => ({
   }
 })
 
+const BLANK = { render: () => null }
+
 let wrapper: VueWrapper
 
 beforeEach(() => {
@@ -83,10 +86,27 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+// Mounts the page at an address. Every mount gets its own memory router, so the tab in the address is read per test.
+const mountAt = async (address: string) => {
+  const router: Router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/maintenance', name: 'maintenance', component: BLANK }],
+  })
+  await router.push(address)
+  await router.isReady()
+  wrapper = mount(MaintenanceView, { attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
+  await flushPromises()
+  return { router, wrapper }
+}
+
+const tabsOf = (view: VueWrapper) => view.findAll('[role="tab"]')
+const selectedTabOf = (view: VueWrapper) => tabsOf(view).find(tab => tab.attributes('aria-selected') === 'true')
+const shownPanelOf = (view: VueWrapper) => view.find('[role="tabpanel"]:not([hidden])')
+const tabNamed = (view: VueWrapper, label: string) => tabsOf(view).find(tab => tab.text() === label)!
+
 describe('MaintenanceView', () => {
   it('shows the read-only switch in a section labelled Writes, above the other panels', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
-    await flushPromises()
+    await mountAt('/maintenance')
 
     const section = wrapper.find('section[aria-labelledby]')
     expect(section.exists(), 'the switch sits in its own section').toBe(true)
@@ -103,31 +123,73 @@ describe('MaintenanceView', () => {
         get: vi.fn(() => Promise.reject(Object.assign(new Error('Forbidden'), { response: { status: 403, data: {} } })))
       }
     }
-    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
-    await flushPromises()
+    await mountAt('/maintenance')
 
     expect(wrapper.find('#read-only-switch').exists(), 'a principal without the maintenance area sees no read-only switch').toBe(false)
     expect(wrapper.text(), 'and no Writes section either').not.toContain('Writes')
   })
 
-  it('shows the storage usage and the cleanup policies on one page', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
-    await flushPromises()
+  it('shows three tabs in the order Storage usage, Search index and Cleanup policies', async () => {
+    await mountAt('/maintenance')
 
-    expect(wrapper.text()).toContain('Storage usage')
-    expect(wrapper.text()).toContain('Cleanup policies')
+    expect(tabsOf(wrapper).map(tab => tab.text())).toEqual(['Storage usage', 'Search index', 'Cleanup policies'])
   })
 
-  it('shows the search index beside the storage usage and the cleanup policies', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
+  it('opens the storage usage tab when the address has no tab', async () => {
+    await mountAt('/maintenance')
+
+    expect(selectedTabOf(wrapper)?.text(), 'the first tab is selected').toBe('Storage usage')
+    expect(shownPanelOf(wrapper).text(), 'the storage figures are shown').toContain('Storage usage')
+  })
+
+  it('opens the search index panel for the address ?tab=index', async () => {
+    await mountAt('/maintenance?tab=index')
+
+    expect(selectedTabOf(wrapper)?.text(), 'the search index tab is selected').toBe('Search index')
+    expect(shownPanelOf(wrapper).find('#search-index-title').exists(), 'the search index panel is the one shown').toBe(true)
+  })
+
+  it('opens the storage usage tab for an unknown tab in the address', async () => {
+    await mountAt('/maintenance?tab=bogus')
+
+    expect(selectedTabOf(wrapper)?.text(), 'an unknown tab falls back to the first tab').toBe('Storage usage')
+    expect(session.client.maven.storage, 'the storage figures are read for the first tab').toHaveBeenCalledTimes(1)
+  })
+
+  it('loads the search index only when its tab is first opened', async () => {
+    await mountAt('/maintenance')
+    expect(session.client.maven.searchIndex, 'the index is not read while its tab is closed').not.toHaveBeenCalled()
+
+    tabNamed(wrapper, 'Search index').trigger('click')
+    await flushPromises()
+    expect(session.client.maven.searchIndex, 'the index is read once its tab is opened').toHaveBeenCalledTimes(1)
+
+    tabNamed(wrapper, 'Storage usage').trigger('click')
+    await flushPromises()
+    tabNamed(wrapper, 'Search index').trigger('click')
+    await flushPromises()
+    expect(session.client.maven.searchIndex, 'switching back does not read it again').toHaveBeenCalledTimes(1)
+  })
+
+  it('loads the cleanup runs only when the cleanup policies tab is first opened', async () => {
+    await mountAt('/maintenance')
+    expect(session.client.cleanup.runs, 'the runs are not read while the tab is closed').not.toHaveBeenCalled()
+
+    tabNamed(wrapper, 'Cleanup policies').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Search index')
-    expect(session.client.maven.searchIndex).toHaveBeenCalledTimes(1)
+    expect(session.client.cleanup.runs, 'the runs are read once the tab is opened').toHaveBeenCalledTimes(1)
+  })
+
+  it('does not read the storage usage while another tab is opened from the address', async () => {
+    await mountAt('/maintenance?tab=index')
+
+    expect(session.client.maven.storage, 'the storage figures wait for their tab').not.toHaveBeenCalled()
   })
 
   it('reloads the storage figures once a run has finished', async () => {
-    wrapper = mount(MaintenanceView, { attachTo: document.body }) as VueWrapper
+    await mountAt('/maintenance')
+    tabNamed(wrapper, 'Cleanup policies').trigger('click')
     await flushPromises()
     void wrapper.findAll('button').find(button => button.attributes('aria-label') === 'Run snapshots-weekly now')!.trigger('click')
     await flushPromises()
