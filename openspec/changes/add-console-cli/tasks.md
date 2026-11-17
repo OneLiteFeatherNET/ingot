@@ -10,49 +10,49 @@ HTTP server on an ephemeral port in process, never against a real server in unit
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose add-console-cli`: this change and nothing else. Verify: `openspec validate add-console-cli --strict`
+- [x] 1.1 `docs(openspec): propose add-console-cli`: this change and nothing else. Verify: `openspec validate add-console-cli --strict`
   passes and a grep for em and en dashes over the change prints nothing.
 
 ## 2. Server API (`feat(console)`)
 
-- [ ] 2.1 `test(console)`: failing tests for the command listing (names, aliases, options, parameters, `sensitive` from `sensitiveInput`, a
+- [x] 2.1 `test(console)`: failing tests for the command listing (names, aliases, options, parameters, `sensitive` from `sensitiveInput`, a
   version field, refusal without the console area). Verify: they fail on the missing endpoint.
-- [ ] 2.2 `test(console)`: failing tests for structured execute: exit codes `0`, `1`, `2`, `3`; stream names; ANSI stripped; `data` for `tokens`,
+- [x] 2.2 `test(console)`: failing tests for structured execute: exit codes `0`, `1`, `2`, `3`; stream names; ANSI stripped; `data` for `tokens`,
   `status`, `stats`; plain mode byte for byte unchanged (a golden test of the old body). Verify: they fail before 2.4.
-- [ ] 2.3 `test(console)`: failing tests for confirmation: each dangerous command answers `409` and runs nothing without `confirm=true`;
+- [x] 2.3 `test(console)`: failing tests for confirmation: each dangerous command answers `409` and runs nothing without `confirm=true`;
   `cache` is dangerous only for `purge`; a plugin command defaults to not dangerous; plain mode never asks.
-- [ ] 2.4 `feat(console)`: add `isDangerous(arguments)` to `ReposiliteCommand` with a default of `false`, the optional `StructuredCommand`, the
+- [x] 2.4 `feat(console)`: add `isDangerous(arguments)` to `ReposiliteCommand` with a default of `false`, the optional `StructuredCommand`, the
   listing endpoint, structured execute and the confirmation. Mark the six commands. Update `docs/openapi/ingot-openapi.json` and pass the
   OpenAPI diff gate as additive only. Verify: 2.1 to 2.3 are green and the plugin ABI gate reports no break.
-- [ ] 2.5 Code pull request, title `feat(console): add a command listing and structured results to the console api`. Read
+- [x] 2.5 Code pull request, title `feat(console): add a command listing and structured results to the console api`. Read
   `.github/PULL_REQUEST_TEMPLATE.md` and fill its sections, from the operator's point of view (a script that cannot tell a failed command from
   a successful one). No file under `openspec/`, no session link, no attribution, no em or en dash. Verify with `gh pr view --json title,body,files`.
 
 ## 3. Audit (`feat(audit)`)
 
-- [ ] 3.1 `test(audit)`: failing tests with a fake audit sink: one event per HTTP and websocket command, token name as actor, channel, exit code,
+- [x] 3.1 `test(audit)`: failing tests with a fake audit sink: one event per HTTP and websocket command, token name as actor, channel, exit code,
   confirmed flag; redacted line for sensitive commands; no event for stdin; a failing audit write does not fail the command.
-- [ ] 3.2 `feat(audit)`: add `CONSOLE_COMMAND_EXECUTED`, emit it from `ConsoleEndpoint` and `ConsoleWebSocketHandler`, add the row to
-  `docs/gitbook/reference/audit-events.md`. Verify: 3.1 is green and the event reaches the JSON lines sink when it is on.
-- [ ] 3.3 Code pull request, title `feat(audit): audit remote console commands`. Same description rules as 2.5.
+- [x] 3.2 `feat(audit)`: add `CONSOLE_COMMAND_EXECUTED`, emit it from `ConsoleEndpoint` and `ConsoleWebSocketHandler`, add the row to
+  `docs/gitbook/references/identity/audit-events.md`. Verify: 3.1 is green and the event reaches the JSON lines sink when it is on.
+- [x] 3.3 Code pull request, title `feat(audit): audit remote console commands`. Same description rules as 2.5.
 
 ## 4. The CLI (`feat(cli)`)
 
-- [ ] 4.1 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` together with its first code in the commit of 4.7, because
+- [x] 4.1 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` together with its first code in the commit of 4.7, because
   an empty module is not a change of its own. Verify: the module builds.
-- [ ] 4.2 `test(cli)`: failing tests for configuration resolution as a pure function of flags, an environment map, a config file in a
+- [x] 4.2 `test(cli)`: failing tests for configuration resolution as a pure function of flags, an environment map, a config file in a
   temporary directory: order, contexts, refusal of an inline token, no `--token`, no `REPOSILITE_` fallback.
-- [ ] 4.3 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning, and a
+- [x] 4.3 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning, and a
   check that no output stream ever contains the secret.
-- [ ] 4.4 `test(cli)`: failing tests for exec mode against a stub server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines, stdin script
+- [x] 4.4 `test(cli)`: failing tests for exec mode against a stub server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines, stdin script
   with comments, argument with a space, no prompt in a pipe, stdout holds only command output.
 - [ ] 4.5 `test(cli)`: failing tests for the REPL through a scripted terminal (JLine dumb terminal): completion from a listing, no request per
   keystroke, `Ctrl-C`, `Ctrl-D`, confirmation `y/N`, sensitive lines kept out of history, colour only on a terminal, older server fallback.
-- [ ] 4.6 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
+- [x] 4.6 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
   `--insecure` warning, no insecure switch in the config file.
-- [ ] 4.7 `feat(cli)`: implement the module with picocli, JLine 3 and `java.net.http.HttpClient`. Add the licences to `allowed-licenses.json` if
+- [x] 4.7 `feat(cli)`: implement the module with picocli, JLine 3 and `java.net.http.HttpClient`. Add the licences to `allowed-licenses.json` if
   needed. Verify: 4.2 to 4.6 are green and `./gradlew :ingot-cli:build` passes.
-- [ ] 4.8 Code pull request, title `feat(cli): add the ingot command line client`. Same description rules as 2.5. If open question 2 is decided for a
+- [x] 4.8 Code pull request, title `feat(cli): add the ingot command line client`. Same description rules as 2.5. If open question 2 is decided for a
   separate repository, this group moves there and the title keeps its type and scope.
 
 ## 5. Packaging and images (`build(cli)`, `ci(cli)`)
@@ -63,21 +63,21 @@ HTTP server on an ephemeral port in process, never against a real server in unit
   REPL starts.
 - [ ] 5.2 Evaluate a GraalVM native binary (open question 4): record build time, size and the reflection configuration cost in the pull request
   description, and only add it if the build sustains it. Verify: the result is written down either way.
-- [ ] 5.3 Code pull request, title `build(cli): package the cli as a jar and a container image`. Same description rules as 2.5.
-- [ ] 5.4 `ci(cli)`: extend the "Container images" job to start the CLI image against the server image of the same run and assert `status` and
+- [x] 5.3 Code pull request, title `build(cli): package the cli as a jar and a container image`. Same description rules as 2.5.
+- [x] 5.4 `ci(cli)`: extend the "Container images" job to start the CLI image against the server image of the same run and assert `status` and
   `help`; add the second architecture build on pull requests like the server image; extend the `changes` filter deny list for the CLI paths.
   Verify: the three drop-in questions of `CLAUDE.md` still pass for the server image.
-- [ ] 5.5 `ci(cli)`: release job for `ghcr.io/onelitefeathernet/ingot-cli` with `sbom: true` and `provenance: mode=max` on releases only, the registry
+- [x] 5.5 `ci(cli)`: release job for `ghcr.io/onelitefeathernet/ingot-cli` with `sbom: true` and `provenance: mode=max` on releases only, the registry
   back-off of the dashboard image, jar upload, signing and SBOM attachment. Verify: a dry run on a branch builds without pushing.
-- [ ] 5.6 Code pull request, title `ci(cli): build and publish the cli image`. Same description rules as 2.5.
+- [x] 5.6 Code pull request, title `ci(cli): build and publish the cli image`. Same description rules as 2.5.
 
 ## 6. Documentation (`docs(console)`)
 
-- [ ] 6.1 `docs(console)`: `docs/gitbook/reference/cli.md` (flags, variables, exit codes, config file), `docs/gitbook/how-to/run-the-cli.md`
+- [x] 6.1 `docs(console)`: `docs/gitbook/references/cli.md` (flags, variables, exit codes, config file), `docs/gitbook/manage/operate/run-the-cli.md`
   (`kubectl run -it --rm`, `docker compose run`, a CI step with `INGOT_TOKEN_FILE`, creating a dedicated token), an update to
-  `docs/gitbook/reference/console-commands.md` for the listing and structured mode, and every new variable in
-  `docs/gitbook/reference/environment-variables.md`. Verify: every `INGOT_` name in the CLI source appears in the reference page.
-- [ ] 6.2 Code pull request, title `docs(console): document the cli and the console api additions`. Same description rules as 2.5.
+  `docs/gitbook/references/console-commands.md` for the listing and structured mode, and every new variable in
+  `docs/gitbook/references/configuration/environment-variables.md`. Verify: every `INGOT_` name in the CLI source appears in the reference page.
+- [x] 6.2 Code pull request, title `docs(console): document the cli and the console api additions`. Same description rules as 2.5.
 
 ## 7. Drop-in check
 
