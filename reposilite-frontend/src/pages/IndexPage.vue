@@ -124,8 +124,8 @@ const routeText = (value: unknown): string => value as string
 
 const navigationSection = computed((): string | null => (isListed(ADMINISTRATION_SECTIONS, section.value) ? 'settings' : section.value))
 // The reading pages of the administration frame (text and forms) keep a 960 pixel measure. The other pages are wide
-// (lists, tables and the charts) and take the full width after the side navigation.
-const readingPage = computed((): boolean => isListed(['maintenance', 'migration'], section.value) || isListed(SUPPORT_ROUTES, route.name))
+// (lists, tables, the charts and the system information cards) and take the full width after the side navigation.
+const readingPage = computed((): boolean => isListed(['maintenance', 'migration'], section.value))
 // A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
 // does not name has no node, so it is not allowed and the page below shows it as not found.
 const pluginPageNode = computed((): string | undefined => (route.name === 'settings-plugin'
