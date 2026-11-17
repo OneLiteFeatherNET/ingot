@@ -760,6 +760,13 @@
       "states": []
     },
     {
+      "name": "md-listbox",
+      "file": "src/components/md/MdListbox.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-linear-progress",
       "file": "src/components/md/MdLinearProgress.vue",
       "stability": "experimental",
