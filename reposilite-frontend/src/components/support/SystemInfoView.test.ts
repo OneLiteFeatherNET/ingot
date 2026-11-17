@@ -198,7 +198,7 @@ describe('SystemInfoView tabs', () => {
 
     await filterOf(environment).setValue('puid')
 
-    expect(environment.findAll('dt').map(term => term.text())).toEqual(['PUID'])
+    expect(environment.findAll('[role="rowheader"]').map(term => term.text())).toEqual(['PUID'])
   })
 
   it('says that no entry matches when the filter keeps no row', async () => {
@@ -517,8 +517,10 @@ describe('SystemInfoView environment and configuration as trees', () => {
     ['webhookSecret', '[withheld]'],
     ['zone', 'eu'],
   ])
-  const treeOf = (panel: PanelOf) => panel.find('[role="region"]')
-  const groupNamed = (panel: PanelOf, label: string) => panel.findAll('details').find((item) => item.find('summary').text().includes(label))
+  const treeOf = (panel: PanelOf) => panel.find('[role="table"]')
+  // A group is a button that reports whether it is open. Shared is the one native disclosure left.
+  const groupNamed = (panel: PanelOf, label: string) => panel.findAll('button[aria-expanded]').find((item) => item.text().includes(label))
+  const sharedSection = (panel: PanelOf) => panel.findAll('details').find((item) => item.find('summary').text().includes('Shared'))
 
   it('groups the Kubernetes service variables under one collapsed group that shows its key count', async () => {
     const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
@@ -526,8 +528,8 @@ describe('SystemInfoView environment and configuration as trees', () => {
     const environment = panelsOf(wrapper)[2]
 
     const group = groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')
-    expect(group?.find('summary').text(), 'the group names its prefix and counts its 12 keys').toContain('12')
-    expect(group?.attributes('open'), 'the group is collapsed above 20 keys').toBeUndefined()
+    expect(group?.text(), 'the group names its prefix and counts its 12 keys').toContain('12 keys')
+    expect(group?.attributes('aria-expanded'), 'the group is collapsed above 20 keys').toBe('false')
   })
 
   it('opens the group of a typed key, so the matching variable is visible', async () => {
@@ -537,25 +539,45 @@ describe('SystemInfoView environment and configuration as trees', () => {
 
     await filterOf(environment).setValue('TCP_TLS')
 
-    expect(groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')?.attributes('open'), 'the group opens for the match').toBeDefined()
+    expect(groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')?.attributes('aria-expanded'), 'the group opens for the match').toBe('true')
     expect(environment.findAll('mark').map((mark) => mark.text())).toContain('TCP_TLS')
   })
 
-  it('keeps the keys of the environment in a region that scrolls on its own', async () => {
+  it('keeps the keys of the environment in the page flow, with no scroll box of its own', async () => {
     const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
     await flushPromises()
 
-    expect(treeOf(panelsOf(wrapper)[2]).attributes('tabindex'), 'the region takes the keyboard focus').toBe('0')
+    expect(treeOf(panelsOf(wrapper)[2]).classes(), 'the table does not scroll inside the page').not.toContain('overflow-y-auto')
+    expect(treeOf(panelsOf(wrapper)[2]).attributes('tabindex'), 'the table is not a second tab stop').toBeUndefined()
   })
 
-  it('shows the local configuration as a tree of camel case groups, with Local and Shared as collapsible sections', async () => {
+  it('gives each section of the environment its own Expand all and Collapse all in its header', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
+    await flushPromises()
+    const environment = panelsOf(wrapper)[2]
+
+    const expandAll = environment.findAll('button').filter((button) => button.text() === 'Expand all')
+    expect(expandAll, 'Environment and System properties each have one').toHaveLength(2)
+    await expandAll[0].trigger('click')
+    expect(groupNamed(environment, 'INGOT_DASHBOARD_PORT_8080_TCP')?.attributes('aria-expanded'), 'Expand all opens the groups of its section').toBe('true')
+  })
+
+  it('keeps the filter at the top of the Configuration tab, in a sticky header', async () => {
+    const wrapper = await mountView(withInfo({ ...FIXTURE, configuration: { local: longLocal, shared: FIXTURE.configuration.shared } }))
+    await flushPromises()
+
+    expect(filterOf(panelsOf(wrapper)[3]).element.closest('.sticky'), 'the filter stays in view while the page scrolls').not.toBeNull()
+  })
+
+  it('shows the local configuration as a tree of camel case groups, with Local and Shared as sections', async () => {
     const wrapper = await mountView(withInfo({ ...FIXTURE, configuration: { local: longLocal, shared: FIXTURE.configuration.shared } }))
     await flushPromises()
     const configuration = panelsOf(wrapper)[3]
 
-    expect(groupNamed(configuration, 'Local')?.find('summary').text(), 'the Local section counts its 21 keys').toContain('21')
-    expect(groupNamed(configuration, 'database')?.find('summary').text(), 'the database group counts its five keys').toContain('5')
-    expect(groupNamed(configuration, 'Shared'), 'Shared is a collapsible section').toBeDefined()
+    expect(configuration.findAll('h2').map((heading) => heading.text()), 'Local is a section heading').toContain('Local')
+    expect(configuration.text(), 'the Local section counts its 21 keys').toContain('21 keys')
+    expect(groupNamed(configuration, 'database')?.text(), 'the database group counts its five keys').toContain('5 keys')
+    expect(sharedSection(configuration), 'Shared is a section of its own').toBeDefined()
   })
 
   it('does not merge basePath and bypassExternalCache into one group', async () => {
@@ -563,8 +585,8 @@ describe('SystemInfoView environment and configuration as trees', () => {
     await flushPromises()
     const configuration = panelsOf(wrapper)[3]
 
-    expect(configuration.findAll('dt').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
-    expect(configuration.findAll('dt').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
+    expect(configuration.findAll('[role="rowheader"]').find((term) => term.text() === 'basePath'), 'basePath is a leaf of its own').toBeDefined()
+    expect(configuration.findAll('[role="rowheader"]').find((term) => term.text() === 'bypassExternalCache'), 'bypassExternalCache is a leaf of its own').toBeDefined()
     expect(groupNamed(configuration, 'bypass'), 'no group named after the shared first letter').toBeUndefined()
   })
 })

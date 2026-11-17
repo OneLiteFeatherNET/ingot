@@ -22,6 +22,36 @@ const leaf = (key: string): LeafNode => ({ kind: 'leaf', key, value: 'v' })
 const group = (label: string, count: number, children: TreeNode[]): GroupNode => ({ kind: 'group', label, count, children })
 const rows = (keys: string[]): [string, string][] => keys.map((key) => [key, 'v'])
 
+describe('buildKeyTree with keys that start with a separator', () => {
+  it('names a group of keys that share a leading underscore with that underscore', () => {
+    const tree = buildKeyTree(rows(['_ALPHA', '_BETA']), 'underscore')
+
+    expect(tree, 'the group is named by its prefix, not left empty').toEqual([
+      group('_', 2, [leaf('_ALPHA'), leaf('_BETA')]),
+    ])
+  })
+
+  it('names a subgroup behind a leading underscore with the whole prefix', () => {
+    const tree = buildKeyTree(rows(['_ALPHA_ONE', '_ALPHA_TWO']), 'underscore')
+
+    expect(tree, 'the group shows _ALPHA, the prefix as written').toEqual([
+      group('_ALPHA', 2, [leaf('_ALPHA_ONE'), leaf('_ALPHA_TWO')]),
+    ])
+  })
+
+  it('never produces a group with an empty label', () => {
+    const tree = buildKeyTree(rows(['_A', '_B', '__C', '__D', 'PUID', 'X_']), 'underscore')
+
+    expect(groupLabels(tree).every((label) => label.length > 0), 'every group has a visible name').toBe(true)
+  })
+
+  it('names a group behind a double separator with the prefix as written', () => {
+    const tree = buildKeyTree(rows(['A__B', 'A__C']), 'underscore')
+
+    expect(groupLabels(tree), 'the one group is named by the prefix it shares, with its separators').toEqual(['A_'])
+  })
+})
+
 describe('buildKeyTree with the underscore separator', () => {
   it('groups two or more environment variables that share a prefix', () => {
     const tree = buildKeyTree(rows(['INGOT_TOKEN_A', 'INGOT_TOKEN_B']), 'underscore')

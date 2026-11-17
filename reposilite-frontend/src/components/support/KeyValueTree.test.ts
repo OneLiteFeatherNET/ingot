@@ -42,69 +42,123 @@ const smallRows = (): Row[] => [
   ['PUID', '1000'],
 ]
 
-const mountTree = (props: Partial<{ entries: Row[], split: KeySplit, query: string, label: string }> = {}) =>
+const mountTree = (props: Partial<{ entries: Row[], split: KeySplit, query: string, label: string, title: string }> = {}) =>
   mount(KeyValueTree, {
-    props: { entries: serviceRows(), split: 'underscore', query: '', label: 'Environment variables', ...props },
+    props: { entries: serviceRows(), split: 'underscore', query: '', label: 'Environment variables', title: 'Environment', ...props },
   })
 
-const region = (wrapper: ReturnType<typeof mountTree>) => wrapper.find('[role="region"]')
-const detailsOf = (wrapper: ReturnType<typeof mountTree>, summary: string) =>
-  wrapper.findAll('details').find((item) => item.find('summary').text().includes(summary))
-const isOpen = (element: { element: Element } | undefined) => (element?.element as HTMLDetailsElement | undefined)?.open === true
-const buttonNamed = (wrapper: ReturnType<typeof mountTree>, name: string) =>
-  wrapper.findAll('button').find((button) => button.text() === name)
+type Wrapper = ReturnType<typeof mountTree>
+const table = (wrapper: Wrapper) => wrapper.find('[role="table"]')
+const rowOf = (wrapper: Wrapper, key: string) => wrapper.findAll('[role="row"]').find((row) => row.find('[role="rowheader"]').text() === key)
+// A group is named by its button: its label, then its key count. The button tells whether the group is open.
+const groupButton = (wrapper: Wrapper, label: string) =>
+  wrapper.findAll('button[aria-expanded]').find((button) => button.text().includes(label))
+const isExpanded = (wrapper: Wrapper, label: string) => groupButton(wrapper, label)?.attributes('aria-expanded') === 'true'
+const buttonNamed = (wrapper: Wrapper, name: string) => wrapper.findAll('button').find((button) => button.text() === name)
 
 describe('KeyValueTree', () => {
-  it('shows each leaf as a key and a value, with the value exactly as it was given', () => {
+  it('shows each key and its value in one row, with the value exactly as it was given', () => {
     const wrapper = mountTree({ entries: smallRows() })
 
-    const puid = wrapper.findAll('dt').find((term) => term.text() === 'PUID')
-    expect(puid?.element.nextElementSibling?.textContent?.trim(), 'the value of PUID is shown as given').toBe('1000')
+    const row = rowOf(wrapper, 'PUID')
+    expect(row?.findAll('[role="cell"]').map((cell) => cell.text()), 'the value sits in the value column of the same row').toEqual(['1000'])
     expect(wrapper.text(), 'a withheld value stays withheld').toContain('one')
   })
 
-  it('keeps the keys in a monospace font', () => {
-    expect(region(mountTree()).classes(), 'the tree uses the monospace font').toContain('font-mono')
+  it('keeps every row of a section in one table, so the values line up in one column', () => {
+    const wrapper = mountTree({ entries: smallRows() })
+
+    expect(table(wrapper).exists(), 'the rows sit in one table').toBe(true)
+    expect(table(wrapper).findAll('[role="cell"]').length, 'one value cell per key, the group row has none').toBe(3)
   })
 
-  it('exposes the tree as a named, keyboard-focusable region with its own scroll', () => {
+  it('keeps the keys in a monospace font', () => {
+    expect(table(mountTree()).classes(), 'the table uses the monospace font').toContain('font-mono')
+  })
+
+  it('wraps a long value inside its column, and keeps a short value whole', () => {
+    const wrapper = mountTree({ entries: [['LONG', 'x'.repeat(400)]] })
+
+    expect(rowOf(wrapper, 'LONG')?.find('[role="cell"]').classes(), 'only a value too long for its line breaks').toContain('wrap-anywhere')
+    expect(rowOf(wrapper, 'LONG')?.find('[role="cell"]').classes(), 'a short token is not broken mid-word by break-all').not.toContain('break-all')
+  })
+
+  it('names a group of keys that share a leading underscore, so it is never a bare count', () => {
+    const wrapper = mountTree({ entries: [['_ALPHA', '1'], ['_BETA', '2'], ['PUID', '1000']] })
+
+    const names = wrapper.findAll('button[aria-expanded]').map((button) => button.text())
+    expect(names.some((name) => name.startsWith('_') && name.includes('2 keys')), 'the group reads _ followed by its count').toBe(true)
+  })
+
+  it('stacks the key above its value below medium width, and puts both on the page width', () => {
+    const wrapper = mountTree({ entries: smallRows() })
+
+    expect(table(wrapper).classes(), 'one column below medium width').toContain('grid-cols-1')
+    expect(table(wrapper).classes(), 'the key and value columns from medium width up').toContain('medium:grid-cols-(--grid-md-key-value)')
+  })
+
+  it('indents the value of a nested key one level under its key when the rows are stacked', async () => {
+    const wrapper = mountTree({ entries: serviceRows() })
+    await groupButton(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.trigger('click')
+
+    const key = rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS')
+    expect(key?.find('[role="rowheader"]').classes(), 'the key keeps the indent of its level').toContain('md-tree-depth-1')
+    expect(key?.find('[role="cell"]').classes(), 'the value is one level deeper, only below medium width').toContain('max-medium:md-tree-depth-2')
+  })
+
+  it('shows an empty value as a muted placeholder, not as a blank cell', () => {
+    const wrapper = mountTree({ entries: [['plugins', ''], ['PUID', '1000']] })
+
+    const cell = rowOf(wrapper, 'plugins')?.find('[role="cell"]')
+    expect(cell?.text(), 'the empty value is named').toBe('(empty)')
+    expect(cell?.classes(), 'the placeholder is muted and italic').toEqual(expect.arrayContaining(['italic', 'text-on-surface-variant']))
+  })
+
+  it('names the table after its label and gives it no scroll box of its own', () => {
     const wrapper = mountTree({ label: 'Environment variables' })
 
-    expect(region(wrapper).attributes('aria-label'), 'the region is named by the label').toBe('Environment variables')
-    expect(region(wrapper).attributes('tabindex'), 'the region can take the keyboard focus').toBe('0')
+    expect(table(wrapper).attributes('aria-label'), 'the table is named by the label').toBe('Environment variables')
+    expect(table(wrapper).classes(), 'the table does not scroll inside the page').not.toContain('overflow-y-auto')
+    expect(table(wrapper).attributes('tabindex'), 'the table is not a second tab stop').toBeUndefined()
   })
 
   it('collapses every group when there are more than 20 keys in total', () => {
     const wrapper = mountTree({ entries: serviceRows() })
 
-    const groups = wrapper.findAll('details')
+    const groups = wrapper.findAll('button[aria-expanded]')
     expect(groups.length, 'the service variables and the Kubernetes variables are groups').toBeGreaterThan(0)
-    expect(groups.every((group) => !isOpen(group)), 'no group starts open').toBe(true)
+    expect(groups.every((group) => group.attributes('aria-expanded') === 'false'), 'no group starts open').toBe(true)
   })
 
   it('opens every group when there are 20 keys or fewer in total', () => {
-    const entries = serviceRows().slice(0, 20)
+    const wrapper = mountTree({ entries: serviceRows().slice(0, 20) })
 
-    const wrapper = mountTree({ entries })
-
-    expect(wrapper.findAll('details').length, 'there are groups to open').toBeGreaterThan(0)
-    expect(wrapper.findAll('details').every((group) => isOpen(group)), 'every group starts open').toBe(true)
+    const groups = wrapper.findAll('button[aria-expanded]')
+    expect(groups.length, 'there are groups to open').toBeGreaterThan(0)
+    expect(groups.every((group) => group.attributes('aria-expanded') === 'true'), 'every group starts open').toBe(true)
   })
 
-  it('shows the number of keys below each group next to its label', () => {
+  it('shows the number of keys below each group as a count next to its label', () => {
     const wrapper = mountTree({ entries: serviceRows() })
 
-    expect(detailsOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.find('summary').text(), 'the service group counts its 12 keys').toContain('12')
+    expect(groupButton(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.text(), 'the service group counts its 12 keys').toContain('12 keys')
+  })
+
+  it('toggles one group with its own button and shows or hides its keys', async () => {
+    const wrapper = mountTree({ entries: serviceRows() })
+    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS'), 'the keys of a collapsed group are hidden').toBeUndefined()
+
+    await groupButton(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')?.trigger('click')
+
+    expect(isExpanded(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP'), 'the group reports that it is open').toBe(true)
+    expect(rowOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP_TLS'), 'the keys of the open group are shown').toBeDefined()
   })
 
   it('opens the path to a match and marks the matching text', () => {
-    // given: the collapsed tree of more than 20 keys
     const wrapper = mountTree({ entries: serviceRows(), query: 'TCP_TLS' })
 
-    // then: the group that holds the match is open, and the match is highlighted
-    expect(isOpen(detailsOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')), 'the group on the path to the match opens').toBe(true)
-    const marks = wrapper.findAll('mark').map((mark) => mark.text())
-    expect(marks, 'the matching text is marked').toContain('TCP_TLS')
+    expect(isExpanded(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP'), 'the group on the path to the match opens').toBe(true)
+    expect(wrapper.findAll('mark').map((mark) => mark.text()), 'the matching text is marked').toContain('TCP_TLS')
   })
 
   it('finds a value and marks it too', () => {
@@ -117,42 +171,35 @@ describe('KeyValueTree', () => {
     const wrapper = mountTree({ entries: serviceRows(), query: 'no-such-key-anywhere' })
 
     expect(wrapper.text(), 'the empty result is announced').toContain('No key matches')
-    expect(wrapper.findAll('dt'), 'no leaf is shown').toHaveLength(0)
+    expect(wrapper.findAll('[role="rowheader"]'), 'no key is shown').toHaveLength(0)
   })
 
   it('restores the collapsed state when the query is cleared', async () => {
-    // given: a query that opened the group of the match
     const wrapper = mountTree({ entries: serviceRows(), query: 'TCP_TLS' })
-    expect(isOpen(detailsOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')), 'open while the query is active').toBe(true)
+    expect(isExpanded(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP'), 'open while the query is active').toBe(true)
 
-    // when: the query is cleared
     await wrapper.setProps({ query: '' })
 
-    // then: the group is collapsed again
-    expect(isOpen(detailsOf(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP')), 'collapsed again after the query is cleared').toBe(false)
+    expect(isExpanded(wrapper, 'INGOT_DASHBOARD_PORT_8080_TCP'), 'collapsed again after the query is cleared').toBe(false)
   })
 
-  it('opens every group with Expand all', async () => {
+  it('opens every group with Expand all and closes them with Collapse all', async () => {
     const wrapper = mountTree({ entries: serviceRows() })
 
     await buttonNamed(wrapper, 'Expand all')?.trigger('click')
-
-    expect(wrapper.findAll('details').every((group) => isOpen(group)), 'every group is open').toBe(true)
-  })
-
-  it('closes every group with Collapse all', async () => {
-    const wrapper = mountTree({ entries: serviceRows() })
-    await buttonNamed(wrapper, 'Expand all')?.trigger('click')
+    expect(wrapper.findAll('button[aria-expanded]').every((group) => group.attributes('aria-expanded') === 'true'), 'every group is open').toBe(true)
 
     await buttonNamed(wrapper, 'Collapse all')?.trigger('click')
-
-    expect(wrapper.findAll('details').some((group) => isOpen(group)), 'no group is open').toBe(false)
+    expect(wrapper.findAll('button[aria-expanded]').some((group) => group.attributes('aria-expanded') === 'true'), 'no group is open').toBe(false)
   })
 
-  it('renders the expand and collapse buttons as text buttons above the tree', () => {
-    const wrapper = mountTree()
+  it('puts the title, the key count and the Expand all and Collapse all buttons in the section header', () => {
+    const wrapper = mountTree({ entries: serviceRows(), title: 'Environment' })
 
-    expect(buttonNamed(wrapper, 'Expand all'), 'the Expand all button exists').toBeDefined()
-    expect(buttonNamed(wrapper, 'Collapse all'), 'the Collapse all button exists').toBeDefined()
+    const heading = wrapper.find('h2')
+    expect(heading.text(), 'the section is headed by its title').toBe('Environment')
+    expect(heading.element.parentElement?.textContent, 'the header also holds the key count and the buttons').toEqual(
+      expect.stringMatching(/21 keys.*Expand all.*Collapse all/s),
+    )
   })
 })

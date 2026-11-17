@@ -131,8 +131,9 @@
   --container-md-sheet: 20rem;
   --container-md-snackbar: 35rem;
   --container-md-crumb: 10rem;
-  /* The tree of keys on the system information page: it scrolls within this height, so a long list does not run on. */
-  --container-md-key-tree: 24rem;
+  /* The key tree of the system information page: the indent of one level, and the offset of the guide line of a level. */
+  --spacing-md-tree-indent: 1.25rem;
+  --spacing-md-tree-guide: 0.625rem;
 
   /*
    * Animations. Each token is built from the motion tokens, and its keyframes sit next to it, so a token and the
@@ -291,6 +292,63 @@
 @utility duration-md-extra-long4 {
   --tw-duration: var(--md-sys-motion-duration-extra-long4);
   transition-duration: var(--md-sys-motion-duration-extra-long4);
+}
+
+/*
+ * The depth of a row in the key tree: the indent of its level, and a guide line drawn at the level above it, under the
+ * toggle of the group that holds it. The guide is one pixel wide and runs the height of the row, so the rows of one
+ * group join into a line. Depth 6 is the deepest level drawn; a deeper row keeps the indent of depth 6.
+ */
+@utility md-tree-depth-0 {
+  padding-inline-start: 0;
+}
+
+@utility md-tree-depth-1 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 1);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: var(--spacing-md-tree-guide) 0;
+}
+
+@utility md-tree-depth-2 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 2);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(var(--spacing-md-tree-indent) * 1 + var(--spacing-md-tree-guide)) 0;
+}
+
+@utility md-tree-depth-3 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 3);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(var(--spacing-md-tree-indent) * 2 + var(--spacing-md-tree-guide)) 0;
+}
+
+@utility md-tree-depth-4 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 4);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(var(--spacing-md-tree-indent) * 3 + var(--spacing-md-tree-guide)) 0;
+}
+
+@utility md-tree-depth-5 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 5);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(var(--spacing-md-tree-indent) * 4 + var(--spacing-md-tree-guide)) 0;
+}
+
+@utility md-tree-depth-6 {
+  padding-inline-start: calc(var(--spacing-md-tree-indent) * 6);
+  background-image: linear-gradient(var(--md-sys-color-outline-variant), var(--md-sys-color-outline-variant));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(var(--spacing-md-tree-indent) * 5 + var(--spacing-md-tree-guide)) 0;
 }
 
 @theme inline {

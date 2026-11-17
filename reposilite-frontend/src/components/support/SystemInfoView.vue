@@ -24,7 +24,9 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
+import MdIcon from '../md/MdIcon.vue'
 import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
@@ -76,12 +78,10 @@ const localEntries = computed(() => entriesOf(info.value?.configuration.local))
 const sharedKeys = computed(() => Object.keys(info.value?.configuration.shared ?? {}).length)
 // The configuration sections start open with 20 keys or fewer, as the groups of the trees do.
 const configurationOpen = computed(() => localEntries.value.length + sharedKeys.value <= OPEN_GROUPS_UP_TO)
-// The Local section opens while the filter runs, so a match in it shows. Its own state is kept for when the filter clears.
-const localOpen = ref<boolean | null>(null)
-const localShown = computed(() => filter.value.trim() !== '' || (localOpen.value ?? configurationOpen.value))
-const onLocalToggle = (event: Event) => {
-  if (filter.value.trim() === '') localOpen.value = (event.target as HTMLDetailsElement).open
-}
+// The chevron of the Shared section turns with its open state, which changes when the summary is clicked.
+const sharedOpen = ref(configurationOpen.value)
+watch(configurationOpen, (open) => { sharedOpen.value = open })
+const onSharedToggle = (event: Event) => { sharedOpen.value = (event.target as HTMLDetailsElement).open }
 
 // The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
 const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
@@ -520,7 +520,7 @@ onMounted(() => {
             v-else-if="tab === 'environment' && info"
             class="flex flex-col gap-6"
           >
-            <label class="md-body-medium flex flex-col gap-1 text-on-surface-variant">
+            <label class="sticky top-(--spacing-md-top-bar) z-md-sticky md-body-medium flex flex-col gap-1 bg-surface py-2 text-on-surface-variant">
               Filter by key or value
               <input
                 v-model="filter"
@@ -534,16 +534,12 @@ onMounted(() => {
               aria-labelledby="support-environment"
               class="flex flex-col gap-2"
             >
-              <h2
-                id="support-environment"
-                class="md-title-large text-on-surface"
-              >
-                Environment
-              </h2>
               <KeyValueTree
                 :entries="environmentEntries"
                 split="underscore"
                 label="Environment variables"
+                title="Environment"
+                heading-id="support-environment"
                 :query="filter"
               />
             </section>
@@ -552,16 +548,12 @@ onMounted(() => {
               aria-labelledby="support-properties"
               class="flex flex-col gap-2"
             >
-              <h2
-                id="support-properties"
-                class="md-title-large text-on-surface"
-              >
-                System properties
-              </h2>
               <KeyValueTree
                 :entries="propertyEntries"
                 split="dot"
                 label="System properties"
+                title="System properties"
+                heading-id="support-properties"
                 :query="filter"
               />
             </section>
@@ -571,9 +563,18 @@ onMounted(() => {
             v-else-if="tab === 'configuration' && info"
             class="flex flex-col gap-6"
           >
+            <label class="sticky top-(--spacing-md-top-bar) z-md-sticky md-body-medium flex flex-col gap-1 bg-surface py-2 text-on-surface-variant">
+              Filter by key or value
+              <input
+                v-model="filter"
+                type="search"
+                data-ingot-part="filter"
+                class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
+              >
+            </label>
             <section
               aria-labelledby="support-configuration"
-              class="flex flex-col gap-2"
+              class="flex flex-col gap-6"
             >
               <h2
                 id="support-configuration"
@@ -581,38 +582,28 @@ onMounted(() => {
               >
                 Configuration
               </h2>
-              <label class="md-body-medium flex flex-col gap-1 text-on-surface-variant">
-                Filter by key or value
-                <input
-                  v-model="filter"
-                  type="search"
-                  data-ingot-part="filter"
-                  class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
-                >
-              </label>
-              <details
-                :open="localShown"
-                class="min-w-0"
-                @toggle="onLocalToggle"
-              >
-                <summary class="md-title-small w-fit cursor-pointer text-on-surface">
-                  Local, {{ localEntries.length }} keys
-                </summary>
-                <div class="mt-2">
-                  <KeyValueTree
-                    :entries="localEntries"
-                    split="camel"
-                    label="Local configuration"
-                    :query="filter"
-                  />
-                </div>
-              </details>
+              <KeyValueTree
+                :entries="localEntries"
+                split="camel"
+                label="Local configuration"
+                title="Local"
+                heading-id="support-local"
+                :query="filter"
+              />
               <details
                 :open="configurationOpen"
                 class="min-w-0"
+                @toggle="onSharedToggle"
               >
-                <summary class="md-title-small w-fit cursor-pointer text-on-surface">
-                  Shared, {{ sharedKeys }} keys
+                <summary class="md-title-large flex w-full cursor-pointer items-center gap-3 rounded-corner-small py-2 text-on-surface md-focus-ring">
+                  Shared
+                  <MdBadge>{{ sharedKeys }} keys</MdBadge>
+                  <MdIcon
+                    path="M6 9l6 6 6-6"
+                    size="md"
+                    class="ml-auto shrink-0 transition-transform duration-md-short3"
+                    :class="sharedOpen ? 'rotate-180' : ''"
+                  />
                 </summary>
                 <p class="md-body-medium mt-2 text-on-surface-variant">
                   The filter does not apply to the shared configuration.
