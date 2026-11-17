@@ -10,7 +10,8 @@
     "scripts/**/*",
     "server/**/*",
     // The dashboard plugin imports the segment list of the router. A composite project must list every file it imports.
-    "src/router/dashboard-segments.json"
+    "src/router/dashboard-segments.json",
+    "fake-api/**/*"
   ],
   "compilerOptions": {
     "composite": true,
