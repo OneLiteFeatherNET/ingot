@@ -26,7 +26,7 @@ project:
     bug-bounty-available: false
     contact:
       name: Ingot maintainers
-      email: 'TODO(onelitefeather): security contact address'
+      email: 'security@onelitefeather.net'
       primary: true
     policy: https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/SECURITY.md
     comment: |
