@@ -105,6 +105,7 @@ describe('named stacking, scrim, icon and layout tokens', () => {
     ['--container-md-reading', '60rem'],
     ['--container-md-sheet', '20rem'],
     ['--container-md-snackbar', '35rem'],
+    ['--container-md-crumb', '10rem'],
   ])('declares the layout token %s as %s', (name, value) => {
     expect(shapeTheme, `${name} is a theme token`).toContain(`${name}: ${value};`)
   })
