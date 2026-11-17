@@ -27,16 +27,27 @@ test.describe('deleting a principal', () => {
 
     try {
       await page.goto(siteUrl(`/access/users/${encodeURIComponent(username)}`))
-      const detail = page.locator('[data-ingot-component="principal-detail"]')
+      // The innermost section that holds the display name is the detail: the list next to it has rows, not this field.
+      const detail = page.locator('section').filter({ has: page.locator('[data-test="principal-display-name"]') }).last()
       // The users list next to the detail shows the same display name in its row, so the check reads the detail alone.
       await expect(detail.locator('[data-test="principal-display-name"]'), 'the detail shows the display name').toHaveText(displayName)
 
-      await detail.getByRole('button', { name: `Actions for ${username}`, exact: true }).click()
-      await page.getByRole('menuitem', { name: 'Disable', exact: true }).click()
+      // The menu is opened and its items are chosen from the keyboard. A pointer click on the trigger makes Playwright
+      // scroll the page to it, and the menu closes on any scroll, so the menu would be gone before the item is clicked.
+      const trigger = detail.getByRole('button', { name: `Actions for ${username}`, exact: true })
+      const chooseFromMenu = async (name) => {
+        await trigger.focus()
+        await page.keyboard.press('Enter')
+        const item = page.getByRole('menuitem', { name, exact: true })
+        await expect(item, `the menu offers ${name}`).toBeVisible()
+        await item.focus()
+        await page.keyboard.press('Enter')
+      }
+
+      await chooseFromMenu('Disable')
       await expect(detail.locator('[data-test="status"]'), 'the user is disabled').toHaveText('Disabled')
 
-      await detail.getByRole('button', { name: `Actions for ${username}`, exact: true }).click()
-      await page.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+      await chooseFromMenu('Delete')
 
       const dialog = page.getByRole('dialog', { name: 'Delete user' })
       const typed = dialog.getByLabel('Type the username to confirm', { exact: true })
