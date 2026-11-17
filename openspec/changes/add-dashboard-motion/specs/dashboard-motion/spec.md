@@ -230,6 +230,22 @@ it does today.
 - **WHEN** a password sign-in asks for a second factor
 - **THEN** the step enters from below by 8 pixels, and its heading has focus
 
+### Requirement: Rows added after load fade in and removed rows are instant
+
+A row that is added to a list after the list has loaded SHALL fade in over the `short3` token. A row that is removed SHALL
+leave at once, without a transition. The list SHALL NOT use a transition group for removals, so the rows below it move
+without a transition.
+
+#### Scenario: Row added
+
+- **WHEN** a list receives a new row after it has loaded
+- **THEN** the row fades in over the `short3` token
+
+#### Scenario: Row removed
+
+- **WHEN** a row is removed from a loaded list
+- **THEN** the row is gone at once, and the rows below it move without a transition
+
 ### Requirement: Motion is documented for plugin authors
 
 The dashboard design document and the plugin documentation SHALL describe the patterns, the `motion` field of a plugin page

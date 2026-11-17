@@ -17,7 +17,7 @@ Read from the code on `main` at the time of writing. "Now" describes what a visi
 | Side sheets (`MdSideSheet`: the Sections sheet from 600 to 1239 pixels, and the failures and review sheets) | Fade only, 200 ms in and 150 ms out, off under reduced motion (`MdSideSheet.vue`). | Scrim fade, panel slides from its edge (group 4) |
 | Snackbars and toasts (`MdSnackbar`, `src/store/snackbar.ts`) | `<Transition name="md-snackbar">` fades and moves 8 pixels over 150 ms. A new message replaces the old one under a key with no `mode`, so the leaving and entering messages overlap for 150 ms. | Slide up 16 pixels, leave then enter on replacement (group 4) |
 | Expand and collapse (`MdDisclosure`, the `NodeTreeView` rows, the system information `details`, `ArrayListRenderer`, `RunHistory`, `TeamLegacyGrants`, `SsoProviderDialog`) | Native `details` open and close at once. `MdDisclosure` rotates its chevron over 150 ms. | Height from `0fr` to `1fr`, content fades, chevron rotates (group 6) |
-| List rows added or removed (`FileList`, `DetailedListEntry`, `RepositoriesTable`, search results) | No transition. Row actions fade on hover (`transition-opacity`). `NodeRow` plays a one-off highlight (`animate-md-node-highlight`). | Added row fades in. Removal stays instant (group 6 or 7, see Rules) |
+| List rows added or removed (`FileList`, `DetailedListEntry`, `RepositoriesTable`, search results) | No transition. Row actions fade on hover (`transition-opacity`). `NodeRow` plays a one-off highlight (`animate-md-node-highlight`). | Added row fades in over `short3` (group 7). Removal stays instant (D10) |
 | Mobile navigation (bottom bar `MdNavigationBar` below 600 pixels, the "More" panel above it, and the Sections sheet) | The bar changes colour. The "More" panel mounts with `v-if` and no transition. | "More" panel rises 8 pixels and fades (group 4) |
 | Sign-in dialog second step (`LoginModal.vue`) | The step swaps with `v-if` and no transition. Focus goes to the step heading. | Shared axis Y inside the dialog (group 7) |
 | Loading to content (`MdStatePanel` loading state, `ViewLoading`, the skeleton of the settings page) | The skeleton bars fade in over 800 ms after a 200 ms delay (`animate-skeleton-fade-in`, `ease-out`). When the content arrives it replaces the skeleton at once. | Skeleton fades out, content fades in over it (group 7) |
@@ -71,8 +71,7 @@ panel runs 250 milliseconds, and the side sheet 300 milliseconds, because they a
   each pattern uses the same rule. A pattern adds no motion of its own under reduced motion, and no transform is left
   on an element. The focus and the content do not depend on the duration, so they behave the same. This choice keeps one
   reduced-motion rule (`dashboard-design-tokens`, "One reduced-motion rule") and follows
-  `dashboard-accessibility`, "Reduced motion is honoured on every page". The open question on a fade under reduced motion
-  is listed at the end.
+  `dashboard-accessibility`, "Reduced motion is honoured on every page". The fade under reduced motion is not used (D4).
 - **Plugin pages take the route transition, and a plugin can opt out.** A plugin page descriptor may carry an optional
   `motion` field with the values `route` (the default) and `none`. With `none`, the transition into that page is an
   instant swap and focus still moves to its heading. An absent field is `route`, so every existing plugin keeps its
@@ -94,8 +93,7 @@ panel runs 250 milliseconds, and the side sheet 300 milliseconds, because they a
 - **Overflow during a slide.** A 16 pixel slide can create a horizontal scroll at the edge of the window. The page sheet
   already clips with `overflow-x-clip`, and the group that adds the slide checks the 320 pixel width.
 - **`out-in` delays the insertion by the leave.** The new page is inserted 100 milliseconds after the navigation, so the
-  focus moves 100 milliseconds after the click. This is the price of a single page at a time. The alternative is an
-  overlap (open question 5).
+  focus moves 100 milliseconds after the click. This is the price of a single page at a time. An overlap of the two pages was rejected (D5).
 - **Sticky elements inside a transformed ancestor.** A sticky element is sticky within its nearest scrolling ancestor. A
   transform on an ancestor does not change that, but the transform must be removed when the transition ends, which the
   Vue classes do. The side navigation is not inside the transformed page column, and the e2e check measures it.
@@ -145,8 +143,8 @@ swap as its fallback, and would not replace the Vue transitions.
   (`fade-through`, `shared-x`, `shared-y`, `menu`, `dialog`, `sheet`, `snackbar`, `expand`, `fade`), `direction`
   (`-1`, `0` or `1`), `mode` and `appear` (false by default). It maps the pattern to the class names. It renders the
   default slot and adds no element of its own.
-- `src/composables/useFocusOnInsert.ts` (new, group 2) or a helper in `src/helpers/`: the focus of a page heading on
-  insertion, with `main` as the fallback. A pure function decides the target, so the test needs no timer.
+- `src/composables/useFocusOnInsert.ts` (new, group 2): the focus of a page heading on insertion, with `main` as the
+  fallback (D6). A pure function decides the target, so the test needs no timer.
 - `src/helpers/motionDirection.ts` (new, group 3): the direction of a sibling change from two indexes. A pure function.
 
 No new runtime dependency is added.
@@ -173,29 +171,32 @@ Every test follows F.I.R.S.T. and is written before the code it tests.
   scan today.
 - **Accessibility.** The axe run of `e2e/accessibility.spec.js` is clean on every page that gets a transition.
 
-## Open maintainer questions
+## Decisions
 
-1. **Strength of the page transition.** Default: fade through for top-level pages (100 milliseconds out, 200 in, no
-   movement), and a 16 pixel shared axis for sibling pages. Alternative: fade only everywhere, which is calmer and removes
-   the direction cue.
-2. **Motion on mobile.** Default: the same patterns at every width, with the bottom "More" panel rising 8 pixels.
-   Alternative: no route transition below 600 pixels, where the bottom bar already shows the position.
-3. **A user setting for reduced motion.** Default: the operating system setting only, which the rule in `src/style.css`
-   already honours. Alternative: a visitor setting in the account menu that turns motion off for the dashboard alone. That
-   is a new persisted preference and needs its own requirement.
-4. **Fade under reduced motion.** Default: an instant swap, as the single rule gives. Alternative: a fade of 100
-   milliseconds that keeps the change visible. It needs an exception to the single rule.
-5. **Out-in or overlap for pages.** Default: out-in, so the old page leaves before the new one is inserted and focus lands
-   on the new page at insertion. Alternative: overlap the two pages during the transition, which needs absolute
-   positioning of the outgoing page and carries a layout risk.
-6. **Focus target.** Default: the page heading, with `main` as the fallback. Alternative: keep `main`, which is what
-   `dashboard-accessibility` names today and which needs no change to the page headings.
-7. **Plugin opt-out granularity.** Default: per page, through the `motion` field of the page descriptor. Alternative:
-   per plugin, which is simpler for the server but coarser.
-8. **Expand and collapse technique.** Default: `grid-template-rows` from `0fr` to `1fr`, which works in every browser the
-   dashboard supports. Alternative: `interpolate-size` where the browser has it, with the grid as the fallback. It is a
-   progressive enhancement and does not change the markup.
-9. **Snippets tabs.** Default: move their literal values to the tokens, with the same direction logic. Alternative: keep
-   their current values and list them as a documented exception.
-10. **Row removal.** Default: removed rows disappear at once, and added rows fade in. Alternative: a fade-out of removed
-    rows as well, which needs the rows to keep their place for 150 milliseconds and so delays the list update.
+The ten open questions were settled by the maintainer on 2026-11-17, by adopting the recommended default of each. Each
+entry names the question, the answer and the alternative that was not adopted. Groups implement these answers; the
+tasks and the spec scenarios follow them.
+
+- **D1. Strength of the page transition (question 1, resolved 2026-11-17).** Fade through for top-level pages (100
+  milliseconds out, 200 in, no movement), and a 16 pixel shared axis for sibling pages. Not adopted: fade only everywhere,
+  which removes the direction cue.
+- **D2. Motion on mobile (question 2, resolved 2026-11-17).** The same patterns at every width. The bottom "More" panel
+  rises 8 pixels and fades. Not adopted: no route transition below 600 pixels.
+- **D3. User setting for reduced motion (question 3, resolved 2026-11-17).** The operating system setting only, through the
+  single rule in `src/style.css`. No visitor setting and no new persisted preference. Not adopted: an account menu setting.
+- **D4. Fade under reduced motion (question 4, resolved 2026-11-17).** An instant swap, as the single rule gives. No
+  exception to that rule and no 100 millisecond fade. Not adopted: a fade that keeps the change visible.
+- **D5. Out-in or overlap for pages (question 5, resolved 2026-11-17).** Out-in: the old page leaves, then the new page is
+  inserted, and focus lands on the new page at insertion. Not adopted: overlapping the two pages, which needs absolute
+  positioning of the outgoing page.
+- **D6. Focus target (question 6, resolved 2026-11-17).** The page heading (its first `h1`, with `tabindex="-1"`), with
+  `main` as the fallback. This modifies the focus requirement of `dashboard-accessibility`. Not adopted: keeping `main`.
+- **D7. Plugin opt-out granularity (question 7, resolved 2026-11-17).** Per page, through the optional `motion` field of
+  the page descriptor, with the values `route` (default) and `none`. Not adopted: a per-plugin switch.
+- **D8. Expand and collapse technique (question 8, resolved 2026-11-17).** `grid-template-rows` from `0fr` to `1fr` on a
+  wrapper, which works in every browser the dashboard supports. `interpolate-size` is not used in this change. It may be
+  added later as a progressive enhancement, with the grid as the fallback and no change to the markup.
+- **D9. Snippets tabs (question 9, resolved 2026-11-17).** Their literal values move to the tokens, with the same direction
+  logic as the other tab panels. No documented exception is kept. Not adopted: keeping the current values.
+- **D10. Row removal (question 10, resolved 2026-11-17).** A removed row disappears at once, and an added row fades in over
+  the `short3` token (group 7). No transition group is used for removals. Not adopted: a fade-out of removed rows.

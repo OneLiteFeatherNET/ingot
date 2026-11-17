@@ -144,6 +144,7 @@ Each code pull request is one revertable change of the list above. Specs and cod
 - Changes to the content, labels, order or permissions of any page or menu.
 - Legal and commercial questions.
 
-## Open Maintainer Questions
+## Decisions
 
-The questions for the maintainer, each with a default that the tasks implement, are at the end of `design.md`.
+The ten open questions of `design.md` were settled on 2026-11-17 by adopting the recommended default of each.
+They are recorded as D1 to D10 in the Decisions section of `design.md`, and the tasks implement them.
