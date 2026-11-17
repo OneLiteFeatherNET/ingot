@@ -74,6 +74,12 @@ describe('DashboardView', () => {
     expect(wrapper.findAll('h2').map(heading => heading.text())).toEqual(['Instance status', 'Resources', 'Traffic'])
   })
 
+  it('draws both section headings in the title large size of the page sections', () => {
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.findAll('h2').map(heading => heading.classes('md-title-large')), 'every section heading has the same size').toEqual([true, true])
+  })
+
   it('draws the getting started card before the sections', () => {
     const wrapper = mount(DashboardView)
 

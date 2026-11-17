@@ -132,11 +132,13 @@ const attention = () => wrapper.get('[data-test="settings-attention"]')
 const treeEntries = () => wrapper.get('nav[aria-label="Administration"]')
 
 describe('the Overview page at /settings', () => {
-  it('draws no card grid: the Administration pages are listed only in the tree', async () => {
+  it('draws no card of a page or domain: the Administration pages are listed only in the tree', async () => {
     await mountAt()
 
     expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card of a page or domain').toBe(false)
-    expect(overview().findAll('a').map(link => link.attributes('href')), 'the hub has no link of its own').toEqual([])
+    expect(overview().findAll('a').map(link => link.attributes('aria-label')), 'the only links of the hub are the counts').toEqual(
+      expect.arrayContaining(['Repositories, 6', 'Cleanup policies, 0'])
+    )
   })
 
   it('marks the Overview entry of the tree as current, and no other entry', async () => {
@@ -202,18 +204,33 @@ describe('the Overview page at /settings', () => {
     expect(client.update, 'nothing is saved').not.toHaveBeenCalled()
   })
 
-  it('draws At a glance with the counts of the saved collections, rendered after the saved settings load', async () => {
+  it('draws At a glance as cards with the saved counts, rendered after the saved settings load', async () => {
     await mountAt()
 
-    const glance = overview().get('dl')
-    expect(glance.findAll('dt').map(term => term.text()), 'the labels of the tree').toEqual(expect.arrayContaining(['Repositories', 'Cleanup policies']))
-    expect(glance.findAll('dd').map(value => value.text()), 'the saved counts').toEqual(expect.arrayContaining(['6', '0']))
+    const cards = overview().findAll('[data-test="glance-card"]')
+    expect(cards.map(card => card.get('.md-label-large').text()), 'the labels of the tree').toEqual(expect.arrayContaining(['Repositories', 'Cleanup policies']))
+    expect(cards.map(card => card.get('p.md-headline-medium').text()), 'the saved counts').toEqual(expect.arrayContaining(['6', '0']))
+  })
+
+  it('makes each At a glance card the link to its page, named by its label and count', async () => {
+    await mountAt()
+
+    const links = overview().findAll('a')
+    expect(links.map(link => link.attributes('aria-label'))).toEqual(expect.arrayContaining(['Repositories, 6', 'Cleanup policies, 0']))
+    expect(links.map(link => link.attributes('href'))).toEqual(expect.arrayContaining(['/settings/repositories', '/settings/cleanup']))
+  })
+
+  it('draws the Overview section headings, Needs attention and At a glance, in one size', async () => {
+    await mountAt()
+
+    expect(attention().get('h2').classes(), 'Needs attention').toContain('md-title-large')
+    expect(overview().get('h2').classes(), 'At a glance').toContain('md-title-large')
   })
 
   it('draws no count before the saved settings have loaded', async () => {
     await mountAt({ loaded: false, hang: true })
 
-    expect(wrapper.find('dl').exists(), 'no count is drawn while the settings load').toBe(false)
+    expect(wrapper.find('[data-test="glance-card"]').exists(), 'no count is drawn while the settings load').toBe(false)
     expect(wrapper.text()).toContain('Loading configuration')
   })
 

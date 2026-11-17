@@ -118,6 +118,57 @@ describe('SettingsAttention empty state', () => {
   })
 })
 
+describe('SettingsAttention as cards', () => {
+  it('draws the empty state as an outlined card with a check icon and the text', async () => {
+    await mountAttention({ rows: [], conflict: null })
+
+    const card = wrapper.get('[data-test="attention-empty"]')
+    expect(card.attributes('data-variant'), 'an outlined card, the size of a stat card').toBe('outlined')
+    expect(card.find('svg').exists(), 'a check icon').toBe(true)
+    expect(card.text()).toContain('Nothing needs attention.')
+    expect(wrapper.find('[data-test="attention-card"]').exists(), 'no tonal card while nothing needs attention').toBe(false)
+  })
+
+  it('draws the rows in a card on the error container surface', async () => {
+    await mountAttention({ rows: drafts() })
+
+    const card = wrapper.get('[data-test="attention-card"]')
+    expect(card.classes(), 'the tonal surface').toContain('bg-error-container')
+    expect(card.findAll('[data-test="attention-row"]')).toHaveLength(2)
+    expect(wrapper.find('[data-test="attention-empty"]').exists(), 'no empty card beside the rows').toBe(false)
+  })
+
+  it('gives each row an icon, its text and its link to the page', async () => {
+    await mountAttention({ rows: drafts() })
+
+    const row = wrapper.findAll('[data-test="attention-row"]')[0]
+    expect(row.find('svg').exists(), 'an icon, so the state is not colour alone').toBe(true)
+    expect(row.text()).toContain('Repositories')
+    expect(row.text()).toContain('Unsaved changes')
+    expect(row.attributes('href')).toBe('/settings/repositories')
+  })
+
+  it('keeps the Review changes button inside the card', async () => {
+    await mountAttention({ rows: drafts() })
+
+    const card = wrapper.get('[data-test="attention-card"]')
+    expect(card.findAll('button').map(button => button.text())).toContain('Review changes')
+  })
+
+  it('keeps a save conflict inside the card, with its review button', async () => {
+    await mountAttention({ rows: [], conflict: conflictOf() })
+
+    const card = wrapper.get('[data-test="attention-card"]')
+    expect(card.find('[data-test="attention-conflict"]').exists(), 'the conflict row is in the card').toBe(true)
+  })
+
+  it('draws the heading in the title large size of the page sections', async () => {
+    await mountAttention({ rows: [] })
+
+    expect(wrapper.get('h2').classes()).toContain('md-title-large')
+  })
+})
+
 describe('SettingsAttention conflict', () => {
   it('draws a save conflict as a row that names the domain and says it changed elsewhere', async () => {
     await mountAttention({ rows: [], conflict: conflictOf() })
