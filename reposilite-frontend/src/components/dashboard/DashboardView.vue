@@ -19,6 +19,7 @@ import { ref } from 'vue'
 import type { components } from '../../types/api'
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
+import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
 
 // The status panel reports the cluster it finds in its answer; the trends below draw from it.
@@ -26,9 +27,9 @@ const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
 </script>
 
 <!--
-  Read top to bottom, the page answers two questions in the order an operator asks them:
-  is anything wrong right now, and how have the resources been behaving. Traffic over time
-  is on the analytics tab.
+  Read top to bottom, the page answers three questions in the order an operator asks them:
+  is anything wrong right now, how have the resources been behaving, and how much traffic
+  has the instance served. The analytics tab keeps the same traffic chart for now.
   The panels fetch and poll themselves and are only ever mounted while this tab is open, so
   a slow endpoint holds up its own card instead of the whole page, and the polling stops by
   unmounting rather than by checking which tab is selected.
@@ -61,6 +62,19 @@ const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
         Resources
       </h2>
       <ResourceTrends :cluster="cluster" />
+    </section>
+
+    <section
+      class="pt-6"
+      aria-labelledby="traffic-heading"
+    >
+      <h2
+        id="traffic-heading"
+        class="pb-3 md-title-large text-on-surface"
+      >
+        Traffic
+      </h2>
+      <ResolvedRequestsChart />
     </section>
   </div>
 </template>

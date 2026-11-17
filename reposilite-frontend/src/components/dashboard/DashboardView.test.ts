@@ -62,15 +62,16 @@ describe('DashboardView', () => {
     expect(wrapper.findAll('h1'), 'the status block is a section of Overview').toEqual([])
   })
 
-  it('draws the two sections as level two headings, each labelled by its own title', () => {
+  it('draws the three sections as level two headings, each labelled by its own title', () => {
     const wrapper = mount(DashboardView)
 
     const sections = wrapper.findAll('section')
     expect(sections.map(section => section.attributes('aria-labelledby')), 'each section names its heading').toEqual([
       'instance-status-heading',
-      'resources-heading'
+      'resources-heading',
+      'traffic-heading'
     ])
-    expect(wrapper.findAll('h2').map(heading => heading.text())).toEqual(['Instance status', 'Resources'])
+    expect(wrapper.findAll('h2').map(heading => heading.text())).toEqual(['Instance status', 'Resources', 'Traffic'])
   })
 
   it('draws the getting started card before the sections', () => {
@@ -80,10 +81,12 @@ describe('DashboardView', () => {
     expect(html.indexOf('getting-started'), 'the checklist comes first').toBeLessThan(html.indexOf('instance-status'))
   })
 
-  it('no longer renders the resolved requests chart, which moved to analytics', () => {
+  it('renders the resolved requests chart under a Traffic heading, after the resources', () => {
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.find('[data-test="resolved-requests"]').exists(), 'usage over time belongs to the analytics tab').toBe(false)
-    expect(wrapper.text(), 'the traffic heading moved with the chart').not.toContain('Traffic')
+    expect(wrapper.find('[data-test="resolved-requests"]').exists(), 'the traffic chart is part of the overview').toBe(true)
+    expect(wrapper.find('#traffic-heading').text()).toBe('Traffic')
+    const html = wrapper.html()
+    expect(html.indexOf('resources'), 'traffic comes after the resources').toBeLessThan(html.indexOf('resolved-requests'))
   })
 })
