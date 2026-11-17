@@ -28,6 +28,7 @@ import MdButton from '../md/MdButton.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 import { filterRows, tabForFragment } from './systemInfoTabs'
+import { formatUptime } from './uptime'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
 const session = useSession()
@@ -274,7 +275,7 @@ onMounted(() => {
                   {{ info.jvm.version }}
                 </dd>
                 <dt>Uptime</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.uptimeMillis }} ms
+                  {{ formatUptime(info.jvm.uptimeMillis) }}
                 </dd>
                 <dt>Heap</dt><dd class="min-w-0 wrap-anywhere">
                   {{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB
