@@ -244,6 +244,20 @@ Fields of `metadataCacheSettings`:
 | `expireAfterAccessSeconds` | Expire After Access | integer (seconds) | `86400` | Drops an entry this long after its last read. |
 | `expireAfterCreationSeconds` | Expire After Creation | integer (seconds) | `86400` | Drops an entry this long after it was cached. |
 
+### Support details
+
+The support bundle lists the storage of each repository in `system-info.json`, with the provider `kind`, the `region` when the provider is S3, and a `details` map. The map holds the values that the provider reports about itself, such as its bucket or container. It never holds a secret, and the redaction of the bundle runs over these values as well. A provider that reports nothing has an empty map.
+
+| Provider | `details` keys |
+| --- | --- |
+| `fs` | None. |
+| `s3` | `region`, only when a region is set. |
+| `gcs` | `bucket`, `projectId`, `prefix`, `authentication`. |
+| `azure-blob` | `accountName`, `container`, `prefix`, `authentication`. |
+| `cache` | The keys of the storage that the cache wraps, because the cache reports the details of its delegate. |
+
+A cache has the kind `cache` and no `region`, even when its delegate is an S3 provider. The region of that delegate appears in the `details` map instead. See [Storage providers](storage-providers.md) for the `cache` type.
+
 ## Storage policy
 
 The storage policy applies to metadata files, which are files whose name contains `maven-metadata.xml`. It matters only for a repository with proxied entries. All other files are read from the repository first and fetched from the proxied entries when they are missing.
