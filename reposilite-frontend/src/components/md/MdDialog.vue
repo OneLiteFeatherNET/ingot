@@ -30,7 +30,7 @@ import { VueFinalModal } from 'vue-final-modal'
  *   labelledby   the id of the heading in the `header` slot, for the dialog's accessible name
  *   describedby  the id of the text that describes the dialog, optional
  *   role         dialog, or alertdialog for a dialog that asks for an answer
- *   size         sm (360px), md (480px) or lg (560px, the default)
+ *   size         sm (360px), md (480px) or lg (560px, the default); compact is full screen below 600px and lg from 600px
  *   dismissable  false keeps the dialog open on Escape and on a click outside, so that only its own buttons close it
  * Slots:
  *   header   the title and the description
@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<{
   labelledby: string
   describedby?: string
   role?: 'dialog' | 'alertdialog'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'compact'
   dismissable?: boolean
 }>(), {
   modelValue: false,
@@ -68,7 +68,8 @@ const emit = defineEmits<{
 const SIZES = {
   sm: 'max-w-90',
   md: 'max-w-120',
-  lg: 'max-w-140'
+  lg: 'max-w-140',
+  compact: 'max-medium:h-dvh max-medium:max-h-dvh max-medium:max-w-none max-medium:rounded-none medium:max-w-140'
 } as const
 
 const frame = ref<HTMLElement | null>(null)
