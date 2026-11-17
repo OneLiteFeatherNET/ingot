@@ -213,9 +213,9 @@ describe('CheckPermissionView', () => {
     it('sizes the Node and Artifact path switch to its content', async () => {
       await mountView()
 
-      const track = wrapper.find('[data-ingot-component="segmented-control"]')
+      const switchBox = wrapper.find('[data-test="check-mode"]')
 
-      expect(track.element.parentElement?.classList, 'the switch is inline, not full width').toContain('w-fit')
+      expect(switchBox.classes(), 'the switch is inline, not full width').toContain('w-fit')
     })
 
     it('shows an Allowed banner for an allowed node', async () => {

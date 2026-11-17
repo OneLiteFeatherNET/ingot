@@ -15,11 +15,6 @@
     "count": 1
   },
   {
-    "file": "src/components/access/check/CheckPermissionView.vue",
-    "match": "<svg",
-    "count": 2
-  },
-  {
     "file": "src/components/access/nodes/NodeInheritedSection.vue",
     "match": "<svg",
     "count": 1
