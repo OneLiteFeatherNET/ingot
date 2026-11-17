@@ -20,10 +20,10 @@ import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import MaintenanceView from './MaintenanceView.vue'
 
-const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient> }))
+const session = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof fakeClient>, mayEdit: true }))
 
 vi.mock('../../store/session', () => ({
-  useSession: () => ({ client: { get value() { return session.client } } })
+  useSession: () => ({ client: { get value() { return session.client } }, can: () => session.mayEdit })
 }))
 
 vi.mock('../../helpers/toast', () => ({
@@ -79,6 +79,7 @@ let wrapper: VueWrapper
 
 beforeEach(() => {
   session.client = fakeClient()
+  session.mayEdit = true
 })
 
 afterEach(() => {
@@ -90,7 +91,10 @@ afterEach(() => {
 const mountAt = async (address: string) => {
   const router: Router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/maintenance', name: 'maintenance', component: BLANK }],
+    routes: [
+      { path: '/maintenance', name: 'maintenance', component: BLANK },
+      { path: '/settings/system-info', name: 'system-info', component: BLANK },
+    ],
   })
   await router.push(address)
   await router.isReady()
@@ -129,10 +133,10 @@ describe('MaintenanceView', () => {
     expect(wrapper.text(), 'and no Writes section either').not.toContain('Writes')
   })
 
-  it('shows three tabs in the order Storage usage, Search index and Cleanup policies', async () => {
+  it('shows the tabs in the order Storage usage, Search index, Cleanup policies and Settings backup', async () => {
     await mountAt('/maintenance')
 
-    expect(tabsOf(wrapper).map(tab => tab.text())).toEqual(['Storage usage', 'Search index', 'Cleanup policies'])
+    expect(tabsOf(wrapper).map(tab => tab.text())).toEqual(['Storage usage', 'Search index', 'Cleanup policies', 'Settings backup'])
   })
 
   it('opens the storage usage tab when the address has no tab', async () => {
@@ -203,5 +207,51 @@ describe('MaintenanceView', () => {
     await flushPromises()
 
     expect(session.client.maven.storage).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('the Settings backup tab', () => {
+  it('shows no Settings backup tab to a principal without the settings node', async () => {
+    session.mayEdit = false
+    await mountAt('/maintenance')
+
+    expect(tabsOf(wrapper).map(tab => tab.text()), 'the three other tabs remain').toEqual(['Storage usage', 'Search index', 'Cleanup policies'])
+  })
+
+  it('opens the first tab for ?tab=backup to a principal without the settings node', async () => {
+    session.mayEdit = false
+    await mountAt('/maintenance?tab=backup')
+
+    expect(selectedTabOf(wrapper)?.text(), 'the backup tab does not exist for this principal').toBe('Storage usage')
+  })
+
+  it('opens the Settings backup tab for the address ?tab=backup', async () => {
+    await mountAt('/maintenance?tab=backup')
+
+    expect(selectedTabOf(wrapper)?.text(), 'the settings backup tab is selected').toBe('Settings backup')
+    expect(shownPanelOf(wrapper).exists(), 'the tab has a panel').toBe(true)
+  })
+
+  it('draws Import settings and Download as JSON on the Settings backup tab', async () => {
+    await mountAt('/maintenance?tab=backup')
+
+    const labels = shownPanelOf(wrapper).findAll('button').map(button => button.text())
+    expect(labels, 'both actions of the whole configuration').toEqual(expect.arrayContaining(['Import settings', 'Download as JSON']))
+  })
+
+  it('explains the download and the import in one sentence each', async () => {
+    await mountAt('/maintenance?tab=backup')
+
+    const text = shownPanelOf(wrapper).text()
+    expect(text, 'the download sentence says how secrets are handled').toContain('encrypted with a password')
+    expect(text, 'the import sentence says what it replaces').toContain('replaces')
+  })
+
+  it('links to the factory reset on System and support', async () => {
+    await mountAt('/maintenance?tab=backup')
+
+    const link = shownPanelOf(wrapper).findAll('a').find(anchor => anchor.text().includes('factory reset'))
+    expect(link?.text(), 'the sentence names the factory reset on System and support').toBe('To set every setting back to its default, use the factory reset on System and support')
+    expect(link?.attributes('href'), 'the link opens the Overview of System and support').toBe('/settings/system-info?tab=overview')
   })
 })
