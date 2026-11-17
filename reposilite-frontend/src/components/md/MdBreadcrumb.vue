@@ -16,13 +16,18 @@
 
 <script setup lang="ts">
 /*
- * Material Design 3 breadcrumb trail. A crumb with an href is a link, the last crumb is the
- * current page and carries aria-current="page", and a crumb without an href is plain text. The
- * separator follows each crumb but the last and is hidden from assistive technology. The middle
- * crumbs truncate below the crumb width token, so a long trail keeps its first and last crumbs.
+ * Material Design 3 breadcrumb trail. A crumb with a `to` route is a RouterLink, so it keeps the
+ * router base and navigates without a reload. A crumb with an `href` is a plain link, for a page
+ * outside the dashboard. The last crumb is the current page: it carries aria-current="page" and is
+ * never a link. The separator follows each crumb but the last and is hidden from assistive
+ * technology. The middle crumbs truncate below the crumb width token, so a long trail keeps its
+ * first and last crumbs.
  */
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
+
 export interface MdBreadcrumbItem {
   label: string
+  to?: RouteLocationRaw
   href?: string
 }
 
@@ -55,8 +60,13 @@ const isMiddle = (index: number) => index > 0 && !isLast(index)
         :key="index"
         class="flex min-w-0 items-center gap-2"
       >
+        <RouterLink
+          v-if="item.to !== undefined && !isLast(index)"
+          :to="item.to"
+          :class="[LINK, isMiddle(index) && TRUNCATE]"
+        >{{ item.label }}</RouterLink>
         <a
-          v-if="item.href && !isLast(index)"
+          v-else-if="item.href && !isLast(index)"
           :href="item.href"
           :class="[LINK, isMiddle(index) && TRUNCATE]"
         >{{ item.label }}</a>
