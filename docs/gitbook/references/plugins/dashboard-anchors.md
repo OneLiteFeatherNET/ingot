@@ -70,7 +70,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `delete-entry-modal` | experimental | `src/components/browser/DeleteEntryModal.vue` | none | none |
 | `delete-policy-dialog` | experimental | `src/components/maintenance/DeletePolicyDialog.vue` | none | none |
 | `detailed-list-entry` | experimental | `src/components/browser/DetailedListEntry.vue` | none | none |
-| `dialog-shell` | experimental | `src/components/identity/DialogShell.vue` | none | none |
+| `dialog-shell` | experimental | `src/components/md/MdDialog.vue` | none | none |
 | `discover-step` | experimental | `src/components/migration/DiscoverStep.vue` | none | none |
 | `dry-run-result` | experimental | `src/components/maintenance/DryRunResult.vue` | none | none |
 | `dry-run-step` | experimental | `src/components/migration/DryRunStep.vue` | none | none |
@@ -103,6 +103,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-chip` | experimental | `src/components/md/MdChip.vue` | none | none |
 | `md-chip-input` | experimental | `src/components/md/MdChipInput.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
+| `md-dialog-actions` | experimental | `src/components/md/MdDialogActions.vue` | none | none |
 | `md-divider` | experimental | `src/components/md/MdDivider.vue` | none | none |
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none |

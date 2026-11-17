@@ -18,7 +18,7 @@
 import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import { candidatePrincipals, type TeamMember } from './accessTeams'
 import type { PrincipalSummary } from './accessPrincipals'
@@ -95,7 +95,7 @@ const submit = () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     :labelledby="titleId"
     @update:model-value="emit('update:modelValue', $event)"
@@ -198,5 +198,5 @@ const submit = () => {
         Add {{ picked.length > 1 ? `${picked.length} members` : 'member' }}
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

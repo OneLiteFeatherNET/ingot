@@ -23,7 +23,7 @@ import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
 import SegmentedOption from '../tokens/SegmentedOption.vue'
-import DialogShell from './DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import {
   ACCESS_OPTIONS,
   ARTIFACT_ACTIONS,
@@ -184,7 +184,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="create-token-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -403,5 +403,5 @@ const submit = async () => {
         {{ busy ? 'Creating...' : 'Create' }}
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

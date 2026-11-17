@@ -18,7 +18,7 @@
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
-import DialogShell from './DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import type { IdentityToken, IdentityTokenApi, TokenSecret } from './identityTokens'
 
 /*
@@ -72,7 +72,7 @@ const rotate = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="rotate-token-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -111,5 +111,5 @@ const rotate = async () => {
         Rotate secret
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

@@ -20,7 +20,7 @@ import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from '../identity/DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import { buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
 
 /*
@@ -88,7 +88,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="new-machine-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -159,5 +159,5 @@ const submit = async () => {
         Create machine account
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

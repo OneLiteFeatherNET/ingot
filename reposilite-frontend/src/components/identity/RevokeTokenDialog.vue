@@ -19,7 +19,7 @@ import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import DialogShell from './DialogShell.vue'
+import MdDialog from '../md/MdDialog.vue'
 import type { IdentityToken, IdentityTokenApi } from './identityTokens'
 
 /*
@@ -78,7 +78,7 @@ const revoke = async () => {
 </script>
 
 <template>
-  <DialogShell
+  <MdDialog
     :model-value="modelValue"
     labelledby="revoke-token-title"
     @update:model-value="emit('update:modelValue', $event)"
@@ -134,5 +134,5 @@ const revoke = async () => {
         Revoke
       </MdButton>
     </div>
-  </DialogShell>
+  </MdDialog>
 </template>

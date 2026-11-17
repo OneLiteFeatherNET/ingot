@@ -359,3 +359,11 @@ describe("anchor checks across the dashboard source", () => {
     expect(page, "run `npm run anchors:doc` in reposilite-frontend to regenerate the page").toBe(renderAnchorsDoc(registry))
   })
 })
+
+describe("the dialog-shell registry entry", () => {
+  it("points at the promoted file src/components/md/MdDialog.vue", () => {
+    const entry = registry.components.find(component => component.name === "dialog-shell")
+
+    expect(entry?.file, "dialog-shell is registered at the md dialog file").toBe("src/components/md/MdDialog.vue")
+  })
+})

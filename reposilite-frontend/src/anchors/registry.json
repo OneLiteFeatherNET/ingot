@@ -569,7 +569,14 @@
     },
     {
       "name": "dialog-shell",
-      "file": "src/components/identity/DialogShell.vue",
+      "file": "src/components/md/MdDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-dialog-actions",
+      "file": "src/components/md/MdDialogActions.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
