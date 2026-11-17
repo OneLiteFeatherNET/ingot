@@ -36,6 +36,28 @@ type SessionRequestConfig = AxiosRequestConfig & {
 // The optional query values of a list call. Empty ones are left out of the query string.
 type QueryParams = Record<string, string | number | boolean | null | undefined>
 
+// The second factor methods a sign in can be completed with, as the login answer names them on the wire.
+export type SecondFactorMethod = "AUTHENTICATOR" | "RECOVERY_CODE" | "PASSKEY"
+
+// The answer of a password sign in for a user with a second factor. It starts no session: the challenge cookie is set instead.
+export interface SecondFactorChallenge {
+  mfaRequired: boolean
+  methods: SecondFactorMethod[]
+}
+
+// The answer of GET /api/identity/me/security. The OpenAPI document has no schema for it, so the shape follows the server's DTO.
+export interface SecurityStatus {
+  factorCounts: { authenticator: number; passkey: number }
+  recoveryCodesLeft: number
+  policy: { covered: boolean; requiredForAdmins: boolean; requiredForTeams: string[] }
+  graceUntil?: string | null
+  scope: "full" | "enrol"
+  stepUpUntil?: string | null
+}
+
+// A passkey assertion as the sign in and the step-up read it: the challenge id the options gave, and the browser's answer in base64url.
+type PasskeyAssertion = components["schemas"]["PasskeyAssertionDto"]
+
 // The token endpoints of one principal. rotate exists only where the server has the endpoint.
 export interface TokenEndpoints {
   list(): Promise<AxiosResponse>
@@ -95,7 +117,11 @@ const handleRequest = (config: InternalAxiosRequestConfig): InternalAxiosRequest
 
 // Answers to these are answers about the sign in itself, not about a session that expired, so
 // they neither trigger a refresh nor the unauthorized handler.
-const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/setup", "/api/auth/providers"]
+// The second step and the passkey sign in are answers about a pending sign in too: a wrong code is a 401 that must not end a session.
+const AUTH_ENDPOINTS = [
+  "/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/setup", "/api/auth/providers",
+  "/api/auth/mfa/", "/api/auth/passkey/",
+]
 const isAuthEndpoint = (url: string | undefined): boolean =>
   AUTH_ENDPOINTS.some(endpoint => String(url || "").includes(endpoint))
 
@@ -292,6 +318,25 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
       testLdapProvider(body: unknown = {}) {
         return axios.post(createURL("/api/auth/providers/ldap/test"), body, { ...defaultAuthorization() })
       },
+      // The second step of a password sign in. Each call needs the challenge cookie that the password answer set,
+      // and a successful one starts the session, as the login does.
+      verifySecondFactor(code: string) {
+        return axios.post<components["schemas"]["LoginResponse"]>(createURL("/api/auth/mfa/verify"), { code }, { withCredentials: true })
+      },
+      verifyPasskey(passkey: PasskeyAssertion) {
+        return axios.post<components["schemas"]["LoginResponse"]>(createURL("/api/auth/mfa/verify"), { passkey }, { withCredentials: true })
+      },
+      // The assertion options of the passkeys that may answer the pending sign in. 409 when the instance has no public address.
+      passkeyChallenge() {
+        return axios.post<components["schemas"]["PasskeyOptionsDto"]>(createURL("/api/auth/mfa/passkey/options"), {}, { withCredentials: true })
+      },
+      // A passkey as the first factor, only while login.mfa.passkeyFirstFactor is on (404 otherwise).
+      firstFactorPasskeyOptions(username: string) {
+        return axios.post<components["schemas"]["PasskeyOptionsDto"]>(createURL("/api/auth/passkey/options"), { username }, { withCredentials: true })
+      },
+      firstFactorPasskeyLogin(assertion: PasskeyAssertion) {
+        return axios.post<components["schemas"]["LoginResponse"]>(createURL("/api/auth/passkey/login"), assertion, { withCredentials: true })
+      },
     },
     identity: {
       // The signed in principal looking after itself.
@@ -308,6 +353,54 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
           return axios.get<components["schemas"]["OwnAccessSummaryDto"]>(createURL("/api/identity/me/access"), { ...defaultAuthorization() })
         },
         tokens: tokenEndpoints("/api/identity/me/tokens", { rotate: true }),
+        // The second factor status of the caller: factor counts, recovery codes left, the policy, the grace end and the scope.
+        security() {
+          return axios.get<SecurityStatus>(createURL("/api/identity/me/security"), { ...defaultAuthorization() })
+        },
+        // The caller's own second factors. The seed and the codes are answered once, by the enrolment calls only.
+        factors: {
+          list() {
+            return axios.get<components["schemas"]["SecondFactorDto"][]>(createURL("/api/identity/me/factors"), { ...defaultAuthorization() })
+          },
+          // Without a code the server starts the first factor. With one, it is a current code of a factor the user already has.
+          startAuthenticator(code?: string) {
+            return axios.post<components["schemas"]["AuthenticatorEnrolmentDto"]>(
+              createURL("/api/identity/me/factors/totp"),
+              code ? { code } : {},
+              { ...defaultAuthorization() }
+            )
+          },
+          confirmAuthenticator(code: string) {
+            return axios.post<components["schemas"]["ConfirmedEnrolmentDto"]>(
+              createURL("/api/identity/me/factors/totp/confirm"),
+              { code },
+              { ...defaultAuthorization() }
+            )
+          },
+          startPasskey() {
+            return axios.post<components["schemas"]["PasskeyOptionsDto"]>(createURL("/api/identity/me/factors/passkey/options"), {}, { ...defaultAuthorization() })
+          },
+          registerPasskey(attestation: components["schemas"]["PasskeyRegistrationDto"]) {
+            return axios.post<components["schemas"]["PasskeyRegisteredDto"]>(createURL("/api/identity/me/factors/passkey"), attestation, { ...defaultAuthorization() })
+          },
+          rename(id: number, name: string) {
+            return axios.patch<components["schemas"]["SecondFactorDto"]>(createURL(`/api/identity/me/factors/${id}`), { name }, { ...defaultAuthorization() })
+          },
+          // The removal takes a current code, and a DELETE carries it in the body.
+          remove(id: number, code: string) {
+            return axios.delete(createURL(`/api/identity/me/factors/${id}`), { ...defaultAuthorization(), data: { code } })
+          },
+        },
+        recoveryCodes: {
+          // Returns the new set once, so the caller must show it before the dialog closes.
+          regenerate(code: string) {
+            return axios.post<components["schemas"]["RecoveryCodesDto"]>(createURL("/api/identity/me/recovery-codes"), { code }, { ...defaultAuthorization() })
+          },
+        },
+        // A fresh code of a second factor for the browser session, which renews the step-up window.
+        stepUp(code: string) {
+          return axios.post<components["schemas"]["StepUpDto"]>(createURL("/api/identity/me/step-up"), { code }, { ...defaultAuthorization() })
+        },
       },
       // The tokens of any principal, for an instance admin. The server has no rotate endpoint here.
       principalTokens(principalName: string) {
@@ -321,6 +414,22 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
         },
         get(name: string) {
           return get(`/api/identity/principals/${encodeURIComponent(name)}`)
+        },
+        // The second factors of one principal, for an instance administrator. The answers carry names and times, never secrets.
+        factors(name: string) {
+          const base = `/api/identity/principals/${encodeURIComponent(name)}/factors`
+          return {
+            list() {
+              return axios.get<components["schemas"]["SecondFactorDto"][]>(createURL(base), { ...defaultAuthorization() })
+            },
+            // Removes every factor and recovery code of the principal, and ends its sessions.
+            resetAll() {
+              return axios.delete<components["schemas"]["FactorResetDto"]>(createURL(base), { ...defaultAuthorization() })
+            },
+            remove(id: number) {
+              return axios.delete<components["schemas"]["FactorResetDto"]>(createURL(`${base}/${id}`), { ...defaultAuthorization() })
+            },
+          }
         },
         create(body: unknown) {
           return axios.post(createURL("/api/identity/principals"), body, { ...defaultAuthorization() })
