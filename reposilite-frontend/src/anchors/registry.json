@@ -552,6 +552,13 @@
       "states": []
     },
     {
+      "name": "account-identity",
+      "file": "src/components/header/AccountIdentity.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "rail-brand",
       "file": "src/components/header/RailBrand.vue",
       "stability": "experimental",

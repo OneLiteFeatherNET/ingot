@@ -30,6 +30,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | --- | --- | --- | --- | --- |
 | `access-domain-card` | stable | `src/components/settings/AccessDomainCard.vue` | none | none |
 | `access-view` | experimental | `src/components/access/AccessView.vue` | none | none |
+| `account-identity` | experimental | `src/components/header/AccountIdentity.vue` | none | none |
 | `account-view` | experimental | `src/components/account/AccountView.vue` | none | none |
 | `add-member-dialog` | experimental | `src/components/access/AddMemberDialog.vue` | none | `error` |
 | `adjustments-modal` | experimental | `src/components/browser/AdjustmentsModal.vue` | none | none |

@@ -136,12 +136,12 @@ describe('MenuPanel, signed in', () => {
   it('shows the username in the menu header only when it differs from the display name', async () => {
     state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
     await open()
-    expect(document.querySelector('[data-ingot-component="account-identity"]')!.textContent, 'the username differs, so it is shown').toContain('alice')
+    expect(document.querySelector('[data-test="account-identity"]')!.textContent, 'the username differs, so it is shown').toContain('alice')
     mounted!.wrapper.unmount()
 
     state.principal = { id: 7, kind: 'USER', name: 'alice', displayName: 'alice' }
     await open()
-    const header = document.querySelector('[data-ingot-component="account-identity"]')!.textContent!
+    const header = document.querySelector('[data-test="account-identity"]')!.textContent!
     expect(header.match(/alice/g) ?? [], 'the same value is not shown twice').toHaveLength(0)
   })
 
@@ -150,7 +150,7 @@ describe('MenuPanel, signed in', () => {
 
     await open()
 
-    const identity = document.querySelector('[data-ingot-component="account-identity"]')!
+    const identity = document.querySelector('[data-test="account-identity"]')!
     expect(identity.textContent!.replace(/\s+/g, ' ').trim()).toContain('User, LDAP')
   })
 
@@ -183,7 +183,7 @@ describe('MenuPanel, signed in', () => {
     const { wrapper } = await open()
 
     expect(accountTrigger(wrapper).attributes('aria-expanded')).toBe('true')
-    const identity = document.querySelector<HTMLElement>('[role="menu"] [data-ingot-component="account-identity"]')
+    const identity = document.querySelector<HTMLElement>('[role="menu"] [data-test="account-identity"]')
     expect(identity, 'the menu header is the identity block').not.toBeNull()
     expect(identity!.textContent, 'the header carries the kind line').toContain('User')
   })
