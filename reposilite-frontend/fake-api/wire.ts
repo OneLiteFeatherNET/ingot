@@ -26,12 +26,12 @@
  */
 
 /** An Instant on the wire, or null when there is none. */
-const instantOnWire = (iso) => (iso === null || iso === undefined ? null : Date.parse(iso) / 1000)
+const instantOnWire = (iso: string | null | undefined) => (iso === null || iso === undefined ? null : Date.parse(iso) / 1000)
 
 /** A LocalDate on the wire: the day of an ISO date or timestamp as [year, month, day]. */
-const localDateOnWire = (iso) => {
+const localDateOnWire = (iso: unknown) => {
   const [year, month, day] = String(iso).slice(0, 10).split("-").map(Number)
   return [year, month, day]
 }
 
-module.exports = { instantOnWire, localDateOnWire }
+export { instantOnWire, localDateOnWire }

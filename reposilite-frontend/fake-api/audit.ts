@@ -24,6 +24,38 @@ const HOUR_MS = 60 * 60 * 1000
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 
+interface AuditFields {
+  action: string
+  actor: string
+  actorAddress: string | null
+  actorKind?: string | null
+  repository: string | null
+  path: string | null
+  details: Record<string, unknown> | null
+  success: boolean
+  occurrences: number
+}
+
+interface AuditRecord extends Partial<AuditFields> {
+  action: string
+  actor: string
+}
+
+interface AuditEvent extends AuditFields {
+  id: number
+  timestamp: string
+  actorKind: string | null
+}
+
+interface AuditFilters {
+  actions: string[]
+  actor: string
+  repository: string
+  text: string
+  from: number | undefined
+  to: number | undefined
+}
+
 const ACTIONS = [
   'ARTIFACT_DEPLOYED', 'ARTIFACT_DELETED', 'SETTINGS_CHANGED', 'TOKEN_CREATED', 'TOKEN_DELETED',
   'TOKEN_SECRET_REGENERATED', 'TOKEN_ROUTES_CHANGED', 'LOGIN_FAILED', 'CLEANUP_RUN',
@@ -36,11 +68,11 @@ const ACTIONS = [
 
 // The actors of the sample are principals, so their rows carry the kind (USER or MACHINE) the UI
 // links by. A name that is no principal (the system, a made-up login name) has no kind.
-const ACTOR_KINDS = { admin: 'USER', alice: 'USER', bob: 'USER', carol: 'USER', 'ci-bot': 'MACHINE', 'ci-deployer': 'MACHINE' }
-const withActorKind = (event) => ({ ...event, actorKind: event.actorKind !== undefined ? event.actorKind : (ACTOR_KINDS[event.actor] ?? null) })
+const ACTOR_KINDS: Record<string, string> = { admin: 'USER', alice: 'USER', bob: 'USER', carol: 'USER', 'ci-bot': 'MACHINE', 'ci-deployer': 'MACHINE' }
+const withActorKind = <T extends AuditRecord>(event: T) => ({ ...event, actorKind: event.actorKind !== undefined ? event.actorKind : (ACTOR_KINDS[event.actor] ?? null) })
 
 // Each template is one kind of event, with the values a real event of that kind would carry.
-const TEMPLATES = [
+const TEMPLATES: ((version: string) => AuditFields)[] = [
   (version) => ({ action: 'ARTIFACT_DEPLOYED', actor: 'ci-deployer', actorAddress: '203.0.113.10', repository: 'releases', path: `org/example/app/${version}/app-${version}.jar`, details: null, success: true, occurrences: 1 }),
   (version) => ({ action: 'ARTIFACT_DEPLOYED', actor: 'ci-deployer', actorAddress: '203.0.113.10', repository: 'snapshots', path: `org/example/lib/${version}-SNAPSHOT/lib-${version}-20261014.120000-1.jar`, details: null, success: true, occurrences: 1 }),
   (version) => ({ action: 'ARTIFACT_DELETED', actor: 'admin', actorAddress: '10.0.0.2', repository: 'snapshots', path: `org/example/lib/${version}-SNAPSHOT/lib-${version}-20261001.100000-1.jar`, details: null, success: true, occurrences: 1 }),
@@ -56,8 +88,8 @@ const TEMPLATES = [
 // The identity events. They are kept apart from the templates above: the sample picks those by a
 // stride over their count, and a longer list would make the stride skip most of them. A principal
 // target carries principal and kind, a team target carries team, as the token events carry token.
-const admin = (action, details) => ({ action, actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1 })
-const by = (actor, action, details, extra = {}) => ({ action, actor, actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1, ...extra })
+const admin = (action: string, details: Record<string, unknown> | null) => ({ action, actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1 })
+const by = (actor: string, action: string, details: Record<string, unknown> | null, extra: Partial<AuditFields> = {}) => ({ action, actor, actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1, ...extra })
 const IDENTITY_EVENTS = [
   { hoursAgo: 1, ...by('alice', 'LOGIN_SUCCEEDED', { provider: 'local' }, { actorAddress: '198.51.100.7' }) },
   { hoursAgo: 4, ...by('alice', 'LOGOUT', null, { actorAddress: '198.51.100.7' }) },
@@ -82,8 +114,8 @@ const IDENTITY_EVENTS = [
   { hoursAgo: 144, ...admin('INSTANCE_ADMIN_REVOKED', { principal: 'carol', kind: 'USER' }) },
 ]
 
-const buildSample = (now) => {
-  const events = []
+const buildSample = (now: number) => {
+  const events: AuditEvent[] = []
   for (let index = 0; index < 96; index++) {
     const template = TEMPLATES[(index * 7) % TEMPLATES.length]
     const version = `${1 + (index % 4)}.${index % 9}`
@@ -103,11 +135,11 @@ const buildSample = (now) => {
 
 const SAMPLE = buildSample(Date.now())
 
-const includesText = (event, needle) =>
+const includesText = (event: AuditEvent, needle: string) =>
   [event.actor, event.repository, event.path, event.details ? JSON.stringify(event.details) : '']
     .some(value => (value || '').toLowerCase().includes(needle))
 
-const matches = (event, filters) => {
+const matches = (event: AuditEvent, filters: AuditFilters) => {
   if (filters.actions.length > 0 && !filters.actions.includes(event.action)) return false
   if (filters.actor && event.actor !== filters.actor) return false
   if (filters.repository && event.repository !== filters.repository) return false
@@ -118,24 +150,27 @@ const matches = (event, filters) => {
   return true
 }
 
-const parseInstant = (value) => {
+const parseInstant = (value: string | undefined) => {
   if (!value) return undefined
   const time = Date.parse(value)
   return Number.isNaN(time) ? undefined : time
 }
 
+// The query values are read as text, as the fake's clients send them.
+const textParam = (value: unknown) => value as string | undefined
+
 /** Reads the filters the way the backend does. Unknown actions and malformed times are ignored here. */
-const readFilters = (params) => ({
-  actions: (params.action || '').split(',').map(name => name.trim()).filter(name => ACTIONS.includes(name)),
-  actor: (params.actor || '').trim(),
-  repository: (params.repository || '').trim(),
-  text: (params.q || '').trim().toLowerCase(),
-  from: parseInstant(params.from),
-  to: parseInstant(params.to),
+const readFilters = (params: Record<string, unknown>): AuditFilters => ({
+  actions: (textParam(params.action) || '').split(',').map(name => name.trim()).filter(name => ACTIONS.includes(name)),
+  actor: (textParam(params.actor) || '').trim(),
+  repository: (textParam(params.repository) || '').trim(),
+  text: (textParam(params.q) || '').trim().toLowerCase(),
+  from: parseInstant(textParam(params.from)),
+  to: parseInstant(textParam(params.to)),
 })
 
 /** One page, newest first. The cursor is the offset of the next row, which is enough for a sample. */
-const queryEvents = (params) => {
+const queryEvents = (params: Record<string, unknown>) => {
   const filters = readFilters(params)
   const limit = Math.min(Math.max(Number(params.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
   const offset = Number(params.cursor) || 0
@@ -148,13 +183,13 @@ const queryEvents = (params) => {
 const CSV_HEADER = 'id,timestamp,actor,actorAddress,action,repository,path,success,occurrences,details'
 
 // Formula characters get a leading apostrophe, and cells with separators or quotes are quoted.
-const csvCell = (value) => {
+const csvCell = (value: unknown) => {
   const text = value === null || value === undefined ? '' : String(value)
   const guarded = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
   return /[",\n\r]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded
 }
 
-const exportCsv = (params) => {
+const exportCsv = (params: Record<string, unknown>) => {
   const { events } = queryEvents({ ...params, limit: MAX_LIMIT })
   const rows = events.map(event => [
     event.id,
@@ -172,9 +207,9 @@ const exportCsv = (params) => {
 }
 
 /** Adds an event the stub API has just produced, such as a manual cleanup run, as the newest row. */
-const recordEvent = (event) => {
+const recordEvent = (event: AuditRecord) => {
   const id = Math.max(0, ...SAMPLE.map(entry => entry.id)) + 1
   SAMPLE.unshift({ actorAddress: null, repository: null, path: null, details: null, success: true, occurrences: 1, ...withActorKind(event), id, timestamp: new Date().toISOString() })
 }
 
-module.exports = { queryEvents, exportCsv, recordEvent, ACTIONS }
+export { queryEvents, exportCsv, recordEvent, ACTIONS }

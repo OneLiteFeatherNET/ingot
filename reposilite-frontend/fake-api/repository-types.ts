@@ -20,13 +20,28 @@
  * maven settings are not validated by the fake.
  */
 
+interface ProxiedReference {
+  reference?: string
+  store?: boolean
+}
+
+interface RepositorySetting {
+  id: string
+  type?: string
+  proxied?: ProxiedReference[]
+}
+
+interface MavenSettings {
+  repositories?: RepositorySetting[]
+}
+
 // A reference names a host: trimmed, without one trailing slash. A blank reference names nothing.
-const hostOf = (entry) => String(entry?.reference ?? '').trim().replace(/\/$/, '')
+const hostOf = (entry: ProxiedReference | null | undefined) => String(entry?.reference ?? '').trim().replace(/\/$/, '')
 
 // A declared type wins. An untyped repository is derived from what it proxies: nothing is hosted, only local
 // repositories is a group, only external URLs is a proxy, and both is mixed. Blank entries do not count, which keeps
 // the production group with its empty entry a group.
-const effectiveType = (repository, repositories) => {
+const effectiveType = (repository: RepositorySetting, repositories: RepositorySetting[]) => {
   if (repository.type) return { type: repository.type.toLowerCase(), typeExplicit: true }
   const ids = new Set(repositories.map(candidate => candidate.id))
   const hosts = (repository.proxied ?? []).map(hostOf).filter(host => host !== '')
@@ -37,15 +52,16 @@ const effectiveType = (repository, repositories) => {
 }
 
 // The shortest loop from start back to start along the edges, starting and ending with start, or null.
-const loopThrough = (start, edges) => {
-  const parent = new Map([[start, null]])
+const loopThrough = (start: string, edges: Map<string, string[]>) => {
+  const parent = new Map<string, string | null>([[start, null]])
   const queue = [start]
   while (queue.length > 0) {
     const node = queue.shift()
+    if (node === undefined) break
     for (const next of edges.get(node) ?? []) {
       if (next === start) {
-        const chain = []
-        for (let cursor = node; cursor !== null; cursor = parent.get(cursor)) chain.unshift(cursor)
+        const chain: string[] = []
+        for (let cursor: string | null = node; cursor !== null; cursor = parent.get(cursor) ?? null) chain.unshift(cursor)
         return [...chain, start]
       }
       if (!parent.has(next)) {
@@ -57,10 +73,10 @@ const loopThrough = (start, edges) => {
   return null
 }
 
-const typeViolations = (settings) => {
+const typeViolations = (settings: MavenSettings) => {
   const repositories = settings.repositories ?? []
   const localNames = new Set(repositories.map(repository => repository.id))
-  const violations = []
+  const violations: string[] = []
 
   for (const repository of repositories) {
     const declared = repository.type
@@ -88,7 +104,7 @@ const typeViolations = (settings) => {
     }
   }
 
-  const edges = new Map(repositories.map(repository => [
+  const edges = new Map(repositories.map((repository): [string, string[]] => [
     repository.id,
     (repository.proxied ?? []).map(hostOf).filter(host => localNames.has(host) && host !== repository.id),
   ]))
@@ -101,9 +117,9 @@ const typeViolations = (settings) => {
 }
 
 // The message the backend answers with when an update is rejected, or null when the settings are accepted.
-const rejectionOf = (settings) => {
+const rejectionOf = (settings: MavenSettings) => {
   const violations = typeViolations(settings)
   return violations.length === 0 ? null : `Invalid maven settings: ${violations.join('; ')}`
 }
 
-module.exports = { effectiveType, typeViolations, rejectionOf }
+export { effectiveType, typeViolations, rejectionOf }

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-// Like nodes.test.cjs, this runs with the runner that ships with Node: vitest refuses require().
-// Run it with: node --test fake-api/wire.test.cjs
-const { describe, it } = require("node:test")
-const assert = require("node:assert/strict")
-const { instantOnWire, localDateOnWire } = require("./wire.cjs")
-const identity = require("./identity.cjs")
-const { createFileDetails } = require("./extensions.cjs")
+// Like nodes.test.ts, this runs with the runner that ships with Node, through the tsx loader.
+// Run it with: node --import tsx --test fake-api/wire.test.ts
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import { instantOnWire, localDateOnWire } from "./wire"
+import identity from "./identity.cjs"
+import { createFileDetails } from "./extensions"
 
 // The shapes ApiTimeWireFormatTest pins on the backend: an Instant is epoch seconds, a LocalDate a [y, m, d] array.
 const NOON_UTC_SECONDS = Date.UTC(2026, 9, 15, 12) / 1000
