@@ -84,12 +84,33 @@ describe('AccountView', () => {
     holder.session = null
   })
 
-  it('keeps the account page at the 960 pixel reading measure', async () => {
+  it('lets the account page use the full width, so its cards reach the edge of the window', async () => {
     await mountView()
 
-    expect(Array.from((wrapper.element as HTMLElement).classList), 'a reading page, at the start of the column').toEqual(
-      expect.arrayContaining(['max-w-md-reading'])
+    expect(Array.from((wrapper.element as HTMLElement).classList), 'the page has no reading measure cap').not.toContain('max-w-md-reading')
+  })
+
+  it('lays the profile and the password card in two columns from the expanded window size', async () => {
+    await mountView()
+
+    const grid = wrapper.find('section[aria-labelledby="profile-title"]').element.parentElement as HTMLElement
+    expect(Array.from(grid.classList), 'the cards share one grid, one column in a compact window').toEqual(
+      expect.arrayContaining(['grid', 'grid-cols-1', 'expanded:grid-cols-2'])
     )
+  })
+
+  it('spans the tokens card over the full width below the two cards', async () => {
+    await mountView()
+
+    const tokens = wrapper.find('section[aria-labelledby="token-list-title"]').element.parentElement as HTMLElement
+    expect(Array.from(tokens.classList), 'the token table takes the whole row').toContain('col-span-full')
+  })
+
+  it('caps the password form fields at the form width, not the page', async () => {
+    await mountView()
+
+    const form = wrapper.find('#account-current-password').element.closest('form') as HTMLElement
+    expect(Array.from(form.classList), 'the fields of a wide card stop at the form width').toContain('max-w-xl')
   })
 
   it('titles the page My account with its only level one heading', async () => {
