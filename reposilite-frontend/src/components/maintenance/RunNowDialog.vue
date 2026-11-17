@@ -62,10 +62,27 @@ const emit = defineEmits<{
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.policyId)
+const cancel = ref<{ $el: HTMLElement } | null>(null)
+let opener: Element | null = null
 
 watch(() => props.modelValue, (open) => {
-  if (open) typed.value = ''
+  if (open) {
+    typed.value = ''
+    opener = document.activeElement
+    return
+  }
+  if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
 })
+
+// Cancel takes the focus as soon as it is drawn, and the focus trap of the modal starts on it too, so the modal's own
+// first focus (the id field) does not take it away.
+watch(cancel, (button) => {
+  if (button && props.modelValue) button.$el.focus()
+})
+const focusTrap = {
+  allowOutsideClick: true,
+  initialFocus: () => cancel.value?.$el
+}
 
 const close = () => emit('update:modelValue', false)
 
@@ -81,13 +98,15 @@ const confirm = () => {
     teleport-to="body"
     :overlay-style="SCRIM_STYLE"
     class="flex min-h-full items-center justify-center p-4"
+    :focus-trap="focusTrap"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div
       class="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="dialog"
+      role="alertdialog"
       aria-modal="true"
       aria-labelledby="run-now-title"
+      :aria-describedby="result ? undefined : 'run-now-body'"
       data-ingot-component="run-now-dialog"
     >
       <h2
@@ -104,7 +123,10 @@ const confirm = () => {
           novalidate
           @submit.prevent="confirm"
         >
-          <p class="md-body-medium text-on-surface-variant">
+          <p
+            id="run-now-body"
+            class="md-body-medium text-on-surface-variant"
+          >
             The run deletes the artifacts this policy selects, at once, and a deleted artifact cannot be
             restored. Type the policy id to confirm.
           </p>
@@ -128,6 +150,7 @@ const confirm = () => {
           <div class="flex flex-wrap justify-end gap-2">
             <MdButton
               id="run-now-cancel"
+              ref="cancel"
               variant="text"
               type="button"
               :disabled="running"
