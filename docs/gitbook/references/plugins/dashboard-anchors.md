@@ -192,7 +192,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `resolved-requests-chart` (no element of its own) | experimental | `src/components/dashboard/ResolvedRequestsChart.vue` | none | none | none |
 | `resource-trends` | experimental | `src/components/dashboard/ResourceTrends.vue` | none | none | none |
 | `revoke-token-dialog` | experimental | `src/components/identity/RevokeTokenDialog.vue` | none | `error` | none |
-| `rotate-token-dialog` | experimental | `src/components/identity/RotateTokenDialog.vue` | none | none | none |
+| `rotate-token-dialog` | experimental | `src/components/identity/RotateTokenDialog.vue` | none | `error` | none |
 | `run-history` | experimental | `src/components/maintenance/RunHistory.vue` | none | none | none |
 | `run-now-dialog` | experimental | `src/components/maintenance/RunNowDialog.vue` | none | `error` | none |
 | `search-bar` | experimental | `src/components/search/SearchBar.vue` | none | none | none |
@@ -235,7 +235,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `team-parents-card` | experimental | `src/components/access/TeamParentsCard.vue` | none | `loading` | none |
 | `teams-panel` | experimental | `src/components/access/TeamsPanel.vue` | none | none | none |
 | `time-series-chart` | experimental | `src/components/dashboard/TimeSeriesChart.vue` | none | none | none |
-| `token-list` | experimental | `src/components/identity/TokenList.vue` | none | none | none |
+| `token-list` | experimental | `src/components/identity/TokenList.vue` | none | `error` | none |
 | `token-tag` | experimental | `src/components/tokens/TokenTag.vue` | none | none | none |
 | `tokens-segmented-control` (no element of its own) | experimental | `src/components/tokens/SegmentedControl.vue` | none | none | none |
 | `tokens-segmented-option` (no element of its own) | experimental | `src/components/tokens/SegmentedOption.vue` | none | none | none |

@@ -17,8 +17,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
@@ -190,13 +192,15 @@ const submit = async () => {
     @update:model-value="emit('update:modelValue', $event)"
     @closed="reset"
   >
-    <h2
-      id="create-token-title"
-      class="md-headline-small"
-      data-ingot-component="create-token-dialog"
-    >
-      Create token
-    </h2>
+    <template #header>
+      <h2
+        id="create-token-title"
+        class="md-headline-small"
+        data-ingot-component="create-token-dialog"
+      >
+        Create token
+      </h2>
+    </template>
 
     <!--
       Spacing (MD3 dialog): 24px between the sections (Name, Access, Expires, the description,
@@ -362,47 +366,50 @@ const submit = async () => {
               {{ word.charAt(0).toUpperCase() + word.slice(1) }}
             </MdCheckbox>
           </fieldset>
-          <ul
+          <MdAlert
             v-if="artifactIssues.length > 0"
-            role="alert"
-            class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-error"
+            tone="error"
             data-test="artifact-issues"
+            data-ingot-state="error"
           >
-            <li
-              v-for="issue in artifactIssues"
-              :key="issue"
-            >
-              {{ issue }}
-            </li>
-          </ul>
+            <ul class="m-0 flex list-none flex-col gap-1 p-0">
+              <li
+                v-for="issue in artifactIssues"
+                :key="issue"
+              >
+                {{ issue }}
+              </li>
+            </ul>
+          </MdAlert>
         </template>
       </fieldset>
 
-      <p
+      <MdAlert
         v-if="failure"
+        tone="error"
         data-ingot-state="error"
-        role="alert"
-        class="md-body-medium text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
-    <div class="mt-6 flex justify-end gap-2">
-      <MdButton
-        variant="text"
-        @click="close()"
-      >
-        Cancel
-      </MdButton>
-      <MdButton
-        type="submit"
-        form="create-token-form"
-        variant="filled"
-        :disabled="busy || !canSubmit"
-      >
-        {{ busy ? 'Creating...' : 'Create' }}
-      </MdButton>
-    </div>
+    <template #actions>
+      <MdDialogActions>
+        <MdButton
+          variant="text"
+          @click="close()"
+        >
+          Cancel
+        </MdButton>
+        <MdButton
+          type="submit"
+          form="create-token-form"
+          variant="filled"
+          :disabled="busy || !canSubmit"
+        >
+          {{ busy ? 'Creating...' : 'Create' }}
+        </MdButton>
+      </MdDialogActions>
+    </template>
   </MdDialog>
 </template>

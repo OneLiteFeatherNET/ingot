@@ -175,11 +175,6 @@
     "count": 1
   },
   {
-    "file": "src/components/header/LoginModal.vue",
-    "match": "max-h-[90dvh]",
-    "count": 1
-  },
-  {
     "file": "src/components/header/MenuPanel.vue",
     "match": "min-[900px]:not-sr-only",
     "count": 1

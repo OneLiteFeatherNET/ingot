@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { VueFinalModal } from 'vue-final-modal'
 import type { AxiosError } from 'axios'
 import { secondFactorFailureMessage, useSession, type LoginProvider } from '../../store/session'
 import { createURL, type SecondFactorChallenge } from '../../store/client'
@@ -26,6 +25,7 @@ import { loginRequests } from '../../store/login'
 import { now } from '../../helpers/clock'
 import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
 import SegmentedOption from '../tokens/SegmentedOption.vue'
@@ -384,12 +384,6 @@ const submitLabel = computed(() => {
   if (mode.value === 'second') return busy.value ? 'Verifying...' : 'Verify'
   return busy.value ? 'Signing in...' : 'Sign in'
 })
-
-// A scrim in the role colour. The modal's own stylesheet paints the overlay in a fixed black
-// and is not layered, so the colour goes in as an inline style that wins over it.
-const overlayStyle = {
-  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
-}
 </script>
 
 <template>
@@ -400,21 +394,13 @@ const overlayStyle = {
     >
       Sign in
     </MdButton>
-    <VueFinalModal
+    <MdDialog
       v-model="showLogin"
-      class="flex items-center justify-center"
-      content-class="w-full px-6"
-      teleport-to="body"
-      :overlay-style="overlayStyle"
-      aria-labelledby="login-title"
+      labelledby="login-title"
       @opened="focusOnOpen"
       @closed="forgetInput"
     >
-      <!-- The 24px side inset is set on the modal's content wrapper; the dialog caps at 560px. -->
-      <div
-        ref="root"
-        class="mx-auto max-h-[90dvh] w-full min-w-70 max-w-140 overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      >
+      <template #header>
         <h2
           id="login-title"
           ref="titleRef"
@@ -423,7 +409,8 @@ const overlayStyle = {
         >
           {{ title }}
         </h2>
-
+      </template>
+      <div ref="root">
         <form
           v-if="mode === 'setup'"
           :id="formId"
@@ -706,6 +693,6 @@ const overlayStyle = {
           </div>
         </div>
       </div>
-    </VueFinalModal>
+    </MdDialog>
   </div>
 </template>
