@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FileUpload from './FileUpload.vue'
+import MdCard from '../md/MdCard.vue'
 
 // Every deploy stays pending, so a test can look at the form while the upload is in flight.
 const { deploy } = vi.hoisted(() => ({ deploy: { calls: [] as unknown[][] } }))
@@ -133,6 +134,39 @@ describe('FileUpload controls', () => {
 
     expect(destination.classes(), 'the path may break anywhere, so a long one stays inside a 320px screen')
       .toContain('wrap-anywhere')
+  })
+})
+
+describe('FileUpload cards', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  const card = (test: string) =>
+    wrapper!.findAllComponents(MdCard).find(each => each.attributes('data-test') === test)
+
+  it('draws the selected files on a low card whose rows reach its edges', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+
+    const files = card('upload-files')
+
+    expect(files, 'the file list is the card primitive').toBeDefined()
+    expect(files!.props('variant'), 'the tinted list is the low card').toBe('low')
+    expect(files!.props('padding'), 'the rows draw their own inset').toBe('none')
+  })
+
+  it('draws the stub POM coordinates on a low card', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+    ;(wrapper!.vm as unknown as { stubPomEnabled: boolean }).stubPomEnabled = true
+    await nextTick()
+
+    const coordinates = card('stub-pom')
+
+    expect(coordinates, 'the coordinates group is the card primitive').toBeDefined()
+    expect(coordinates!.props('variant'), 'the tinted group is the low card').toBe('low')
   })
 })
 

@@ -29,6 +29,7 @@ import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 import { tester as selectTester } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
+import MdCard from '../md/MdCard.vue'
 
 const renderers = markRaw([
   { tester: arrayTester, renderer: ArrayListRenderer },
@@ -135,6 +136,18 @@ describe('array of objects', () => {
 
     expect(wrapper.find('details').exists()).toBe(true)
     expect((wrapper.find('details input') as DOMWrapper<HTMLInputElement>).element.value).toBe('https://jitpack.io')
+  })
+
+  it('draws each object item on its own low card', () => {
+    const wrapper = mountForm(mirrorSchema, mirrorLayout, {
+      mirrors: [{ link: 'https://jitpack.io' }, { link: 'https://repo.example' }]
+    })
+
+    const cards = wrapper.findAllComponents(MdCard)
+
+    expect(cards, 'one card primitive per object').toHaveLength(2)
+    expect(cards[0].props('variant'), 'the first item is the low card').toBe('low')
+    expect(cards[1].props('variant'), 'the second item is the low card').toBe('low')
   })
 
   it('removes an object item and its data', async () => {

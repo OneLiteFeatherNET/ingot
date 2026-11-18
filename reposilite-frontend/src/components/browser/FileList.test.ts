@@ -18,6 +18,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import download from 'downloadjs'
 import FileList from './FileList.vue'
+import MdCard from '../md/MdCard.vue'
 import { useAdjustments } from '../../store/adjustments'
 import type { Ref } from 'vue'
 import * as session from '../../store/session'
@@ -101,6 +102,15 @@ describe('FileList missing directory', () => {
     await buttonWithText(wrapper, 'Go to repository root')!.trigger('click')
 
     expect(routerPush, 'the root is the first segment of the browsed path').toHaveBeenCalledWith({ name: 'browse', params: { qualifier: ['releases'] } })
+  })
+
+  it('draws the failure on the shared low card', () => {
+    const wrapper = mountList({ files: { list: [], error: 'forbidden' } })
+
+    const card = wrapper.findAllComponents(MdCard).find(each => each.attributes('data-test') === 'list-failure')
+
+    expect(card, 'the failure is the card primitive, not a hand-built container').toBeDefined()
+    expect(card!.props('variant'), 'the tinted panel is the low card').toBe('low')
   })
 
   it('offers no navigation for a failure that is not a missing directory', () => {
