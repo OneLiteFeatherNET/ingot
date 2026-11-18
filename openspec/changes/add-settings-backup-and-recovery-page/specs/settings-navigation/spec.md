@@ -2,26 +2,22 @@
 
 ## Purpose
 
-Overview stops carrying the whole-configuration actions, which move to the page Backup and recovery.
+Overview stops carrying the whole-configuration actions. They are on the Settings backup tab of the Maintenance page, which is
+where the settings file is exported and restored. The factory reset stays on System and support.
 
 ## ADDED Requirements
 
-### Requirement: Overview without backup actions
+### Requirement: Settings backup tab in Maintenance navigation
 
-Overview SHALL NOT show "Import settings", "Download as JSON" or the factory reset. For a visitor with the settings area it SHALL
-show one link to Backup and recovery. The page SHALL make no request beyond those it makes today.
+The Maintenance page SHALL list the Settings backup tab for a visitor with `ingot.admin.settings` and SHALL NOT list it for a
+visitor without that area. Overview SHALL link to nothing for backup and recovery.
 
-#### Scenario: Header
+#### Scenario: Visitor with the settings area
 
-- **WHEN** a visitor with the settings area opens `/settings`
-- **THEN** the header has no Import settings and no Download as JSON, and Overview links to `/settings/backup`
+- **WHEN** a visitor with `ingot.admin.settings` opens `/maintenance`
+- **THEN** the tab "Settings backup" is listed beside Storage usage, Search index and Cleanup policies
 
-### Requirement: Backup and recovery in the filter
+#### Scenario: Visitor without the settings area
 
-The Administration filter SHALL find Backup and recovery by the words export, import, restore, recovery, reset, backup,
-passphrase and download.
-
-#### Scenario: Filter
-
-- **WHEN** the visitor types "restore" into the filter
-- **THEN** Backup and recovery is listed
+- **WHEN** a visitor without `ingot.admin.settings` opens `/maintenance`
+- **THEN** the tab "Settings backup" is not listed
