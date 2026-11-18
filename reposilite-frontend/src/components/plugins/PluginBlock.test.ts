@@ -170,3 +170,60 @@ describe('unknown block', () => {
     expect(wrapper.text()).toContain('Unsupported block')
   })
 })
+
+describe('code block', () => {
+  const clipboardOf = (writeText: ReturnType<typeof vi.fn>) =>
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard')
+  })
+
+  it('shows markup in the code text as plain characters', () => {
+    const wrapper = mountBlock({ type: 'code', text: '<img src=x onerror=alert(1)>' })
+
+    expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
+    expect(wrapper.find('img').exists(), 'an img element drawn from the code').toBe(false)
+  })
+
+  it('copies the code text and nothing else, then announces the copy', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    clipboardOf(writeText)
+
+    const wrapper = mountBlock({ type: 'code', label: 'Snippet', text: 'implementation("a:b:1")', language: 'kotlin' })
+    await wrapper.findAll('button').find(button => button.text() === 'Copy')!.trigger('click')
+    await flushPromises()
+
+    expect(writeText, 'the text written to the clipboard').toHaveBeenCalledWith('implementation("a:b:1")')
+    expect(wrapper.find('[role="status"]').text(), 'the status region').toBe('Copied')
+  })
+
+  it('selects the code text when the clipboard refuses the write', async () => {
+    clipboardOf(vi.fn().mockRejectedValue(new Error('denied')))
+
+    const wrapper = mountBlock({ type: 'code', text: 'select me' })
+    await wrapper.findAll('button').find(button => button.text() === 'Copy')!.trigger('click')
+    await flushPromises()
+
+    expect(window.getSelection()?.toString(), 'the selected text').toContain('select me')
+    expect(wrapper.find('[role="status"]').text(), 'the status region').not.toBe('Copied')
+  })
+})
+
+describe('link block', () => {
+  it('draws a same-origin path as a link in the same tab', () => {
+    const wrapper = mountBlock({ type: 'link', label: 'Download', href: '/browse/repo/a/b.jar' })
+
+    const link = wrapper.find('a')
+    expect(link.exists(), 'a link element').toBe(true)
+    expect(link.attributes('href')).toBe('/browse/repo/a/b.jar')
+    expect(link.attributes('target'), 'a target attribute').toBeUndefined()
+  })
+
+  it('draws no link for a javascript address and says so', () => {
+    const wrapper = mountBlock({ type: 'link', label: 'Get', href: 'javascript:alert(1)' })
+
+    expect(wrapper.find('a').exists(), 'a link element for a javascript address').toBe(false)
+    expect(wrapper.text()).toContain('Link not shown')
+  })
+})
