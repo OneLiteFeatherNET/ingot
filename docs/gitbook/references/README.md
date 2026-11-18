@@ -60,6 +60,7 @@ Endpoints, errors, search, web routes and dashboard routes.
 * [Search filters and API](http-api/search-filters-and-api.md)
 * [Web routes](http-api/web-routes.md)
 * [Dashboard pages](http-api/dashboard-pages.md)
+* [Jobs](jobs.md)
 
 ## Identity
 

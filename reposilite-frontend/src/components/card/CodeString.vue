@@ -14,6 +14,9 @@
   - limitations under the License.
   -->
 
+<script setup lang="ts">
+</script>
+
 <template>
   <span
     class="text-tertiary"

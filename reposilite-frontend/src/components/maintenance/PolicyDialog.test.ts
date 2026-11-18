@@ -129,6 +129,44 @@ describe('PolicyDialog validation', () => {
   })
 })
 
+describe('PolicyDialog field order', () => {
+  // The fields in the order the user answers them: what the policy is and where it applies, then the group filter, the limits and the schedule.
+  const drawnOrder = (anchors: [string, Element | null][]) => {
+    const missing = anchors.filter(([, node]) => node === null).map(([name]) => name)
+    expect(missing, 'every field named in the order is drawn').toEqual([])
+    return [...anchors]
+      .sort(([, a], [, b]) => (a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([name]) => name)
+  }
+  const labelled = (text: string) => [...document.querySelectorAll('legend')].find(node => node.textContent?.trim() === text) ?? null
+
+  it('asks for the id, the switch, the repositories and the scope before the limits and the schedule', async () => {
+    await openDialog()
+
+    expect(drawnOrder([
+      ['Id', field('policy-id')],
+      ['Enabled', document.getElementById('policy-enabled')],
+      ['Repositories', labelled('Repositories')],
+      ['Scope', field('policy-scope')],
+      ['Group filter', field('policy-group-filter')],
+      ['Keep newest', field('policy-keep-latest')],
+      ['Older than', field('policy-older-than-days')],
+      ['Not downloaded for', field('policy-not-downloaded-days')],
+      ['When to run', field('policy-schedule')]
+    ])).toEqual([
+      'Id',
+      'Enabled',
+      'Repositories',
+      'Scope',
+      'Group filter',
+      'Keep newest',
+      'Older than',
+      'Not downloaded for',
+      'When to run'
+    ])
+  })
+})
+
 describe('PolicyDialog submit body', () => {
   it('sends the policy in the wire shape with blanks as null', async () => {
     await openDialog()
@@ -179,3 +217,74 @@ describe('PolicyDialog submit body', () => {
     expect(errorText()).toContain('Enter a time as HH:mm')
   })
 })
+
+describe('PolicyDialog dialog contract', () => {
+  let opener: HTMLButtonElement | null = null
+
+  afterEach(() => {
+    opener?.remove()
+    opener = null
+    document.body.querySelectorAll('.vfm').forEach(element => element.remove())
+  })
+
+  it('names the dialog by its heading', async () => {
+    await openDialog()
+
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement
+    const name = document.getElementById(dialog.getAttribute('aria-labelledby') ?? '')
+    expect(name?.textContent?.trim(), 'the dialog is named by its heading').toBe('New cleanup policy')
+  })
+
+  it('moves focus into the dialog when it opens', async () => {
+    await openDialog()
+
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement
+    expect(dialog.contains(document.activeElement), 'focus is inside the dialog, not on the page behind it').toBe(true)
+  })
+
+  it('returns focus to the button that opened it when it is cancelled', async () => {
+    opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    await openDialog()
+
+    ;(document.getElementById('policy-cancel') as HTMLElement).click()
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+
+    expect(document.activeElement, 'focus returns to the opener').toBe(opener)
+  })
+
+  it('closes on Escape', async () => {
+    await openDialog()
+
+    ;(document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper.emitted('update:modelValue'), 'Escape asks the parent to close').toEqual([[false]])
+  })
+
+  it('has one filled button, the save action, and a text cancel action', async () => {
+    await openDialog()
+
+    const filled = [...document.querySelectorAll<HTMLElement>('.vfm [data-variant="filled"]')]
+    expect(filled.map(button => button.textContent?.trim()), 'only the save action is filled').toEqual(['Save policy'])
+    expect(document.getElementById('policy-cancel')?.getAttribute('data-variant'), 'cancel is a text button').toBe('text')
+  })
+
+  it('shows the limit error as an alert in the error tone', async () => {
+    await openDialog()
+    await typeInto('policy-id', 'weekly')
+
+    await save()
+
+    const alert = document.querySelector<HTMLElement>('.vfm [role="alert"]')
+    expect(alert?.textContent?.trim(), 'the limit error is announced').toContain('Set at least one of keep latest, older than or not downloaded for.')
+    expect(alert?.getAttribute('data-tone'), 'the alert is in the error tone').toBe('error')
+  })
+})
+
+// Type contract, checked by vue-tsc: saving is a flag. Never called at runtime.
+// @ts-expect-error saving is a boolean flag, not a text
+const mountWithTextFlag = () => mount(PolicyDialog, { props: { modelValue: false, saving: 'yes' } })
+void mountWithTextFlag

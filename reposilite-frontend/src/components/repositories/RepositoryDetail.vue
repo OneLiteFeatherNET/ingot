@@ -139,6 +139,8 @@ const entryProps = computed(() => (collection.value && entry.value ? {
   serverError: serverError.value
 } : null))
 const omitFor = (key: string) => ['redeployment', 'readOnly', ...fieldsOutside(key)]
+// The fields of a tab in the order the tab names them, so the form draws them in that order.
+const orderFor = (key: string) => REPOSITORY_TABS.find(tab => tab.key === key)?.fields ?? []
 // A tab whose fields are all hidden for the type of the repository says so, instead of showing an empty panel.
 const hiddenFor = computed(() => {
   const type = entry.value?.type
@@ -234,6 +236,12 @@ onMounted(() => {
       data-ingot-part="header"
       :data-ingot-repository="title"
     >
+      <h2
+        data-test="repository-name"
+        class="m-0 min-w-0 break-words md-title-large text-on-surface"
+      >
+        {{ title }}
+      </h2>
       <section
         aria-labelledby="repository-type-title"
         class="flex flex-col gap-3"
@@ -300,6 +308,7 @@ onMounted(() => {
               v-bind="entryProps"
               :section="tab"
               :omit="omitFor(tab)"
+              :order="orderFor(tab)"
               @change="onChange"
             />
           </div>

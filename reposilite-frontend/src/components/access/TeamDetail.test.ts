@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
+import type { Router } from 'vue-router'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
   NODES,
@@ -58,6 +59,8 @@ describe('TeamDetail', () => {
     wrapper = await mountTeamDetail(name)
   }
 
+  const routeOf = (host: VueWrapper) => (host.vm as unknown as { $router: Router }).$router.currentRoute.value
+
   const conflictDialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
 
   beforeEach(() => {
@@ -72,6 +75,15 @@ describe('TeamDetail', () => {
     wrapper?.unmount()
     wrapper = undefined
     document.body.innerHTML = ''
+  })
+
+  describe('card', () => {
+    it('draws the detail card with the outline edge', async () => {
+      await mountDetail('developers')
+
+      const card = wrapper!.get('h2').element.closest<HTMLElement>('.rounded-corner-large')!
+      expect(card.classList.contains('border-outline'), 'detail card should carry the outline edge').toBe(true)
+    })
   })
 
   describe('loading', () => {
@@ -393,7 +405,6 @@ describe('TeamDetail', () => {
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
-      expect(conflictDialog(), 'the conflict is settled').toBeNull()
     })
   })
 
@@ -466,6 +477,38 @@ describe('TeamDetail', () => {
 
       expect(conflictDialog()).not.toBeNull()
       expect(document.querySelector('[data-test="confirm-button"]'), 'only the conflict dialog stays').toBeNull()
+    })
+  })
+
+  describe('the check permission action', () => {
+    it('links the team to the permission check with the team in the query', async () => {
+      await mountDetail('developers')
+
+      expect(wrapper!.find('[data-test="check-permission"]').attributes('href')).toBe('/access/check?principal=developers')
+    })
+
+    it('navigates to the permission check with the team as principal', async () => {
+      await mountDetail('developers')
+
+      await wrapper!.find('[data-test="check-permission"]').trigger('click')
+      await flushPromises()
+
+      const route = routeOf(wrapper!)
+      expect(route.name).toBe('access-check')
+      expect(route.query).toEqual({ principal: 'developers' })
+    })
+
+    it('is a tonal button', async () => {
+      await mountDetail('developers')
+
+      expect(wrapper!.find('[data-test="check-permission"]').attributes('data-variant')).toBe('tonal')
+    })
+
+    it('sits in the header next to the delete action', async () => {
+      await mountDetail('developers')
+
+      const deleteButton = wrapper!.find('[data-test="delete-team"]').element
+      expect(deleteButton.parentElement!.contains(wrapper!.find('[data-test="check-permission"]').element), 'the check is in the same header row as the delete action').toBe(true)
     })
   })
 

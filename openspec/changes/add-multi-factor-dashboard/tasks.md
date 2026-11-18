@@ -20,7 +20,8 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 3. Sign-in second step
 
 - [ ] 3.1 `test(ui)`: failing tests for `LoginModal.vue`: the second step appears on `mfaRequired` with the listed methods,
-  the recovery option swaps the field, the passkey action appears only when announced and supported, and a wrong code keeps
+  the recovery option swaps the field, the passkey action appears only when `passkeyFirstFactor` is set in the providers answer and WebAuthn is supported (first step),
+  the second step offers the passkey next to the code field, and a wrong code keeps
   the step open. Verify: the tests fail before 3.2.
 - [ ] 3.2 `feat(ui)`: add the second step and the passkey action to `LoginModal.vue`. Verify: 3.1 passes and the existing
   `LoginModal` behaviour tests still pass.
@@ -28,7 +29,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 4. Account page section
 
 - [ ] 4.1 `test(ui)`: failing tests for `SecondFactorsCard` (list, rename, remove, the authenticator enrolment with the seed
-  shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with the confirmation check box, and
+  shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with copy and download actions and the confirmation check box, and
   no seed after the dialog closes), built with an injected `api` object like `PasswordCard`. Verify: the tests fail before 4.2.
 - [ ] 4.2 `feat(ui)`: add `SecondFactorsCard` into the `Sign-in and security` section of the account page. Depends on
   `rework-account-menu-and-profile` being merged; if it is not, this task waits. Verify: 4.1 passes and `AccountView.test.js`
@@ -37,7 +38,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 5. Step-up and restricted screen
 
 - [ ] 5.1 `test(ui)`: failing tests for `withStepUp` in `store/session.js` (the action runs once, a `step_up_required` opens
-  the dialog, the retry happens once, a second `step_up_required` closes the dialog with the error), for the grace banner
+  the dialog, the retry happens once, a second `step_up_required` closes the dialog with the error), for the step-up passkey option (offered next to the code field, never instead of it), for the grace banner
   (shown on every page with `graceUntil`, not dismissible), and for the restricted navigation with scope `enrol`. Verify: the
   tests fail before 5.2.
 - [ ] 5.2 `feat(ui)`: add the step-up dialog, `withStepUp`, the grace banner and the restricted navigation. Verify: 5.1 passes.
@@ -45,7 +46,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 6. Administration controls
 
 - [ ] 6.1 `test(ui)`: failing tests for the factor summary on the user page, the reset action shown only to instance admins,
-  the confirmation that names the user, and the `login.mfa` and `mfaAcrValues`/`mfaAmrValues` fields and the break-glass
+  the confirmation that names the user and says that their sessions end, and the `login.mfa` and `mfaAcrValues`/`mfaAmrValues` fields and the break-glass
   warning in `components/access/loginSettings.js`. Verify: the tests fail before 6.2.
 - [ ] 6.2 `feat(ui)`: add the reset action and the summary on the user page, and the new fields to the login settings form.
   Verify: 6.1 passes and the existing login settings tests still pass.
@@ -56,11 +57,26 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
   their messages. Verify: the tests fail before 7.2.
 - [ ] 7.2 `feat(ui)`: add the error mapping. Verify: 7.1 passes.
 - [ ] 7.3 `test(e2e)`: end-to-end scenario in the existing dashboard end-to-end suite: sign in with an authenticator code and
-  enrol a recovery code set. Verify: the scenario passes in CI through the existing workflow. Passkey ceremonies are covered
+  enrol a recovery code set. The end-to-end server starts with `INGOT_SETTINGS_KEY` set, so that enrolment is testable. Verify: the scenario passes in CI through the
+  existing workflow. Passkey ceremonies are covered
   by the helper tests, not by the browser test.
 
 ## 8. Pull request
 
 - [ ] 8.1 Open the code pull request with the title `feat(ui): add second factor steps to the dashboard sign-in and account
-  page`, after the code pull request of `add-multi-factor-authentication` is merged, and link it. Verify: the title passes
+  page`, after the server signal of section 9 and the code pull request of `add-multi-factor-authentication` are merged, and link it. Verify: the title passes
   the commit style hook and carries no attribution line.
+
+## 9. Server signal (feat(identity)), merged before section 8
+
+Pull request: `feat(identity): announce the passkey first factor on the providers route`
+
+- [ ] 9.1 `test(identity)`: failing backend test for `GET /api/auth/providers` that asserts `passkeyFirstFactor` is `true` when the
+  login policy enables the passkey first factor, and `false` when it does not or the setting is absent. The test builds its own
+  fixture and reads no clock. Verify: the test fails before 9.2, run with `HEAVY_SLOTS=4 HEAVY_MIN_MEM_MB=8192 heavy ./gradlew
+  --no-daemon --max-workers=2 :reposilite-backend:test --tests '<pattern>'`.
+- [ ] 9.2 `feat(identity)`: add the boolean `passkeyFirstFactor` to the providers answer, `false` by default, read from the `login.mfa`
+  policy. The field is additive: no existing field changes and no setting is required. Verify: 9.1 passes and the existing providers
+  tests still pass.
+- [ ] 9.3 Open the pull request `feat(identity): announce the passkey first factor on the providers route`, and merge it before the
+  code pull request of section 8. Verify with `gh pr view --json title,body,files`.

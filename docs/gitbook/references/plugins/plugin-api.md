@@ -41,6 +41,7 @@ On shutdown, `ReposiliteDisposeEvent` is emitted before the web server stops.
 | --- | --- | --- | --- |
 | `name` | String | none, required | Unique name of the plugin. Other plugins use it in `dependencies`. |
 | `version` | String | the server version | Version of the plugin. |
+| `description` | String | empty, which means no description | Short plain text on what the plugin is for. Control characters and line breaks are removed, and a text longer than 280 characters is cut with one warning at start. The text is never read as markup, and it never stops the plugin from loading. |
 | `dependencies` | String array | empty | Names of plugins that must initialize first. |
 | `settings` | class of `SharedSettings` | `SharedSettings` | Settings class owned by the plugin. Read it with `SharedConfigurationFacade.getDomainSettings<T>()`. |
 
@@ -114,6 +115,31 @@ Facades are registered by Ingot's built-in plugins. A plugin gets one with `faca
 | `StorageFacade` (`com.reposilite.storage`) | Storage providers. |
 | `FailureFacade` (`com.reposilite.status`) | Records failures. |
 | `StatusFacade` (`com.reposilite.status`) | Server status. |
+
+## Job sources
+
+A plugin that keeps a record of its background runs can list them on the [Jobs page](../jobs.md). The plugin registers a job source on the `JobRegistrationEvent` of the Ingot namespace (experimental). The types are in the jobs package of the Ingot namespace, not in `com.reposilite.*`.
+
+The core fires `JobRegistrationEvent` at `ReposilitePostInitializeEvent`, after every plugin has initialized. Listen for it in `initialize()`, and register the source on the registry that the event carries. The registration returns a handle. Closing the handle removes the source again.
+
+* A source registered after the event is logged by the core and not listed.
+* When the plugin is disabled, its sources leave the registry. Their rows disappear from the Jobs page, and the history stays in the plugin's own tables.
+
+A source has these members:
+
+| Member | Contract |
+| --- | --- |
+| `id` | The source id, such as `billing`. It contains neither a colon nor a pipe. |
+| `kinds` | The kinds of run the source keeps, such as `billing.invoice`. |
+| `requiredNode` | The node a visitor needs to read the runs of the source. The default is `ingot.admin.*`. Choose the narrowest node that fits the data. |
+| `page(query, before, limit)` | Returns the runs strictly older than `before` (all runs when it is null), at most `limit` of them, sorted by start time, newest first, then by local id. The server passes a limit of at most 100. |
+| `detail(localId)` | Returns the run with that local id, or null. |
+
+The `page` method honours the `state` and `trigger` of the query by mapping them to its own values, so a page is full when rows exist. It never returns a run twice across the pages of one cursor. A run has the id `<source>:<local id>`, a kind, a label, a trigger, a state, the start and finish times, counts and failures, as described in the [Jobs reference](../jobs.md#fields-of-a-run).
+
+A source throws for a store error. The server then leaves the source out of that page and names it in `sourceErrors`, and the other sources still list their runs.
+
+Failures and counts can name paths and URLs of the instance, and the page shows them only to the nodes that read the source. Never put a credential in a failure.
 
 ## Routes
 
@@ -371,7 +397,7 @@ A plugin has at most 20 pages, and the serialised pages of one plugin take at mo
 
 ### Blocks
 
-The `type` of a block selects its shape. There is no block that carries HTML, a script, a style or a link.
+The `type` of a block selects its shape. There is no block that carries HTML, a script or a style. A link is a same-origin path, with the rules under "Links" below.
 
 | Block | Fields | What the dashboard does |
 | --- | --- | --- |
@@ -381,6 +407,8 @@ The `type` of a block selects its shape. There is no block that carries HTML, a 
 | `Form` | `source`, `target`, `method` (`PUT` or `POST`), `schema`, `uiSchema` | Reads the object `source` returns, draws a form from the JSON schema and sends the result to `target`. A schema may refer only into its own document (`#...`). |
 | `Action` | `label`, `method` (`POST`, `PUT` or `DELETE`), `path`, `confirm`, `danger` | Shows a button. With `confirm` it asks for that text first. The request carries the CSRF header. |
 | `Status` | `source`, `refreshSeconds` (5 to 300) | Reads the object `source` returns with GET. The object has `state`, `message` and `progress` (0 to 1). Polls at the interval, and only while the page is visible. |
+| `Code` | `text` (1 to 4000 characters), `label` (optional, at most 60 characters), `language` (`plain`, `kotlin`, `groovy`, `xml` or `properties`) | Shows the text as plain characters in a box, with a Copy action that copies the text and nothing else. If the browser refuses the copy, the text is selected. The language only names the block for assistive technology. |
+| `Link` | `label` (1 to 60 characters), `href` | Shows a link to a same-origin path, opened in the same tab. A refused `href` shows the label and the note "Link not shown". |
 
 A block shows a value that is not of the expected shape as text, and a block type this version of the dashboard does not know as an unsupported note.
 
@@ -401,6 +429,18 @@ The domain must be the settings domain of the plugin (its `@Plugin` `settings` c
 Every path of a block starts with `/api/plugins/<plugin>/`, where `<plugin>` is the name the plugin is registered under. Paths may use the characters `A-Z a-z 0-9 . _ ~ -` and `/`, and may not contain empty, `.` or `..` segments. A path outside the prefix refuses the whole page, and the warning names the path.
 
 For a plugin with pages, the server requires one of the areas of its pages for every request below `/api/plugins/<plugin>/`, before the route runs. An anonymous caller gets `401`, and a caller without any of the areas gets `403`. The check is a floor: a route that needs more still checks it. A plugin without pages is not affected, and neither is a plugin whose name only starts with the name of another.
+
+### Links
+
+A `Link` carries an `href` that is a path of the dashboard or a repository, such as `/browse/<repository>/<path>`. All of these rules must hold. The server checks them when the plugin registers the page, and the dashboard checks them again before it draws a link:
+
+- It starts with one `/`. A second `/` or a backslash is refused, so no other host can be named.
+- It does not start with `/api/` or `/assets/`. Data routes are not shown as pages.
+- Its characters are `A-Z a-z 0-9 . _ ~ - / ? = &`. A percent sign, a colon, a space and a fragment are refused.
+- No segment before the `?` is empty, `.` or `..`.
+- It is at most 500 characters.
+
+A link does not decide who may read its target. The target keeps its own checks.
 
 ### Refused registrations
 

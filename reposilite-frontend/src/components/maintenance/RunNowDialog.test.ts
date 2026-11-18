@@ -203,3 +203,8 @@ describe('RunNowDialog focus and announcement', () => {
     expect(document.activeElement).toBe(opener)
   })
 })
+
+// Type contract, checked by vue-tsc: a policy id is a string. Never called at runtime.
+// @ts-expect-error a number is not a policy id
+const mountWithNumericId = () => mount(RunNowDialog, { props: { modelValue: false, policyId: 42 } })
+void mountWithNumericId

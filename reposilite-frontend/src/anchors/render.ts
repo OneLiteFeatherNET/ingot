@@ -17,9 +17,34 @@
 // Renders the reference page from the registry alone. The output is deterministic: the same registry always gives the
 // same bytes, which is what the docs-sync check in anchors.test.js compares against.
 
-const code = (values) => (values.length === 0 ? "none" : values.map((value) => `\`${value}\``).join(", "))
+// The shape of registry.json. Declared here rather than imported from checks.ts: the script that writes the page
+// compiles this file in the Node project, which does not list the checks module.
+export interface AnchorEntry {
+  name: string
+  file: string
+  stability: string
+  parts: string[]
+  states: string[]
+  slots?: string[]
+  ownElement?: boolean
+}
 
-export function renderAnchorsDoc(registry) {
+export interface AnchorAlias {
+  name: string
+  replacedBy: string
+  removeIn: string
+}
+
+export interface AnchorRegistry {
+  contract: number
+  components: AnchorEntry[]
+  aliases?: AnchorAlias[]
+}
+
+const code = (values: readonly string[]): string =>
+  values.length === 0 ? "none" : values.map((value) => `\`${value}\``).join(", ")
+
+export function renderAnchorsDoc(registry: AnchorRegistry): string {
   const components = [...registry.components].sort((a, b) => a.name.localeCompare(b.name))
   const aliases = [...(registry.aliases ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 

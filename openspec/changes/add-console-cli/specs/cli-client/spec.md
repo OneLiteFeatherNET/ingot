@@ -1,9 +1,8 @@
-# Spec Delta
-
 ## Purpose
 
-An operator or a script runs console commands on a running Ingot from a separate `ingot` program, interactively or not, with the
-token kept out of the command line and the shell history.
+An operator or a script runs console commands on a running Ingot from a separate `ingot` program, interactively or not, with the token
+kept out of the command line and the shell history. Exec mode uses HTTP. The REPL uses the shared WebSocket protocol of
+`console-websocket`.
 
 ## ADDED Requirements
 
@@ -71,20 +70,64 @@ needed feature.
 
 ### Requirement: REPL mode
 
-The CLI SHALL offer an interactive mode with line editing, a history file with owner-only permissions, completion of command names,
-aliases, options and fixed values from `/api/console/commands`, and multi-line output. `Ctrl-C` SHALL discard the current line and `Ctrl-D` on an
-empty line SHALL leave with exit code `0`. Colour SHALL be used only when standard output is a terminal and `NO_COLOR` is unset. Lines of a
-`sensitive` command SHALL NOT be saved to history.
+The CLI SHALL offer an interactive mode on one WebSocket session that uses protocol version 1 of `console-websocket`. The REPL SHALL NOT
+send an HTTP request for a line.
+
+#### Scenario: One session for the REPL
+
+- **WHEN** the user runs three commands in the REPL
+- **THEN** they are sent as `execute` frames on one connection, and no HTTP request is made for them
+
+#### Scenario: Older server
+
+- **WHEN** the server answers the hello with the missing-credentials error and `GET /api/console/commands` answers `404`
+- **THEN** the CLI prints one line that names the missing protocol, exits with code `6` and runs no command
+
+### Requirement: REPL editing and history
+
+The REPL SHALL offer line editing, multi-line output and a prompt that shows the node of the server. Its history file SHALL have
+owner-only permissions. Lines of a `sensitive` command SHALL NOT be saved to history. Colour SHALL be used only when standard output is a
+terminal and `NO_COLOR` is unset.
+
+#### Scenario: Sensitive line kept out of history
+
+- **WHEN** the user runs `token-regenerate ci s3cr3t` in the REPL
+- **THEN** the history file does not contain the line
+
+#### Scenario: No colour in a pipe
+
+- **WHEN** standard output is not a terminal
+- **THEN** no colour sequence is written
+
+### Requirement: REPL completion and interrupts
+
+The REPL SHALL complete command names, aliases, options and fixed values from `complete` frames, one frame per Tab. `Ctrl-C` SHALL discard
+the current line and stop the wait for a running result, and the connection SHALL stay open. `Ctrl-D` on an empty line SHALL leave with
+exit code `0`.
+
+#### Scenario: Completion costs one frame
+
+- **WHEN** the user presses Tab once
+- **THEN** the CLI sends one `complete` frame and no other frame is sent for the keystroke
+
+#### Scenario: Interrupt while a command runs
+
+- **WHEN** the user presses `Ctrl-C` while a result is awaited
+- **THEN** the CLI says that the command may still complete on the server, and the connection stays open
+
+### Requirement: REPL confirmation
+
+A `confirm` frame SHALL be answered by the REPL only after the user answers `y/N` on the terminal, with the default of no.
 
 #### Scenario: Confirmation in the REPL
 
 - **WHEN** the user enters `stop` in the REPL
-- **THEN** the CLI asks `y/N` on the terminal and sends nothing unless the answer is yes
+- **THEN** the CLI asks `y/N` on the terminal, and sends `accept` false unless the answer is yes
 
-#### Scenario: Older server
+#### Scenario: Connection lost during a command
 
-- **WHEN** the server has no `/api/console/commands`
-- **THEN** the CLI notes it once, runs in plain mode and warns that dangerous commands will run at once
+- **WHEN** the socket closes while a command runs
+- **THEN** the CLI reports that command as unknown, does not send it again, and reconnects with the `resume` of the last `seq` it holds
 
 ### Requirement: TLS
 

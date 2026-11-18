@@ -49,13 +49,14 @@ for (const width of WIDTHS) {
       await expect(backControls(page), `back controls named "Back to" at ${width} pixels`).toHaveCount(expectedBackControls(width))
     })
 
-    test('the repository detail has one h1 and one way back to the repositories', async ({ adminPage: page, seed }) => {
+    test('the repository detail keeps the list name as its h1 and names the repository in a second level heading', async ({ adminPage: page, seed }) => {
       const id = await seed.repository('detail-heading')
       await page.goto(siteUrl(`/settings/repositories/${id}`))
       await expect(page.locator('[data-ingot-component="repository-detail"]'), 'the detail has loaded').toBeVisible()
 
       await expect(page.locator('h1'), 'exactly one h1 on the page').toHaveCount(1)
-      await expect(page.locator('h1')).toHaveText(id)
+      await expect(page.locator('h1')).toHaveText('Repositories')
+      await expect(page.locator('[data-test="repository-name"]'), 'the detail names the repository in a second level heading').toHaveText(id)
       await expect(page.getByText('Hosted, proxied and group repositories, their policies and Maven options.', { exact: true }), 'the list description is not reused').toHaveCount(0)
       await expect(headerLinksTo(page, '/settings/repositories'), 'one link to the repositories in the header').toHaveCount(1)
       await expect(backControls(page), `back controls named "Back to" at ${width} pixels`).toHaveCount(expectedBackControls(width))

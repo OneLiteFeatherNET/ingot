@@ -45,6 +45,8 @@ Non-goals:
 
 ### D1. `MdDialog` is the only dialog frame
 
+Resolved 2026-11-18 (maintainer): heading ids come from `useId()`, and the `labelledby` string prop stays as a backwards-compatible input.
+
 `MdDialog` renders a `VueFinalModal` with `teleport-to="body"`, `content-class` carrying the 24px inset (`px-6`), and
 `class` on the modal root that gives the `--md-sys-z-dialog` layer through the `.vfm` rule that already exists in
 `src/style.css:184`. The content box is capped at 560px and floored at 280px, takes the `surface-container-high` role,
@@ -54,6 +56,8 @@ Non-goals:
 Props:
 
 - `modelValue` (boolean, for `v-model`).
+- `labelledby` (string, optional). The id of the heading, for a caller that already passes one. Without it, `MdDialog` uses the generated id.
+- `initialFocus` (template ref or element id, optional). The element that takes focus on open. See D2.
 - `dismissable` (boolean, default `true`). When `false`, Escape and a click outside do not close the dialog. Used by the
   dialogs whose only exit is their own button (the one-time secret, the migration cut-over).
 - `role` (`'dialog'` or `'alertdialog'`, default `'dialog'`). `'alertdialog'` is set on the destructive confirmations
@@ -65,10 +69,11 @@ Props:
 Slots: `header` (the heading, which the consumer renders with its own `id` and anchor), `default` (the body), `actions`
 (the action row, right-aligned, with `gap-2`).
 
-`labelledby` is not a prop any more. `MdDialog` generates the heading id with `useId()`, passes it to the `header` slot
-through a scoped slot value (`{ headingId }`), and sets `aria-labelledby` on the dialog element from it. Consumers use the
-slot value on their `<h2>`. This removes the fixed ids that `NewMachineDialog.vue` and `DeclareTypeDialog.vue` carry
-(`new-machine-title`, `declare-type-title`, `declare-type-body`).
+`MdDialog` generates the heading id with `useId()` and passes it to the `header` slot as `headingId`, so every instance has its own
+id. The consumer renders its `<h2>` with that id, and `MdDialog` sets `aria-labelledby` on the dialog element to it. The optional
+`labelledby` prop stays as a backwards-compatible input: when a caller passes one, it replaces the generated id. No new dialog passes
+a fixed id. The two fixed ids that `NewMachineDialog.vue` and `DeclareTypeDialog.vue` carry today (`new-machine-title`,
+`declare-type-title`, `declare-type-body`) are removed in their migration.
 
 Inline `overlay-style` and `SCRIM_STYLE` go. The scrim is set once in `MdDialog`, in the `scrim` role at 32%, through the `bg-scrim/md-scrim`
 utility on the overlay class that the catalogue change puts in place of the inline `color-mix` style of `DialogShell.vue`.
@@ -77,8 +82,11 @@ in the proposal.
 
 ### D2. Focus contract for every dialog
 
-- **On open:** focus moves to the element named by the `initialFocus` prop (a template ref or an element id), or, when
-  none is given, to the first focusable element of the body. A dialog with a text field focuses the field. A confirming
+Resolved 2026-11-18 (maintainer): `MdDialog` gets an `initialFocus` prop.
+
+- **On open:** focus moves to the element named by the `initialFocus` prop of `MdDialog` (a template ref or an element id), or, when
+  none is given, to the first focusable element of the body. The prop takes precedence over the `data-autofocus` attribute that
+  `MdDialog` reads today, which keeps working for existing callers. A dialog with a text field focuses the field. A confirming
   dialog focuses the cancel button, so an accidental Enter does not confirm a destructive action.
 - **Focus trap:** Tab and Shift+Tab stay inside the open dialog. The modal root carries the trap that
   vue-final-modal provides; `MdDialog` tests it.

@@ -73,4 +73,29 @@ describe('ProfileCard', () => {
   it('names a machine account as such', () => {
     expect(render({ principal: { ...ALICE, kind: 'MACHINE' } }).text()).toContain('Machine')
   })
+
+  it('draws the card through MdCard in the low variant', () => {
+    const card = render().find('[data-variant="low"]')
+
+    expect(card.exists(), 'the profile card is drawn by MdCard in the low variant').toBe(true)
+    expect(card.classes(), 'a flat tinted panel on the page').toContain('bg-surface-container-low')
+    expect(card.text(), 'the profile values sit inside the card').toContain('Alice Example')
+  })
+
+  it('takes the default padding and the medium corner of MdCard', () => {
+    const card = render().find('[data-variant="low"]')
+
+    expect(card.classes(), 'the inset is the card padding').toContain('p-4')
+    expect(card.classes(), 'the corner is the medium one').toContain('rounded-corner-medium')
+    expect(card.classes()).not.toContain('rounded-corner-large')
+  })
+})
+
+describe('ProfileCard card edge', () => {
+  it('draws the card with the 1 pixel outline edge of the surface table', () => {
+    const card = render().find('[data-variant="low"]')
+
+    expect(card.classes(), 'the card keeps its tinted surface').toContain('bg-surface-container-low')
+    expect(card.classes(), 'the card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
 })

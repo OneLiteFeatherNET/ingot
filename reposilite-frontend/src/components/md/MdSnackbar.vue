@@ -15,35 +15,32 @@
   -->
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { snackbar as sharedQueue } from '../../store/snackbar'
+import { computed, inject } from 'vue'
+import { SNACKBAR_QUEUE_KEY, snackbar as sharedQueue } from '../../store/snackbar'
 
 /*
  * Material Design 3 snackbar. It shows the head of a notification queue and nothing else:
- * the queue decides what comes next and when a notice leaves. Mount it once, in App.vue.
+ * the queue decides what comes next and when a notice leaves. App.vue provides the queue
+ * once, and the application's shared queue is the default when nothing is provided.
  *
  * Errors are announced at once (`role="alert"`). Everything else is a polite status update
  * (`role="status"`), so that a success message never interrupts what the user is reading.
- *
- * The `queue` prop exists for tests, which pass a queue of their own. The application uses
- * the shared queue.
  */
-const props = withDefaults(defineProps<{
-  queue?: typeof sharedQueue
-}>(), {
-  queue: () => sharedQueue
-})
+const queue = inject(SNACKBAR_QUEUE_KEY, sharedQueue)
 
-const current = computed(() => props.queue.current.value)
+const current = computed(() => queue.current.value)
 const isError = computed(() => current.value?.tone === 'error')
 </script>
 
 <template>
   <div
-    class="pointer-events-none fixed inset-x-4 bottom-4 max-medium:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))] z-[1100] flex justify-center medium:inset-x-auto medium:bottom-6 medium:left-[calc(var(--app-rail-width,0px)+1.5rem)] medium:justify-start"
+    class="pointer-events-none fixed inset-x-4 bottom-4 max-medium:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))] z-md-snackbar flex justify-center medium:inset-x-auto medium:bottom-6 medium:left-[calc(var(--app-rail-width,0px)+1.5rem)] medium:justify-start"
     data-ingot-component="md-snackbar"
   >
-    <Transition name="md-snackbar">
+    <Transition
+      enter-active-class="motion-safe:animate-md-snackbar-enter"
+      leave-active-class="motion-safe:animate-md-snackbar-leave"
+    >
       <div
         v-if="current"
         :key="current.id"
@@ -82,25 +79,3 @@ const isError = computed(() => current.value?.tone === 'error')
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.md-snackbar-enter-active,
-.md-snackbar-leave-active {
-  transition:
-    opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
-    transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
-}
-
-.md-snackbar-enter-from,
-.md-snackbar-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .md-snackbar-enter-active,
-  .md-snackbar-leave-active {
-    transition: none;
-  }
-}
-</style>

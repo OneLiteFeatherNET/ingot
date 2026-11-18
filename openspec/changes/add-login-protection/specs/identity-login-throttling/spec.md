@@ -6,7 +6,8 @@ Limits on guessing credentials on every path that accepts a password or a token:
 authentication, LDAP over Basic, the console, the second factor. The limits delay a guess and never lock an owner out.
 
 The account throttle is off by default. Every requirement below except "Off by default and the switch" and the dummy hash
-of "Uniform answers and timing" applies only while the account throttle switch is on. While it is off, each path answers
+of "Uniform answers and timing" applies only while the account throttle switch is on. The legacy per-address counter of "Shared
+counters across replicas" follows its own switch, `authentication.bruteForceProtection.enabled`, and not the account throttle. While it is off, each path answers
 as Reposilite answers it today, and no request is delayed by the account key.
 
 ## ADDED Requirements
@@ -139,10 +140,8 @@ account throttle switch is set to.
 
 ### Requirement: Shared counters across replicas
 
-While the account throttle is on, the counters and the delays SHALL be stored in the `login_attempt` table, so failures on one
-replica count on every other. The per-address counter of Basic authentication, when `authentication.bruteForceProtection`
-is enabled, SHALL be stored there too under `basic-address|<ip>`, not in memory and not under `address|<ip>`, the dashboard's
-key. A failure SHALL still be added with an atomic increment when the conditional write fails the maximum number of times.
+While the account throttle is on, the account counters and delays SHALL be stored in the `login_attempt` table, so failures on one
+replica count on every other.
 
 #### Scenario: A failure on one replica delays the next request on another
 
@@ -151,14 +150,30 @@ key. A failure SHALL still be added with an atomic increment when the conditiona
 
 #### Scenario: A failure is not lost under write contention
 
-- **WHEN** the conditional write of a counter conflicts five times in a row
+- **WHEN** the conditional write of an account counter conflicts five times in a row
 - **THEN** the failure is added with an atomic increment and the counter reflects it
+
+### Requirement: Legacy per-address counter is shared across replicas
+
+The per-address counter of Basic authentication SHALL be stored in the `login_attempt` table under `basic-address|<ip>`, not in memory and
+not under `address|<ip>`, the dashboard's key, whenever `authentication.bruteForceProtection.enabled` is true. Its storage depends on that
+switch alone, whatever `INGOT_LOGIN_ACCOUNT_THROTTLE` is set to.
+
+#### Scenario: Legacy counter follows its own switch
+
+- **WHEN** `authentication.bruteForceProtection.enabled` is true and `INGOT_LOGIN_ACCOUNT_THROTTLE` is unset
+- **THEN** a failed Basic request is counted in `login_attempt` under `basic-address|<ip>`, and the answer stays `401`
+
+#### Scenario: Account throttle does not write the legacy counter
+
+- **WHEN** `INGOT_LOGIN_ACCOUNT_THROTTLE` is `true` and `authentication.bruteForceProtection.enabled` is false
+- **THEN** no `basic-address|<ip>` row is written
 
 ### Requirement: Uniform answers and timing for unknown and existing names
 
 A request for a name that does not exist, a wrong secret for an existing name, and a disabled or expired token SHALL receive the
 same status and message, whatever the switch. The verification SHALL run its hash for every request that reaches it, and the
-dummy hash SHALL be created before the first request, whatever the switch (open question 9 of `design.md`). While the account
+dummy hash SHALL be created before the first request, whatever the switch (decided 2026-11-18, open question 9 of `design.md`). While the account
 throttle is on, a delayed name SHALL get the same `429` whether or not it exists.
 
 #### Scenario: An unknown dashboard user takes as long as a wrong password

@@ -1,0 +1,29 @@
+// CI-only Gradle init script, copied to ~/.gradle/init.d by the Gradle jobs of ci.yml.
+//
+// When the environment variable INGOT_CI_MAVEN_MIRROR names a repository, every Maven Central repository of the
+// build resolves through that mirror instead. This keeps CI runs off the rate limit of Maven Central. Without the
+// variable the script does nothing, so local builds never see it.
+//
+// Only the URL that resolution uses is replaced. The repository declarations of the build stay as they are, so the
+// POM written for a published artifact is unaffected. A run that names a publish task is left alone for the same
+// reason.
+
+def ciMirror = System.getenv('INGOT_CI_MAVEN_MIRROR')?.trim()?.replaceAll('/+$', '')
+def mavenCentralUrls = ['https://repo.maven.apache.org/maven2', 'https://repo1.maven.org/maven2']
+def publishes = gradle.startParameter.taskNames.any { it.toLowerCase(Locale.ROOT).contains('publish') }
+
+def routeMavenCentral = { repository ->
+    if (repository instanceof MavenArtifactRepository && repository.url.toString().replaceAll('/+$', '') in mavenCentralUrls) {
+        repository.url = ciMirror
+    }
+}
+
+if (ciMirror && !publishes) {
+    gradle.beforeSettings { settings ->
+        settings.pluginManagement.repositories.all(routeMavenCentral)
+    }
+    gradle.beforeProject { project ->
+        project.buildscript.repositories.all(routeMavenCentral)
+        project.repositories.all(routeMavenCentral)
+    }
+}

@@ -19,6 +19,7 @@ import { computed, inject, onMounted, provide } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { entryLayout, type SettingsSchema } from '../settings/collections'
+import { nestedUischemas } from '../settings/nestedLayouts'
 import MdButton from '../md/MdButton.vue'
 
 /*
@@ -144,6 +145,7 @@ onMounted(() => {
         :schema="form.schema"
         :uischema="form.layout"
         :renderers="renderers"
+        :uischemas="nestedUischemas"
         :ajv="store.configurationValidator"
         @change="onChange"
       />

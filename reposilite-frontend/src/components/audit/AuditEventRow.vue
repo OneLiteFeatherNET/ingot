@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { PropType } from 'vue'
 import { RouterLink } from 'vue-router'
 import { actionLabelOf, actorLabelOf, actorLocationOf, targetLabelOf, targetLocationOf } from './auditQuery'
 import type { AuditEvent } from './auditQuery'
@@ -11,12 +10,11 @@ import type { AuditEvent } from './auditQuery'
  * page of events stays scannable. The toggle reports itself with the event id, and the parent keeps
  * the set of open rows.
  */
-const props = defineProps({
-  event: { type: Object as PropType<AuditEvent>, required: true },
-  expanded: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  event: AuditEvent
+  expanded?: boolean
+}>(), {
+  expanded: false
 })
 
 const emit = defineEmits<{
@@ -113,7 +111,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
     <div
       v-if="expanded"
       :id="detailsId"
-      class="mt-3 rounded-corner-medium bg-surface-container-low p-3"
+      class="mt-3 rounded-corner-medium bg-surface-container p-3"
     >
       <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 md-body-small text-on-surface-variant">
         <dt>Event id</dt>

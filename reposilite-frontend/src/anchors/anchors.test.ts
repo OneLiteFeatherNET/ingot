@@ -412,3 +412,19 @@ describe("the dialog-shell registry entry", () => {
     expect(entry?.file, "dialog-shell is registered at the md dialog file").toBe("src/components/md/MdDialog.vue")
   })
 })
+
+// The dialog migration moves these anchors onto MdDialog and its slots. This guard keeps each one registered and carried by
+// the element its registry entry names, so that a migrated dialog cannot drop its anchor without a failing test.
+describe("the dialog anchors kept through the dialog migration", () => {
+  it.each(["dialog-shell", "new-team-dialog", "create-token-dialog", "revoke-token-dialog", "problem-alert"])(
+    "keeps the %s anchor registered and carried by the element of its file",
+    (name) => {
+      const entry = registry.components.find(component => component.name === name)
+
+      if (!entry) expect.fail(`${name} is not registered in registry.json`)
+      const problems = nameProblems(entry.file, read(entry.file), entry, registry)
+
+      expect(problems, problems.join("\n")).toEqual([])
+    },
+  )
+})

@@ -419,12 +419,12 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
     data-ingot-component="check-permission-view"
   >
     <div class="flex flex-col gap-1">
-      <h3
+      <h2
         id="check-title"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         Check permission
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         See whether a user or machine account may use a node, and which rule decides it.
       </p>
@@ -447,6 +447,19 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
         data-test="principal-field"
         @update:model-value="onPrincipal"
       />
+      <div data-test="token-field">
+        <MdSelect
+          :model-value="token"
+          label="Token"
+          :options="tokenOptions"
+          supporting-text="Optional. A token can only narrow what its principal may do"
+          :error="tokenError !== ''"
+          :error-text="tokenError"
+          :disabled="tokenNames.length === 0 && token === ''"
+          data-test="token-select"
+          @update:model-value="onToken"
+        />
+      </div>
       <div
         class="w-fit expanded:col-span-2"
         data-test="check-mode"
@@ -518,19 +531,6 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
           />
         </div>
       </template>
-      <div data-test="token-field">
-        <MdSelect
-          :model-value="token"
-          label="Token"
-          :options="tokenOptions"
-          supporting-text="Optional. A token can only narrow what its principal may do"
-          :error="tokenError !== ''"
-          :error-text="tokenError"
-          :disabled="tokenNames.length === 0 && token === ''"
-          data-test="token-select"
-          @update:model-value="onToken"
-        />
-      </div>
       <div class="flex items-start expanded:col-span-2">
         <MdButton
           type="submit"
@@ -668,9 +668,9 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       </p>
 
       <div class="flex flex-col gap-3">
-        <h4 class="md-title-medium text-on-surface">
+        <h3 class="md-title-small text-on-surface">
           How it was derived
-        </h4>
+        </h3>
         <ol
           class="m-0 flex list-none flex-col p-0"
           aria-label="Derivation trace"

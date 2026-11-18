@@ -18,6 +18,10 @@
   A half-filled circle, the usual glyph for "follow the system". It replaces a bare capital
   A that sat between two icon buttons and read as a typography control.
 -->
+
+<script setup lang="ts">
+</script>
+
 <template>
   <svg
     class="h-5 w-5"

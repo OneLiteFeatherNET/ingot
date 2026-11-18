@@ -56,7 +56,7 @@ describe('TeamParentsCard', () => {
 
   const input = (): DOMWrapper<HTMLInputElement> => wrapper.find<HTMLInputElement>('input[role="combobox"]')
   const chips = () => wrapper.findAll('[data-test="parent"]').map(chip => chip.find('span').text())
-  const options = () => wrapper.findAll('[data-test="suggestion"]').map(option => option.text())
+  const options = () => wrapper.findAll('[role="option"]').map(option => option.text())
   const save = () => wrapper.find('[data-test="save-parents"]')
   const error = () => wrapper.find('[data-test="parents-error"]')
 
@@ -85,6 +85,17 @@ describe('TeamParentsCard', () => {
   })
 
   describe('rendering', () => {
+    it('draws the card as a low md-card with the medium corner radius and the 16 pixel padding', async () => {
+      await mountCard()
+
+      const card = wrapper.find('[data-test="team-parents"]')
+      expect(card.attributes('data-variant'), 'the card is the low variant of MdCard').toBe('low')
+      expect(card.classes(), 'the card keeps the low surface').toContain('bg-surface-container-low')
+      expect(card.classes(), 'the card uses the medium corner radius').toContain('rounded-corner-medium')
+      expect(card.classes(), 'the card keeps its 16 pixel inset').toContain('p-4')
+      expect(card.classes(), 'the card no longer uses the large radius').not.toContain('rounded-corner-large')
+    })
+
     it('shows the parent teams as removable chips', async () => {
       await mountCard()
 
@@ -165,6 +176,16 @@ describe('TeamParentsCard', () => {
       expect(chips()).toEqual(['developers', 'staff'])
     })
 
+    it('stacks the suggestion list in the menu layer and not with a z-index literal', async () => {
+      await mountCard()
+      await type('')
+
+      const classes = wrapper.find('[role="listbox"]').classes()
+
+      expect(classes, 'the menu layer token is used').toContain('z-md-menu')
+      expect(classes, 'the z-20 literal is gone').not.toContain('z-20')
+    })
+
     it('marks the highlighted option as selected for assistive technology', async () => {
       await mountCard()
       await type('')
@@ -218,7 +239,7 @@ describe('TeamParentsCard', () => {
       await mountCard()
       await type('st')
 
-      await wrapper.find('[data-test="suggestion"]').trigger('click')
+      await wrapper.find('[role="option"]').trigger('click')
 
       expect(chips()).toEqual(['developers', 'staff'])
     })

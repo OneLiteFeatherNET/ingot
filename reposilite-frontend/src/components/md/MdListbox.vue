@@ -29,6 +29,7 @@ import { optionId, type ComboboxOption } from '../../helpers/useCombobox'
  *   options  [{ value, description, disabled }]; the parent has already filtered them
  *   active   the index of the active option, or -1
  *   open     whether the list is shown
+ *   mono     shows the option values in the monospace face (nodes, paths)
  * Emits choose(value) for a click on an enabled option.
  */
 defineProps({
@@ -51,6 +52,10 @@ defineProps({
   open: {
     type: Boolean,
     default: true
+  },
+  mono: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -82,7 +87,10 @@ const emit = defineEmits<{ choose: [value: string] }>()
       data-test="option"
       @click="!option.disabled && emit('choose', option.value)"
     >
-      <span class="break-all md-body-medium">{{ option.value }}</span>
+      <span
+        class="break-all md-body-medium"
+        :class="mono ? 'font-mono' : ''"
+      >{{ option.value }}</span>
       <span
         v-if="option.description"
         class="md-body-small text-on-surface-variant"

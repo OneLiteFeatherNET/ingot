@@ -11,12 +11,13 @@
 #                            runs only the tests that serve the dashboard
 #   image=true|false         an input of the container images changed (Dockerfiles, entrypoint, compose files)
 #   chart=true|false         the Helm chart changed
-#   e2e=true|false           code the dashboard end-to-end tests exercise changed (backend or frontend)
+#   e2e=true|false           something the dashboard end-to-end tests can see changed (see below)
 #   unit=true|false          code the unit tests compile or serve changed (anything except the chart and image inputs)
 #
 # image, chart, e2e and unit fail open: a relevant path the script cannot place in one of its known areas
 # (an unknown root file, a path git quotes, a Gradle build file, a workflow, a workflow script, the shared test
-# module) turns all four on, because the job it would have skipped might be the one that catches the change.
+# module) turns all four on, because the job it would have skipped might be the one that catches the change. The
+# one exception is e2e for the load tests and for workflows and workflow scripts the suite does not run in (below).
 #
 # backend is true when at least one path is not on the deny list below. frontend is true when at least
 # one relevant path is under reposilite-frontend/ or is the OpenAPI document docs/openapi/ingot-openapi.json.
@@ -34,6 +35,23 @@
 # outside the Java sources, so guessing wrong in the skip direction would hide a real regression.
 # Paths that are skipped are only documentation, OpenSpec proposals and repository metadata, except the
 # OpenAPI document named above. An empty change list is false for all seven.
+#
+# e2e is narrower than unit, because "Dashboard end-to-end" is the slowest job the merge queue starts. It is true
+# for a path the suite can see:
+#   - the dashboard, its end-to-end specs, harness and fixtures and the Playwright config (reposilite-frontend/)
+#   - the OpenAPI document docs/openapi/ingot-openapi.json
+#   - the HTTP surface of the backend the dashboard calls: Kotlin files under src/main/kotlin in a web/, api/ or
+#     frontend/ package, or named *Endpoint*.kt or *Routes.kt, and src/main/resources (static files, service files)
+#   - login, sessions, tokens and access checks, which every signed-in page of the suite goes through:
+#     com/reposilite/auth/, com/reposilite/token/, net/onelitefeather/ingot/identity/ (login, session, authorization),
+#     net/onelitefeather/ingot/search/access/ and com/reposilite/maven/RepositorySecurityProvider.kt
+#   - what builds or starts the server for the suite: the root and backend Gradle build files, gradle/, buildSrc/,
+#     the heavy workflow, this script and heavy_gate.py
+#   - any path the script cannot place (fail-safe, as for the other flags)
+# It is false for the rest of the backend and its tests, the plugins (the suite loads no plugin of this repository,
+# only its own fixture), the search sidecar, the chart, the image inputs (the suite starts the jar, not the image),
+# loadtest/, the other workflows and workflow scripts, documentation and OpenSpec proposals. Those paths keep every
+# other flag they selected before.
 #
 # A path that git quotes (non-ASCII names, for example "reposilite-frontend/\303\244.vue") does not match
 # the frontend prefix, so it counts as backend and the full run is kept. That is the fail-open direction.
@@ -74,6 +92,18 @@ if [ -n "$outside" ]; then frontend_only=false; else frontend_only=true; fi
 IMAGE='^(Dockerfile|\.dockerignore|entrypoint\.sh|docker-compose[^/]*\.yml|reposilite-frontend/Dockerfile)$'
 CHART='^charts/'
 SOURCE='^(reposilite-backend|reposilite-plugins|reposilite-search-http)/|^reposilite-frontend/'
+# What the dashboard end-to-end suite can see. A path in SOURCE or in the fallback below turns e2e on only when it
+# matches here, or, in the fallback, when it is not on the NO_E2E list.
+E2E='^reposilite-frontend/|^docs/openapi/ingot-openapi\.json$'
+E2E="$E2E"'|^reposilite-backend/(build\.gradle\.kts$|src/main/resources/)'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(.*/)?(web|api|frontend)/'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(.*/)?[^/]*(Endpoint[^/]*|Routes)\.kt$'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(com/reposilite/(auth|token)|net/onelitefeather/ingot/(identity|search/access))/'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/com/reposilite/maven/RepositorySecurityProvider\.kt$'
+E2E="$E2E"'|^(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradlew|gradlew\.bat)$|^(gradle|buildSrc)/'
+E2E="$E2E"'|^\.github/workflows/heavy\.yml$|^\.github/scripts/(ci_scope\.sh|heavy_gate\.py)$'
+# Paths outside SOURCE that the script can place and that the suite cannot see.
+NO_E2E='^(loadtest|\.github/workflows|\.github/scripts)/'
 
 image=false
 chart=false
@@ -90,15 +120,18 @@ while IFS= read -r path; do
     continue
   fi
   if printf '%s\n' "$path" | grep -qE "$SOURCE"; then
-    e2e=true
     unit=true
+    if printf '%s\n' "$path" | grep -qE "$E2E"; then e2e=true; fi
     continue
   fi
-  # Unknown, a build file, a workflow, a script or the shared test module: every job could be affected.
+  # Unknown, a build file, a workflow, a script or the shared test module: every job could be affected, except that
+  # the end-to-end suite cannot see the load tests or the workflows and scripts it does not run in.
   image=true
   chart=true
-  e2e=true
   unit=true
+  if printf '%s\n' "$path" | grep -qE "$E2E" || ! printf '%s\n' "$path" | grep -qE "$NO_E2E"; then
+    e2e=true
+  fi
 done <<< "$relevant"
 
 printf '%s\n' "backend=true" "frontend=$frontend_flag" "frontend_only=$frontend_only" \

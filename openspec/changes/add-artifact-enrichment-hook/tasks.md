@@ -18,8 +18,8 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
   naming both numbers; a duplicate `id` is refused naming both classes; an `id` outside the pattern is refused; a refused enricher is
   never called. Verify: they fail on the missing types.
 - [ ] 2.2 `feat(search)`: add `net.onelitefeather.ingot.search.enrichment` with `ArtifactEnricher`, `ArtifactEnrichmentRequest`,
-  `EnrichmentTrigger`, `ArtifactContent`, `EnrichmentResult` (`Completed`, `Skipped`, `Failed`), the registration event and the
-  registry, marked `@ExperimentalIngotSearchApi`, and add the package to the plugin API allowlist of `add-plugin-api-artifact`.
+  `EnrichmentTrigger`, `ArtifactContent`, the sealed `EnrichmentResult` with the top-level `EnrichmentCompleted`, `EnrichmentSkipped` and `EnrichmentFailed` (decision 69), the registration event and the
+  registry, marked `@ExperimentalIngotSearchApi`, and add the package and the four types (the sealed result and its three top-level outcomes) to the plugin API allowlist of `add-plugin-api-artifact`.
   Verify: the tests of 2.1 pass and the consumer fixture compiles a sample enricher.
 
 ## 3. Content handle and executor (red, then green)
@@ -29,8 +29,8 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
 - [ ] 3.2 `feat(search)`: the content handle over `StorageProvider.getFile(location, offset, length)` with the budget of D4, and the
   bounded stream of `BoundedInputStream`. Verify: the tests of 3.1 pass.
 - [ ] 3.3 `test(search)`: failing tests of the executor with a fake executor: a normal return sets the result; an exception becomes
-  `Failed("exception: <simple name>")` and never carries the message; a deadline expiry becomes `Failed("timeout")` with the task
-  cancelled; a full queue becomes `Skipped("busy")` without a call; `Error` propagates. Verify: they fail.
+  `EnrichmentFailed("exception: <simple name>")` and never carries the message; a deadline expiry becomes `EnrichmentFailed("timeout")`
+  with the task cancelled; a full queue becomes `EnrichmentSkipped("busy")` without a call; `Error` propagates. Verify: they fail.
 - [ ] 3.4 `feat(search)`: the executor of D5 owned by the search plugin, with the queue bound and the deadline read from the injected
   clock for the timeout decision. Verify: the tests of 3.3 pass.
 

@@ -211,15 +211,15 @@ describe('SystemInfoView tabs', () => {
     expect(environment.text()).toContain('No key matches')
   })
 
-  it('shows the shared configuration whole, with a note that the filter does not apply to it', async () => {
+  it('narrows the shared configuration with the same filter as the local one', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
     const configuration = panelsOf(wrapper)[3]
 
     await filterOf(configuration).setValue('no-such-row')
 
-    expect(configuration.text()).toContain('The filter does not apply to the shared configuration.')
-    expect(configuration.text(), 'the shared block is not narrowed').toContain('secretKey')
+    expect(configuration.text(), 'the shared keys are hidden by a query that matches none').not.toContain('secretKey')
+    expect(configuration.text(), 'the note that the filter skips the shared block is gone').not.toContain('The filter does not apply')
   })
 
   it('opens the tab of a section anchor and scrolls the section into view', async () => {
@@ -520,7 +520,7 @@ describe('SystemInfoView environment and configuration as trees', () => {
   const treeOf = (panel: PanelOf) => panel.find('[role="table"]')
   // A group is a button that reports whether it is open. Shared is the one native disclosure left.
   const groupNamed = (panel: PanelOf, label: string) => panel.findAll('button[aria-expanded]').find((item) => item.text().includes(label))
-  const sharedSection = (panel: PanelOf) => panel.findAll('details').find((item) => item.find('summary').text().includes('Shared'))
+  const rowNamed = (panel: PanelOf, key: string) => panel.findAll('[role="rowheader"]').find((term) => term.text() === key)
 
   it('groups the Kubernetes service variables under one collapsed group that shows its key count', async () => {
     const wrapper = await mountView(withInfo({ ...FIXTURE, environment: longEnvironment }))
@@ -574,10 +574,27 @@ describe('SystemInfoView environment and configuration as trees', () => {
     await flushPromises()
     const configuration = panelsOf(wrapper)[3]
 
-    expect(configuration.findAll('h2').map((heading) => heading.text()), 'Local is a section heading').toContain('Local')
+    expect(configuration.findAll('h2').map((heading) => heading.text()), 'Local and Shared are section headings').toEqual(expect.arrayContaining(['Local', 'Shared']))
     expect(configuration.text(), 'the Local section counts its 21 keys').toContain('21 keys')
     expect(groupNamed(configuration, 'database')?.text(), 'the database group counts its five keys').toContain('5 keys')
-    expect(sharedSection(configuration), 'Shared is a section of its own').toBeDefined()
+  })
+
+  it('shows the shared configuration as a tree of dotted keys, not as raw JSON', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+    const configuration = panelsOf(wrapper)[3]
+
+    expect(configuration.find('pre').exists(), 'no JSON block is left').toBe(false)
+    expect(rowNamed(configuration, 'storage.type')?.element.nextElementSibling?.textContent?.trim(), 'the nested key is a row with its value').toBe('s3')
+    expect(groupNamed(configuration, 'storage')?.text(), 'the storage group counts its two keys').toContain('2 keys')
+  })
+
+  it('shows the withheld shared value as written, in its row', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+    const configuration = panelsOf(wrapper)[3]
+
+    expect(rowNamed(configuration, 'storage.secretKey')?.element.nextElementSibling?.textContent?.trim()).toBe('********')
   })
 
   it('does not merge basePath and bypassExternalCache into one group', async () => {

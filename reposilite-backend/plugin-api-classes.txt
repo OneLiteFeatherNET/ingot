@@ -1,0 +1,4 @@
+# Classes of the slim plugin API artifact (net.onelitefeather.ingot:ingot-plugin-api), one fully qualified name per line.
+# Only new Ingot API types are listed. The legacy com.reposilite.* types are provided by the server and stay out of this file.
+# A maintainer reviews every change of this file. Every listed class must be compiled, and every new Ingot type that a listed class names in a public signature must be listed too.
+net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi

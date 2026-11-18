@@ -14,57 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup lang="ts">
-defineProps({
-  on: {
-    type: Boolean,
-    default: false
-  }
-})
+<script lang="ts">
+// The old path of the component, kept so existing importers need no change. It moved to md/.
+import MdSegmentedOption from '../md/MdSegmentedOption.vue'
 
-// The focus ring is for keyboard focus. A pointer click has detail above 0, and a segment that
-// the keyboard had already focused would keep :focus-visible through it, so the ring would stay.
-// Blurring on a pointer click drops it; a keyboard activation (detail 0) keeps the focus.
-const onClick = (event: MouseEvent) => {
-  if (event.detail > 0) {
-    (event.currentTarget as HTMLElement).blur()
-  }
-}
+export default MdSegmentedOption
 </script>
-
-<template>
-  <!--
-    One segment of a SegmentedControl. It is a radio: aria-checked carries the state and the
-    roving tabindex puts only the selected segment in the tab order. The segment is 40px tall.
-    Dividers are drawn by the segment itself: a top and a left border, moved 1px over the
-    track's own border by a transform (no layout change) so the track's edge is the only line. Below sm the segment never
-    shrinks below its label (min-w-max) and the row wraps; from sm it shares the row equally
-    (min-w-0). The selected segment is filled with secondary-container inside the track's own
-    rounded edge, so there is no separate pill and no ring. The focus ring is inset and shows
-    for keyboard focus only.
-  -->
-  <button
-    type="button"
-    role="radio"
-    :aria-checked="on ? 'true' : 'false'"
-    :tabindex="on ? 0 : -1"
-    class="md-state-layer md-focus-ring-inset md-label-large relative inline-flex h-10 min-w-max flex-1 basis-0 items-center justify-center gap-1 whitespace-nowrap border-l border-t border-outline px-2 -translate-x-px -translate-y-px first:border-l-0 sm:min-w-0"
-    :class="on ? 'bg-secondary-container text-on-secondary-container' : 'bg-transparent text-on-surface'"
-    data-ingot-component="segmented-option"
-    @click="onClick"
-  >
-    <svg
-      v-if="on"
-      class="size-md-icon shrink-0"
-      viewBox="0 -960 960 960"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        fill="currentColor"
-        d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"
-      />
-    </svg>
-    <slot />
-  </button>
-</template>

@@ -21,6 +21,7 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { tokenStoreKey, useTokens } from '../../store/tokens'
 import { useSession } from '../../store/session'
 import { ADMIN_NODES } from '../../store/nodeAccess'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
@@ -151,14 +152,13 @@ onMounted(() => {
         </MdButton>
       </header>
 
-      <p
+      <MdAlert
         v-if="failure"
+        tone="error"
         data-ingot-state="error"
-        role="alert"
-        class="md-body-medium text-error"
       >
         Some steps could not be checked: {{ failure }}
-      </p>
+      </MdAlert>
 
       <ol
         v-if="loaded"

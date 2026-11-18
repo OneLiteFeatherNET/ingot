@@ -26,6 +26,7 @@ import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposilitePlugin.ReposilitePluginAccessor
 import com.reposilite.storage.StorageProviderRegistry
+import net.onelitefeather.ingot.plugin.description.PluginDescriptionNormaliser
 import net.onelitefeather.ingot.plugin.tier.PluginOrigin
 import net.onelitefeather.ingot.plugin.tier.PluginTierResolver
 import kotlin.reflect.full.findAnnotation
@@ -61,6 +62,11 @@ class Extensions(private val journalist: Journalist) : Journalist {
         check(!plugins.containsKey(name)) { "Plugin $name is already registered" }
         plugins[name] = pluginEntry
         origins[name] = origin
+
+        if (PluginDescriptionNormaliser.normalise(pluginEntry.metadata.description).cut) {
+            val limit = PluginDescriptionNormaliser.LIMIT
+            logger.warn("Description of plugin $name is longer than $limit characters and is cut to $limit")
+        }
     }
 
     /**
@@ -76,6 +82,15 @@ class Extensions(private val journalist: Journalist) : Journalist {
             origins[name] ?: PluginOrigin.PLUGINS_DIRECTORY,
             plugins[name]?.metadata?.tier ?: PluginTier.COMMUNITY,
         )
+
+    /**
+     * The description of the plugin with this id, as the stored plain text. A name that is not registered, and a plugin without a
+     * description, read as the empty text, so this never fails.
+     */
+    fun descriptionOf(name: String): String =
+        plugins[name]
+            ?.let { PluginDescriptionNormaliser.normalise(it.metadata.description).text }
+            ?: ""
 
     fun registerFacade(facade: Facade) {
         facades.add(facade)

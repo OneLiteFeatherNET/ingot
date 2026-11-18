@@ -79,6 +79,15 @@ const blocksOf = (css: string) => {
   }
 }
 
+// WCAG relative luminance of a six digit hex colour, to compare two surfaces by their lightness.
+const luminanceOf = (hex: string): number => {
+  const [r, g, b] = [1, 3, 5].map(index => {
+    const c = parseInt(hex.slice(index, index + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
 const roleNames = (declarations: Record<string, string>) =>
   Object.keys(declarations)
     .filter(name => name.startsWith('md-sys-color-'))
@@ -301,6 +310,22 @@ describe('built-in scheme and operator seed', () => {
       expect(hue >= 320 || hue <= 30, `the ${theme} primary from the previous seed is at ${hue.toFixed(0)} degrees, expected a magenta or pink hue`).toBe(true)
       expect(block['md-sys-color-primary'], `the ${theme} primary should not be the built-in steel primary`).not.toBe(builtIn()[theme]['md-sys-color-primary'])
     }
+  })
+})
+
+describe('seeded dark surface-dim', () => {
+  it('gives the seeded dark surface-dim a lower luminance than the seeded dark surface', () => {
+    const dark = blocksOf(buildThemeCss(withSettings({ seedColor: SEED }))).dark
+    const dim = luminanceOf(dark['md-sys-color-surface-dim'])
+    const surface = luminanceOf(dark['md-sys-color-surface'])
+
+    expect(dim, `seeded dark surface-dim ${dark['md-sys-color-surface-dim']} must be darker than the seeded dark surface ${dark['md-sys-color-surface']}`).toBeLessThan(surface)
+  })
+
+  it('gives the seeded dark surface-dim the value of the seeded surface-container-lowest, as the built-in theme does', () => {
+    const dark = blocksOf(buildThemeCss(withSettings({ seedColor: SEED }))).dark
+
+    expect(dark['md-sys-color-surface-dim'], 'the seeded dark surface-dim follows the darkest surface').toBe(dark['md-sys-color-surface-container-lowest'])
   })
 })
 

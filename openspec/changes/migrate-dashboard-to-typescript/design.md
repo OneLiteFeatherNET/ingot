@@ -39,7 +39,8 @@ Phase 0 re-checks each date and each peer range with `npm view` and records them
 
 ## Decisions
 
-**D1. TypeScript 6.0.3, not 7.** `typescript-eslint` 8.72.1 declares `typescript <6.1.0`, so npm refuses 7.0.2 with the rule set we need. Phase 0 pins 6.0.3 and records the blocker. Moving to 7 is a separate `build(ui)` change once `typescript-eslint` accepts it.
+**D1. TypeScript 6.0.3, not 7.** `typescript-eslint` 8.72.1 declares `typescript <6.1.0`, so npm refuses 7.0.2 with the rule set we need. Phase 0 pins 6.0.3 and records the blocker. The peer cap of `typescript-eslint` is handled with an npm `overrides` entry (decided
+2026-11-18), and the override is removed with task 5.2. Moving to 7 is a separate `build(ui)` change once `typescript-eslint` accepts it.
 
 **D2. Project layout.** Four tsconfig files, all extending `@vue/tsconfig/tsconfig.dom.json` or `tsconfig.node.json`, with `moduleResolution: "bundler"` so extensionless imports and Vite's resolution match:
 
@@ -70,7 +71,7 @@ Stores and components import named schema types from `src/types/api.ts`, never f
 - The JavaScript chunks are listed with their sizes before and after. A chunk that grows by more than 2 percent needs a sentence in the pull request. Byte equality is not required for JavaScript, because the Vue compiler's output for `lang="ts"` differs in helper code.
 - The e2e smoke set must pass with no changed snapshots. For a component slice it is the specs that render the slice's components, named in its pull request; the baseline set for every slice is `dashboard`, `layout`, `navigation`, `repositories` and `sign-in`.
 
-**D10. What never changes in a slice.** Template markup, props and their defaults, emitted events, `data-ingot-*` attributes, route names and paths, request URLs and bodies, user-visible copy, and CSS classes. A slice may add `defineProps<...>()`, `defineEmits<...>()`, type annotations, type-only imports, `defineOptions({ name, inheritAttrs })` for the Options API conversion (question 5), and `satisfies` or `as const` where the value does not change at runtime.
+**D10. What never changes in a slice.** Template markup, props and their defaults, emitted events, `data-ingot-*` attributes, route names and paths, request URLs and bodies, user-visible copy, and CSS classes. The template-only icons are the one case where a component without a script block gets one (decided 2026-11-18, task 2.C02). A slice may add `defineProps<...>()`, `defineEmits<...>()`, type annotations, type-only imports, `defineOptions({ name, inheritAttrs })` for the Options API conversion (question 5), and `satisfies` or `as const` where the value does not change at runtime.
 
 ## Slice rules
 

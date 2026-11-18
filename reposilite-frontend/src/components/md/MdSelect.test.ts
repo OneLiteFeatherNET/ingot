@@ -568,3 +568,18 @@ describe('MdSelect', () => {
     })
   })
 })
+
+describe('MdSelect width', () => {
+  it('fills the width of its container by default', () => {
+    const wrapper = mountSelect()
+
+    expect(wrapper.classes(), 'the default root takes the full width of its container').toContain('w-full')
+  })
+
+  it('fits its content when width is content, and then has no full width class', () => {
+    const wrapper = mountSelect({ width: 'content' })
+
+    expect(wrapper.classes(), 'width content fits the root to its content').toContain('w-fit')
+    expect(wrapper.classes(), 'width content drops the full width class').not.toContain('w-full')
+  })
+})

@@ -5,13 +5,14 @@
     data-test="section"
     data-ingot-component="section-renderer"
   >
-    <h3
+    <component
+      :is="nested ? 'h3' : 'h2'"
       v-if="layout.label && !layout.uischema.options?.hideTitle"
       :class="nested ? 'md-title-small' : 'md-title-medium'"
       class="text-on-surface"
     >
       {{ layout.label }}
-    </h3>
+    </component>
     <DispatchRenderer
       v-for="(element, index) in layout.uischema.elements"
       :key="`${layout.path}-${index}`"

@@ -195,7 +195,7 @@ change adds no switch. Two gaps remain and are recorded, not fixed here:
 
 ### D9. Cluster: counters are shared, and the legacy counter moves into the shared store
 
-- All counters live in `login_attempt` (`LoginAttemptLimiter`), so replicas count together. The `login_known_address` table is
+- The account throttle's counters live in `login_attempt` (`LoginAttemptLimiter`), so replicas count together. The `login_known_address` table is
   shared too. No Redis, no NATS for counting: NATS remains an optional fan-out for events only, as the HA design says.
 - The legacy per-address switch (`authentication.bruteForceProtection`) keeps its keys and its default (off), and its
   counting moves from the in-memory cache to `basic-address|<ip>` in `login_attempt` when the switch is on. The memory cache
@@ -203,6 +203,9 @@ change adds no switch. Two gaps remain and are recorded, not fixed here:
   digests exactly that string (`LoginAttemptLimiter.addressKey`, `LoginService.kt:97`), so sharing it would let Basic
   failures lock dashboard logins. The answer when this switch refuses a request stays `401` (`AuthenticationFacade.kt:152-154`).
   With the switch off nothing is counted, as today.
+- **Coupling.** The legacy counter is coupled only to `authentication.bruteForceProtection.enabled`. Turning on
+  `INGOT_LOGIN_ACCOUNT_THROTTLE` does not move it into the shared store, and turning on the legacy switch does not enable the account
+  throttle. The two switches can be set independently, and the tests of task 2.7 cover each combination.
 - **Contention.** `LoginAttemptLimiter.recordFailure` tries five compare-and-set writes and then drops the failure
   (`LoginAttemptLimiter.kt:62-73`). Under a burst from one address, a failure can be lost. The code pull request replaces
   the drop with an atomic increment (`failures = failures + 1` in one statement) after the fifth conflict, so a failure is
@@ -301,9 +304,9 @@ installation changes nothing until an operator opts in.
    not from a separate enrolment. Recorded only while the account throttle is on.
 2. **Maven and Gradle behaviour on `429`.** Not verified in this proposal. Default: the server answers `429` with
    `Retry-After` regardless, because it is the standard answer, and this applies only while the account throttle is on.
-   Task 2.1 records what Maven 3.9 and Gradle 8 do before the first code pull request is merged.
+   Task 1.2 records what Maven 3.9 and Gradle 9 do before the first code pull request is merged.
 3. **Legacy per-address switch default.** Default: off, as today. Turning it on is a documented choice, because it can ban
-   an office behind one address. Its counter is shared across replicas once it is on (D9).
+   an office behind one address. Its counter is shared across replicas once `authentication.bruteForceProtection` is on (D9), whatever the account throttle switch is set to.
 4. **Minimum password length.** Default: 12 in code (`LoginService.kt:263`), the value enforced today, measured as today.
    The docs recommend 12 to 15. Raising the default later needs its own change.
 5. **Breached-password fail mode.** Default: the check is off (mode `OFF`), so there is no outage to fail on. When an
@@ -314,5 +317,5 @@ installation changes nothing until an operator opts in.
    the first thing to revisit after `add-multi-factor-authentication` is merged.
 8. **Standards mapping.** ASVS 4.0 V2 and V3 correspond to ASVS 5.0 V6 and V7. The OWASP and NIST minimums are cited from
    the versions known at the time of writing; verify the current text before the code pull request for D4.
-9. **Dashboard dummy hash timing.** Default: the eager dummy hash (D3) is kept on without a switch, because it changes
-    the timing of one answer and no content. The maintainer confirms it, or asks for it to be gated behind a switch.
+9. **Dashboard dummy hash timing.** Decided 2026-11-18: the eager dummy hash (D3) is kept on and ungated, with no switch, because it
+    changes the timing of one answer and no content.

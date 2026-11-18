@@ -1,9 +1,8 @@
-# Spec Delta
-
 ## Purpose
 
 A remote client can list the console commands, run one and get a structured result with an exit status, and dangerous commands can be
-confirmed. Every remote command is audited. The existing endpoints, the stdin console and the dashboard console do not change.
+confirmed. Every remote command is audited. The existing endpoints and the stdin console do not change. The WebSocket gains a
+versioned protocol for the REPLs (see `console-websocket`), and the dashboard console becomes a web REPL (see `dashboard-console`).
 
 ## ADDED Requirements
 
@@ -26,8 +25,8 @@ keep reading commands from standard input unless `--disable-interactive-console`
 ### Requirement: Command listing
 
 `GET /api/console/commands` SHALL return, to a principal with the console area, a versioned list of every registered command with its
-name, aliases, description, options, positional parameters, subcommands, a `dangerous` flag and a `sensitive` flag. A principal without the
-console area SHALL be refused like on execute.
+name, aliases, description, options, positional parameters, subcommands, a `dangerous` flag, a `sensitive` flag and a `scope` of `node`
+or `cluster`. A principal without the console area SHALL be refused like on execute.
 
 #### Scenario: Listing
 

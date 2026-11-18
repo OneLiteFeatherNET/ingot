@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import usePlaceholders from '../../store/placeholders'
+import MdPage from '../md/MdPage.vue'
 import MenuPanel from './MenuPanel.vue'
 
 /*
@@ -33,8 +34,9 @@ const { title } = usePlaceholders()
     data-ingot-component="default-header"
   >
     <!-- The top app bar: the title on the left, the account actions on the right. -->
-    <div
-      class="container mx-auto flex min-h-16 max-w-none flex-row items-center justify-between gap-4 py-2"
+    <MdPage
+      centred
+      class="flex min-h-16 max-w-none flex-row items-center justify-between gap-4 py-2"
     >
       <span
         data-ingot-part="title"
@@ -48,6 +50,6 @@ const { title } = usePlaceholders()
         </router-link>
       </span>
       <MenuPanel />
-    </div>
+    </MdPage>
   </header>
 </template>

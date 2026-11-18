@@ -1,7 +1,9 @@
-# Builds and tests the project on pull requests and on pushes to main.
+# Builds and tests the project on pull requests, in the merge queue and on pushes to main.
 #
-# A pull request runs every light job. A push to main runs only what main needs: the Coverage (backend) and
-# Coverage (frontend) jobs, which write the Gradle and npm caches and the Codecov base that pull requests read.
+# A pull request runs every light job. The merge queue runs them again on the merge group, scoped by the diff of the
+# merge group the same way. Only the Build job is left to merge-queue.yml, because its shared workflow cannot run
+# there. A push to main runs only what main needs: the Coverage (backend) and Coverage (frontend) jobs, which write
+# the Gradle and npm caches and the Codecov base that pull requests read.
 # Everything else was already proven by the pull request that merged. A nightly run and a manual run cover the whole
 # workflow. The container images, the Helm chart, the HA smoke test and the dashboard end-to-end job are heavy and
 # run from heavy.yml.
@@ -9,9 +11,12 @@ name: "CI"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/**" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/**" ]
+  # The merge queue. Every required check of this workflow has to report on the merge group, or the queue stalls.
+  merge_group:
+    types: [ "checks_requested" ]
   # Nightly full run of this workflow on main, so main gets every job once a day even though a push runs a subset.
   schedule:
     - cron: "23 3 * * *"
@@ -20,8 +25,15 @@ on:
 permissions:
   contents: read
 
+# Opt-in for the Gradle jobs: set the repository variable INGOT_CI_MAVEN_MIRROR to route Maven Central through a mirror.
+# Unset, every build resolves from Maven Central as before.
+env:
+  INGOT_CI_MAVEN_MIRROR: ${{ vars.INGOT_CI_MAVEN_MIRROR }}
+
 # Superseded pull request runs are cancelled. Runs on main, scheduled runs and manual runs are not: each one
-# finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one.
+# finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one. A merge
+# group has no pull request number and falls back to its ref, which is unique per queue entry, so entries never cancel
+# each other.
 concurrency:
   group: "ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -31,8 +43,10 @@ jobs:
   # sourceCompatibility/targetCompatibility 17, so 17 is what has to keep working.
   build:
     name: "Build"
-    # Pull requests only, as the name gradle-build-pr says. Its first job runs
-    # dorny/paths-filter without a checkout, which works on pull_request because the action
+    # Pull requests only, as the name gradle-build-pr says. In the merge queue merge-queue.yml reports this job's
+    # required check, "Build / Aggregate test results", because the filter below cannot run on a merge group.
+    #
+    # Its first job runs dorny/paths-filter without a checkout, which works on pull_request because the action
     # asks the API for the changed files, and fails on push because there it needs a
     # working copy to diff. A failing filter job takes the build with it, since the build
     # job's `if` carries no status function and is therefore implicitly gated on success.
@@ -91,6 +105,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Check backend dependency licenses"
         run: ./gradlew --build-cache :reposilite-backend:checkLicense
@@ -177,6 +197,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       # Trivy reads lockfiles, and a Gradle build without dependency locking has none. The
       # task copies the resolved runtime classpath out so the jars can be identified by
       # checksum instead.
@@ -223,6 +249,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Generate the SBOM of the standalone jar"
         run: ./gradlew --build-cache :reposilite-backend:cyclonedxDirectBom
@@ -277,15 +309,16 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
-          # Both ends of the pull request have to be present for the diff below.
+          # Both ends of the pull request or the merge group have to be present for the diff below.
           fetch-depth: 0
 
+      # A merge group is scoped like a pull request, from the diff of its base to its head.
       - name: "Check which coverage jobs are needed"
         id: filter
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
 
@@ -304,8 +337,8 @@ jobs:
           }
 
           # Pushes to main always run everything.
-          if [ "$EVENT" != "pull_request" ]; then
-            full_run "Not a pull request"
+          if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "merge_group" ]; then
+            full_run "Not a pull request or a merge group"
           fi
 
           # A missing or unreadable range is no reason to skip the tests.
@@ -364,21 +397,28 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       # Decides which backend tests a pull request can reach (select_backend_tests.py, design Decision 3). Only a pull
       # request gets a partial run. A push to main, a missing diff and a failing script all give mode=full, so the
-      # full suite and the Codecov upload run. The dashboard-only path below keeps its own decision.
+      # full suite and the Codecov upload run. The dashboard-only path below keeps its own decision. A merge group is
+      # selected like a pull request, from its own diff.
       - name: "Select the backend tests"
         id: select
         if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           selection="$RUNNER_TEMP/backend-selection.txt"
           changed="$RUNNER_TEMP/backend-changed.txt"
-          if [ "$EVENT" != "pull_request" ]; then
-            printf '%s\n' "mode=full" "reason=not a pull request" > "$selection"
+          if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "merge_group" ]; then
+            printf '%s\n' "mode=full" "reason=not a pull request or a merge group" > "$selection"
           elif [ -z "$BASE" ] || [ -z "$HEAD" ] || ! git diff --name-only "$BASE...$HEAD" > "$changed"; then
             printf '%s\n' "mode=full" "reason=the pull request diff is not available" > "$selection"
           elif ! python3 .github/scripts/select_backend_tests.py < "$changed" > "$selection"; then
@@ -419,17 +459,18 @@ jobs:
         run: |
           ./gradlew --build-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
 
-      # A pull request that the selection sends to the full suite runs every unit test, with no report and no upload.
+      # A pull request or a merge group that the selection sends to the full suite runs every unit test, with no report
+      # and no upload. Only main writes the Codecov base.
       - name: "Run the backend unit tests"
-        if: ${{ github.event_name == 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew --build-cache :reposilite-backend:test
 
       - name: "Run tests with coverage"
-        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew --build-cache :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
-        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
@@ -474,14 +515,14 @@ jobs:
         id: scope
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -uo pipefail
 
-          # The full suite unless a pull request diff is readable and the script can place every change.
+          # The full suite unless a pull request or merge group diff is readable and the script can place every change.
           result="frontend_scope=full"
-          if [ "$EVENT" = "pull_request" ] \
+          if { [ "$EVENT" = "pull_request" ] || [ "$EVENT" = "merge_group" ]; } \
              && [ -n "$BASE" ] && [ -n "$HEAD" ] \
              && git cat-file -e "${BASE}^{commit}" && git cat-file -e "${HEAD}^{commit}" \
              && git diff --name-status "$BASE...$HEAD" > "$RUNNER_TEMP/name-status.txt"; then
@@ -586,6 +627,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       - name: "Compare the plugin API with Reposilite 3.5.28"
         run: ./gradlew --build-cache :reposilite-backend:pluginApiReport
 
@@ -600,7 +647,7 @@ jobs:
       - name: "Write the results to the job summary"
         if: always()
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           CANARY_OUTCOME: ${{ steps.canaries.outcome }}
         run: |
           {
@@ -681,6 +728,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       - name: "Run the contract tests of the Official plugins"
         run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:contractTest :reposilite-plugins:migration-plugin:contractTest
 
@@ -708,6 +761,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Check the plugin tiers"
         run: ./gradlew --build-cache checkPluginTiers
@@ -763,13 +822,143 @@ jobs:
       - name: "Run the docs guide tests"
         run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -p 'test_*guides.py' -v
 
+  # Decides whether the pull request changes the Helm chart. Only a change under charts/ counts. A diff that cannot be
+  # read counts as a change, so the lint below is never skipped by accident.
+  chart-changes:
+    name: "Detect chart changes"
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      chart: ${{ steps.filter.outputs.chart }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # Both ends of the pull request have to be present for the diff below.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Check whether the chart changed"
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if ! git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"; then
+            echo "chart=true" >> "$GITHUB_OUTPUT"
+            echo "Could not diff the pull request, running the chart lint." >&2
+          elif grep -q '^charts/' "$RUNNER_TEMP/changed.txt"; then
+            echo "chart=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "chart=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The pre-cluster part of the Helm chart job in heavy.yml, run on every pull request that changes charts/. The
+  # cluster install and the image smoke test stay label-gated in heavy.yml. This job is not a required check.
+  chart-lint:
+    name: "Chart lint"
+    needs: [ chart-changes ]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (needs.chart-changes.result != 'success' || needs.chart-changes.outputs.chart == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install the chart test dependencies"
+        run: python3 -m pip install "pyyaml==6.0.3"
+
+      - name: "Install promtool"
+        # Prometheus 3.5.0 release archive, verified against the sha256 published with the release.
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/prometheus.tar.gz" \
+            https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
+          echo "e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum --check --strict -
+          tar --extract --gzip --file "$RUNNER_TEMP/prometheus.tar.gz" --directory "$RUNNER_TEMP" prometheus-3.5.0.linux-amd64/promtool
+          echo "PROMTOOL=$RUNNER_TEMP/prometheus-3.5.0.linux-amd64/promtool" >> "$GITHUB_ENV"
+
+      - name: "Lint the chart in both deploy modes"
+        run: |
+          helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/tests/scalable/values.yaml
+
+      - name: "Check the alert rules with promtool"
+        run: |
+          helm template ingot charts/ingot --namespace reposilite-staging --set prometheusRule.enabled=true \
+            --show-only templates/prometheusrule.yaml > "$RUNNER_TEMP/prometheusrule.yaml"
+          python3 -c 'import sys, yaml; print(yaml.safe_dump(yaml.safe_load(open(sys.argv[1]))["spec"]))' \
+            "$RUNNER_TEMP/prometheusrule.yaml" > "$RUNNER_TEMP/rules.yaml"
+          "$PROMTOOL" check rules "$RUNNER_TEMP/rules.yaml"
+
+      - name: "Run the chart tests"
+        run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
+
+      - name: "Check the dashboard segment copy against its source"
+        run: cmp charts/ingot/files/dashboard-segments.json reposilite-frontend/src/router/dashboard-segments.json
+
+      - name: "Set up chart-testing"
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f  # v2.8.0
+        with:
+          version: "3.14.0"
+
+      - name: "Lint the chart with chart-testing"
+        run: ct lint --config ct.yaml --all
+
+  # The support tables of SUPPORT.md and .github/SECURITY.md are rendered from support-lines.json, so a window
+  # cannot drift from its table. The job fails when a table differs, when a backport label is missing for an open
+  # line, or when an open line has no release branch. With no open line the label and branch loops do nothing.
+  support-lines:
+    name: "Support lines"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Check the support tables against support-lines.json"
+        run: python3 .github/scripts/render_support_tables.py --mode check
+
+      - name: "Check the backport labels and release branches of the open lines"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while read -r label branch; do
+            if ! gh label list --repo "$GITHUB_REPOSITORY" --limit 500 --json name --jq '.[].name' | grep -qxF "$label"; then
+              echo "::error::the label $label is missing, create it before the line is open"
+              exit 1
+            fi
+            if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "::error::the branch $branch is missing for an open line"
+              exit 1
+            fi
+          done < <(python3 .github/scripts/render_support_tables.py --mode labels)
+
   # The required check for everything that must stay fast. It is green when each light job succeeded or was skipped,
   # and red when one failed or was cancelled. The summary lists each light job's duration against its budget, and a
   # job over budget only warns, so a slow runner does not block a merge. Container images, the Helm chart, the HA smoke
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests, support-lines]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:

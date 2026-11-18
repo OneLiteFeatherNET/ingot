@@ -23,6 +23,10 @@ Rules, in this order:
 4. A fork pull request does not rerun on `synchronize`, because the label was given to code the maintainer reviewed.
    When a label is present `ok` is `false` until the maintainer removes and re-adds it.
 5. `ci:heavy` selects every job. An area label selects its own jobs. No label selects nothing.
+6. A `merge_group` event (the merge queue) has no labels. The scope flags of ci_scope.sh for the merge group diff,
+   passed with `--scope-file`, select the jobs: `image` runs the images and the chart install that deploys them,
+   `chart` runs the chart, `e2e` runs the end-to-end tests. Nothing else runs there. A missing or unreadable scope runs
+   all three, so a failed detection never skips one.
 
 `verdict` reads the decision and the result of every heavy job and prints the verdict for the aggregate `Heavy tests`.
 It exits 1 when the aggregate must fail.
@@ -48,6 +52,12 @@ AREA_LABELS = {
     "ci:search": ("search",),
     "ci:codeql": ("codeql",),
 }
+# The heavy jobs a merge group can start, and the scope flags of ci_scope.sh that start each of them.
+MERGE_GROUP_JOBS = {
+    "images": ("image",),
+    "helm": ("image", "chart"),
+    "e2e": ("e2e",),
+}
 MAIN_REF = "refs/heads/main"
 RELEASE_REF_PREFIX = "release-please--"
 PULL_REQUEST_ACTIONS = ("opened", "reopened", "synchronize", "labeled", "unlabeled")
@@ -62,9 +72,14 @@ class Decision(NamedTuple):
     reason: str
 
 
-def decide(event_name, action, labels, head_ref, head_repo, repo, ref="") -> Decision:
-    """Returns the heavy jobs a pull request or dispatch asks for."""
+def decide(event_name, action, labels, head_ref, head_repo, repo, ref="", scope=None) -> Decision:
+    """Returns the heavy jobs a pull request, a merge group or a dispatch asks for.
+
+    `scope` maps the flags of ci_scope.sh to "true" or "false" and is read for a merge group only. None means the
+    scope is unknown."""
     everything = Decision(HEAVY_JOBS, True, False, True, "")
+    if event_name == "merge_group":
+        return _merge_group(scope)
     if event_name == "workflow_dispatch":
         if ref != MAIN_REF:
             return Decision((), False, False, False, "an on-demand heavy run starts from main only")
@@ -90,6 +105,30 @@ def decide(event_name, action, labels, head_ref, head_repo, repo, ref="") -> Dec
     if not selected:
         return Decision((), False, False, True, "heavy tests not requested")
     return Decision(selected, False, False, True, "heavy jobs requested by label: " + ", ".join(selected))
+
+
+def _merge_group(scope) -> Decision:
+    if scope is None:
+        jobs = tuple(job for job in HEAVY_JOBS if job in MERGE_GROUP_JOBS)
+        return Decision(jobs, False, False, True, "merge group scope unknown: running " + ", ".join(jobs))
+    jobs = tuple(job for job in HEAVY_JOBS
+                 if any(scope.get(flag) == "true" for flag in MERGE_GROUP_JOBS.get(job, ())))
+    if not jobs:
+        return Decision((), False, False, True, "merge group touches no heavy scope")
+    return Decision(jobs, False, False, True, "merge group scope: " + ", ".join(jobs))
+
+
+def _read_scope(path):
+    """The key=value lines of ci_scope.sh as a dict, or None when the file is missing, unreadable or empty."""
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except OSError:
+        return None
+    scope = dict(line.split("=", 1) for line in lines if "=" in line)
+    return scope or None
 
 
 def _selected_jobs(label_set) -> Tuple[str, ...]:
@@ -148,6 +187,8 @@ def verdict(decision: Decision, gate_result: str, results: Dict[str, object]):
 
 def _parse_labels(raw: Optional[str]) -> List[str]:
     value = json.loads(raw or "[]")
+    if value is None:  # a merge_group event has no pull request, so its label list renders as null
+        value = []
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError("labels must be a JSON list of strings")
     return value
@@ -157,7 +198,7 @@ def _run_decide(args) -> int:
     failed = False
     try:
         decision = decide(args.event_name, args.action, _parse_labels(args.labels),
-                          args.head_ref, args.head_repo, args.repo, args.ref)
+                          args.head_ref, args.head_repo, args.repo, args.ref, _read_scope(args.scope_file))
     except ValueError as error:
         failed = True
         decision = Decision(HEAVY_JOBS, True, False, False, f"scope step failed ({error}): running everything")
@@ -196,6 +237,7 @@ def main(argv=None) -> int:
     decide_parser.add_argument("--head-repo", default="")
     decide_parser.add_argument("--repo", default="")
     decide_parser.add_argument("--ref", default="", help="git ref the workflow runs on, for workflow_dispatch")
+    decide_parser.add_argument("--scope-file", default="", help="output of ci_scope.sh, for a merge group")
     decide_parser.add_argument("--output", default="", help="file to append the key=value lines to")
     verdict_parser = sub.add_parser("verdict")
     verdict_parser.add_argument("--gate-result", default="")

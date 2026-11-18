@@ -283,3 +283,17 @@ describe('AuditView export', () => {
     expect(download).toHaveBeenCalledWith(expect.any(Blob), 'ingot-audit.csv', 'text/csv')
   })
 })
+
+// Type contract, checked by vue-tsc: now is epoch milliseconds. Never called at runtime.
+// @ts-expect-error now is a number of epoch milliseconds, not a text
+const mountWithTextTime = () => mount(AuditView, { props: { now: '2026-11-17' } })
+void mountWithTextTime
+
+describe('AuditView card', () => {
+  it('draws the card edge with a 1 pixel outline border', async () => {
+    const wrapper = await mountView()
+
+    const card = wrapper.get('form[role="search"]').element.parentElement as HTMLElement
+    expect(card.classList.contains('border-outline'), 'card should carry the outline edge').toBe(true)
+  })
+})

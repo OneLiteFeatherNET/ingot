@@ -1,7 +1,8 @@
-<script setup>
-import { computed, ref, watch } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+<script setup lang="ts">
+import { computed, ref, useId, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 /*
  * Shown when a save was refused because the stored settings, token, team or permission nodes changed since this dashboard read them.
@@ -10,83 +11,90 @@ import MdButton from '../md/MdButton.vue'
  * stored settings were reviewed, `differenceCount` says how many changes the review lists; the review itself
  * is a sheet the owner opens, so the dialog keeps no list of its own.
  */
-const props = defineProps({
-  conflict: {
-    type: Object,
-    default: null
-  },
-  differenceCount: {
-    type: Number,
-    default: null
-  }
+interface ConflictState {
+  kind: 'settings' | 'team' | 'nodes' | 'token'
+  name?: string
+  title?: string
+  reviewed?: boolean
+  server?: unknown
+}
+
+const props = withDefaults(defineProps<{
+  conflict?: ConflictState | null
+  differenceCount?: number | null
+}>(), {
+  conflict: null,
+  differenceCount: null
 })
 
-const emit = defineEmits(['review', 'reload', 'overwrite', 'dismiss'])
+const emit = defineEmits<{
+  review: []
+  reload: []
+  overwrite: []
+  dismiss: []
+}>()
 
 // Overwriting drops someone else's change, so it takes a second, explicit press.
 const confirmingOverwrite = ref(false)
 watch(() => props.conflict, () => { confirmingOverwrite.value = false })
 
-const isSettings = computed(() => props.conflict?.kind === 'settings')
-const TITLES = {
+// The dialog fades out once the conflict is cleared, so the last conflict stays drawn until the fade ends.
+const shown = ref(props.conflict)
+watch(() => props.conflict, (conflict) => { if (conflict) shown.value = conflict })
+
+const titleId = useId()
+const bodyId = useId()
+
+const isSettings = computed(() => shown.value?.kind === 'settings')
+const TITLES: Record<string, string> = {
   settings: 'Settings changed elsewhere',
   team: 'Team changed elsewhere',
   nodes: 'Permission nodes changed elsewhere'
 }
-const title = computed(() => TITLES[props.conflict?.kind] ?? 'Token changed elsewhere')
+const title = computed(() => TITLES[shown.value?.kind ?? ''] ?? 'Token changed elsewhere')
 
-// The scrim is the MD3 role colour at 32%, set inline because the modal paints a fixed black overlay.
-const overlayStyle = {
-  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
-}
-
-const onOpenChange = (open) => {
+const onOpenChange = (open: boolean) => {
   if (!open) emit('dismiss')
 }
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="conflict !== null"
-    teleport-to="body"
-    :overlay-style="overlayStyle"
-    class="flex min-h-full items-center justify-center p-4"
+    :labelledby="titleId"
+    :describedby="bodyId"
+    role="alertdialog"
     @update:model-value="onOpenChange"
   >
     <div
-      v-if="conflict"
-      class="w-full max-w-lg rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="conflict-title"
-      aria-describedby="conflict-body"
+      v-if="shown"
       data-ingot-component="conflict-dialog"
     >
       <h2
-        id="conflict-title"
+        :id="titleId"
         class="md-headline-small text-on-surface"
       >
         {{ title }}
       </h2>
 
       <div
-        id="conflict-body"
+        :id="bodyId"
         class="mt-4 flex flex-col gap-3 md-body-medium text-on-surface-variant"
       >
         <p v-if="isSettings">
-          The settings of <strong class="text-on-surface">{{ conflict.title }}</strong> were saved by someone else after you
+          The settings of <strong class="text-on-surface">{{ shown.title }}</strong> were saved by someone else after you
           loaded them. Your changes have not been saved.
         </p>
-        <p v-else-if="conflict.kind === 'team'">
-          The team <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you
+        <p v-else-if="shown.kind === 'team'">
+          The team <strong class="text-on-surface">{{ shown.name }}</strong> was changed by someone else after you
           loaded it. Your change has not been saved.
         </p>
-        <p v-else-if="conflict.kind === 'nodes'">
-          The permission nodes of <strong class="text-on-surface">{{ conflict.name }}</strong> were changed by someone else
+        <p v-else-if="shown.kind === 'nodes'">
+          The permission nodes of <strong class="text-on-surface">{{ shown.name }}</strong> were changed by someone else
           after you loaded them. Your changes have not been saved.
         </p>
         <p v-else>
-          The token <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you
+          The token <strong class="text-on-surface">{{ shown.name }}</strong> was changed by someone else after you
           loaded it. Your change has not been saved.
         </p>
 
@@ -110,14 +118,13 @@ const onOpenChange = (open) => {
         </p>
       </div>
 
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          class="md-state-layer md-focus-ring relative inline-flex min-h-12 items-center justify-center rounded-corner-full px-6 md-label-large text-primary"
+      <MdDialogActions class="mt-6">
+        <MdButton
+          variant="text"
           @click="emit('dismiss')"
         >
           Keep my draft
-        </button>
+        </MdButton>
         <MdButton
           v-if="isSettings"
           variant="tonal"
@@ -145,7 +152,7 @@ const onOpenChange = (open) => {
         >
           Confirm overwrite
         </MdButton>
-      </div>
+      </MdDialogActions>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>

@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdSelect from '../md/MdSelect.vue'
 import SearchBar from './SearchBar.vue'
 import SearchFilters from './SearchFilters.vue'
@@ -88,7 +89,7 @@ const activeRow = ref(0)
 const expanded = ref<Record<string, boolean>>({})
 const filesByKey = ref<Record<string, FilesState>>({})
 const bar = ref<InstanceType<typeof SearchBar> | null>(null)
-const list = ref<HTMLUListElement | null>(null)
+const list = ref<InstanceType<typeof MdCard> | null>(null)
 const filterButton = ref<InstanceType<typeof MdButton> | null>(null)
 const filtersTitleId = useId()
 let latestRequest = 0
@@ -164,7 +165,7 @@ const toggleSheet = async (open: boolean) => {
 }
 
 // The keys of the search box (spec section 8.2).
-const rowToggles = () => [...(list.value?.querySelectorAll<HTMLElement>('[data-row-toggle]') ?? [])]
+const rowToggles = () => [...((list.value?.$el as HTMLElement | undefined)?.querySelectorAll<HTMLElement>('[data-row-toggle]') ?? [])]
 
 const focusRow = async (index: number) => {
   await nextTick()
@@ -420,10 +421,13 @@ const toggleRow = (item: SearchItem) => {
             />
           </div>
 
-          <ul
+          <MdCard
             v-if="loading"
+            as="ul"
+            variant="low"
+            padding="none"
             data-ingot-state="loading"
-            class="mt-4 m-0 list-none overflow-hidden rounded-corner-medium bg-surface-container-low p-0"
+            class="mt-4 m-0 list-none overflow-hidden"
             data-test="skeleton"
             aria-hidden="true"
           >
@@ -435,7 +439,7 @@ const toggleRow = (item: SearchItem) => {
               <div class="h-5 w-2/3 rounded-corner-small bg-surface-container-highest" />
               <div class="mt-3 h-4 w-1/3 rounded-corner-small bg-surface-container-highest" />
             </li>
-          </ul>
+          </MdCard>
 
           <div
             v-else-if="failure"
@@ -506,9 +510,12 @@ const toggleRow = (item: SearchItem) => {
           </div>
 
           <template v-else-if="result">
-            <ul
+            <MdCard
               ref="list"
-              class="mt-4 m-0 list-none overflow-hidden rounded-corner-medium bg-surface-container-low p-0"
+              as="ul"
+              variant="low"
+              padding="none"
+              class="mt-4 m-0 list-none overflow-hidden"
               data-test="results"
             >
               <SearchResultRow
@@ -524,7 +531,7 @@ const toggleRow = (item: SearchItem) => {
                 @load-files="loadFiles(item, (filesByKey[rowKey(item)]?.page ?? 0) + 1)"
                 @retry-files="loadFiles(item, filesByKey[rowKey(item)]?.page ?? 0)"
               />
-            </ul>
+            </MdCard>
             <nav
               v-if="finalPage > 0 || query.page > 0"
               aria-label="Pagination"

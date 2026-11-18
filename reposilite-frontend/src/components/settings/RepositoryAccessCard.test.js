@@ -138,8 +138,14 @@ describe('RepositoryAccessCard', () => {
       expect(repositoryAccess).toHaveBeenCalledWith('releases')
     })
 
-    it('titles the section "Who has access"', () => {
-      expect(wrapper.get('[data-test="repository-access"] h4').text()).toBe('Who has access')
+    it('titles the section "Who has access" as a level 3 heading in the title-small role', () => {
+      const title = wrapper.get('[data-test="repository-access"] h3')
+      expect(title.text()).toBe('Who has access')
+      expect(title.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+    })
+
+    it('draws no level 4 heading, since the card sits in the level 2 section of its repository', () => {
+      expect(wrapper.find('h4').exists(), 'the card has no level 4 heading').toBe(false)
     })
 
     it('shows the visibility as a chip', () => {
@@ -420,5 +426,32 @@ describe('RepositoryAccessCard', () => {
 
     expect(wrapper.find('[data-test="repository-access"]').exists()).toBe(false)
     expect(repositoryAccess).not.toHaveBeenCalled()
+  })
+
+  describe('as a card of the card primitive', () => {
+    beforeEach(async () => {
+      install()
+      wrapper = await mountCard()
+    })
+
+    const card = () => wrapper.get('[data-test="repository-access"]')
+
+    it('is drawn as the low variant of the card, a flat tinted panel on the page', () => {
+      expect(card().attributes('data-variant')).toBe('low')
+    })
+
+    it('keeps the medium corner radius and the default padding of the card', () => {
+      expect(card().classes()).toContain('rounded-corner-medium')
+      expect(card().classes()).toContain('p-4')
+    })
+
+    it('draws no shadow and no outline, as the low variant does', () => {
+      expect(card().classes(), 'the low card lies flat on the page').not.toContain('shadow-elevation-1')
+      expect(card().classes(), 'the low card has no outline').not.toContain('border-outline-variant')
+    })
+
+    it('keeps the repository-access-card anchor on the plain root element of the component', () => {
+      expect(wrapper.attributes('data-ingot-component')).toBe('repository-access-card')
+    })
   })
 })

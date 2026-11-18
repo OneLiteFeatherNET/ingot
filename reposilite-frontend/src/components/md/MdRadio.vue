@@ -16,6 +16,7 @@
 
 <script setup lang="ts" generic="T extends string | number | boolean | object">
 import { computed, useAttrs, useId } from 'vue'
+import { controlLabelGapClass, type ControlLabelGap } from './controlLabel'
 
 /*
  * Material Design 3 radio button. The control is a real <input type="radio">, so the group
@@ -44,6 +45,12 @@ import { computed, useAttrs, useId } from 'vue'
  * A pointer click leaves the radio without focus, so the focus ring does not stay behind after
  * a mouse click. A keyboard activation has detail 0 and keeps the focus where the keyboard put it.
  *
+ * `supporting` is an optional second line under the label, for example the help text of a choice.
+ * It sits outside the <label>, so it is not part of the radio's accessible name; link it with
+ * aria-describedby. `focusRing` draws the keyboard focus ring on the plain radio; it is off by
+ * default, and a card always draws its own ring. `labelGap` sets the gap between the circle and
+ * the text (see controlLabel.ts): `tight` by default for the plain radio, `loose` for the card.
+ *
  * Attributes that are not props (aria-describedby and so on) go to the input. class and style
  * stay on the root.
  */
@@ -58,15 +65,20 @@ const props = withDefaults(defineProps<{
   // The whole area is the clickable target and the slot is the card content.
   card?: boolean
   id?: string
+  focusRing?: boolean
+  labelGap?: ControlLabelGap
 }>(), {
   modelValue: undefined,
   disabled: false,
   card: false,
-  id: ''
+  id: '',
+  focusRing: false,
+  labelGap: undefined
 })
 
 defineSlots<{
   default?(): unknown
+  supporting?(): unknown
 }>()
 
 const emit = defineEmits<{
@@ -112,11 +124,20 @@ const onKeydown = (event: KeyboardEvent) => {
   next.click()
 }
 
+// The plain radio is tight and the card is loose unless the caller sets labelGap.
+const resolvedLabelGap = computed<ControlLabelGap>(() => props.labelGap ?? (props.card ? 'loose' : 'tight'))
+
 // Every class name is spelled out in full so that Tailwind finds it in this file.
 const rootClass = computed(() => {
-  if (!props.card) return 'flex items-center gap-2'
-  const base = 'relative flex items-start gap-3 has-focus-visible:md-focus-ring-within'
-  return props.disabled ? [base, 'cursor-not-allowed'] : [base, 'cursor-pointer']
+  if (!props.card) return ['flex items-center', controlLabelGapClass(resolvedLabelGap.value)]
+  const base = ['relative flex items-start', controlLabelGapClass(resolvedLabelGap.value), 'has-focus-visible:md-focus-ring-within']
+  return props.disabled ? [...base, 'cursor-not-allowed'] : [...base, 'cursor-pointer']
+})
+
+// The 40px container takes the ring of the plain radio when focusRing is set. A card rings itself.
+const containerClass = computed(() => {
+  const base = 'relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full'
+  return props.focusRing && !props.card ? [base, 'has-focus-visible:md-focus-ring-within'] : base
 })
 
 const circleClass = computed(() => {
@@ -148,6 +169,11 @@ const labelClass = computed(() =>
 const cardContentClass = computed(() =>
   props.disabled ? 'min-w-0 flex-1 text-on-surface/38' : 'min-w-0 flex-1'
 )
+
+// The supporting line is the body-medium text of the variant, dimmed when the radio is disabled.
+const supportingClass = computed(() =>
+  props.disabled ? 'md-body-medium text-on-surface/38' : 'md-body-medium text-on-surface-variant'
+)
 </script>
 
 <template>
@@ -157,7 +183,7 @@ const cardContentClass = computed(() =>
     :style="attrs.style"
     data-ingot-component="md-radio"
   >
-    <span class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full">
+    <span :class="containerClass">
       <input
         v-bind="forwardedAttrs()"
         :id="inputId"
@@ -196,14 +222,33 @@ const cardContentClass = computed(() =>
       :class="cardContentClass"
     >
       <slot />
+      <span
+        v-if="$slots.supporting"
+        data-part="supporting"
+        :class="supportingClass"
+      >
+        <slot name="supporting" />
+      </span>
     </span>
-    <label
+    <span
       v-else
-      :for="inputId"
-      class="flex min-h-10 min-w-0 select-none items-center md-body-large"
-      :class="labelClass"
+      data-part="label-column"
+      :class="$slots.supporting ? 'flex min-w-0 flex-col' : 'contents'"
     >
-      <slot />
-    </label>
+      <label
+        :for="inputId"
+        class="flex min-h-10 min-w-0 select-none items-center md-body-large"
+        :class="labelClass"
+      >
+        <slot />
+      </label>
+      <span
+        v-if="$slots.supporting"
+        data-part="supporting"
+        :class="supportingClass"
+      >
+        <slot name="supporting" />
+      </span>
+    </span>
   </component>
 </template>

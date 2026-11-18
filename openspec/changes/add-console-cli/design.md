@@ -4,6 +4,11 @@ All paths are relative to `reposilite-backend/src/main/kotlin/com/reposilite/` u
 
 ## What exists on main
 
+> **Status at this revision.** The command listing (#412), structured execution and the confirmation of dangerous commands (#427),
+> and the audit event `CONSOLE_COMMAND_EXECUTED` on the HTTP and websocket channels (#434) are on `main`. Findings 3, 5 and 6 below, and
+> the "missing" rows of the table at "What the CLI can reuse", describe `main` before those pull requests. They are kept as history.
+> The websocket protocol of Decision 2 is the new work of this revision.
+
 ### The command model
 
 - Commands are picocli subcommands. `CommandExecutor` is the root `@Command(name = "")` (`console/CommandExecutor.kt:36`), holds one
@@ -28,7 +33,7 @@ All paths are relative to `reposilite-backend/src/main/kotlin/com/reposilite/` u
 | --- | --- | --- | --- |
 | stdin | `ConsoleThread` (`console/ConsoleThread.kt:33-59`), started in `ConsolePlugin.kt:81-83` unless `testEnv` or `--disable-interactive-console` | none, the process owner | the logger |
 | `POST /api/console/execute` | `console/infrastructure/ConsoleEndpoint.kt:69-83` | token as basic auth or a session bearer, then `requireArea("console")` | `ExecutionResponse(status, response: List<String>)` |
-| `/api/console/sock` | `console/infrastructure/ConsoleWebSocketHandler.kt:67-117` | first message `Authorization:name:secret` or `Authorization:Session <jwt>` | the shared log stream, not a per-command answer |
+| `/api/console/sock` | `console/infrastructure/ConsoleWebSocketHandler.kt:67-117` | first message `Authorization:name:secret` or `Authorization:Session <jwt>` (legacy text protocol); a first message `{"type":"hello"}` opens the version 1 protocol of Decision 2, which also accepts the session cookie of a browser | legacy: the shared log stream and no per-command answer; version 1: a `result` per `execute` |
 | `GET /api/console/log` (SSE) | `console/infrastructure/ConsoleSseHandler.kt:62` | header or session cookie | the shared log stream |
 | dashboard tab | `reposilite-frontend/src/components/console/ConsoleView.vue`, `store/console/connection.js:49,73-78,127` | the dashboard session | SSE for output, HTTP execute for input |
 
@@ -37,7 +42,8 @@ Findings that matter for a CLI:
 1. The websocket is not a request and response channel. A command sent on it runs and writes its lines to the logger
    (`ConsoleWebSocketHandler.kt:104-106`), and every subscriber of the log stream sees them, mixed with unrelated log lines. A
    client cannot tell which lines belong to its command. The dashboard moved to HTTP execute for input for this reason.
-   The CLI must use `POST /api/console/execute`.
+   The legacy text protocol keeps this behaviour for its clients. The version 1 protocol answers each `execute` with its own
+   `result` frame, so a REPL no longer has to find its output in the log stream (Decision 2).
 2. `execute` also echoes every output line into the server log (`console/CommandExecutor.kt:46-47`, `logger.info(it)`), and so to every
    console viewer. That is existing behaviour, and it means the output of `tokens` is visible to all console users. Structured mode
    must not add to this: it returns the lines to the caller and logs the same lines as today (unchanged), see "Security".
@@ -81,18 +87,21 @@ Findings that matter for a CLI:
 
 ## What the CLI can reuse, and what is missing
 
-Reuse: `POST /api/console/execute` as the one transport for both modes; the token and permission model; `redactedCommand`; the
+Reuse: `POST /api/console/execute` as the transport of exec mode, and the version 1 socket of Decision 2 for the REPLs; the token and
+permission model; `redactedCommand`; the
 picocli command tree; the OpenAPI document `docs/openapi/ingot-openapi.json` for the client contract.
 
-Missing, and added by this change:
+Gaps as first written. The first four rows are on `main` now (#412, #427, #434). The rest is open:
 
-| Gap | Addition |
-| --- | --- |
-| Command and argument listing | `GET /api/console/commands` |
-| Structured result, exit status | `?structured=true` on execute |
-| Dangerous commands | `dangerous` flag, `409` until `confirm=true` in structured mode |
-| Audit of console commands | `CONSOLE_COMMAND_EXECUTED` |
-| Distinguishing the CLI in the audit | a `channel` detail: `http`, `websocket`, `stdin` is not audited |
+| Gap | Addition | State |
+| --- | --- | --- |
+| Command and argument listing | `GET /api/console/commands` | on main (#412) |
+| Structured result, exit status | `?structured=true` on execute | on main (#427) |
+| Dangerous commands | `dangerous` flag, `409` until `confirm=true` in structured mode | on main (#427) |
+| Audit of console commands | `CONSOLE_COMMAND_EXECUTED` | on main (#434) |
+| Per-command answer and session on the socket for the REPLs | the version 1 protocol, Decision 2 | to do |
+| Node of a command in the listing | `scope` on each descriptor, Decision 2.7 | to do |
+| Distinguishing the CLI in the audit | `client` from the hello | to do |
 
 Not added (open): quoting of arguments with spaces (question 8), per-command permissions (question 7), rate limit (question 9).
 
@@ -102,14 +111,182 @@ The working interpretation of "REPL container" is a client and an image that run
 because the drop-in contract names `docker attach` and the default behaviour. A JLine REPL inside the server would change what
 `docker attach` shows and what a piped stdin does. Alternative in open question 1.
 
-## Decision 2: HTTP execute is the transport, one request per command
+## Decision 2: one shared WebSocket protocol for the dashboard web REPL and the CLI REPL
 
-- Exec mode sends one request per command line. A script that reads commands from stdin sends them in order and stops at the first
-  failure unless `--keep-going` is given.
-- REPL mode sends one request per entered line. There is no session, so a dropped connection loses nothing, and a load balancer in
-  front of several replicas is fine. Commands act on the database, not on one replica, except `level`, `status` and `failures`,
-  which are per replica; structured mode names the replica in the `node` field (Decision 4).
-- The websocket is not used, for finding 1. SSE is not used in this change.
+The maintainer decided that the dashboard console and the `ingot` REPL use the same WebSocket session. Exec mode is not part of
+this decision. It stays on HTTP (`POST /api/console/execute?structured=true`), one request per command line, because a script
+needs a request that ends with an exit code, and a process that stops at the first failure does not need a session.
+
+The first revision of this change chose one HTTP request per REPL line, for two reasons: a dropped connection would lose no session,
+and a load balancer in front of several replicas would need no affinity. Both are handled by the protocol below (see 2.6 and 2.7),
+so the REPL uses the socket. The decision is numbered 2 and its parts are 2.1 to 2.9.
+
+### 2.1 Endpoint and negotiation
+
+- The path is unchanged, `/api/console/sock` (`console/application/ConsolePlugin.kt:103-112`). It is not registered on the worker
+  target (`ConsolePlugin.kt:101-102`, `DeployTarget.WORKER`), and it stays that way.
+- Negotiation happens in band, in the first frame. A first frame that starts with `Authorization:` runs the existing code path of
+  `ConsoleWebSocketHandler`, unchanged. A first frame that is a JSON object with `"type":"hello"` opens protocol version 1. Any other
+  first frame is refused as today.
+- Why in band and not a `Sec-WebSocket-Protocol` subprotocol: a subprotocol has to be selected during the upgrade, which changes the
+  upgrade of every legacy client. An in-band hello leaves the upgrade untouched, and a legacy client never sends a hello.
+
+### 2.2 Handshake
+
+Client to server:
+
+```json
+{"type": "hello", "protocols": [1], "client": "ingot-cli/1.0.0", "logLevel": "INFO",
+ "resume": {"boot": "8f2c1e", "seq": 412}, "auth": {"scheme": "token", "value": "ci-rotation:<secret>"}}
+```
+
+- `protocols`: the versions the client speaks. The server picks the highest it supports. No common version: `error` with code
+  `unsupported_protocol` and `supported: [1]`, then close with 1002.
+- `auth`: optional. `scheme` `token` takes `name:secret`, the string `INGOT_TOKEN` holds. `scheme` `session` takes a session JWT, the
+  value of `Authorization:Session` in the legacy protocol. Without `auth` the session cookie of the upgrade request is used. A browser
+  sends that cookie on its own, so the dashboard sends no secret.
+- `client`: the product and version, at most 64 characters. The server stores it as the audit `client`.
+- `logLevel`: optional. The default is the server's visible threshold. A client can raise it, never lower it below that threshold.
+- `resume`: optional, see 2.6.
+
+Server to client:
+
+```json
+{"type": "welcome", "protocol": 1, "node": "ingot-0", "version": "<server version>", "listing": 1,
+ "capabilities": ["execute", "complete", "confirm", "log"], "identity": "ci-rotation", "boot": "8f2c1e", "seq": 418, "replay": "resumed"}
+```
+
+- `identity` is the token name or the session's user, never the secret. `node` is the instance id of `StructuredExecutionResponse.node`.
+  `boot` is a random id made at process start. `seq` is the last log sequence number at the time of the welcome. `replay` is
+  `resumed` or `full` (2.6).
+- A socket that sends no valid hello within 10 seconds is closed with 1008 and an `error` with code `timeout`. The test injects the clock.
+
+### 2.3 Envelope
+
+- Every frame is one UTF-8 text frame holding one JSON object with a `type`. A request that expects an answer carries an `id` chosen
+  by the client, and every answer to it carries the same `id`.
+- The protocol version is fixed by the handshake. Frames carry no version of their own. A client ignores fields it does not know, so
+  the server can add fields to version 1 without a new version.
+- An unknown `type` gets an `error` with code `unknown_type` and the request `id`. The connection stays open.
+- Liveness uses WebSocket ping and pong control frames, not JSON.
+- An inbound frame over 4 KiB gets an `error` with code `too_long` and the connection stays open. A command line over
+  `MAX_COMMAND_LENGTH` (1024 characters) gets the same error, as the server refuses it today.
+
+Client to server:
+
+| Type | Fields | Answer |
+| --- | --- | --- |
+| `execute` | `id`, `command`, `confirm` (optional, default `false`) | `result`, or `confirm` first for a dangerous command |
+| `complete` | `id`, `line`, `cursor` (optional, default end of line) | `complete` |
+| `confirm` | `id` (the `execute` it answers), `accept` | the `result` of that `execute` |
+
+Server to client:
+
+| Type | Fields | Meaning |
+| --- | --- | --- |
+| `result` | `id`, `status`, `exitCode`, `output` (lines with `stream`), `data`, `node`, `confirmed` | the answer to `execute`, the same fields as the structured HTTP answer plus `confirmed` |
+| `confirm` | `id`, `command`, `reason` | a dangerous command waits for the user; the arguments of a `sensitive` command are never sent |
+| `complete` | `id`, `replace` (`start`, `end`), `candidates` | completion from the command listing (Decision 3) |
+| `log` | `seq`, `node`, `level`, `text`, `dropped` | one log line; `dropped` counts the lines lost before it (2.8) |
+| `error` | `id` (optional), `code`, `message`, `retryable` | a refused or failed request, or a connection-level problem |
+
+- At most one `execute` runs per connection. A second one gets `error` with code `busy` and `retryable: true`. `complete` is answered
+  at once and is not queued behind an `execute`. Log frames interleave with everything.
+- A declined confirmation (`accept: false`, or no answer within 120 seconds) runs nothing. It returns a `result` with `exitCode` 3,
+  `status` `FAILED`, `confirmed` `false` and one `stderr` line that says the command did not run.
+- `error` codes: `unauthorized`, `unsupported_protocol`, `timeout`, `not_hello`, `unknown_type`, `too_long`, `busy`, `rate_limited`,
+  `slow_consumer`, `shutdown`, `internal`.
+- `complete` is answered from the same listing as `GET /api/console/commands`: names, aliases, options and fixed values. Values from
+  data (token names, repository ids) are not completed in version 1 (open question 6).
+
+### 2.4 Authentication and authorization
+
+- A token in the hello (`scheme` `token`) passes the same check as the legacy first message: `ConsoleAuthenticator.authenticate`, which
+  includes the brute-force limit and the console area. Nothing new is decided here.
+- A browser session has no secret in the hello. The handler reads the session cookie of the upgrade request, as the SSE handler does
+  (`console/infrastructure/ConsoleSseHandler.kt:100-112`). A browser sends that cookie on any cross-site WebSocket too, so a
+  connection that authenticates by cookie must send an `Origin` header that names the host the request reached, as a trusted proxy
+  forwards it. Otherwise it is closed with 1008 (the guard against cross-site WebSocket hijacking). A token in the hello is not
+  affected, because a page on another site cannot read it.
+- The principal is checked again before each `execute` and before each `confirm` is accepted. A revoked token, a removed console area
+  or an expired session closes the connection with 1008 and an `error` with code `unauthorized`. A session also closes at its expiry
+  time, from the clock. A check at the handshake alone would keep a revoked REPL open for as long as it stays connected. The cluster
+  rule "principal revocation takes effect on the next request" (`openspec/specs/cluster-coordination`) is kept this way.
+- The permission is unchanged: console access is the permission area `console` (node `ingot.admin.console`) for every command (open question 7, settled 2026-11-17). A missing area
+  answers `unauthorized`, as the websocket and SSE do today. The HTTP route answers 403 (open question 16).
+
+### 2.5 Compatibility with the existing handler
+
+- The legacy branch is the code that runs today, and the new branch is added beside it. Every legacy behaviour stays: raw log lines as
+  text frames, the `keep-alive` echo, the `ErrorResponse` text and disconnect on failed authentication, a command that runs with no
+  answer on the socket, and the audit event with `confirmed` false and no `client`. A golden test pins each of them.
+- A legacy server that receives a version 1 hello answers its usual "missing credentials" error and disconnects. The CLI cannot tell
+  that from a wrong token on the socket, so on that answer it asks `GET /api/console/commands` over HTTP. A `404` means an older server:
+  exit code `6`. Any other answer means the token is refused: exit code `4`.
+- The dashboard's proxy (`reposilite-frontend/server/lib/console-socket.js`) relays text frames both ways and forwards the `cookie`,
+  `origin` and `authorization` headers. It needs no change for version 1. It handles text only, and version 1 uses text only.
+- `GET /api/console/log` (SSE) and `POST /api/console/execute` keep their shapes. The dashboard stops using SSE for its console when the
+  web REPL ships. Other SSE clients are unaffected.
+
+### 2.6 Reconnect
+
+- A connection is one session. A client that loses it reconnects with a backoff that starts at 1 second, doubles, stops at 30 seconds and
+  has jitter. It does not reconnect after 1008 or `unsupported_protocol`. After 1001 (`shutdown`) it waits one backoff step.
+- Log continuity: every `log` frame has a `seq`, unique within a boot. On reconnect the client sends `resume` with the `boot` and `seq`
+  of the last frame it holds. If the boot matches, the server replays the cached lines with a greater `seq`, then continues live
+  (`replay` `resumed`). If it does not match, because the process restarted or another replica answers, the server replays its whole
+  line cache and says `full`. The client de-duplicates on `(node, seq)`. The line cache must keep the `seq` each line was stamped with.
+  Today the cache replay (`ConsoleWebSocketHandler.kt:103-105`) stores no sequence, so this is a change to the cached logger.
+- Commands: an `execute` without a `result` at the drop is reported as unknown. The client never sends it again. The audit event
+  `CONSOLE_COMMAND_EXECUTED` is the record of what ran. Version 1 keeps no results for a resume (open question 18).
+- A `confirm` pending at the drop is declined by the server when the connection closes, so nothing runs.
+- Command history and the input line live in the client, so a reconnect keeps them. The history is per browser tab for the dashboard
+  and per terminal session for the CLI.
+
+### 2.7 Load balancers and several replicas
+
+- A WebSocket is one TCP connection, which the balancer keeps on one replica for its life. No affinity is needed for correctness.
+- A command runs on the replica that receives the `execute`. The token check, the database and most commands behave the same on every
+  replica. The per-replica commands, `level`, `status`, `failures` and `stats` (and `cache`, to be verified per action), act on the
+  replica they reach. Each `result` names its `node`. Each descriptor of the listing gets an optional `scope` (`node` or `cluster`).
+  This is additive, so the listing stays at version 1. The REPL shows the `node` of the welcome in its prompt.
+- Log lines: a session shows the lines of its own replica. With the bus and console fan-out (`openspec/specs/cluster-coordination`,
+  "Console log fan-out"), it also shows the lines of other replicas, each with its `node`. On the database transport, fan-out needs
+  `INGOT_CLUSTER_CONSOLE=true`. Every `log` frame carries `node`, so the client can label a line in either case.
+- A reconnect may reach another replica. The `boot` check then fails and the new replica's cache is replayed as `full`. The client marks
+  the change of `node`. Sticky sessions help log continuity and are not required (open question 14).
+- The proxies in front need WebSocket upgrade support and an idle timeout longer than the ping interval of 2.9. The dashboard already
+  reaches the server through the Nitro proxy, which upgrades `/api/console/sock`.
+
+### 2.8 Backpressure and log rate limits
+
+- Each connection has a bounded outbound queue of 1000 frames and one writer thread. The log subscriber does not write to the socket.
+  It offers the line to the queue and returns. Today the subscriber sends inside the logging thread (`ConsoleWebSocketHandler.kt:91-99`),
+  so one slow client can hold up whichever thread logs. The legacy path keeps that behaviour. Version 1 does not have it.
+- When the queue is full, `log` frames are dropped and counted. The next delivered `log` frame carries the count in `dropped`.
+  `result`, `confirm`, `complete` and `error` frames are never dropped. If the queue fills with them, the server closes the connection
+  with 1013 and an `error` with code `slow_consumer`.
+- Log rate: at most 200 lines per second per connection, a token bucket with a burst of 500. Lines over the rate are dropped and counted.
+  A raised `logLevel` cuts the volume further. The tests inject the clock.
+- Commands: one `execute` in flight per connection (`busy`). No command rate limit is added here (open question 9).
+
+### 2.9 Timeouts
+
+- Handshake: 10 seconds to a valid hello (2.2).
+- Liveness: the server sends a WebSocket ping every 20 seconds and closes a connection that has not answered with a pong within 60 seconds.
+- Confirmation: 120 seconds, then declined (2.3).
+- Command: no server-side timeout, because a command such as `settings-reencrypt` may run for a while. The client shows the elapsed time.
+  Ctrl-C in the CLI stops the wait for the result and leaves the command running on the server, and the CLI says so. Version 1 has no
+  cancel frame (open question 18).
+- Close codes: 1000 normal. 1001 `shutdown`, sent after an `error` with code `shutdown`. 1002 protocol error. 1008 refused (authentication,
+  handshake, unsupported protocol, expired session). 1009 a frame the transport refuses. 1013 `slow_consumer`.
+
+### 2.10 What stays
+
+- The stdin console is not touched, so `docker attach` keeps working (Decision 1, "The stdin console in the container").
+- `--disable-interactive-console` keeps its meaning. The socket is served by the server process, as it is today.
+- Exec mode and the HTTP endpoints are unchanged. Nothing is added to the server's environment: the protocol needs no variable, and any
+  limit that becomes configurable later gets an `INGOT_` name with the current value as its default.
 
 ## Decision 3: `GET /api/console/commands`
 
@@ -141,7 +318,9 @@ default, checked by the existing plugin ABI gate, see `gate-plugin-abi`). The se
 argument, `dangerous` is a function of the parsed arguments, not a constant; the member is therefore
 `fun isDangerous(arguments: List<String>): Boolean`, default `false`. The listing shows the command as dangerous when any form of it is.
 
-The listing carries a `version` so the CLI can refuse a format it does not know. Completion of arguments with values that come from
+The listing carries a `version` so the CLI can refuse a format it does not know. Each descriptor has an optional `scope`, `node` or
+`cluster`, which tells a REPL whether the command acts on the replica it reaches (Decision 2.7). The field is additive, so the version
+stays `1`. Completion of arguments with values that come from
 data (token names, repository ids) is not part of this change. The CLI completes names, aliases, options and the fixed values
 that picocli declares (`completionCandidates`). Open question 6.
 
@@ -182,6 +361,9 @@ In structured mode, if `isDangerous(arguments)` is true and `confirm=true` is ab
 `{"error": "confirmationRequired", "command": "<name>", "reason": "<description>"}` and runs nothing. With `confirm=true` it runs.
 In plain mode nothing changes: the old endpoint never asks, as today.
 
+On the version 1 WebSocket (Decision 2.3) the same rule holds. A dangerous `execute` gets a `confirm` frame, and runs only after an
+accepted `confirm` answer or with `confirm` true in the `execute` frame. The legacy text protocol never asks, as today.
+
 The CLI maps this to:
 
 - REPL on a terminal: print the command and its reason, read `y/N` from the terminal (not from piped stdin), default no.
@@ -204,6 +386,8 @@ New action `CONSOLE_COMMAND_EXECUTED`, emitted by the HTTP execute route and the
 - `details`: `{"command": "<redactedCommand>", "channel": "http|websocket", "client": "<User-Agent product, at most 64 chars>", "confirmed": true|false, "exitCode": 0}`.
   The command line is the redacted one. A command with `sensitiveInput` stores the command name and `<redacted>`.
 - Not emitted for stdin: the process owner is not a principal and the log already shows it.
+- Already emitted today by the legacy websocket branch (#434), with `confirmed` `false` and no `client`. Version 1 sets `client` from the
+  hello and `confirmed` from the answer to the `confirm` frame, and writes the event at the same point as the legacy branch.
 
 The event goes through `AuditFacade.record` (`audit/AuditFacade.kt:87`), so the JSON lines sink gets it with no change. A failing audit
 write never fails the command, as for every other event (the sink and `recordSafely` already swallow errors).
@@ -263,18 +447,22 @@ Resolution order, first hit wins: command-line flag, environment variable, the s
 
 ### REPL
 
+- Transport: one WebSocket session, the version 1 protocol of Decision 2. The REPL sends no HTTP request per line. Exec mode is the
+  only client of the HTTP execute endpoint. A server without version 1 gives exit code `6` (Decision 2.5), and the REPL points to
+  `ingot exec`. There is no HTTP fallback for the REPL (open question 17).
 - Prompt `ingot (<context>)> `, history in `$XDG_STATE_HOME/ingot/history` (mode `0600`, never records a line the server marks
   `sensitive`, and a `sensitive` command is not saved to history on the client either).
-- Completion: command names and aliases from `/api/console/commands`, cached for the session, refreshed with the builtin `:reload`.
-  Options and fixed values of the command at the cursor. The completer never sends a request per keystroke.
+- Completion: a `complete` frame per Tab, answered from the listing (Decision 2.3). The first listing of the session is cached, and the
+  builtin `:reload` asks again. The completer never sends a frame per keystroke.
 - Builtins start with `:`, so they cannot collide with a server command: `:reload`, `:context <name>`, `:output text|json`, `:quit`.
   `exit` and `quit` are not builtins and are sent to the server as typed (the server answers `Unknown command`).
 - Multi-line output prints as received. A long output is not paged.
-- `Ctrl-C` discards the current input line, and cancels an in-flight request on the client only: the server may still complete the
-  command, and the CLI says so. `Ctrl-D` on an empty line leaves with exit code `0`.
+- `Ctrl-C` discards the current input line, and stops the wait for an in-flight `result` on the client only: the server may still
+  complete the command, and the CLI says so. The connection stays open. `Ctrl-D` on an empty line leaves with exit code `0`.
 - Colour only when stdout is a terminal and `NO_COLOR` is unset. Server ANSI sequences are kept when colour is on and stripped otherwise.
-- Against a server without the new endpoints: the CLI prints a one-line notice, runs in plain mode, completes only `help` output
-  parsed from the text, and has no confirmations (it warns that dangerous commands will run at once).
+- Against a server without version 1 (Decision 2.5): the CLI prints one line that names the missing protocol, exits with code `6`, and
+  never runs a command. The older text-only REPL is not kept, because it would be a second REPL with no confirmations.
+- Reconnects follow Decision 2.6. While the socket is down the prompt says so, and a line typed then is refused, not queued.
 
 ### Exec
 
@@ -306,9 +494,10 @@ Resolution order, first hit wins: command-line flag, environment variable, the s
   `CLAUDE.md`).
 - A jar `ingot-cli-<version>.jar` (shaded, runnable) is attached to each release and signed like the other release artefacts
   (`sign-release-artifacts`), with its SBOM (`attach-release-sboms`).
-- GraalVM native image: evaluated in open question 4. The default is the jar and the JRE-based image, because it is the path that
+- GraalVM native image: decided by open question 4 (settled 2026-11-17). The jar and the JRE-based image ship, because it is the path that
   works on both architectures with no QEMU build, and a native binary needs a build per target architecture, which the repository
-  avoids on purpose (`CLAUDE.md`, "How the images are built").
+  avoids on purpose (`CLAUDE.md`, "How the images are built"). Task 8.3 records the GraalVM evaluation, and a native binary is added
+  only if the build sustains it.
 
 ## Security
 
@@ -323,6 +512,10 @@ Resolution order, first hit wins: command-line flag, environment variable, the s
   proposal keeps it that way and relies on `add-overload-protection` for request limits; open question 9.
 - **Audit**: every remote command is an event with the token name (Decision 6).
 - **Dangerous commands**: Decision 5.
+- **WebSocket sessions**: the handshake authenticates once, and every `execute` and accepted `confirm` checks the principal again
+  (Decision 2.4). A cookie-authenticated connection requires a matching `Origin` (cross-site WebSocket hijacking). Frames are
+  limited to 4 KiB, a connection has one `execute` in flight, and the outbound queue is bounded (Decision 2.8). A token travels in the
+  hello, over TLS, like the legacy first message, and is never echoed in a frame, an error or the audit event.
 - **Output**: the console logs command output through the logger (finding 2). The CLI does not change what is logged. Secrets that a
   command prints once (a generated token secret) appear in the response to the caller and also in the server log today; the CLI
   does not make this worse, and a follow-up should stop it (not in this change, mentioned here).
@@ -335,7 +528,11 @@ Resolution order, first hit wins: command-line flag, environment variable, the s
 
 - **Rebuild the server's stdin console as a JLine REPL.** Rejected as the main path: it changes `docker attach` and piped stdin, which
   the drop-in rule protects. Kept as open question 1 for the interactive case only, behind a switch.
-- **Use the websocket for the REPL.** Rejected: no per-command result (finding 1).
+- **One HTTP request per REPL line.** Superseded by Decision 2, which the maintainer chose: the dashboard console and the REPL share one
+  WebSocket session. The reasons for HTTP per line were no session lost on a drop and no affinity behind a load balancer. Decision 2.6
+  and 2.7 cover both reasons.
+- **Use the websocket only for the dashboard, and HTTP for the REPL.** Rejected by the maintainer's decision: two protocols for one
+  console would need two sets of tests for the same confirmation, completion and log behaviour.
 - **Generate a client from OpenAPI.** Rejected for the first version: three endpoints do not need a generator, and the command tree
   is data, not a schema. The OpenAPI file is still the contract that the diff gate protects.
 - **A shell wrapper around `curl`.** Rejected: no completion, no exit codes, no TLS handling, secrets in shell variables.
@@ -364,32 +561,37 @@ Open pull requests that touch the same files, at the time of writing:
   `isDangerous` hook; whichever lands second adopts it), `add-audit-json-sink` (receives the new action), `add-permission-nodes` and
   `introduce-authorizer-chain` (per-command permissions), `add-overload-protection` (limits).
 
-## Open questions
+## Open questions (settled 2026-11-17)
 
-1. **Server stdin console as a REPL.** The maintainer's wording can also mean making the server's own console a JLine REPL. Default: no,
-   the CLI is additive and `docker attach` keeps working. Alternative: a REPL for the stdin console behind `INGOT_CONSOLE_REPL=true`.
-2. **Where the CLI lives.** Default: a Gradle module `ingot-cli` in this repository (shared release, one version, one CI,
-   the API and its client change in one pull request). Alternative: its own repository, which gives it an independent release rhythm and
-   a smaller clone, but splits API and client across two repositories and needs a compatibility matrix. Directory name: `ingot-cli`
-   (new code, new namespace) versus `reposilite-cli` (module naming rule).
-3. **Language.** Default: Kotlin on the JVM, to reuse picocli and the toolchain. Alternative: Go, a small static binary and fast start, at
-   the price of a second toolchain, a second supply-chain pipeline and no code sharing.
-4. **Native binary.** Default: ship the jar and the JRE image; add a GraalVM native binary only if the build sustains it
-   (reflection config for picocli and JLine, one build per architecture without QEMU needs native runners). Document the outcome. A
-   native binary is not a requirement of this change.
-5. **Plain http.** Default: warn on stderr when sending credentials over `http` to a non-loopback host. Alternative: refuse unless
-   `--insecure-http`.
-6. **Argument completion from data.** Default: complete names, options and fixed values only. Alternative: a server hook that completes
-   token names, repository ids and cache targets, which needs a new `ReposiliteCommand` member and a request per completion.
-7. **Per-command permission.** Default: keep the single node `ingot.admin.console`, and note that a CLI token can run every command. Alternative:
-   nodes such as `ingot.admin.console.read` (status, stats, tokens, failures, help) and `ingot.admin.console.write`, designed with
-   `add-permission-nodes`.
-8. **Quoting.** The server splits on single spaces. Default: the CLI refuses arguments with spaces. Alternative: add quote handling to
-   `CommandExecutor.parseCommand`, which changes parsing for every channel and needs its own change.
-9. **Rate limit for valid tokens.** Default: none beyond `add-overload-protection`. Alternative: a per-token command rate (for example 60 per minute)
-   with a `429` and a `Retry-After`, off by default.
-10. **Shipping the CLI inside the server image.** Default: no, the CLI image is separate. Alternative: add the jar to the `ingot` image for
-    `kubectl exec`. It grows the server image for a use the CLI image already serves.
-11. **Image name.** Default: `ghcr.io/onelitefeathernet/ingot-cli`, as requested.
-12. **Config file format.** Default: YAML (contexts read like a kubeconfig). Alternative: the project's `.cdn` format, or JSON.
-13. **Confirmation of `stop` in the REPL.** Default: dangerous, asks. Alternative: `stop` is excluded because the REPL already makes it explicit.
+Every question is settled with its recommended default on 2026-11-17. The tasks and the specs implement these answers. No question is
+left open in this change.
+
+1. **Server stdin console as a REPL.** Resolved: no. The CLI is additive and `docker attach` keeps working. A JLine REPL behind
+   `INGOT_CONSOLE_REPL=true` is not planned.
+2. **Where the CLI lives.** Resolved: a Gradle module `ingot-cli` in this repository, in the directory `ingot-cli`, one release, one CI.
+   The CLI is not moved to its own repository, so task group 6 stays here.
+3. **Language.** Resolved: Kotlin on the JVM, to reuse picocli and the toolchain.
+4. **Native binary.** Resolved: ship the jar and the JRE image. A GraalVM native binary is added only if task 8.3 shows that the build
+   sustains it, and the outcome is written down either way.
+5. **Plain http.** Resolved: warn on stderr when credentials would travel over `http` to a non-loopback host.
+6. **Argument completion from data.** Resolved: complete names, options and fixed values only. Completion of token names, repository
+   ids and cache targets is not in version 1.
+7. **Per-command permission.** Resolved: console access is the permission area `console` (node `ingot.admin.console`) for every command,
+   as the maintainer decided for this change. A CLI token can run every command. Per-command nodes are not added here.
+8. **Quoting.** Resolved: the CLI refuses arguments with spaces. `CommandExecutor.parseCommand` is not changed.
+9. **Rate limit for valid tokens.** Resolved: none beyond `add-overload-protection`. A per-token command rate stays off.
+10. **Shipping the CLI inside the server image.** Resolved: no. The CLI image is separate, and the `ingot` image is not touched.
+11. **Image name.** Resolved: `ghcr.io/onelitefeathernet/ingot-cli`.
+12. **Config file format.** Resolved: YAML, with contexts that read like a kubeconfig.
+13. **Confirmation of `stop` in the REPL.** Resolved: `stop` is dangerous and asks for confirmation, as in every channel.
+14. **Sticky sessions.** Resolved: none required. A reconnect may reach another replica, and the client marks the change of `node`.
+    Cookie affinity is documented per ingress and is not the default.
+15. **Which replicas a session shows.** Resolved: the own replica, plus the other replicas when console fan-out is on (Decision 2.7).
+    The switch stays the only way to show other replicas' lines. Every frame carries `node`, so the dashboard labels the lines.
+16. **Authorization wording.** Resolved: the code is the reference. Console access is the permission area `console`, the HTTP route
+    answers 403 and the socket answers `unauthorized`. The docs are corrected in task 9.2.
+17. **HTTP fallback for the REPL.** Resolved: none. A server without version 1 gives exit code `6`.
+18. **Results on resume, and cancel.** Resolved: a command in flight at a drop is reported as unknown, and version 1 has no cancel frame
+    and keeps no results for a resume.
+19. **Per-replica commands.** Resolved: `level`, `status`, `failures` and `stats` are `scope` `node`, `cache` is checked per action, and
+    a plugin command defaults to `cluster`. A plugin command that holds state per replica declares `node` itself.

@@ -27,6 +27,13 @@ push and removed and re-added the label. The jobs of a fork pull request run wit
 
 Adding a label that does not start with `ci:` cancels nothing.
 
+## In the merge queue
+
+The merge queue has no labels. There the heavy gate reads the diff of the merge group and starts `Container images`, `Helm chart`
+and `Dashboard end-to-end` when their scope changed. `Dashboard end-to-end` runs only for changes the dashboard can see: the
+frontend, the OpenAPI document, the HTTP surface of the backend, login, sessions, tokens and access checks, and the files that build or start the server. The other heavy
+jobs do not run in the queue. See [Merge queue](merge-queue.md) for the full rule.
+
 ## Before a release
 
 The release pull request opened by release-please has a head branch that starts with `release-please--`. `Heavy tests` is red on

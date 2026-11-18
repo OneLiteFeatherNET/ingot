@@ -429,6 +429,14 @@ not read from the environment: the account key, the SAS token and the connection
 | `INGOT_AZURE_BLOB_ACCOUNT_NAME` | `REPOSILITE_AZURE_BLOB_ACCOUNT_NAME`, read when the `INGOT_` variable is not set or blank | empty | The storage account of an `azure-blob` repository whose `accountName` is blank. |
 | `INGOT_AZURE_BLOB_ENDPOINT` | `REPOSILITE_AZURE_BLOB_ENDPOINT`, read when the `INGOT_` variable is not set or blank | empty | The blob endpoint of an `azure-blob` repository whose `endpoint` is blank, for example Azurite or a sovereign cloud. Empty means `https://<accountName>.blob.core.windows.net`. |
 
+### Google Cloud Storage variables
+
+This is the process-wide switch of the optional `gcs-storage` plugin, which exists for the emulator tests. This release does not read it: the plugin refuses the `endpoint` key of a `gcs` repository in every installation, whatever this variable holds. See [Google Cloud Storage provider](../repositories/storage-providers.md#google-cloud-storage-provider).
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_GCS_ALLOW_EMULATOR_ENDPOINT` | `REPOSILITE_GCS_ALLOW_EMULATOR_ENDPOINT`, read when the `INGOT_` variable is not set or blank | `false` | Accepts `true` or `false`. `true` would allow the `endpoint` key of a `gcs` repository, which points at an emulator. |
+
 ### Proxy upstream status
 
 Read once at startup, in this order: the system property `ingot.proxy.upstreamStatus`, the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, the system property `reposilite.proxy.upstreamStatus`, the environment variable `REPOSILITE_PROXY_UPSTREAM_STATUS`. The first one that is set wins. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.

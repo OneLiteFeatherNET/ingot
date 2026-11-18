@@ -14,76 +14,80 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import type { ImportError } from './settingsImport'
 
 /*
  * Why a settings file was not imported. Nothing of the file is in the draft, so every error has to
  * be fixed in the file itself; the list names the domain and the field of each one.
  */
-const props = defineProps({
-  errors: {
-    type: Array,
-    required: true
-  }
-})
+const props = defineProps<{
+  errors: ImportError[]
+}>()
 
-const emit = defineEmits(['dismiss'])
+const emit = defineEmits<{
+  dismiss: []
+}>()
 
 const groups = computed(() => {
-  const byDomain = new Map()
+  const byDomain = new Map<string, ImportError[]>()
   for (const error of props.errors) {
     if (!byDomain.has(error.domain)) byDomain.set(error.domain, [])
-    byDomain.get(error.domain).push(error)
+    byDomain.get(error.domain)!.push(error)
   }
   return [...byDomain.entries()].map(([domain, errors]) => ({ domain, errors }))
 })
 </script>
 
 <template>
-  <section
-    role="alert"
-    class="mb-6 flex flex-col gap-4 rounded-corner-medium bg-error-container p-4 text-on-error-container"
+  <div
+    class="mb-6"
     data-ingot-component="settings-import-errors"
   >
-    <div class="flex flex-wrap items-start justify-between gap-2">
-      <h2 class="md-title-medium">
-        The file was not imported
-      </h2>
-      <MdButton
-        variant="text"
-        type="button"
-        @click="emit('dismiss')"
-      >
-        Dismiss
-      </MdButton>
-    </div>
-    <p class="md-body-medium">
-      Nothing was loaded into the draft. Fix these values in the file and import it again.
-    </p>
-    <div
-      v-for="group in groups"
-      :key="group.domain"
-      class="flex flex-col gap-2"
+    <MdAlert
+      tone="error"
+      title="The file was not imported"
     >
-      <h3
-        v-if="group.domain"
-        class="md-label-large"
-      >
-        {{ group.domain }}
-      </h3>
-      <ul class="flex flex-col gap-1 md-body-medium">
-        <li
-          v-for="(error, index) in group.errors"
-          :key="index"
+      <div class="flex flex-col gap-4">
+        <p>
+          Nothing was loaded into the draft. Fix these values in the file and import it again.
+        </p>
+        <div
+          v-for="group in groups"
+          :key="group.domain"
+          class="flex flex-col gap-2"
         >
-          <span
-            v-if="error.label"
-            class="font-medium"
-          >{{ error.label }}: </span>{{ error.message }}
-        </li>
-      </ul>
-    </div>
-  </section>
+          <h3
+            v-if="group.domain"
+            class="md-label-large"
+          >
+            {{ group.domain }}
+          </h3>
+          <ul class="flex flex-col gap-1">
+            <li
+              v-for="(error, index) in group.errors"
+              :key="index"
+            >
+              <span
+                v-if="error.label"
+                class="font-medium"
+              >{{ error.label }}: </span>{{ error.message }}
+            </li>
+          </ul>
+        </div>
+      </div>
+      <template #action>
+        <MdButton
+          variant="text"
+          type="button"
+          @click="emit('dismiss')"
+        >
+          Dismiss
+        </MdButton>
+      </template>
+    </MdAlert>
+  </div>
 </template>

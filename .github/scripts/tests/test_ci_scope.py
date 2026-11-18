@@ -225,10 +225,15 @@ class ScopeFlagsTest(unittest.TestCase):
     def test_dashboard_dockerfile_change_turns_on_the_image_flag(self):
         self.assertIn("image", truthy(["reposilite-frontend/Dockerfile"]))
 
-    def test_backend_source_turns_on_unit_and_e2e_but_not_image_or_chart(self):
-        flags = truthy(["reposilite-backend/src/main/kotlin/X.kt"])
+    def test_backend_endpoint_turns_on_unit_and_e2e_but_not_image_or_chart(self):
+        flags = truthy(["reposilite-backend/src/main/kotlin/com/reposilite/status/StatusEndpoints.kt"])
         self.assertTrue({"unit", "e2e", "backend"} <= flags)
         self.assertFalse({"image", "chart"} & flags)
+
+    def test_backend_internal_source_turns_on_unit_but_not_e2e_image_or_chart(self):
+        flags = truthy(["reposilite-backend/src/main/kotlin/X.kt"])
+        self.assertTrue({"unit", "backend"} <= flags)
+        self.assertFalse({"e2e", "image", "chart"} & flags)
 
     def test_frontend_source_turns_on_unit_and_e2e_but_not_image_or_chart(self):
         flags = truthy(["reposilite-frontend/src/App.vue"])
@@ -246,8 +251,8 @@ class ScopeFlagsTest(unittest.TestCase):
         flags = truthy(["build.gradle.kts"])
         self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
 
-    def test_workflow_change_turns_every_scope_flag_on(self):
-        flags = truthy([".github/workflows/ci.yml"])
+    def test_heavy_workflow_change_turns_every_scope_flag_on(self):
+        flags = truthy([".github/workflows/heavy.yml"])
         self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
 
     def test_workflow_script_change_turns_every_scope_flag_on(self):
@@ -264,6 +269,128 @@ class ScopeFlagsTest(unittest.TestCase):
 
     def test_mixed_chart_and_docs_change_turns_on_the_chart_flag_only(self):
         self.assertEqual(truthy(["charts/ingot/Chart.yaml", "docs/a.md"]) - {"backend"}, {"chart"})
+
+
+class E2eScopeTest(unittest.TestCase):
+    """The e2e flag: on for what the dashboard end-to-end suite can see, off for everything else it can place."""
+
+    SEES = [
+        # The dashboard itself, and the specs, harness and fixtures that live beside it.
+        "reposilite-frontend/src/App.vue",
+        "reposilite-frontend/package-lock.json",
+        "reposilite-frontend/e2e/browse.spec.js",
+        "reposilite-frontend/e2e/support/server.js",
+        "reposilite-frontend/e2e/support/fixtures/e2e-style/Plugin.kt",
+        "reposilite-frontend/playwright.config.js",
+        # The OpenAPI document the dashboard api types are generated from.
+        "docs/openapi/ingot-openapi.json",
+        # The HTTP surface of the backend the dashboard calls, and the dashboard serving code.
+        "reposilite-backend/src/main/kotlin/com/reposilite/status/StatusEndpoints.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/auth/AuthenticationEndpoint.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/frontend/FrontendSettingsEndpoint.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/EnrolmentRoutes.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/web/HttpServer.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/web/Cors.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/token/api/AccessTokenDto.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/frontend/FrontendFacade.kt",
+        "reposilite-backend/src/main/resources/static/index.html",
+        # Login, sessions, tokens and access checks, which the suite exercises through every signed-in page.
+        "reposilite-backend/src/main/kotlin/com/reposilite/auth/application/AuthenticationFacade.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/token/AccessTokenFacade.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/IdentityFacade.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/session/SessionStore.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/login/oidc/OidcLogin.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/authorization/Policy.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/access/SearchAccess.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/maven/RepositorySecurityProvider.kt",
+        "reposilite-backend/src/main/resources/META-INF/services/com.reposilite.plugin.api.ReposilitePlugin",
+        # What builds or starts the server for the suite.
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "gradle.properties",
+        "gradlew",
+        "gradle/wrapper/gradle-wrapper.properties",
+        "buildSrc/src/main/kotlin/ingot.kotlin.gradle.kts",
+        "reposilite-backend/build.gradle.kts",
+        ".github/workflows/heavy.yml",
+        ".github/scripts/ci_scope.sh",
+        ".github/scripts/heavy_gate.py",
+    ]
+
+    BLIND = [
+        # Backend internals and backend tests.
+        "reposilite-backend/src/main/kotlin/com/reposilite/maven/MavenFacade.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/storage/StorageProviderFactory.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/database/SearchAccessSql.kt",
+        "reposilite-backend/src/test/kotlin/com/reposilite/auth/AuthenticationFacadeTest.kt",
+        "reposilite-backend/src/test/kotlin/com/reposilite/status/StatusEndpointsTest.kt",
+        "reposilite-backend/src/integration/kotlin/com/reposilite/web/HttpIT.kt",
+        "reposilite-backend/detekt.yml",
+        # Plugins, including plugin endpoints: the suite loads no plugin of this repository.
+        "reposilite-plugins/prometheus-plugin/src/main/kotlin/com/reposilite/plugin/prometheus/PrometheusEndpoints.kt",
+        "reposilite-plugins/lucene-plugin/build.gradle.kts",
+        # The search sidecar, the chart, the images, the load tests and the other workflows.
+        "reposilite-search-http/src/main/kotlin/Server.kt",
+        "charts/ingot/values.yaml",
+        "Dockerfile",
+        "entrypoint.sh",
+        "docker-compose.yml",
+        "reposilite-frontend/Dockerfile",
+        "loadtest/scenarios/download.js",
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml",
+        ".github/scripts/tests/test_ci_scope.py",
+        # Documentation and proposals.
+        "docs/openapi/breaking-changes-ignore.txt",
+        "docs/guide.md",
+        "openspec/changes/x/tasks.md",
+    ]
+
+    def test_paths_the_dashboard_can_see_turn_on_e2e(self):
+        for path in self.SEES:
+            with self.subTest(path=path):
+                self.assertIn("e2e", truthy([path]))
+
+    def test_paths_the_dashboard_cannot_see_leave_e2e_off(self):
+        for path in self.BLIND:
+            with self.subTest(path=path):
+                self.assertNotIn("e2e", truthy([path]))
+
+    def test_one_visible_path_among_blind_ones_turns_on_e2e(self):
+        self.assertIn("e2e", truthy(self.BLIND + ["reposilite-frontend/src/App.vue"]))
+
+    def test_unknown_path_still_turns_on_e2e(self):
+        for path in ("something-new/file.txt", "renovate.json", "ingot-cli/main.go", "reposilite-test/workspace/x",
+                     '"reposilite-backend/\\303\\244.kt"'):
+            with self.subTest(path=path):
+                self.assertIn("e2e", truthy([path]))
+
+    def test_other_flags_are_unchanged_for_paths_that_leave_e2e_off(self):
+        # Only e2e was narrowed: these are the flags the paths selected before.
+        expected = {
+            "reposilite-backend/src/main/kotlin/com/reposilite/maven/MavenFacade.kt": {"backend", "unit"},
+            "reposilite-plugins/lucene-plugin/build.gradle.kts": {"backend", "unit"},
+            "reposilite-search-http/src/main/kotlin/Server.kt": {"backend", "unit"},
+            "charts/ingot/values.yaml": {"backend", "chart"},
+            "Dockerfile": {"backend", "image"},
+            "loadtest/scenarios/download.js": {"backend", "image", "chart", "unit"},
+            ".github/workflows/ci.yml": {"backend", "image", "chart", "unit"},
+            ".github/scripts/tests/test_ci_scope.py": {"backend", "image", "chart", "unit"},
+        }
+        for path, flags in expected.items():
+            with self.subTest(path=path):
+                self.assertEqual(truthy([path]), flags)
+
+    def test_other_flags_are_unchanged_for_paths_that_turn_e2e_on(self):
+        expected = {
+            "reposilite-frontend/src/App.vue": {"backend", "frontend", "frontend_only", "unit", "e2e"},
+            "reposilite-backend/src/main/kotlin/com/reposilite/status/StatusEndpoints.kt": {"backend", "unit", "e2e"},
+            "build.gradle.kts": {"backend", "image", "chart", "unit", "e2e"},
+            ".github/workflows/heavy.yml": {"backend", "image", "chart", "unit", "e2e"},
+        }
+        for path, flags in expected.items():
+            with self.subTest(path=path):
+                self.assertEqual(truthy([path]), flags)
 
 
 class CoverageJobsInWorkflowTest(unittest.TestCase):

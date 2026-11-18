@@ -271,6 +271,7 @@ const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
         <MdButton
           id="migration-overwrite-confirm"
           variant="filled"
+          error
           @click="confirmOverwrite"
         >
           Replace files

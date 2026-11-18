@@ -208,4 +208,19 @@ describe('MdSwitch', () => {
 
     expect(wrapper.find('label [data-test="rich"]').exists()).toBe(true)
   })
+
+  describe('label gap', () => {
+    it('keeps the 12px gap between the track and the label by default', () => {
+      const wrapper = mountSwitch()
+
+      expect(wrapper.classes(), 'the root has gap-3').toContain('gap-3')
+    })
+
+    it('takes the tight label gap from the labelGap prop', () => {
+      const wrapper = mountSwitch({ labelGap: 'tight' })
+
+      expect(wrapper.classes(), 'labelGap tight gives gap-2').toContain('gap-2')
+      expect(wrapper.classes(), 'the loose gap is replaced').not.toContain('gap-3')
+    })
+  })
 })

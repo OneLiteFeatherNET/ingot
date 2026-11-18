@@ -1,5 +1,3 @@
-# Spec Delta
-
 ## Purpose
 
 The CLI ships as its own container image and as a jar, built and published under the same supply-chain rules as the server image, without

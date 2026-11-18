@@ -16,12 +16,16 @@
 
 package net.onelitefeather.ingot.cluster
 
+import com.reposilite.journalist.Channel
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
+import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.JavadocInvalidatedEvent
+import com.reposilite.shared.ErrorResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import panda.std.Result
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -54,14 +58,30 @@ internal class ClusterJavadocEventsTest {
         override fun clusterBusOpened() {}
     }
 
-    private fun startInstance(instanceId: String, hooks: ClusterCacheHooks): Pair<Extensions, ClusterPlugin> {
+    /** Stands in for the javadoc viewer on the receiving side: it records every eviction the cluster asks of it. */
+    private class RecordingReceiver : JavadocCacheReceiver, Facade {
+        val evictions = CopyOnWriteArrayList<Pair<String, String>>()
+
+        override fun evictReceived(repository: String, path: String): Result<Unit, ErrorResponse> {
+            evictions.add(repository to path)
+            return Result.ok(Unit)
+        }
+    }
+
+    private fun startInstance(
+        instanceId: String,
+        hooks: ClusterCacheHooks?,
+        logger: InMemoryLogger = InMemoryLogger(),
+        facades: List<Facade> = emptyList(),
+    ): Pair<Extensions, ClusterPlugin> {
         val variables = mapOf(
             "INGOT_CLUSTER_INSTANCE_ID" to instanceId,
             // no running instance here: console fan-out needs the journalist of a running instance
             "INGOT_CLUSTER_CONSOLE" to "false",
             "INGOT_CLUSTER_URL" to "nats://hub.example:4222",
         )
-        val extensions = Extensions(InMemoryLogger())
+        val extensions = Extensions(logger)
+        facades.forEach(extensions::registerFacade)
         val plugin = ClusterPlugin(
             sources = ClusterSources(property = { null }, variable = variables::get, hostName = { "host" }),
             transports = mapOf("nats" to hub.factory()),
@@ -131,5 +151,45 @@ internal class ClusterJavadocEventsTest {
 
         // then: the publishing instance does not apply its own message a second time
         assertThat(sourceHooks.javadocInvalidations).describedAs("own message not applied").isEmpty()
+    }
+
+    @Test
+    fun `a received javadoc invalidation reaches the javadoc cache receiver once with its repository and path`() {
+        // given: the second instance applies received events through the facades of the server, and a viewer is loaded there
+        val (sourceExtensions, _) = startInstance("ingot-a", RecordingHooks())
+        val viewer = RecordingReceiver()
+        val (_, receiver) = startInstance("ingot-b", hooks = null, facades = listOf(viewer))
+        val delivered = CountDownLatch(1)
+        receiver.onReceived(ClusterEventType.JAVADOC_INVALIDATED) { delivered.countDown() }
+
+        // when: the first instance evicts the artifact of a deployed javadoc jar
+        sourceExtensions.emitEvent(JavadocInvalidatedEvent("hosted", "com/example/lib"))
+        assertThat(delivered.await(5, TimeUnit.SECONDS)).describedAs("invalidation delivered within five seconds").isTrue()
+
+        // then: the viewer was asked once to evict exactly the repository and the artifact path
+        assertThat(viewer.evictions).describedAs("evictions asked of the javadoc cache receiver")
+            .containsExactly("hosted" to "com/example/lib")
+    }
+
+    @Test
+    fun `a received javadoc invalidation without a javadoc cache receiver is logged at debug level and applies nothing`() {
+        // given: the second instance applies received events through the facades of the server, and no viewer is loaded there
+        val (sourceExtensions, _) = startInstance("ingot-a", RecordingHooks())
+        val receiverLogger = InMemoryLogger(Channel.ALL)
+        val (_, receiver) = startInstance("ingot-b", hooks = null, logger = receiverLogger)
+        val delivered = CountDownLatch(1)
+        receiver.onReceived(ClusterEventType.JAVADOC_INVALIDATED) { delivered.countDown() }
+
+        // when: the first instance evicts the artifact of a deployed javadoc jar
+        sourceExtensions.emitEvent(JavadocInvalidatedEvent("hosted", "com/example/lib"))
+        assertThat(delivered.await(5, TimeUnit.SECONDS)).describedAs("invalidation delivered within five seconds").isTrue()
+
+        // then: the event is logged at debug level and no error is logged, since no viewer is there to evict anything
+        val messages = receiverLogger.messages.toList()
+        assertThat(messages).describedAs("debug line naming the skipped invalidation").anySatisfy {
+            assertThat(it.key).isEqualTo(Channel.DEBUG)
+            assertThat(it.value).contains("hosted/com/example/lib")
+        }
+        assertThat(messages.filter { it.key == Channel.ERROR }).describedAs("errors logged by the receiving instance").isEmpty()
     }
 }

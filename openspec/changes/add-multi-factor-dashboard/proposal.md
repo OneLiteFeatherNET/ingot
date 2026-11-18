@@ -1,17 +1,25 @@
 # Proposal
 
-## Open maintainer questions
+## Maintainer questions
+
+Questions 1 to 5 were settled on 2026-11-18 by adopting each recommended default. The answers are recorded in the
+decisions D4 to D7 and D10 of `design.md`. Question 6 is not settled yet.
 
 1. **Recovery codes.** Default: shown once in a dialog with two actions, copy and download as a text file, and a check
-   box that must be ticked before the dialog closes. They are never shown again.
+   box that must be ticked before the dialog closes. They are never shown again. *Resolved 2026-11-18: default adopted (D4).*
 2. **Passkey sign-in button.** Default: shown only when the server announces `passkeyFirstFactor` on the login route. It is
-   a separate button above the password fields and does not replace them.
+   a separate button above the password fields and does not replace them. Decided 2026-11-18: the server signal is `passkeyFirstFactor` on `GET /api/auth/providers`, and the button is
+   shown only when it is set.
 3. **Step-up prompt.** Default: a sensitive action in the dashboard opens the step-up dialog when the last second factor is
-   older than the step-up window, then retries the action. Nothing is stored in the browser.
+   older than the step-up window, then retries the action. Nothing is stored in the browser. *Resolved 2026-11-18: default
+   adopted (D5). The trigger is the server's `step_up_required` answer, so the window is decided by the server and the
+   dashboard keeps no clock of its own. A passkey is offered in addition to the code, never instead of it.*
 4. **Grace banner.** Default: shown on every page of a covered user without a factor until the grace period ends. It is
-   not dismissible, because it is the only signal before the session is restricted.
+   not dismissible, because it is the only signal before the session is restricted. *Resolved 2026-11-18: default adopted
+   (D6).*
 5. **Administrator reset.** Default: a row action "Reset second factors" on the user's page in the administration area,
    behind a confirmation that names the user and says that their sessions end. It is hidden without instance admin rights.
+   *Resolved 2026-11-18: default adopted (D7).*
 6. **Account page section.** Default: the section `Sign-in and security` is added to the account page provided by the
    change `rework-account-menu-and-profile`. That change is proposed in parallel and is not on main yet. If it lands later,
    this change's code pull request waits for it.
@@ -27,7 +35,9 @@ against the contract in section 15 of the identity model.
 
 - **Sign-in.** `LoginModal.vue` gains a second step after a password or LDAP sign-in that answers `mfaRequired`: a code
   field for authenticator codes, a "use a recovery code" link, and a passkey action. A passkey button appears above the
-  password fields when the server announces the first-factor switch.
+  password fields when `GET /api/auth/providers` answers `passkeyFirstFactor: true`.
+- **Server.** `GET /api/auth/providers` gains the boolean `passkeyFirstFactor`, `false` by default, read from the login policy. It is the
+  only server change of this change, see section 9 of `tasks.md`.
 - **Account page.** A `Sign-in and security` section, provided by `rework-account-menu-and-profile`, with a `SecondFactorsCard`:
   the list of factors with rename and remove, enrolment of an authenticator app (the seed is shown as a QR code and as text,
   the code is confirmed) and of a passkey, the recovery codes with regeneration, and the grace banner when it applies.
@@ -38,7 +48,7 @@ against the contract in section 15 of the identity model.
 - **Client.** New calls in `src/store/client.js` for the routes of `add-multi-factor-authentication`, and a WebAuthn helper
   for `navigator.credentials` that encodes and decodes the binary fields.
 - **Tests.** Vitest unit tests for each component and for the WebAuthn helper, and end-to-end tests in the existing
-  dashboard end-to-end suite for sign-in with a code and for enrolment of a recovery code set.
+  dashboard end-to-end suite for sign-in with a code and for enrolment of a recovery code set. The end-to-end server starts with `INGOT_SETTINGS_KEY` set.
 
 ### Pull request
 
@@ -47,6 +57,7 @@ Ships under `feat(ui)`, because the change is dashboard work. Pull request title
     feat(ui): add second factor steps to the dashboard sign-in and account page
 
 The backend part is the change `add-multi-factor-authentication`, under `feat(identity)`. Its code pull request is merged first.
+The one server field of this change ships first as its own pull request under `feat(identity)` (section 9 of `tasks.md`).
 
 ## Breaking changes
 
@@ -56,7 +67,7 @@ they do today. Nothing is stored in the browser beyond what the dashboard alread
 
 ## Out of scope
 
-- The server contract, the factors, the policy and the audit events. They are in `add-multi-factor-authentication`.
+- The server contract, the factors, the policy and the audit events. They are in `add-multi-factor-authentication`, except the `passkeyFirstFactor` field of section 9.
 - The account menu and the profile page. Provided by `rework-account-menu-and-profile`.
 - A list of browser sessions and their revocation (O-20 of the identity model).
 - Policy editing beyond the `login.mfa` fields in the login settings form.
@@ -77,7 +88,7 @@ they do today. Nothing is stored in the browser beyond what the dashboard alread
 
 - **Users:** a new step after the password for users with a factor, and enrolment screens on the account page.
 - **Operators:** no action. The administrator controls appear only for instance admins.
-- **Code:** `reposilite-frontend` only: `components/header/LoginModal.vue`, `store/client.js`, `store/session.js`, the account
+- **Code:** `reposilite-frontend`, plus the `passkeyFirstFactor` field in `reposilite-backend` (section 9 of `tasks.md`): `components/header/LoginModal.vue`, `store/client.js`, `store/session.js`, the account
   components, `components/access/loginSettings.js` and the administration user page, plus new components and tests.
 - **Dependencies:** none. WebAuthn uses the browser API. The QR code is rendered with a library only if the existing
   dependencies do not already provide one; the apply task checks that first.

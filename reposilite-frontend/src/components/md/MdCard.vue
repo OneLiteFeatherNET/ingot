@@ -15,6 +15,7 @@
   -->
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Component } from 'vue'
 
 /*
@@ -24,15 +25,22 @@ import type { Component } from 'vue'
  * outlined for a quiet container.
  * `padding` is `none` for a card whose content draws its own inset, such as a table or a code block.
  * `as` draws the card as another element or component, such as a router link, with the same surface.
+ * `tone` sets the surface role (low, container, high or highest) in place of the variant's surface. `danger` keeps
+ * the surface and draws the border in the error role. `edge` (none, outline or elevation) replaces the variant's edge.
+ * Without `tone` and `edge` the card renders exactly as the variant says.
  */
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   variant?: 'elevated' | 'filled' | 'low' | 'outlined'
   padding?: 'default' | 'none'
   as?: string | Component
+  tone?: 'low' | 'container' | 'high' | 'highest' | 'danger'
+  edge?: 'none' | 'outline' | 'elevation'
 }>(), {
   variant: 'filled',
   padding: 'default',
-  as: 'div'
+  as: 'div',
+  tone: undefined,
+  edge: undefined
 })
 
 defineSlots<{
@@ -44,19 +52,44 @@ const PADDINGS = {
   none: ''
 }
 
+// Each variant names its surface role and its edge. The edge is one of outline, elevation or none.
 const VARIANTS = {
-  elevated: 'bg-surface-container-low shadow-elevation-1',
-  filled: 'bg-surface-container-highest',
+  elevated: { surface: 'bg-surface-container-low', edge: 'elevation' },
+  filled: { surface: 'bg-surface-container-low', edge: 'outline' },
+  low: { surface: 'bg-surface-container-low', edge: 'none' },
+  outlined: { surface: 'bg-surface', edge: 'outline' }
+} as const
+
+const SURFACES = {
   low: 'bg-surface-container-low',
-  outlined: 'border border-outline-variant bg-surface'
+  container: 'bg-surface-container',
+  high: 'bg-surface-container-high',
+  highest: 'bg-surface-container-highest'
 }
+
+const EDGES = {
+  none: [],
+  outline: ['border', 'border-outline'],
+  elevation: ['shadow-elevation-1']
+}
+
+const base = computed(() => VARIANTS[props.variant] ?? VARIANTS.filled)
+
+// A surface tone replaces the variant's surface. The danger tone keeps the variant's surface and draws the error border.
+const surfaceClass = computed(() => (props.tone && props.tone !== 'danger' ? SURFACES[props.tone] : base.value.surface))
+
+const edgeClasses = computed(() => {
+  const edge = props.edge ?? base.value.edge
+  if (props.tone === 'danger') return ['border', 'border-error', ...(edge === 'elevation' ? EDGES.elevation : [])]
+  return EDGES[edge]
+})
 </script>
 
 <template>
   <component
     :is="as"
     :data-variant="variant"
-    :class="['rounded-corner-medium text-on-surface', PADDINGS[padding], VARIANTS[variant] ?? VARIANTS.filled]"
+    :class="['rounded-corner-medium text-on-surface', PADDINGS[padding], surfaceClass, edgeClasses]"
     data-ingot-component="md-card"
   >
     <slot />

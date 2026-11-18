@@ -304,12 +304,13 @@ describe('AccountView', () => {
     links.forEach(link => expect(link.text()).toBe('Explain'))
   })
 
-  it('links an Explain to the access check, pre-filled with the principal, for a principal who may use the Access area', async () => {
+  it('links every Explain to the how-to page, also for a principal who may use the Access area', async () => {
     await mountView({ nodes: ['ingot.admin.users'] })
 
     const hrefs = sectionOf('access-title').findAll('a').map(link => link.attributes('href') ?? '')
 
-    expect(hrefs, 'the check is pre-filled with the principal').toEqual(expect.arrayContaining([expect.stringMatching(/^\/access\/check\?principal=alice&node=/)]))
+    expect(hrefs.length).toBeGreaterThan(0)
+    hrefs.forEach(href => expect(href, 'the how-to page is the target, whatever the nodes').toContain('check-access'))
   })
 
   it('links an Explain to the how-to page for a principal who may not use the Access area', async () => {

@@ -16,4 +16,7 @@
 
 subprojects {
     group = "com.reposilite.plugin"
+
+    // Every plugin jar names its module and version, which the server needs for a plugin it embeds.
+    ingot.plugin.PluginJarManifest.apply(this)
 }

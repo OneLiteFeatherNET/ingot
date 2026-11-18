@@ -34,6 +34,7 @@ import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.deleteRecursivelyInside
 import com.reposilite.token.AccessTokenIdentifier
+import net.onelitefeather.ingot.cluster.JavadocCacheReceiver
 import io.javalin.http.ContentType
 import panda.std.Result
 import panda.std.Result.supplyThrowing
@@ -61,7 +62,7 @@ class JavadocFacade internal constructor(
     val mavenFacade: MavenFacade,
     private val javadocFolder: Path,
     private val javadocContainerService: JavadocContainerService
-) : Journalist, Facade {
+) : Journalist, Facade, JavadocCacheReceiver {
 
     private val supportedExtensions = mapOf(
         "html" to ContentType.TEXT_HTML,
@@ -163,7 +164,7 @@ class JavadocFacade internal constructor(
      * this instance, the path must be a valid repository location, and the directory it names must lie strictly inside the javadoc
      * cache of that repository. A refused event deletes nothing.
      */
-    fun evictReceived(repository: String, path: String): Result<Unit, ErrorResponse> {
+    override fun evictReceived(repository: String, path: String): Result<Unit, ErrorResponse> {
         if (mavenFacade.getRepository(repository) == null) {
             return notFoundError("Javadoc eviction refused, unknown repository $repository")
         }

@@ -104,7 +104,7 @@ it would ship as its own `feat` change under the search scope.
   registers it in the new registration event (design D4). The existing plugin API types keep their signatures, so the
   plugin ABI gate passes unchanged.
 - **Code:** a new package `net.onelitefeather.ingot.jobs` in `reposilite-backend` for the list, the registry and the three
-  core sources; a new `com.reposilite.plugin.api.jobs` package for the contract; `reposilite-frontend/src/navigation/registry.ts`
+  core sources and the plugin contract types (`JobSource`, `JobQuery`, `JobPage`, `JobRegistrationEvent`); `reposilite-frontend/src/navigation/registry.ts`
   for the entry; a new Jobs view under `reposilite-frontend/src/components/jobs/`; and the maintenance tab components
   (`IndexPanel.vue`, `RunHistory.vue`) which stop drawing their full lists. The nexus import plugin registers its source in its
   own module.
