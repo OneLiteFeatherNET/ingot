@@ -325,11 +325,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdTextField.vue",
-    "match": "[&>svg]:size-6",
-    "count": 2
-  },
-  {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "[&::-webkit-scrollbar]:hidden",
     "count": 1

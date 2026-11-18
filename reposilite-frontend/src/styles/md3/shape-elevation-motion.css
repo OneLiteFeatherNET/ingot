@@ -301,6 +301,17 @@
 }
 
 /*
+ * The icon slots of the field shell: an svg placed in a slot is drawn at the 24px icon size, and any other child, such
+ * as an icon button, keeps its own size.
+ */
+@utility md-field-icon {
+  & > svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/*
  * The depth of a row in the key tree: the indent of its level, and a guide line drawn at the level above it, under the
  * toggle of the group that holds it. The guide is one pixel wide and runs the height of the row, so the rows of one
  * group join into a line. Depth 6 is the deepest level drawn; a deeper row keeps the indent of depth 6.
