@@ -47,8 +47,9 @@ Type and scope: `test(chart)`. Prerequisite: `add-ha-smoke-test` (on main).
   `charts/ingot/tests/ha/postgres-dependencies.yaml` and asserts one PostgreSQL Service on 5432, a database secret whose
   connection string names that Service with the `postgresql` engine, and the image pinned by digest. Verify: the test fails
   before 3.2 because the manifest is missing.
-- [ ] 3.2 `test(chart)`: add `charts/ingot/tests/ha/postgres-dependencies.yaml` and `charts/ingot/tests/ha/postgres-values.yaml`
-  (the second only overrides the secret and the readiness of the database). Verify: the test of 3.1 passes.
+- [x] 3.2 `test(chart)`: add `charts/ingot/tests/ha/postgres-dependencies.yaml`. No separate values file is needed, because both
+  legs share `ha/values.yaml` and only the dependency manifest and the connection secret differ (decided 2026-11-18: the
+  secret name and key are identical, and the chart has no database readiness value to override). Verify: the test of 3.1 passes.
 - [x] 3.3 `test(chart)`: write a failing unit test in `charts/ingot/tests/test_ha_smoke.py` that the driver takes the database
   as an argument (`mariadb` or `postgresql`), chooses the manifest and the wait names from it, and rejects any other value,
   using a fake `kubectl`. Verify: the test fails before 3.4.
