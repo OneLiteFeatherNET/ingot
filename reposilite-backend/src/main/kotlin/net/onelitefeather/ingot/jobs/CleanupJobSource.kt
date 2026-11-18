@@ -17,8 +17,6 @@ package net.onelitefeather.ingot.jobs
 
 import com.reposilite.cleanup.CleanupRun
 import com.reposilite.cleanup.CleanupService
-import com.reposilite.plugin.api.jobs.JobQuery
-import com.reposilite.plugin.api.jobs.JobSource
 import java.time.Duration
 
 private const val CLEANUP_SOURCE = "cleanup"

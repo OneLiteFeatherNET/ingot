@@ -15,8 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobQuery
-import com.reposilite.plugin.api.jobs.JobSource
 import net.onelitefeather.ingot.search.runs.RunCounters
 import net.onelitefeather.ingot.search.runs.RunKind
 import net.onelitefeather.ingot.search.runs.RunStatus

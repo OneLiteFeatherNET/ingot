@@ -24,11 +24,11 @@ import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
-import com.reposilite.plugin.api.jobs.JobRegistrationEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.jobs.JobRegistrationEvent
 import net.onelitefeather.ingot.nexusimport.jobs.JobScheduler
 import net.onelitefeather.ingot.nexusimport.jobs.JobStore
 import net.onelitefeather.ingot.nexusimport.jobs.NexusMigrationJobSource

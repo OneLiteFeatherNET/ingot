@@ -15,8 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobPage
-import com.reposilite.plugin.api.jobs.JobQuery
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.toErrorResponse

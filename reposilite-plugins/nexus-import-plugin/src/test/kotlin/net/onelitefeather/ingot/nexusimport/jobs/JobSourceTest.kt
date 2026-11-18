@@ -16,12 +16,12 @@
 
 package net.onelitefeather.ingot.nexusimport.jobs
 
-import com.reposilite.plugin.api.jobs.JobQuery
-import com.reposilite.plugin.api.jobs.JobSource
 import net.onelitefeather.ingot.jobs.JobAggregator
 import net.onelitefeather.ingot.jobs.JobCursor
-import net.onelitefeather.ingot.jobs.JobSourceRegistry
+import net.onelitefeather.ingot.jobs.JobQuery
 import net.onelitefeather.ingot.jobs.JobRun
+import net.onelitefeather.ingot.jobs.JobSource
+import net.onelitefeather.ingot.jobs.JobSourceRegistry
 import net.onelitefeather.ingot.jobs.JobState
 import net.onelitefeather.ingot.jobs.JobTrigger
 import net.onelitefeather.ingot.nexusimport.fake.AdvancingClock

@@ -20,7 +20,6 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposilitePostInitializeEvent
-import com.reposilite.plugin.api.jobs.JobRegistrationEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
