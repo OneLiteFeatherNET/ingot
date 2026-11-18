@@ -38,6 +38,8 @@ import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.shared.EntityTagSigner
 import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.StorageProviderRegistry
+import com.reposilite.storage.StorageProviderSerdes
 import java.nio.file.Path
 import java.util.ServiceLoader
 
@@ -79,18 +81,7 @@ class SharedConfigurationComponents(
         }
 
     private fun schemaGenerator(): Lazy<SchemaGenerator> =
-        lazy {
-            SchemaGenerator(
-                SchemaGeneratorConfigBuilder(DRAFT_7, SCHEMA_OPTION_PRESET)
-                    .with(
-                        SettingsModule(
-                            subtypeResolvers = ServiceLoader.load(SubtypeResolver::class.java).toList(),
-                            enumResolvers = ServiceLoader.load(EnumResolver::class.java).toList()
-                        )
-                    )
-                    .build()
-            )
-        }
+        lazy { settingsSchemaGenerator(extensions.storageProviders) }
 
     fun sharedConfigurationFacade(
         schemaGenerator: Lazy<SchemaGenerator> = schemaGenerator(),
@@ -111,3 +102,22 @@ class SharedConfigurationComponents(
         )
 
 }
+
+/**
+ * The generator of the settings schemas. The storage resolvers read [storageProviders], the live registry of the server, so the
+ * storage type of a loaded plugin is resolved; they come before the resolvers of the service loader, which read the built-in providers
+ * only.
+ */
+internal fun settingsSchemaGenerator(storageProviders: StorageProviderRegistry): SchemaGenerator =
+    SchemaGenerator(
+        SchemaGeneratorConfigBuilder(DRAFT_7, SCHEMA_OPTION_PRESET)
+            .with(
+                SettingsModule(
+                    subtypeResolvers = listOf(StorageProviderSerdes.StorageProviderSubtypeResolver(storageProviders)) +
+                        ServiceLoader.load(SubtypeResolver::class.java).toList(),
+                    enumResolvers = listOf(StorageProviderSerdes.StorageProviderEnumResolver(storageProviders)) +
+                        ServiceLoader.load(EnumResolver::class.java).toList(),
+                )
+            )
+            .build()
+    )

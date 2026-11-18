@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import com.reposilite.configuration.shared.OneOfVariants
 import com.reposilite.configuration.shared.cleanupScheme
 import com.fasterxml.jackson.databind.node.TextNode
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
@@ -149,3 +150,14 @@ internal class StorageProviderVariants(
     }
 
 }
+
+/**
+ * The settings classes of the loaded storage plugins as further variants of a [StorageProviderSettings] property, so the secret shape
+ * of the repository settings covers the `@Sensitive` fields of every variant the served schema offers. The registry is read on every
+ * call, so a plugin that loads after the caller was built is covered as well.
+ */
+@OptIn(ExperimentalIngotStorageApi::class)
+internal fun StorageProviderRegistry.secretVariants(): OneOfVariants =
+    OneOfVariants { declared ->
+        if (declared == StorageProviderSettings::class) pluginProviders().map { it.factory.settingsType.kotlin } else emptyList()
+    }
