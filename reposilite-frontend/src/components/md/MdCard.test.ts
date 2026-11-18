@@ -94,3 +94,64 @@ describe('MdCard', () => {
     expect(wrapper.classes(), 'a card without padding keeps the medium corner radius').toContain('rounded-corner-medium')
   })
 })
+
+describe('MdCard tone, edge and danger', () => {
+  it.each([
+    ['low', 'bg-surface-container-low'],
+    ['container', 'bg-surface-container'],
+    ['high', 'bg-surface-container-high'],
+    ['highest', 'bg-surface-container-highest']
+  ])('tone %s draws the %s surface role', (tone, role) => {
+    const wrapper = mount(MdCard, { props: { tone: tone as 'low' } })
+
+    expect(wrapper.classes(), `the ${tone} tone is the ${role} role`).toContain(role)
+  })
+
+  it('tone highest replaces the surface role of the default card', () => {
+    const wrapper = mount(MdCard, { props: { tone: 'highest' } })
+
+    expect(wrapper.classes(), 'the highest tone is not the low surface of the default card').not.toContain('bg-surface-container-low')
+  })
+
+  it('edge none draws the filled card without its outline border', () => {
+    const wrapper = mount(MdCard, { props: { edge: 'none' } })
+
+    expect(wrapper.classes(), 'the card with no edge has no outline border').not.toContain('border-outline')
+    expect(wrapper.classes(), 'the card with no edge has no elevation').not.toContain('shadow-elevation-1')
+  })
+
+  it('edge outline draws the outline border on an elevated card', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'elevated', edge: 'outline' } })
+
+    expect(wrapper.classes(), 'the outlined edge draws the outline border').toContain('border-outline')
+    expect(wrapper.classes(), 'the outlined edge replaces the elevation').not.toContain('shadow-elevation-1')
+  })
+
+  it('edge elevation replaces the outline border of an outlined card', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'outlined', edge: 'elevation' } })
+
+    expect(wrapper.classes(), 'the elevated edge draws elevation level 1').toContain('shadow-elevation-1')
+    expect(wrapper.classes(), 'the elevated edge has no outline border').not.toContain('border-outline')
+  })
+
+  it('draws the danger tone with the error border instead of the outline border', () => {
+    const wrapper = mount(MdCard, { props: { tone: 'danger' } })
+
+    expect(wrapper.classes(), 'the danger card borders in the error role').toContain('border-error')
+    expect(wrapper.classes(), 'the danger card has no outline border').not.toContain('border-outline')
+  })
+
+  it('keeps the surface, padding and radius of the default card for the danger tone', () => {
+    const wrapper = mount(MdCard, { props: { tone: 'danger' } })
+
+    expect(wrapper.classes()).toEqual(expect.arrayContaining(['bg-surface-container-low', 'p-4', 'rounded-corner-medium']))
+  })
+
+  it('leaves the default card without a tone or an edge unchanged', () => {
+    const wrapper = mount(MdCard)
+
+    expect(wrapper.classes(), 'the default card keeps its outline border').toContain('border-outline')
+    expect(wrapper.classes(), 'the default card keeps the low surface').toContain('bg-surface-container-low')
+    expect(wrapper.classes(), 'the default card has no error border').not.toContain('border-error')
+  })
+})
