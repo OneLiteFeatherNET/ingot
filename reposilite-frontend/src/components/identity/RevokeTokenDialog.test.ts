@@ -84,7 +84,14 @@ describe('RevokeTokenDialog', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
   })
 
-  it('shows a failed revoke inside the dialog', async () => {
+  it('names the dialog after its heading', () => {
+    const heading = dialog().querySelector('h2') as HTMLElement
+
+    expect(heading.textContent?.trim()).toBe('Revoke token')
+    expect(dialog().getAttribute('aria-labelledby'), 'screen readers announce the dialog by its heading').toBe(heading.id)
+  })
+
+  it('shows a failed revoke inside the dialog as an error notice', async () => {
     api.revoke.mockRejectedValue(Object.assign(new Error('failed'), {
       response: { status: 404, data: { message: 'Token not found' } }
     }))
@@ -92,7 +99,9 @@ describe('RevokeTokenDialog', () => {
     revokeButton().click()
     await flushPromises()
 
-    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain('Token not found')
+    const notice = dialog().querySelector('[role="alert"]') as HTMLElement
+    expect(notice.textContent).toContain('Token not found')
+    expect(notice.getAttribute('data-ingot-state'), 'a failed revoke is announced in the error state').toBe('error')
     expect(wrapper.emitted('revoked')).toBeUndefined()
   })
 })

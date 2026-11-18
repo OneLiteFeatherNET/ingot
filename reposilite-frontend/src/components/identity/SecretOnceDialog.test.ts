@@ -66,6 +66,10 @@ describe('SecretOnceDialog', () => {
     expect(dialog().textContent).toContain('You will not see this secret again')
   })
 
+  it('does not announce the static warning as an alert', () => {
+    expect(dialog().querySelector('[role="alert"]'), 'the warning never changes, so it is read with the page').toBeNull()
+  })
+
   it('names the token the secret belongs to', () => {
     expect(dialog().textContent).toContain('laptop')
   })

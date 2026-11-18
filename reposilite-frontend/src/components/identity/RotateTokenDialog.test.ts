@@ -54,14 +54,23 @@ describe('RotateTokenDialog', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
   })
 
-  it('shows a failed rotation inside the dialog', async () => {
+  it('names the dialog after its heading', () => {
+    const heading = dialog().querySelector('h2') as HTMLElement
+
+    expect(heading.textContent?.trim()).toBe('Rotate secret')
+    expect(dialog().getAttribute('aria-labelledby'), 'screen readers announce the dialog by its heading').toBe(heading.id)
+  })
+
+  it('shows a failed rotation inside the dialog as an error notice', async () => {
     api.rotate.mockRejectedValue(Object.assign(new Error('failed'), {
       response: { status: 404, data: { message: 'Token not found' } }
     }))
     rotateButton().click()
     await flushPromises()
 
-    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain('Token not found')
+    const notice = dialog().querySelector('[role="alert"]') as HTMLElement
+    expect(notice.textContent).toContain('Token not found')
+    expect(notice.getAttribute('data-ingot-state'), 'a failed rotation is announced in the error state').toBe('error')
     expect(wrapper.emitted('rotated')).toBeUndefined()
   })
 })

@@ -194,7 +194,9 @@ describe('CreateTokenDialog', () => {
     type('create-token-name', 'laptop')
     await submit()
 
-    expect((dialog().querySelector('[role="alert"]') as HTMLElement).textContent).toContain("Token 'laptop' already exists")
+    const notice = dialog().querySelector('[role="alert"]') as HTMLElement
+    expect(notice.textContent).toContain("Token 'laptop' already exists")
+    expect(notice.getAttribute('data-ingot-state'), 'a failed create is announced in the error state').toBe('error')
     expect(wrapper.emitted('created'), 'a failed create hands nothing on').toBeUndefined()
   })
 
@@ -404,6 +406,8 @@ describe('CreateTokenDialog', () => {
       await submit()
 
       expect(dialog().textContent).toContain("The groupId 'net' is refused by the server")
+      const notice = dialog().querySelector('[role="alert"]') as HTMLElement
+      expect(notice.getAttribute('data-ingot-state'), 'a refused node is shown in the error state').toBe('error')
     })
   })
 })

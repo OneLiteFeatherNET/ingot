@@ -214,6 +214,36 @@ describe('LoginModal', () => {
       expect(buttonLabels(), 'closing without signing in is a cancel, not a return to an index')
         .toContain('Cancel')
     })
+
+    it('draws the scrim through the shared dialog, not through an inline style on the overlay', async () => {
+      await openDialog()
+
+      const overlay = document.querySelector('.vfm__overlay') as HTMLElement
+      expect(overlay, 'the modal renders an overlay').not.toBeNull()
+      expect(overlay.getAttribute('style'), 'the scrim colour is set once, in the shared dialog').toBeNull()
+    })
+
+    it('returns focus to the sign in button when the dialog is cancelled', async () => {
+      const trigger = wrapper.find('button').element as HTMLButtonElement
+      trigger.focus()
+      await openDialog()
+
+      buttonByLabel('Cancel').click()
+      await flushPromises()
+
+      expect(document.activeElement, 'focus goes back to the control that opened the dialog').toBe(trigger)
+    })
+
+    it('closes on Escape', async () => {
+      await openDialog()
+      // The modal ignores Escape until its transition has ended, which jsdom never does, so the opened event stands in.
+      wrapper.findComponent(VueFinalModal).vm.$emit('opened')
+
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await flushPromises()
+
+      expect(wrapper.findComponent(VueFinalModal).props('modelValue'), 'Escape closes the dialog like Cancel does').toBe(false)
+    })
   })
 
   describe('password sign in', () => {
