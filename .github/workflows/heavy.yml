@@ -635,6 +635,11 @@ jobs:
       - name: "Build the server jar"
         run: ./gradlew :reposilite-backend:shadowJar
 
+      # The suite loads the nexus-import plugin into the server, so its jar is built beside the server jar. The switch
+      # that turns the plugin on is set by the suite itself, not by this job.
+      - name: "Build the nexus-import plugin jar"
+        run: ./gradlew :reposilite-plugins:nexus-import-plugin:shadowJar
+
       # The browser cache is keyed on the Playwright version, so a Playwright bump fetches a new Chromium and nothing else
       # does. The install itself still runs on a cache hit: it also installs the system libraries Chromium needs.
       - name: "Read the Playwright version"

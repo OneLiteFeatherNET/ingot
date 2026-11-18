@@ -151,6 +151,20 @@ class DashboardE2eJobTest(unittest.TestCase):
         self.assertEqual(len(suite), 1,
                          "one step runs `npm run e2e -- --workers=2` in reposilite-frontend")
 
+    def test_job_builds_the_nexus_import_plugin_jar(self):
+        self.assertTrue(
+            any("./gradlew :reposilite-plugins:nexus-import-plugin:shadowJar" in "\n".join(step) for step in self.steps),
+            "the suite loads the nexus-import plugin, so the job has to build its jar",
+        )
+
+    def test_suite_runs_after_the_nexus_import_plugin_jar_is_built(self):
+        build = "./gradlew :reposilite-plugins:nexus-import-plugin:shadowJar"
+        positions = [index for index, step in enumerate(self.steps) if any(build in line for line in step)]
+        suite = [index for index, step in enumerate(self.steps) if any("npm run e2e" in line for line in step)]
+        self.assertTrue(positions and suite, "both the plugin build and the suite are steps of the job")
+        self.assertLess(positions[0], suite[0],
+                        "the plugin jar must exist before the suite starts the server with it")
+
     def test_suite_runs_after_the_jar_is_built(self):
         names = ["./gradlew :reposilite-backend:shadowJar", "npm run e2e"]
         positions = {}
