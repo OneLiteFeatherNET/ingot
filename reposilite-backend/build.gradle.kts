@@ -234,6 +234,8 @@ dependencies {
         exclude(group = "org.apache.commons", module = "commons-compress")
     }
     testImplementation("org.apache.commons:commons-compress:1.28.0")
+    // Compiles the Kotlin samples of ExperimentalIngotPluginApiTest in process. Keep the version equal to kotlinVersion of the root build.
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.0")
 
     val ldap = "7.0.4"
     testImplementation("com.unboundid:unboundid-ldapsdk:$ldap")
