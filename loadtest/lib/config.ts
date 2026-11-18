@@ -55,6 +55,12 @@ export type Scenario = (typeof SCENARIOS)[number];
 export const PLATEAU_DEFAULT_HOLD_MINUTES = 15;
 export const PLATEAU_MIN_HOLD_MINUTES = 10;
 
+/** The label of the node pool that runs reference runs only (design D12). The runner selects and tolerates it. */
+export const LOADTEST_NODE_LABEL = 'ingot.onelitefeather.dev/loadtest';
+
+/** The Helm release of the Ingot under test. Its pods carry this value in the `app.kubernetes.io/instance` label. */
+export const INGOT_RELEASE = 'ingot-loadtest';
+
 export function assertLoadNamespace(namespace: string): string {
   if (namespace !== LOAD_NAMESPACE) {
     throw new Error(`refusing namespace "${namespace}": load tests run only in "${LOAD_NAMESPACE}"`);
