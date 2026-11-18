@@ -981,6 +981,14 @@
       "states": []
     },
     {
+      "name": "md-transition",
+      "file": "src/components/md/MdTransition.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
       "name": "md-side-sheet",
       "file": "src/components/md/MdSideSheet.vue",
       "stability": "experimental",

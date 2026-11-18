@@ -188,7 +188,12 @@ export interface PluginPage {
   title: string
   description?: string | null
   blocks?: unknown[]
+  // How the page is entered: the route transition by default, or none for an instant swap. Read by pluginPageMotion.
+  motion?: string | null
 }
+
+// The motion a plugin page asks for. Only `none` opts out; an absent or unknown value takes the route transition.
+export const pluginPageMotion = (page: { motion?: unknown } | undefined): 'route' | 'none' => (page?.motion === 'none' ? 'none' : 'route')
 
 export interface PluginSection {
   plugin?: string

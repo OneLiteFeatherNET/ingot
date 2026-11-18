@@ -909,3 +909,51 @@ describe('IndexPage maintenance frame', () => {
     expect(frame.props('reading'), 'the frame is not a reading page').toBe(false)
   })
 })
+
+describe('IndexPage page transition', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  it('draws the page content with the fade-through transition', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true })
+
+    const transition = wrapper.find('main transition-stub')
+    expect(transition.exists(), 'the content of main is wrapped by the page transition').toBe(true)
+    expect(transition.attributes('name'), 'top-level pages fade through').toBe('motion-fade-through')
+  })
+
+  it('does not animate the first paint of the page', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true })
+
+    expect(wrapper.find('transition-stub').attributes('appear'), 'a page the visitor opens is drawn at once').toBe('false')
+  })
+
+  it('keeps the same page element when only the query changes', async () => {
+    const { wrapper, router } = await mountAt('/audit', { manager: true })
+    const before = wrapper.find('[data-test="section"]').element
+
+    await router.push('/audit?level=info')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="section"]').element, 'a filter does not replace the page').toBe(before)
+  })
+
+  it('draws the overview hero and its listing inside one element, so the transition has a single child', async () => {
+    const { wrapper } = await mountAt('/')
+    const hero = wrapper.find('[data-test="hero"]').element
+    const listing = wrapper.find('[data-stub="RepositoryOverviewStub"]').element
+
+    expect(listing.parentElement, 'the hero and the listing share their parent').toBe(hero.parentElement)
+    expect(listing.parentElement, 'that parent is not main, so the transition wraps one element').not.toBe(wrapper.find('main').element)
+  })
+
+  it('replaces the page when the section changes', async () => {
+    const { wrapper, router } = await mountAt('/audit', { manager: true })
+
+    await router.push('/maintenance')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="section"]').attributes('data-section'), 'the page of the new section is shown').toBe('maintenance')
+  })
+})

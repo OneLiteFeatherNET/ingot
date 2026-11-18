@@ -14,7 +14,7 @@ const mountPage = async (): Promise<VueWrapper> => {
 }
 
 // The manifest is built per test, and the registry is cleared after each one, so no test reads another's manifest.
-const manifest = () => ({
+const manifest = (motion?: string) => ({
   version: 1,
   pages: [{
     plugin: 'acme-mirror',
@@ -24,6 +24,7 @@ const manifest = () => ({
     group: 'Security',
     area: 'users',
     blocks: [],
+    ...(motion === undefined ? {} : { motion }),
   }],
   sections: [],
   enabledPlugins: ['acme-mirror'],
@@ -53,5 +54,30 @@ describe('PluginPageView', () => {
     const wrapper = await mountPage()
 
     expect(wrapper.findAll('h1, h2, h3'), 'the page has no heading of its own').toEqual([])
+  })
+
+  it('takes the fade-through transition for a page without a motion field', async () => {
+    setContributions(manifest())
+
+    const wrapper = await mountPage()
+
+    expect(wrapper.find('transition-stub').attributes('name'), 'the route transition is the default').toBe('motion-fade-through')
+  })
+
+  it('takes the fade-through transition for an unknown motion value', async () => {
+    setContributions(manifest('sparkle'))
+
+    const wrapper = await mountPage()
+
+    expect(wrapper.find('transition-stub').attributes('name'), 'an unknown value falls back to the default').toBe('motion-fade-through')
+  })
+
+  it('draws no transition for a page that opts out with motion none', async () => {
+    setContributions(manifest('none'))
+
+    const wrapper = await mountPage()
+
+    expect(wrapper.find('transition-stub').exists(), 'the opt-out is an instant swap').toBe(false)
+    expect(wrapper.text(), 'the page is still drawn').toContain('Rotate the upstream credentials of mirrored repositories.')
   })
 })
