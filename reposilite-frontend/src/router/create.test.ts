@@ -21,6 +21,7 @@ import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
 import { ROUTES } from './routes'
 import { ADMIN_NODES, canUse, routeAllowed } from '../store/nodeAccess'
+import { clearPageFocusRequest, pageFocusRequested } from '../composables/useFocusOnInsert'
 
 // The four principals of Analytics: the node lists a session may carry, and whether the page opens for them.
 const analyticsPrincipals = [
@@ -661,19 +662,24 @@ describe('focus on in-app navigation', () => {
     document.body.appendChild(main)
   })
 
+  beforeEach(() => {
+    clearPageFocusRequest()
+  })
+
   afterEach(() => {
+    clearPageFocusRequest()
     main.remove()
     document.body.blur()
   })
 
-  it('moves focus to main once a path change has rendered', async () => {
+  it('asks the new page for the focus once a path change is made', async () => {
     const router = makeRouter()
     await router.push('/dashboard')
 
     await router.push('/search')
     await nextTick()
 
-    expect(document.activeElement, 'the new page announces itself').toBe(main)
+    expect(pageFocusRequested(), 'the new page takes the focus when it is inserted').toBe(true)
   })
 
   it('does not move focus on the first navigation of a page load', async () => {
@@ -682,7 +688,19 @@ describe('focus on in-app navigation', () => {
     await router.push('/search')
     await nextTick()
 
+    expect(pageFocusRequested(), 'the page the visitor just opened keeps the focus where it is').toBe(false)
     expect(document.activeElement, 'the page the visitor just opened keeps the focus where it is').not.toBe(main)
+  })
+
+  it('does not ask for focus when the navigation is the same page', async () => {
+    const router = makeRouter()
+    await router.push('/search')
+    clearPageFocusRequest()
+
+    await router.push('/search?q=commons')
+    await nextTick()
+
+    expect(pageFocusRequested(), 'a query change is not a new page').toBe(false)
   })
 
   it('does not move focus when only the query changes, as a filter does', async () => {

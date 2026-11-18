@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-import { nextTick, type Component } from 'vue'
+import type { Component } from 'vue'
 import { createRouter, type Router, type RouterHistory, type RouteLocationRaw, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from './routes'
 import { administrationLocation, firstAccessRoute, visibleChildren, type Can } from '../navigation/registry'
 import { ADMIN_NODES } from '../store/nodeAccess'
 import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
+import { requestPageFocus } from '../composables/useFocusOnInsert'
 
 /*
  * Builds the router from its parts. Nothing here reads the browser, the session or the
@@ -110,11 +111,12 @@ const createAppRouter = ({
 
     // A new page takes the focus, so that a screen reader announces it. The first navigation of a page load is the
     // page the visitor opened, and a change of query or hash inside a page is a control in use, so neither moves it.
+    // The focus is taken by the insertion of the new page (useFocusOnInsert), because a leaving page is still drawn.
     const firstNavigation = from.matched.length === 0
     // A move between two steps of the import wizard is taken by the heading of the step (MigrationView), not by the page.
     const betweenMigrationSteps = to.name === 'settings-migration' && from.name === 'settings-migration'
     if (!failure && !firstNavigation && to.path !== from.path && !betweenMigrationSteps) {
-      void nextTick(() => document.getElementById('main')?.focus())
+      requestPageFocus()
     }
   })
 

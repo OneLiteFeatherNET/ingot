@@ -48,13 +48,16 @@ import { ADMIN_NODES, routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, pluginPageMotion, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
 import type { ContributedPage, Page, RouteMeta } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
+import MdTransition from '../components/md/MdTransition.vue'
+import { NoMotion } from '../components/md/NoMotion'
+import { settlePageFocus, useFocusOnInsert } from '../composables/useFocusOnInsert'
 
 // Each section is its own bundle. While it downloads the page shows a progress bar, and if
 // the download fails it says so and offers a reload instead of an empty panel.
@@ -196,7 +199,20 @@ const hasNavigation = computed(() => menuSections.value.length > 1)
 watchEffect(() => {
   document.documentElement.style.setProperty(BOTTOM_BAR_VARIABLE, bottomBarHeight(hasNavigation.value))
 })
+// The page content fades through on a change of section. A plugin page may opt out, and then the swap is instant.
+// The focus of a new page is taken when the page is inserted into main (see useFocusOnInsert).
+const pageMotion = computed(() => (route.name === 'settings-plugin'
+  && pluginPageMotion(contributedPageByRoute(route.params.plugin as string, route.params.page as string)) === 'none'
+  ? NoMotion
+  : MdTransition))
+let stopFocusOnInsert: () => void = () => {}
+onMounted(() => {
+  stopFocusOnInsert = useFocusOnInsert(() => document.getElementById('main'))
+})
+// A page change that inserts nothing into main (a page inside the same frame) takes the focus once it has rendered.
+watch(() => route.path, () => settlePageFocus(document.getElementById('main')), { flush: 'post' })
 onBeforeUnmount(() => {
+  stopFocusOnInsert()
   document.documentElement.style.removeProperty(BOTTOM_BAR_VARIABLE)
 })
 
@@ -389,140 +405,149 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
         :aria-labelledby="framedMain ? 'administration-title' : undefined"
         :class="hasNavigation ? 'medium:flex medium:flex-1 medium:flex-col' : ''"
       >
-        <NotFoundView v-if="route.name === 'not-found'" />
-        <ViewLoading v-else-if="route.name === 'settings-plugin' && isLogged && !pluginUiReady" />
-        <ViewLoading v-else-if="migrationPending" />
-        <NotFoundView v-else-if="migrationMissing" />
-        <NotFoundView v-else-if="pluginPageMissing" />
-        <ViewLoading v-else-if="supportPageWaiting" />
-        <NotFoundView v-else-if="supportPageAbsent" />
-        <section
-          v-else-if="!sectionAllowed && isLogged"
-          data-test="no-access"
-          class="container mx-auto flex flex-col items-start gap-4 py-12"
-          aria-labelledby="no-access-title"
+        <component
+          :is="pageMotion"
+          pattern="fade-through"
         >
-          <h1
-            id="no-access-title"
-            class="md-headline-small text-on-surface"
+          <NotFoundView v-if="route.name === 'not-found'" />
+          <ViewLoading v-else-if="route.name === 'settings-plugin' && isLogged && !pluginUiReady" />
+          <ViewLoading v-else-if="migrationPending" />
+          <NotFoundView v-else-if="migrationMissing" />
+          <NotFoundView v-else-if="pluginPageMissing" />
+          <ViewLoading v-else-if="supportPageWaiting" />
+          <NotFoundView v-else-if="supportPageAbsent" />
+          <section
+            v-else-if="!sectionAllowed && isLogged"
+            data-test="no-access"
+            class="container mx-auto flex flex-col items-start gap-4 py-12"
+            aria-labelledby="no-access-title"
           >
-            {{ activeLabel }}
-          </h1>
-          <p class="md-body-large text-on-surface-variant">
-            You do not have access to this page.
-          </p>
-          <RouterLink
-            :to="{ name: 'overview' }"
-            class="md-focus-ring md-label-large text-primary"
+            <h1
+              id="no-access-title"
+              class="md-headline-small text-on-surface"
+            >
+              {{ activeLabel }}
+            </h1>
+            <p class="md-body-large text-on-surface-variant">
+              You do not have access to this page.
+            </p>
+            <RouterLink
+              :to="{ name: 'overview' }"
+              class="md-focus-ring md-label-large text-primary"
+            >
+              {{ pageLabel('overview') }}
+            </RouterLink>
+          </section>
+          <section
+            v-else-if="!sectionAllowed"
+            class="container mx-auto flex flex-col items-start gap-4 py-12"
+            aria-labelledby="sign-in-title"
           >
-            {{ pageLabel('overview') }}
-          </RouterLink>
-        </section>
-        <section
-          v-else-if="!sectionAllowed"
-          class="container mx-auto flex flex-col items-start gap-4 py-12"
-          aria-labelledby="sign-in-title"
-        >
-          <h2
-            id="sign-in-title"
-            class="md-headline-small text-on-surface"
+            <h2
+              id="sign-in-title"
+              class="md-headline-small text-on-surface"
+            >
+              Sign in to open {{ activeLabel }}
+            </h2>
+            <p
+              v-if="route.meta.manager"
+              class="md-body-large text-on-surface-variant"
+            >
+              This section needs a sign in with the right permission nodes. Sign in with an account
+              or token that holds them, and you stay on this page.
+            </p>
+            <p
+              v-else
+              class="md-body-large text-on-surface-variant"
+            >
+              Sign in to see your profile, change your password and manage your tokens.
+            </p>
+            <MdButton
+              variant="filled"
+              @click="openLogin"
+            >
+              Sign in
+            </MdButton>
+          </section>
+          <!-- The hero and the listing are one element, so the page transition has one child to animate. -->
+          <div
+            v-else-if="section === 'overview'"
+            class="flex flex-1 flex-col"
           >
-            Sign in to open {{ activeLabel }}
-          </h2>
-          <p
-            v-if="route.meta.manager"
-            class="md-body-large text-on-surface-variant"
+            <HeaderHero />
+            <!-- The root lists the repositories; a browsed path keeps the folder listing. -->
+            <RepositoryOverview
+              v-if="browsedPath === ''"
+              :qualifier="qualifier"
+            />
+            <FileBrowserView
+              v-else
+              :qualifier="qualifier"
+            />
+          </div>
+          <AdministrationFrame
+            v-else-if="route.name === 'settings-plugin'"
+            description=""
+            :label="adminSideNav.label"
+            :section-label="adminSideNav.sectionLabel"
+            :groups="adminTree"
+            :current="adminCurrent"
+            :index-to="adminSideNav.indexTo"
+            :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
+            :narrow="narrow"
           >
-            This section needs a sign in with the right permission nodes. Sign in with an account
-            or token that holds them, and you stay on this page.
-          </p>
-          <p
-            v-else
-            class="md-body-large text-on-surface-variant"
+            <PluginPageView
+              :plugin="routeText(route.params.plugin)"
+              :page-id="routeText(route.params.page)"
+            />
+          </AdministrationFrame>
+          <SearchView v-else-if="section === 'search'" />
+          <AccountView v-else-if="section === 'account'" />
+          <AccessView
+            v-else-if="section === 'access'"
+            :tab="accessTab"
+            :name="accessName"
+          />
+          <AdministrationFrame
+            v-else-if="adminSideNav"
+            :reading="readingPage"
+            :label="adminSideNav.label"
+            :section-label="adminSideNav.sectionLabel"
+            :groups="adminTree"
+            :current="adminCurrent"
+            :index-to="adminSideNav.indexTo"
+            :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
+            :narrow="narrow"
           >
-            Sign in to see your profile, change your password and manage your tokens.
-          </p>
-          <MdButton
-            variant="filled"
-            @click="openLogin"
-          >
-            Sign in
-          </MdButton>
-        </section>
-        <template v-else-if="section === 'overview'">
-          <HeaderHero />
-          <!-- The root lists the repositories; a browsed path keeps the folder listing. -->
-          <RepositoryOverview
-            v-if="browsedPath === ''"
-            :qualifier="qualifier"
+            <AnalyticsView v-if="section === 'analytics'" />
+            <ConsoleView
+              v-else-if="section === 'console'"
+              :level="consoleLevel"
+              :search="consoleSearch"
+              @update:level="setConsoleLevel"
+              @update:search="setConsoleSearch"
+            />
+            <MaintenanceView v-else-if="section === 'maintenance'" />
+            <MigrationView
+              v-else-if="section === 'migration'"
+              :step="routeText(route.params.step)"
+            />
+            <AuditView
+              v-else-if="section === 'audit'"
+              :query="route.query"
+              @update:query="setAuditQuery"
+            />
+            <SystemInfoView v-else-if="route.name === 'system-info'" />
+          </AdministrationFrame>
+          <SettingsView
+            v-else-if="section === 'settings'"
+            :selected-tab="activeLabel"
+            :domain="routeText(route.params.domain)"
+            :collection="routeText(route.params.collection)"
+            :entry="routeText(route.params.entry)"
+            @update:domain="setDomain"
           />
-          <FileBrowserView
-            v-else
-            :qualifier="qualifier"
-          />
-        </template>
-        <AdministrationFrame
-          v-else-if="route.name === 'settings-plugin'"
-          description=""
-          :label="adminSideNav.label"
-          :section-label="adminSideNav.sectionLabel"
-          :groups="adminTree"
-          :current="adminCurrent"
-          :index-to="adminSideNav.indexTo"
-          :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
-          :narrow="narrow"
-        >
-          <PluginPageView
-            :plugin="routeText(route.params.plugin)"
-            :page-id="routeText(route.params.page)"
-          />
-        </AdministrationFrame>
-        <SearchView v-else-if="section === 'search'" />
-        <AccountView v-else-if="section === 'account'" />
-        <AccessView
-          v-else-if="section === 'access'"
-          :tab="accessTab"
-          :name="accessName"
-        />
-        <AdministrationFrame
-          v-else-if="adminSideNav"
-          :reading="readingPage"
-          :label="adminSideNav.label"
-          :section-label="adminSideNav.sectionLabel"
-          :groups="adminTree"
-          :current="adminCurrent"
-          :index-to="adminSideNav.indexTo"
-          :shortcuts="shortcutsOf(adminCurrent ?? '', can)"
-          :narrow="narrow"
-        >
-          <AnalyticsView v-if="section === 'analytics'" />
-          <ConsoleView
-            v-else-if="section === 'console'"
-            :level="consoleLevel"
-            :search="consoleSearch"
-            @update:level="setConsoleLevel"
-            @update:search="setConsoleSearch"
-          />
-          <MaintenanceView v-else-if="section === 'maintenance'" />
-          <MigrationView
-            v-else-if="section === 'migration'"
-            :step="routeText(route.params.step)"
-          />
-          <AuditView
-            v-else-if="section === 'audit'"
-            :query="route.query"
-            @update:query="setAuditQuery"
-          />
-          <SystemInfoView v-else-if="route.name === 'system-info'" />
-        </AdministrationFrame>
-        <SettingsView
-          v-else-if="section === 'settings'"
-          :selected-tab="activeLabel"
-          :domain="routeText(route.params.domain)"
-          :collection="routeText(route.params.collection)"
-          :entry="routeText(route.params.entry)"
-          @update:domain="setDomain"
-        />
+        </component>
       </main>
       <!-- From 600px the footer closes the sheet; below it, the footer below the page takes over. -->
       <PageFooter

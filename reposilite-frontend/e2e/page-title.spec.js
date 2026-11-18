@@ -54,7 +54,8 @@ test.describe('the page title and the top bar', () => {
         await openAdministrationPage(page, 'Repositories')
         const title = page.getByRole('heading', { level: 1, name: 'Repositories', exact: true })
         await expect(title).toBeVisible()
-        await expect(page.locator('#main')).toBeFocused()
+        // A page change moves the focus to the heading of the new page.
+        await expect(title).toBeFocused()
 
         expect(await topOf(title), 'the top of the title is below the bottom of the top bar').toBeGreaterThanOrEqual(await bottomOfBar(page))
       })
