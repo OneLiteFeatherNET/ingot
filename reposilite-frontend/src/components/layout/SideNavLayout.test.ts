@@ -16,11 +16,16 @@
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import type { Component } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import { treeObserverKey } from '../../helpers/useTreeFits'
+import MdTransition from '../md/MdTransition.vue'
 
 type LayoutProps = Partial<InstanceType<typeof SideNavLayout>['$props']>
+
+// The wrapper of the page column, read as a component so the test sees the pattern and the direction it is given.
+const transitionOf = (wrapper: VueWrapper) => wrapper.findComponent(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }
 
 const shell = { render: () => null }
 
@@ -161,37 +166,50 @@ describe('SideNavLayout', () => {
     expect(wrapper.get('[data-test="page-column"]').element, 'an entry change renews the page element').not.toBe(pageBefore)
   })
 
-  it('plays the page enter animation on the page column only, and turns it off under reduced motion', async () => {
+  it('wraps the page column in the shared-x pattern, and the side navigation in no transition', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
-    const page = wrapper.get('[data-test="page-column"]').classes()
-    expect(page, 'the page column has the enter animation').toContain('animate-md-page-enter')
-    expect(page, 'reduced motion removes it').toContain('motion-reduce:animate-none')
+    expect(transitionOf(wrapper).props('pattern'), 'the page column moves as a sibling page').toBe('shared-x')
+    expect(wrapper.get('[data-test="page-column"]').classes(), 'the page column no longer carries the rise class').not.toContain('animate-md-page-enter')
     expect(wrapper.find(SIDE_NAV).classes(), 'the side navigation does not animate').not.toContain('animate-md-page-enter')
+    expect(wrapper.find(SIDE_NAV).element.closest('[data-test="page-column"]'), 'the side navigation is outside the transition').toBeNull()
   })
 
-  it('gives the renewed page the enter animation when the entry changes', async () => {
+  it('moves the page forward when the entry changes to a later sibling, and backward to an earlier one', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
-    const pageBefore = wrapper.get('[data-test="page-column"]').element
+
+    await wrapper.setProps({ current: 'teams' })
+    expect(transitionOf(wrapper).props('direction'), 'a later sibling comes from the right').toBe(1)
 
     await wrapper.setProps({ current: 'machines' })
-    await flushPromises()
-
-    const renewed = wrapper.get('[data-test="page-column"]')
-    expect(renewed.element, 'an entry change renews the page element, so the animation plays again').not.toBe(pageBefore)
-    expect(renewed.classes(), 'the renewed page carries the enter animation class').toContain('animate-md-page-enter')
+    expect(transitionOf(wrapper).props('direction'), 'an earlier sibling comes from the left').toBe(-1)
   })
 
-  it('keeps the page element and its enter class when only the query changes, so the animation does not replay', async () => {
+  it('moves the page across the groups of the tree in the order of the flat list', async () => {
+    const wrapper = await mountLayout({ current: 'teams', narrow: false })
+
+    await wrapper.setProps({ current: 'sso' })
+    expect(transitionOf(wrapper).props('direction'), 'from the last entry of the first group to the first of the second').toBe(1)
+  })
+
+  it('keeps the side navigation element when the entry changes', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+    const navBefore = wrapper.find(SIDE_NAV).element
+
+    await wrapper.setProps({ current: 'machines' })
+
+    expect(wrapper.find(SIDE_NAV).element, 'the side navigation is not keyed, so it is not drawn again').toBe(navBefore)
+  })
+
+  it('passes no direction on a query change and keeps the page element', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
     const pageBefore = wrapper.get('[data-test="page-column"]').element
 
     await (wrapper.vm as unknown as { $router: Router }).$router.replace({ path: '/access/users', query: { tab: 'storage' } })
     await flushPromises()
 
-    const kept = wrapper.get('[data-test="page-column"]')
-    expect(kept.element, 'a query change keeps the same page element').toBe(pageBefore)
-    expect(kept.classes(), 'and the kept page still carries the enter animation class').toContain('animate-md-page-enter')
+    expect(wrapper.get('[data-test="page-column"]').element, 'a query change keeps the same page element, so a typed value keeps its focus').toBe(pageBefore)
+    expect(transitionOf(wrapper).props('direction'), 'a query change moves the page without a direction').toBe(0)
   })
 
   it('shows the side navigation and the page side by side on wide widths', async () => {
