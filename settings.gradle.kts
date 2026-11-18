@@ -34,6 +34,12 @@ include(
     "ingot-cli"
 )
 
+// The consumer fixture compiles a sample plugin against the slim plugin API jar alone (openspec change add-plugin-api-artifact).
+// reposilite-test is not in the Docker build context, so the fixture is included only when its directory is present.
+if (rootDir.resolve("reposilite-test/plugin-api-consumer").isDirectory) {
+    include("reposilite-test:plugin-api-consumer")
+}
+
 // Plugins aren't needed to build the server jar, so the Docker build trims them from the context (see .dockerignore).
 // The image keeps only the bundled metrics plugin, so each plugin is included when its directory is present.
 if (rootDir.resolve("reposilite-plugins").isDirectory) {
