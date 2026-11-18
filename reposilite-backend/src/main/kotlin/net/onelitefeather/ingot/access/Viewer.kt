@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.access
 
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.api.RepositoryListQuery
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
@@ -47,8 +48,8 @@ class Viewer internal constructor(
     fun canListRepository(repository: String): Boolean =
         maven.getRepository(repository)?.let { maven.canListRepository(token, it) } ?: false
 
-    /** The repositories the root directory shows to this viewer. */
+    /** The repositories the repository list shows to this viewer. Every name is one [canListRepository] answers true for. */
     fun listedRepositories(): Set<String> =
-        maven.findRepositories(token).files.map { it.name }.toSet()
+        maven.listRepositories(token, RepositoryListQuery()).repositories.map { it.id }.toSet()
 
 }

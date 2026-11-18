@@ -103,12 +103,24 @@ internal class ViewerAccessParityTest : MavenSpecification() {
     }
 
     @Test
-    fun `should list the repositories as the root listing does`() {
+    fun `should list the repositories as the list route does`() {
         viewers().forEach { (viewer, token) ->
+            val listed = mavenFacade.listRepositories(token, RepositoryListQuery()).repositories.map { it.id }.toSet()
             assertThat(viewerOf(token).listedRepositories())
                 .`as`("listedRepositories() for $viewer")
-                .isEqualTo(findRepositories(token).toSet())
+                .isEqualTo(listed)
         }
+    }
+
+    @Test
+    fun `should not list a hidden repository the viewer can see but may not list`() {
+        val token = createAccessToken("shadow-reader", "secret", "shadow", gav, READ)
+        val facadeViewer = viewerOf(token)
+        assertThat(facadeViewer.canReadRepository("shadow"))
+            .`as`("precondition: the viewer can see the hidden repository")
+            .isTrue()
+        assertThat(facadeViewer.canListRepository("shadow")).isFalse()
+        assertThat(facadeViewer.listedRepositories()).doesNotContain("shadow")
     }
 
     @Test
