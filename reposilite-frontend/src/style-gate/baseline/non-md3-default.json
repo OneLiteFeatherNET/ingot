@@ -15,18 +15,8 @@
     "count": 1
   },
   {
-    "file": "src/components/access/TeamParentsCard.vue",
-    "match": "z-20",
-    "count": 1
-  },
-  {
     "file": "src/components/access/check/CheckPermissionView.vue",
     "match": "z-10",
-    "count": 1
-  },
-  {
-    "file": "src/components/access/check/ComboboxField.vue",
-    "match": "z-20",
     "count": 1
   },
   {
