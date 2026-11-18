@@ -19,7 +19,7 @@ name: "Heavy"
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/**" ]
     types: [ "opened", "reopened", "synchronize", "labeled", "unlabeled" ]
   merge_group:
     types: [ "checks_requested" ]
