@@ -926,8 +926,14 @@ class IdentityFacade(
             return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
         }
         // A user or machine of that name wins; otherwise the name may be a team, which is checked by the rights its members get.
+        // A private team is answered only to a caller that may manage teams.
         val user = principalNamed(principal)
-        val team = if (user == null) publicTeam(principal) else null
+        val team = if (user == null) {
+            val mayManageTeams = authorization.probe(AuthorizationRequest.AdminArea(callerSubject, area = "teams")).allowed
+            store.findTeam(principal)?.takeUnless { it.isPrivate && !mayManageTeams }
+        } else {
+            null
+        }
         if (user == null && team == null) return notFoundError("Principal not found")
         val tokenRecord = token?.let { name ->
             user?.let { store.tokensOf(it.id).firstOrNull { record -> record.name == name } }
