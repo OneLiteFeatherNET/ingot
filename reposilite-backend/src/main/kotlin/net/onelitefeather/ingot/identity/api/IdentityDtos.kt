@@ -325,4 +325,6 @@ data class PermissionCheckDto(
     val repository: String? = null,
     val path: String? = null,
     val action: String? = null,
+    /** What the name answered: the kind of a user or machine, or TEAM when the name is a team. */
+    val principalKind: String? = null,
 )
