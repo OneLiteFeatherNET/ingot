@@ -2,12 +2,12 @@
 
 ## Open maintainer questions
 
-Each question has a default. The change is written for the default; a different answer changes the named requirement and nothing else.
+Questions 3 and 4 were decided by the maintainer on 2026-11-18 and are written in as decided. Each other question has a default. A different answer to an open question changes the named requirement and nothing else.
 
 1. **Where the name is shown.** Default: the top bar trigger shows the avatar and the display name, as it does today from 900 pixels. The menu header shows the username and the kind and source line, never the display name again. Alternative: the trigger shows the avatar only and the menu header carries the full identity block (display name, username, kind, source).
 2. **Username in the menu header.** Default: shown only when it differs from the display name, so a user whose display name is their username sees one line. Alternative: always shown.
-3. **Placeholder for two-step sign-in.** Default: the "Sign-in and security" section keeps a named slot, `data-ingot-slot="add-multi-factor-authentication"`, with a short note that two-step sign-in is not set up. The change `add-multi-factor-authentication` does not exist yet and is not part of this pull request; it fills the slot when it is proposed. Alternative: the slot is absent until that change lands.
-4. **Target of the "Explain" links.** Default: a principal who may use the Access area (the same nodes that open it) gets links to the in-dashboard check at `/access/check`, pre-filled with its own name and the permission; every other principal gets the link to the how-to page `check-access.md`. Alternative: the how-to page only, for everyone.
+3. **Placeholder for two-step sign-in.** Decided 2026-11-18: the two-factor card sits under "Sign-in and security", in the named slot `data-ingot-slot="add-multi-factor-authentication"`, with the note that two-step sign-in is not set up. The change `add-multi-factor-authentication` does not exist yet and is not part of this pull request; it replaces the note with its card when it is proposed.
+4. **Target of the "Explain" links.** Decided 2026-11-18: every signed-in principal gets the same links, to the how-to page `docs/gitbook/how-to/check-access.md`. The account page does not link to the check at `/access/check`, whatever the principal's nodes.
 5. **Team parents.** Default: each team is listed with its direct parents ("inherits from ..."), which is what the principal's rights come through. Alternative: the full chain up to eight levels.
 6. **Source of the sign-in.** Default: the menu and the profile name the providers the principal is linked to (`local`, `ldap`, `oidc`), read from the new access summary. Alternative: the provider the current tab signed in with, which needs no backend change for this part but is wrong for a principal linked to two providers.
 

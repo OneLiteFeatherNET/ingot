@@ -26,7 +26,7 @@ change. The pull request starts only after `add-own-access-summary-endpoint` is 
   unchanged. Verify: it fails, because `triggerLabel` does not exist and the header has its own inset.
 - [ ] 2.4 `test(ui)`: in `src/components/account/AccountView.test.js`, assert four headings in the order Profile, Sign-in and security,
   Tokens, Your access; the placeholder `data-ingot-slot="add-multi-factor-authentication"` inside the second section; no input and no
-  button in Your access other than the Explain links; the summary is requested with no principal parameter; the password card moves
+  button in Your access other than the Explain links; the Explain links open the how-to page for every principal; the summary is requested with no principal parameter; the password card moves
   to the top under `mustChangePassword`. Verify: it fails.
 - [ ] 2.5 `test(ui)`: in `src/components/account/ProfileCard.test.js`, assert that equal display name and username show one value and no
   Username row, and that Teams and the instance admin tag are not drawn. Verify: it fails at `ProfileCard.vue:82-87`.
@@ -50,7 +50,7 @@ change. The pull request starts only after `add-own-access-summary-endpoint` is 
 - [ ] 4.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, describe the menu header block, the shared inset and the Your access pattern
   with its read-only rule. Verify: the dash grep prints nothing.
 - [ ] 4.2 `docs(gitbook)`: in `docs/gitbook/how-to/check-access.md`, add a short paragraph that the account page shows the caller's own
-  access under Your access and links to this check. Verify: the dash grep prints nothing.
+  access under Your access and is the target of its Explain links. Verify: the dash grep prints nothing.
 
 ## 5. Check
 
