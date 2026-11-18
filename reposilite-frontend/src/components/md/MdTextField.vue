@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
+import MdFieldShell from './MdFieldShell.vue'
 
 /*
  * Material Design 3 text field, filled or outlined. The label is always a real <label for>
@@ -49,6 +50,7 @@ const props = withDefaults(defineProps<{
   autocomplete?: string
   disabled?: boolean
   required?: boolean
+  readonly?: boolean
 }>(), {
   modelValue: '',
   variant: 'filled',
@@ -57,7 +59,8 @@ const props = withDefaults(defineProps<{
   id: '',
   type: 'text',
   name: undefined,
-  autocomplete: undefined
+  autocomplete: undefined,
+  readonly: false
 })
 
 const emit = defineEmits<{
@@ -69,9 +72,7 @@ const onInput = (event: Event) =>
 
 const generatedId = useId()
 const inputId = computed(() => props.id || `md-text-field-${generatedId}`)
-const helperId = computed(() => `${inputId.value}-helper`)
 const helperText = computed(() => (props.error ? props.errorText : props.supportingText))
-const describedBy = computed(() => (helperText.value ? helperId.value : undefined))
 
 // Every class name is spelled out in full so that Tailwind finds it in this file.
 // The focus indicator is 2px in both variants: the MD3 reference sets it to 2px. Filled is a
@@ -130,14 +131,6 @@ const labelClass = computed(() => [
   props.disabled ? LABEL_COLOUR.disabled : LABEL_COLOUR[stateKey.value]
 ])
 
-// Icons and supporting text are outside the input's peer scope, so they take their colour
-// from the props. A disabled field uses on-surface at 38% for all of them.
-const iconClass = computed(() => (props.disabled ? 'text-on-surface/38' : 'text-on-surface-variant'))
-
-const helperClass = computed(() => {
-  if (props.disabled) return 'text-on-surface/38'
-  return props.error ? 'text-error' : 'text-on-surface-variant'
-})
 </script>
 
 <template>
@@ -147,61 +140,57 @@ const helperClass = computed(() => {
     :style="attrs.style"
     data-ingot-component="md-text-field"
   >
-    <div class="relative">
-      <span
+    <MdFieldShell
+      :input-id="inputId"
+      :helper-text="helperText"
+      :invalid="error"
+      :disabled="disabled"
+    >
+      <template
         v-if="$slots['leading-icon']"
-        class="absolute left-3 top-1/2 -translate-y-1/2 [&>svg]:size-6"
-        :class="iconClass"
-        aria-hidden="true"
+        #leading
       >
         <slot name="leading-icon" />
-      </span>
-      <input
-        v-bind="forwardedAttrs()"
-        :id="inputId"
-        :class="[
-          'peer',
-          'min-h-6 min-w-6',
-          fieldClass,
-          dateClass,
-          searchClass,
-          $slots['leading-icon'] ? 'pl-12' : 'pl-4',
-          $slots['trailing-icon'] ? 'pr-12' : 'pr-4'
-        ]"
-        :value="modelValue"
-        :type="type"
-        :name="name"
-        :autocomplete="autocomplete"
-        :disabled="disabled"
-        :required="required"
-        placeholder=" "
-        :aria-invalid="error ? 'true' : undefined"
-        :aria-describedby="describedBy"
-        @input="onInput"
-      >
-      <label
-        :for="inputId"
-        :class="[
-          ...labelClass,
-          $slots['leading-icon'] ? 'left-12' : 'left-4'
-        ]"
-      >{{ label }}</label>
-      <span
+      </template>
+      <template
         v-if="$slots['trailing-icon']"
-        class="absolute right-3 top-1/2 -translate-y-1/2 [&>svg]:size-6"
-        :class="iconClass"
+        #trailing
       >
-        <!-- Not aria-hidden: the trailing slot may hold an interactive button, such as a visibility toggle. -->
         <slot name="trailing-icon" />
-      </span>
-    </div>
-    <p
-      v-if="helperText"
-      :id="helperId"
-      class="md-body-small whitespace-pre-line px-4"
-      :class="helperClass"
-    >
-      {{ helperText }}
-    </p>
+      </template>
+      <template #default="{ describedBy }">
+        <input
+          v-bind="forwardedAttrs()"
+          :id="inputId"
+          :class="[
+            'peer',
+            'min-h-6 min-w-6',
+            fieldClass,
+            dateClass,
+            searchClass,
+            $slots['leading-icon'] ? 'pl-12' : 'pl-4',
+            $slots['trailing-icon'] ? 'pr-12' : 'pr-4'
+          ]"
+          :value="modelValue"
+          :type="type"
+          :name="name"
+          :autocomplete="autocomplete"
+          :disabled="disabled"
+          :required="required"
+          :readonly="readonly"
+          placeholder=" "
+          :aria-invalid="error ? 'true' : undefined"
+          :aria-describedby="describedBy"
+          @input="onInput"
+        >
+        <label
+          :for="inputId"
+          :class="[
+            ...labelClass,
+            $slots['leading-icon'] ? 'left-12' : 'left-4'
+          ]"
+        >{{ label }}</label>
+      </template>
+    </MdFieldShell>
   </div>
 </template>

@@ -18,9 +18,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import MdSnackbar from './MdSnackbar.vue'
-import { createSnackbarQueue } from '../../store/snackbar'
+import source from './MdSnackbar.vue?raw'
+import { createSnackbarQueue, snackbar as sharedQueue, SNACKBAR_QUEUE_KEY } from '../../store/snackbar'
 
-// Each test mounts the snackbar on a queue of its own, so nothing is shared between tests.
+// Each test provides a queue of its own, so nothing is shared between tests. The one test that reads the
+// shared queue empties it again afterwards.
 describe('MdSnackbar', () => {
   let queue: ReturnType<typeof createSnackbarQueue>
 
@@ -31,9 +33,11 @@ describe('MdSnackbar', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    for (const entry of [...sharedQueue.entries.value]) sharedQueue.dismiss(entry.id)
   })
 
-  const mountSnackbar = () => mount(MdSnackbar, { props: { queue } })
+  const mountSnackbar = (provided = queue) =>
+    mount(MdSnackbar, { global: { provide: { [SNACKBAR_QUEUE_KEY]: provided } } })
 
   it('renders no notice while the queue is empty', () => {
     const wrapper = mountSnackbar()
@@ -42,14 +46,30 @@ describe('MdSnackbar', () => {
     expect(wrapper.find('[role="alert"]').exists(), 'an empty queue must render no alert').toBe(false)
   })
 
-  it('announces a success notice as a polite status update', async () => {
+  it('shows the head of the injected queue', async () => {
     const wrapper = mountSnackbar()
     queue.enqueue({ message: 'Configuration updated', tone: 'success' })
     await nextTick()
 
     const status = wrapper.find('[role="status"]')
-    expect(status.text(), 'the message must be rendered inside the status region').toBe('Configuration updated')
+    expect(status.text(), 'the message of the injected queue must be rendered').toBe('Configuration updated')
     expect(status.attributes('aria-live'), 'a status update must be polite').toBe('polite')
+  })
+
+  it('shows nothing from the shared queue when a provider supplies another queue', async () => {
+    const wrapper = mountSnackbar()
+    sharedQueue.enqueue({ message: 'Shared notice', tone: 'info' })
+    await nextTick()
+
+    expect(wrapper.text(), 'a provided queue must replace the shared queue, not add to it').not.toContain('Shared notice')
+  })
+
+  it('falls back to the shared queue when no provider is given', async () => {
+    const wrapper = mount(MdSnackbar)
+    sharedQueue.enqueue({ message: 'Shared notice', tone: 'info' })
+    await nextTick()
+
+    expect(wrapper.text(), 'without a provider the application queue is the default').toContain('Shared notice')
   })
 
   it('announces an error notice as an alert', async () => {
@@ -133,5 +153,17 @@ describe('MdSnackbar', () => {
     expect(host, 'the offset adds the bar height and the safe area to the normal margin').toContain(
       'max-medium:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))]'
     )
+  })
+
+  it('stacks on the snackbar layer token instead of an arbitrary z index', () => {
+    const wrapper = mountSnackbar()
+    const host = wrapper.get('div').classes()
+
+    expect(host, 'the layer comes from the z-md-snackbar token').toContain('z-md-snackbar')
+    expect(host.some(name => name.startsWith('z-[')), 'no arbitrary z index may remain').toBe(false)
+  })
+
+  it('has no style element in its source', () => {
+    expect(source, 'the component styles itself with tokens and variants, not a style block').not.toContain('<style')
   })
 })

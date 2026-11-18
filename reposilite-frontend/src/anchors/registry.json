@@ -1027,6 +1027,13 @@
       "states": []
     },
     {
+      "name": "md-field-shell",
+      "file": "src/components/md/MdFieldShell.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-text-area",
       "file": "src/components/md/MdTextArea.vue",
       "stability": "experimental",
