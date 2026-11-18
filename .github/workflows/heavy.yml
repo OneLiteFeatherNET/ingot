@@ -489,6 +489,12 @@ jobs:
       - name: "Install the chart in both deploy modes"
         run: ct install --config ct.yaml --all
 
+      # Installs the upstream reposilite chart 1.4.5 in a fresh namespace, writes an artifact and a token, upgrades the
+      # release to this chart with only the image changed, and rolls it back. The script fails when the claim, the
+      # artifact or the token differ after the upgrade or after the rollback. See charts/ingot/tests/rehearsal/rehearse.py.
+      - name: "Rehearse the upgrade from the upstream chart"
+        run: python3 charts/ingot/tests/rehearsal/rehearse.py --ingot-image ingot:ci --namespace ingot-upgrade-rehearsal
+
       # The scalable profile is not installed by chart-testing, because the Secrets and the NATS broker it names must sit
       # in the release namespace, and chart-testing creates a namespace with a random name per release. The dependencies
       # are the throwaway CI manifests of the HA smoke test, applied into ingot-scalable first, and the release waits
