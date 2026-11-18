@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { RouterLink } from 'vue-router'
+<script setup lang="ts">
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import CheckIcon from '../icons/CheckIcon.vue'
 import WarningIcon from '../icons/WarningIcon.vue'
 import MdButton from '../md/MdButton.vue'
@@ -33,12 +33,23 @@ import MdCard from '../md/MdCard.vue'
  *
  * Events: review (opens the review of all drafts), review-conflict (opens the review of the stored settings)
  */
-defineProps({
-  rows: { type: Array, required: true },
-  conflict: { type: Object, default: null }
+interface AttentionRow {
+  key: string
+  label: string
+  to: RouteLocationRaw
+}
+
+withDefaults(defineProps<{
+  rows: AttentionRow[]
+  conflict?: { title: string } | null
+}>(), {
+  conflict: null
 })
 
-defineEmits(['review', 'review-conflict'])
+defineEmits<{
+  review: []
+  'review-conflict': []
+}>()
 </script>
 
 <template>

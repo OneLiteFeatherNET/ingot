@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SettingsAttention from './SettingsAttention.vue'
 
@@ -35,14 +35,15 @@ const drafts = () => [
 
 const conflictOf = () => ({ kind: 'settings', name: 'javadoc', title: 'Javadoc', reviewed: false, server: null })
 
-let wrapper
+let wrapper: VueWrapper<InstanceType<typeof SettingsAttention>>
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
-const mountAttention = async (props = {}) => {
+type AttentionProps = Partial<{ rows: ReturnType<typeof drafts>, conflict: ReturnType<typeof conflictOf> | null }>
+
+const mountAttention = async (props: AttentionProps = {}) => {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push('/settings')
   await router.isReady()
@@ -92,7 +93,7 @@ describe('SettingsAttention review', () => {
 
     const review = wrapper.findAll('button').find(button => button.text() === 'Review changes')
     expect(review, 'the review button is drawn').toBeDefined()
-    await review.trigger('click')
+    await review?.trigger('click')
 
     expect(wrapper.emitted('review'), 'the parent opens the review of all drafts').toHaveLength(1)
   })
@@ -184,7 +185,7 @@ describe('SettingsAttention conflict', () => {
 
     const review = wrapper.get('[data-test="attention-conflict"]').findAll('button').find(button => button.text() === 'Review conflict')
     expect(review, 'the conflict row has a review button').toBeDefined()
-    await review.trigger('click')
+    await review?.trigger('click')
 
     expect(wrapper.emitted('review-conflict'), 'the parent reviews the stored settings').toHaveLength(1)
   })

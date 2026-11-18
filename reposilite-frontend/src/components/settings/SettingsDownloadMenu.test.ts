@@ -18,12 +18,14 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 
-const mountMenu = (props = {}) => mount(SettingsDownloadMenu, {
+type MenuProps = Partial<{ disabled: boolean, hasUnsaved: boolean, canIncludeUnsaved: boolean, secretsHidden: boolean }>
+
+const mountMenu = (props: MenuProps = {}) => mount(SettingsDownloadMenu, {
   props: { disabled: false, hasUnsaved: false, canIncludeUnsaved: true, secretsHidden: false, ...props }
 })
 
-const trigger = (wrapper) => wrapper.get('button[aria-haspopup="menu"]')
-const itemNamed = (wrapper, name) => wrapper.findAll('[role="menuitem"]').find(item => item.text().includes(name))
+const trigger = (wrapper: ReturnType<typeof mountMenu>) => wrapper.get('button[aria-haspopup="menu"]')
+const itemNamed = (wrapper: ReturnType<typeof mountMenu>, name: string) => wrapper.findAll('[role="menuitem"]').find(item => item.text().includes(name))
 
 describe('SettingsDownloadMenu', () => {
   it('keeps the menu closed until the trigger is pressed', async () => {
@@ -41,7 +43,7 @@ describe('SettingsDownloadMenu', () => {
     const wrapper = mountMenu()
     await trigger(wrapper).trigger('click')
 
-    await itemNamed(wrapper, 'Download saved settings').trigger('click')
+    await itemNamed(wrapper, 'Download saved settings')?.trigger('click')
 
     expect(wrapper.emitted('saved')).toEqual([[]])
     expect(wrapper.find('[role="menu"]').exists(), 'the menu closes after a choice').toBe(false)
@@ -60,9 +62,9 @@ describe('SettingsDownloadMenu', () => {
 
     const item = itemNamed(wrapper, 'Download including unsaved changes')
     expect(item, 'the labelled unsaved option is offered').toBeDefined()
-    expect(item.attributes('disabled')).toBeUndefined()
+    expect(item?.attributes('disabled')).toBeUndefined()
 
-    await item.trigger('click')
+    await item?.trigger('click')
     expect(wrapper.emitted('draft')).toEqual([[]])
   })
 
@@ -70,7 +72,7 @@ describe('SettingsDownloadMenu', () => {
     const wrapper = mountMenu({ hasUnsaved: true, canIncludeUnsaved: false })
     await trigger(wrapper).trigger('click')
 
-    expect(itemNamed(wrapper, 'Download including unsaved changes').attributes('disabled')).toBeDefined()
+    expect(itemNamed(wrapper, 'Download including unsaved changes')?.attributes('disabled')).toBeDefined()
   })
 
   it('says secrets are not included when the server hides them', async () => {
