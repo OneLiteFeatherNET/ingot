@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
@@ -28,22 +28,19 @@ import MdTextField from '../md/MdTextField.vue'
  * button. Initial focus is on Cancel, and a dialog closed without a confirmation returns the focus to
  * the control that opened it.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  id: {
-    type: String,
-    required: true
-  },
-  references: {
-    type: Array,
-    default: () => []
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  id: string
+  references?: unknown[]
+}>(), {
+  modelValue: false,
+  references: () => []
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  confirm: []
+}>()
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.id)
@@ -100,7 +97,7 @@ const confirm = () => {
           <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
             <li
               v-for="group in references"
-              :key="group"
+              :key="String(group)"
             >
               {{ group }}
             </li>
