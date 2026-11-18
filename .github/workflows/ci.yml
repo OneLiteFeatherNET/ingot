@@ -451,19 +451,19 @@ jobs:
             echo "::error::The selection named no filter for the unit tests."
             exit 1
           fi
-          ./gradlew --build-cache :reposilite-backend:test "${test_args[@]}"
+          ./gradlew --build-cache --configuration-cache :reposilite-backend:test "${test_args[@]}"
 
       # The backend unit tests that serve the dashboard. The filters select the frontend package and the dashboard policy.
       - name: "Run the dashboard tests of the backend"
         if: ${{ needs.coverage-changes.outputs.frontend_only == 'true' }}
         run: |
-          ./gradlew --build-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
+          ./gradlew --build-cache --configuration-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
 
       # A pull request or a merge group that the selection sends to the full suite runs every unit test, with no report
       # and no upload. Only main writes the Codecov base.
       - name: "Run the backend unit tests"
         if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
-        run: ./gradlew --build-cache :reposilite-backend:test
+        run: ./gradlew --build-cache --configuration-cache :reposilite-backend:test
 
       - name: "Run tests with coverage"
         if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
