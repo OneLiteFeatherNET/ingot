@@ -101,6 +101,15 @@ sealed interface PluginUiBlock {
     data class LinkBlock(val label: String, val href: String) : PluginUiBlock {
         override val type: String = "link"
     }
+
+    /**
+     * A list of items. The GET of [source] returns an object with `items`, each with a `title`, an optional `subtitle`,
+     * `chips` and an optional same-origin `href`, and with `next`, an opaque cursor or null. [pageSize] is 1 to 100 items
+     * per response. The rows are drawn, and the next page is asked for with the cursor.
+     */
+    data class ListBlock(val source: String, val pageSize: Int = 50) : PluginUiBlock {
+        override val type: String = "list"
+    }
 }
 
 /** A column of a [PluginUiBlock.Table]: the key of the object field and its heading. */

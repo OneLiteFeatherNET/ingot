@@ -32,6 +32,7 @@ vi.mock('axios', () => ({
 const PLUGIN = 'example'
 
 const rows = (count: number) => Array.from({ length: count }, (_, index) => ({ name: `row ${index}` }))
+const items = (count: number) => Array.from({ length: count }, (_, index) => ({ title: `item ${index}` }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -226,6 +227,96 @@ describe('link block', () => {
     const wrapper = mountBlock({ type: 'link', label: 'Get', href: 'javascript:alert(1)' })
 
     expect(wrapper.find('a').exists(), 'a link element for a javascript address').toBe(false)
+    expect(wrapper.text()).toContain('Link not shown')
+  })
+})
+
+describe('list block', () => {
+  const LIST_SOURCE = '/api/plugins/example/items'
+
+  it('draws a row with its title, subtitle and chips as characters', async () => {
+    vi.mocked(axios).get.mockResolvedValue({
+      data: { items: [{ title: '<b>bold</b>', subtitle: 'a line', chips: ['paper', '1.21'] }], next: null },
+    })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('<b>bold</b>')
+    expect(wrapper.find('b').exists(), 'a bold element drawn from the title').toBe(false)
+    expect(wrapper.text()).toContain('a line')
+    expect(wrapper.text()).toContain('paper')
+  })
+
+  it('shows at most 100 rows and says how many items it cut', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { items: items(120), next: 'page-2' } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.findAll('li')).toHaveLength(100)
+    expect(wrapper.text()).toContain('Showing 100 of 120 items')
+    expect(wrapper.findAll('button').find(button => button.text() === 'Load more'), 'the load more control').toBeUndefined()
+  })
+
+  it('says how many items without a title it did not show', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'kept' }, { subtitle: 'untitled' }], next: null } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('kept')
+    expect(wrapper.text()).toContain('Skipped 1 without a title')
+  })
+
+  it('shows the empty state when the source answers no items', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { items: [], next: null } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Nothing to show.')
+  })
+
+  it('sends the cursor of the next page with the load more control and appends the rows', async () => {
+    vi.mocked(axios).get
+      .mockResolvedValueOnce({ data: { items: [{ title: 'first' }], next: 'page-2' } })
+      .mockResolvedValueOnce({ data: { items: [{ title: 'second' }], next: null } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Load more')!.trigger('click')
+    await flushPromises()
+
+    expect(vi.mocked(axios).get.mock.calls[1][1]?.params, 'the query of the second request').toEqual({ cursor: 'page-2' })
+    expect(wrapper.text(), 'the rows after the second page').toContain('first')
+    expect(wrapper.text()).toContain('second')
+  })
+
+  it('draws no load more control when the response has no next cursor', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'only' }], next: null } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.findAll('button').find(button => button.text() === 'Load more')).toBeUndefined()
+  })
+
+  it('makes no request for a list source outside the prefix of the plugin', async () => {
+    const wrapper = mountBlock({ type: 'list', source: '/api/tokens' })
+    await flushPromises()
+
+    expect(vi.mocked(axios).get.mock.calls, 'requests made').toHaveLength(0)
+    expect(wrapper.text()).toContain('/api/tokens')
+  })
+
+  it('draws a refused row link as a note and no link', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'bad', href: 'javascript:alert(1)' }], next: null } })
+
+    const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
+    await flushPromises()
+
+    expect(wrapper.find('a').exists(), 'a link element').toBe(false)
     expect(wrapper.text()).toContain('Link not shown')
   })
 })

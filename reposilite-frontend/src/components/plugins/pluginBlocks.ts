@@ -24,7 +24,7 @@ import type { Method } from 'axios'
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core'
 import type { PluginPage } from '../../navigation/registry'
 
-export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link']
+export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link', 'list']
 
 // One block of a page as the server declares it. Each kind reads only the fields it names.
 export interface PluginBlockDefinition {
@@ -40,6 +40,7 @@ export interface PluginBlockDefinition {
   refreshSeconds?: number
   language?: string
   href?: string
+  pageSize?: number
   columns?: { key: string; label: string }[]
   schema?: JsonSchema
   uiSchema?: UISchemaElement
@@ -87,3 +88,55 @@ export const tableRows = <T>(rows: T[]) => ({
   total: rows.length,
   cut: rows.length > MAX_TABLE_ROWS,
 })
+
+// The rows a list shows: at most 100, and an item without a usable title is skipped and counted.
+export const MAX_LIST_ROWS = 100
+const TITLE_LIMIT = 200
+const SUBTITLE_LIMIT = 400
+const CHIP_LIMIT = 40
+const MAX_CHIPS = 8
+
+export interface ListRow {
+  title: string
+  subtitle?: string
+  chips: string[]
+  link: string | null
+  linkRefused: boolean
+}
+
+// One item of a list response as a row, or null when the item has no usable title.
+const listRow = (item: unknown): ListRow | null => {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+  const { title, subtitle, chips, href } = item as Record<string, unknown>
+  if (typeof title !== 'string' || title.length === 0 || title.length > TITLE_LIMIT) return null
+  const chipTexts = Array.isArray(chips)
+    ? chips.filter((chip): chip is string => typeof chip === 'string' && chip.length > 0 && chip.length <= CHIP_LIMIT).slice(0, MAX_CHIPS)
+    : []
+  const linked = href !== undefined && linkAllowed(href)
+  return {
+    title,
+    subtitle: typeof subtitle === 'string' && subtitle.length <= SUBTITLE_LIMIT ? subtitle : undefined,
+    chips: chipTexts,
+    link: linked ? (href as string) : null,
+    linkRefused: href !== undefined && !linked,
+  }
+}
+
+export const listRows = (items: unknown[]) => {
+  const rows: ListRow[] = []
+  let skipped = 0
+  for (const item of items) {
+    const row = listRow(item)
+    if (row) {
+      rows.push(row)
+    } else {
+      skipped += 1
+    }
+  }
+  return {
+    shown: rows.slice(0, MAX_LIST_ROWS),
+    total: rows.length,
+    skipped,
+    cut: rows.length > MAX_LIST_ROWS,
+  }
+}
