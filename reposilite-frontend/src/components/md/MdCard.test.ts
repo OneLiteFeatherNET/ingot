@@ -30,19 +30,34 @@ describe('MdCard', () => {
     const wrapper = mount(MdCard)
 
     expect(wrapper.attributes('data-variant')).toBe('filled')
-    expect(wrapper.classes()).toContain('bg-surface-container-highest')
   })
 
-  it('draws the outline-variant border for the outlined variant', () => {
+  it('draws the filled card on surface-container-low with a one pixel outline border', () => {
+    const wrapper = mount(MdCard)
+
+    expect(wrapper.classes(), 'the default card is the surface-container-low role of the surface table').toContain('bg-surface-container-low')
+    expect(wrapper.classes(), 'the default card keeps its edge with the outline role').toContain('border-outline')
+    expect(wrapper.classes(), 'the default card is not the highest surface').not.toContain('bg-surface-container-highest')
+  })
+
+  it('draws the outlined card on surface with the outline border', () => {
     const wrapper = mount(MdCard, { props: { variant: 'outlined' } })
 
-    expect(wrapper.classes()).toContain('border-outline-variant')
+    expect(wrapper.classes()).toContain('bg-surface')
+    expect(wrapper.classes()).toContain('border-outline')
   })
 
   it('elevated variant uses elevation level 1', () => {
     const wrapper = mount(MdCard, { props: { variant: 'elevated' } })
 
     expect(wrapper.classes()).toContain('shadow-elevation-1')
+  })
+
+  it('elevated variant has no outline border, because its elevation draws the edge', () => {
+    const wrapper = mount(MdCard, { props: { variant: 'elevated' } })
+
+    expect(wrapper.classes(), 'the elevated card has no border').not.toContain('border-outline')
+    expect(wrapper.classes(), 'the elevated card is the surface-container-low role').toContain('bg-surface-container-low')
   })
 
   it('low variant uses the surface-container-low background', () => {
