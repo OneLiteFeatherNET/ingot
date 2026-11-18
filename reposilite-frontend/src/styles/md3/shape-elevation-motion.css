@@ -35,6 +35,8 @@
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
   --md-sys-shape-corner-extra-large: 28px;
+  /* Segmented buttons: a 40px track that is a full pill for one row and a rounded rectangle for two. */
+  --md-sys-shape-corner-segmented: 20px;
   --md-sys-shape-corner-full: 9999px;
 
   /*
@@ -363,6 +365,7 @@
   --radius-corner-large: var(--md-sys-shape-corner-large);
   --radius-corner-extra-large: var(--md-sys-shape-corner-extra-large);
   --radius-corner-full: var(--md-sys-shape-corner-full);
+  --radius-corner-segmented: var(--md-sys-shape-corner-segmented);
 
   --shadow-elevation-0: var(--md-sys-elevation-level0);
   --shadow-elevation-1: var(--md-sys-elevation-level1);

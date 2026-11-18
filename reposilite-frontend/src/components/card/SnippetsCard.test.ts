@@ -624,3 +624,26 @@ describe('SnippetsCard metadata probes', () => {
     ])
   })
 })
+
+describe('SnippetsCard tab choice', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+    localStorage.clear()
+  })
+
+  it('shows the snippet of the tab the viewer chooses through the select-tab event', async () => {
+    await mountCard()
+
+    const tab = wrapper!.findAll('#card-menu button').find(button => button.text() === 'Gradle Kotlin')!
+    await tab.trigger('click')
+    await flushPromises()
+
+    expect(wrapper!.find('[role="region"][aria-label$="scrolls sideways"]').attributes('aria-label'), 'the snippet region names the chosen tab')
+      .toBe('Gradle Kotlin snippet, scrolls sideways')
+  })
+})
