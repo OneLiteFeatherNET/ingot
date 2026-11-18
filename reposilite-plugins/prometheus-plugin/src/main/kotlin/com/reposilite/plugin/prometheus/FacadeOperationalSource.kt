@@ -17,7 +17,6 @@
 package com.reposilite.plugin.prometheus
 
 import com.reposilite.audit.AuditFacade
-import com.reposilite.cleanup.CleanupService
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.MavenOperationTotals
 import com.reposilite.plugin.api.Facade
@@ -25,6 +24,7 @@ import com.reposilite.plugin.prometheus.metrics.ClusterBusState
 import com.reposilite.plugin.prometheus.metrics.OperationalSource
 import com.reposilite.plugin.prometheus.metrics.OutboxBacklog
 import com.reposilite.status.StatusFacade
+import net.onelitefeather.ingot.deploy.JobLastSuccessSource
 import net.onelitefeather.ingot.search.application.SearchFacade
 import java.time.Instant
 
@@ -48,10 +48,9 @@ internal class FacadeOperationalSource(
     override fun clusterBus(): ClusterBusState? =
         find<StatusFacade>()?.clusterBus()?.let { ClusterBusState(connected = it.state == "connected", dropped = it.dropped) }
 
-    override fun jobLastSuccess(): Map<String, Instant?> = mapOf(
-        "cleanup" to find<CleanupService>()?.lastScheduledRunSucceededAt(),
-        "audit-purge" to find<AuditFacade>()?.lastPurgeCompletedAt(),
-    )
+    override fun jobLastSuccess(): Map<String, Instant?> =
+        facades().filterIsInstance<JobLastSuccessSource>().associate { it.job to it.lastSuccessAt() } +
+            ("audit-purge" to find<AuditFacade>()?.lastPurgeCompletedAt())
 
     override fun outbox(): OutboxBacklog? =
         find<SearchFacade>()?.engine?.status()?.let { OutboxBacklog(pending = it.pendingEntries, oldestAgeSeconds = it.lagSeconds) }
