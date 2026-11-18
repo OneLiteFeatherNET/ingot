@@ -20,5 +20,7 @@ export const GLYPHS: Readonly<Record<string, string>> = Object.freeze({
   // The close glyph of the side sheet, the path of components/icons/CloseIcon.vue.
   'sheet-close': 'M6 18L18 6M6 6l12 12',
   // The check of a permission on the list toolbars of the access pages: a shield with a tick in it.
-  'shield-check': 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zM9 12l2 2 4-4'
+  'shield-check': 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zM9 12l2 2 4-4',
+  // The arrow out of a box that marks an external link: it leaves the dashboard for a new tab.
+  'open-in-new': 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'
 })

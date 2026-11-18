@@ -119,6 +119,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none | none |
 | `md-key-value-list` | experimental | `src/components/md/MdKeyValueList.vue` | none | none | none |
 | `md-linear-progress` | experimental | `src/components/md/MdLinearProgress.vue` | none | none | none |
+| `md-link` | experimental | `src/components/md/MdLink.vue` | none | none | none |
 | `md-list` | experimental | `src/components/md/MdList.vue` | none | none | none |
 | `md-list-detail` | experimental | `src/components/md/MdListDetail.vue` | none | none | none |
 | `md-list-item` | experimental | `src/components/md/MdListItem.vue` | none | none | none |
