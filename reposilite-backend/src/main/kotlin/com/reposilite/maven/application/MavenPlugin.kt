@@ -47,6 +47,7 @@ import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.format.ExtensionsFormatContext
 import net.onelitefeather.ingot.format.RepositoryFormats
 import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
+import net.onelitefeather.ingot.access.ViewerAccessFacadeImpl
 import net.onelitefeather.ingot.repository.index.SearchFacadeArtifactIndexSink
 import java.time.Clock
 import panda.std.reactive.computed
@@ -99,6 +100,9 @@ internal class MavenPlugin : ReposilitePlugin() {
             context = ExtensionsFormatContext(extensions()),
         )
         extensions().registerFacade(repositoryRouteDispatcher)
+
+        // Plugins ask the viewer access decisions of the routes through this facade; it changes no route.
+        extensions().registerFacade(ViewerAccessFacadeImpl(mavenFacade))
 
         logger.info("")
         logger.info("--- Repositories")

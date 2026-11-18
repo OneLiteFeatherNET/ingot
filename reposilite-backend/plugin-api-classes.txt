@@ -5,3 +5,5 @@ net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 net.onelitefeather.ingot.identity.login.challenge.LoginChallengeProvider
 net.onelitefeather.ingot.identity.login.challenge.LoginChallengeContext
 net.onelitefeather.ingot.identity.login.challenge.LoginChallengeRegistrationEvent
+net.onelitefeather.ingot.access.Viewer
+net.onelitefeather.ingot.access.ViewerAccessFacade
