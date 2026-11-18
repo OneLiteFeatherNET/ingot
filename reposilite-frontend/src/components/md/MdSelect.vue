@@ -56,17 +56,23 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   required?: boolean
   readonly?: boolean
+  /* fill takes the width of the container; content fits the field to its content. */
+  width?: 'fill' | 'content'
 }>(), {
   modelValue: '',
   supportingText: '',
   errorText: '',
   id: '',
-  readonly: false
+  readonly: false,
+  width: 'fill'
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: T]
 }>()
+
+// The root fills its container unless the width prop asks for the field to fit its content.
+const rootWidth = computed(() => (props.width === 'fill' ? 'w-full' : 'w-fit'))
 
 // The native select mirrors the options, so a change always names one of them. An unknown value emits nothing.
 const onNativeChange = (event: Event) => {
@@ -308,8 +314,8 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="flex w-full flex-col gap-1"
-    :class="attrs.class"
+    class="flex flex-col gap-1"
+    :class="[rootWidth, attrs.class]"
     :style="attrs.style"
     data-ingot-component="md-select"
   >
