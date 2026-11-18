@@ -111,7 +111,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
     <div
       v-if="expanded"
       :id="detailsId"
-      class="mt-3 rounded-corner-medium bg-surface-container-low p-3"
+      class="mt-3 rounded-corner-medium bg-surface-container p-3"
     >
       <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 md-body-small text-on-surface-variant">
         <dt>Event id</dt>

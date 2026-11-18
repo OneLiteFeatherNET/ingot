@@ -147,7 +147,7 @@ const countText = computed(() => {
     aria-label="Audit log"
     data-ingot-component="audit-view"
   >
-    <div class="overflow-hidden rounded-corner-large bg-surface-container-low">
+    <div class="overflow-hidden rounded-corner-large border border-outline bg-surface-container-low">
       <form
         role="search"
         aria-label="Filter the audit log"

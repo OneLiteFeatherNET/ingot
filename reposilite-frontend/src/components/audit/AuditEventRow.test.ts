@@ -190,3 +190,13 @@ describe('AuditEventRow identity events', () => {
 // @ts-expect-error expanded is a boolean flag, not a text
 const mountWithTextFlag = () => mount(AuditEventRow, { props: { event: {} as AuditEvent, expanded: 'yes' }, global: { plugins: [createRouter({ history: createMemoryHistory(), routes: [] })] } })
 void mountWithTextFlag
+
+describe('AuditEventRow details', () => {
+  it('steps the details block one role above the card that holds the row', async () => {
+    const row = await mountRow({ event: event({ details: { token: 'first' } }), expanded: true })
+
+    const details = row.get('#audit-details-7').element as HTMLElement
+    expect(details.classList.contains('bg-surface-container'), 'details block should sit on surface-container').toBe(true)
+    expect(details.classList.contains('bg-surface-container-low'), 'details block must not repeat the card role').toBe(false)
+  })
+})
