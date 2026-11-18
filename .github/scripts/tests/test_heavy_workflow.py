@@ -90,7 +90,10 @@ class TriggerTest(unittest.TestCase):
         self.assertIn("REF: ${{ github.ref }}", read_text())
 
     def test_only_expected_events_start_the_workflow(self):
-        self.assertLessEqual(set(triggers()), {"pull_request", "workflow_dispatch"})
+        self.assertLessEqual(set(triggers()), {"pull_request", "workflow_dispatch", "merge_group"})
+
+    def test_the_merge_queue_starts_the_workflow(self):
+        self.assertEqual({"types": ["checks_requested"]}, triggers()["merge_group"])
 
 
 class SafetyTest(unittest.TestCase):

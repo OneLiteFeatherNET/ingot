@@ -1,0 +1,82 @@
+# Reports the check "Build / Aggregate test results" in the merge queue.
+#
+# On a pull request that check comes from the job Build of ci.yml, which calls the shared gradle-build-pr workflow.
+# That workflow cannot run on a merge_group event: its path filter step has no pull request to ask and no checkout to
+# diff. Its check is required by the ruleset, so a queue entry would wait for it forever. This job reports the same
+# check name for the merge group and does the same work: the unit tests on the minimum supported JDK, when the merge
+# group changes a path of the shared workflow's filter (build_scope.sh). Otherwise it succeeds without building.
+#
+# Merge group only. On a pull request the shared workflow reports this name, and a second check of the same name would
+# race with it. Nothing here writes: no check run of its own, no comment.
+name: "Merge queue"
+
+on:
+  merge_group:
+    types: [ "checks_requested" ]
+
+permissions:
+  contents: read
+
+# Every queue entry has its own ref, so entries never cancel each other.
+concurrency:
+  group: "merge-queue-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: "Build / Aggregate test results"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # Both ends of the merge group have to be present for the diff below.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Decide whether the build is needed"
+        id: scope
+        env:
+          BASE: ${{ github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          set -euo pipefail
+          # A missing or unreadable range is no reason to skip the build.
+          if [ -z "$BASE" ] || [ -z "$HEAD" ] || ! git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"; then
+            echo "No usable merge group range, building."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bash .github/scripts/build_scope.sh < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+
+      - name: "Validate Gradle wrapper"
+        if: ${{ steps.scope.outputs.code == 'true' }}
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        if: ${{ steps.scope.outputs.code == 'true' }}
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        if: ${{ steps.scope.outputs.code == 'true' }}
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # The task of the pull request build in ci.yml: compile and unit tests, no integration suite.
+      - name: "Run the unit tests"
+        if: ${{ steps.scope.outputs.code == 'true' }}
+        run: ./gradlew test -x integration -x integrationTest
+
+      - name: "Publish the test reports"
+        if: ${{ failure() && steps.scope.outputs.code == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: merge-queue-test-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          retention-days: 7
+          if-no-files-found: ignore
