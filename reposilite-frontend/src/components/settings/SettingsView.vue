@@ -39,6 +39,7 @@ import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
 import { collectionsOf, entryAddresses, idText, validateNewId } from './collections'
+import { nestedUischemas } from './nestedLayouts'
 import { barClearance } from './barClearance'
 import { settingsByDomain } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
@@ -510,6 +511,7 @@ watch(
                   :schema="domainForm.schema"
                   :uischema="activeSectionLayout"
                   :renderers="renderers"
+                  :uischemas="nestedUischemas"
                   :ajv="store.configurationValidator"
                   @change="onDomainChange(activeDomain, $event)"
                 />
@@ -523,6 +525,7 @@ watch(
               :schema="domainForm.schema"
               :uischema="domainForm.layout"
               :renderers="renderers"
+              :uischemas="nestedUischemas"
               :ajv="store.configurationValidator"
               @change="onDomainChange(activeDomain, $event)"
             />
