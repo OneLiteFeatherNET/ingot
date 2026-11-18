@@ -146,7 +146,7 @@ describe('SnippetsCard surface', () => {
 })
 
 describe('SnippetsCard collapsible details', () => {
-  const header = () => wrapper!.find('h1 button')
+  const header = () => wrapper!.find('h2 button')
   const body = () => wrapper!.find('#card-menu')
 
   // A narrow or wide screen is simulated by the media query, which jsdom does not provide.
@@ -259,7 +259,7 @@ describe('SnippetsCard collapsible details', () => {
 
 describe('SnippetsCard heading', () => {
   // The visible title is the short part; the full name of the card is the accessible name of its toggle.
-  const heading = () => wrapper!.find('h1 button').attributes('aria-label')
+  const heading = () => wrapper!.find('h2 button').attributes('aria-label')
 
   beforeEach(() => {
     content.mockImplementation(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } })))
@@ -281,7 +281,7 @@ describe('SnippetsCard heading', () => {
     await mountCard('releases')
 
     expect(wrapper!.find('[data-test="details-subtitle"]').text(), 'the repository is written under the heading').toBe('releases')
-    expect(wrapper!.find('h1 button').text(), 'the visible heading stays short').toBe('Repository details')
+    expect(wrapper!.find('h2 button').text(), 'the visible heading stays short').toBe('Repository details')
   })
 
   it('names only the first segment of a deeper repository path', async () => {
@@ -510,7 +510,7 @@ describe('SnippetsCard metadata probes', () => {
   const answer = (xml: string) => Promise.resolve({ data: xml })
   const refuse = (status: number) => Promise.reject(Object.assign(new Error(`HTTP ${status}`), { response: { status } }))
   const requestedPaths = () => content.mock.calls.map(([path]) => path)
-  const heading = () => wrapper!.find('h1 button').text()
+  const heading = () => wrapper!.find('h2 button').text()
 
   beforeEach(() => {
     content.mockClear()
@@ -645,5 +645,19 @@ describe('SnippetsCard tab choice', () => {
 
     expect(wrapper!.find('[role="region"][aria-label$="scrolls sideways"]').attributes('aria-label'), 'the snippet region names the chosen tab')
       .toBe('Gradle Kotlin snippet, scrolls sideways')
+  })
+})
+
+describe('SnippetsCard title level', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('draws the card title as a heading of level two, so the page keeps one level one heading', async () => {
+    await mountCard()
+
+    expect(wrapper!.find('h1').exists(), 'the card draws no heading of level one').toBe(false)
+    expect(wrapper!.find('h2 button').exists(), 'the card title is a heading of level two').toBe(true)
   })
 })
