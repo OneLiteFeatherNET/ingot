@@ -1,6 +1,6 @@
 # Design
 
-**Status: DEFERRED.** No code is planned until a plugin needs a login challenge.
+**Status: DECIDED (2026-11-18).** The wire format is option (a). The code waits only for the account throttle, see `tasks.md`.
 
 ## Defaults that stand
 
@@ -8,29 +8,17 @@ The defaults of `add-login-protection` design D6 stand and are not decided again
 default. At most one provider is used. When several are registered, the first by plugin load order is used and a warning
 is logged.
 
-## Open decision: the wire format of the challenge
+## Decision: the wire format of the challenge (2026-11-18)
 
-The maintainer chooses one of the three options below. None is chosen in this document.
+Option (a) is chosen: an optional field on the login request body carries the challenge response.
 
-### Option a: an optional field on the login request body
-
-- The login request gets an optional field that carries the challenge response.
-- Trade-off: one route and one round trip. Existing clients send no field and keep working.
+- One route and one round trip. Existing clients send no field and keep working.
 - Cost: the OpenAPI snapshot and the frontend types of the login request change.
-
-### Option b: a separate challenge endpoint, called before the login
-
-- The browser asks a challenge endpoint first, then calls the login route with the result.
-- Trade-off: the login route is unchanged.
-- Cost: two round trips for a delayed login, a new endpoint to design and document, and state that must be held between
-  the two calls.
-
-### Option c: keep the challenge out of core
-
-- The plugin serves its own page for the challenge, and the login route is unchanged.
-- Trade-off: no change to the core API, and the plugin owns the page and its verification.
-- Cost: core still has to tell the plugin that a login is delayed, so an interface for that signal remains needed.
+- Not taken: option (b), a separate challenge endpoint (two round trips for a delayed login, a new endpoint, and state held
+  between the two calls), and option (c), a page served by the plugin (core would still need a signal interface for a
+  delayed login).
 
 ## Not decided
 
-The `ChallengeRequest` and `ChallengeResponse` shapes are not decided. They follow from the option chosen.
+The field name and the `ChallengeRequest` and `ChallengeResponse` shapes are not decided. They follow from option (a) and
+are settled in the spec before the code starts.
