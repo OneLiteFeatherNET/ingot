@@ -9,14 +9,15 @@ Before any slice starts, check `git diff --name-only origin/main...<pr>` for eac
 Group type: `build(ui)`, except 0.10 which is `ci(ui)`. Pull request: `build(ui): add typescript tooling to the dashboard`.
 
 - [ ] 0.1 Re-check the pins in `design.md` with `npm view <package> time --json`. Each pin must be at least 14 days old on the day of the pull request; if one is not, take the newest release that is. Record the chosen versions and dates in the pull request description.
-- [ ] 0.2 Add `typescript` 6.0.3, `vue-tsc`, `@vue/tsconfig` and `typescript-eslint` as exact devDependencies of `reposilite-frontend/package.json`, and update `package-lock.json`. Run `npm ci` and the license check. Record the peer ranges (question 2). If #214 changes `package.json`, rebase onto it first.
+- [ ] 0.2 Add `typescript` 6.0.3, `vue-tsc`, `@vue/tsconfig` and `typescript-eslint` as exact devDependencies of `reposilite-frontend/package.json`, and update `package-lock.json`. Run `npm ci` and the license check. Record the peer ranges (question 2). The peer cap of `typescript-eslint` is handled with an npm `overrides` entry in `package.json`
+  (decided 2026-11-18), named in this pull request and removed with task 5.2. If #214 changes `package.json`, rebase onto it first.
 - [ ] 0.3 Add `tsconfig.json` (solution file), `tsconfig.app.json`, `tsconfig.tests.json` and `tsconfig.node.json` as in `design.md` D2: `allowJs: true`, `checkJs: false`, `strict: true`, `moduleResolution: "bundler"`. Confirm the `@vue/tsconfig` export names it extends.
 - [ ] 0.4 Add `npm run typecheck` (`vue-tsc --build --noEmit`). With no `.ts` source yet, the check passes only because of 0.7. Add a red test first that Vitest collects a `.test.ts` file under `src/` (a fixture file in the test's own temporary directory, not a committed one), then change `vitest.config.js` `include` to `src/**/*.test.{js,ts}` and `server/**/*.test.{js,ts}`.
 - [ ] 0.5 Add the `any` budget (question 7). Write `src/types/any-budget.test.ts` first, with fixtures built in a temporary directory: it must fail for a file over its entry, for a file without an entry, and for an entry above the count. Then add `src/types/any-budget.json` with an empty object and make the test pass.
 - [ ] 0.6 ESLint: add the `typescript-eslint` configuration for `**/*.ts` and for `*.vue` files with `<script lang="ts">`, with `@typescript-eslint/no-explicit-any` as an error. Keep the warning-to-error wrapper. Check that `npm run eslint` still reports the current code clean, and that the `eslint "src/**"` glob matches `.ts` files.
 - [ ] 0.7 Add `src/env.d.ts` for the Vite client types, the global test helpers and the `{{REPOSILITE.*}}` placeholders that plugins also use (declared as string constants, not as runtime values). Confirm the declarations do not change the production bundle.
 - [ ] 0.8 Style gate and anchors: write a failing test first in `src/style-gate/scan.test.js` (or a new `.test.js` beside it, the file is not converted yet) that a `.ts` file with a raw colour is reported. Then add `.ts` to `SCANNED_EXTENSIONS` in `src/style-gate/sources.js`, exclude `.test.ts` next to `.test.js`, and add `.ts` to the filter in `src/anchors/checks.js` (line 315). The baseline and allowlist files are not changed.
-- [ ] 0.9 Classify the 22 SFCs that contain neither `<script setup>` nor `export default {` (list them in the pull request, no edits). Confirm the count of 179 and 17.
+- [ ] 0.9 Classify the 22 SFCs that contain neither `<script setup>` nor `export default {` and list them in the pull request. The template-only icons among them are converted in 2.C02 (decided 2026-11-18); the others get no edits. Confirm the count of 179 and 17.
 - [ ] 0.10 CI: add a `npm run typecheck` step to the frontend job in `.github/workflows/ci.yml`, after `npm ci` and before the build, in the job that runs `npm run eslint`. Group type `ci(ui)`.
 - [ ] 0.11 Record the baseline for D9 in the pull request description: the CSS file of `npm run build` (name without its hash, byte size and SHA-256), and the size of every JavaScript chunk.
 - [ ] 0.12 Run `npm run typecheck`, `npm run eslint`, `npx vitest run --maxWorkers=2`, `npm run build`, and `npm run e2e -- --workers=2` with the baseline set. Use `heavy` for the e2e run. Open the pull request `build(ui): add typescript tooling to the dashboard`.
@@ -78,7 +79,9 @@ Starts after #238 (md3 tokens), #214 and #219 are merged.
 ### 2.C02 icons (36 files) - `refactor(ui): type the icon components`
 
 - [ ] 2.C02.1 Rename `src/components/icons/` (33 `.vue`, 1 `.js`, 2 `.test.js`). Commit the renames only.
-- [ ] 2.C02.2 Add `defineProps<...>()` for the icon size and colour props, and convert the tests and the one module.
+- [ ] 2.C02.2 Add `defineProps<...>()` for the icon size and colour props, and convert the tests and the one module. Convert the
+  template-only icons (23 by the maintainer's count, decided 2026-11-18): each gets `<script setup lang="ts">`, with a props type only
+  where its template reads a prop, and its template and rendered markup do not change.
 - [ ] 2.C02.3 Run the gates. The CSS comparison must be byte-identical (icons carry no CSS).
 - [ ] 2.C02.4 Open the pull request `refactor(ui): type the icon components`.
 

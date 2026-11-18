@@ -1,5 +1,16 @@
 # Proposal
 
+## Decisions of 2026-11-18
+
+The maintainer settled the points below. Where a decision differs from a default in the questions that follow, the decision applies.
+
+- **Template-only icons (tasks 0.9 and 2.C02).** The template-only icon components are converted: each gets a `<script setup lang="ts">`
+  block, and its template does not change. This overrides the "no edits" note on the classification in task 0.9. The maintainer
+  counts 23 such icons. A grep on `origin/main` at settlement finds 24 icon files without a script block, and the slice lists them by
+  file.
+- **Peer cap of typescript-eslint (question 2).** The peer range of `typescript-eslint` (`typescript >=4.8.4 <6.1.0`) is handled with an
+  npm `overrides` entry, and TypeScript stays at 6.0.3. The override is named in the Phase 0 pull request and removed with task 5.2.
+
 ## Open maintainer questions
 
 Each question has a default. The change is written against the default; a different answer changes only the tasks named in brackets.
