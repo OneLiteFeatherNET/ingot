@@ -528,3 +528,16 @@ dashboard:
   tolerations: []
   # Topology spread constraints of the dashboard pods, passed through unchanged. Empty renders no field.
   topologySpreadConstraints: []
+
+## Helm test hook, run by `helm test`. Off by default, so the chart renders no test pod.
+## The pod calls the health endpoint and the public page of the server Service. With tests.tokenSecret it also calls an
+## authenticated endpoint with the token. The chart renders the reference to the Secret, never the token.
+tests:
+  enabled: false
+  # Image of the test pod, pinned by tag and digest.
+  image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
+  tokenSecret:
+    # Name of a Secret in the release namespace. Empty means no token: the pod checks public endpoints only.
+    name: ""
+    # Key of that Secret that holds the token. Required when name is set.
+    key: ""

@@ -1,0 +1,48 @@
+{{- if .Values.tests.enabled }}
+{{- $fullname := include "ingot.fullname" . }}
+{{- $tokenSecret := .Values.tests.tokenSecret }}
+{{- if and $tokenSecret.name (not $tokenSecret.key) }}
+{{- fail "tests.tokenSecret.key is required when tests.tokenSecret.name is set" }}
+{{- end }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "%s-test" $fullname | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  containers:
+    - name: test
+      image: {{ .Values.tests.image | quote }}
+      {{- if $tokenSecret.name }}
+      env:
+        - name: INGOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ $tokenSecret.name | quote }}
+              key: {{ $tokenSecret.key | quote }}
+      {{- end }}
+      command:
+        - sh
+        - -c
+        - |
+          set -eu
+          base="http://{{ $fullname }}:{{ .Values.service.port }}"
+          curl -sf "$base/api/status/health" > /dev/null
+          curl -sf "$base/" > /dev/null
+          {{- if $tokenSecret.name }}
+          curl -sf -H "Authorization: Bearer $INGOT_TOKEN" "$base/api/status/instance" > /dev/null
+          {{- end }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+{{- end }}
