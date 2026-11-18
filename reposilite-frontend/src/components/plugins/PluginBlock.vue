@@ -19,14 +19,17 @@
  * One block of a plugin page. The block is data: its text and cells are drawn by Vue interpolation, so markup a
  * plugin sends is shown as characters. A path is called only when it is below the prefix of the plugin.
  */
-import { computed, ref, watch, type PropType } from 'vue'
+import { computed, inject, reactive, ref, watch, type PropType } from 'vue'
 import axios, { type AxiosRequestHeaders, type Method } from 'axios'
-import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
+import { useDebounceFn, useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import { JsonForms } from '@jsonforms/vue'
 import { createURL, handleRequest } from '../../store/client'
 import { useConfiguration } from '../../store/configuration'
 import { copyToClipboard, selectText } from '../card/copySnippet'
-import { displayValue, failureText, linkAllowed, listRows, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
+import {
+  displayValue, facetCount, failureText, filterKeyAllowed, linkAllowed, listQuery, listRows, pathAllowed, PLUGIN_FILTER_SCOPE, tableRows,
+  BLOCK_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
+} from './pluginBlocks'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -34,6 +37,9 @@ const props = defineProps({
 })
 
 const { renderers } = useConfiguration()
+
+// The filters and the list of a page share one scope. A block drawn alone gets a scope of its own.
+const scope = inject(PLUGIN_FILTER_SCOPE, null) ?? reactive<PluginFilterScope>({ values: {}, facets: {} })
 
 // The request of a block: credentials and the CSRF header, the same as every other call of the dashboard.
 const send = (config: { method?: Method; url?: string; data?: unknown }) => axios.request(handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, ...config, url: createURL(config.url as string) }))
@@ -99,10 +105,13 @@ const loadList = async (cursor?: string) => {
   if (refused.value || !sourcePath.value) return
   loading.value = true
   try {
-    const response = await read(sourcePath.value, cursor ? { cursor } : undefined)
+    const response = await read(sourcePath.value, listQuery(scope.values, cursor))
     const page = Array.isArray(response.data?.items) ? response.data.items : []
     listItems.value = cursor ? [...listItems.value, ...page] : page
     listNext.value = typeof response.data?.next === 'string' ? response.data.next : null
+    if (response.data?.facets && typeof response.data.facets === 'object' && !Array.isArray(response.data.facets)) {
+      scope.facets = response.data.facets
+    }
     listLoaded.value = true
     error.value = null
   } catch (failure) {
@@ -114,6 +123,12 @@ const loadList = async (cursor?: string) => {
 const loadMore = () => {
   if (listNext.value) loadList(listNext.value)
 }
+// A change of a filter value starts the list again from its first page, so the cursor of the old values is dropped.
+watch(() => JSON.stringify(scope.values), () => {
+  if (props.block?.type !== 'list') return
+  listItems.value = []
+  loadList()
+})
 
 // Action: a confirm text is asked for first, then the call is sent.
 const confirming = ref(false)
@@ -159,6 +174,30 @@ watch(visibility, (state) => {
     resume()
   }
 }, { immediate: true })
+
+// Filter: a select or a text field writes its value to the scope of the page. An empty value is not written, so it is not sent.
+const drafts = reactive<Record<string, string>>({})
+const setValue = (key: string, value: string) => {
+  if (value === '') {
+    delete scope.values[key]
+  } else {
+    scope.values[key] = value
+  }
+}
+const selectValue = (key: string, event: Event) => setValue(key, (event.target as HTMLSelectElement).value)
+const applyText = useDebounceFn(setValue, 300)
+const typeText = (key: string, event: Event) => {
+  const value = (event.target as HTMLInputElement).value
+  drafts[key] = value
+  applyText(key, value)
+}
+const controls = computed(() =>
+  (props.block?.controls ?? []).filter((control): control is FilterControlDefinition & { key: string } => filterKeyAllowed(control.key)),
+)
+const optionLabel = (key: string, option: { value: string; label: string }) => {
+  const count = facetCount(scope.facets, key, option.value)
+  return count === null ? option.label : `${option.label} (${count})`
+}
 
 // Form: the source fills the form, and the form is sent to its target.
 const formData = ref<Record<string, unknown>>({})
@@ -415,6 +454,51 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
         Load more
       </button>
     </template>
+
+    <div
+      v-else-if="block.type === 'filter'"
+      class="flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+    >
+      <template
+        v-for="(control, index) in controls"
+        :key="index"
+      >
+        <label
+          v-if="control.type === 'text'"
+          class="flex flex-col gap-1"
+        >
+          <span class="md-label-large text-on-surface-variant">{{ control.label }}</span>
+          <input
+            type="text"
+            class="md-body-large rounded-corner-medium bg-surface-container px-3 py-2"
+            :value="drafts[control.key] ?? ''"
+            @input="typeText(control.key, $event)"
+          >
+        </label>
+        <label
+          v-else-if="control.type === 'select'"
+          class="flex flex-col gap-1"
+        >
+          <span class="md-label-large text-on-surface-variant">{{ control.label }}</span>
+          <select
+            class="md-body-large rounded-corner-medium bg-surface-container px-3 py-2"
+            :value="scope.values[control.key] ?? ''"
+            @change="selectValue(control.key, $event)"
+          >
+            <option value="">
+              All
+            </option>
+            <option
+              v-for="option in control.options ?? []"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ optionLabel(control.key, option) }}
+            </option>
+          </select>
+        </label>
+      </template>
+    </div>
 
     <template v-else-if="block.type === 'action'">
       <div class="flex flex-wrap items-center gap-3">

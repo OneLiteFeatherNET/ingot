@@ -2,13 +2,13 @@
 // A page a server plugin contributed, drawn from its declaration. The permission is checked by the page
 // that shows it (IndexPage), and the page is drawn inside the Administration frame, which names it in
 // its heading. This view draws the description and the plugin of the page, and then its blocks.
-import { computed } from 'vue'
+import { computed, provide, reactive } from 'vue'
 import { contributedPageByRoute, pluginPageMotion } from '../../navigation/registry'
 import PluginBlock from './PluginBlock.vue'
 import NotFoundView from '../util/NotFoundView.vue'
 import MdTransition from '../md/MdTransition.vue'
 import { NoMotion } from '../md/NoMotion'
-import type { DrawnPage } from './pluginBlocks'
+import { PLUGIN_FILTER_SCOPE, type DrawnPage, type PluginFilterScope } from './pluginBlocks'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -24,6 +24,9 @@ const anchoredPageId = computed(() => (page.value && PAGE_ID.test(page.value.id)
 // The page is swapped with the route transition, unless the page opts out. The key is the page id, so a change of page
 // is a change of content, and the same page keeps its element.
 const pageMotion = computed(() => (pluginPageMotion(page.value) === 'none' ? NoMotion : MdTransition))
+
+// The filters of this page write their values here, and the list after them reads the values and the counts.
+provide(PLUGIN_FILTER_SCOPE, reactive<PluginFilterScope>({ values: {}, facets: {} }))
 </script>
 
 <template>
