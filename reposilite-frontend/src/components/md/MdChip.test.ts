@@ -133,3 +133,72 @@ describe('MdChip', () => {
     expect(wrapper.attributes('aria-pressed')).toBe('false')
   })
 })
+
+describe('MdChip remove action and boolean toggle', () => {
+  it('draws a remove button with the aria-label that removeLabel gives', () => {
+    const wrapper = mount(MdChip, { props: { removeLabel: 'Remove copy' }, slots: { default: 'Copy' } })
+    const remove = wrapper.find('button[aria-label="Remove copy"]')
+
+    expect(remove.exists(), 'the chip has a remove button named by removeLabel').toBe(true)
+    expect(remove.attributes('type')).toBe('button')
+  })
+
+  it('emits remove once when the remove button is clicked', async () => {
+    const wrapper = mount(MdChip, { props: { removeLabel: 'Remove copy' }, slots: { default: 'Copy' } })
+
+    await wrapper.find('button[aria-label="Remove copy"]').trigger('click')
+
+    expect(wrapper.emitted('remove'), 'one click emits one remove').toHaveLength(1)
+  })
+
+  it('does not emit remove when the chip is disabled', async () => {
+    const wrapper = mount(MdChip, {
+      props: { removeLabel: 'Remove copy', disabled: true },
+      slots: { default: 'Copy' }
+    })
+
+    await wrapper.find('button[aria-label="Remove copy"]').trigger('click')
+
+    expect(wrapper.emitted('remove'), 'a disabled remove button emits nothing').toBeUndefined()
+  })
+
+  it('renders a removable chip as a span so the remove button is not nested in a button', () => {
+    const wrapper = mount(MdChip, { props: { removeLabel: 'Remove copy' }, slots: { default: 'Copy' } })
+
+    expect((wrapper.element as HTMLElement).tagName).toBe('SPAN')
+  })
+
+  it('renders no remove button without removeLabel', () => {
+    const wrapper = mount(MdChip, { slots: { default: 'Copy' } })
+
+    expect(wrapper.findAll('button'), 'the assist chip is its only button').toHaveLength(1)
+  })
+
+  it('reports a boolean toggle as a pressed toggle button', () => {
+    const wrapper = mount(MdChip, {
+      props: { variant: 'filter', toggle: true, selected: true },
+      slots: { default: 'Snapshots' }
+    })
+
+    expect(wrapper.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.attributes('aria-checked'), 'a toggle button has no checkbox state').toBeUndefined()
+  })
+
+  it('reports an unselected boolean toggle as not pressed', () => {
+    const wrapper = mount(MdChip, {
+      props: { variant: 'filter', toggle: true },
+      slots: { default: 'Snapshots' }
+    })
+
+    expect(wrapper.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('keeps the deprecated string checkbox toggle as a checkbox', () => {
+    const wrapper = mount(MdChip, {
+      props: { variant: 'filter', toggle: 'checkbox' },
+      slots: { default: 'Snapshots' }
+    })
+
+    expect(wrapper.attributes('role')).toBe('checkbox')
+  })
+})

@@ -155,3 +155,52 @@ describe('MdCard tone, edge and danger', () => {
     expect(wrapper.classes(), 'the default card has no error border').not.toContain('border-error')
   })
 })
+
+describe('MdCard padding sizes and header', () => {
+  it.each([
+    ['sm', 'p-2'],
+    ['md', 'p-4'],
+    ['lg', 'p-6']
+  ])('padding %s draws the %s inset', (padding, inset) => {
+    const wrapper = mount(MdCard, { props: { padding: padding as 'sm' } })
+
+    expect(wrapper.classes(), `padding ${padding} is the ${inset} inset`).toContain(inset)
+  })
+
+  it('padding lg does not keep the medium inset', () => {
+    const wrapper = mount(MdCard, { props: { padding: 'lg' } })
+
+    expect(wrapper.classes(), 'the large inset replaces the medium one').not.toContain('p-4')
+  })
+
+  it('draws no header row when no header slot is given', () => {
+    const wrapper = mount(MdCard, { slots: { default: () => h('p', 'Body') } })
+
+    expect(wrapper.find('[data-slot="header"]').exists(), 'a card without a header slot has no header row').toBe(false)
+  })
+
+  it('renders the header slot in a header row and keeps the body out of it', () => {
+    const wrapper = mount(MdCard, {
+      slots: { header: () => h('h3', 'Repository'), default: () => h('p', 'Body') }
+    })
+    const header = wrapper.find('[data-slot="header"]')
+
+    expect(header.exists(), 'a header slot draws the header row').toBe(true)
+    expect(header.text(), 'the header row holds the header content').toContain('Repository')
+    expect(header.text(), 'the body is not part of the header row').not.toContain('Body')
+  })
+
+  it('renders the trailing slot at the end of the header row', () => {
+    const wrapper = mount(MdCard, {
+      slots: {
+        header: () => h('h3', 'Repository'),
+        trailing: () => h('button', 'Edit'),
+        default: () => h('p', 'Body')
+      }
+    })
+    const trailing = wrapper.find('[data-slot="header"] [data-slot="trailing"]')
+
+    expect(trailing.exists(), 'the trailing slot sits inside the header row').toBe(true)
+    expect(trailing.text()).toContain('Edit')
+  })
+})

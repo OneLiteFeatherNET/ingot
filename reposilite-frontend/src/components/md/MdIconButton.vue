@@ -16,23 +16,34 @@
 
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 /*
  * Material Design 3 icon button. An icon has no accessible name of its own, so every
  * instance needs an `aria-label`. Without one the component warns, because a screen reader
  * would announce the button as unnamed. With `toggle` the button reports its state through
  * aria-pressed, and `selected` sets that state.
+ *
+ * `size` `compact` draws a 24px button; its hit area stays 48px. `to` makes the button a router link, as on `MdButton`.
+ * `inverse` draws the button for an inverse surface, such as a snackbar. It replaces the variant's colours, and the
+ * disabled colours win over it.
  */
 const props = withDefaults(defineProps<{
   variant?: 'standard' | 'filled' | 'tonal' | 'outlined' | 'error'
+  size?: 'default' | 'compact'
   href?: string
+  to?: RouteLocationRaw
   disabled?: boolean
   toggle?: boolean
   selected?: boolean
+  inverse?: boolean
   type?: string
 }>(), {
   variant: 'standard',
+  size: 'default',
   href: undefined,
+  to: undefined,
+  inverse: false,
   type: 'button'
 })
 
@@ -79,18 +90,43 @@ const VARIANTS = {
   }
 }
 
-const tag = computed(() => (props.href ? 'a' : 'button'))
+// A button with `to` is a router link. A disabled one is an anchor with no destination, as a disabled `href` is.
+const kind = computed(() => {
+  if (props.to !== undefined) return props.disabled ? 'anchor' : 'link'
+  return props.href ? 'anchor' : 'button'
+})
+
+const element = computed(() => {
+  if (kind.value === 'link') return RouterLink
+  return kind.value === 'anchor' ? 'a' : 'button'
+})
+
+// Each kind takes only its own attributes. An undefined attribute here would override the router link's own href.
+const attrs = computed(() => {
+  if (kind.value === 'link') return { to: props.to }
+  if (kind.value === 'anchor') {
+    return { href: props.disabled ? undefined : props.href, 'aria-disabled': props.disabled ? 'true' : undefined }
+  }
+  return { type: props.type, disabled: props.disabled }
+})
+
+// The inverse colours replace the variant and toggle colours. A disabled button keeps its disabled colours.
+const INVERSE = 'bg-transparent text-inverse-on-surface'
 
 const classes = computed(() => {
   const variant = VARIANTS[props.variant] ?? VARIANTS.standard
   let state = variant.default
   if (props.disabled) {
     state = variant.disabled
+  } else if (props.inverse) {
+    state = INVERSE
   } else if (props.toggle) {
     state = props.selected ? variant.on : variant.off
   }
+  const size = props.size === 'compact' ? 'h-6 w-6' : 'h-10 w-10'
   return [
-    'md-state-layer md-focus-ring md-touch-target relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard [&>svg]:size-6',
+    'md-state-layer md-focus-ring md-touch-target relative inline-flex shrink-0 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard [&>svg]:size-6',
+    size,
     state
   ]
 })
@@ -98,11 +134,8 @@ const classes = computed(() => {
 
 <template>
   <component
-    :is="tag"
-    :href="tag === 'a' && !disabled ? href : undefined"
-    :type="tag === 'button' ? type : undefined"
-    :disabled="tag === 'button' ? disabled : undefined"
-    :aria-disabled="tag === 'a' && disabled ? 'true' : undefined"
+    :is="element"
+    v-bind="attrs"
     :aria-pressed="toggle ? String(selected) : undefined"
     :data-variant="variant"
     :class="classes"
