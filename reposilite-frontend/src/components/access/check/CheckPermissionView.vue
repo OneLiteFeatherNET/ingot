@@ -447,6 +447,19 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
         data-test="principal-field"
         @update:model-value="onPrincipal"
       />
+      <div data-test="token-field">
+        <MdSelect
+          :model-value="token"
+          label="Token"
+          :options="tokenOptions"
+          supporting-text="Optional. A token can only narrow what its principal may do"
+          :error="tokenError !== ''"
+          :error-text="tokenError"
+          :disabled="tokenNames.length === 0 && token === ''"
+          data-test="token-select"
+          @update:model-value="onToken"
+        />
+      </div>
       <div
         class="w-fit expanded:col-span-2"
         data-test="check-mode"
@@ -518,19 +531,6 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
           />
         </div>
       </template>
-      <div data-test="token-field">
-        <MdSelect
-          :model-value="token"
-          label="Token"
-          :options="tokenOptions"
-          supporting-text="Optional. A token can only narrow what its principal may do"
-          :error="tokenError !== ''"
-          :error-text="tokenError"
-          :disabled="tokenNames.length === 0 && token === ''"
-          data-test="token-select"
-          @update:model-value="onToken"
-        />
-      </div>
       <div class="flex items-start expanded:col-span-2">
         <MdButton
           type="submit"

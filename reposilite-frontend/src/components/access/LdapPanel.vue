@@ -170,33 +170,31 @@ onMounted(load)
         >
           Enabled: offer LDAP sign in
         </MdSwitch>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <MdTextField
-            id="ldap-label"
-            v-model="form.label"
-            label="Label on the sign in form"
-            type="text"
-            :error="errorOf('label') !== ''"
-            :error-text="errorOf('label')"
-          />
-          <MdTextField
-            id="ldap-url"
-            v-model="form.url"
-            label="Server address"
-            type="text"
-            autocomplete="off"
-            placeholder="ldaps://ldap.example.org:636"
-            supporting-text="ldaps:// for TLS from the start, or ldap:// with StartTLS below"
-            :error="errorOf('url') !== ''"
-            :error-text="errorOf('url')"
-          />
-        </div>
+        <MdTextField
+          id="ldap-url"
+          v-model="form.url"
+          label="Server address"
+          type="text"
+          autocomplete="off"
+          placeholder="ldaps://ldap.example.org:636"
+          supporting-text="ldaps:// for TLS from the start, or ldap:// with StartTLS below"
+          :error="errorOf('url') !== ''"
+          :error-text="errorOf('url')"
+        />
         <MdSwitch
           id="ldap-start-tls"
           v-model="form.startTls"
         >
           Upgrade the connection with StartTLS
         </MdSwitch>
+        <MdTextField
+          id="ldap-label"
+          v-model="form.label"
+          label="Label on the sign in form"
+          type="text"
+          :error="errorOf('label') !== ''"
+          :error-text="errorOf('label')"
+        />
       </section>
 
       <section
