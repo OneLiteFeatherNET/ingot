@@ -34,8 +34,9 @@ its content, SHALL cap its width at 560px and floor it at 280px, and SHALL take 
 
 ### Requirement: Dialog heading names the dialog
 
-A dialog SHALL be named by its heading. `MdDialog` SHALL generate the heading id with a stable generated id and SHALL set
-`aria-labelledby` on the dialog element to it. A view SHALL NOT use a fixed id for a dialog heading.
+A dialog SHALL be named by its heading. `MdDialog` SHALL generate the heading id with `useId()` and SHALL set `aria-labelledby` on
+the dialog element to it. An optional `labelledby` id SHALL replace the generated id for a caller that passes one. A new view SHALL
+NOT use a fixed id for a dialog heading.
 
 #### Scenario: Accessible name
 
