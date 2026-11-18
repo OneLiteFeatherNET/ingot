@@ -35,6 +35,7 @@ from the diff of a pull request:
 | `reposilite-frontend/`, including the end-to-end specs, their harness and fixtures and `playwright.config.js` | runs |
 | The OpenAPI document `docs/openapi/ingot-openapi.json` | runs |
 | Backend HTTP surface: Kotlin files under `reposilite-backend/src/main/kotlin` in a `web/`, `api/` or `frontend/` package, or named `*Endpoint*.kt` or `*Routes.kt`, and `reposilite-backend/src/main/resources/` | runs |
+| Login, sessions, tokens and access checks: `com/reposilite/auth/`, `com/reposilite/token/`, `net/onelitefeather/ingot/identity/` (login, session, authorization), `net/onelitefeather/ingot/search/access/` and `com/reposilite/maven/RepositorySecurityProvider.kt` under `reposilite-backend/src/main/kotlin` | runs |
 | What builds or starts the server: the root Gradle files, `gradle/`, `buildSrc/`, `reposilite-backend/build.gradle.kts`, `heavy.yml`, `ci_scope.sh`, `heavy_gate.py` | runs |
 | Any path the script cannot place | runs (fail-safe) |
 | Other backend code and backend tests | skipped |

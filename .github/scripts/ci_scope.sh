@@ -42,6 +42,9 @@
 #   - the OpenAPI document docs/openapi/ingot-openapi.json
 #   - the HTTP surface of the backend the dashboard calls: Kotlin files under src/main/kotlin in a web/, api/ or
 #     frontend/ package, or named *Endpoint*.kt or *Routes.kt, and src/main/resources (static files, service files)
+#   - login, sessions, tokens and access checks, which every signed-in page of the suite goes through:
+#     com/reposilite/auth/, com/reposilite/token/, net/onelitefeather/ingot/identity/ (login, session, authorization),
+#     net/onelitefeather/ingot/search/access/ and com/reposilite/maven/RepositorySecurityProvider.kt
 #   - what builds or starts the server for the suite: the root and backend Gradle build files, gradle/, buildSrc/,
 #     the heavy workflow, this script and heavy_gate.py
 #   - any path the script cannot place (fail-safe, as for the other flags)
@@ -95,6 +98,8 @@ E2E='^reposilite-frontend/|^docs/openapi/ingot-openapi\.json$'
 E2E="$E2E"'|^reposilite-backend/(build\.gradle\.kts$|src/main/resources/)'
 E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(.*/)?(web|api|frontend)/'
 E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(.*/)?[^/]*(Endpoint[^/]*|Routes)\.kt$'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(com/reposilite/(auth|token)|net/onelitefeather/ingot/(identity|search/access))/'
+E2E="$E2E"'|^reposilite-backend/src/main/kotlin/com/reposilite/maven/RepositorySecurityProvider\.kt$'
 E2E="$E2E"'|^(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradlew|gradlew\.bat)$|^(gradle|buildSrc)/'
 E2E="$E2E"'|^\.github/workflows/heavy\.yml$|^\.github/scripts/(ci_scope\.sh|heavy_gate\.py)$'
 # Paths outside SOURCE that the script can place and that the suite cannot see.

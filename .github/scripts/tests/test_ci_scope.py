@@ -294,6 +294,15 @@ class E2eScopeTest(unittest.TestCase):
         "reposilite-backend/src/main/kotlin/com/reposilite/token/api/AccessTokenDto.kt",
         "reposilite-backend/src/main/kotlin/com/reposilite/frontend/FrontendFacade.kt",
         "reposilite-backend/src/main/resources/static/index.html",
+        # Login, sessions, tokens and access checks, which the suite exercises through every signed-in page.
+        "reposilite-backend/src/main/kotlin/com/reposilite/auth/application/AuthenticationFacade.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/token/AccessTokenFacade.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/IdentityFacade.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/session/SessionStore.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/login/oidc/OidcLogin.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/identity/authorization/Policy.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/access/SearchAccess.kt",
+        "reposilite-backend/src/main/kotlin/com/reposilite/maven/RepositorySecurityProvider.kt",
         "reposilite-backend/src/main/resources/META-INF/services/com.reposilite.plugin.api.ReposilitePlugin",
         # What builds or starts the server for the suite.
         "build.gradle.kts",
@@ -312,6 +321,8 @@ class E2eScopeTest(unittest.TestCase):
         # Backend internals and backend tests.
         "reposilite-backend/src/main/kotlin/com/reposilite/maven/MavenFacade.kt",
         "reposilite-backend/src/main/kotlin/com/reposilite/storage/StorageProviderFactory.kt",
+        "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/database/SearchAccessSql.kt",
+        "reposilite-backend/src/test/kotlin/com/reposilite/auth/AuthenticationFacadeTest.kt",
         "reposilite-backend/src/test/kotlin/com/reposilite/status/StatusEndpointsTest.kt",
         "reposilite-backend/src/integration/kotlin/com/reposilite/web/HttpIT.kt",
         "reposilite-backend/detekt.yml",
