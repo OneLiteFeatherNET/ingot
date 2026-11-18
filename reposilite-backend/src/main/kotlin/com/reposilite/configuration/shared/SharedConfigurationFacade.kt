@@ -36,6 +36,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.PluginStorageSecretGuard
 import com.reposilite.storage.StorageProviderVariants
 import com.reposilite.storage.secretVariants
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
@@ -100,11 +101,14 @@ class SharedConfigurationFacade(
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
 
+    /** Leaves out the storage plugins whose secrets cannot be hidden, for the served schema and the secret shape alike. */
+    private val storageSecretGuard = PluginStorageSecretGuard { journalist.logger.warn(it) }
+
     /**
      * The settings classes of the loaded storage plugins, which the secret shape of every domain includes: their `@Sensitive` fields
      * are masked, restored, sealed and opened like the secrets of the built-in providers.
      */
-    internal val secretVariants: OneOfVariants = extensions.storageProviders.secretVariants()
+    internal val secretVariants: OneOfVariants = extensions.storageProviders.secretVariants(storageSecretGuard)
 
     private val sealedSecretStores = CopyOnWriteArrayList<SealedSecretStore>()
 
@@ -138,6 +142,7 @@ class SharedConfigurationFacade(
         val storageVariants = StorageProviderVariants(
             registry = extensions.storageProviders,
             generate = { schemaGenerator.value.generateSchema(it) },
+            guard = storageSecretGuard,
             warn = { journalist.logger.warn(it) },
         )
 

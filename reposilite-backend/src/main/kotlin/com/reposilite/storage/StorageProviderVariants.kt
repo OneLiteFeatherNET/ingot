@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import com.reposilite.configuration.shared.OneOfVariants
+import com.reposilite.configuration.shared.SettingsSecrets
 import com.reposilite.configuration.shared.cleanupScheme
 import com.fasterxml.jackson.databind.node.TextNode
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
@@ -41,8 +42,12 @@ import java.util.concurrent.ConcurrentHashMap
 internal class StorageProviderVariants(
     private val registry: StorageProviderRegistry,
     private val generate: (Class<*>) -> JsonNode,
+    guard: PluginStorageSecretGuard? = null,
     private val warn: (String) -> Unit = {},
 ) {
+
+    /** Leaves out the plugins whose secrets cannot be hidden. Shared with the secret shape, so such a plugin is reported once. */
+    private val secretGuard = guard ?: PluginStorageSecretGuard(warn)
 
     /** The plugins that were already reported as broken, by type id and source. */
     private val reported = ConcurrentHashMap.newKeySet<String>()
@@ -66,7 +71,7 @@ internal class StorageProviderVariants(
 
     /** The variants of the plugins whose type the served list does not offer yet, each with the definitions it moves to the root. */
     private fun pluginVariants(offered: Set<String>): List<Pair<ObjectNode, Map<String, ObjectNode>>> =
-        registry.pluginProviders()
+        secretGuard.usable(registry.pluginProviders())
             .filter { it.type !in offered }
             .sortedBy { it.type }
             .mapNotNull { provider ->
@@ -157,7 +162,29 @@ internal class StorageProviderVariants(
  * call, so a plugin that loads after the caller was built is covered as well.
  */
 @OptIn(ExperimentalIngotStorageApi::class)
-internal fun StorageProviderRegistry.secretVariants(): OneOfVariants =
+internal fun StorageProviderRegistry.secretVariants(guard: PluginStorageSecretGuard = PluginStorageSecretGuard()): OneOfVariants =
     OneOfVariants { declared ->
-        if (declared == StorageProviderSettings::class) pluginProviders().map { it.factory.settingsType.kotlin } else emptyList()
+        if (declared == StorageProviderSettings::class) guard.usable(pluginProviders()).map { it.factory.settingsType.kotlin } else emptyList()
     }
+
+/**
+ * Leaves out a storage plugin whose settings class marks a property that is not a String as a secret. Its secret could not be hidden,
+ * so the plugin is neither offered in the served schema nor part of the secret shape, and every other provider keeps working. The
+ * warning names the plugin type, the field, the settings class and the jar, once per plugin.
+ */
+@OptIn(ExperimentalIngotStorageApi::class)
+internal class PluginStorageSecretGuard(private val warn: (String) -> Unit = {}) {
+
+    private val reported = ConcurrentHashMap.newKeySet<String>()
+
+    fun usable(providers: List<StorageProviderRegistry.PluginStorageProvider>): List<StorageProviderRegistry.PluginStorageProvider> =
+        providers.filter { provider ->
+            val settingsType = provider.factory.settingsType
+            val field = SettingsSecrets.unusableSensitiveField(settingsType.kotlin) ?: return@filter true
+            if (reported.add("${provider.type} ${provider.source}")) {
+                warn("Storage provider '${provider.type}' of ${provider.source} is not offered: field '$field' of ${settingsType.name} is marked @Sensitive but is not a String, so its secret cannot be hidden")
+            }
+            false
+        }
+
+}

@@ -37,6 +37,18 @@ data class VaultStoreSettings(
     val accountKey: String = "",
 ) : StorageProviderSettings
 
+/** The type id of a fake storage plugin whose secret field is not a String. */
+internal const val NUMERIC_STORE = "numeric-store"
+
+/** Settings of a fake storage plugin that marks a number as a secret, which the secret handling cannot mask. */
+@Doc(title = "Numeric store", description = "Storage of a fake plugin with an unusable secret field")
+data class NumericStoreSettings(
+    override val type: String = NUMERIC_STORE,
+    @get:Sensitive
+    @get:Doc(title = "Pin", description = "A secret that is not a String")
+    val pin: Int = 0,
+) : StorageProviderSettings
+
 /** A factory of the plugin API that is only registered, never asked for a provider. */
 @OptIn(ExperimentalIngotStorageApi::class)
 internal class FakePluginFactory<S : StorageProviderSettings>(
@@ -55,4 +67,10 @@ internal class FakePluginFactory<S : StorageProviderSettings>(
 internal fun registryWithVaultStore(): StorageProviderRegistry =
     StorageProviderRegistry.applicationClassPath().also {
         it.register(FakePluginFactory(VAULT_STORE, VaultStoreSettings::class.java), source = "vault-store-plugin.jar", builtIn = false)
+    }
+
+/** [registryWithVaultStore] plus the fake plugin whose secret field is not a String. */
+internal fun registryWithNumericStore(): StorageProviderRegistry =
+    registryWithVaultStore().also {
+        it.register(FakePluginFactory(NUMERIC_STORE, NumericStoreSettings::class.java), source = "numeric-store-plugin.jar", builtIn = false)
     }

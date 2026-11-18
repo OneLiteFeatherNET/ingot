@@ -260,6 +260,21 @@ internal object SettingsSecrets {
         return incoming.asSuccess()
     }
 
+    /**
+     * The first property of [type], or of a class nested in it, that is marked [Sensitive] but is not a String, or null when every
+     * secret of [type] can be hidden. A plugin class with such a property is left out instead of breaking the shape of its domain.
+     */
+    fun unusableSensitiveField(type: KClass<*>): String? =
+        try {
+            objectShape(type, enclosing = emptySet(), OneOfVariants.NONE)
+            null
+        } catch (exception: UnusableSecretException) {
+            exception.property
+        }
+
+    private class UnusableSecretException(val property: String) :
+        IllegalStateException("Property '$property' is marked @Sensitive but is not a String")
+
     private fun shapeOf(type: Class<*>, variants: OneOfVariants): SecretShape =
         objectShape(type.kotlin, enclosing = emptySet(), variants)
 
@@ -278,7 +293,7 @@ internal object SettingsSecrets {
 
     private fun propertyShape(property: KProperty1<*, *>, enclosing: Set<KClass<*>>, variants: OneOfVariants): SecretShape {
         if (property.getter.findAnnotation<Sensitive>() != null) {
-            check(property.returnType.classifier == String::class) { "Property '${property.name}' is marked @Sensitive but is not a String" }
+            if (property.returnType.classifier != String::class) throw UnusableSecretException(property.name)
             return SecretShape(sensitive = true)
         }
 
