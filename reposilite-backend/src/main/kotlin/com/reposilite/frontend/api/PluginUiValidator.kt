@@ -38,6 +38,10 @@ internal object PluginUiValidator {
     private const val MAX_COLUMNS = 12
     private const val MIN_REFRESH = 5
     private const val MAX_REFRESH = 300
+    private const val CODE_LIMIT = 4000
+    private const val LINK_LIMIT = 500
+    private val CODE_LANGUAGES = listOf("plain", "kotlin", "groovy", "xml", "properties")
+    private val LINK_CHARACTERS = Regex("[A-Za-z0-9._~/?=&-]+")
 
     fun pageProblems(plugin: String, page: PluginUiPage): List<String> = buildList {
         if (!ID.matches(page.id)) add("id '${page.id}' must match [a-z0-9-] and be at most 32 characters")
@@ -88,6 +92,15 @@ internal object PluginUiValidator {
                         add("refreshSeconds ${block.refreshSeconds} of $where must be $MIN_REFRESH to $MAX_REFRESH")
                     }
                 }
+                is PluginUiBlock.CodeBlock -> {
+                    if (block.text.isEmpty() || block.text.length > CODE_LIMIT) add("text of $where must be 1 to $CODE_LIMIT characters")
+                    block.label?.let { if (it.isEmpty() || it.length > LABEL_LIMIT) add("label of $where must be 1 to $LABEL_LIMIT characters") }
+                    if (block.language !in CODE_LANGUAGES) add("language '${block.language}' of $where is unknown, valid languages: ${CODE_LANGUAGES.joinToString()}")
+                }
+                is PluginUiBlock.LinkBlock -> {
+                    if (block.label.isEmpty() || block.label.length > LABEL_LIMIT) add("label of $where must be 1 to $LABEL_LIMIT characters")
+                    linkProblem(block.href)?.let { add("href of $where: $it") }
+                }
             }
         }
     }
@@ -105,6 +118,25 @@ internal object PluginUiValidator {
                 "$what '$path' contains an empty, '.' or '..' segment"
             else -> null
         }
+    }
+
+    /**
+     * A link is a same-origin path: one slash, no host, no scheme, no data or asset route, no traversal and no
+     * encoding. The dashboard checks the same rules before it draws a link, so a manifest changed in transit cannot
+     * point elsewhere. Null when the link may be drawn.
+     */
+    fun linkProblem(href: String): String? {
+        val second = href.getOrNull(1)
+        val problem = when {
+            href.length > LINK_LIMIT -> "is longer than $LINK_LIMIT characters"
+            !href.startsWith("/") || second == '/' || second == '\\' -> "must start with a single '/'"
+            href.startsWith("/api/") || href.startsWith("/assets/") -> "may not point at /api/ or /assets/"
+            !LINK_CHARACTERS.matches(href) -> "contains characters outside A-Z a-z 0-9 . _ ~ - / ? = &"
+            href.substringBefore('?').removePrefix("/").split('/').any { it.isEmpty() || it == "." || it == ".." } ->
+                "contains an empty, '.' or '..' segment"
+            else -> null
+        }
+        return problem?.let { "link '$href' $it" }
     }
 
     /** A JSON schema may refer only into its own document, so no address outside it is loaded by the browser. */
