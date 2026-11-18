@@ -233,6 +233,21 @@ Response fields:
 * [Environment variables](../configuration/environment-variables.md)
 * [Configuration file and startup parameters](../configuration/configuration-and-startup.md)
 
+## Azure Blob provider
+
+The provider of type `azure-blob` is not part of the image. It is the optional `azure-storage` plugin, see [Use Azure Blob storage](../../set-up/cluster/use-azure-blob-storage.md).
+
+### Environment variables
+
+Two variables fill the blank fields of an `azure-blob` repository. A repository setting always wins, and secrets are never read from the environment.
+
+| Variable | Fallback | Repository field it fills |
+| --- | --- | --- |
+| `INGOT_AZURE_BLOB_ACCOUNT_NAME` | `REPOSILITE_AZURE_BLOB_ACCOUNT_NAME` | `accountName` |
+| `INGOT_AZURE_BLOB_ENDPOINT` | `REPOSILITE_AZURE_BLOB_ENDPOINT` | `endpoint` |
+
+The `INGOT_` variable takes precedence, and the `REPOSILITE_` name is read when it is not set or blank. The defaults are in [Azure Blob storage variables](../configuration/environment-variables.md#azure-blob-storage-variables).
+
 ## Google Cloud Storage provider
 
 The provider of type `gcs` is not part of the image. It is the optional `gcs-storage` plugin, and it is installed as described in [Use Google Cloud Storage](../../set-up/cluster/use-google-cloud-storage.md). Without the plugin, a repository of type `gcs` does not load.
