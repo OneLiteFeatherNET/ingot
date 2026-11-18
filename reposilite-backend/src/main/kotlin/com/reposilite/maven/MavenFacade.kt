@@ -308,6 +308,14 @@ class MavenFacade internal constructor(
     fun canAccessResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         repositorySecurityProvider.canAccessResource(accessToken, repository, gav)
 
+    /** Whether the repository is shown in the root directory to [accessToken]; the answer of the root listing. */
+    internal fun canAccessRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
+        repositorySecurityProvider.canAccessRepository(accessToken, repository)
+
+    /** Whether the repository is shown in the repository list to [accessToken]; the answer of the list route. */
+    internal fun canListRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
+        repositorySecurityProvider.canListRepository(accessToken, repository)
+
     fun findRepositories(accessToken: AccessTokenIdentifier?): DirectoryInfo =
         repositoryService.getRootDirectory(accessToken)
 
