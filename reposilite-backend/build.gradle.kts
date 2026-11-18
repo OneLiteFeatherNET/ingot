@@ -21,6 +21,8 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
 import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
+import ingot.plugin.CheckPluginApiClosureTask
+import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.cyclonedx.Version
@@ -232,6 +234,8 @@ dependencies {
         exclude(group = "org.apache.commons", module = "commons-compress")
     }
     testImplementation("org.apache.commons:commons-compress:1.28.0")
+    // Compiles the Kotlin samples of ExperimentalIngotPluginApiTest in process. Keep the version equal to kotlinVersion of the root build.
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.0")
 
     val ldap = "7.0.4"
     testImplementation("com.unboundid:unboundid-ldapsdk:$ldap")
@@ -291,6 +295,28 @@ tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
     schemaVersion = Version.VERSION_16
     xmlOutput.unsetConvention()
     jsonOutput = rootProject.layout.buildDirectory.file("sbom/ingot-${project.version}.cdx.json")
+}
+
+// The slim plugin API jar (see openspec change add-plugin-api-artifact). It holds only the classes that plugin-api-classes.txt
+// lists, and pluginApiClosure fails the build when a listed class names a new Ingot type that the jar does not hold. Only the
+// jar and the check are built here. The publication of the jar follows in its own change, and the bundle is not touched.
+val pluginApiClasses = PluginApiAllowlist.parse(file("plugin-api-classes.txt").readText())
+
+val pluginApiJar by tasks.registering(Jar::class) {
+    group = "build"
+    description = "Builds the slim plugin API jar: the classes listed in plugin-api-classes.txt and nothing else."
+    archiveBaseName.set("ingot-plugin-api")
+    destinationDirectory.set(layout.buildDirectory.dir("plugin-api"))
+    from(sourceSets.main.get().output) {
+        include(pluginApiClasses.map { it.replace('.', '/') + ".class" })
+    }
+}
+
+val pluginApiClosure by tasks.registering(CheckPluginApiClosureTask::class) {
+    group = "verification"
+    description = "Fails when a class of the slim plugin API jar names a new Ingot type that the jar does not hold."
+    artifact.set(pluginApiJar.flatMap { it.archiveFile })
+    allowlist.set(layout.projectDirectory.file("plugin-api-classes.txt"))
 }
 
 publishing {

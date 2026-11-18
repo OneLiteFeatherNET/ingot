@@ -24,6 +24,10 @@ repositories {
 }
 
 dependencies {
+    // Reads the class files of the slim plugin API jar, see ingot.plugin.PluginApiClosure.
+    implementation("org.ow2.asm:asm:9.9.1")
+    implementation("org.ow2.asm:asm-tree:9.9.1")
+
     // The versions match the test dependencies of the project modules.
     testImplementation("org.assertj:assertj-core:4.0.0-M1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.0")
