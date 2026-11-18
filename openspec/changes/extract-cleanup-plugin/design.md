@@ -47,6 +47,17 @@ integration tests, the service entry and the build wiring therefore land in one 
 Kotlin `internal` is per Gradle module. Every `internal` declaration that the backend or the prometheus plugin reaches is listed by task 0.4,
 and each one is either made public in the move pull request or reached through the seam of D3. No class is made public for another reason.
 
+Verified (task 0.4): the `internal` declarations of `reposilite-backend/src/main/kotlin/com/reposilite/cleanup` are
+`InMemoryCleanupRunRepository`, `CleanupRunTable`, `SqlCleanupRunRepository`, `CleanupCatchUp`, `CleanupEndpoints`, `CleanupScheduler`,
+`CleanupPlugin`, `CleanupTarget`, the constructor of `CleanupService`, `CleanupService.runScheduledTick` and `CleanupService.runScheduled`,
+`CleanupInventory` and `CleanupPlanner`. The prometheus plugin reaches none of them: on main it names no class of the package, since its
+`FacadeOperationalSource` reads `JobLastSuccessSource` (task 1.2 appears to be in place). The backend reaches the package in three places:
+the public enum `CleanupRunStatus` in `net/onelitefeather/ingot/jobs/JobStateMapping.kt`, its test `JobStateMappingTest.kt`, and
+`runScheduledTick` in `WorkerTwoInstanceCleanupIntegrationTest`, which moves with the module. The enum is public and needs no visibility
+change, but the core `JobStateMapping.cleanup` function cannot stay in the server once the classes leave it. Group 2 does not list that
+mapping, so the move pull request must either move the mapping with the module or give the enum a home in the core. This is a gap in
+`tasks.md` that the move pull request has to close.
+
 ### D3. The core seam for the job status lives in the core
 
 `FacadeOperationalSource` must not name a cleanup class. The core declares a public interface in `net.onelitefeather.ingot.deploy`, next to
@@ -78,6 +89,12 @@ The domain stays keyed by `/settings/<domain>`, so `/settings/cleanup` keeps its
 the domain, the Administration tree hides the entry (`showsDomains && domains.includes(...)`), and the address shows the dashboard's state
 for an unknown domain. Task 0.3 records that state.
 
+Verified (task 0.3): `/settings/:domain?` (`reposilite-frontend/src/router/routes.ts`) checks no domain. `SettingsView.vue`
+(`activeDomain`, lines 111-114) falls back to the first listed domain when the requested one is not listed, and its watcher (lines 234-235)
+reports the change, so `IndexPage.vue` (`setDomain`, lines 341-342) replaces the address with `/settings/<first listed domain>`. The
+result is not an error page and not the `/settings` hub, so the `/settings` redirect of group 3 is not required by D4's error branch.
+With no domain listed at all, the page shows an empty view.
+
 ### D5. Without the embedded copy, cleanup is absent and nothing else breaks
 
 Cleanup is active in every build of the server jar. An operator cannot take it out with a file, and the only removal is a build without the
@@ -88,6 +105,14 @@ embedded jar (decision O3). In such a build:
   Task 0.2 verifies that.
 - The `cleanup` dependency of the cluster plugin is not satisfied, so the loader stops with `Unknown dependency 'cleanup'`. Dropping that entry
   is a follow-up change, which this change does not make. This change does not touch the cluster plugin.
+
+Verified (task 0.2): the load path keeps an unclaimed row. `SharedConfigurationFacade.loadSharedSettingsFromString`
+(`reposilite-backend/src/main/kotlin/com/reposilite/configuration/shared/SharedConfigurationFacade.kt`, lines 190-197) applies only the
+names of the registered domains, and the file is not rewritten on load. The write path does not keep it: `renderConfiguration` (lines
+489-497) renders only the registered domains, and `storeRendered` (line 466) writes that rendering on every save of any domain. So a stored
+`cleanup` row survives until the next save of any other domain, and is then removed. In a build without the embedded jar that is the
+configured cleanup policy, so D5's claim that the row is kept untouched holds only until that save. Question 3 of `proposal.md` covers
+this, and the choice is for the maintainer.
 
 ### D6. Routes, events, audit, metrics, worker target and data do not change
 
@@ -136,6 +161,14 @@ The rule applies to the cleanup plugin only. Other plugin ids keep the rule of t
 The released jar is not copied into `/app/bundled-plugins`. The embedded copy gives the image cleanup, and a second copy with the same id would add
 a second precedence path. `.dockerignore` allow-lists `!reposilite-plugins/cleanup-plugin`, because `ingot.jar` now depends on the module and the
 build context would otherwise lack it. The `Dockerfile` does not change.
+
+Verified (task 0.5): the image entrypoint (`entrypoint.sh`) prepends `--working-directory=/app/data` unless `INGOT_OPTS`
+or `REPOSILITE_OPTS` already names `--working-directory` or `-wd`, and passes the options on both the root and the non-root branch. The
+plugins directory defaults to `<working directory>/plugins` (`ReposiliteParameters.kt`, line 170), which is `/app/data/plugins` in the
+image. The embedded copies extract into `<working directory>/embedded-plugins`, which is `/app/data/embedded-plugins`. The operator notes
+of group 3 name that path, and name `/app/data/plugins` as the place of a newer jar. `/app/bundled-plugins` is a separate default constant
+of `PluginLoader.kt`. The loader that reads `embedded-plugins` is not on main yet (see the gate of task 0.1), so the path is taken from the
+prerequisite's design.
 
 ### D11. Release is a follow-up
 

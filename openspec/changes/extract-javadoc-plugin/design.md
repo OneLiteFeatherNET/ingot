@@ -55,6 +55,14 @@ reviewer sees renames. Kotlin `internal` is per Gradle module. Classes that the 
 listed by task 0.3, and each one is either made public in the move pull request or passed through the seam of D3. No class is made
 public for another reason.
 
+Verified (task 0.4): the `internal` declarations of `reposilite-backend/src/main/kotlin/com/reposilite/javadocs` are
+`JavadocEndpoints`, the constructor of `JavadocFacade`, `javadocEvictionRoot`, `JavadocPlugin`, `DEFAULT_JAVADOC_MAX_ENTRY_BYTES`,
+`javadocMaxEntryBytes`, `JavadocContainer`, `JavadocContainerService` (with `createContainer` and `unpackJavadocJar`) and `JavadocView`.
+No class outside the package reaches any of them. The only references from outside are the service entry that names `JavadocPlugin`
+and the public `JavadocCacheReceiver` of the cluster seam, which `JavadocFacade` implements. The move therefore needs no visibility
+change for the core, and every one of these stays `internal` in the module. This pins the list of the move pull request as empty.
+The design text above cites task 0.3 for this check, while `tasks.md` numbers it 0.4.
+
 ### D3. The core reaches the viewer through an interface it owns
 
 `FacadeCacheHooks.javadocInvalidated` no longer looks up `JavadocFacade`. The cluster package declares a public interface
@@ -77,6 +85,12 @@ The domain stays keyed by `/settings/<domain>`, so `/settings/javadoc` keeps its
 shows the state the dashboard shows for an unknown domain. Task 0.2 records that state. If it is an error, the page redirects to
 `/settings`, and a test pins the redirect.
 
+Verified (task 0.3): `/settings/:domain?` (`reposilite-frontend/src/router/routes.ts`) checks no domain. `SettingsView.vue`
+(`activeDomain`, lines 111-114) falls back to the first listed domain when the requested one is not listed, and its watcher (lines 234-235)
+reports the change, so `IndexPage.vue` (`setDomain`, lines 341-342) replaces the address with `/settings/<first listed domain>`. The
+result is not an error page and not the `/settings` hub, so the error branch of this decision does not apply and the redirect to
+`/settings` is not required by it. With no domain listed at all, the page shows an empty view.
+
 ### D5. Without the viewer the Javadoc links are hidden, not broken
 
 There are three cases, and each one hides the Javadoc action in the file browser:
@@ -89,6 +103,15 @@ There are three cases, and each one hides the Javadoc action in the file browser
 
 The operator's switch is `javadoc.enabled`. No embedded copy is removed in this change (question 1, settled 2026-11-17). A stored `javadoc` row that no
 loaded domain claims is kept by the shared configuration (task 0.1 verifies it) and is inert.
+
+Verified (task 0.2): the load path keeps an unclaimed row. `SharedConfigurationFacade.loadSharedSettingsFromString`
+(`reposilite-backend/src/main/kotlin/com/reposilite/configuration/shared/SharedConfigurationFacade.kt`, lines 190-197) applies only the
+names of the registered domains, and the file is not rewritten on load. The write path does not keep it: `renderConfiguration` (lines
+489-497) renders only the registered domains, and `storeRendered` (line 466) writes that rendering on every save of any domain
+(`updateSharedSettings`, `updateDomain`), and `rewriteDocument` does the same for the secret key commands. So the stored `javadoc` row
+survives until the next save of any other domain, and is then removed. The row is inert in either case, so the behaviour of D5 holds,
+but the claim that the row is kept untouched holds only until that save. Question 3 of `proposal.md` is affected only if the row must
+survive a save, which is a maintainer decision.
 
 ### D6. Routes, events and the cache directory do not change
 
@@ -136,6 +159,13 @@ depend on the order of loading). The file list of the image is therefore unchang
 
 The plugins directory of the image is the one of the working directory, as today. Task 0.4 records where that directory is, so the
 update path in the operator guide names the right place.
+
+Verified (task 0.5): the image entrypoint (`entrypoint.sh`) prepends `--working-directory=/app/data` unless `INGOT_OPTS`
+or `REPOSILITE_OPTS` already names `--working-directory` or `-wd`, and passes the options on both the root and the non-root branch. The
+plugins directory defaults to `<working directory>/plugins` (`ReposiliteParameters.kt`, line 170), which is `/app/data/plugins` in the
+image. The embedded copies of the prerequisite extract into `<working directory>/embedded-plugins`, which is `/app/data/embedded-plugins`
+(its design D1). `/app/bundled-plugins` is a separate default constant of `PluginLoader.kt` and is not the plugins directory. The
+loader that reads `embedded-plugins` is not on main yet (see the gate of task 0.1), so this path is taken from the prerequisite's design.
 
 ### D11. Release is a follow-up
 
