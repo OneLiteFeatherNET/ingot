@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.search.enrichment
 
 import com.reposilite.plugin.api.Event
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
@@ -96,6 +97,15 @@ data class EnrichmentSkipped(val reason: String) : EnrichmentResult
 /** The enricher failed on this file. [reason] is short and carries no content. */
 @ExperimentalIngotSearchApi
 data class EnrichmentFailed(val reason: String) : EnrichmentResult
+
+/**
+ * The enricher finished and writes [values] as attributes of the file. The keys are `<enricher-id>.<name>`, the values are strings,
+ * and the set is bounded (artifact enrichment, D1 and D2). The core validates the set and refuses it as a whole when a bound or a
+ * rule is broken; see [validateAttributes].
+ */
+@ExperimentalIngotSearchApi
+@ExperimentalIngotPluginApi
+data class EnrichmentAttributes(val values: Map<String, List<String>>) : EnrichmentResult
 
 /**
  * Emitted by the search plugin after every plugin has initialised. A plugin registers its [ArtifactEnricher] here, from its own
