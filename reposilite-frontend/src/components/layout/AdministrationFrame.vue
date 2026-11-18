@@ -222,9 +222,11 @@ const sheetOpen = ref(false)
           {{ lineDescription }}
         </p>
       </div>
-      <!-- Drawn on every page, empty or not: its 48 pixel minimum keeps the header as high on a page without actions. -->
+      <!-- Empty, the row is drawn only from the medium window: its 48 pixel minimum keeps the header as high there, and on a phone it would
+           only leave a gap under the title. -->
       <div
-        class="flex min-h-12 max-w-full flex-wrap items-center gap-2 medium:basis-full large:basis-auto"
+        class="min-h-12 max-w-full flex-wrap items-center gap-2 medium:basis-full large:basis-auto"
+        :class="shortcuts.length > 0 || showsSections || $slots.actions ? 'flex' : 'hidden medium:flex'"
       >
         <button
           v-if="showsSections"

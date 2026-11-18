@@ -266,12 +266,29 @@ describe('AdministrationFrame page header', () => {
     expect(focusClasses, 'no focus style on the container: only the focused control draws its ring').toEqual([])
   })
 
-  it('keeps the actions row with its 48 pixel minimum on a page without actions, so the header keeps its height', async () => {
+  it('keeps the empty actions row at 48 pixels from the medium window, so the header keeps its height there', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
     const actions = wrapper.get('header > div:last-child')
     expect(actions.classes(), 'the empty actions row keeps the 48 pixel minimum').toContain('min-h-12')
+    expect(actions.classes(), 'drawn from the medium window on').toContain('medium:flex')
     expect(wrapper.find('[aria-label="Related pages"]').exists(), 'no shortcuts are drawn').toBe(false)
+  })
+
+  it('hides the empty actions row on a phone, where it would only leave a gap under the title', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const actions = wrapper.get('header > div:last-child')
+    expect(actions.classes(), 'no row below the title on a phone without actions').toContain('hidden')
+    expect(actions.classes(), 'the row is not hidden from the medium window').not.toContain('flex')
+  })
+
+  it('draws the actions row on a phone when the page has shortcuts', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
+
+    const actions = wrapper.get('header > div:last-child')
+    expect(actions.classes(), 'the row holds the shortcuts on every width').toContain('flex')
+    expect(actions.classes(), 'and is not hidden on a phone').not.toContain('hidden')
   })
 
   it('keeps the actions row 48 pixels high, so the header keeps its height whichever buttons a page has', async () => {
