@@ -14,6 +14,8 @@ Copy the jar `azure-storage-plugin.jar` into the `plugins` directory of the data
 
 Until the jar is installed, a repository of type `azure-blob` is not loaded. The server reports `Unknown storage provider 'azure-blob'` for it, its settings are kept unchanged, and the other repositories keep working.
 
+Once the plugin is installed, the dashboard offers Azure Blob storage in the storage settings of a repository. A repository that already stores its block as `azure-blob` keeps that block unchanged when another setting is saved.
+
 ## Grant access
 
 The identity of the server needs a data role on the container. The role `Storage Blob Data Contributor` covers reading, writing and deleting. A read-only mirror needs `Storage Blob Data Reader` instead.
