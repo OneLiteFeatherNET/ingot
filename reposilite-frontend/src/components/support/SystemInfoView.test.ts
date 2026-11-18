@@ -632,6 +632,14 @@ const valueOf = (card: PanelOf, label: string) =>
   card.findAll('dt').find(term => term.text() === label)?.element.nextElementSibling?.textContent?.trim()
 
 describe('SystemInfoView plugin cards', () => {
+  it('draws the plugins heading through the shared section header, labelling the section', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    const section = pluginSection(wrapper)
+    expect(section.get('[data-test="section-header"] h2').text()).toBe('Plugins')
+    expect(section.attributes('aria-labelledby'), 'the section is labelled by its heading').toBe(section.get('h2').attributes('id'))
+  })
+
   it('draws each plugin as a card titled with its name', async () => {
     const wrapper = await pluginsTab(PLUGINS)
 

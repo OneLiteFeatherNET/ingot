@@ -57,6 +57,18 @@ describe('MdSection', () => {
     expect(wrapper.get('[data-test="section-body"]').text()).toBe('Body')
   })
 
+  it('puts the headingId on the title so an aria-labelledby of the section can point at it', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members', headingId: 'members-title' } })
+
+    expect(wrapper.get('h2').attributes('id')).toBe('members-title')
+  })
+
+  it('leaves the title without an id when no headingId is given', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members' } })
+
+    expect(wrapper.get('h2').attributes('id'), 'no headingId means no id on the title').toBeUndefined()
+  })
+
   it('carries the md-section anchor on its root', () => {
     const wrapper = mount(MdSection, { props: { title: 'Members' } })
 

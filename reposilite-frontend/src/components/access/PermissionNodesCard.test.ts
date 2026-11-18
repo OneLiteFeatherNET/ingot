@@ -94,6 +94,15 @@ describe('PermissionNodesCard', () => {
       expect(wrapper.find('[data-test="node-editor"]').exists()).toBe(true)
     })
 
+    it('renders the card heading through the shared section header, labelling the section', async () => {
+      await mountCard()
+
+      const header = wrapper.find('[data-test="section-header"]')
+      expect(header.exists(), 'the heading is drawn by the shared section').toBe(true)
+      expect(header.find('h2').text()).toBe('Permission nodes')
+      expect(wrapper.find('section').attributes('aria-labelledby'), 'the section is labelled by its heading').toBe(wrapper.find('h2').attributes('id'))
+    })
+
     it('reads the nodes of a principal from the principals collection', async () => {
       await mountCard({ subjectKind: 'principal', name: 'alice' })
 

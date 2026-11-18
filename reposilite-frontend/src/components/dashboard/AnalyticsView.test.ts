@@ -73,6 +73,14 @@ describe('AnalyticsView', () => {
     expect(view.text(), 'the traffic heading moved with the chart').not.toContain('Traffic')
   })
 
+  it('draws the metrics heading through the shared section header, labelling the section', async () => {
+    const view = await mountAnalytics()
+
+    const section = view.get('[data-test="metrics-endpoint"]')
+    expect(section.get('[data-test="section-header"] h2').text()).toBe('Metrics endpoint')
+    expect(section.attributes('aria-labelledby'), 'the section is labelled by its heading').toBe(section.get('h2').attributes('id'))
+  })
+
   it('names the metrics endpoint and the setting that turns it on', async () => {
     const view = await mountAnalytics()
 
