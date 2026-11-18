@@ -203,6 +203,18 @@ const submit = () => {
           @update:model-value="draft.scope = $event"
         />
 
+        <MdTextField
+          id="policy-group-filter"
+          label="Group filter (optional)"
+          variant="outlined"
+          autocomplete="off"
+          :model-value="draft.groupFilter"
+          supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
+          :error="!!shownErrors.groupFilter"
+          :error-text="shownErrors.groupFilter"
+          @update:model-value="draft.groupFilter = $event"
+        />
+
         <fieldset class="flex flex-col gap-4">
           <legend class="md-label-large text-on-surface-variant">
             Limits. Set at least one.
@@ -256,18 +268,6 @@ const submit = () => {
             {{ shownErrors.retention }}
           </MdAlert>
         </fieldset>
-
-        <MdTextField
-          id="policy-group-filter"
-          label="Group filter (optional)"
-          variant="outlined"
-          autocomplete="off"
-          :model-value="draft.groupFilter"
-          supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
-          :error="!!shownErrors.groupFilter"
-          :error-text="shownErrors.groupFilter"
-          @update:model-value="draft.groupFilter = $event"
-        />
 
         <fieldset class="flex flex-col gap-3 pt-3">
           <legend class="md-label-large text-on-surface-variant">
