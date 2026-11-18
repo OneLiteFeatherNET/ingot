@@ -176,9 +176,13 @@ The shape is additive: a source adds counts and failures and never removes a fie
 
 **Decision (2026-11-17): a new registration event, not a facade.**
 
-- New API in `com.reposilite.plugin.api.jobs` (the package name stays `com.reposilite.*`, as the Ingot contract requires):
-  `JobSource` (an interface with `id`, `requiredNode`, `page(query, before, limit)`, `detail(localId)`), the data classes `JobRun`, `JobQuery`, `JobCursor`, `JobPage`, and
-  `JobRegistrationEvent`, an `Event` that carries a `JobRegistry`. The registry has one method, `register(source: JobSource)`.
+- **Namespace (decided 2026-11-18 by the maintainer):** the job model lives in `net.onelitefeather.ingot.jobs`, as task 2.5 says.
+  That is `JobRun`, its state and trigger enums, `JobCursor` with its codec, the merge, `JobRegistry` and the three core sources.
+  New code goes into the Ingot namespace; the job model is not part of the `com.reposilite.*` contract.
+- The registration contract stays in `com.reposilite.plugin.api.jobs` (the package name stays `com.reposilite.*`, as the Ingot
+  contract requires), as task 2.5 lists it: `JobSource` (an interface with `id`, `requiredNode`, `page(query, before, limit)`,
+  `detail(localId)`), `JobQuery`, `JobPage` and `JobRegistrationEvent`, an `Event` that carries a `JobRegistry`. The registry has
+  one method, `register(source: JobSource)`. The contract types refer to `JobRun` and `JobRegistry` in `net.onelitefeather.ingot.jobs`.
 - Core fires `JobRegistrationEvent` after the plugins have initialised, at `ReposilitePostInitializeEvent` (`LifecycleEvents.kt:23`).
   A plugin listens for it in its `initialize()`. A plugin that registers later (after the event) is an error that the core logs,
   and the source is not listed.
@@ -271,7 +275,7 @@ No new permission node is added.
 
 ### D8. Drop-in impact
 
-- **Additive:** `GET /api/jobs`, `GET /api/jobs/{id}`, the types in `com.reposilite.plugin.api.jobs`,
+- **Additive:** `GET /api/jobs`, `GET /api/jobs/{id}`, the types in `com.reposilite.plugin.api.jobs` and `net.onelitefeather.ingot.jobs`,
   and the Jobs address in the frontend.
 - **Unchanged:** every existing path, method and response shape. `GET /api/maven/search/index` keeps its 20 runs.
   `GET /api/cleanup/runs` keeps its list. The nexus job routes keep their behaviour, and `/maintenance?tab=index` keeps opening
