@@ -48,7 +48,7 @@ Per repository, in the `storageProvider` block of `configuration.shared.json`:
 | `endpoint` | empty | Emulator only. Used only when the process-wide switch below is `true`. |
 | `authentication` | `adc` | `adc` or `service-account-key`. Any other value stops the repository start and names the key. |
 | `credentialsJson` | empty | Sensitive. The service account key, required when `authentication` is `service-account-key`. A secret reference or file reference is accepted through `add-settings-secret-references` and `add-file-secrets`. |
-| `chunkSize` | `8388608` (8 MiB) | Bytes per resumable chunk. Must be a multiple of 256 KiB (verify on the resumable upload page), at least 256 KiB and at most 64 MiB. |
+| `chunkSize` | `8388608` (8 MiB) | Bytes per resumable chunk. Must be a multiple of 256 KiB (verified, see the vendor claim check below), at least 256 KiB and at most 64 MiB. |
 
 Rules:
 
@@ -91,20 +91,21 @@ The method `putFile(location, inputStream)`:
   the provider sends one request with the exact content length.
 - Otherwise it opens a resumable upload through a `WriteChannel` with the configured `chunkSize`, copies the stream in
   chunks, and closes the channel. The object becomes visible only when the upload is finalised. The documented atomicity rule
-  states that an object becomes visible only once the entire upload has completed (verified on the consistency page; the
-  resumable case is confirmed by the emulator test and by step 0 on a real bucket).
+  states that an object becomes visible only once the entire upload has completed (verified on the consistency page, which
+  does not name resumable uploads; the resumable case is confirmed by the emulator test and by step 0 on a real bucket).
 - No full spool to disk. Memory use is one chunk per concurrent upload.
 - A failure before the channel closes is reported as a write failure. The resumable session is abandoned and expires on the
-  service side; no object is created. Whether the client or the JSON API offers an explicit cancel of a resumable session is
-  unverified (task 0.5). If one exists, the provider calls it on failure; otherwise the documentation says that the session expires.
+  service side; no object is created. The JSON API cancels a resumable session with `DELETE` on the session URI (verified, see the
+  vendor claim check below); the provider sends that request on failure; if the request fails, the session expires one week after it
+  was started. The client library method for cancel is not named in the documentation and is confirmed at implementation time.
 - The content type is derived from the extension, as the `s3` provider does.
 
 ### D5: reads, ranges and directories
 
 - `getFile(location)` opens a `ReadChannel` and returns its stream. A missing object is `NOT_FOUND`.
-- `getFile(location, offset, length)` opens a `ReadChannel`, calls `seek(offset)` and `limit(offset + length)` (the `limit` method
-  is assumed present in the pinned client version, task 0.5), so that the
-  skipped bytes are never transferred. The override replaces the default in `StorageProvider`.
+- `getFile(location, offset, length)` opens a `ReadChannel`, calls `seek(offset)` and `limit(offset + length)` (`limit(long)` is a
+  documented method of `ReadChannel` and takes an absolute end position, verified below; the pinned client version is confirmed at
+  implementation time), so that the skipped bytes are never transferred. The override replaces the default in `StorageProvider`.
 - `length == 0` returns an empty stream without a request. `offset` at or beyond the object size returns the empty answer of the
   storage contract kit of `add-storage-provider-registration` (D9), not an error; a 416 of the service is caught and never reaches
   the caller. This matches the Azure provider. A range that ends past the object is truncated to the end, as an HTTP range is. Each case is a
@@ -167,7 +168,7 @@ The method `putFile(location, inputStream)`:
 ### D10: consistency and HA
 
 - The consistency page states that writes are strongly consistent, that a successful delete is visible at once, and that object
-  listing is strongly consistent for a newly created object (verified). The plugin relies on this for the read-after-write of a
+  listing is strongly consistent for a newly created object (verified 2026-11-18, see the vendor claim check below). The plugin relies on this for the read-after-write of a
   deploy and for listing after a deploy.
 - Two replicas that write the same key: the last writer wins, as with `s3`. No conditional create with
   `ifGenerationMatch=0` is used in version one. Coordination of concurrent writers stays in the database, which is the single
@@ -207,3 +208,33 @@ The method `putFile(location, inputStream)`:
 - **Upstream repository.** The library's home has moved. A build that follows the old coordinates breaks, so the coordinates are
   confirmed at implementation time (open question 5).
 - **Archived objects.** Reads of archived objects fail with the client's error. This is out of scope and documented.
+
+## Vendor claim check (task 0.5, 2026-11-18)
+
+Checked against the current Google Cloud documentation (served from `docs.cloud.google.com`, the former `cloud.google.com` links
+redirect there). None of the pages shows a last-updated date, so the date of the check is the one recorded here.
+
+| Claim | Result | Source |
+|---|---|---|
+| `roles/storage.objectUser` covers create, read, update and delete of objects; lowest grantable level is a managed folder, so a bucket binding is allowed | Confirmed. The table lists managed folder as the lowest resource, which includes bucket scope. The functional check at bucket scope stays with step 0 (task 0.2) | https://docs.cloud.google.com/storage/docs/access-control/iam-roles |
+| `roles/storage.objectAdmin` is the fallback role | Confirmed as a broader role with the same lowest resource (managed folder). It adds object IAM policy and retention controls | same page |
+| Writes, deletes and listing of a new object are strongly consistent (D10) | Confirmed: an object is readable as soon as the success response arrives, a successful delete returns 404 at once, and a new object appears in a list made right after creation | https://docs.cloud.google.com/storage/docs/consistency |
+| An object becomes visible only once the entire upload has completed (D4) | Confirmed for uploads in general. The page does not name resumable uploads; the resumable case stays with the emulator test and step 0 | same page |
+| Resumable chunk size is a multiple of 256 KiB (D2, `chunkSize`) | Confirmed: "The buffer size must be a multiple of 256 KiB (256 x 1024 bytes)" | https://docs.cloud.google.com/storage/docs/resumable-uploads |
+| A resumable session can be cancelled (D4) | Confirmed. `DELETE` on the session URI returned in the `Location` header, with `Content-Length` 0 (JSON and XML APIs). The client library method is not named on the page | https://docs.cloud.google.com/storage/docs/performing-resumable-uploads |
+| Expiry of an abandoned resumable session (D4) | One week after the session is started ("the session URI expires after a week") | both resumable pages |
+| `objects.list` `startOffset` is inclusive (D6) | Confirmed: "lexicographically equal to or after `startOffset`", range is `startOffset` inclusive to `endOffset` exclusive | https://docs.cloud.google.com/storage/docs/json_api/v1/objects/list |
+| `ReadChannel.limit` exists (D5) | Confirmed in the current client javadoc: `limit(long)` caps reads at an absolute position counted from the start of the object (example: `seek(2)` then `limit(5)` yields bytes 2 to 4), so `limit(offset + length)` is the right call. The javadoc page labels its version 2.73.0; the version that the BOM pin (`libraries-bom` 26.93.0) resolves to is confirmed at implementation time from the dependency tree | https://docs.cloud.google.com/java/docs/reference/google-cloud-core/latest/com.google.cloud.ReadChannel |
+| Nexus Repository and Artifactory both offer native GCS blob stores (proposal, "Why") | Partly confirmed, with an edition caveat. Artifactory has a Google Storage binary provider (native client template); on a Pro license the endpoint must end in `.googleapis.com`, and all endpoints need Enterprise. Nexus has an official GCS blob store for Pro deployments (release 3.74.0 notes); Community Edition support is not confirmed, and a community plugin exists outside Sonatype support | https://docs.jfrog.com/installation/docs/google-cloud-storage ; https://community.sonatype.com/t/sonatype-nexus-repository-3-74-0-released/13793 |
+
+Corrections made in this file:
+
+- D4: the cancel question is answered (`DELETE` on the session URI, one-week expiry). The session expiry sentence now states the
+  week, so that the how-to page can name it.
+- D5: `limit(offset + length)` is confirmed as an absolute end position. The client version is still checked at implementation.
+- D4 and D10: the consistency page covers writes in general, not resumable uploads by name. The resumable case stays with the
+  emulator test and step 0.
+
+Open after this check: the `google-cloud-core` version that `libraries-bom` 26.93.0 resolves to, and the exact role permission
+list (the page gives the description and the grouped permissions, not a full line-by-line list). The Nexus sentence in the
+proposal needs the edition caveat in the proposal pull request; this file records it, the proposal is not edited here.
