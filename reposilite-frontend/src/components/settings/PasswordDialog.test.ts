@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import PasswordDialog from './PasswordDialog.vue'
 
-const mountDialog = (props = {}) =>
-  mount(PasswordDialog, { props: { open: true, mode: 'export', ...props } })
+const mountDialog = (props: { mode?: 'export' | 'import'; open?: boolean; error?: string } = {}): VueWrapper =>
+  mount(PasswordDialog, { props: { open: true, mode: 'export', ...props } }) as VueWrapper
 
-const fill = async (wrapper, password, confirmation) => {
+const inputValue = (wrapper: VueWrapper, selector: string): string => (wrapper.find(selector).element as HTMLInputElement).value
+
+const fill = async (wrapper: VueWrapper, password: string, confirmation?: string) => {
   await wrapper.find('#settings-password').setValue(password)
   if (confirmation !== undefined) {
     await wrapper.find('#settings-password-confirmation').setValue(confirmation)
@@ -48,8 +50,8 @@ describe('PasswordDialog export', () => {
 
     await wrapper.find('form').trigger('submit')
 
-    expect(wrapper.find('#settings-password').element.value).toBe('')
-    expect(wrapper.find('#settings-password-confirmation').element.value).toBe('')
+    expect(inputValue(wrapper, '#settings-password')).toBe('')
+    expect(inputValue(wrapper, '#settings-password-confirmation')).toBe('')
   })
 
   it('clears the password when the dialog closes', async () => {
@@ -59,7 +61,7 @@ describe('PasswordDialog export', () => {
     await wrapper.setProps({ open: false })
     await wrapper.setProps({ open: true })
 
-    expect(wrapper.find('#settings-password').element.value).toBe('')
+    expect(inputValue(wrapper, '#settings-password')).toBe('')
   })
 })
 
@@ -74,7 +76,7 @@ describe('PasswordDialog import', () => {
     expect(wrapper.emitted('submit')).toEqual([['twelve-chars!']])
   })
 
-  it('shows the error of the server without holding the password', async () => {
+  it('shows the error of the server without holding the password', () => {
     const wrapper = mountDialog({
       mode: 'import',
       error: 'The settings file cannot be opened: the password is wrong or the file was changed'

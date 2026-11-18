@@ -15,11 +15,11 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
 
-let wrapper
-const extraElements = []
+let wrapper: VueWrapper | undefined
+const extraElements: Element[] = []
 
 const openDialog = async (id = 'releases') => {
   wrapper = mount(DeleteEntryDialog, {
@@ -30,16 +30,21 @@ const openDialog = async (id = 'releases') => {
   await flushPromises()
 }
 
-const confirmButton = () => document.getElementById('delete-entry-confirm')
+const requireElement = <T extends HTMLElement>(id: string): T => {
+  const element = document.getElementById(id)
+  if (!element) throw new Error(`no element with the id ${id}`)
+  return element as T
+}
+const confirmButton = () => requireElement('delete-entry-confirm')
 // The heading is found through the alertdialog that names it, because the heading id is generated per instance.
 const dialogHeading = () => {
   const root = document.querySelector('[role="alertdialog"]')
   return document.getElementById(root?.getAttribute('aria-labelledby') ?? '')
 }
-const typedInput = () => document.getElementById('delete-entry-confirm-input')
-const form = () => document.querySelector('#delete-entry-form')
+const typedInput = () => requireElement<HTMLInputElement>('delete-entry-confirm-input')
+const form = (): HTMLFormElement => requireElement<HTMLFormElement>('delete-entry-form')
 
-const typeText = async (value) => {
+const typeText = async (value: string) => {
   typedInput().value = value
   typedInput().dispatchEvent(new Event('input'))
   await flushPromises()
@@ -104,7 +109,7 @@ describe('DeleteEntryDialog', () => {
     confirmButton().click()
     await flushPromises()
 
-    expect(wrapper.emitted('confirm')).toEqual([[]])
+    expect(wrapper!.emitted('confirm')).toEqual([[]])
   })
 
   it('does not confirm when the form is submitted with a wrong id', async () => {
@@ -114,17 +119,17 @@ describe('DeleteEntryDialog', () => {
     form().dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(wrapper!.emitted('confirm')).toBeUndefined()
   })
 
   it('closes without deleting when the dialog is cancelled', async () => {
     await openDialog()
 
-    document.getElementById('delete-entry-cancel').click()
+    requireElement('delete-entry-cancel').click()
     await flushPromises()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
-    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(wrapper!.emitted('update:modelValue')).toEqual([[false]])
+    expect(wrapper!.emitted('confirm')).toBeUndefined()
   })
 
   it('is announced as an alertdialog on the modal root', async () => {
@@ -163,7 +168,7 @@ describe('DeleteEntryDialog', () => {
 
     confirmButton().click()
     await flushPromises()
-    await wrapper.setProps({ modelValue: false })
+    await wrapper!.setProps({ modelValue: false })
     await flushPromises()
 
     expect(document.activeElement, 'focus is not lost to the page body').toBe(opener)

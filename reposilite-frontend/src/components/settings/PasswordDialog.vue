@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import { MIN_PASSWORD_LENGTH, PASSWORD_PROBLEM_MESSAGES, passwordProblem } from './settingsEncryption'
@@ -24,27 +24,22 @@ import { MIN_PASSWORD_LENGTH, PASSWORD_PROBLEM_MESSAGES, passwordProblem } from 
  * is lost. The password is held here only while the dialog is open: it is cleared when the dialog closes
  * and after it is submitted, so it does not stay in the component.
  */
-const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false
-  },
-  mode: {
-    type: String,
-    default: 'export',
-    validator: value => value === 'export' || value === 'import'
-  },
-  busy: {
-    type: Boolean,
-    default: false
-  },
-  error: {
-    type: String,
-    default: ''
-  }
+const props = withDefaults(defineProps<{
+  open?: boolean
+  mode?: 'export' | 'import'
+  busy?: boolean
+  error?: string
+}>(), {
+  open: false,
+  mode: 'export',
+  busy: false,
+  error: ''
 })
 
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits<{
+  submit: [password: string]
+  cancel: []
+}>()
 
 const password = ref('')
 const confirmation = ref('')
@@ -81,7 +76,7 @@ const cancel = () => {
   emit('cancel')
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') cancel()
 }
 </script>
