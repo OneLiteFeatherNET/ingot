@@ -17,9 +17,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import type { IdentityToken, IdentityTokenApi } from './identityTokens'
 
 /*
@@ -84,13 +86,15 @@ const revoke = async () => {
     @update:model-value="emit('update:modelValue', $event)"
     @closed="reset"
   >
-    <h2
-      id="revoke-token-title"
-      class="md-headline-small"
-      data-ingot-component="revoke-token-dialog"
-    >
-      Revoke token
-    </h2>
+    <template #header>
+      <h2
+        id="revoke-token-title"
+        class="md-headline-small"
+        data-ingot-component="revoke-token-dialog"
+      >
+        Revoke token
+      </h2>
+    </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
       Anything that uses <span class="font-medium text-on-surface">{{ token?.name }}</span> stops
       working right away. This cannot be undone.
@@ -108,31 +112,32 @@ const revoke = async () => {
         type="text"
         autocomplete="off"
       />
-      <p
+      <MdAlert
         v-if="failure"
+        tone="error"
         data-ingot-state="error"
-        role="alert"
-        class="md-body-medium text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
-    <div class="mt-6 flex justify-end gap-2">
-      <MdButton
-        variant="text"
-        @click="emit('update:modelValue', false)"
-      >
-        Cancel
-      </MdButton>
-      <MdButton
-        error
-        type="submit"
-        form="revoke-token-form"
-        :disabled="!confirmed || busy"
-      >
-        Revoke
-      </MdButton>
-    </div>
+    <template #actions>
+      <MdDialogActions>
+        <MdButton
+          variant="text"
+          @click="emit('update:modelValue', false)"
+        >
+          Cancel
+        </MdButton>
+        <MdButton
+          error
+          type="submit"
+          form="revoke-token-form"
+          :disabled="!confirmed || busy"
+        >
+          Revoke
+        </MdButton>
+      </MdDialogActions>
+    </template>
   </MdDialog>
 </template>

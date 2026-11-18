@@ -194,6 +194,8 @@ describe('TokenList', () => {
       await mountList()
 
       expect(wrapper.find('[role="alert"]').text()).toContain('offline')
+      expect(wrapper.find('[role="alert"]').attributes('data-ingot-state'), 'a failed load is announced in the error state')
+        .toBe('error')
 
       await headerButton(wrapper, 'Retry').trigger('click')
       await flushPromises()

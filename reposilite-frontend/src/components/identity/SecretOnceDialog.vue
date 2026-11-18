@@ -18,8 +18,10 @@
 import { computed } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import CopyIcon from '../icons/CopyIcon.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 type Snippet = {
   key: 'bearer' | 'basic'
@@ -109,13 +111,15 @@ const copySnippet = async (snippet: Snippet) => {
     :dismissable="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <h2
-      id="secret-once-title"
-      class="md-headline-small"
-      data-ingot-component="secret-once-dialog"
-    >
-      {{ heading }}
-    </h2>
+    <template #header>
+      <h2
+        id="secret-once-title"
+        class="md-headline-small"
+        data-ingot-component="secret-once-dialog"
+      >
+        {{ heading }}
+      </h2>
+    </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
       Secret for token <span class="font-medium text-on-surface">{{ tokenName }}</span>
     </p>
@@ -176,17 +180,19 @@ const copySnippet = async (snippet: Snippet) => {
       </div>
     </section>
 
-    <p
-      role="alert"
-      class="mt-4 rounded-corner-medium bg-error-container px-4 py-3 md-body-medium text-on-error-container"
+    <MdAlert
+      tone="warning"
+      class="mt-4"
     >
       You will not see this secret again. Copy it now and keep it somewhere safe.
-    </p>
+    </MdAlert>
 
-    <div class="mt-6 flex justify-end">
-      <MdButton @click="emit('update:modelValue', false)">
-        Close
-      </MdButton>
-    </div>
+    <template #actions>
+      <MdDialogActions>
+        <MdButton @click="emit('update:modelValue', false)">
+          Close
+        </MdButton>
+      </MdDialogActions>
+    </template>
   </MdDialog>
 </template>

@@ -617,7 +617,7 @@
       "file": "src/components/identity/RotateTokenDialog.vue",
       "stability": "experimental",
       "parts": [],
-      "states": []
+      "states": ["error"]
     },
     {
       "name": "secret-once-dialog",
@@ -631,7 +631,7 @@
       "file": "src/components/identity/TokenList.vue",
       "stability": "experimental",
       "parts": [],
-      "states": []
+      "states": ["error"]
     },
     {
       "name": "administration-frame",

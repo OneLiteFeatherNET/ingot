@@ -17,8 +17,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import type { IdentityToken, IdentityTokenApi, TokenSecret } from './identityTokens'
 
 /*
@@ -78,38 +80,43 @@ const rotate = async () => {
     @update:model-value="emit('update:modelValue', $event)"
     @closed="reset"
   >
-    <h2
-      id="rotate-token-title"
-      class="md-headline-small"
-      data-ingot-component="rotate-token-dialog"
-    >
-      Rotate secret
-    </h2>
+    <template #header>
+      <h2
+        id="rotate-token-title"
+        class="md-headline-small"
+        data-ingot-component="rotate-token-dialog"
+      >
+        Rotate secret
+      </h2>
+    </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
       <span class="font-medium text-on-surface">{{ token?.name }}</span> gets a new secret.
       The old secret stops working right away, so update everything that uses it.
     </p>
-    <p
+    <MdAlert
       v-if="failure"
-      role="alert"
-      class="mt-4 md-body-medium text-error"
+      tone="error"
+      class="mt-4"
+      data-ingot-state="error"
     >
       {{ failure }}
-    </p>
+    </MdAlert>
 
-    <div class="mt-6 flex justify-end gap-2">
-      <MdButton
-        variant="text"
-        @click="emit('update:modelValue', false)"
-      >
-        Cancel
-      </MdButton>
-      <MdButton
-        :disabled="busy"
-        @click="rotate()"
-      >
-        Rotate secret
-      </MdButton>
-    </div>
+    <template #actions>
+      <MdDialogActions>
+        <MdButton
+          variant="text"
+          @click="emit('update:modelValue', false)"
+        >
+          Cancel
+        </MdButton>
+        <MdButton
+          :disabled="busy"
+          @click="rotate()"
+        >
+          Rotate secret
+        </MdButton>
+      </MdDialogActions>
+    </template>
   </MdDialog>
 </template>

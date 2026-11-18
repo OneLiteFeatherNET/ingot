@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import CreateTokenDialog from './CreateTokenDialog.vue'
@@ -167,16 +168,22 @@ const lastUsedText = (token: IdentityToken) => {
 
     <div
       v-if="loadError"
-      role="alert"
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant px-4 py-3"
+      class="border-t border-outline-variant px-4 py-3"
     >
-      <span class="md-body-medium text-error">Could not load the tokens: {{ loadError }}</span>
-      <MdButton
-        variant="text"
-        @click="load()"
+      <MdAlert
+        tone="error"
+        data-ingot-state="error"
       >
-        Retry
-      </MdButton>
+        Could not load the tokens: {{ loadError }}
+        <template #action>
+          <MdButton
+            variant="text"
+            @click="load()"
+          >
+            Retry
+          </MdButton>
+        </template>
+      </MdAlert>
     </div>
 
     <div
