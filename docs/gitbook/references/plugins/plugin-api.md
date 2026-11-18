@@ -409,6 +409,7 @@ The `type` of a block selects its shape. There is no block that carries HTML, a 
 | `Status` | `source`, `refreshSeconds` (5 to 300) | Reads the object `source` returns with GET. The object has `state`, `message` and `progress` (0 to 1). Polls at the interval, and only while the page is visible. |
 | `Code` | `text` (1 to 4000 characters), `label` (optional, at most 60 characters), `language` (`plain`, `kotlin`, `groovy`, `xml` or `properties`) | Shows the text as plain characters in a box, with a Copy action that copies the text and nothing else. If the browser refuses the copy, the text is selected. The language only names the block for assistive technology. |
 | `Link` | `label` (1 to 60 characters), `href` | Shows a link to a same-origin path, opened in the same tab. A refused `href` shows the label and the note "Link not shown". |
+| `List` | `source`, `pageSize` (1 to 100, default 50) | Reads the object `source` returns with GET. It has `items` and `next`. Each item has a `title` (1 to 200 characters), an optional `subtitle` (at most 400), `chips` (at most 8 texts of 1 to 40 characters) and an optional `href`, checked under "Links". `next` is an opaque cursor, or null for the last page. "Load more" asks for the next page with `cursor=<next>`. Shows at most 100 items and says how many it cut. An item without a title is not shown, and the count of those is stated. The list decides nothing about who may read an item: the plugin sends only the items the viewer may read. |
 
 A block shows a value that is not of the expected shape as text, and a block type this version of the dashboard does not know as an unsupported note.
 
@@ -440,7 +441,7 @@ A `Link` carries an `href` that is a path of the dashboard or a repository, such
 - No segment before the `?` is empty, `.` or `..`.
 - It is at most 500 characters.
 
-A link does not decide who may read its target. The target keeps its own checks.
+A link does not decide who may read its target. The target keeps its own checks. The same rules apply to the `href` of a list item, which the dashboard checks for each row before it draws the row.
 
 ### Refused registrations
 
