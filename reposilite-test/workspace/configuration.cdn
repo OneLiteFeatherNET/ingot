@@ -14,11 +14,11 @@ hostname: 0.0.0.0
 port: 8888
 # Database configuration. Supported storage providers:
 # - mariadb localhost:3306 database user password
+# - postgresql localhost:5432 database user password
 # - sqlite reposilite.db
 # - sqlite --temporary
 # Experimental providers (not covered with tests):
 # - mysql localhost:3306 database user password
-# - postgresql localhost:5432 database user password
 # - h2 reposilite
 # You can also provide a custom JDBC URL to pass extra properties to the driver:
 # - jdbc:mariadb://localhost:3306/db?sslMode=verify-full user password
