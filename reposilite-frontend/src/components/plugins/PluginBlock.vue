@@ -25,7 +25,8 @@ import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import { JsonForms } from '@jsonforms/vue'
 import { createURL, handleRequest } from '../../store/client'
 import { useConfiguration } from '../../store/configuration'
-import { displayValue, failureText, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
+import { copyToClipboard, selectText } from '../card/copySnippet'
+import { displayValue, failureText, linkAllowed, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -39,6 +40,21 @@ const send = (config: { method?: Method; url?: string; data?: unknown }) => axio
 const read = (path: string) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders }))
 
 const known = computed(() => BLOCK_TYPES.includes(props.block?.type ?? ''))
+
+// Code: the copy action writes the code text and nothing else. A refused clipboard selects the text instead.
+const codeText = ref<HTMLElement>()
+const copyStatus = ref('')
+const copyCode = async () => {
+  if (await copyToClipboard(props.block.text ?? '', navigator.clipboard)) {
+    copyStatus.value = 'Copied'
+    return
+  }
+  selectText(codeText.value)
+  copyStatus.value = 'The browser refused the copy. The text is selected, copy it with the keyboard.'
+}
+
+// Link: a same-origin path only, opened in the same tab.
+const linkOk = computed(() => linkAllowed(props.block?.href))
 
 // The path a block reads from or writes to, and whether the dashboard may call it at all.
 const sourcePath = computed(() => props.block?.source)
@@ -169,6 +185,53 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
     >
       {{ block.text }}
     </p>
+
+    <template v-else-if="block.type === 'code'">
+      <p
+        v-if="block.label"
+        class="md-label-large text-on-surface-variant"
+      >
+        {{ block.label }}
+      </p>
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="md-label-large text-primary"
+          @click="copyCode"
+        >
+          Copy
+        </button>
+      </div>
+      <pre
+        ref="codeText"
+        class="md-body-medium text-on-surface whitespace-pre-wrap break-all rounded-corner-medium bg-surface-container p-4"
+        :data-language="block.language ?? 'plain'"
+      >{{ block.text }}</pre>
+      <p
+        role="status"
+        class="md-body-small text-on-surface-variant"
+      >
+        {{ copyStatus }}
+      </p>
+    </template>
+
+    <template v-else-if="block.type === 'link'">
+      <a
+        v-if="linkOk"
+        :href="block.href"
+        class="md-label-large text-primary break-all"
+      >
+        {{ block.label }}
+      </a>
+      <template v-else>
+        <p class="md-body-large text-on-surface">
+          {{ block.label }}
+        </p>
+        <p class="md-body-medium text-error">
+          Link not shown
+        </p>
+      </template>
+    </template>
 
     <template v-else-if="block.type === 'keyValue'">
       <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
