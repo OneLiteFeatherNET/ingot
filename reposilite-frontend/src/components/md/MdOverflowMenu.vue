@@ -49,8 +49,12 @@ withDefaults(defineProps<{
   items: MenuItem[]
   // Classes for the trigger button, such as the width of an account button.
   triggerClass?: string
+  // The accessible name of the button when a trigger slot is given, such as "Account menu, Alice". Without it the
+  // button is named by its content.
+  triggerLabel?: string
 }>(), {
-  triggerClass: ''
+  triggerClass: '',
+  triggerLabel: ''
 })
 
 defineSlots<{
@@ -174,7 +178,9 @@ const onFocusout = (event: FocusEvent) => {
   if (!insideMenu(event.relatedTarget)) closeMenu()
 }
 
-const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-center rounded-corner-small px-3 py-2 text-left md-label-large text-on-surface'
+// The one horizontal inset of the menu: the header and the items share it, so their text lines up.
+const inset = 'px-3'
+const itemClass = `md-state-layer md-focus-ring relative flex w-full items-center rounded-corner-small ${inset} py-2 text-left md-label-large text-on-surface`
 </script>
 
 <template>
@@ -188,7 +194,7 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
       variant="text"
       type="button"
       :class="triggerClass"
-      :aria-label="$slots.trigger ? undefined : label"
+      :aria-label="triggerLabel || ($slots.trigger ? undefined : label)"
       aria-haspopup="menu"
       :aria-expanded="menuOpen ? 'true' : 'false'"
       @click="toggle"
@@ -212,7 +218,7 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
         <div
           v-if="$slots.header"
           role="none"
-          class="px-3 pb-2 pt-1"
+          :class="[inset, 'pb-2 pt-1']"
         >
           <slot name="header" />
         </div>

@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
-import { ACCESS_NODES, canUse } from '../../store/nodeAccess'
 import TokenList from '../identity/TokenList.vue'
 import PasswordCard from './PasswordCard.vue'
 import ProfileCard from './ProfileCard.vue'
@@ -54,7 +53,6 @@ onMounted(loadAccess)
 
 const access = computed(() => accessView(summary.value))
 const answer = computed<OwnAccessSummary | undefined>(() => (typeof summary.value === 'string' ? undefined : summary.value))
-const mayCheck = computed(() => ACCESS_NODES.some(node => canUse(answer.value?.nodes ?? [], node)))
 const sources = computed<string[]>(() => (answer.value
   ? signInSources(answer.value.principal?.providers ?? [], principal.value?.kind ?? '')
   : []))
@@ -106,8 +104,6 @@ const sources = computed<string[]>(() => (answer.value
             v-if="principal"
             class="min-w-0"
             :access="access"
-            :principal-name="principal.name"
-            :may-check="mayCheck"
           />
         </div>
         <section

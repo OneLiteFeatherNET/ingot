@@ -15,7 +15,6 @@
   -->
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 import TokenTag from '../tokens/TokenTag.vue'
 import MdCard from '../md/MdCard.vue'
 import type { AccessView } from './accessView'
@@ -26,24 +25,16 @@ import type { AccessView } from './accessView'
  *
  * Props:
  *   access         the view model (see accessView.ts), or its loading and unavailable states
- *   principalName  the signed in principal, the one the Explain links check
- *   mayCheck       whether the principal may use the Access area; then a permission links to the check inside the
- *                  dashboard (a router link, so a sub-path deployment resolves it), otherwise to the how-to page
  *
- * The how-to page is outside the dashboard, so its link opens in a new tab and says so in its name.
+ * Every Explain link goes to the how-to page, whatever the principal's rights: the account page never links to the
+ * access check, so the same target serves every signed in principal. The page is outside the dashboard, so its link
+ * opens in a new tab and says so in its name.
  */
-const props = defineProps<{
+defineProps<{
   access: AccessView
-  principalName: string
-  mayCheck: boolean
 }>()
 
 const HOW_TO = 'https://github.com/OneLiteFeatherNET/ingot/blob/main/docs/gitbook/manage/access/check-access.md'
-
-const checkRoute = (node: string) => ({
-  name: 'access-check',
-  query: { principal: props.principalName, node }
-})
 </script>
 
 <template>
@@ -142,14 +133,7 @@ const checkRoute = (node: string) => ({
               <span class="min-w-0 break-words">{{ line.meaning }}</span>
               <span class="flex min-w-0 items-baseline gap-3">
                 <code class="min-w-0 break-all md-label-small text-on-surface-variant">{{ line.node }}</code>
-                <RouterLink
-                  v-if="mayCheck"
-                  :to="checkRoute(line.node)"
-                  :aria-label="`Explain ${line.node}`"
-                  class="md-label-large text-primary"
-                >Explain</RouterLink>
                 <a
-                  v-else
                   :href="HOW_TO"
                   target="_blank"
                   rel="noopener"
@@ -183,14 +167,7 @@ const checkRoute = (node: string) => ({
                 <span class="min-w-0 break-words">{{ line.meaning }}</span>
                 <span class="flex min-w-0 items-baseline gap-3">
                   <code class="min-w-0 break-all md-label-small text-on-surface-variant">{{ line.node }}</code>
-                  <RouterLink
-                    v-if="mayCheck"
-                    :to="checkRoute(line.node)"
-                    :aria-label="`Explain ${line.node}`"
-                    class="md-label-large text-primary"
-                  >Explain</RouterLink>
                   <a
-                    v-else
                     :href="HOW_TO"
                     target="_blank"
                     rel="noopener"

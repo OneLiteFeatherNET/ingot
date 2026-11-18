@@ -73,6 +73,17 @@
 }
 
 /*
+ * Draws the data-initial attribute of an avatar as generated content instead of a text node. A button named by an
+ * aria-label must show text that the label contains (WCAG 2.5.3, label in name); a decorative initial in front of the
+ * name would break that, and aria-hidden does not take visible text out of the check.
+ */
+@utility initial-from-data {
+  &::before {
+    content: attr(data-initial);
+  }
+}
+
+/*
  * The page gutter follows the window margin of the MD3 foundation: 16px in a compact window and 24px from the medium
  * window class.
  */
