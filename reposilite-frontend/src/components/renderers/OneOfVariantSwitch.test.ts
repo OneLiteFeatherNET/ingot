@@ -230,3 +230,77 @@ describe('switching the storage provider', () => {
     expect(select().element.value, 'an S3 variant without a bucket is still S3').toBe('1')
   })
 })
+
+describe('the switch dialog on the shared dialog', () => {
+  const activeButtonText = () => (document.activeElement as HTMLElement | null)?.textContent?.trim()
+
+  it('names the dialog by its headline', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+
+    const labelledBy = dialogCard()!.getAttribute('aria-labelledby')
+    expect(labelledBy, 'the dialog points at its headline').toBeTruthy()
+    expect(document.getElementById(labelledBy!)!.textContent.trim()).toBe('Switch storage provider?')
+  })
+
+  it('focuses Cancel when the dialog opens, so an accidental Enter does not switch', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+
+    expect(activeButtonText(), 'the focus starts on Cancel').toBe('Cancel')
+  })
+
+  it('returns focus to the variant select when the switch is cancelled', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+
+    dialogButton('Cancel').click()
+    await flushPromises()
+
+    expect(document.activeElement, 'focus goes back to the select that opened the dialog').toBe(select().element)
+  })
+
+  it('closes on Escape and writes nothing', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+    const writesBeforeEscape = JSON.stringify(wrapper!.emitted('change'))
+
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(dialogCard(), 'Escape closes the dialog').toBeNull()
+    expect(JSON.stringify(wrapper!.emitted('change')), 'an Escape writes nothing').toBe(writesBeforeEscape)
+  })
+
+  it('has exactly one filled button, the confirm, and the cancel is a text button', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+
+    const filled = [...document.querySelectorAll<HTMLElement>('[role="alertdialog"] button[data-variant]')]
+      .filter(button => button.getAttribute('data-variant') === 'filled')
+
+    expect(filled.map(button => button.textContent!.trim()), 'the confirm is the only filled button').toEqual(['Switch'])
+    expect(dialogButton('Cancel').getAttribute('data-variant')).toBe('text')
+  })
+
+  it('names the variant tab panel by the variant it shows', () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+
+    expect(wrapper!.get('[role="tabpanel"]').attributes('aria-label'), 'the panel is named by the shown variant').toBe('File system Storage Provider')
+  })
+
+  it('draws the frame from the shared dialog, without the literal width classes of the old frame', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await select().setValue('1')
+    await flushPromises()
+
+    const markup = dialogCard()!.outerHTML
+    expect(markup, 'no min-w-[280px] literal in the dialog').not.toContain('min-w-[280px]')
+    expect(markup, 'no max-w-[560px] literal in the dialog').not.toContain('max-w-[560px]')
+  })
+})
