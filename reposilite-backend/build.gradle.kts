@@ -588,6 +588,24 @@ val pluginApiPackages = listOf(
     "com.reposilite.status",
 )
 
+// The Ingot packages that plugins are documented to use (docs/gitbook/references/plugins/plugin-api.md). Each prerequisite adds
+// its own package in its own pull request. com.reposilite.frontend.api is the dashboard facade, which keeps its com.reposilite.*
+// name. com.reposilite.journalist is a third-party library and never belongs here.
+val ingotPluginApiPackages = listOf(
+    "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.repository",
+    "net.onelitefeather.ingot.search.backend",
+    "net.onelitefeather.ingot.storage.capability",
+    "com.reposilite.frontend.api",
+)
+
+// The packages of ingotPluginApiPackages whose findings are experimental, because the documentation marks them so.
+val ingotExperimentalPackages = listOf(
+    "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.search.backend",
+    "net.onelitefeather.ingot.storage.capability",
+)
+
 // Compares the jar of this build with the jar Reposilite 3.5.28 published, the release Ingot forked from. The report is
 // written for review and never fails the build: a finding is triaged, not blocked, until the gate is made blocking.
 tasks.register<JapicmpTask>("pluginApiReport") {
