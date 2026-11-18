@@ -27,6 +27,9 @@ const options = [
 
 type Wrapper = ReturnType<typeof mount<typeof MdSelect>>
 
+// The path of the dropdown chevron drawn after the field.
+const CHEVRON_PATH = 'path[d="M7 10l5 5 5-5z"]'
+
 // Every wrapper is mounted in the document and unmounted after its test, so the listbox,
 // which is teleported to the body, never outlives the test that opened it.
 const mounted: Wrapper[] = []
@@ -456,6 +459,18 @@ describe('MdSelect', () => {
       await press(wrapper, ' ')
 
       expect(wrapper.emitted('update:modelValue'), 'no value is emitted').toBeUndefined()
+    })
+
+    it('draws no dropdown chevron on a read only field', () => {
+      const wrapper = mountSelect({ readonly: true, modelValue: 'PUBLIC' })
+
+      expect(wrapper.find(CHEVRON_PATH).exists(), 'a read only field offers no dropdown').toBe(false)
+    })
+
+    it('keeps the dropdown chevron on an editable field', () => {
+      const wrapper = mountSelect({ modelValue: 'PUBLIC' })
+
+      expect(wrapper.find(CHEVRON_PATH).exists()).toBe(true)
     })
 
     it('does not mark a field read only unless readonly is set', () => {
