@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 /*
  * The settings file actions of the whole configuration, on the Settings backup tab of Maintenance. The handlers are the ones
  * Overview drew its header actions with: the file is exported from the saved state and encrypted, and an import goes into the
@@ -34,9 +34,11 @@ import { diffSettings, revertChange as revertDraftChange } from '../settings/set
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from '../settings/settingsExport'
 import { isEncryptedExport } from '../settings/settingsEncryption'
 import { overlayImport, parseSettingsFile, validateImport } from '../settings/settingsImport'
+import type { ImportError, SettingsFile } from '../settings/settingsImport'
+import type { SettingsChange } from '../settings/settingsDiff'
 
 const { store: sharedStore } = useConfiguration()
-const store = inject(configurationStoreKey, null) ?? sharedStore
+const store = inject<typeof sharedStore | null>(configurationStoreKey, null) ?? sharedStore
 
 const {
   domains,
@@ -65,7 +67,15 @@ const clock = inject(settingsClockKey, systemClock)
 const hasDomains = computed(() => domains.value.length > 0)
 
 /* The password dialog: an export or the opening of an import file. `exported` holds the file while it waits for its password. */
-const passwordDialog = ref({ open: false, mode: 'export', busy: false, error: '', exported: null })
+interface PasswordDialogState {
+  open: boolean
+  mode: 'export' | 'import'
+  busy: boolean
+  error: string
+  exported: SettingsFile | null
+}
+
+const passwordDialog = ref<PasswordDialogState>({ open: false, mode: 'export', busy: false, error: '', exported: null })
 
 const downloadSaved = () => {
   passwordDialog.value = { open: true, mode: 'export', busy: false, error: '', exported: null }
@@ -77,7 +87,7 @@ const cancelPassword = () => {
   passwordDialog.value = { open: false, mode: 'export', busy: false, error: '', exported: null }
 }
 
-const submitPassword = async (password) => {
+const submitPassword = async (password: string) => {
   const dialog = passwordDialog.value
   passwordDialog.value = { ...dialog, busy: true, error: '' }
   try {
@@ -88,14 +98,17 @@ const submitPassword = async (password) => {
       return
     }
 
-    const document = await store.openExport(password, dialog.exported)
+    // The import mode is only opened with the file in `exported`, so it is set here.
+    const document = await store.openExport(password, dialog.exported as SettingsFile)
     cancelPassword()
     applyImportedDocument(document)
   } catch (error) {
+    // The client raises an axios error; any other value has no response, so the fallback text is shown.
+    const response = (error as { response?: { data?: { message?: string } } } | null | undefined)?.response
     passwordDialog.value = {
       ...dialog,
       busy: false,
-      error: error?.response?.data?.message ?? 'The settings file could not be opened.'
+      error: response?.data?.message ?? 'The settings file could not be opened.'
     }
   }
 }
@@ -105,17 +118,18 @@ const submitPassword = async (password) => {
  * with the imported changes, so the user checks them before anything is saved. Otherwise the errors
  * are listed and the draft stays as it was.
  */
-const importInput = ref(null)
-const importErrors = ref([])
+const importInput = ref<HTMLInputElement | null>(null)
+const importErrors = ref<ImportError[]>([])
 
-const importFile = async (event) => {
-  const input = event.target
+const importFile = async (event: Event) => {
+  const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
 
   const parsed = parseSettingsFile(await file.text())
-  if (!parsed.ok) {
+  // A parsed file always carries its value; the guard only narrows the type for the code below.
+  if (!parsed.ok || !parsed.value) {
     importErrors.value = [{ domain: '', label: '', message: parsed.error }]
     return
   }
@@ -127,7 +141,7 @@ const importFile = async (event) => {
   applyImportedDocument(parsed.value)
 }
 
-const applyImportedDocument = (document) => {
+const applyImportedDocument = (document: SettingsFile) => {
   const result = validateImport(overlayImport(document, configurations.value), {
     domains: domains.value,
     schemas: store.schemas.value,
@@ -138,7 +152,8 @@ const applyImportedDocument = (document) => {
     return
   }
   importErrors.value = []
-  store.importDomains(result.domains)
+  // The validated values are one object per domain, which is the shape the store holds.
+  store.importDomains(result.domains as Record<string, Record<string, unknown>>)
   reviewOpen.value = true
 }
 
@@ -147,11 +162,11 @@ const applyImportedDocument = (document) => {
  * one change back to its saved value in the draft, and nothing reaches the server until Save.
  */
 const reviewOpen = ref(false)
-const changes = computed(() => diffSettings(
+const changes = computed<SettingsChange[]>(() => [...diffSettings(
   settingsByDomain(domains.value, savedSettings.value),
   settingsByDomain(domains.value, configurations.value),
   store.schemas.value
-))
+)])
 const countOfChanges = computed(() => (changes.value.length > 0 ? changes.value.length : changeCount.value))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
@@ -163,9 +178,10 @@ const closeReview = () => {
   reviewOpen.value = false
 }
 
-const revertChange = (change) => {
+const revertChange = (change: SettingsChange) => {
   const domain = change.domain
-  store.setDomainData(domain, revertDraftChange(configurations.value[domain], savedSettings.value[domain], change))
+  // A revert of a domain that has a saved value always returns that domain's data.
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], savedSettings.value[domain], change) as Record<string, unknown>)
   store.validateDomain(domain)
 }
 
