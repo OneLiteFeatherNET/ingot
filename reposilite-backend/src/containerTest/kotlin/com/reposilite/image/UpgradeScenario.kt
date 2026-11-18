@@ -32,6 +32,9 @@ internal enum class DatabaseEngine { SQLITE, MARIADB, POSTGRESQL }
 /** The PostgreSQL image, pinned as in SharedContainers, so the rehearsal and the integration tests run the same server. */
 internal const val POSTGRES_IMAGE = "postgres:18-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015"
 
+/** The MariaDB image, pinned by tag and digest as in the Helm dependency manifest of the smoke test. */
+internal const val MARIADB_IMAGE = "mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d71725a7f74f6ba620"
+
 /**
  * The upgrade an operator actually performs, rehearsed on one data directory in three phases:
  *
@@ -248,7 +251,6 @@ internal class UpgradeScenario(
         const val AFTER_SWITCH_TOKEN = "after-switch"
         const val AFTER_SWITCH_SECRET = "after-switch-secret-for-the-rehearsal"
 
-        const val MARIADB_IMAGE = "mariadb:11.4"
         const val MARIADB_PORT = 3306
         const val DB_NAME = "reposilite"
         const val DB_USER = "reposilite"
