@@ -1,0 +1,21 @@
+# Topology overlay of the load tests. The runner adds the pod size, the storage backend and the image.
+# The shared PostgreSQL, bucket and NATS are the same in every overlay, so a difference between two topologies is a
+# difference of the shape. Secrets and the NATS server live in the ingot-loadtest namespace.
+# Read, write and worker workloads of the server. The read count is the one set below. Storage is chosen by the runner.
+mode: scalable
+scalable:
+  read:
+    replicas: 1
+  write:
+    replicas: 2
+  worker:
+    replicas: 1
+database:
+  existingSecret: ingot-loadtest-database
+  secretKey: database
+objectStorage:
+  existingSecret: ingot-loadtest-s3
+clusterBus:
+  url: nats://nats.ingot-loadtest.svc.cluster.local:4222
+persistence:
+  enabled: false
