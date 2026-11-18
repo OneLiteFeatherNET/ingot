@@ -1,7 +1,7 @@
 # Design
 
 This change builds the dashboard side of `add-multi-factor-authentication`. It consumes that change's routes and fields
-and adds nothing to the server. Where the backend decides, the dashboard shows the decision; it never decides itself.
+and adds one field to the server: `passkeyFirstFactor` on `GET /api/auth/providers` (section 9 of `tasks.md`). Where the backend decides, the dashboard shows the decision; it never decides itself.
 
 ## Current state (cited)
 
@@ -34,7 +34,7 @@ step-up route, and the administrator factor routes.
 
 When a password or LDAP login answers `mfaRequired`, `LoginModal.vue` replaces the password form with a second step in the
 same dialog. The step shows the methods the server listed: a six-digit code field (for authenticator codes), a link "Use a
-recovery code" that swaps the field, and a "Use a passkey" button when `passkey` is listed. Reason: one dialog keeps the
+recovery code" that swaps the field, and a "Use a passkey" button when `passkey` is listed. The passkey action is offered in addition to the code field, never instead of it. Reason: one dialog keeps the
 sign-in in one place, and the challenge cookie is already set by the server.
 
 ### D2. The WebAuthn helper is one module
@@ -64,7 +64,8 @@ must not invent a second one.
 
 Sensitive actions call a shared `withStepUp(action)` in `store/session.js`. The action runs. If the server answers
 `step_up_required`, the step-up dialog opens with the methods the user has, and the action is retried after a successful
-step-up. The dialog keeps nothing in the browser (open question 3). Reason: the server decides the window (`ath`), so the
+step-up. The dialog keeps nothing in the browser (open question 3). When the user has a passkey, the dialog offers it in addition to the code
+field, never instead of it. Reason: the server decides the window (`ath`), so the
 dashboard only asks when the server says so, and does not run its own clock.
 
 ### D6. The grace banner and the restricted session
@@ -98,8 +99,16 @@ reason and a next step.
 - No sleeps. Time comes from the server answer (`graceUntil`), not from the browser clock, except in the step-up
   countdown, which takes an injected clock.
 - End-to-end: sign-in with an authenticator code and enrolment of a recovery code set, in the existing dashboard
-  end-to-end suite. The passkey ceremony is covered by the helper tests, because the browser test environment has no
+  end-to-end suite. The end-to-end server starts with `INGOT_SETTINGS_KEY` set, so that enrolment can run. The passkey ceremony is covered by the helper tests, because the browser test environment has no
   authenticator.
+
+### D10. Passkey first-factor button
+
+`GET /api/auth/providers` carries the boolean `passkeyFirstFactor`, which is `false` by default and mirrors the passkey first-factor
+field of the `login.mfa` policy. The sign-in dialog shows the passkey sign-in button above the password fields only when the answer
+is `true` and the browser supports WebAuthn. The field is additive: an older dashboard ignores it, and an instance without the
+setting keeps the button hidden. Reason: the server decides whether passkeys may start a sign-in, and the dashboard shows that
+decision.
 
 ## Risks
 
