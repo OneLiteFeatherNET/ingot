@@ -246,3 +246,30 @@ describe('MdButton', () => {
     expect(wrapper.classes()).toContain('text-on-surface/md-disabled-content')
   })
 })
+
+describe('MdButton flush-start text variant', () => {
+  it('removes the leading inset of a text button', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text', flushStart: true }, slots: { default: 'Undo' } })
+
+    expect(wrapper.classes(), 'a flush start text button has no leading inset').toContain('pl-0')
+    expect(wrapper.classes()).not.toContain('pl-6')
+    expect(wrapper.classes(), 'the trailing inset stays').toContain('pr-6')
+  })
+
+  it('removes the leading icon inset of a flush start text button with an icon', () => {
+    const wrapper = mount(MdButton, {
+      props: { variant: 'text', flushStart: true },
+      slots: { icon: () => h('svg'), default: 'Undo' }
+    })
+
+    expect(wrapper.classes()).toContain('pl-0')
+    expect(wrapper.classes()).not.toContain('pl-4')
+  })
+
+  it('leaves the leading inset of a filled button alone when flush start is set', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'filled', flushStart: true }, slots: { default: 'Save' } })
+
+    expect(wrapper.classes(), 'flush start is a text variant only').toContain('pl-6')
+    expect(wrapper.classes()).not.toContain('pl-0')
+  })
+})

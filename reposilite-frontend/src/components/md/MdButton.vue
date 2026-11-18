@@ -28,6 +28,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
  *
  * `to` makes the button a router link: a plain click moves the router and the link keeps its href.
  * `inverse` draws the button for an inverse surface, such as a snackbar. `error` wins over `inverse`.
+ * `flush-start` removes the leading inset of a `text` button, so its label lines up with the content above it.
  */
 const props = withDefaults(defineProps<{
   variant?: 'filled' | 'tonal' | 'outlined' | 'text' | 'elevated' | 'error'
@@ -37,12 +38,14 @@ const props = withDefaults(defineProps<{
   type?: string
   error?: boolean
   inverse?: boolean
+  flushStart?: boolean
 }>(), {
   variant: 'filled',
   href: undefined,
   to: undefined,
   type: 'button',
-  inverse: false
+  inverse: false,
+  flushStart: false
 })
 
 defineSlots<{
@@ -108,6 +111,9 @@ const attrs = computed(() => {
 const resolvedVariant = computed(() => (props.variant === 'error' ? 'filled' : props.variant))
 const isError = computed(() => props.error || props.variant === 'error')
 
+// The leading inset of a text button is removed on request. The other variants keep their inset.
+const flushesStart = computed(() => props.flushStart && resolvedVariant.value === 'text')
+
 const classes = computed(() => {
   const variant = VARIANTS[resolvedVariant.value] ?? VARIANTS.filled
   let tone = variant.base
@@ -126,7 +132,7 @@ const classes = computed(() => {
     :is="element"
     v-bind="attrs"
     :data-variant="variant"
-    :class="[classes, $slots.icon ? 'pl-4' : 'pl-6']"
+    :class="[classes, flushesStart ? 'pl-0' : $slots.icon ? 'pl-4' : 'pl-6']"
     data-ingot-component="md-button"
   >
     <span

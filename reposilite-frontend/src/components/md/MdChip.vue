@@ -22,20 +22,28 @@ import { computed } from 'vue'
  *   assist: a single action, such as "Copy coordinates". Renders an anchor when `href` is set.
  *   filter: a toggle that narrows a set. It is a checkbox to assistive technology, so it
  *           reports `selected` through aria-checked, and a selected chip shows a check mark.
+ * `toggle` (Boolean) makes a filter chip a toggle button instead: it reports `selected` through aria-pressed.
+ *           The string `toggle` of the earlier API (`button` for a toggle button, `checkbox`) still works.
+ * `removeLabel` adds a trailing remove button named by the label, which emits `remove` once per click. The chip
+ *           is then drawn as a span, so the remove button is not nested in a button.
  */
-// How a filter chip tells assistive technology its state: as a checkbox (aria-checked), or as a
-// toggle button (aria-pressed), which suits a chip that is one of several choices.
 const props = withDefaults(defineProps<{
   variant?: 'assist' | 'filter'
   selected?: boolean
   href?: string
   disabled?: boolean
-  toggle?: 'checkbox' | 'button'
+  toggle?: boolean | 'checkbox' | 'button'
+  removeLabel?: string
 }>(), {
   variant: 'assist',
   href: undefined,
-  toggle: 'checkbox'
+  toggle: false,
+  removeLabel: undefined
 })
+
+const emit = defineEmits<{
+  remove: []
+}>()
 
 defineSlots<{
   icon?(): unknown
@@ -43,9 +51,13 @@ defineSlots<{
 }>()
 
 const isFilter = computed(() => props.variant === 'filter')
-const isCheckbox = computed(() => isFilter.value && props.toggle === 'checkbox')
-const isPressable = computed(() => isFilter.value && props.toggle === 'button')
-const tag = computed(() => (props.href && !isFilter.value ? 'a' : 'button'))
+const isPressable = computed(() => isFilter.value && (props.toggle === true || props.toggle === 'button'))
+const isCheckbox = computed(() => isFilter.value && !isPressable.value)
+const removable = computed(() => Boolean(props.removeLabel))
+const tag = computed(() => {
+  if (removable.value) return 'span'
+  return props.href && !isFilter.value ? 'a' : 'button'
+})
 
 const STATE = {
   assist: 'border border-outline bg-surface-container-low text-on-surface',
@@ -98,5 +110,26 @@ const stateClass = computed(() => {
       <slot name="icon" />
     </span>
     <slot />
+    <button
+      v-if="removable"
+      type="button"
+      data-slot="remove"
+      :aria-label="removeLabel"
+      :disabled="disabled"
+      class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full"
+      @click="emit('remove')"
+    >
+      <svg
+        class="size-4"
+        viewBox="0 -960 960 960"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          fill="currentColor"
+          d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+        />
+      </svg>
+    </button>
   </component>
 </template>

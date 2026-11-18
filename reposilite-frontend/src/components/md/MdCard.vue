@@ -23,15 +23,18 @@ import type { Component } from 'vue'
  * slot. Pick the variant by how much the card must stand out from the page: elevated for
  * a card that floats, filled for grouped content, low for a flat tinted panel on the page,
  * outlined for a quiet container.
- * `padding` is `none` for a card whose content draws its own inset, such as a table or a code block.
+ * `padding` is `sm` (8px), `md` or `default` (16px, the one a card had before the sizes), `lg` (24px), or `none` for a card
+ * whose content draws its own inset, such as a table or a code block.
  * `as` draws the card as another element or component, such as a router link, with the same surface.
  * `tone` sets the surface role (low, container, high or highest) in place of the variant's surface. `danger` keeps
  * the surface and draws the border in the error role. `edge` (none, outline or elevation) replaces the variant's edge.
+ * The `header` slot holds the title and the supporting text. The `trailing` slot sits at the end of the same row, and the
+ * row is drawn only when one of the two slots is given.
  * Without `tone` and `edge` the card renders exactly as the variant says.
  */
 const props = withDefaults(defineProps<{
   variant?: 'elevated' | 'filled' | 'low' | 'outlined'
-  padding?: 'default' | 'none'
+  padding?: 'default' | 'none' | 'sm' | 'md' | 'lg'
   as?: string | Component
   tone?: 'low' | 'container' | 'high' | 'highest' | 'danger'
   edge?: 'none' | 'outline' | 'elevation'
@@ -45,10 +48,15 @@ const props = withDefaults(defineProps<{
 
 defineSlots<{
   default?(): unknown
+  header?(): unknown
+  trailing?(): unknown
 }>()
 
 const PADDINGS = {
   default: 'p-4',
+  sm: 'p-2',
+  md: 'p-4',
+  lg: 'p-6',
   none: ''
 }
 
@@ -92,6 +100,22 @@ const edgeClasses = computed(() => {
     :class="['rounded-corner-medium text-on-surface', PADDINGS[padding], surfaceClass, edgeClasses]"
     data-ingot-component="md-card"
   >
+    <div
+      v-if="$slots.header || $slots.trailing"
+      data-slot="header"
+      class="mb-3 flex items-start gap-3"
+    >
+      <div class="min-w-0 flex-1">
+        <slot name="header" />
+      </div>
+      <div
+        v-if="$slots.trailing"
+        data-slot="trailing"
+        class="shrink-0"
+      >
+        <slot name="trailing" />
+      </div>
+    </div>
     <slot />
   </component>
 </template>
