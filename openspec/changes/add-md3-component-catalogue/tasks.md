@@ -99,12 +99,13 @@ Each test below is written, run, seen to fail for the stated reason, and only th
   roles and teleport. Verify: it fails, because the composable does not exist.
 - [ ] 2.26 `test(ui)`: in `src/components/md/MdSegmentedButton.test.js`, assert the 20px corner from the shape token, the old import path
   re-exporting the new component, and the unchanged `data-ingot-component` values `segmented-control` and `segmented-option`. Verify: it fails, because the new files do not exist.
-- [ ] 2.27 `test(ui)`: in `src/components/card/CardMenu.test.js`, assert that choosing a tab emits `select-tab` with the tab name and
-  that `SnippetsCard` receives it through `@select-tab`. Verify: it fails, because the component emits `selectTab`.
+- [ ] 2.27 `test(ui)`: in `src/components/card/CardMenu.test.js`, assert that choosing a tab emits `select-tab` with the tab name, that
+  `selectTab` is emitted with the same tab name as its deprecated alias, and that `SnippetsCard` receives it through `@select-tab`. Verify: it fails, because the component emits `selectTab`.
 
 ## 3. refactor(ui): primitives and extensions
 
-Each group below is one commit of type `refactor` with the scope `ui`. Each group makes its red tests of section 2 pass and adds
+Each group below is one commit with the scope `ui`, of type `refactor`, or of type `feat` for the groups that add a new primitive
+(3.4, 3.16 and 3.17, decided 2026-11-18). Each group makes its red tests of section 2 pass and adds
 its registry entries in the same commit as the component. Groups are done in this order, because later groups import the
 earlier ones.
 
@@ -112,12 +113,14 @@ earlier ones.
   `MdSideSheet.vue` with `MdIcon` (a pixel-identical swap, task 5.3). Verify: 2.4 and 2.5 pass for the icon, and the screenshots of
   the sheet match.
 - [ ] 3.2 `refactor(ui)`: add `MdFieldShell`; move `MdTextField`, `MdTextArea` and `MdChipInput` onto it; add `readonly` to
-  `MdTextField`. `MdSelect` joins the shell only after the maintainer accepts the 4px trailing-icon move (proposal question 6). Verify:
+  `MdTextField`. `MdSelect` joins the shell (proposal question 6 accepted: the 4px chevron move is a visible change, see 5.3), and the file moves
+  with a re-export from its old path. Verify:
   2.6 and the text field part of 2.7 pass, the three renderers' tests pass, and the screenshots of the three fields match.
 - [ ] 3.3 `refactor(ui)`: add `MdSelect` `width` and `readonly` props (the shell adoption waits as in 3.2). Verify: the select part of
   2.7 passes.
-- [ ] 3.4 `refactor(ui)`: add `src/helpers/modifiedClick.js` (pure); add `MdNavigationItem`; build `MdNavigationBar` and
-  `MdNavigationRail` on it, keeping both anchors; use the helper in `MdOverflowMenu`. Verify: 2.8 and 2.9 pass, and the navigation
+- [ ] 3.4 `feat(ui)`: add `src/helpers/modifiedClick.js` (pure); add `MdNavigationItem`, whose anchor `md-navigation-item` sits on a
+  wrapper element with `display: contents` (decided 2026-11-18); build `MdNavigationBar` and `MdNavigationRail` on it, keeping both
+  anchors; use the helper in `MdOverflowMenu`. Verify: 2.8 and 2.9 pass, and the navigation
   screenshots match.
 - [ ] 3.5 `refactor(ui)`: extend `MdCard` (tone, edge, padding, as, header slot, danger tone), `MdButton` (to, inverse, flush-start text
   variant, deprecated `variant="error"`), `MdIconButton` (compact size, to, inverse) and `MdChip` (trailing remove, Boolean toggle with
@@ -144,10 +147,10 @@ earlier ones.
   changed in this change (their adoption waits for the follow-up). Verify: 2.20 passes.
 - [ ] 3.14 `refactor(ui)`: add `MdSection`, `MdListDetail`, `MdList`, `MdListItem`, `MdDivider` and `MdKeyValueList`. Verify: 2.21 passes.
 - [ ] 3.15 `refactor(ui)`: add `MdDataTable`, `MdTabs` and `MdDisclosure`. `CardMenu` keeps its tabs in this change. Verify: 2.22 passes.
-- [ ] 3.16 `refactor(ui)`: add `MdBadge` and `MdAvatar`. Turn `tokens/TokenTag.vue`, `tokens/RepositoryTypeBadge.vue` and
+- [ ] 3.16 `feat(ui)`: add `MdBadge` and `MdAvatar`. Turn `tokens/TokenTag.vue`, `tokens/RepositoryTypeBadge.vue` and
   `repositories/TypeBadge.vue` into thin wrappers over `MdBadge` only when their before and after screenshots match (task 5.3); otherwise
   leave them as they are and list them as not done. Verify: 2.23 passes.
-- [ ] 3.17 `refactor(ui)`: add `MdLink`, `MdCode`,
+- [ ] 3.17 `feat(ui)`: add `MdLink`, `MdCode`,
   `MdCodeBlock` and `MdCopyableCode` (over `components/card/copySnippet.js` as it stands), with `MdCode` and `MdCodeBlock`
   on the `md-code-medium` utility of `refactor-md3-token-utilities` (proposal question 4). Verify: 2.24 passes.
 - [ ] 3.18 `refactor(ui)`: add `src/helpers/useCombobox.js` and `MdListbox`. `ComboboxField` keeps its markup in this change. Verify:
@@ -156,9 +159,9 @@ earlier ones.
   `md/MdSegmentedOption.vue`; leave re-exports at the old paths; keep `data-ingot-component="segmented-control"` and
   `"segmented-option"` on the moved elements and update only the `file` of both entries in `src/anchors/registry.json`; add the shape token `corner-segmented` (20px) in `src/styles/md3/shape-elevation-motion.css`. Verify:
   2.26 passes, and the segmented control screenshots match.
-- [ ] 3.20 `refactor(ui)`: rename the `CardMenu` emit to `select-tab` after the plugin check in task 5.6 finds no consumer (proposal
-  question 2); if the check of task 5.6 (run before this group is committed) finds one, keep `selectTab` as an alias and mark the proposal BREAKING for plugin authors before the
-  pull request is opened. Verify: 2.27 passes.
+- [ ] 3.20 `refactor(ui)`: rename the `CardMenu` emit to `select-tab` and keep `selectTab` as a deprecated alias for one release,
+  emitted with the same tab (proposal question 2, decided 2026-11-18). The change is not BREAKING. The result of the plugin check in
+  task 5.6 is recorded, and it does not change the alias. Verify: 2.27 passes.
 
 ## 4. docs(ui): DESIGN.md catalogue
 
@@ -176,7 +179,8 @@ earlier ones.
 - [ ] 5.2 Run the Playwright suites `accessibility.spec.js`, `navigation.spec.js` and `layout.spec.js` through `heavy` at 320 and 1280
   pixels. Verify: all pass, and the accessibility checks of the navigation, the fields and the sheet are green.
 - [ ] 5.3 Before and after screenshots at 320, 600 and 1440 pixels, in light and dark, for every pixel-identical swap: the side sheet
-  close control, the field primitives, the navigation bar and rail, the snackbar and progress, the identity dialog, the segmented
+  close control, the field primitives other than the select (the select's 4px chevron move is accepted under question 6 and
+  gets its own before and after pair, which is expected to differ and is listed in the pull request), the navigation bar and rail, the snackbar and progress, the identity dialog, the segmented
   control, and the badge wrappers if they are swapped. Take the before images on the base commit. Verify: every pair is identical;
   a pair that differs is reverted and listed in the pull request.
 - [ ] 5.4 A screenshot of each primitive state in light and dark (Playwright, one spec, catalogue states only). Verify: the images
@@ -184,7 +188,7 @@ earlier ones.
 - [ ] 5.5 Run `openspec validate add-md3-component-catalogue --strict` and `grep -rnP '\x{2014}|\x{2013}'` over the change directory and
   the changed DESIGN.md, the registry and the source files. Verify: the validation passes and the grep prints nothing.
 - [ ] 5.6 Grep `reposilite-frontend/src` and the plugin extension points for `CardMenu` and `selectTab`. Verify: the result is recorded
-  in the pull request, and it decides task 3.20.
+  in the pull request. The alias of task 3.20 is kept whatever the result is.
 - [ ] 5.7 Grep `reposilite-frontend/src/components/md/` for `<style` and for class-string props. Verify: no match.
 
 ## 6. Pull request (no commit)
