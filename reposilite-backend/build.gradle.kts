@@ -695,6 +695,7 @@ val pluginApiPackages = listOf(
 // name. com.reposilite.journalist is a third-party library and never belongs here.
 val ingotPluginApiPackages = listOf(
     "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.plugin.ui",
     "net.onelitefeather.ingot.repository",
     "net.onelitefeather.ingot.search.backend",
     "net.onelitefeather.ingot.storage.capability",
@@ -704,6 +705,7 @@ val ingotPluginApiPackages = listOf(
 // The packages of ingotPluginApiPackages whose findings are experimental, because the documentation marks them so.
 val ingotExperimentalPackages = listOf(
     "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.plugin.ui",
     "net.onelitefeather.ingot.search.backend",
     "net.onelitefeather.ingot.storage.capability",
 )
