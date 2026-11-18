@@ -192,7 +192,7 @@ const validateDomain = (text: string, existing: string[]) => {
       >
         <h3
           id="sso-kind-title"
-          class="md-title-medium text-on-surface"
+          class="md-title-small text-on-surface"
         >
           Which provider is it?
         </h3>

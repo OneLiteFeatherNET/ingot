@@ -190,12 +190,12 @@ const rows = computed(() => {
       class="flex flex-col gap-4"
     >
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h4
+        <h3
           id="repository-access-title"
-          class="md-title-medium text-on-surface"
+          class="md-title-small text-on-surface"
         >
           Who has access
-        </h4>
+        </h3>
         <TokenTag
           v-if="status === 'ready'"
           data-test="visibility"

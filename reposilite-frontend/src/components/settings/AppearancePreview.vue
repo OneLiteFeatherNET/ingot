@@ -85,12 +85,12 @@ export default {
     data-test="appearance-preview"
     data-ingot-component="appearance-preview"
   >
-    <h4
+    <h3
       id="appearance-preview-title"
       class="md-title-small text-on-surface"
     >
       Preview
-    </h4>
+    </h3>
     <p
       v-if="failed"
       class="md-body-small text-error"
