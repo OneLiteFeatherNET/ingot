@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import TokenTag from '../tokens/TokenTag.vue'
+import MdCard from '../md/MdCard.vue'
 import type { AccessView } from './accessView'
 
 /*
@@ -47,132 +48,95 @@ const checkRoute = (node: string) => ({
 
 <template>
   <section
-    class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4"
+    class="flex flex-col"
     aria-labelledby="access-title"
     data-ingot-component="your-access"
   >
-    <div class="flex flex-col gap-1">
-      <h3
-        id="access-title"
-        class="md-title-large text-on-surface"
-      >
-        Your access
-      </h3>
-      <p class="md-body-medium text-on-surface-variant">
-        What your account may do on this instance. This page only shows it and changes nothing.
-      </p>
-    </div>
-
-    <p
-      v-if="access.status === 'loading'"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
+    <MdCard
+      variant="low"
+      class="flex flex-col gap-4"
     >
-      Loading your access
-    </p>
-    <p
-      v-else-if="access.status === 'unavailable'"
-      class="md-body-medium text-on-surface-variant"
-    >
-      The access summary is not available on this server.
-    </p>
-    <template v-else>
-      <p
-        v-if="access.tokenNarrowed"
-        class="md-body-medium text-on-surface-variant"
-      >
-        This access token narrows the list below. It may use only the rights listed here, even where your account has more.
-      </p>
-
-      <TokenTag
-        v-if="access.instanceAdmin"
-        accent
-        data-test="instance-admin"
-      >
-        Instance admin
-      </TokenTag>
-
-      <div class="flex flex-col gap-2">
-        <h4 class="md-title-small text-on-surface">
-          Teams
-        </h4>
-        <ul
-          v-if="access.teams.length > 0"
-          class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-on-surface"
+      <div class="flex flex-col gap-1">
+        <h3
+          id="access-title"
+          class="md-title-large text-on-surface"
         >
-          <li
-            v-for="team in access.teams"
-            :key="team.name"
-            data-test="team"
-          >
-            {{ team.name }}
-            <span
-              v-if="team.parents.length > 0"
-              class="text-on-surface-variant"
-            >inherits from {{ team.parents.join(', ') }}</span>
-          </li>
-        </ul>
-        <p
-          v-else
-          class="md-body-medium text-on-surface-variant"
-        >
-          No teams
+          Your access
+        </h3>
+        <p class="md-body-medium text-on-surface-variant">
+          What your account may do on this instance. This page only shows it and changes nothing.
         </p>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <h4 class="md-title-small text-on-surface">
-          Permissions
-        </h4>
-        <ul
-          v-if="access.permissions.allowed.length > 0"
-          class="m-0 flex list-none flex-col gap-2 p-0"
-        >
-          <li
-            v-for="line in access.permissions.allowed"
-            :key="line.node"
-            data-test="allowed-permission"
-            class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md-body-medium text-on-surface"
-          >
-            <span class="min-w-0 break-words">{{ line.meaning }}</span>
-            <span class="flex min-w-0 items-baseline gap-3">
-              <code class="min-w-0 break-all md-label-small text-on-surface-variant">{{ line.node }}</code>
-              <RouterLink
-                v-if="mayCheck"
-                :to="checkRoute(line.node)"
-                :aria-label="`Explain ${line.node}`"
-                class="md-label-large text-primary"
-              >Explain</RouterLink>
-              <a
-                v-else
-                :href="HOW_TO"
-                target="_blank"
-                rel="noopener"
-                :aria-label="`Explain ${line.node} (opens in a new tab)`"
-                class="md-label-large text-primary"
-              >Explain</a>
-            </span>
-          </li>
-        </ul>
+      <p
+        v-if="access.status === 'loading'"
+        role="status"
+        class="md-body-medium text-on-surface-variant"
+      >
+        Loading your access
+      </p>
+      <p
+        v-else-if="access.status === 'unavailable'"
+        class="md-body-medium text-on-surface-variant"
+      >
+        The access summary is not available on this server.
+      </p>
+      <template v-else>
         <p
-          v-else
+          v-if="access.tokenNarrowed"
           class="md-body-medium text-on-surface-variant"
         >
-          No permission is granted directly.
+          This access token narrows the list below. It may use only the rights listed here, even where your account has more.
         </p>
 
-        <div
-          v-if="access.permissions.denied.length > 0"
-          class="flex flex-col gap-2"
+        <TokenTag
+          v-if="access.instanceAdmin"
+          accent
+          data-test="instance-admin"
         >
-          <h5 class="md-label-large text-on-surface-variant">
-            Denied
-          </h5>
-          <ul class="m-0 flex list-none flex-col gap-2 p-0">
+          Instance admin
+        </TokenTag>
+
+        <div class="flex flex-col gap-2">
+          <h4 class="md-title-small text-on-surface">
+            Teams
+          </h4>
+          <ul
+            v-if="access.teams.length > 0"
+            class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-on-surface"
+          >
             <li
-              v-for="line in access.permissions.denied"
+              v-for="team in access.teams"
+              :key="team.name"
+              data-test="team"
+            >
+              {{ team.name }}
+              <span
+                v-if="team.parents.length > 0"
+                class="text-on-surface-variant"
+              >inherits from {{ team.parents.join(', ') }}</span>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="md-body-medium text-on-surface-variant"
+          >
+            No teams
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <h4 class="md-title-small text-on-surface">
+            Permissions
+          </h4>
+          <ul
+            v-if="access.permissions.allowed.length > 0"
+            class="m-0 flex list-none flex-col gap-2 p-0"
+          >
+            <li
+              v-for="line in access.permissions.allowed"
               :key="line.node"
-              data-test="denied-permission"
+              data-test="allowed-permission"
               class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md-body-medium text-on-surface"
             >
               <span class="min-w-0 break-words">{{ line.meaning }}</span>
@@ -195,54 +159,96 @@ const checkRoute = (node: string) => ({
               </span>
             </li>
           </ul>
-        </div>
-      </div>
+          <p
+            v-else
+            class="md-body-medium text-on-surface-variant"
+          >
+            No permission is granted directly.
+          </p>
 
-      <div class="flex flex-col gap-2">
-        <h4 class="md-title-small text-on-surface">
-          Repository access
-        </h4>
-        <ul
-          v-if="access.scopes.length > 0"
-          class="m-0 flex list-none flex-col gap-2 p-0"
-        >
-          <li
-            v-for="(scope, index) in access.scopes"
-            :key="`${scope.repository}-${scope.via}-${index}`"
-            data-test="scope"
-            class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md-body-medium text-on-surface"
+          <div
+            v-if="access.permissions.denied.length > 0"
+            class="flex flex-col gap-2"
           >
-            <span class="min-w-0 break-words">
-              {{ scope.meaning }}, through {{ scope.via }}
-            </span>
-            <a
-              :href="HOW_TO"
-              target="_blank"
-              rel="noopener"
-              :aria-label="`Explain ${scope.meaning} (opens in a new tab)`"
-              class="md-label-large text-primary"
-            >Explain</a>
-          </li>
-        </ul>
-        <p
-          v-else
-          class="md-body-medium text-on-surface-variant"
-        >
-          No repository is granted.
-        </p>
-        <ul
-          v-if="access.unknown.length > 0"
-          class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-on-surface"
-        >
-          <li
-            v-for="(line, index) in access.unknown"
-            :key="index"
-            data-test="unknown"
+            <h5 class="md-label-large text-on-surface-variant">
+              Denied
+            </h5>
+            <ul class="m-0 flex list-none flex-col gap-2 p-0">
+              <li
+                v-for="line in access.permissions.denied"
+                :key="line.node"
+                data-test="denied-permission"
+                class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md-body-medium text-on-surface"
+              >
+                <span class="min-w-0 break-words">{{ line.meaning }}</span>
+                <span class="flex min-w-0 items-baseline gap-3">
+                  <code class="min-w-0 break-all md-label-small text-on-surface-variant">{{ line.node }}</code>
+                  <RouterLink
+                    v-if="mayCheck"
+                    :to="checkRoute(line.node)"
+                    :aria-label="`Explain ${line.node}`"
+                    class="md-label-large text-primary"
+                  >Explain</RouterLink>
+                  <a
+                    v-else
+                    :href="HOW_TO"
+                    target="_blank"
+                    rel="noopener"
+                    :aria-label="`Explain ${line.node} (opens in a new tab)`"
+                    class="md-label-large text-primary"
+                  >Explain</a>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <h4 class="md-title-small text-on-surface">
+            Repository access
+          </h4>
+          <ul
+            v-if="access.scopes.length > 0"
+            class="m-0 flex list-none flex-col gap-2 p-0"
           >
-            {{ line.text }}
-          </li>
-        </ul>
-      </div>
-    </template>
+            <li
+              v-for="(scope, index) in access.scopes"
+              :key="`${scope.repository}-${scope.via}-${index}`"
+              data-test="scope"
+              class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md-body-medium text-on-surface"
+            >
+              <span class="min-w-0 break-words">
+                {{ scope.meaning }}, through {{ scope.via }}
+              </span>
+              <a
+                :href="HOW_TO"
+                target="_blank"
+                rel="noopener"
+                :aria-label="`Explain ${scope.meaning} (opens in a new tab)`"
+                class="md-label-large text-primary"
+              >Explain</a>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="md-body-medium text-on-surface-variant"
+          >
+            No repository is granted.
+          </p>
+          <ul
+            v-if="access.unknown.length > 0"
+            class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-on-surface"
+          >
+            <li
+              v-for="(line, index) in access.unknown"
+              :key="index"
+              data-test="unknown"
+            >
+              {{ line.text }}
+            </li>
+          </ul>
+        </div>
+      </template>
+    </MdCard>
   </section>
 </template>
