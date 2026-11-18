@@ -1,0 +1,332 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "repositories" : {
+      "title" : "Repositories",
+      "description" : "List of Maven repositories.",
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "title" : "Id",
+            "description" : "The id of this repository."
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "PUBLIC", "HIDDEN", "PRIVATE" ],
+            "title" : "Visibility",
+            "description" : "The visibility of this repository."
+          },
+          "type" : {
+            "anyOf" : [ {
+              "type" : "null"
+            }, {
+              "type" : "string",
+              "enum" : [ "HOSTED", "PROXY", "GROUP" ]
+            } ],
+            "title" : "Type",
+            "description" : "The declared type of this repository. Leave it empty to keep the behaviour of earlier versions, where a repository\nserves uploads and proxies whatever is listed under mirrored repositories.<br/>\nHOSTED - stores uploaded artifacts and proxies nothing.<br/>\nPROXY - proxies external URLs only and caches what it fetches; it takes no uploads.<br/>\nGROUP - proxies local repositories only and stores nothing; it takes no uploads."
+          },
+          "description" : {
+            "type" : "string",
+            "title" : "Description",
+            "description" : "Short plain-text description shown in the repository list."
+          },
+          "tags" : {
+            "title" : "Tags",
+            "description" : "Labels to group and find repositories, e.g. team or purpose.",
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "redeployment" : {
+            "type" : "boolean",
+            "title" : "Redeployment",
+            "description" : "Does this repository accept redeployment of the same artifact version."
+          },
+          "preserveSnapshots" : {
+            "type" : "boolean",
+            "title" : "Preserved snapshots",
+            "description" : "By default, Ingot deletes all deprecated build files. If you'd like to preserve them, set this property to true."
+          },
+          "storageProvider" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "type" : {
+                  "type" : "string",
+                  "const" : "fs"
+                },
+                "quota" : {
+                  "type" : "string",
+                  "title" : "Quota",
+                  "description" : "Control the maximum amount of data stored in this repository. Supported formats: 90%, 500MB, 10GB (optional, by default: unlimited)"
+                },
+                "mount" : {
+                  "type" : "string",
+                  "title" : "Mount",
+                  "description" : "Use custom directory to locate the repository data (optional, by default it's './repositories/{name}')"
+                }
+              },
+              "title" : "File system Storage Provider",
+              "description" : "Local file system (disk) storage provider settings",
+              "additionalProperties" : false
+            }, {
+              "type" : "object",
+              "properties" : {
+                "type" : {
+                  "type" : "string",
+                  "const" : "s3"
+                },
+                "bucketName" : {
+                  "type" : "string",
+                  "title" : "Bucket",
+                  "description" : "The selected AWS bucket"
+                },
+                "endpoint" : {
+                  "type" : "string",
+                  "title" : "Endpoint",
+                  "description" : "Overwrite the AWS endpoint (optional)",
+                  "x-ingot-secret" : true
+                },
+                "accessKey" : {
+                  "type" : "string",
+                  "title" : "Access Key",
+                  "description" : "Overwrite AWS access-key used to authenticate (optional)",
+                  "x-ingot-secret" : true
+                },
+                "secretKey" : {
+                  "type" : "string",
+                  "title" : "Secret Key",
+                  "description" : "Overwrite AWS secret-key used to authenticate (optional)",
+                  "x-ingot-secret" : true
+                },
+                "region" : {
+                  "type" : "string",
+                  "title" : "Region",
+                  "description" : "Overwrite AWS region (optional)"
+                },
+                "prefix" : {
+                  "type" : "string",
+                  "title" : "Key Prefix",
+                  "description" : "Optional prefix prepended to all object keys, e.g. to scope data within a bucket shared with other services"
+                },
+                "sharedBucket" : {
+                  "type" : "boolean",
+                  "title" : "Shared Bucket",
+                  "description" : "Namespace objects under the repository name so several repositories can share one bucket (optional)"
+                },
+                "metadataCacheSettings" : {
+                  "allOf" : [ {
+                    "type" : [ "object", "null" ],
+                    "properties" : {
+                      "enabled" : {
+                        "type" : "boolean",
+                        "title" : "Enabled",
+                        "description" : "Enable the cache?"
+                      },
+                      "maximumSize" : {
+                        "type" : "integer",
+                        "format" : "int64",
+                        "title" : "Max Cache Entries",
+                        "description" : "Maximum number of cached entries"
+                      },
+                      "expireAfterAccessSeconds" : {
+                        "type" : "integer",
+                        "format" : "int64",
+                        "title" : "Expire After Access",
+                        "description" : "Expire cache entries after the specified number of seconds since last read access"
+                      },
+                      "expireAfterCreationSeconds" : {
+                        "type" : "integer",
+                        "format" : "int64",
+                        "title" : "Expire After Creation",
+                        "description" : "Expire cache entries after the specified number of seconds since the initial download"
+                      }
+                    },
+                    "title" : "S3 Metadata Cache",
+                    "description" : "Caches things like file size from S3 objects",
+                    "additionalProperties" : false
+                  }, {
+                    "title" : "Local Metadata Cache",
+                    "description" : "Local metadata cache settings (optional). The default is no caching. NOTE: This cache is local only. If you run multiple instances, they will not share the cache!"
+                  } ]
+                }
+              },
+              "title" : "S3 Storage Provider",
+              "description" : "Amazon S3 storage provider settings",
+              "additionalProperties" : false
+            } ],
+            "title" : "Storage provider",
+            "description" : "The storage type of this repository."
+          },
+          "storagePolicy" : {
+            "type" : "string",
+            "enum" : [ "PRIORITIZE_UPSTREAM_METADATA", "STRICT" ],
+            "title" : "Storage policy",
+            "description" : "Defines how Ingot should handle requests to repository with configured mirrored repositories. <br/>\nPRIORITIZE_UPSTREAM_METADATA - try to fetch the latest version of the artifact from the remote repository <br/>\nSTRICT - prioritize cached version over upstream metadata (full offline mode)"
+          },
+          "metadataMaxAge" : {
+            "type" : "integer",
+            "format" : "int64",
+            "title" : "Max age of metadata file",
+            "description" : "Fetching metadata files with PRIORITIZE_UPSTREAM_METADATA may be slow, so you can use dedicated TTL threshold for them.<br/>\nIf set to \"0\" then a fetch is done always. (Default: 0 seconds)"
+          },
+          "resolutionCacheMaxEntries" : {
+            "type" : "integer",
+            "format" : "int32",
+            "title" : "Resolution cache size",
+            "description" : "Caches routing decisions for metadata reads (maven-metadata.xml, *.pom, *.module, Ivy XML)\nto speed up repeated requests. Size scales with the number of distinct GAVs touched\nthrough your mirrors, not with user traffic:<br/>\n0 — disabled (no mirrors, or caching not needed)<br/>\n128 — proxying a small fixed set of artifacts (single vendor SDK, internal repos)<br/>\n512 — proxying focused ecosystems (BOM + transitives, a few curated mirrors)<br/>\n2048+ — proxying broad ecosystems like Maven Central<br/>\n(Default: 0)"
+          },
+          "proxied" : {
+            "title" : "Mirrored repositories",
+            "description" : "List of mirrored repositories associated with this repository.",
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "reference" : {
+                  "type" : "string",
+                  "title" : "Link",
+                  "description" : "Either the id of other local repository or the URL of a remote repository."
+                },
+                "store" : {
+                  "type" : "boolean",
+                  "title" : "Store",
+                  "description" : "Ingot can store proxied artifacts locally to reduce response time and improve stability."
+                },
+                "allowedGroups" : {
+                  "title" : "Allowed Groups",
+                  "description" : "Allowed artifact groups. If none are given, all artifacts can be obtained from this mirror.",
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                },
+                "allowedExtensions" : {
+                  "title" : "Allowed Extensions",
+                  "description" : "List of accepted file extensions. If none are given, all files can be obtained from this mirror. Use the special value '&lt;none&gt;' to permit files without an extension (e.g. native binaries).",
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                },
+                "connectTimeout" : {
+                  "type" : "integer",
+                  "format" : "int32",
+                  "title" : "Connect Timeout",
+                  "description" : "How long Ingot can wait for establishing the connection with a remote host. (In seconds)"
+                },
+                "readTimeout" : {
+                  "type" : "integer",
+                  "format" : "int32",
+                  "title" : "Read Timeout",
+                  "description" : "How long Ingot can read data from remote proxy. (In seconds)"
+                },
+                "authorization" : {
+                  "type" : [ "object", "null" ],
+                  "properties" : {
+                    "method" : {
+                      "type" : "string",
+                      "enum" : [ "BASIC", "CUSTOM_HEADER", "LOOPBACK_LINK" ],
+                      "title" : "Method",
+                      "description" : "Basic or custom header"
+                    },
+                    "login" : {
+                      "type" : "string",
+                      "title" : "Login",
+                      "description" : "Login or custom header name to use"
+                    },
+                    "password" : {
+                      "type" : "string",
+                      "title" : "Password",
+                      "description" : "Raw password or header value used by HTTP client to connect to the given repository",
+                      "x-ingot-secret" : true
+                    }
+                  },
+                  "title" : "Mirror Credentials",
+                  "description" : "The authorization credentials used to access mirrored repository.",
+                  "additionalProperties" : false
+                },
+                "httpProxy" : {
+                  "type" : "string",
+                  "title" : "HTTP Proxy",
+                  "description" : "Custom proxy configuration for HTTP/SOCKS client used by Ingot to connect to the mirrored repository. Examples: <br/>\nHTTP 127.0.0.1:1081 <br/>\nSOCKS 127.0.0.1:1080 login password ",
+                  "x-ingot-secret" : true
+                },
+                "authenticatedFetchingOnly" : {
+                  "type" : "boolean",
+                  "title" : "Authenticated Fetching Only",
+                  "description" : "Whether to require an authenticated connection before fetching uncached artifacts from the remote repository.<br/>\n_This should only ever be turned on in conjunction with the store option or with a secondary mirror host that has this option turned off.<br/>\nIf you are looking to hide this mirror from unauthenticated connections, please use repository visibility options instead._"
+                },
+                "checksumPolicy" : {
+                  "type" : "string",
+                  "enum" : [ "IGNORE", "WARN", "FAIL" ],
+                  "title" : "Checksum policy",
+                  "description" : "How Ingot checks the artifacts stored from this mirror against the checksum files of the same host.<br/>\nignore - stores the copy without a check (Default)<br/>\nwarn - stores the copy, and logs a mismatch or a missing checksum file<br/>\nfail - stores and serves a copy only when it matches the sha256 file of the host, or the sha1 file when the host has no sha256 file; otherwise the host is refused and the next host is tried<br/>\nNeeds Store to be enabled. Metadata and checksum files are not checked."
+                }
+              },
+              "title" : "Mirrored Maven Repository",
+              "description" : "Configuration of proxied host",
+              "additionalProperties" : false
+            }
+          },
+          "protectedGroupPrefixes" : {
+            "title" : "Protected group prefixes",
+            "description" : "Group ids, such as net.onelitefeather, that this group serves from its hosted members only. A proxy member is never\nasked for a coordinate under such a prefix, so a public upstream cannot answer for it. A prefix covers its subgroups,\nand a coordinate that no hosted member holds is answered as not found.<br/>\nOnly a repository of the type GROUP accepts this key. Empty disables the rule (Default: empty)",
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "uploadChecksumPolicy" : {
+            "anyOf" : [ {
+              "type" : "null"
+            }, {
+              "type" : "string",
+              "enum" : [ "IGNORE", "WARN", "REJECT" ]
+            } ],
+            "title" : "Upload checksum policy",
+            "description" : "What Ingot does with an uploaded checksum file (.md5, .sha1, .sha256 or .sha512) that does not match the artifact\nstored before it. The check only runs when the artifact is already stored.<br/>\nignore - stores the checksum file without a check<br/>\nwarn - stores the checksum file and records the mismatch in the audit log<br/>\nreject - refuses the checksum file with 400, stores nothing and records the refusal in the audit log<br/>\nLeave it empty to use the instance default, which is set by INGOT_UPLOAD_CHECKSUM_POLICY and is ignore when unset."
+          },
+          "versionPolicy" : {
+            "anyOf" : [ {
+              "type" : "null"
+            }, {
+              "type" : "string",
+              "enum" : [ "RELEASE", "SNAPSHOT", "MIXED" ]
+            } ],
+            "title" : "Version policy",
+            "description" : "Which versions this repository accepts on deploy. Leave it empty to accept both release and snapshot versions, as before.<br/>\nRELEASE - refuses a deploy into a -SNAPSHOT version directory with 400<br/>\nSNAPSHOT - refuses a deploy into any other version directory with 400; maven-metadata.xml and its checksums are always accepted<br/>\nMIXED - accepts both, the same as leaving it empty<br/>\nOnly for hosted and untyped repositories. Reads, deletes and cleanup runs are not affected."
+          },
+          "readOnly" : {
+            "type" : [ "boolean", "null" ],
+            "title" : "Read-only",
+            "description" : "Set to true to refuse every deploy and delete into this repository with 405, while reads keep working.\nScheduled cleanup skips the repository. This is separate from the read-only mode of the whole instance, which answers 503.<br/>\nOnly for hosted and untyped repositories. Leave it empty or false to accept writes as before."
+          },
+          "format" : {
+            "type" : [ "string", "null" ],
+            "title" : "Format",
+            "description" : "The repository format. Leave it empty for Maven (maven2), which is the only format of this version."
+          }
+        },
+        "title" : "Maven Repository",
+        "description" : "Settings for a given repository.",
+        "additionalProperties" : false
+      }
+    },
+    "resolutionCacheClusterMaxAgeSeconds" : {
+      "type" : "integer",
+      "format" : "int64",
+      "title" : "Resolution cache maximum age in cluster mode",
+      "description" : "Maximum age in seconds of a cached routing decision (see Resolution cache size) when a cluster bus is configured.\nEntries expire after this age even when an invalidation was not delivered.<br/>\nWithout a cluster bus this value is ignored and entries keep their current lifetime.<br/>\n0: use the cluster default of 300 seconds<br/>\n(Default: 0)"
+    }
+  },
+  "title" : "Maven",
+  "description" : "Repositories settings",
+  "additionalProperties" : false
+}

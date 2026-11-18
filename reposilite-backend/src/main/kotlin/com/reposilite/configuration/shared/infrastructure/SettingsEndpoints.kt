@@ -137,6 +137,7 @@ internal class SettingsEndpoints(
                             settings.javaClass,
                             DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings),
                             keepReferences = sharedConfigurationFacade.secretReferencesEnabled(),
+                            variants = sharedConfigurationFacade.secretVariants,
                         )
                     } else {
                         settings
@@ -211,7 +212,8 @@ internal class SettingsEndpoints(
             incoming = incoming,
             stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(stored),
             // A placeholder is kept on every write, whatever hideSettingsSecrets says: an unchanged secret keeps its stored value.
-            placeholders = true
+            placeholders = true,
+            variants = sharedConfigurationFacade.secretVariants,
         )
         if (restored.isErr) {
             return badRequest(restored.error).asError()
