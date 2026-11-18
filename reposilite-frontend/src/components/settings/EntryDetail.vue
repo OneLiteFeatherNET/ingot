@@ -107,6 +107,11 @@ const props = defineProps({
   section: {
     type: String,
     default: ''
+  },
+  // The fields of the form in the order they are drawn, when the page names one (the fields of a tab). Null keeps the order of the schema.
+  order: {
+    type: Array,
+    default: null
   }
 })
 
@@ -116,7 +121,7 @@ const noun = computed(() => props.collection.noun)
 const whole = computed(() => props.section === '')
 const shows = name => whole.value || props.section === name
 const drawsForm = computed(() => whole.value || (props.section !== 'type' && props.section !== 'danger'))
-const layout = computed(() => entryLayout(props.collection.itemSchema))
+const layout = computed(() => entryLayout(props.collection.itemSchema, props.order ? { order: props.order } : {}))
 const deleteOpen = ref(false)
 
 // The latest value of the whole entry, so an id typed in the field is written next to the fields the form has changed.
