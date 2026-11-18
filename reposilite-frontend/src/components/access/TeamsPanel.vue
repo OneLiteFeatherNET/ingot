@@ -215,10 +215,7 @@ const deleted = (name: string) => {
       </p>
     </div>
 
-    <div
-      class="min-w-0 expanded:p-6"
-      :class="name ? '' : 'max-expanded:hidden'"
-    >
+    <div class="min-w-0 p-4 expanded:p-6">
       <TeamDetail
         v-if="name"
         :key="name"
@@ -228,7 +225,7 @@ const deleted = (name: string) => {
       />
       <p
         v-else
-        class="md-body-large text-on-surface-variant"
+        class="md-body-large text-on-surface-variant max-expanded:hidden"
       >
         Select a team to see its members and permission nodes.
       </p>

@@ -274,10 +274,7 @@ const deleted = (principal: PrincipalSummary) => {
       </p>
     </div>
 
-    <div
-      class="min-w-0 expanded:p-6"
-      :class="name ? '' : 'max-expanded:hidden'"
-    >
+    <div class="min-w-0 p-4 expanded:p-6">
       <PrincipalDetail
         v-if="name"
         :key="`${kind}:${name}`"
@@ -288,7 +285,7 @@ const deleted = (principal: PrincipalSummary) => {
       />
       <p
         v-else
-        class="md-body-large text-on-surface-variant"
+        class="md-body-large text-on-surface-variant max-expanded:hidden"
       >
         {{ COPY.select }}
       </p>

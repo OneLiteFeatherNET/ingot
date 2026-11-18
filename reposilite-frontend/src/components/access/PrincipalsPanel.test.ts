@@ -228,6 +228,15 @@ describe('PrincipalsPanel', () => {
       expect(rowOf('alice').find('[data-test="disabled-badge"]').exists(), 'alice is active').toBe(false)
     })
 
+    it('keeps the same inset on the detail pane at every width', async () => {
+      await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
+
+      const pane = wrapper!.find('.expanded\\:p-6')
+      expect(pane.exists(), 'the detail pane takes the wide inset from 840 pixels').toBe(true)
+      expect(pane.classes(), 'the detail pane has an inset below 840 pixels too').toContain('p-4')
+      expect(pane.classes(), 'the detail pane is never hidden below 840 pixels').not.toContain('max-expanded:hidden')
+    })
+
     it('shows the Instance admin chip for the user who holds the role', async () => {
       await mountPanel({ kind: 'USER' })
 
