@@ -20,6 +20,11 @@ on:
 permissions:
   contents: read
 
+# Opt-in for the Gradle jobs: set the repository variable INGOT_CI_MAVEN_MIRROR to route Maven Central through a mirror.
+# Unset, every build resolves from Maven Central as before.
+env:
+  INGOT_CI_MAVEN_MIRROR: ${{ vars.INGOT_CI_MAVEN_MIRROR }}
+
 # Superseded pull request runs are cancelled. Runs on main, scheduled runs and manual runs are not: each one
 # finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one.
 concurrency:
@@ -91,6 +96,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Check backend dependency licenses"
         run: ./gradlew --build-cache :reposilite-backend:checkLicense
@@ -177,6 +188,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       # Trivy reads lockfiles, and a Gradle build without dependency locking has none. The
       # task copies the resolved runtime classpath out so the jars can be identified by
       # checksum instead.
@@ -223,6 +240,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Generate the SBOM of the standalone jar"
         run: ./gradlew --build-cache :reposilite-backend:cyclonedxDirectBom
@@ -363,6 +386,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       # Decides which backend tests a pull request can reach (select_backend_tests.py, design Decision 3). Only a pull
       # request gets a partial run. A push to main, a missing diff and a failing script all give mode=full, so the
@@ -586,6 +615,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       - name: "Compare the plugin API with Reposilite 3.5.28"
         run: ./gradlew --build-cache :reposilite-backend:pluginApiReport
 
@@ -681,6 +716,12 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
       - name: "Run the contract tests of the Official plugins"
         run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:contractTest :reposilite-plugins:migration-plugin:contractTest
 
@@ -708,6 +749,12 @@ jobs:
 
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Check the plugin tiers"
         run: ./gradlew --build-cache checkPluginTiers
