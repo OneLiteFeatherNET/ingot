@@ -43,7 +43,24 @@ sealed interface LoginChallengeAnswer {
 
 }
 
-/** The registered login challenge provider, at most one. */
+/** What a delayed dashboard login gets from the challenge, see [LoginChallenges.judge]. */
+internal sealed interface ChallengeVerdict {
+
+    /** No provider, or it failed: the plain delay of the throttle. */
+    data object NotOffered : ChallengeVerdict
+
+    /** The answer was verified: one password check goes through. */
+    data object Passed : ChallengeVerdict
+
+    /** A fresh challenge of [provider] with its public [parameters]. */
+    data class Required(val provider: String, val parameters: Map<String, Any?>) : ChallengeVerdict
+
+}
+
+/**
+ * The registered login challenge provider, at most one, and the judgement of a delayed dashboard login. The provider is
+ * asked only by [judge], so a failure of it is logged by its id and type here, never with its text, which may echo the answer.
+ */
 internal class LoginChallenges(private val warn: (String) -> Unit) {
 
     @Volatile
@@ -63,6 +80,35 @@ internal class LoginChallenges(private val warn: (String) -> Unit) {
                 else -> provider = candidate
             }
         }
+    }
+
+    /** The verdict for a dashboard login of [username] from [address] that the account throttle delays at this moment. */
+    fun judge(username: String, address: String, answer: LoginChallengeAnswer?): ChallengeVerdict {
+        val current = provider ?: return ChallengeVerdict.NotOffered
+        val context = LoginChallengeContext(username = username, address = address)
+        if (answer is LoginChallengeAnswer.Given && answer.provider == current.id) {
+            val verified = ask(current) { current.verify(context, answer.answer) } ?: return ChallengeVerdict.NotOffered
+            if (verified) {
+                return ChallengeVerdict.Passed
+            }
+        }
+        val parameters = ask(current) { current.parameters(context) } ?: return ChallengeVerdict.NotOffered
+        return ChallengeVerdict.Required(provider = current.id, parameters = parameters)
+    }
+
+    /** The result of [call], or `null` when the provider failed. */
+    private fun <T : Any> ask(current: LoginChallengeProvider, call: () -> T): T? =
+        try {
+            call()
+        } catch (failure: Exception) {
+            failed(current, failure)
+        } catch (failure: LinkageError) {
+            failed(current, failure)
+        }
+
+    private fun failed(current: LoginChallengeProvider, failure: Throwable): Nothing? {
+        warn("Login challenge provider '${current.id}' failed with ${failure.javaClass.name}, the delayed login is answered without a challenge")
+        return null
     }
 
 }

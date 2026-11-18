@@ -19,6 +19,10 @@ package net.onelitefeather.ingot.identity.login.api
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequestError
 import com.reposilite.shared.errorResponse
+import com.reposilite.shared.extensions.EmptyBody
+import com.reposilite.shared.extensions.PROBLEM_JSON
+import com.reposilite.shared.extensions.mergeVary
+import com.reposilite.shared.extensions.prefersProblemJson
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
@@ -39,6 +43,7 @@ import io.javalin.openapi.OpenApiResponse
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginOutcome
 import net.onelitefeather.ingot.identity.login.SetupOutcome
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallengeAnswer
 import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
 import net.onelitefeather.ingot.identity.login.mfa.FirstFactorPasskey
 import net.onelitefeather.ingot.identity.login.mfa.NO_RELYING_PARTY_MESSAGE
@@ -103,12 +108,14 @@ internal class AuthLoginEndpoints(
         response = if (provider == null || username == null || password == null) {
             badRequestError("Login requires provider, username and password")
         } else {
-            when (val outcome = facade.login(provider, username, password, ctx.ip(), ctx.header(Header.USER_AGENT))) {
+            val challenge = LoginChallengeAnswer.of(request.challenge)
+            when (val outcome = facade.login(provider, username, password, ctx.ip(), ctx.header(Header.USER_AGENT), challenge)) {
                 is LoginOutcome.Succeeded -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, outcome.mustChangePassword)
                 is LoginOutcome.SecondFactorRequired -> secondFactorChallenge(ctx, basePath.get(), outcome.challenge, outcome.methods)
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
                 is LoginOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed login attempts, try again later")
+                is LoginOutcome.ChallengeRequired -> challengeRequired(ctx, outcome)
                 LoginOutcome.UnknownProvider -> badRequestError("Unknown login provider")
                 is LoginOutcome.Refused -> errorResponse(FORBIDDEN, outcome.reason.code)
                 LoginOutcome.Unavailable -> errorResponse(SERVICE_UNAVAILABLE, "The login provider cannot be reached, try again later")
@@ -388,6 +395,20 @@ internal class AuthLoginEndpoints(
 internal fun <V> tooManyRequests(ctx: Context, retryAfterSeconds: Long, message: String): Result<V, ErrorResponse> {
     ctx.header("Retry-After", retryAfterSeconds.toString())
     return errorResponse(TOO_MANY_REQUESTS, message)
+}
+
+/**
+ * The `429` that asks a delayed dashboard login for a challenge: `Retry-After` as on the plain delay, and the body written here
+ * with the content negotiation of an error answer, because it is not an [ErrorResponse].
+ */
+private fun challengeRequired(ctx: Context, outcome: LoginOutcome.ChallengeRequired): Result<Any, ErrorResponse> {
+    ctx.header("Retry-After", outcome.retryAfterSeconds.toString())
+    ctx.status(TOO_MANY_REQUESTS).json(ChallengeRequest(provider = outcome.provider, parameters = outcome.parameters, instance = ctx.path()))
+    if (prefersProblemJson(ctx.header(Header.ACCEPT))) {
+        ctx.contentType(PROBLEM_JSON)
+    }
+    ctx.header(Header.VARY, mergeVary(ctx.res().getHeaders(Header.VARY), listOf(Header.ACCEPT)))
+    return EmptyBody.asSuccess()
 }
 
 /** The answer of a request that the server refuses for now, because a service it depends on does not answer. */

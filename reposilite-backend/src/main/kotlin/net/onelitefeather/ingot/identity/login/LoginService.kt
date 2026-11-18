@@ -40,6 +40,9 @@ import net.onelitefeather.ingot.identity.login.SetupOutcome.InvalidInput
 import net.onelitefeather.ingot.identity.login.SetupOutcome.NameTaken
 import net.onelitefeather.ingot.identity.login.SetupOutcome.NotRequired
 import net.onelitefeather.ingot.identity.login.SetupOutcome.WrongCode
+import net.onelitefeather.ingot.identity.login.challenge.ChallengeVerdict
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallengeAnswer
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallenges
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
@@ -73,6 +76,8 @@ class LoginService internal constructor(
     private val breachCheck: PasswordBreachCheck? = null,
     /** Counts and announces the outcomes of the dashboard logins. Nothing is observed while the account throttle switch is off. */
     private val signInObserver: SignInObserver = SignInObserver.OFF,
+    /** The login challenge a plugin may register for names the account throttle delays. `null` asks for none. */
+    private val challenges: LoginChallenges? = null,
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -99,13 +104,29 @@ class LoginService internal constructor(
         return local + externalAnnouncements()
     }
 
-    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome {
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome =
+        login(providerId, username, password, ip, userAgent, challenge = null)
+
+    /**
+     * A login with the `challenge` member of the request. It is read only while the account throttle delays the name and a
+     * login challenge provider is registered, and ignored otherwise. A verified challenge lets one password check through.
+     */
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String?, challenge: LoginChallengeAnswer?): LoginOutcome {
         val provider = passwordProviders().firstOrNull { it.id == providerId } ?: return UnknownProvider
         val userKey = LoginAttemptLimiter.userKey(username, ip)
         val keys = listOf(userKey, LoginAttemptLimiter.addressKey(ip))
 
         limiter.retryAfter(keys)?.let { wait -> return delayed(username, ip, wait) }
-        accountThrottle?.retryAfter(username, ip)?.let { wait -> return delayed(username, ip, wait) }
+        accountThrottle?.retryAfter(username, ip)?.let { wait ->
+            when (val verdict = challenges?.judge(username, ip, challenge) ?: ChallengeVerdict.NotOffered) {
+                ChallengeVerdict.Passed -> Unit
+                ChallengeVerdict.NotOffered -> return delayed(username, ip, wait)
+                is ChallengeVerdict.Required -> {
+                    val blocked = delayed(username, ip, wait)
+                    return LoginOutcome.ChallengeRequired(blocked.retryAfterSeconds, verdict.provider, verdict.parameters)
+                }
+            }
+        }
 
         val outcome = provider.authenticate(username, password)
         when (outcome) {
@@ -139,7 +160,7 @@ class LoginService internal constructor(
                 recordRejected(username, ip)
             }
             // The directory did not answer, so nothing was judged and nothing counts towards the limit.
-            LoginOutcome.Unavailable, is Blocked, UnknownProvider, is LoginOutcome.SecondFactorRequired -> Unit
+            LoginOutcome.Unavailable, is Blocked, is LoginOutcome.ChallengeRequired, UnknownProvider, is LoginOutcome.SecondFactorRequired -> Unit
         }
         return outcome
     }
@@ -328,7 +349,7 @@ class LoginService internal constructor(
      * A login answered with a delay. While the account throttle is on it is audited once as `LOGIN_THROTTLED` and announced;
      * while it is off the rejection is audited as before.
      */
-    private fun delayed(username: String, ip: String, wait: Duration): LoginOutcome {
+    private fun delayed(username: String, ip: String, wait: Duration): Blocked {
         val retryAfterSeconds = ceilSeconds(wait)
         if (signInObserver.enabled) {
             signInObserver.throttled(username, ip, SignInPath.DASHBOARD, retryAfterSeconds)

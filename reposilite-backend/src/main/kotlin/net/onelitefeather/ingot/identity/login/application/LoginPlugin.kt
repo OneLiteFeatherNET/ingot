@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalIngotPluginApi::class)
+
 package net.onelitefeather.ingot.identity.login.application
 
 import com.reposilite.audit.api.AuditEvent
@@ -35,6 +37,8 @@ import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.api.ProviderTestEndpoints
 import net.onelitefeather.ingot.identity.login.api.SecondFactorEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallengeRegistrationEvent
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallenges
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
@@ -56,6 +60,7 @@ import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
@@ -187,6 +192,9 @@ class LoginPlugin : ReposilitePlugin() {
         val breachCheck = PasswordBreachCheck(settings = loginSettings, range = JdkBreachRangeClient())
         breachCheck.preload()
 
+        // A plugin may register one login challenge provider for names the account throttle delays. None is registered by default.
+        val loginChallenges = LoginChallenges(warn = { logger.warn(it) })
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -199,6 +207,7 @@ class LoginPlugin : ReposilitePlugin() {
                 accountThrottle = accountThrottle,
                 breachCheck = breachCheck,
                 signInObserver = signInObserver,
+                challenges = loginChallenges,
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {
@@ -286,6 +295,9 @@ class LoginPlugin : ReposilitePlugin() {
 
         // Shown once per start, and only while no user exists: the setup code is the way into an empty instance.
         event { _: ReposiliteInitializeEvent ->
+            // Every plugin has initialised, so each one that listens can register its provider, in plugin load order.
+            extensions().emitEvent(LoginChallengeRegistrationEvent(loginChallenges::register))
+            loginChallenges.registered()?.let { logger.info("Dashboard logins delayed by the account throttle are asked for the login challenge '${it.id}'") }
             // Skipped provider entries are named once per start, with their reason, before anything else is logged.
             oidcCatalog.report()
             if (directories?.legacyActive() == true) {

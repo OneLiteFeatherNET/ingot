@@ -437,7 +437,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["ChallengeRequest"];
                     };
                 };
             };
@@ -5652,6 +5652,24 @@ export interface components {
         AuthenticatorEnrolmentDto: {
             otpauthUri?: string;
         };
+        /** @description The 429 of a dashboard login whose name is delayed and that the registered login challenge provider wants answered first. message and detail carry the code challenge_required. Retry-After is set as on the plain 429, and waiting it out stays a way to the next password check. */
+        ChallengeRequest: components["schemas"]["ErrorResponse"] & {
+            /** @description Public values the client needs to present or solve the challenge, specific to the provider. Never a secret. */
+            parameters: {
+                [key: string]: unknown;
+            };
+            /** @description The id of the registered login challenge provider. */
+            provider: string;
+        };
+        /** @description The answer to the login challenge that a ChallengeRequest asked for, sent again with the same provider, username and password. Read only while the name is delayed and a login challenge provider is registered, ignored otherwise. */
+        ChallengeResponse: {
+            /** @description The answer, specific to the provider and handed to it unchanged. */
+            answer: {
+                [key: string]: unknown;
+            };
+            /** @description The id of the login challenge provider that the ChallengeRequest named. */
+            provider: string;
+        };
         CleanupPreviewResponse: {
             /** Format: int32 */
             count: number;
@@ -6037,6 +6055,7 @@ export interface components {
             tokenLogin?: boolean;
         };
         LoginRequest: {
+            challenge?: components["schemas"]["ChallengeResponse"] | null;
             password?: string | null;
             provider?: string | null;
             username?: string | null;

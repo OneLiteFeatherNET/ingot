@@ -25,6 +25,7 @@ import java.time.Duration
 import java.time.Instant
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.login.api.SelfTokenRequest
+import net.onelitefeather.ingot.identity.login.challenge.LoginChallengeAnswer
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
 import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
@@ -93,8 +94,12 @@ class LoginFacade internal constructor(
      * A password login. When the password is right and the user has an authenticator, no session starts: the outcome is
      * [LoginOutcome.SecondFactorRequired], and [completeSecondFactor] finishes the sign-in.
      */
-    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome {
-        val outcome = service?.login(providerId, username, password, ip, userAgent) ?: return LoginOutcome.UnknownProvider
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String? = null): LoginOutcome =
+        login(providerId, username, password, ip, userAgent, challenge = null)
+
+    /** A password login with the `challenge` member of the request, see [LoginService.login]. */
+    fun login(providerId: String, username: String, password: String, ip: String, userAgent: String?, challenge: LoginChallengeAnswer?): LoginOutcome {
+        val outcome = service?.login(providerId, username, password, ip, userAgent, challenge) ?: return LoginOutcome.UnknownProvider
         if (outcome !is LoginOutcome.Succeeded) {
             return outcome
         }

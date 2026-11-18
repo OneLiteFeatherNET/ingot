@@ -49,7 +49,33 @@ data class LoginRequest(
     val provider: String? = null,
     val username: String? = null,
     val password: String? = null,
+    /**
+     * The answer to a login challenge, `{ "provider": ..., "answer": { ... } }`, kept as the JSON mapper decoded it so that a
+     * malformed member is answered with a fresh challenge rather than a `400`. Its schema is `ChallengeResponse`.
+     */
+    val challenge: Any? = null,
 )
+
+/**
+ * The `429` of a dashboard login whose name is delayed and that a login challenge provider wants answered first. It carries
+ * every member of the plain error answer, with the code `challenge_required`, plus the [provider] id and its public
+ * [parameters]. Its schema is `ChallengeRequest`.
+ */
+data class ChallengeRequest(
+    val provider: String,
+    val parameters: Map<String, Any?>,
+    val instance: String?,
+) {
+    val status: Int = 429
+    val message: String = CHALLENGE_REQUIRED
+    val detail: String = CHALLENGE_REQUIRED
+    val type: String = "about:blank"
+    val title: String = "Too Many Requests"
+
+    companion object {
+        const val CHALLENGE_REQUIRED = "challenge_required"
+    }
+}
 
 @JsonSchema(requireNonNulls = false)
 data class LoginPrincipalDto(
