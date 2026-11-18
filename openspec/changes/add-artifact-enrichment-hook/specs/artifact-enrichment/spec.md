@@ -77,12 +77,12 @@ with the enricher id, the repository and the path, but without any content.
 #### Scenario: Deadline
 
 - **WHEN** an enricher does not return before the deadline
-- **THEN** the call is cancelled, the result is `Failed` with reason `timeout`, and the outbox continues
+- **THEN** the call is cancelled, the result is `EnrichmentFailed` with reason `timeout`, and the outbox continues
 
 #### Scenario: Executor full
 
 - **WHEN** the executor queue is full
-- **THEN** the enricher is not called, the result is `Skipped` with reason `busy`, and the row is written
+- **THEN** the enricher is not called, the result is `EnrichmentSkipped` with reason `busy`, and the row is written
 
 ### Requirement: Status of enrichers
 

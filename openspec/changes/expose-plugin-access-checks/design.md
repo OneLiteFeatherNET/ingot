@@ -74,7 +74,7 @@ Each answer delegates to the function the route uses:
 | `canReadRepository` | `RepositorySecurityProvider.canAccessRepository` |
 | `canReadPath` | `RepositorySecurityProvider.canAccessResource`, mapped to `isSuccess` |
 | `canListRepository` | `RepositorySecurityProvider.canListRepository` |
-| `listedRepositories` | the repositories of `findRepositories` (`MavenFacade.kt:285`) |
+| `listedRepositories` | the repositories of `MavenFacade.listRepositories` with the default query, which filter by `canListRepository` (decision 70) |
 | `searchAccess` | `SearchAccessCompiler.compile(subject, visibilities)` with the subject of `AccessTokenFacade.subjectOf` |
 
 A parity test runs the route function and the facade method over a matrix: visibilities `PUBLIC`, `HIDDEN`, `PRIVATE`; viewers anonymous,
@@ -155,3 +155,15 @@ Each question is settled with the default its proposal gives. The decisions are 
 - **Q4. Hidden repositories in listings.** Settled: `canListRepository` answers as the route does, so a `HIDDEN` repository is not listed
   without `canListHidden` (D2).
 - **Q5. Caching.** Settled: none. Each call evaluates the rules, as the routes do (see Non-goals).
+
+## Decision 70, settled 2026-11-18
+
+The listing rule is decided: `listedRepositories()` follows `canListRepository`. A `HIDDEN` repository is in the set only when the
+viewer holds `canListHidden` on it, which is the condition under which `canListRepository` answers `true`. The two methods agree for
+every viewer.
+
+- The set comes from the repository list (`MavenFacade.listRepositories` with the default query), not from the root directory. The root
+  directory shows a `HIDDEN` repository to every token that can see it, so it would list a repository that the list route never returns.
+- The parity test of group 2 covers a `HIDDEN` repository that the viewer can see but may not list. For that viewer the repository is
+  not in `listedRepositories()` and `canListRepository` answers `false`, while `canReadRepository` answers `true`.
+- The table of D2 and the answer to Q4 follow this decision.

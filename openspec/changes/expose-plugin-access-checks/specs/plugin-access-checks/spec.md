@@ -18,6 +18,11 @@ rule of its own.
 - **WHEN** an anonymous viewer asks whether it can list a `HIDDEN` repository
 - **THEN** the answer is `false`, the same as the listing route
 
+#### Scenario: Hidden repository the viewer can see but may not list
+
+- **WHEN** a token with the read right on a path inside a `HIDDEN` repository, and without `canListHidden`, asks for the listed repositories
+- **THEN** the repository is not in the set, `canListRepository` answers `false`, and `canReadRepository` answers `true`, the same as the list and read routes
+
 #### Scenario: Private repository, token with the read right
 
 - **WHEN** a token with the read right on a `PRIVATE` repository asks whether it can read a path in it

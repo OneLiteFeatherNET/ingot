@@ -17,9 +17,9 @@ chain: this change delegates to the current rules (D2). The switch to the chain 
 
 - [ ] 2.1 `test(maven)`: failing parity tests over the matrix of visibilities (PUBLIC, HIDDEN, PRIVATE) and viewers (anonymous, a token
   without rights, a token with the read right, a token with rights on another repository, a session), comparing each answer of the
-  `Viewer` with the route function for the same input. The test fails on the missing facade. Verify: they fail.
+  `Viewer` with the route function for the same input, and `listedRepositories()` with the list route (decision 70), including a `HIDDEN` repository the viewer can see but may not list. The test fails on the missing facade. Verify: they fail.
 - [ ] 2.2 `feat(maven)`: `ViewerAccessFacade` and `Viewer` in `net.onelitefeather.ingot.access`, delegating to `RepositorySecurityProvider`,
-  `MavenFacade.findRepositories` and `SearchAccessCompiler.compile`, all marked `@ExperimentalIngotPluginApi`. Add the classes to the
+  `MavenFacade.listRepositories` (the source of `listedRepositories()`, decision 70) and `SearchAccessCompiler.compile`, all marked `@ExperimentalIngotPluginApi`. Add the classes to the
   allowlist of `add-plugin-api-artifact`. Verify: the tests of 2.1 pass.
 
 ## 3. Paths and no existence leak (red, then green)
