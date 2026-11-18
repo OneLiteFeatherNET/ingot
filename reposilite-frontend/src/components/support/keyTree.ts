@@ -186,3 +186,17 @@ export const splitMatch = (text: string, query: string): TextPart[] => {
   if (position < text.length) parts.push({ text: text.slice(position), hit: false })
   return parts
 }
+
+// The rows of a nested configuration, with the keys of nested objects joined by dots and the items of arrays numbered by
+// their index. A domain holding a scalar is one row. An empty object or array keeps its key, shown as its brackets.
+const flattenValue = (key: string, value: unknown): [string, string][] => {
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value)
+    if (entries.length === 0) return [[key, Array.isArray(value) ? '[]' : '{}']]
+    return entries.flatMap(([child, item]) => flattenValue(`${key}.${child}`, item))
+  }
+  return [[key, typeof value === 'string' ? value : JSON.stringify(value)]]
+}
+
+export const flattenNested = (configuration: Readonly<Record<string, unknown>>): [string, string][] =>
+  Object.entries(configuration).flatMap(([domain, value]) => flattenValue(domain, value))

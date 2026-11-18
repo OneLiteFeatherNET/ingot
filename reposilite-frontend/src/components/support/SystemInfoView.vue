@@ -24,14 +24,12 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
-import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
-import MdIcon from '../md/MdIcon.vue'
 import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 import KeyValueTree from './KeyValueTree.vue'
-import { OPEN_GROUPS_UP_TO } from './keyTree'
+import { flattenNested } from './keyTree'
 import { tabForFragment } from './systemInfoTabs'
 import { formatUptime } from './uptime'
 
@@ -75,13 +73,8 @@ const entriesOf = (object: Record<string, string> | undefined) => Object.entries
 const environmentEntries = computed(() => entriesOf(info.value?.environment))
 const propertyEntries = computed(() => entriesOf(info.value?.systemProperties))
 const localEntries = computed(() => entriesOf(info.value?.configuration.local))
-const sharedKeys = computed(() => Object.keys(info.value?.configuration.shared ?? {}).length)
-// The configuration sections start open with 20 keys or fewer, as the groups of the trees do.
-const configurationOpen = computed(() => localEntries.value.length + sharedKeys.value <= OPEN_GROUPS_UP_TO)
-// The chevron of the Shared section turns with its open state, which changes when the summary is clicked.
-const sharedOpen = ref(configurationOpen.value)
-watch(configurationOpen, (open) => { sharedOpen.value = open })
-const onSharedToggle = (event: Event) => { sharedOpen.value = (event.target as HTMLDetailsElement).open }
+// The shared configuration is nested JSON per domain. It is flattened to dotted keys, so it reads like the local one.
+const sharedEntries = computed(() => flattenNested(info.value?.configuration.shared ?? {}))
 
 // The tier arrives in lower case. A plugin without a known tier is Community, the default of the server.
 const TIER_LABELS: Record<string, string> = { core: 'Core', official: 'Official', community: 'Community', experimental: 'Experimental' }
@@ -590,29 +583,14 @@ onMounted(() => {
                 heading-id="support-local"
                 :query="filter"
               />
-              <details
-                :open="configurationOpen"
-                class="min-w-0"
-                @toggle="onSharedToggle"
-              >
-                <summary class="md-title-large flex w-full cursor-pointer items-center gap-3 rounded-corner-small py-2 text-on-surface md-focus-ring">
-                  Shared
-                  <MdBadge>{{ sharedKeys }} keys</MdBadge>
-                  <MdIcon
-                    path="M6 9l6 6 6-6"
-                    size="md"
-                    class="ml-auto shrink-0 transition-transform duration-md-short3"
-                    :class="sharedOpen ? 'rotate-180' : ''"
-                  />
-                </summary>
-                <p class="md-body-medium mt-2 text-on-surface-variant">
-                  The filter does not apply to the shared configuration.
-                </p>
-                <pre
-                  tabindex="0"
-                  class="mt-2 overflow-x-auto font-mono text-sm"
-                >{{ JSON.stringify(info.configuration.shared, null, 2) }}</pre>
-              </details>
+              <KeyValueTree
+                :entries="sharedEntries"
+                split="dot"
+                label="Shared configuration"
+                title="Shared"
+                heading-id="support-shared"
+                :query="filter"
+              />
             </section>
           </div>
 
