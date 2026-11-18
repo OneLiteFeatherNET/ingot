@@ -486,14 +486,32 @@ class SharedConfigurationFacade(
     /**
      * The stored document. With [sealed] set, the plain secret values are written as envelopes while a key is active.
      */
-    private fun renderConfiguration(sealed: Boolean = true): String {
+    private fun renderConfiguration(sealed: Boolean = true, keepUnclaimed: Boolean = true): String {
         val root = DEFAULT_OBJECT_MAPPER.createObjectNode()
         getDomainNames().forEach { name ->
             val reference = getSettingsReference<SharedSettings>(name)!!
             val node = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
             root.set<JsonNode>(name, if (sealed) sealSecrets(name, reference.type, node) else node)
         }
+        if (keepUnclaimed) {
+            unclaimedDomains().forEach { (name, node) -> root.set<JsonNode>(name, node) }
+        }
         return DEFAULT_OBJECT_MAPPER.writeValueAsString(root)
+    }
+
+    /**
+     * The rows of the stored document that no registered domain claims, for example the settings of a plugin this build does not
+     * load. They are written back unchanged, so a save of another domain does not drop them.
+     */
+    private fun unclaimedDomains(): List<Pair<String, JsonNode>> {
+        val stored = runCatching { DEFAULT_OBJECT_MAPPER.readTree(sharedConfigurationProvider.fetchConfiguration()) }.getOrNull()
+            ?.takeIf { it.isObject }
+            ?: return emptyList()
+        val claimed = getDomainNames().toSet()
+        return stored.fields().asSequence()
+            .filter { (name) -> name !in claimed }
+            .map { (name, node) -> name to node }
+            .toList()
     }
 
     /**
@@ -503,7 +521,7 @@ class SharedConfigurationFacade(
     fun plainDocument(): String =
         synchronized(stateLock) {
             refreshFromProvider()
-            renderConfiguration(sealed = false)
+            renderConfiguration(sealed = false, keepUnclaimed = false)
         }
 
     /**
