@@ -172,6 +172,84 @@ describe('entryLayout', () => {
 
     expect(nodesOf(layout)[0].elements.map(control => control.scope)).toEqual(['#/properties/id'])
   })
+
+  it('draws a named field before a flag of the same tab when the caller names that order', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        preserveSnapshots: { type: 'boolean' },
+        storageProvider: { oneOf: [{ type: 'object', properties: { type: { type: 'string', const: 'fs' } } }] }
+      }
+    }
+
+    const layout = nodesOf(entryLayout(schema, { order: ['storageProvider', 'preserveSnapshots'] }))
+
+    expect(layout.map(element => element.type), 'the provider section comes first, the flag after it').toEqual(['Control', 'Group'])
+    expect(layout[0].scope).toBe('#/properties/storageProvider')
+    expect(layout[1].elements.map(control => control.scope)).toEqual(['#/properties/preserveSnapshots'])
+  })
+
+  it('draws the cleanup policy with the group filter before the count limits and the repositories after enabled', () => {
+    const schema = {
+      type: 'object',
+      title: 'Cleanup Policy',
+      properties: {
+        id: { type: 'string' },
+        keepLatest: { type: 'integer' },
+        schedule: { type: 'string' },
+        olderThanDays: { type: 'integer' },
+        scope: { type: 'string', enum: ['SNAPSHOTS', 'RELEASES', 'MIRROR_CACHE'] },
+        enabled: { type: 'boolean' },
+        notDownloadedForDays: { type: 'integer' },
+        repositories: { type: 'array', items: { type: 'string' } },
+        groupFilter: { type: 'string' }
+      }
+    }
+
+    const [general] = nodesOf(entryLayout(schema))
+
+    expect(general.elements.map(control => control.scope)).toEqual([
+      '#/properties/enabled',
+      '#/properties/repositories',
+      '#/properties/scope',
+      '#/properties/groupFilter',
+      '#/properties/keepLatest',
+      '#/properties/olderThanDays',
+      '#/properties/notDownloadedForDays',
+      '#/properties/schedule'
+    ])
+  })
+
+  it('draws the branding with the id last in the General group and the appearance section after it', () => {
+    const schema = {
+      type: 'object',
+      title: 'Frontend',
+      properties: {
+        id: { type: 'string' },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        organizationWebsite: { type: 'string' },
+        organizationLogo: { type: 'string' },
+        privacyPolicy: { type: 'string' },
+        icpLicense: { type: 'string' },
+        appearance: { type: 'object', properties: {} }
+      }
+    }
+
+    const [general, appearance] = nodesOf(entryLayout(schema, { exclude: [] }))
+
+    expect(general.elements.map(control => control.scope)).toEqual([
+      '#/properties/title',
+      '#/properties/description',
+      '#/properties/organizationLogo',
+      '#/properties/organizationWebsite',
+      '#/properties/privacyPolicy',
+      '#/properties/icpLicense',
+      '#/properties/id'
+    ])
+    expect(appearance.scope).toBe('#/properties/appearance')
+  })
 })
 
 describe('summaryOf', () => {
