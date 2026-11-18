@@ -1,7 +1,8 @@
 # Proposal
 
-**Status: DEFERRED.** This change is deferred until a plugin needs a login challenge. No code is planned before that
-point. The wire format of the challenge is an open decision, and the choice is the maintainer's.
+**Status: UNBLOCKED (decided 2026-11-18).** The wire format of the challenge is option (a): an optional field on the login
+request body. The change is no longer deferred. Its code still waits for the account throttle (pull request 1 of
+`add-login-protection`).
 
 ## Why
 
@@ -27,16 +28,12 @@ When this change is picked up, it adds a login challenge extension point with th
 
 The commit type and scope for the code is `feat(identity)`. It ships under that type when the change is picked up.
 
-## Open decision
+## Decision: wire format (2026-11-18)
 
-The wire format of the challenge on `/api/auth/login` is not decided. Three options are open, and none is chosen here:
-
-- **(a)** An optional field on the login request body. This changes the OpenAPI snapshot and the frontend types.
-- **(b)** A separate challenge endpoint, called before the login.
-- **(c)** Keep the challenge out of core, and let the plugin serve its own page. The login route stays unchanged.
-
-The `ChallengeRequest` and `ChallengeResponse` shapes are not decided. They follow from the option chosen. The choice is
-the maintainer's, and the trade-offs of each option are in `design.md`.
+The maintainer chose option (a): an optional field on the login request body carries the challenge response on
+`/api/auth/login`. Options (b), a separate challenge endpoint, and (c), a page served by the plugin, are not taken. Their
+trade-offs are recorded in `design.md`. The field name and the `ChallengeRequest` and `ChallengeResponse` shapes are not
+decided yet. They follow from option (a) and are settled in the spec before the code starts.
 
 ## Capabilities
 
@@ -48,9 +45,11 @@ the maintainer's, and the trade-offs of each option are in `design.md`.
 ## Impact
 
 - **Type and scope.** `feat(identity)` for the code, when it is picked up.
-- **Status.** No code, configuration, schema or API change is proposed by this change until the decision is taken and a
-  plugin needs the challenge. Nothing ships before then.
+- **Status.** The API change is the optional field of option (a). It changes the OpenAPI snapshot and the frontend login
+  types. Default behaviour does not change: no provider is registered by default, and a client that sends no field is
+  answered as before.
 - **Dependency.** Pull request 1 of `add-login-protection` (the per-account throttle) must be merged first. The challenge
   is asked only for a name that this throttle delays.
-- **Drop-in analysis.** Not applicable while the change is deferred. When it is picked up, the three checks of
-  `add-login-protection` apply again.
+- **Drop-in analysis.** The change adds no configuration key, environment variable, volume, image change or plugin change.
+  An upstream compose file still starts, an existing data directory is adopted, and `PUID`, `PGID` and `REPOSILITE_OPTS`
+  are untouched. The OpenAPI change is additive.

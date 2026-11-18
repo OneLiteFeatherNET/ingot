@@ -36,3 +36,18 @@ to produce or verify a challenge by default.
 
 - **WHEN** a plugin compiled against the previous plugin API is loaded
 - **THEN** it loads and its behaviour is unchanged
+
+### Requirement: Challenge response travels on the login request
+
+The challenge response SHALL travel as an optional field of the login request body on `/api/auth/login`. A login request that
+carries no such field SHALL be answered exactly as before this change.
+
+#### Scenario: A request without the field
+
+- **WHEN** a client sends a login request without the challenge field
+- **THEN** the answer is the same as before this change, and the OpenAPI document differs only by the added optional field
+
+#### Scenario: A delayed dashboard login with a response
+
+- **WHEN** a delayed dashboard login carries a challenge response in the field and a provider verifies it
+- **THEN** the password is verified once, as the requirement on verified challenges states

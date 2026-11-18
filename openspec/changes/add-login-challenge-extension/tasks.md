@@ -1,7 +1,7 @@
 # Tasks
 
-These tasks wait for the decision on the wire format of the challenge (option a, b or c in `design.md`). They also wait
-until a plugin needs the challenge. Nothing is started before both.
+The wire format is decided: option (a), an optional field on the login request body (`design.md`, decision of 2026-11-18). The tasks
+are unblocked. The remaining dependency is pull request 1 of `add-login-protection` (the per-account throttle), see section 1.
 
 Every commit follows its own Conventional Commits type. The tests are committed first, as `test(identity)`, and seen to
 fail before the production commit, which is `feat(identity)`. Every test follows F.I.R.S.T.: no `Thread.sleep`, the clock
@@ -14,10 +14,11 @@ Depends on pull request 1 of `add-login-protection` (per-account throttle), merg
 - [ ] 1.1 `test(identity)`: failing tests: with no provider registered, a delayed dashboard login is answered `429` with no
   challenge; with a provider registered, it is asked only for a delayed dashboard login and never for Basic or Bearer; a
   verified challenge lets one password check through, and a wrong password continues the delay; a plugin compiled against the
-  previous plugin API still loads (the default methods). Verify: the tests fail before 1.2.
+  previous plugin API still loads (the default methods); a login request without the new field is answered as before. Verify:
+  the tests fail before 1.2.
 - [ ] 1.2 `feat(identity)`: add `LoginChallengeProvider` to the plugin API with default methods, the selection in `PluginLoader`
-  (at most one, the first by load order, with a warning when several are registered), and the branch in `LoginService.login`.
-  Verify: 1.1 passes and `gate-plugin-abi` reports only additive changes.
+  (at most one, the first by load order, with a warning when several are registered), the branch in `LoginService.login`, and the optional challenge field on the login request body (option a).
+  Verify: 1.1 passes, `gate-plugin-abi` reports only additive changes, and the OpenAPI snapshot changes only by the optional field.
 - [ ] 1.3 `docs(identity)`: document the interface for plugin authors in `docs/gitbook/`, with the statement that Ingot ships no
   provider and calls no third-party service. Verify: the page says so in its first paragraph.
 
