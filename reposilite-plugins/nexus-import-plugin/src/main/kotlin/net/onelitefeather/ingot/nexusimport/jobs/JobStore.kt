@@ -50,6 +50,8 @@ data class JobRow(
     val cancelRequested: Boolean,
     val lastError: String?,
     val summary: String?,
+    /** When the job was created, in epoch milliseconds. It orders the job on the Jobs page. */
+    val created: Long = 0L,
 )
 
 /** One row of `nexus_import_asset`: the result of one file, final once written. [detail] names the checksums of a conflict. */
@@ -394,6 +396,7 @@ internal class JobStore(
         cancelRequested = row[jobs.cancelRequested],
         lastError = row[jobs.lastError],
         summary = row[jobs.summary],
+        created = row[jobs.created],
     )
 
     private fun toAssetRecord(row: org.jetbrains.exposed.v1.core.ResultRow) = AssetRecord(
