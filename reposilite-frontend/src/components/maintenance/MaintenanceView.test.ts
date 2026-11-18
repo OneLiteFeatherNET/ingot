@@ -96,6 +96,7 @@ const mountAt = async (address: string) => {
     routes: [
       { path: '/maintenance', name: 'maintenance', component: BLANK },
       { path: '/settings/system-info', name: 'system-info', component: BLANK },
+      { path: '/settings/jobs', name: 'jobs', component: BLANK },
     ],
   })
   await router.push(address)

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, RouterLinkStub } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import RunHistory from './RunHistory.vue'
 import { normalizeRun } from './cleanup'
@@ -37,7 +37,8 @@ const run = (id: number, policyId: string, startedAt: string, overrides = {}) =>
 
 const mountHistory = (props = {}) => {
   wrapper = mount(RunHistory, {
-    props: { runs: [], policyIds: ['snapshots-weekly', 'mirror-cache-nightly'], policy: '', ...props }
+    props: { runs: [], policyIds: ['snapshots-weekly', 'mirror-cache-nightly'], ...props },
+    global: { stubs: { RouterLink: RouterLinkStub } }
   }) as VueWrapper
   return wrapper
 }
@@ -48,17 +49,26 @@ afterEach(() => {
   wrapper?.unmount()
 })
 
-describe('RunHistory order', () => {
-  it('lists the newest run first, whatever order the runs arrive in', () => {
+describe('RunHistory latest run per policy', () => {
+  it('shows only the latest run of each policy, whatever order the runs arrive in', () => {
     mountHistory({
       runs: [
         run(1, 'snapshots-weekly', '2026-10-01T10:00:00Z'),
         run(3, 'snapshots-weekly', '2026-10-03T10:00:00Z'),
-        run(2, 'mirror-cache-nightly', '2026-10-02T10:00:00Z')
+        run(2, 'mirror-cache-nightly', '2026-10-02T10:00:00Z'),
+        run(4, 'mirror-cache-nightly', '2026-10-01T09:00:00Z')
       ]
     })
 
-    expect(rowIds()).toEqual(['3', '2', '1'])
+    expect(rowIds(), 'one row per policy, the newest run of each').toEqual(['3', '2'])
+  })
+
+  it('draws no list of every run', () => {
+    mountHistory({
+      runs: Array.from({ length: 20 }, (_, index) => run(index + 1, 'snapshots-weekly', `2026-10-${String(index + 1).padStart(2, '0')}T10:00:00Z`))
+    })
+
+    expect(rowIds(), 'a single row for the policy with twenty runs').toEqual(['20'])
   })
 
   it('shows that no run has happened yet when the list is empty', () => {
@@ -101,26 +111,19 @@ describe('RunHistory rows', () => {
   })
 })
 
-describe('RunHistory filter', () => {
-  it('shows only the runs of the policy it is filtered to', () => {
-    mountHistory({
-      runs: [
-        run(1, 'snapshots-weekly', '2026-10-01T10:00:00Z'),
-        run(2, 'mirror-cache-nightly', '2026-10-02T10:00:00Z')
-      ],
-      policy: 'mirror-cache-nightly'
-    })
+describe('RunHistory link to all runs', () => {
+  it('links "All runs" to the Jobs page filtered to the cleanup source', () => {
+    mountHistory({ runs: [] })
 
-    expect(rowIds()).toEqual(['2'])
+    const link = wrapper.findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'jobs', query: { kind: 'cleanup' } })
+    expect(link.text()).toBe('All runs')
   })
 
-  it('reports the chosen policy so the parent can keep the filter', async () => {
+  it('draws no policy select, since the tab shows one run per policy', () => {
     mountHistory({ runs: [] })
-    const select = wrapper.find('select')
 
-    select.element.value = 'snapshots-weekly'
-    await select.trigger('change')
-
-    expect(wrapper.emitted('update:policy')?.[0]).toEqual(['snapshots-weekly'])
+    expect(wrapper.find('select').exists()).toBe(false)
   })
 })

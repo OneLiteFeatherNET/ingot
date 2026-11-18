@@ -109,9 +109,15 @@ describe('the Administration tree', () => {
     expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toContain('page:audit')
   })
 
-  it('puts Audit log, Console, Maintenance and Analytics under Monitoring and support, the audit log first', () => {
+  it('puts Audit log, Console, Maintenance, Jobs and Analytics under Monitoring and support, the audit log first', () => {
     expect(linksOf(adminGroups(everything), 'Monitoring and support').map(link => link.key)).toEqual([
-      'page:audit', 'page:console', 'page:maintenance', 'page:analytics'
+      'page:audit', 'page:console', 'page:maintenance', 'page:jobs', 'page:analytics'
+    ])
+  })
+
+  it('lists Jobs under Monitoring and support for a visitor who holds the maintenance node alone', () => {
+    expect(linksOf(adminGroups(only(ADMIN_NODES.maintenance)), 'Monitoring and support').map(link => link.key)).toEqual([
+      'page:maintenance', 'page:jobs'
     ])
   })
 
@@ -296,7 +302,7 @@ describe('the Administration tree of an administrator', () => {
       ['Artifacts', ['Repositories', 'Cleanup policies', 'Javadoc', 'Search index']],
       ['Access', ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check']],
       ['Instance', ['Branding', 'Reverse proxy', 'Migration']],
-      ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Analytics', 'System and support']],
+      ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Jobs', 'Analytics', 'System and support']],
     ])
   })
 

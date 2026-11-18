@@ -624,7 +624,7 @@ describe('IndexPage Administration tree', () => {
     expect(treeGroups(wrapper).map(group => group.findAll('a').map(link => link.text()))).toEqual([
       ['Repositories'],
       ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check'],
-      ['Audit log', 'Console', 'Maintenance', 'Analytics']
+      ['Audit log', 'Console', 'Maintenance', 'Jobs', 'Analytics']
     ])
   })
 
