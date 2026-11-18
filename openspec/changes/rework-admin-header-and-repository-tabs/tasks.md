@@ -77,7 +77,7 @@ Starts after the code PR of group 1 is merged and `fix-surface-hierarchy-and-pag
   the axe checks of `e2e/accessibility.spec.js` are clean.
 - [ ] 3.8 Take the before and after screenshots at 320, 600 and 1440 pixels in light and dark, of an entry and the Overview.
   Verify: below 1240 pixels the screenshots are identical; at 1440 pixels the heading has moved beside the side navigation only.
-- [ ] 3.9 Open the code pull request `feat(ui): place the administration header beside the side navigation`, with the template body
+- [x] 3.9 Open the code pull request `feat(ui): place the administration header beside the side navigation`, with the template body
   and the screenshots. Verify: `gh pr view` shows the exact title, and the body has no em or en dash.
 
 ## 4. Group 3: the repository page is split into tabs (`feat(ui)`)
@@ -110,5 +110,5 @@ Starts after the code PR of group 2 is merged and `MdTabs` from `migrate-content
   axe is clean on each tab.
 - [ ] 4.9 Take the before and after screenshots at 320, 600 and 1440 pixels of the General tab and of one other tab, in light and dark.
   Verify: the type section and the delete action are at the same place on every tab. Attach them to the code pull request.
-- [ ] 4.10 Open the code pull request `feat(ui): split the repository settings into tabs`, with the template body and the screenshots.
+- [x] 4.10 Open the code pull request `feat(ui): split the repository settings into tabs`, with the template body and the screenshots.
   Verify: `gh pr view` shows the exact title, and the body has no em or en dash.
