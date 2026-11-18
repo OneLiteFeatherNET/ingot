@@ -112,7 +112,7 @@ pull request. They are listed here so that the reviewer sees them, and they are 
   - The audit action `LOGIN_THROTTLED` exists in the enum. Only a delayed request writes it, and a delay exists only while
     the account throttle is on.
   - The dashboard's dummy hash for an unknown user is created at startup, not on the first unknown user. It changes the
-    timing of one answer and no content. It is kept on, and it is open question 9 for the maintainer.
+    timing of one answer and no content. It is kept on, as the maintainer decided on 2026-11-18 (open question 9).
 
   What each switch changes once it is on:
   - `INGOT_LOGIN_ACCOUNT_THROTTLE=true` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`; the thresholds are in the

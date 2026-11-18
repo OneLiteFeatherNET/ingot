@@ -13,12 +13,12 @@ that contains the merged proposal, and contains no file under `openspec/`.
 
 - [ ] 1.1 `docs(openspec): propose add-login-protection`: this change only, in its own proposal pull request from the remote main
   branch. Verify: `openspec validate add-login-protection --strict` passes and the dash grep prints nothing.
-- [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 8 on a `429` with `Retry-After` from a remote repository, with a Basic
+- [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 9 on a `429` with `Retry-After` from a remote repository, with a Basic
   credential, and record the result in the description of pull request 1 (design open question 2). Verify: both clients are run
   against a local stub server in a temporary directory, and the exit code and the retry count are recorded.
-- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 9 before pull request 1 is opened. Verify: the
-  answer, or the silence that the defaults stand, is noted in the description of pull request 1. Open question 9 (the
-  dummy hash timing) is the one default that is not behind a switch.
+- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 8 before pull request 1 is opened. Open question 9
+  (the dummy hash timing) was decided on 2026-11-18: eager and ungated, with no switch. Verify: the answer, or the silence that the
+  defaults stand, is noted in the description of pull request 1.
 
 ## 2. Pull request 1: per-account throttling
 
@@ -53,7 +53,7 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
   `AuthenticationFacade` into `login_attempt` under `basic-address|<ip>` (not `address|<ip>`, which the dashboard uses), keep its
   default off, use the injected clock, and add the
   atomic increment after the fifth conflicting write of `LoginAttemptLimiter.recordFailure`. Verify: a test for a counter that
-  conflicts five times (2.3 style) and the existing `AuthenticationFacadeTest` pass.
+  conflicts five times (2.3 style), a test that the legacy counter is written with `INGOT_LOGIN_ACCOUNT_THROTTLE` unset and that the account throttle alone writes no `basic-address|` row, and the existing `AuthenticationFacadeTest` pass.
 - [ ] 2.8 `test(identity)`: an integration test (Testcontainers only here, with the existing harness) that two replicas on one
   PostgreSQL or MariaDB database share the delay. Verify: `heavy` with `HEAVY_SLOTS=8 HEAVY_MIN_MEM_MB=8192` and
   `:reposilite-backend:integration --tests '...LoginThrottle*'` pass.
