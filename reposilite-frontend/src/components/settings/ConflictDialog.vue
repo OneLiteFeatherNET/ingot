@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
@@ -11,18 +11,28 @@ import MdDialogActions from '../md/MdDialogActions.vue'
  * stored settings were reviewed, `differenceCount` says how many changes the review lists; the review itself
  * is a sheet the owner opens, so the dialog keeps no list of its own.
  */
-const props = defineProps({
-  conflict: {
-    type: Object,
-    default: null
-  },
-  differenceCount: {
-    type: Number,
-    default: null
-  }
+interface ConflictState {
+  kind: 'settings' | 'team' | 'nodes' | 'token'
+  name?: string
+  title?: string
+  reviewed?: boolean
+  server?: unknown
+}
+
+const props = withDefaults(defineProps<{
+  conflict?: ConflictState | null
+  differenceCount?: number | null
+}>(), {
+  conflict: null,
+  differenceCount: null
 })
 
-const emit = defineEmits(['review', 'reload', 'overwrite', 'dismiss'])
+const emit = defineEmits<{
+  review: []
+  reload: []
+  overwrite: []
+  dismiss: []
+}>()
 
 // Overwriting drops someone else's change, so it takes a second, explicit press.
 const confirmingOverwrite = ref(false)
@@ -36,14 +46,14 @@ const titleId = useId()
 const bodyId = useId()
 
 const isSettings = computed(() => shown.value?.kind === 'settings')
-const TITLES = {
+const TITLES: Record<string, string> = {
   settings: 'Settings changed elsewhere',
   team: 'Team changed elsewhere',
   nodes: 'Permission nodes changed elsewhere'
 }
-const title = computed(() => TITLES[shown.value?.kind] ?? 'Token changed elsewhere')
+const title = computed(() => TITLES[shown.value?.kind ?? ''] ?? 'Token changed elsewhere')
 
-const onOpenChange = (open) => {
+const onOpenChange = (open: boolean) => {
   if (!open) emit('dismiss')
 }
 </script>

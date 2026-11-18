@@ -15,14 +15,18 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 
-const mountBar = (props = {}) => mount(UnsavedChangesBar, {
+const mountBar = (props: { count?: number; invalid?: boolean; saving?: boolean; firstError?: { label: string; href: string } | null } = {}): VueWrapper => mount(UnsavedChangesBar, {
   props: { count: 1, invalid: false, saving: false, ...props }
-})
+}) as VueWrapper
 
-const buttonNamed = (wrapper, name) => wrapper.findAll('button').find(button => button.text() === name)
+const buttonNamed = (wrapper: VueWrapper, name: string) => {
+  const found = wrapper.findAll('button').find(button => button.text() === name)
+  if (!found) throw new Error(`no button named ${name}`)
+  return found
+}
 
 describe('UnsavedChangesBar', () => {
   it('counts one pending change in the singular', () => {
@@ -124,7 +128,7 @@ describe('UnsavedChangesBar', () => {
   it('opens the review of the changes when the count is pressed', async () => {
     const wrapper = mountBar({ count: 3 })
 
-    await wrapper.findAll('button').find(button => button.text().includes('3 unsaved changes')).trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('3 unsaved changes'))!.trigger('click')
 
     expect(wrapper.emitted('review')).toEqual([[]])
   })

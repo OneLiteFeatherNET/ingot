@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import MdButton from '../md/MdButton.vue'
 
@@ -23,30 +23,27 @@ import MdButton from '../md/MdButton.vue'
  * places it at the bottom of the window. Discard only drops the edits; save writes them. Save is
  * off while a domain has an invalid entry, because the server would refuse the write.
  */
-const props = defineProps({
-  count: {
-    type: Number,
-    required: true
-  },
-  invalid: {
-    type: Boolean,
-    default: false
-  },
-  saving: {
-    type: Boolean,
-    default: false
-  },
-  // The first tab with an error: its label and the address that shows it. The link is drawn while the domain is invalid.
-  firstError: {
-    type: Object,
-    default: null
-  }
+// The first tab with an error: its label and the address that shows it. The link is drawn while the domain is invalid.
+const props = withDefaults(defineProps<{
+  count: number
+  invalid?: boolean
+  saving?: boolean
+  firstError?: { label: string; href: string } | null
+}>(), {
+  invalid: false,
+  saving: false,
+  firstError: null
 })
 
-const emit = defineEmits(['save', 'discard', 'review', 'show-error'])
+const emit = defineEmits<{
+  save: []
+  discard: []
+  review: []
+  'show-error': []
+}>()
 
 // A plain click moves to the tab inside the page. A click with a modifier keeps the browser's own behaviour, such as a new tab.
-const showFirstError = (event) => {
+const showFirstError = (event: MouseEvent) => {
   if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
   event.preventDefault()
   emit('show-error')

@@ -14,29 +14,29 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import type { ImportError } from './settingsImport'
 
 /*
  * Why a settings file was not imported. Nothing of the file is in the draft, so every error has to
  * be fixed in the file itself; the list names the domain and the field of each one.
  */
-const props = defineProps({
-  errors: {
-    type: Array,
-    required: true
-  }
-})
+const props = defineProps<{
+  errors: ImportError[]
+}>()
 
-const emit = defineEmits(['dismiss'])
+const emit = defineEmits<{
+  dismiss: []
+}>()
 
 const groups = computed(() => {
-  const byDomain = new Map()
+  const byDomain = new Map<string, ImportError[]>()
   for (const error of props.errors) {
     if (!byDomain.has(error.domain)) byDomain.set(error.domain, [])
-    byDomain.get(error.domain).push(error)
+    byDomain.get(error.domain)!.push(error)
   }
   return [...byDomain.entries()].map(([domain, errors]) => ({ domain, errors }))
 })
