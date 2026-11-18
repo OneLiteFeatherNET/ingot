@@ -35,6 +35,10 @@ Facts from the sibling notes that this design corrects or keeps:
   The rule here reads the manifest instead, so the sibling's decision D9 (manifest `Implementation-Version`) is kept.
 - The sibling's D8 (the viewer is Core by origin) is kept. Its D1 names the hook of this change, and its D9 names the rule.
 
+Baseline (task 0.1, 2026-11-19): on `origin/main` at `395aab443`, `:reposilite-backend:test` with `--tests 'com.reposilite.plugin.*'`
+and `--tests 'net.onelitefeather.ingot.plugin.*'` ran 164 tests in 21 classes, with 0 failures, 0 errors and 0 skipped. The run was
+green, so a later failure is caused by the change under test.
+
 ## Decisions
 
 ### D1. The hook copies named module jars into `embedded-plugins/`
@@ -63,6 +67,15 @@ run in `buildSrc` with a temporary jar and need no build of the server. The task
 
 Docker: the build stage copies the repository through the build context. A sibling that names a module also keeps that module's
 directory out of `.dockerignore` (the `!reposilite-plugins/<name>` line). This change names no module and adds no line.
+
+Verified (task 0.2, 2026-11-19): in a throwaway checkout with `nexus-import-plugin` named in `embeddedPluginProjects`, the server
+shadow jar holds `embedded-plugins/nexus-import-plugin.jar`. Its SHA-256 (`889381cf8473c822933bbbcfbe03afb30159ec5c8227a94c827c70fa60ddaa9c`)
+equals that of the module's own shadow jar, so the `from` copies the file as it is and does not merge it. `verifyEmbeddedPlugins`
+passed in the same run. D1 is unchanged.
+
+Verified (task 0.3, 2026-11-19): `:reposilite-backend:shadowJar --dry-run` with the module named completes with no cycle reported.
+The real build of the same step, in which the module compiles against the backend with `compileOnly` and the backend's shadow jar
+takes the module's shadow jar, also completes. D1 is unchanged.
 
 ### D2. The version is the manifest attribute `Implementation-Version`
 
@@ -192,6 +205,12 @@ plugin ABI gate of `plugin-abi-gate` runs unchanged.
 - **Losing constructors.** A plugin's constructor runs even when its copy loses (D7). Documented for authors.
 - **Annotation and manifest versions differ.** The rule uses the manifest, and the support bundle shows the annotation (maintainer decision 2).
 - **Tier check.** A module that declares Core would need a jar in the image (maintainer decision 5, settled 2026-11-17). The siblings declare no tier.
+Verified (task 0.4, 2026-11-19): the rule "Core requires a bundled jar" of `add-plugin-support-tiers` is enforced by
+`PluginTierCheck.bundledViolations` (`buildSrc/src/main/kotlin/ingot/tiers/PluginTierCheck.kt`). It fails a module under
+`reposilite-plugins/` that declares `CORE` unless the `Dockerfile` copies its jar into `/app/bundled-plugins`. So yes: an embedded
+module that declares Core would fail the tier check, because an embedded jar is not in the image's bundled directory. A module that
+declares Community or no tier passes, since Community needs no evidence. The embedded module must therefore not declare Core. The
+resolver still shows Core for the origin `EMBEDDED` (D8), so the check, not the runtime, enforces this declaration.
 - **Slip of the sibling chain.** Both siblings wait for this change. Each pull request of this change stands alone, so the
   siblings can start on the merged parts.
 
