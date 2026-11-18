@@ -127,7 +127,7 @@ class AuthenticationFacade(
     /** The failure counter of this instance. It is used unless a shared counter is installed. */
     private val localFailedAddresses = LocalFailedAddresses()
 
-    /** The shared failure counter of the login tables. Installed only while the account throttle is on, see [installSharedFailedAddresses]. */
+    /** The shared failure counter of the login tables. Installed whenever there is a database, see [installSharedFailedAddresses]. */
     @Volatile
     private var sharedFailedAddresses: FailedAddressStore? = null
 

@@ -169,17 +169,16 @@ class LoginPlugin : ReposilitePlugin() {
         }
         accountThrottle?.let { facade<AuthenticationFacade>().installAccountGuard(it) }
 
-        // While the account throttle is on, the per-address counter of Basic and Bearer requests lives in the login tables, so
-        // that replicas count together. Off, each instance counts in its own memory, as before.
-        if (accountThrottleOn) {
-            database?.let { database ->
-                facade<AuthenticationFacade>().installSharedFailedAddresses(
-                    SharedFailedAddressStore(
-                        store = LoginStore(database, clock),
-                        purgeFloor = { maxOf(Duration.ofMinutes(loginSettings.get().lockoutMinutes), LoginAttemptPolicy.MAX_LOCKOUT) },
-                    )
+        // The per-address counter of Basic and Bearer requests lives in the login tables whenever there is a database, so that
+        // replicas count together. It is only consulted while authentication.bruteForceProtection is on, and that switch alone
+        // decides whether it counts; the account throttle does not change it. Without a database, each instance counts in memory.
+        database?.let { database ->
+            facade<AuthenticationFacade>().installSharedFailedAddresses(
+                SharedFailedAddressStore(
+                    store = LoginStore(database, clock),
+                    purgeFloor = { maxOf(Duration.ofMinutes(loginSettings.get().lockoutMinutes), LoginAttemptPolicy.MAX_LOCKOUT) },
                 )
-            }
+            )
         }
 
         // The breached-password check reads its settings on every password change. The offline list of its mode OFFLINE is
