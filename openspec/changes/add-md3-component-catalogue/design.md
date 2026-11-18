@@ -195,7 +195,8 @@ after the maintainer accepts it (proposal question 6). The other three may join 
 helper of `MdNavigationBar.vue:51` and `MdNavigationRail.vue:92`. The helper moves to `src/helpers/` as a pure function of
 the event, so `MdOverflowMenu.vue:138` can use it too. `MdNavigationBar` (80px bar, 64 by 32 pill) and `MdNavigationRail`
 (96px rail, 56 by 32 pill) pass their widths in. Both keep their anchors and their `aria-current` contract, and both are
-swapped only when their screenshots match.
+swapped only when their screenshots match. The anchor `md-navigation-item` sits on a wrapper element with `display: contents` around
+the item (decided 2026-11-18): the wrapper takes no box, and the link or button inside it keeps the layout.
 
 ### D6. The dialog: MdDialog
 
@@ -358,7 +359,8 @@ The change claims no visible change. That claim is checked, not assumed:
   and that is what the tests keep.
 - The segmented move could drop an anchor. The anchor test asserts that `segmented-control` and `segmented-option` are still
   the `data-ingot-component` values of the moved files, and the e2e accessibility suite selects them by those values.
-- A plugin that mounts `CardMenu` could observe the emit rename. The apply step checks for that before the rename lands (proposal question 2).
+- A plugin that mounts `CardMenu` could observe the emit rename. The apply step checks for that before the rename lands (proposal question 2). The old emit name stays as a deprecated alias for
+one release (decided 2026-11-18), so the rename is not BREAKING.
 
 ## Migration plan
 

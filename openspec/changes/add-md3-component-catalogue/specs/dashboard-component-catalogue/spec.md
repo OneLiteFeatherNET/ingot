@@ -54,7 +54,8 @@ except that a panel's open state uses `open` with `update:open`; emits are kebab
 #### Scenario: Card menu emits kebab-case
 
 - **WHEN** the tab of `CardMenu` is chosen
-- **THEN** the component emits `select-tab` with the chosen tab, and `SnippetsCard` receives the tab through `@select-tab`
+- **THEN** the component emits `select-tab` with the chosen tab, `SnippetsCard` receives the tab through `@select-tab`, and the
+  deprecated alias `selectTab` is emitted with the same tab for one release
 
 #### Scenario: Snackbar queue is injected
 
@@ -150,7 +151,8 @@ The renderers `md-text-field-renderer`, `md-text-area-renderer` and `md-select-r
 
 `MdNavigationBar` and `MdNavigationRail` SHALL build each destination from `MdNavigationItem`. The item SHALL render the active
 indicator, the label, a link or a button, and `aria-current="page"` on the active destination. A modified click (a modifier key
-or a non-primary button) SHALL be left to the browser. Both primitives SHALL keep their anchors.
+or a non-primary button) SHALL be left to the browser. Both primitives SHALL keep their anchors. The anchor `md-navigation-item`
+SHALL sit on a wrapper element around the item that uses `display: contents`.
 
 #### Scenario: Modified click left to the browser
 

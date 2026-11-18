@@ -1,5 +1,17 @@
 # Proposal
 
+## Decisions of 2026-11-18
+
+The maintainer settled the points below. Where a decision differs from a default in the questions that follow, the decision applies.
+
+- **Question 2 (CardMenu emit).** The emit is renamed to `select-tab`, and the old name `selectTab` stays as a deprecated alias for
+  one release. The alias keeps plugins working, so the change is not BREAKING and no plugin check blocks it (task 3.20).
+- **Question 6 (select field).** `MdSelect` joins `MdFieldShell` with the 12px trailing icon inset, which moves its chevron by 4px.
+  The file moves with a re-export from its old path.
+- **Commit types.** The groups that add a new primitive (tasks 3.4, 3.16 and 3.17) are `feat(ui)`. The other groups stay `refactor(ui)`.
+- **Anchor of the navigation item.** The anchor `md-navigation-item` sits on a wrapper element with `display: contents` around the
+  item. The wrapper takes no box, and the link or button inside it keeps the layout.
+
 ## Open maintainer questions
 
 Each question has a default that this change is written against. The default is what the tasks implement unless the
