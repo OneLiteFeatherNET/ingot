@@ -67,8 +67,7 @@ const showList = computed(() => open.value && suggestions.value.length > 0)
 const isListed = computed(() => trimmed.value !== '' && hasNode(props.nodes, trimmed.value))
 
 const errorText = computed(() => {
-  if (trimmed.value === '') return ''
-  if (isListed.value) return 'Already listed'
+  if (trimmed.value === '' || isListed.value) return ''
   const parsed = parseNode(trimmed.value)
   return parsed.valid ? '' : parsed.problems[0].message
 })

@@ -145,12 +145,25 @@ describe('NodeEditor', () => {
       expect(wrapper.text()).toContain('Use ingot.repository.<repository>.<read|deploy|delete|manage>')
     })
 
-    it('says "Already listed" for a node that is in the list', async () => {
+    it('does not show an error for a node that is in the list', async () => {
       mountEditor()
 
       await type('ingot.admin.users')
 
-      expect(wrapper.text()).toContain('Already listed')
+      expect(wrapper.text(), 'the duplicate is not refused with a message').not.toContain('Already listed')
+      expect(input().attributes('aria-invalid'), 'the field is not marked invalid').not.toBe('true')
+    })
+
+    it('highlights the listed row when the field is submitted with Add', async () => {
+      Element.prototype.scrollIntoView = vi.fn()
+      mountEditor()
+
+      await type('ingot.admin.users')
+      await wrapper.find('[data-test="add-node"]').trigger('click')
+      await flushPromises()
+
+      expect(row('ingot.admin.users').attributes('data-highlighted'), 'the existing row is highlighted').toBe('true')
+      expect((input().element as HTMLInputElement).value, 'the field is cleared').toBe('')
     })
 
     it('focuses the listed row on Enter instead of adding a second row', async () => {
