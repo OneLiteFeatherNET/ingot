@@ -86,8 +86,8 @@ describe('the Repositories page inside Settings', () => {
   it('shows the detail of one repository at its own address', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.get('h1').text(), 'the page heading keeps the name of the list').toBe('Repositories')
-    expect(wrapper.get('[data-test="repository-name"]').text(), 'the id names the repository in a second level heading').toBe('releases')
+    expect(wrapper.get('h1').text(), 'the page heading names the repository').toBe('releases')
+    expect(wrapper.findAll('h2').filter(heading => heading.text() === 'releases').length, 'no second level heading repeats the name').toBe(0)
   })
 
   it('lifts the reading measure from the page of one repository, so its frame takes the full width', async () => {

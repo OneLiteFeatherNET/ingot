@@ -233,18 +233,12 @@ onMounted(() => {
   >
     <header
       class="flex flex-col gap-4"
-      data-ingot-part="header"
-      :data-ingot-repository="title"
     >
-      <h2
-        data-test="repository-name"
-        class="m-0 min-w-0 break-words md-title-large text-on-surface"
-      >
-        {{ title }}
-      </h2>
       <section
         aria-labelledby="repository-type-title"
         class="flex flex-col gap-3"
+        data-ingot-part="header"
+        :data-ingot-repository="title"
       >
         <h2
           id="repository-type-title"

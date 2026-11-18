@@ -91,18 +91,19 @@ const writePolicyRadios = () => Array.from(document.querySelectorAll<HTMLInputEl
 const buttonNamed = (text: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent?.trim() === text)!
 
 describe('the repository detail page', () => {
-  it('names the repository in the first heading of the detail, the second level heading with its id', async () => {
+  it('does not repeat the repository name in a second level heading, the page frame names it', async () => {
     await mountDetail({ id: 'releases' })
 
-    expect(wrapper.find('h2').text(), 'the first heading of the detail is the id').toBe('releases')
+    const repeated = wrapper.findAll('h2').filter(heading => heading.text() === 'releases')
+    expect(repeated.length, 'no second level heading holds the name of the repository').toBe(0)
   })
 
-  it('draws the id as the heading of the header of the detail', async () => {
+  it('draws the repository type section as the header of the detail, named after the repository', async () => {
     await mountDetail({ id: 'releases' })
 
-    const name = wrapper.get('[data-test="repository-name"]').element
-    expect(name.tagName, 'the id is a second level heading').toBe('H2')
-    expect(name.closest('header'), 'the heading sits in the header of the detail').not.toBeNull()
+    const section = wrapper.get('#repository-type-title').element.closest('section')!
+    expect(section.getAttribute('data-ingot-repository'), 'the header section names the repository').toBe('releases')
+    expect(section.getAttribute('data-ingot-part'), 'the header section is the header part of the detail').toBe('header')
   })
 
   it('starts the headings of the detail at the second level, under the page heading', async () => {
