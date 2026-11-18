@@ -36,14 +36,21 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // When set and the page can show the tab of an error, a button with this label moves to that tab.
-  firstErrorLabel: {
-    type: String,
-    default: ''
+  // The first tab with an error: its label and the address that shows it. The link is drawn while the domain is invalid.
+  firstError: {
+    type: Object,
+    default: null
   }
 })
 
 const emit = defineEmits(['save', 'discard', 'review', 'show-error'])
+
+// A plain click moves to the tab inside the page. A click with a modifier keeps the browser's own behaviour, such as a new tab.
+const showFirstError = (event) => {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  emit('show-error')
+}
 
 const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? 'change' : 'changes'}`)
 </script>
@@ -76,14 +83,15 @@ const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? '
       >
         Fix the errors before saving.
       </p>
-      <MdButton
-        v-if="invalid && firstErrorLabel"
-        variant="text"
-        type="button"
-        @click="emit('show-error')"
+      <a
+        v-if="invalid && firstError"
+        :href="firstError.href"
+        class="md-state-layer md-focus-ring relative -mx-2 inline-flex items-center rounded-corner-small px-2 py-1 md-label-large text-primary underline decoration-1 underline-offset-4"
+        data-test="first-error-link"
+        @click="showFirstError"
       >
-        {{ firstErrorLabel }}
-      </MdButton>
+        Show the first error: {{ firstError.label }}
+      </a>
       <p class="md-body-medium text-on-surface-variant">
         Other instances pick up saved changes within 10 seconds.
       </p>
