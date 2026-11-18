@@ -36,6 +36,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.StorageProviderVariants
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
@@ -51,6 +52,7 @@ import panda.std.asError
 import panda.std.asSuccess
 import panda.std.ok
 import panda.std.reactive.MutableReference
+import java.io.InputStream
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 import java.util.ConcurrentModificationException
@@ -125,21 +127,29 @@ class SharedConfigurationFacade(
     init {
         val jsonSchemaLoader = JsonSchemaLoader()
         val knownSchemes = jsonSchemaLoader.loadGeneratedSchemes().associateBy { it.name }
+        // Read when a schema is served, not here, so a storage plugin that loads after this facade is offered as well.
+        val storageVariants = StorageProviderVariants(
+            registry = extensions.storageProviders,
+            generate = { schemaGenerator.value.generateSchema(it) },
+            warn = { journalist.logger.warn(it) },
+        )
 
         sharedSettingsProvider.domains.forEach { (type, settings) ->
             // Holds the document as it was written when references are on. Consumers read [settings], which then holds the
             // resolved view. Without references the document and the consumer view are the same object, as they always were.
             val written = AtomicReference<SharedSettings?>(null)
+            val generated: Supplier<InputStream> = knownSchemes[type.name]
+                ?.let { Supplier { it.getContent() } }
+                ?: run {
+                    journalist.logger.warn("[SharedConfigurationFacade] Cannot find scheme for $type, scheme has to be generated at runtime")
+                    val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
+                    Supplier { scheme.byteInputStream() }
+                }
             registerSettingsWatcher(
                 DefaultSharedSettingsReference(
                     type = type,
-                    schema = knownSchemes[type.name]
-                        ?.let { Supplier { it.getContent() } }
-                        ?: run {
-                            journalist.logger.warn("[SharedConfigurationFacade] Cannot find scheme for $type, scheme has to be generated at runtime")
-                            val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
-                            Supplier { scheme.byteInputStream() }
-                        },
+                    // The variants of the loaded storage plugins are appended to storageProvider. Without a plugin the bytes are unchanged.
+                    schema = Supplier { storageVariants.apply(generated.get().use { it.readBytes() }).inputStream() },
                     getter = { written.get() ?: settings.get() },
                     setter = { value ->
                         // Resolved before anything is stored, so a failing reference leaves the previous document and view in place.
