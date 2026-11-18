@@ -19,6 +19,7 @@ import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test
 import type { ComponentPublicInstance, Ref } from 'vue'
 import FileBrowserView from './FileBrowserView.vue'
 import BrowserUpload from './FileUpload.vue'
+import MdCard from '../md/MdCard.vue'
 import * as session from '../../store/session'
 
 // The mock above also exports the state the tests set. The real session module does not, so the type says what the mock holds.
@@ -589,6 +590,18 @@ describe('FileBrowserView uploads by repository type', () => {
 
     expect(wrapper.findComponent(BrowserUpload).exists()).toBe(false)
     expect(wrapper.get('[data-test="read-only-explanation"]').text()).toContain('no files of its own')
+  })
+
+  it('draws the read-only explanation on the shared low card', async () => {
+    sessionState.client.value = clientWithTypes({ repositories: [{ id: 'all', type: 'GROUP', typeExplicit: true }] })
+
+    const wrapper = mountAt('all')
+    await flushPromises()
+
+    const card = wrapper.findAllComponents(MdCard).find(each => each.attributes('data-test') === 'read-only-explanation')
+
+    expect(card, 'the explanation is the card primitive, not a hand-built container').toBeDefined()
+    expect(card!.props('variant'), 'the tinted panel is the low card').toBe('low')
   })
 
   it('keeps the upload for a hosted repository the user may write to', async () => {

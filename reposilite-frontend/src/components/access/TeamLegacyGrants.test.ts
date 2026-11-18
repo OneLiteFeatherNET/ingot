@@ -19,6 +19,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import TeamLegacyGrants from './TeamLegacyGrants.vue'
+import MdCard from '../md/MdCard.vue'
 import type { TeamGrant } from './accessTeams'
 
 const GRANTS = (): TeamGrant[] => [
@@ -77,6 +78,16 @@ describe('TeamLegacyGrants', () => {
     mountGrants()
 
     expect(wrapper!.findAll('input, button, textarea, select')).toHaveLength(0)
+  })
+
+  it('draws the grants on the shared low card', () => {
+    mountGrants()
+
+    const cards = wrapper!.findAllComponents(MdCard)
+
+    expect(cards, 'the grants sit on one card primitive, not on a hand-built container').toHaveLength(1)
+    expect(cards[0].props('variant'), 'the tinted panel is the low card').toBe('low')
+    expect(cards[0].find('[data-test="legacy-team-grants"]').exists(), 'the collapsible grants are inside the card').toBe(true)
   })
 
   it('shows nothing for a team without grants', () => {

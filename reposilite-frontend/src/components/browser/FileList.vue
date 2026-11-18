@@ -27,6 +27,7 @@ import { canDeleteAt, widestActionCount } from './rowActions'
 import usePlaceholders from '../../store/placeholders'
 import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -277,11 +278,14 @@ const entryUrl = (file: BrowserFile) =>
         </MdButton>
       </div>
     </section>
-    <section
+    <MdCard
       v-if="!loading && files.error"
+      as="section"
+      variant="low"
       data-ingot-state="error"
+      data-test="list-failure"
       role="alert"
-      class="mt-3 flex flex-col items-start gap-3 rounded-corner-extra-large bg-surface-container-low p-6"
+      class="mt-3 flex flex-col items-start gap-3"
     >
       <BrowserIcon
         :name="failure.icon"
@@ -320,6 +324,6 @@ const entryUrl = (file: BrowserFile) =>
           Go to repository root
         </MdButton>
       </div>
-    </section>
+    </MdCard>
   </div>
 </template>

@@ -82,10 +82,11 @@
       v-else
       class="flex flex-col gap-3"
     >
-      <div
+      <MdCard
         v-for="(element, index) in control.data"
         :key="`${control.path}-${index}`"
-        class="min-w-0 rounded-corner-medium bg-surface-container-low p-4"
+        variant="low"
+        class="min-w-0"
       >
         <!-- The remove button sits inside the card, so every card spans the same width as the fields. -->
         <div class="flex items-start gap-2">
@@ -122,7 +123,7 @@
             </svg>
           </MdIconButton>
         </div>
-      </div>
+      </MdCard>
     </div>
   </section>
 </template>
@@ -135,6 +136,7 @@ import { useVanillaArrayControl } from '@dzikoysk/vue-vanilla'
 import { computed, defineComponent } from 'vue'
 import { createEntryValue } from './util'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { descriptionText } from './description'
@@ -160,6 +162,7 @@ export default defineComponent({
   components: {
     DispatchRenderer,
     MdButton,
+    MdCard,
     MdIconButton,
     MdTextField
   },
