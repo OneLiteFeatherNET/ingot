@@ -25,6 +25,7 @@ import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
 import { nestedUischemas } from './nestedLayouts'
+import { unavailableStorageTypeOf } from './repositoryWizard'
 import {
   SETTING_TYPE_OPTIONS,
   blankEntriesNotice,
@@ -168,6 +169,8 @@ const typeLabelOf = (type) => SETTING_TYPE_OPTIONS.find(option => option.value =
 const keepLabel = computed(() => (typeValue.value === '' ? 'Keep it as before' : `Keep ${typeLabelOf(typeValue.value)}`))
 // Shown under the type of a group that still has storage, which a group does not use.
 const unusedStorageNote = computed(() => unusedStorageNoteOf(latest.value))
+// A stored storage type the served schema does not offer, such as a plugin that is not installed. It is kept as it is.
+const unavailableStorage = computed(() => unavailableStorageTypeOf(latest.value, props.collection.itemSchema))
 const pendingType = ref(null)
 const typeNotice = ref('')
 const pendingRemovals = computed(() => (pendingType.value === null
@@ -419,6 +422,15 @@ const formLayout = computed(() => {
         />
       </div>
     </section>
+
+    <p
+      v-if="drawsForm && unavailableStorage && (whole || order?.includes('storageProvider'))"
+      data-test="unavailable-storage"
+      role="status"
+      class="md-body-medium text-warning"
+    >
+      The storage provider "{{ unavailableStorage }}" is not installed. The settings keep it unchanged until it is installed again.
+    </p>
 
     <div
       v-if="drawsForm"

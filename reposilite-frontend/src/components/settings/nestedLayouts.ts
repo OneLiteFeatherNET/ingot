@@ -78,6 +78,17 @@ export const orderedLayout = (schema: JsonSchema, fields: readonly string[]): Ve
   }
 }
 
+/*
+ * The property names of a schema in the order its form draws them: the registered layout of its title first, then the
+ * rest in schema order. A schema without a registered layout keeps the schema order. Used where a form is drawn by hand.
+ */
+export const fieldOrderOf = (schema: JsonSchema): string[] => {
+  const form = NESTED_FORMS.find(entry => matches(entry, schema))
+  const keys = Object.keys(schema.properties ?? {})
+  const named = (form?.fields ?? []).filter(name => keys.includes(name))
+  return [...named, ...keys.filter(name => !named.includes(name))]
+}
+
 const registryEntryOf = (form: NestedForm): JsonFormsUISchemaRegistryEntry => {
   /*
    * JSON Forms asks the tester about the schema, and then reads the layout of the entry that matched, for that same

@@ -31,6 +31,7 @@
 
 import { validateNewId } from './collections'
 import type { SettingsSchema } from './collections'
+import { fieldOrderOf } from './nestedLayouts'
 import type { RepositoryEntry } from '../../types/settings'
 import { errorMessage } from '../../helpers/toast'
 import { validatePrincipalName } from '../access/accessPrincipals'
@@ -51,7 +52,7 @@ export interface Remote {
 export interface WizardDraft {
   type: string
   basics: { id: string; visibility: string; description: string; tags: string }
-  storage: { kind: string; quota: string; bucketName: string; region: string; endpoint: string; accessKey: string; secretKey: string }
+  storage: { kind: string; quota: string; bucketName: string; region: string; endpoint: string; accessKey: string; secretKey: string; plugin: Record<string, string> }
   upstream: { remotes: Remote[]; store: boolean; storagePolicy: string; metadataMaxAge: string | number; resolutionCacheMaxEntries: string | number }
   members: string[]
   access: { mode: string; team: string; newTeam: string | null; role: string; machine: boolean; machineName: string | null; scope: string }
@@ -59,6 +60,28 @@ export interface WizardDraft {
 
 /* The field errors of a step, keyed by the field that has the problem. */
 export type StepErrors = Record<string, string>
+
+/* One storage variant the served repository schema offers: its type id, its label, what it means, and its schema. */
+export interface StorageVariant {
+  value: string
+  label: string
+  who: string
+  schema: SettingsSchema
+}
+
+/* One field of a plugin storage variant, in the order its settings class lists it. */
+export interface StorageField {
+  name: string
+  label: string
+  type: string
+  required: boolean
+}
+
+/* The options that turn the draft into a repository entry: the optional fields the schema has, and the storage variants it offers. */
+export interface EntryOptions {
+  optional: { description: boolean; tags: boolean }
+  storageVariants?: StorageVariant[]
+}
 
 /* One step of the wizard: its key and the label the stepper shows. */
 export interface StepDef {
@@ -192,7 +215,9 @@ export const emptyDraft = (): WizardDraft => ({
     region: '',
     endpoint: '',
     accessKey: '',
-    secretKey: ''
+    secretKey: '',
+    // The fields of a plugin storage variant, by field name, as the user typed them.
+    plugin: {}
   },
   // The remote repositories of a proxy. `store` keeps what is fetched here, which is the cache.
   upstream: {
@@ -263,6 +288,52 @@ export const chooseType = (draft: WizardDraft, type: string): WizardDraft => {
   return draft
 }
 
+const BUILT_IN_STORAGE: StorageVariant[] = [
+  { value: 'fs', label: 'Filesystem', who: "Files are kept on the server's disk. The quota caps how much the repository may hold.", schema: {} },
+  { value: 's3', label: 'S3 bucket', who: 'Files are kept in an S3 bucket, or in a service that speaks the S3 API.', schema: {} }
+]
+
+/*
+ * The storage variants the served repository schema offers. The built-in filesystem and S3 variants come first, in that order;
+ * a plugin variant follows, sorted by its type id. Without a storage property in the schema, the built-in variants are offered.
+ */
+export const storageVariantsOf = (itemSchema: SettingsSchema | undefined): StorageVariant[] => {
+  const oneOf = itemSchema?.properties?.storageProvider?.oneOf
+  if (!Array.isArray(oneOf)) return BUILT_IN_STORAGE
+  const variants = oneOf.flatMap((branch): StorageVariant[] => {
+    const value = branch.properties?.type?.const
+    if (typeof value !== 'string') return []
+    const builtIn = BUILT_IN_STORAGE.find(entry => entry.value === value)
+    return [{
+      value,
+      label: builtIn?.label ?? String(branch.title ?? value),
+      who: builtIn?.who ?? String(branch.description ?? ''),
+      schema: branch
+    }]
+  })
+  const builtIn = BUILT_IN_STORAGE.flatMap(entry => variants.filter(variant => variant.value === entry.value))
+  const plugins = variants.filter(variant => !BUILT_IN_STORAGE.some(entry => entry.value === variant.value))
+    .sort((a, b) => a.value.localeCompare(b.value))
+  return [...builtIn, ...plugins]
+}
+
+/* The fields of a plugin variant the wizard asks for. The built-in variants have their own fields, so they list none. */
+export const pluginFieldsOf = (itemSchema: SettingsSchema | undefined, kind: string): StorageField[] => {
+  if (kind === 'fs' || kind === 's3') return []
+  const variant = storageVariantsOf(itemSchema).find(entry => entry.value === kind)
+  return variant ? pluginFieldsOfVariant(variant.schema) : []
+}
+
+/*
+ * The stored storage type of an entry when the served schema does not offer it (a plugin that is not installed), or null.
+ * The Storage tab names it and keeps it; nothing replaces it with a built-in variant.
+ */
+export const unavailableStorageTypeOf = (entry: { storageProvider?: unknown }, itemSchema: SettingsSchema | undefined): string | null => {
+  const type = (entry.storageProvider as { type?: unknown } | undefined)?.type
+  if (typeof type !== 'string' || type === '') return null
+  return storageVariantsOf(itemSchema).some(variant => variant.value === type) ? null : type
+}
+
 /* Which optional repository fields the schema defines. Other agents add them; the wizard shows them only when present. */
 export const optionalFieldsOf = (itemSchema: SettingsSchema | undefined): { description: boolean; tags: boolean } => {
   const properties = itemSchema?.properties ?? {}
@@ -305,10 +376,36 @@ export const validateBasics = (basics: WizardDraft['basics'], { existingIds = []
   return errors
 }
 
-export const validateStorage = (storage: WizardDraft['storage']): StepErrors => {
+/* The fields a plugin variant requires, or undefined for the built-in kinds, which have their own rules. */
+export const pluginRequirementsOf = (kind: string, variants: StorageVariant[]): { required: string[] } | undefined => {
+  if (kind === 'fs' || kind === 's3') return undefined
+  const variant = variants.find(entry => entry.value === kind)
+  return { required: variant ? pluginFieldsOfVariant(variant.schema).filter(field => field.required).map(field => field.name) : [] }
+}
+
+/* The fields of a variant's schema, without the discriminator, in the order its registered layout draws them, else the settings class order. */
+export const pluginFieldsOfVariant = (schema: SettingsSchema | undefined): StorageField[] => {
+  const required = Array.isArray(schema?.required) ? schema.required : []
+  const properties = schema?.properties ?? {}
+  return fieldOrderOf(schema ?? {})
+    .filter(name => name !== 'type')
+    .map(name => [name, properties[name]] as const)
+    .map(([name, property]) => ({
+      name,
+      label: String((property as { title?: string }).title ?? name),
+      type: String((property as { type?: string }).type ?? 'string'),
+      required: required.includes(name)
+    }))
+}
+
+export const validateStorage = (storage: WizardDraft['storage'], plugin?: { required: string[] }): StepErrors => {
   const errors: StepErrors = {}
   if (storage.kind === 's3') {
     if (storage.bucketName.trim() === '') errors.bucketName = 'Enter the bucket name.'
+  } else if (plugin && storage.kind !== 'fs') {
+    plugin.required.forEach((name) => {
+      if (String(storage.plugin?.[name] ?? '').trim() === '') errors[name] = `Enter a value for ${name.charAt(0).toUpperCase()}${name.slice(1)}.`
+    })
   } else if (!QUOTA_PATTERN.test(storage.quota.trim())) {
     errors.quota = 'Use a size such as 500MB or 10GB, or a percentage such as 90%.'
   }
@@ -376,12 +473,13 @@ export interface StepContext {
   existingIds?: string[]
   teams?: { name: string }[]
   principals?: { name: string }[]
+  storageVariants?: StorageVariant[]
 }
 
-export const validateStep = (key: string, draft: WizardDraft, { existingIds = [], teams = [], principals = [] }: StepContext = {}): StepErrors => {
+export const validateStep = (key: string, draft: WizardDraft, { existingIds = [], teams = [], principals = [], storageVariants = [] }: StepContext = {}): StepErrors => {
   if (key === 'type') return TYPE_CHOICES.some(choice => choice.value === draft.type) ? {} : { type: 'Choose a type.' }
   if (key === 'basics') return validateBasics(draft.basics, { existingIds })
-  if (key === 'storage') return validateStorage(draft.storage)
+  if (key === 'storage') return validateStorage(draft.storage, pluginRequirementsOf(draft.storage.kind, storageVariants))
   if (key === 'upstream') return validateUpstream(draft.upstream)
   if (key === 'members') return validateMembers(draft.members, existingIds)
   if (key === 'access') return validateAccess(draft, { teams, principals })
@@ -394,8 +492,23 @@ export const firstInvalidStep = (draft: WizardDraft, context: StepContext): stri
   .map(step => step.key)
   .find(key => Object.keys(validateStep(key, draft, context)).length > 0) ?? null
 
-const storageProviderOf = (storage: WizardDraft['storage']): Record<string, string> => {
-  if (storage.kind !== 's3') return { type: 'fs', quota: storage.quota.trim() }
+/* The block of a plugin variant: its type, then the fields that are filled. Numbers are written as numbers, blank fields are left out. */
+const pluginProviderOf = (kind: string, storage: WizardDraft['storage'], variant: StorageVariant): Record<string, unknown> => {
+  const provider: Record<string, unknown> = { type: kind }
+  pluginFieldsOfVariant(variant.schema).forEach((field) => {
+    const text = String(storage.plugin?.[field.name] ?? '').trim()
+    if (text === '') return
+    provider[field.name] = field.type === 'integer' || field.type === 'number' ? Number(text) : text
+  })
+  return provider
+}
+
+const storageProviderOf = (storage: WizardDraft['storage'], variants: StorageVariant[] = []): Record<string, unknown> => {
+  if (storage.kind !== 's3') {
+    const variant = storage.kind === 'fs' ? undefined : variants.find(entry => entry.value === storage.kind)
+    if (variant) return pluginProviderOf(storage.kind, storage, variant)
+    return { type: 'fs', quota: storage.quota.trim() }
+  }
   const provider: Record<string, string> = { type: 's3', bucketName: storage.bucketName.trim() }
   // Keys are kept exactly as typed; only the blank ones are left out, so the server uses its default.
   S3_OPTIONAL_KEYS.forEach(key => {
@@ -426,7 +539,7 @@ const proxyFieldsOf = (upstream: WizardDraft['upstream']): Record<string, unknow
  * repository; a proxy has its remotes and cache settings; a group has its members, as references.
  * Optional fields are written only when the schema defines them.
  */
-export const repositoryEntry = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }): RepositoryEntry => {
+export const repositoryEntry = (draft: WizardDraft, { optional, storageVariants = [] }: EntryOptions): RepositoryEntry => {
   const entry: RepositoryEntry = {
     id: draft.basics.id,
     visibility: draft.basics.visibility,
@@ -435,7 +548,7 @@ export const repositoryEntry = (draft: WizardDraft, { optional }: { optional: { 
   if (draft.type === 'GROUP') {
     entry.proxied = draft.members.map(id => ({ reference: id }))
   } else {
-    entry.storageProvider = storageProviderOf(draft.storage)
+    entry.storageProvider = storageProviderOf(draft.storage, storageVariants)
     if (draft.type === 'PROXY') Object.assign(entry, proxyFieldsOf(draft.upstream))
   }
   if (optional.description) entry.description = draft.basics.description.trim()
@@ -448,7 +561,10 @@ export const describeVisibility = (value: string): string => {
   return option ? `${option.label}. ${option.who}` : ''
 }
 
-export const describeStorage = (storage: WizardDraft['storage']): string => {
+export const describeStorage = (storage: WizardDraft['storage'], storageVariants: StorageVariant[] = []): string => {
+  if (storage.kind !== 's3' && storage.kind !== 'fs' && storageVariants.some(variant => variant.value === storage.kind)) {
+    return storageVariants.find(variant => variant.value === storage.kind)!.label
+  }
   if (storage.kind !== 's3') return `Filesystem, quota ${storage.quota.trim()}`
   const region = storage.region.trim()
   return `S3 bucket "${storage.bucketName.trim()}"${region ? `, region ${region}` : ''}`
@@ -469,7 +585,7 @@ export const describeAccess = (draft: WizardDraft): string => {
 }
 
 /* The review table: what the repository will be, in the order the wizard asked for it. */
-export const summaryRows = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }): { label: string; value: string }[] => {
+export const summaryRows = (draft: WizardDraft, { optional, storageVariants = [] }: EntryOptions): { label: string; value: string }[] => {
   const rows: { label: string; value: string }[] = [
     { label: 'Repository', value: draft.basics.id },
     { label: 'Type', value: typeLabelOf(draft.type) },
@@ -480,11 +596,11 @@ export const summaryRows = (draft: WizardDraft, { optional }: { optional: { desc
   if (draft.type === 'PROXY') {
     rows.push({ label: 'Remote repositories', value: draft.upstream.remotes.map(remote => remote.url.trim()).join(', ') })
     rows.push({ label: 'Cache', value: draft.upstream.store ? 'Fetched files are kept in the cache storage' : 'Fetched files are not kept' })
-    rows.push({ label: 'Cache storage', value: describeStorage(draft.storage) })
+    rows.push({ label: 'Cache storage', value: describeStorage(draft.storage, storageVariants) })
   } else if (draft.type === 'GROUP') {
     rows.push({ label: 'Members', value: draft.members.join(', ') })
   } else {
-    rows.push({ label: 'Storage', value: describeStorage(draft.storage) })
+    rows.push({ label: 'Storage', value: describeStorage(draft.storage, storageVariants) })
   }
   rows.push({ label: 'Access', value: describeAccess(draft) })
   return rows
@@ -558,12 +674,12 @@ export const snippetsFor = ({ id, url, tokenName }: { id: string; url: string; t
  * The order is the order of a clean failure: whatever fails, everything before it exists and
  * nothing after it was started. `result` collects what the success step shows.
  */
-export const buildActions = (draft: WizardDraft, { optional }: { optional: { description: boolean; tags: boolean } }, ports: WizardPorts): { actions: WizardAction[]; result: WizardResult } => {
+export const buildActions = (draft: WizardDraft, options: EntryOptions, ports: WizardPorts): { actions: WizardAction[]; result: WizardResult } => {
   const id = draft.basics.id
   const { access } = draft
   const team = teamNameOf(draft)
   const machine = access.mode !== 'none' && access.machine ? machineNameOf(draft).trim() : null
-  const entry = repositoryEntry(draft, { optional })
+  const entry = repositoryEntry(draft, options)
   const result: WizardResult = {
     secret: null,
     tokenName: machine,

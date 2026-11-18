@@ -53,11 +53,13 @@ import {
   machineNameOf,
   newTeamNameOf,
   optionalFieldsOf,
+  pluginFieldsOf,
   repositoryUrl,
   rolesFor,
   runActions,
   snippetsFor,
   stepsFor,
+  storageVariantsOf,
   summaryRows,
   typeLabelOf,
   validateStep
@@ -91,19 +93,6 @@ const { client } = useSession()
 const router = useRouter()
 const { productionUrl } = usePlaceholders()
 
-const STORAGE_OPTIONS = [
-  {
-    value: 'fs',
-    label: 'Filesystem',
-    who: "Files are kept on the server's disk. The quota caps how much the repository may hold."
-  },
-  {
-    value: 's3',
-    label: 'S3 bucket',
-    who: 'Files are kept in an S3 bucket, or in a service that speaks the S3 API.'
-  }
-]
-
 const ROLE_LABELS = ROLES.map(role => ({ value: role.value, label: role.label }))
 const SCOPE_OPTIONS = MACHINE_SCOPES.map(scope => ({ value: scope.value, label: scope.label }))
 
@@ -133,18 +122,22 @@ const scopeOptions = computed(() => (draft.type === 'HOSTED' ? SCOPE_OPTIONS : S
 const addressOf = computed(() => repositoryUrl({ base: productionUrl, id: draft.basics.id }))
 const itemSchema = computed(() => configuration.schemas.value.maven?.properties?.repositories?.items)
 const optional = computed(() => optionalFieldsOf(itemSchema.value))
+// The storage kinds the served schema offers: the built-in ones, then the plugin variants. The fields of the chosen plugin variant follow.
+const storageVariants = computed(() => storageVariantsOf(itemSchema.value))
+const storageFields = computed(() => pluginFieldsOf(itemSchema.value, draft.storage.kind))
+const entryOptions = computed(() => ({ optional: optional.value, storageVariants: storageVariants.value }))
 const existingIds = computed(() => (configuration.configurations.value.maven?.repositories ?? []).map(idText))
 // The teams and the principals the access step offers and checks names against. Loaded when the step opens.
 const teams = ref([])
 const principals = ref([])
 const accessLoadError = ref('')
-const context = computed(() => ({ existingIds: existingIds.value, teams: teams.value, principals: principals.value }))
+const context = computed(() => ({ existingIds: existingIds.value, teams: teams.value, principals: principals.value, storageVariants: storageVariants.value }))
 const stepErrors = computed(() => validateStep(stepKey.value, draft, context.value))
 const shownErrors = computed(() => (attempted.value ? stepErrors.value : {}))
 // The messages of the refused step, listed in the error summary that takes the focus when a step is refused.
 const errorSummary = ref(null)
 const errorList = computed(() => Object.values(shownErrors.value).filter(message => typeof message === 'string' && message !== ''))
-const summary = computed(() => summaryRows(draft, { optional: optional.value }))
+const summary = computed(() => summaryRows(draft, entryOptions.value))
 const addRemote = () => draft.upstream.remotes.push(emptyRemote())
 const removeRemote = (index) => draft.upstream.remotes.splice(index, 1)
 const teamOptions = computed(() => [
@@ -152,7 +145,7 @@ const teamOptions = computed(() => [
   ...teams.value.map(team => ({ value: team.name, label: team.name }))
 ])
 // The labels of the actions the review shows before anything runs. The ports are never called for it.
-const planLabels = computed(() => buildActions(draft, { optional: optional.value }, {}).actions.map(action => action.label))
+const planLabels = computed(() => buildActions(draft, entryOptions.value, {}).actions.map(action => action.label))
 const unsavedNote = computed(() => {
   const titles = unref(configuration.dirtyDomains).map(domain => configuration.titleOf(domain))
   return titles.length > 0 ? `There are unsaved changes in ${titles.join(', ')}. Creating the repository saves them too.` : ''
@@ -245,7 +238,7 @@ const create = async () => {
       focusErrorSummary()
       return
     }
-    plan.value = { ...buildActions(draft, { optional: optional.value }, ports), mode: draft.access.mode }
+    plan.value = { ...buildActions(draft, entryOptions.value, ports), mode: draft.access.mode }
     Object.assign(progress, createProgress(plan.value.actions))
   }
   running.value = true
@@ -470,7 +463,7 @@ const onModalUpdate = (open) => {
               {{ draft.type === 'PROXY' ? 'Where the cached files are kept' : 'Where the files are kept' }}
             </legend>
             <MdRadio
-              v-for="option in STORAGE_OPTIONS"
+              v-for="option in storageVariants"
               :key="option.value"
               v-model="draft.storage.kind"
               name="storage-kind"
@@ -496,7 +489,7 @@ const onModalUpdate = (open) => {
             :error="Boolean(shownErrors.quota)"
             :error-text="shownErrors.quota ?? ''"
           />
-          <template v-else>
+          <template v-else-if="draft.storage.kind === 's3'">
             <MdTextField
               id="wizard-bucket"
               v-model="draft.storage.bucketName"
@@ -541,6 +534,22 @@ const onModalUpdate = (open) => {
               variant="outlined"
               autocomplete="new-password"
               supporting-text="Optional. Masked here and in the settings."
+            />
+          </template>
+          <template v-else>
+            <MdTextField
+              v-for="field in storageFields"
+              :id="`wizard-plugin-${field.name}`"
+              :key="field.name"
+              :model-value="draft.storage.plugin[field.name] ?? ''"
+              :label="field.label"
+              variant="outlined"
+              autocomplete="off"
+              :required="field.required"
+              :supporting-text="field.required ? '' : 'Optional. Empty uses the server default.'"
+              :error="Boolean(shownErrors[field.name])"
+              :error-text="shownErrors[field.name] ?? ''"
+              @update:model-value="draft.storage.plugin[field.name] = $event"
             />
           </template>
         </div>
