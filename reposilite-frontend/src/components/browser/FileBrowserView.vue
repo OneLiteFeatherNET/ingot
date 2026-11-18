@@ -28,6 +28,7 @@ import BrowserUpload from './FileUpload.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import { typeBadgeOf } from '../../store/maven/repositoryTypes'
+import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { errorMessage } from '../../helpers/toast'
 import { classifyListingError } from './listingError'
@@ -248,11 +249,13 @@ const toggleCompactMode = () => {
         :can-edit-members="isManager === true"
         @retry="retry"
       />
-      <section
+      <MdCard
         v-if="readOnlyType !== ''"
+        as="section"
+        variant="low"
         data-test="read-only-explanation"
         aria-labelledby="browser-read-only-title"
-        class="mt-8 flex items-start gap-3 rounded-corner-large bg-surface-container-low p-4"
+        class="mt-8 flex items-start gap-3"
       >
         <BrowserIcon
           name="lock"
@@ -269,7 +272,7 @@ const toggleCompactMode = () => {
             {{ READ_ONLY_TEXT[readOnlyType] }}
           </p>
         </div>
-      </section>
+      </MdCard>
       <BrowserUpload
         v-else-if="canUpload"
         :qualifier="qualifier"

@@ -6,6 +6,7 @@ import { useSession } from '../../store/session'
 import useQualifier from '../../store/qualifier'
 import FileUpload, { type VueUploadItem } from 'vue-upload-component'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
@@ -212,7 +213,13 @@ const uploadFiles = () => {
       v-if="isEnabled"
       class="mt-4"
     >
-      <ul class="divide-y divide-outline-variant overflow-hidden rounded-corner-medium bg-surface-container-low">
+      <MdCard
+        as="ul"
+        variant="low"
+        padding="none"
+        class="divide-y divide-outline-variant overflow-hidden"
+        data-test="upload-files"
+      >
         <li
           v-for="file in files"
           :key="file.name"
@@ -240,7 +247,7 @@ const uploadFiles = () => {
             <BrowserIcon name="close" />
           </MdIconButton>
         </li>
-      </ul>
+      </MdCard>
 
       <div class="mt-4 space-y-1">
         <MdCheckbox v-model="checksumsEnabled">
@@ -251,9 +258,11 @@ const uploadFiles = () => {
         </MdCheckbox>
       </div>
 
-      <div
+      <MdCard
         v-if="stubPomEnabled"
-        class="mt-3 grid gap-3 rounded-corner-large bg-surface-container-low p-4 sm:grid-cols-3"
+        variant="low"
+        class="mt-3 grid gap-3 sm:grid-cols-3"
+        data-test="stub-pom"
       >
         <MdTextField
           v-model="groupId"
@@ -273,7 +282,7 @@ const uploadFiles = () => {
           supporting-text="For example 3.0.0"
           required
         />
-      </div>
+      </MdCard>
 
       <div class="mt-4">
         <MdTextField
