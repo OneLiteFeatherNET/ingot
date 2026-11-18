@@ -92,3 +92,37 @@ describe('CardMenu tabs', () => {
     expect(indicatorOf(tabNamed('Gradle Kotlin')).classes(), 'an inactive tab has no visible indicator').toContain('bg-transparent')
   })
 })
+
+describe('CardMenu tab choice', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+    localStorage.clear()
+  })
+
+  it('emits select-tab with the name of the chosen tab', async () => {
+    mountMenu()
+
+    await tabNamed('Gradle Kotlin').trigger('click')
+
+    expect(wrapper!.emitted('select-tab')?.at(-1), 'the parent hears the new tab under the kebab-case name').toEqual(['Gradle Kotlin'])
+  })
+
+  it('emits selectTab with the same tab name as its deprecated alias', async () => {
+    mountMenu()
+
+    await tabNamed('Gradle Kotlin').trigger('click')
+
+    expect(wrapper!.emitted('selectTab')?.at(-1), 'the alias carries the same tab name for one release').toEqual(['Gradle Kotlin'])
+  })
+
+  it('emits the first tab on mount so the parent starts in sync', () => {
+    mountMenu()
+
+    expect(wrapper!.emitted('select-tab')?.[0], 'the default tab is announced before any click').toEqual(['Maven'])
+  })
+})
