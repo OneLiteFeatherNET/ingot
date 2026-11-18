@@ -375,16 +375,6 @@
     "count": 1
   },
   {
-    "file": "src/components/renderers/OneOfRenderer.vue",
-    "match": "max-w-[560px]",
-    "count": 1
-  },
-  {
-    "file": "src/components/renderers/OneOfRenderer.vue",
-    "match": "min-w-[280px]",
-    "count": 1
-  },
-  {
     "file": "src/components/repositories/RepositoriesTable.vue",
     "match": "min-[1920px]:table-cell",
     "count": 4

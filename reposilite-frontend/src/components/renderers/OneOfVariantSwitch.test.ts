@@ -84,7 +84,9 @@ const mountStorage = (data: Record<string, unknown>) => {
 
 const select = () => wrapper!.find('select') as DOMWrapper<HTMLSelectElement>
 const lastData = () => (wrapper!.emitted('change') as Array<[{ data: { storageProvider: Record<string, unknown> } }]>).at(-1)![0].data.storageProvider
-const dialogCard = () => document.querySelector('[role="alertdialog"]')
+// The dialog is open while its headline is rendered. The modal root keeps its role until the leave transition ends,
+// and the transition stub of the test utils never ends it, so the root alone does not say that the dialog is open.
+const dialogCard = () => (document.querySelector('[role="alertdialog"] h2') ? document.querySelector('[role="alertdialog"]') : null)
 const dialogButton = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
   .find(button => button.textContent.trim() === text)!
 
@@ -254,6 +256,8 @@ describe('the switch dialog on the shared dialog', () => {
 
   it('returns focus to the variant select when the switch is cancelled', async () => {
     mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await flushPromises()
+    select().element.focus()
     await select().setValue('1')
     await flushPromises()
 
@@ -284,7 +288,7 @@ describe('the switch dialog on the shared dialog', () => {
     const filled = [...document.querySelectorAll<HTMLElement>('[role="alertdialog"] button[data-variant]')]
       .filter(button => button.getAttribute('data-variant') === 'filled')
 
-    expect(filled.map(button => button.textContent!.trim()), 'the confirm is the only filled button').toEqual(['Switch'])
+    expect(filled.map(button => button.textContent.trim()), 'the confirm is the only filled button').toEqual(['Switch'])
     expect(dialogButton('Cancel').getAttribute('data-variant')).toBe('text')
   })
 
