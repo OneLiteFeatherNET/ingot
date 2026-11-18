@@ -4,6 +4,11 @@
 # label of one area), and the release pull request needs one full run before it can be merged. The aggregate
 # "Heavy tests" reports the outcome and is the only check a branch rule has to name.
 #
+# The merge queue has no labels. On a merge_group event the gate reads the diff of the merge group through
+# ci_scope.sh instead and starts Container images, Helm chart and Dashboard end-to-end when their scope changed. Every
+# other heavy job stays off there. Container images and Helm chart are required checks, so they report on every merge
+# group: they run, or they are skipped, which counts as success, exactly as on a pull request without a label.
+#
 # Fork safety: plain pull_request only. GitHub withholds secrets and gives a read-only token to a fork pull request,
 # even when a maintainer added the label, and no job here uses a secret. Only users with triage or write access can
 # add a label, so the label is the permission check.
@@ -16,6 +21,8 @@ on:
   pull_request:
     branches: [ "main" ]
     types: [ "opened", "reopened", "synchronize", "labeled", "unlabeled" ]
+  merge_group:
+    types: [ "checks_requested" ]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +30,7 @@ permissions:
 
 # A label that does not start with "ci:" gets a group of its own, so adding "bug" cancels no heavy run in progress.
 # Adding or removing a "ci:" label lands in the shared group, cancels the running one and starts a fresh decision.
+# A merge group falls back to its ref, which is unique per queue entry, and is never cancelled.
 concurrency:
   group: "heavy-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && (github.event.action == 'labeled' || github.event.action == 'unlabeled') && !startsWith(github.event.label.name, 'ci:')) && github.run_id || 'run' }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -52,11 +60,18 @@ jobs:
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
+          # A merge group is scoped by its diff, so both of its ends have to be present. A string, because a number 0
+          # would read as false in the expression.
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
 
+      # A merge group passes the scope flags of its diff. A missing range or a failing diff leaves the scope file
+      # absent, and the gate then runs every job a merge group can start.
       - name: "Decide which heavy jobs run"
         id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
+          BASE: ${{ github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.merge_group.head_sha }}
           ACTION: ${{ github.event.action }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -64,10 +79,15 @@ jobs:
           REPO: ${{ github.repository }}
           REF: ${{ github.ref }}
         run: |
+          scope="$RUNNER_TEMP/heavy-scope.txt"
+          if [ "$EVENT_NAME" = "merge_group" ] && [ -n "$BASE" ] && [ -n "$HEAD" ] \
+             && git diff --no-renames --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/heavy-changed.txt"; then
+            bash .github/scripts/ci_scope.sh < "$RUNNER_TEMP/heavy-changed.txt" > "$scope" || rm -f "$scope"
+          fi
           python3 .github/scripts/heavy_gate.py decide \
             --event-name "$EVENT_NAME" --action "$ACTION" --labels "$LABELS" \
             --head-ref "$HEAD_REF" --head-repo "$HEAD_REPO" --repo "$REPO" --ref "$REF" \
-            --output "$GITHUB_OUTPUT"
+            --scope-file "$scope" --output "$GITHUB_OUTPUT"
 
   # Required check. Green on an ordinary pull request that asked for nothing, follows the heavy jobs when a label
   # asked for them, and is red on a release pull request until every heavy job ran in full and passed.

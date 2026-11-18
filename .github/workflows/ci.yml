@@ -1,7 +1,9 @@
-# Builds and tests the project on pull requests and on pushes to main.
+# Builds and tests the project on pull requests, in the merge queue and on pushes to main.
 #
-# A pull request runs every light job. A push to main runs only what main needs: the Coverage (backend) and
-# Coverage (frontend) jobs, which write the Gradle and npm caches and the Codecov base that pull requests read.
+# A pull request runs every light job. The merge queue runs them again on the merge group, scoped by the diff of the
+# merge group the same way. Only the Build job is left to merge-queue.yml, because its shared workflow cannot run
+# there. A push to main runs only what main needs: the Coverage (backend) and Coverage (frontend) jobs, which write
+# the Gradle and npm caches and the Codecov base that pull requests read.
 # Everything else was already proven by the pull request that merged. A nightly run and a manual run cover the whole
 # workflow. The container images, the Helm chart, the HA smoke test and the dashboard end-to-end job are heavy and
 # run from heavy.yml.
@@ -12,6 +14,9 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # The merge queue. Every required check of this workflow has to report on the merge group, or the queue stalls.
+  merge_group:
+    types: [ "checks_requested" ]
   # Nightly full run of this workflow on main, so main gets every job once a day even though a push runs a subset.
   schedule:
     - cron: "23 3 * * *"
@@ -21,7 +26,9 @@ permissions:
   contents: read
 
 # Superseded pull request runs are cancelled. Runs on main, scheduled runs and manual runs are not: each one
-# finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one.
+# finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one. A merge
+# group has no pull request number and falls back to its ref, which is unique per queue entry, so entries never cancel
+# each other.
 concurrency:
   group: "ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -31,8 +38,10 @@ jobs:
   # sourceCompatibility/targetCompatibility 17, so 17 is what has to keep working.
   build:
     name: "Build"
-    # Pull requests only, as the name gradle-build-pr says. Its first job runs
-    # dorny/paths-filter without a checkout, which works on pull_request because the action
+    # Pull requests only, as the name gradle-build-pr says. In the merge queue merge-queue.yml reports this job's
+    # required check, "Build / Aggregate test results", because the filter below cannot run on a merge group.
+    #
+    # Its first job runs dorny/paths-filter without a checkout, which works on pull_request because the action
     # asks the API for the changed files, and fails on push because there it needs a
     # working copy to diff. A failing filter job takes the build with it, since the build
     # job's `if` carries no status function and is therefore implicitly gated on success.
@@ -277,15 +286,16 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
-          # Both ends of the pull request have to be present for the diff below.
+          # Both ends of the pull request or the merge group have to be present for the diff below.
           fetch-depth: 0
 
+      # A merge group is scoped like a pull request, from the diff of its base to its head.
       - name: "Check which coverage jobs are needed"
         id: filter
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
 
@@ -304,8 +314,8 @@ jobs:
           }
 
           # Pushes to main always run everything.
-          if [ "$EVENT" != "pull_request" ]; then
-            full_run "Not a pull request"
+          if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "merge_group" ]; then
+            full_run "Not a pull request or a merge group"
           fi
 
           # A missing or unreadable range is no reason to skip the tests.
@@ -366,19 +376,20 @@ jobs:
 
       # Decides which backend tests a pull request can reach (select_backend_tests.py, design Decision 3). Only a pull
       # request gets a partial run. A push to main, a missing diff and a failing script all give mode=full, so the
-      # full suite and the Codecov upload run. The dashboard-only path below keeps its own decision.
+      # full suite and the Codecov upload run. The dashboard-only path below keeps its own decision. A merge group is
+      # selected like a pull request, from its own diff.
       - name: "Select the backend tests"
         id: select
         if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           selection="$RUNNER_TEMP/backend-selection.txt"
           changed="$RUNNER_TEMP/backend-changed.txt"
-          if [ "$EVENT" != "pull_request" ]; then
-            printf '%s\n' "mode=full" "reason=not a pull request" > "$selection"
+          if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "merge_group" ]; then
+            printf '%s\n' "mode=full" "reason=not a pull request or a merge group" > "$selection"
           elif [ -z "$BASE" ] || [ -z "$HEAD" ] || ! git diff --name-only "$BASE...$HEAD" > "$changed"; then
             printf '%s\n' "mode=full" "reason=the pull request diff is not available" > "$selection"
           elif ! python3 .github/scripts/select_backend_tests.py < "$changed" > "$selection"; then
@@ -419,17 +430,18 @@ jobs:
         run: |
           ./gradlew --build-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
 
-      # A pull request that the selection sends to the full suite runs every unit test, with no report and no upload.
+      # A pull request or a merge group that the selection sends to the full suite runs every unit test, with no report
+      # and no upload. Only main writes the Codecov base.
       - name: "Run the backend unit tests"
-        if: ${{ github.event_name == 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew --build-cache :reposilite-backend:test
 
       - name: "Run tests with coverage"
-        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew --build-cache :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
-        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
@@ -474,14 +486,14 @@ jobs:
         id: scope
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -uo pipefail
 
-          # The full suite unless a pull request diff is readable and the script can place every change.
+          # The full suite unless a pull request or merge group diff is readable and the script can place every change.
           result="frontend_scope=full"
-          if [ "$EVENT" = "pull_request" ] \
+          if { [ "$EVENT" = "pull_request" ] || [ "$EVENT" = "merge_group" ]; } \
              && [ -n "$BASE" ] && [ -n "$HEAD" ] \
              && git cat-file -e "${BASE}^{commit}" && git cat-file -e "${HEAD}^{commit}" \
              && git diff --name-status "$BASE...$HEAD" > "$RUNNER_TEMP/name-status.txt"; then
@@ -600,7 +612,7 @@ jobs:
       - name: "Write the results to the job summary"
         if: always()
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           CANARY_OUTCOME: ${{ steps.canaries.outcome }}
         run: |
           {
