@@ -17,7 +17,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProblemAlert from './ProblemAlert.vue'
-import MdAlert from '../md/MdAlert.vue'
 import type { Problem } from './types'
 
 const problem: Problem = { title: 'Bad Request', detail: 'The URL carries user information', status: 400 }
@@ -26,7 +25,7 @@ describe('the problem alert', () => {
   it('draws the problem with the shared MdAlert in the error tone', () => {
     const wrapper = mount(ProblemAlert, { props: { problem } })
 
-    const alert = wrapper.findComponent(MdAlert)
+    const alert = wrapper.findComponent({ name: 'MdAlert' })
     expect(alert.exists(), 'the problem is drawn by MdAlert, not a box of its own').toBe(true)
     expect(alert.props('tone'), 'a failed call is an error').toBe('error')
   })
@@ -41,6 +40,6 @@ describe('the problem alert', () => {
   it('draws nothing without a problem', () => {
     const wrapper = mount(ProblemAlert, { props: { problem: null } })
 
-    expect(wrapper.findComponent(MdAlert).exists(), 'no alert is drawn when nothing failed').toBe(false)
+    expect(wrapper.findComponent({ name: 'MdAlert' }).exists(), 'no alert is drawn when nothing failed').toBe(false)
   })
 })

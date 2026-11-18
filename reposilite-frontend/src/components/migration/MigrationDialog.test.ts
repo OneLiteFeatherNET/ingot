@@ -17,7 +17,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import MigrationDialog from './MigrationDialog.vue'
-import MdDialog from '../md/MdDialog.vue'
 
 const mounted: VueWrapper[] = []
 
@@ -100,7 +99,7 @@ describe('the migration dialog', () => {
   it('draws its frame from the shared MdDialog', async () => {
     const { wrapper } = await mountDialog()
 
-    expect(wrapper.findComponent(MdDialog).exists(), 'the frame is MdDialog, not a frame of its own').toBe(true)
+    expect(wrapper.findComponent({ name: 'MdDialog' }).exists(), 'the frame is MdDialog, not a frame of its own').toBe(true)
   })
 
   it('leaves the stacking layer and the scrim to MdDialog, with no z-50 literal of its own', async () => {

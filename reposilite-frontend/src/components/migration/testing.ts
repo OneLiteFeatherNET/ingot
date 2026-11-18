@@ -138,7 +138,7 @@ interface MountOptions {
   attachTo?: string | HTMLElement
 }
 
-const mountWith = async (component: Component, {
+const mountWith = async <C extends Component>(component: C, {
   props = {},
   api = fakeApi(),
   wizard = createWizardStore(),
@@ -155,7 +155,8 @@ const mountWith = async (component: Component, {
   })
   await router.push(at)
   await router.isReady()
-  const wrapper = mount(component, {
+  const target: Component = component
+  const wrapper = mount(target, {
     props,
     attachTo,
     global: {
