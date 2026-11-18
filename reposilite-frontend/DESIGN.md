@@ -406,6 +406,40 @@ Reduced motion is one rule, in the `base` layer of `src/style.css`. It shortens 
 animation and transition of the dashboard to 0.01ms, so `md-state-layer` and the linear
 progress animation respect `prefers-reduced-motion` without a rule of their own.
 
+## API convention
+
+Every primitive in `src/components/md/` follows the rules below, so that one component reads the same as the next. The
+tests `apiConvention.test.ts` and `catalogue.test.ts` check them, and a name that breaks a rule is listed in the table of
+deprecated aliases or it fails.
+
+- **Values** use `modelValue` with `update:modelValue`. A panel's open state uses `open` with `update:open`, so
+  `MdSideSheet` keeps `v-model:open`.
+- **Emits** are kebab-case, such as `select-tab`. The `update:` events keep the camel case of `modelValue`.
+- **Destructive intent** is the Boolean `error` prop. A variant named `error` still works on `MdButton` as an alias.
+- **Icons** go in the named slots `leading` and `trailing`. No other slot is named `icon`, except the aliases of
+  `MdButton` and `MdChip`.
+- **A toggle** is the Boolean `toggle` with `selected`. The string values of `MdChip` are an alias.
+- **Components take no class strings.** A class goes on the root through `class`, and a changed part of a component is
+  a slot.
+- **No component keeps module state.** State comes from `provide` and `inject`, and the application provides the default.
+- **Attributes that are not props** go to the native element. `class` and `style` stay on the root.
+
+### Deprecated aliases
+
+Each row is a name that still works for one release. The release that ships the change keeps it, and the release after
+removes it. A name that is not in this table breaks the convention.
+
+| Component | Name | Kind | Replaced by | Removed in |
+| --- | --- | --- | --- | --- |
+| `MdOverflowMenu` | `triggerClass` | prop | `trigger` slot | the release after this change |
+| `MdButton` | `variant` | value | `error` prop | the release after this change |
+| `MdButton` | `icon` | slot | `leading` slot | the release after this change |
+| `MdChip` | `icon` | slot | `leading` slot | the release after this change |
+| `MdChip` | `toggle` | prop | Boolean `toggle` with `selected` | the release after this change |
+| `CardMenu` | `selectTab` | emit | `select-tab` | the release after this change |
+
+The `variant` row names the value `error` of the prop `variant`, and the `toggle` row names its string values.
+
 ## Primitives
 
 All primitives live in `src/components/md/` and are imported directly. Each one is a single
