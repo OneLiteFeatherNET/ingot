@@ -23,6 +23,7 @@ import com.reposilite.configuration.shared.EnumResolver
 import com.reposilite.configuration.shared.SCHEMA_OPTION_PRESET
 import com.reposilite.configuration.shared.SettingsModule
 import com.reposilite.configuration.shared.SubtypeResolver
+import com.reposilite.configuration.shared.application.settingsSchemaGenerator
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationProvider
 import com.reposilite.configuration.shared.SharedSettingsProvider
@@ -105,6 +106,30 @@ internal class StorageProviderVariantsDropInTest {
         assertThat(served)
             .describedAs("build-time maven schema after the variant seam compared with the golden schema of main")
             .isEqualTo(golden("maven-build-schema-main.json"))
+    }
+
+    @Test
+    fun `served maven schema of the generator that reads the live registry is byte-identical to the schema of main without a plugin`() {
+        // given: a facade whose generator reads the registry of the server, which holds no storage plugin
+        val journalist = InMemoryLogger()
+        val extensions = Extensions(journalist)
+        val facade = SharedConfigurationFacade(
+            journalist = journalist,
+            schemaGenerator = lazy { settingsSchemaGenerator(extensions.storageProviders) },
+            failureFacade = FailureFacade(journalist),
+            sharedSettingsProvider = SharedSettingsProvider(mapOf(MavenSettings::class.java to mutableReference(MavenSettings()))),
+            sharedConfigurationProvider = MemoryProvider(),
+            extensions = extensions,
+            entityTags = EntityTagSigner.ephemeral(),
+        )
+
+        // when: the schema of the maven settings is served
+        val served = facade.getSettingsReference<MavenSettings>("maven")!!.schema.get().use { it.readBytes() }
+
+        // then: the bytes are the bytes of main
+        assertThat(served)
+            .describedAs("served maven schema of the live registry generator compared with the runtime golden schema of main")
+            .isEqualTo(golden("maven-runtime-schema-main.json"))
     }
 
 }
