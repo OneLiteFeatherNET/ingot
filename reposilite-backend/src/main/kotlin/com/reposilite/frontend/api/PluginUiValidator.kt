@@ -40,6 +40,7 @@ internal object PluginUiValidator {
     private const val MAX_REFRESH = 300
     private const val CODE_LIMIT = 4000
     private const val LINK_LIMIT = 500
+    private const val MAX_LIST_PAGE = 100
     private val CODE_LANGUAGES = listOf("plain", "kotlin", "groovy", "xml", "properties")
     private val LINK_CHARACTERS = Regex("[A-Za-z0-9._~/?=&-]+")
 
@@ -100,6 +101,10 @@ internal object PluginUiValidator {
                 is PluginUiBlock.LinkBlock -> {
                     if (block.label.isEmpty() || block.label.length > LABEL_LIMIT) add("label of $where must be 1 to $LABEL_LIMIT characters")
                     linkProblem(block.href)?.let { add("href of $where: $it") }
+                }
+                is PluginUiBlock.ListBlock -> {
+                    pathProblem(plugin, block.source, "source of $where")?.let(::add)
+                    if (block.pageSize !in 1..MAX_LIST_PAGE) add("pageSize ${block.pageSize} of $where must be 1 to $MAX_LIST_PAGE")
                 }
             }
         }

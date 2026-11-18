@@ -8,10 +8,38 @@ A plugin can change the dashboard in four ways today: it declares pages, it fill
 
 ## What a plugin can do today
 
-- **Declare pages.** A plugin adds its own pages to the dashboard with the `plugin-ui` facade. The text, tables, forms, actions and status blocks are drawn by the dashboard's own components, so the plugin chooses the words and the order. See [Dashboard pages](../../references/plugins/plugin-api.md#dashboard-pages).
+- **Declare pages.** A plugin adds its own pages to the dashboard with the `plugin-ui` facade. The text, tables, lists, code snippets, links, forms, actions and status blocks are drawn by the dashboard's own components, so the plugin chooses the words and the order. See [Dashboard pages](../../references/plugins/plugin-api.md#dashboard-pages).
 - **Fill placeholders.** A plugin can substitute a value into the bundled `index.html` and `.js` files with `FrontendFacade.registerPlaceholder`. A placeholder carries a value, not a rule. See [Frontend placeholders](../../references/plugins/plugin-api.md#frontend-placeholders).
 - **Ship a stylesheet.** A plugin delivers one CSS file that the dashboard loads for signed in callers. The file is checked when the server starts, and the rules sit in a layer of their own. See [Ship a stylesheet](#ship-a-stylesheet) below.
 - **Set the appearance.** Colours, the logo, the favicon and the footer text are configuration, see [Customize branding](../../configure/dashboard/customize-branding.md). They are settings, not CSS.
+
+## Example: a list of items
+
+A list page reads its items from a route of the plugin. The route answers one page at a time, and `next` is the cursor of the page after it, or null for the last page:
+
+```json
+{
+  "items": [
+    { "title": "example-lib 1.2.0", "subtitle": "com.example:example-lib", "chips": ["jar", "1.2.0"], "href": "/browse/releases/com/example/example-lib/1.2.0" }
+  ],
+  "next": "page-2"
+}
+```
+
+The plugin declares the list with the same `source` route. The dashboard draws the rows, adds "Load more" while `next` is a text, and sends the cursor back as `cursor=page-2`:
+
+```kotlin
+facade<PluginUiFacade>().forPlugin(this).registerPage(
+    PluginUiPage(
+        id = "catalogue",
+        title = "Catalogue",
+        area = "maintenance",
+        blocks = listOf(PluginUiBlock.ListBlock(source = "/api/plugins/example/items", pageSize = 50)),
+    )
+)
+```
+
+The route must be below `/api/plugins/example/`. The list shows the items as they come, so the route is the one that filters what the viewer may read.
 
 ## What a plugin can aim at
 

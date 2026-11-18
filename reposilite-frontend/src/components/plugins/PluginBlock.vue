@@ -26,7 +26,7 @@ import { JsonForms } from '@jsonforms/vue'
 import { createURL, handleRequest } from '../../store/client'
 import { useConfiguration } from '../../store/configuration'
 import { copyToClipboard, selectText } from '../card/copySnippet'
-import { displayValue, failureText, linkAllowed, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
+import { displayValue, failureText, linkAllowed, listRows, pathAllowed, tableRows, BLOCK_TYPES, type PluginBlockDefinition } from './pluginBlocks'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -37,7 +37,7 @@ const { renderers } = useConfiguration()
 
 // The request of a block: credentials and the CSRF header, the same as every other call of the dashboard.
 const send = (config: { method?: Method; url?: string; data?: unknown }) => axios.request(handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, ...config, url: createURL(config.url as string) }))
-const read = (path: string) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders }))
+const read = (path: string, params?: Record<string, string>) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, params }))
 
 const known = computed(() => BLOCK_TYPES.includes(props.block?.type ?? ''))
 
@@ -89,6 +89,31 @@ const keyValueRows = computed(() => {
 })
 
 const table = computed(() => tableRows(Array.isArray(data.value) ? data.value : []))
+
+// List: the first page at once, then the next page on request. The rows of every page are kept, and the cut is stated.
+const listItems = ref<unknown[]>([])
+const listNext = ref<string | null>(null)
+const listLoaded = ref(false)
+const list = computed(() => listRows(listItems.value))
+const loadList = async (cursor?: string) => {
+  if (refused.value || !sourcePath.value) return
+  loading.value = true
+  try {
+    const response = await read(sourcePath.value, cursor ? { cursor } : undefined)
+    const page = Array.isArray(response.data?.items) ? response.data.items : []
+    listItems.value = cursor ? [...listItems.value, ...page] : page
+    listNext.value = typeof response.data?.next === 'string' ? response.data.next : null
+    listLoaded.value = true
+    error.value = null
+  } catch (failure) {
+    error.value = `Could not load the list: ${failureText(failure)}`
+  } finally {
+    loading.value = false
+  }
+}
+const loadMore = () => {
+  if (listNext.value) loadList(listNext.value)
+}
 
 // Action: a confirm text is asked for first, then the call is sent.
 const confirming = ref(false)
@@ -160,6 +185,8 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
   load()
 } else if (props.block?.type === 'form') {
   loadForm()
+} else if (props.block?.type === 'list') {
+  loadList()
 }
 </script>
 
@@ -310,6 +337,83 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
       >
         {{ formMessage.text }}
       </p>
+    </template>
+
+    <template v-else-if="block.type === 'list'">
+      <ul
+        v-if="list.shown.length"
+        class="flex flex-col"
+      >
+        <li
+          v-for="(row, index) in list.shown"
+          :key="index"
+          class="flex flex-col gap-1 py-3"
+        >
+          <a
+            v-if="row.link"
+            :href="row.link"
+            class="md-title-medium text-primary break-all"
+          >
+            {{ row.title }}
+          </a>
+          <p
+            v-else
+            class="md-title-medium text-on-surface break-all"
+          >
+            {{ row.title }}
+          </p>
+          <p
+            v-if="row.subtitle"
+            class="md-body-medium text-on-surface-variant break-all"
+          >
+            {{ row.subtitle }}
+          </p>
+          <ul
+            v-if="row.chips.length"
+            class="flex flex-wrap gap-2"
+          >
+            <li
+              v-for="(chip, chipIndex) in row.chips"
+              :key="chipIndex"
+              class="md-label-medium rounded-corner-full bg-surface-container px-2 py-1"
+            >
+              {{ chip }}
+            </li>
+          </ul>
+          <p
+            v-if="row.linkRefused"
+            class="md-body-medium text-error"
+          >
+            Link not shown
+          </p>
+        </li>
+      </ul>
+      <p
+        v-else-if="listLoaded && list.total === 0"
+        class="md-body-large text-on-surface-variant"
+      >
+        Nothing to show.
+      </p>
+      <p
+        v-if="list.cut"
+        class="md-body-small text-on-surface-variant"
+      >
+        Showing {{ list.shown.length }} of {{ list.total }} items.
+      </p>
+      <p
+        v-if="list.skipped"
+        class="md-body-small text-on-surface-variant"
+      >
+        Skipped {{ list.skipped }} without a title.
+      </p>
+      <button
+        v-if="listNext && !list.cut"
+        type="button"
+        class="md-label-large text-primary self-start"
+        @click="loadMore"
+      >
+        Load more
+      </button>
     </template>
 
     <template v-else-if="block.type === 'action'">
