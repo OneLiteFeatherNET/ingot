@@ -11,7 +11,7 @@ shows the server's decisions and never makes them.
 ### Requirement: Second step of the sign-in
 
 When a password or LDAP sign-in answers `mfaRequired`, the sign-in dialog SHALL show a second step with the methods the
-server listed. The step SHALL offer a code field, a recovery code option, and a passkey action when the server lists a
+server listed. The step SHALL offer a code field, a recovery code option, and a passkey action in addition to the code field when the server lists a
 passkey. The passkey action SHALL be hidden where WebAuthn is not supported.
 
 #### Scenario: A user with an authenticator code signs in
@@ -26,12 +26,17 @@ passkey. The passkey action SHALL be hidden where WebAuthn is not supported.
 
 ### Requirement: Passkey sign-in button
 
-The sign-in dialog SHALL show a passkey sign-in action above the password fields only when the server announces the
-first-factor passkey switch.
+The sign-in dialog SHALL show a passkey sign-in action above the password fields only when `GET /api/auth/providers` answers `passkeyFirstFactor: true`
+and the browser supports WebAuthn.
+
+#### Scenario: The button appears when the signal is set
+
+- **WHEN** the login providers answer `passkeyFirstFactor: true` and the browser supports WebAuthn
+- **THEN** the passkey sign-in action is shown above the password fields
 
 #### Scenario: The button appears only when announced
 
-- **WHEN** the login providers answer without the passkey first-factor switch
+- **WHEN** the login providers answer `passkeyFirstFactor: false` or without that field
 - **THEN** no passkey sign-in action is shown
 
 ### Requirement: Factor management on the account page
@@ -63,7 +68,8 @@ dialog SHALL NOT close before the user confirms that they stored the codes.
 ### Requirement: Step-up before sensitive actions
 
 A sensitive action SHALL open the step-up dialog only when the server answers `step_up_required`. After a successful
-step-up the action SHALL be retried once. The dashboard SHALL NOT keep a clock of its own for the step-up window.
+step-up the action SHALL be retried once. The dashboard SHALL NOT keep a clock of its own for the step-up window. The step-up dialog SHALL offer a passkey in addition to the
+code field when the user has a passkey, and SHALL NOT offer it instead of the code field.
 
 #### Scenario: The action is retried after step-up
 
