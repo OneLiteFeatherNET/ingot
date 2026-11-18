@@ -39,7 +39,7 @@ internal class ConsoleSocketOutbox(
     private val onFailure: (Exception) -> Unit,
     capacity: Int = CONSOLE_SOCKET_QUEUE_CAPACITY,
     threadFactory: ThreadFactory = ThreadFactory { Thread(it, "ingot-console-socket-writer").apply { isDaemon = true } },
-) {
+) : ConsoleOutbox {
 
     private val queue = ArrayBlockingQueue<String>(capacity)
 
@@ -59,7 +59,7 @@ internal class ConsoleSocketOutbox(
     }
 
     /** Queues [line] without waiting. Returns false when the line was dropped because the queue is full, or the outbox is closed. */
-    fun offer(line: String): Boolean {
+    override fun offer(line: String): Boolean {
         synchronized(lock) {
             if (closed) {
                 return false
@@ -74,7 +74,7 @@ internal class ConsoleSocketOutbox(
     }
 
     /** Queues [line], waiting for room if needed. Returns early without queuing when the outbox is closed. */
-    fun put(line: String) {
+    override fun put(line: String) {
         synchronized(lock) { placeDropMarker() }
         while (!closed) {
             if (queue.offer(line, PUT_POLL_MILLIS, MILLISECONDS)) {
@@ -84,7 +84,7 @@ internal class ConsoleSocketOutbox(
     }
 
     /** Stops the writer and releases the queued lines. Lines offered or put afterwards are refused. Safe to call more than once. */
-    fun close() {
+    override fun close() {
         synchronized(lock) {
             if (closed) {
                 return
