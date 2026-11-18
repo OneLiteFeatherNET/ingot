@@ -761,6 +761,13 @@
       "states": []
     },
     {
+      "name": "md-avatar",
+      "file": "src/components/md/MdAvatar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-breadcrumb",
       "file": "src/components/md/MdBreadcrumb.vue",
       "stability": "experimental",

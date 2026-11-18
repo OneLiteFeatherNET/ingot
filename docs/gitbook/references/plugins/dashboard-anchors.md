@@ -99,6 +99,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `mapping-step` | experimental | `src/components/migration/MappingStep.vue` | none | none | none |
 | `maven-options-panel` | experimental | `src/components/repositories/MavenOptionsPanel.vue` | none | none | none |
 | `md-alert` | experimental | `src/components/md/MdAlert.vue` | none | none | none |
+| `md-avatar` | experimental | `src/components/md/MdAvatar.vue` | none | none | none |
 | `md-badge` | experimental | `src/components/md/MdBadge.vue` | none | none | none |
 | `md-breadcrumb` | experimental | `src/components/md/MdBreadcrumb.vue` | none | none | none |
 | `md-button` | experimental | `src/components/md/MdButton.vue` | none | none | none |
