@@ -177,4 +177,4 @@ here.
 - [ ] 9.1 Open the code pull request under the title `fix(ui): put dialogs, menus and status messages on shared components`,
   from the remote main branch that already contains the merged proposal and the merged code of `add-md3-component-catalogue`,
   `add-ui-style-gate` and `refactor-md3-token-utilities`, with no file under `openspec/`. Fill the repository's pull request
-  template, list the changed test expectations, and attach the screenshot sets of 8.2.
+  template, list the changed test expectations, and attach the screenshot sets of 8.2. Resolved 2026-11-18 (maintainer): the title stays as written above.
