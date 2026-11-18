@@ -20,6 +20,7 @@ import type { AxiosError } from 'axios'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { teamParentsApi } from './nodes/teamParentsApi'
 
@@ -233,171 +234,175 @@ const save = async () => {
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
-    :aria-labelledby="titleId"
+  <MdCard
+    variant="low"
     data-test="team-parents"
-    data-ingot-component="team-parents-card"
   >
-    <div class="flex flex-col gap-1">
-      <h2
-        :id="titleId"
-        class="md-title-medium text-on-surface"
-      >
-        Inherits from
-      </h2>
-      <p class="md-body-small text-on-surface-variant">
-        A team gets the permission nodes of its parent teams, up to 5 levels up. Its own nodes decide first.
-      </p>
-    </div>
-
-    <p
-      v-if="status === 'loading'"
-      data-ingot-state="loading"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
+    <section
+      class="flex flex-col gap-3"
+      :aria-labelledby="titleId"
+      data-ingot-component="team-parents-card"
     >
-      Loading...
-    </p>
-    <div
-      v-else-if="status === 'error'"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-      data-test="parents-load-error"
-    >
-      <span class="md-body-medium text-error">Could not load the parent teams: {{ failure }}</span>
-      <MdButton
-        variant="tonal"
-        data-test="parents-retry"
-        @click="load()"
-      >
-        Retry
-      </MdButton>
-    </div>
-
-    <template v-else>
-      <ul
-        v-if="draft.length > 0"
-        class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
-        aria-label="Parent teams"
-        data-test="parent-list"
-      >
-        <li
-          v-for="team in draft"
-          :key="team"
-          data-test="parent"
-          class="inline-flex h-8 items-center gap-1 rounded-corner-small border border-outline bg-surface-container-low pl-3 pr-1 md-label-large text-on-surface"
+      <div class="flex flex-col gap-1">
+        <h2
+          :id="titleId"
+          class="md-title-medium text-on-surface"
         >
-          <span class="[overflow-wrap:anywhere]">{{ team }}</span>
-          <button
-            type="button"
-            class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
-            :aria-label="`Remove ${team}`"
-            @click="remove(team)"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              class="size-md-icon"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </li>
-      </ul>
-      <p
-        v-else
-        class="md-body-medium text-on-surface-variant"
-        data-test="parents-empty"
-      >
-        This team does not inherit from another team.
-      </p>
-
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
-        <div class="relative min-w-0 flex-1">
-          <MdTextField
-            :id="inputId"
-            :model-value="text"
-            label="Add a parent team"
-            variant="outlined"
-            autocomplete="off"
-            spellcheck="false"
-            :error="entryError !== ''"
-            :error-text="entryError"
-            supporting-text="Type a team name or choose one from the list"
-            role="combobox"
-            aria-autocomplete="list"
-            :aria-expanded="showList ? 'true' : 'false'"
-            :aria-controls="listboxId"
-            :aria-activedescendant="activeDescendant"
-            @update:model-value="onInput"
-            @keydown="onKeydown"
-            @focus="open = true"
-            @blur="onBlur"
-          />
-          <ul
-            v-show="showList"
-            :id="listboxId"
-            role="listbox"
-            aria-label="Team suggestions"
-            class="absolute inset-x-0 top-14 z-20 max-h-72 overflow-y-auto rounded-corner-extra-small bg-surface-container shadow-elevation-2"
-            @mousedown.prevent
-          >
-            <li
-              v-for="(team, index) in suggestions"
-              :id="optionId(index)"
-              :key="team"
-              role="option"
-              :aria-selected="index === active ? 'true' : 'false'"
-              class="md-state-layer relative cursor-pointer px-4 py-2 md-body-medium"
-              :class="index === active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
-              data-test="suggestion"
-              @click="add(team)"
-            >
-              {{ team }}
-            </li>
-          </ul>
-        </div>
-        <MdButton
-          variant="outlined"
-          class="shrink-0 self-start sm:mt-2"
-          :disabled="trimmed === ''"
-          data-test="add-parent"
-          @click="add(text)"
-        >
-          Add
-        </MdButton>
+          Inherits from
+        </h2>
+        <p class="md-body-small text-on-surface-variant">
+          A team gets the permission nodes of its parent teams, up to 5 levels up. Its own nodes decide first.
+        </p>
       </div>
 
+      <p
+        v-if="status === 'loading'"
+        data-ingot-state="loading"
+        role="status"
+        class="md-body-medium text-on-surface-variant"
+      >
+        Loading...
+      </p>
       <div
-        v-if="serverError"
+        v-else-if="status === 'error'"
         role="alert"
         class="flex flex-wrap items-center gap-3"
-        data-test="parents-error"
+        data-test="parents-load-error"
       >
-        <span class="md-body-medium text-error">{{ serverError }}</span>
+        <span class="md-body-medium text-error">Could not load the parent teams: {{ failure }}</span>
         <MdButton
-          v-if="stale"
-          variant="text"
-          data-test="parents-reload"
+          variant="tonal"
+          data-test="parents-retry"
           @click="load()"
         >
-          Reload
+          Retry
         </MdButton>
       </div>
 
-      <div class="flex justify-end">
-        <MdButton
-          variant="tonal"
-          :disabled="!dirty || saving"
-          data-test="save-parents"
-          @click="save()"
+      <template v-else>
+        <ul
+          v-if="draft.length > 0"
+          class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
+          aria-label="Parent teams"
+          data-test="parent-list"
         >
-          Save
-        </MdButton>
-      </div>
-    </template>
-  </section>
+          <li
+            v-for="team in draft"
+            :key="team"
+            data-test="parent"
+            class="inline-flex h-8 items-center gap-1 rounded-corner-small border border-outline bg-surface-container-low pl-3 pr-1 md-label-large text-on-surface"
+          >
+            <span class="[overflow-wrap:anywhere]">{{ team }}</span>
+            <button
+              type="button"
+              class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
+              :aria-label="`Remove ${team}`"
+              @click="remove(team)"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="size-md-icon"
+                fill="currentColor"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </li>
+        </ul>
+        <p
+          v-else
+          class="md-body-medium text-on-surface-variant"
+          data-test="parents-empty"
+        >
+          This team does not inherit from another team.
+        </p>
+
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+          <div class="relative min-w-0 flex-1">
+            <MdTextField
+              :id="inputId"
+              :model-value="text"
+              label="Add a parent team"
+              variant="outlined"
+              autocomplete="off"
+              spellcheck="false"
+              :error="entryError !== ''"
+              :error-text="entryError"
+              supporting-text="Type a team name or choose one from the list"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="showList ? 'true' : 'false'"
+              :aria-controls="listboxId"
+              :aria-activedescendant="activeDescendant"
+              @update:model-value="onInput"
+              @keydown="onKeydown"
+              @focus="open = true"
+              @blur="onBlur"
+            />
+            <ul
+              v-show="showList"
+              :id="listboxId"
+              role="listbox"
+              aria-label="Team suggestions"
+              class="absolute inset-x-0 top-14 z-20 max-h-72 overflow-y-auto rounded-corner-extra-small bg-surface-container shadow-elevation-2"
+              @mousedown.prevent
+            >
+              <li
+                v-for="(team, index) in suggestions"
+                :id="optionId(index)"
+                :key="team"
+                role="option"
+                :aria-selected="index === active ? 'true' : 'false'"
+                class="md-state-layer relative cursor-pointer px-4 py-2 md-body-medium"
+                :class="index === active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+                data-test="suggestion"
+                @click="add(team)"
+              >
+                {{ team }}
+              </li>
+            </ul>
+          </div>
+          <MdButton
+            variant="outlined"
+            class="shrink-0 self-start sm:mt-2"
+            :disabled="trimmed === ''"
+            data-test="add-parent"
+            @click="add(text)"
+          >
+            Add
+          </MdButton>
+        </div>
+
+        <div
+          v-if="serverError"
+          role="alert"
+          class="flex flex-wrap items-center gap-3"
+          data-test="parents-error"
+        >
+          <span class="md-body-medium text-error">{{ serverError }}</span>
+          <MdButton
+            v-if="stale"
+            variant="text"
+            data-test="parents-reload"
+            @click="load()"
+          >
+            Reload
+          </MdButton>
+        </div>
+
+        <div class="flex justify-end">
+          <MdButton
+            variant="tonal"
+            :disabled="!dirty || saving"
+            data-test="save-parents"
+            @click="save()"
+          >
+            Save
+          </MdButton>
+        </div>
+      </template>
+    </section>
+  </MdCard>
 </template>

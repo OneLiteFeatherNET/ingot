@@ -76,6 +76,17 @@ describe('PermissionNodesCard', () => {
   })
 
   describe('loading', () => {
+    it('draws the card as a low md-card with the medium corner radius and the 16 pixel padding', async () => {
+      await mountCard()
+
+      const card = wrapper.find('[data-test="permission-nodes"]')
+      expect(card.attributes('data-variant'), 'the card is the low variant of MdCard').toBe('low')
+      expect(card.classes(), 'the card keeps the low surface').toContain('bg-surface-container-low')
+      expect(card.classes(), 'the card uses the medium corner radius').toContain('rounded-corner-medium')
+      expect(card.classes(), 'the card keeps its 16 pixel inset').toContain('p-4')
+      expect(card.classes(), 'the card no longer uses the large radius').not.toContain('rounded-corner-large')
+    })
+
     it('renders the node editor under the heading Permission nodes', async () => {
       await mountCard()
 
