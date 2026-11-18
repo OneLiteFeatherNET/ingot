@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import DomainSettingsPanel from '../settings/DomainSettingsPanel.vue'
+import MdSection from '../md/MdSection.vue'
 </script>
 
 <!--
@@ -32,22 +33,17 @@ import DomainSettingsPanel from '../settings/DomainSettingsPanel.vue'
       heading="Usage statistics"
     />
 
-    <section
+    <MdSection
+      title="Metrics endpoint"
+      heading-id="metrics-heading"
       aria-labelledby="metrics-heading"
       data-test="metrics-endpoint"
-      class="flex flex-col gap-3"
     >
-      <h2
-        id="metrics-heading"
-        class="md-title-large text-on-surface"
-      >
-        Metrics endpoint
-      </h2>
       <p class="md-body-large text-on-surface-variant">
         The Prometheus plugin ships with Ingot and serves the metrics at <code>/metrics</code>. It is off until the server sets
         <code>INGOT_METRICS_ENABLED=true</code>, and it has no settings on this page. The Monitor status and failures page of the
         documentation lists the metrics and how to scrape them.
       </p>
-    </section>
+    </MdSection>
   </div>
 </template>

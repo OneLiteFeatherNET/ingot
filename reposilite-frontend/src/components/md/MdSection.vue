@@ -18,15 +18,18 @@
 /*
  * Material Design 3 section: a titled group of content on a page. The title is a heading at level 2
  * for a section of a page, or level 3 for a section inside another one. The actions sit beside the
- * title and the content follows the header.
+ * title and the content follows the header. `headingId` sets the id of the title, so that the section can be
+ * labelled by it with aria-labelledby.
  */
 withDefaults(defineProps<{
   title: string
   description?: string
   level?: 2 | 3
+  headingId?: string
 }>(), {
   description: undefined,
-  level: 2
+  level: 2,
+  headingId: undefined
 })
 
 defineSlots<{
@@ -47,6 +50,7 @@ defineSlots<{
       <div class="min-w-0">
         <component
           :is="level === 3 ? 'h3' : 'h2'"
+          :id="headingId"
           :class="level === 3 ? 'md-title-small' : 'md-title-medium'"
         >
           {{ title }}

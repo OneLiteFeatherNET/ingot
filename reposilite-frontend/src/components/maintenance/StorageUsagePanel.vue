@@ -21,6 +21,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
+import MdSection from '../md/MdSection.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { hasQuota, normalizeStorage, quotaFraction, quotaNote, usageLine } from './storage'
@@ -94,34 +95,26 @@ onBeforeUnmount(stopPolling)
     variant="filled"
     class="flex flex-col gap-4"
   >
-    <div
-      class="flex flex-wrap items-start justify-between gap-3"
-      data-ingot-component="storage-usage-panel"
-    >
-      <div class="flex min-w-0 flex-col gap-1">
-        <h3
-          id="storage-usage-title"
-          class="md-title-large text-on-surface"
-        >
-          Storage usage
-        </h3>
-        <p
-          v-if="storage && storage.computedAt"
-          class="md-body-medium text-on-surface-variant"
-        >
-          Computed {{ formatDateTime(storage.computedAt) }}
-        </p>
-      </div>
-      <MdButton
-        variant="tonal"
-        :disabled="busy"
-        @click="refresh"
+    <div data-ingot-component="storage-usage-panel">
+      <MdSection
+        :level="3"
+        title="Storage usage"
+        :description="storage && storage.computedAt ? `Computed ${formatDateTime(storage.computedAt)}` : undefined"
+        heading-id="storage-usage-title"
       >
-        <template #icon>
-          <RefreshIcon />
+        <template #actions>
+          <MdButton
+            variant="tonal"
+            :disabled="busy"
+            @click="refresh"
+          >
+            <template #icon>
+              <RefreshIcon />
+            </template>
+            Refresh
+          </MdButton>
         </template>
-        Refresh
-      </MdButton>
+      </MdSection>
     </div>
 
     <p

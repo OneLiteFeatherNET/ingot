@@ -25,6 +25,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
+import MdSection from '../md/MdSection.vue'
 import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
 import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
@@ -429,17 +430,12 @@ onMounted(() => {
             </article>
           </div>
 
-          <section
+          <MdSection
             v-else-if="tab === 'plugins' && info"
+            title="Plugins"
+            heading-id="support-plugins"
             aria-labelledby="support-plugins"
-            class="flex flex-col gap-4"
           >
-            <h2
-              id="support-plugins"
-              class="md-title-large text-on-surface"
-            >
-              Plugins
-            </h2>
             <MdTextField
               v-if="showPluginFilter"
               v-model="pluginFilter"
@@ -507,7 +503,7 @@ onMounted(() => {
                 </dl>
               </article>
             </div>
-          </section>
+          </MdSection>
 
           <div
             v-else-if="tab === 'environment' && info"
@@ -565,16 +561,11 @@ onMounted(() => {
                 class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
               >
             </label>
-            <section
+            <MdSection
+              title="Configuration"
+              heading-id="support-configuration"
               aria-labelledby="support-configuration"
-              class="flex flex-col gap-6"
             >
-              <h2
-                id="support-configuration"
-                class="md-title-large text-on-surface"
-              >
-                Configuration
-              </h2>
               <KeyValueTree
                 :entries="localEntries"
                 split="camel"
@@ -591,7 +582,7 @@ onMounted(() => {
                 heading-id="support-shared"
                 :query="filter"
               />
-            </section>
+            </MdSection>
           </div>
 
           <section

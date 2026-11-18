@@ -20,6 +20,7 @@ import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdSection from '../md/MdSection.vue'
 import NodeEditor from './nodes/NodeEditor.vue'
 import { permissionNodesApi } from './nodes/permissionNodesApi'
 import { teamParentsApi } from './nodes/teamParentsApi'
@@ -118,66 +119,60 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
     variant="low"
     data-test="permission-nodes"
   >
-    <section
+    <div
       class="flex flex-col gap-3"
-      :aria-labelledby="titleId"
       data-ingot-component="permission-nodes-card"
     >
-      <div class="flex flex-col gap-1">
-        <h2
-          :id="titleId"
-          class="md-title-medium text-on-surface"
+      <MdSection
+        title="Permission nodes"
+        description="Each node allows or denies one action. A more specific node beats a wildcard, and a deny wins a tie."
+        :heading-id="titleId"
+        :aria-labelledby="titleId"
+      >
+        <div
+          v-if="failed"
+          role="alert"
+          class="flex flex-wrap items-center gap-3"
+          data-test="nodes-error"
         >
-          Permission nodes
-        </h2>
-        <p class="md-body-small text-on-surface-variant">
-          Each node allows or denies one action. A more specific node beats a wildcard, and a deny wins a tie.
+          <span class="md-body-medium text-error">Could not load the permission nodes: {{ failure }}</span>
+          <MdButton
+            variant="tonal"
+            data-test="nodes-retry"
+            @click="nodes.load()"
+          >
+            Retry
+          </MdButton>
+        </div>
+        <p
+          v-else-if="missing"
+          role="alert"
+          class="md-body-medium text-on-surface-variant"
+          data-test="nodes-missing"
+        >
+          {{ name }} does not exist (any more).
         </p>
-      </div>
-
-      <div
-        v-if="failed"
-        role="alert"
-        class="flex flex-wrap items-center gap-3"
-        data-test="nodes-error"
-      >
-        <span class="md-body-medium text-error">Could not load the permission nodes: {{ failure }}</span>
-        <MdButton
-          variant="tonal"
-          data-test="nodes-retry"
-          @click="nodes.load()"
-        >
-          Retry
-        </MdButton>
-      </div>
-      <p
-        v-else-if="missing"
-        role="alert"
-        class="md-body-medium text-on-surface-variant"
-        data-test="nodes-missing"
-      >
-        {{ name }} does not exist (any more).
-      </p>
-      <NodeEditor
-        v-else
-        :nodes="draft"
-        :saved-nodes="saved"
-        :row-errors="rowErrors"
-        :form-error="formError"
-        :loading="loading"
-        :saving="saving"
-        :catalog="catalog"
-        :templates="templates"
-        :conflict="conflict"
-        :inherited="inherited.entries.value"
-        :inherited-warnings="inherited.warnings.value"
-        @update:nodes="nodes.setDraft"
-        @save="save()"
-        @discard="nodes.discard()"
-        @conflict-reload="nodes.reloadConflict()"
-        @conflict-overwrite="overwrite()"
-        @conflict-dismiss="nodes.dismissConflict()"
-      />
-    </section>
+        <NodeEditor
+          v-else
+          :nodes="draft"
+          :saved-nodes="saved"
+          :row-errors="rowErrors"
+          :form-error="formError"
+          :loading="loading"
+          :saving="saving"
+          :catalog="catalog"
+          :templates="templates"
+          :conflict="conflict"
+          :inherited="inherited.entries.value"
+          :inherited-warnings="inherited.warnings.value"
+          @update:nodes="nodes.setDraft"
+          @save="save()"
+          @discard="nodes.discard()"
+          @conflict-reload="nodes.reloadConflict()"
+          @conflict-overwrite="overwrite()"
+          @conflict-dismiss="nodes.dismissConflict()"
+        />
+      </MdSection>
+    </div>
   </MdCard>
 </template>
