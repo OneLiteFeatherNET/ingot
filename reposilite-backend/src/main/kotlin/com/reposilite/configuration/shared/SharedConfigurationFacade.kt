@@ -36,6 +36,9 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.PluginStorageSecretGuard
+import com.reposilite.storage.StorageProviderVariants
+import com.reposilite.storage.secretVariants
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
@@ -51,6 +54,7 @@ import panda.std.asError
 import panda.std.asSuccess
 import panda.std.ok
 import panda.std.reactive.MutableReference
+import java.io.InputStream
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 import java.util.ConcurrentModificationException
@@ -97,6 +101,15 @@ class SharedConfigurationFacade(
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
 
+    /** Leaves out the storage plugins whose secrets cannot be hidden, for the served schema and the secret shape alike. */
+    private val storageSecretGuard = PluginStorageSecretGuard { journalist.logger.warn(it) }
+
+    /**
+     * The settings classes of the loaded storage plugins, which the secret shape of every domain includes: their `@Sensitive` fields
+     * are masked, restored, sealed and opened like the secrets of the built-in providers.
+     */
+    internal val secretVariants: OneOfVariants = extensions.storageProviders.secretVariants(storageSecretGuard)
+
     private val sealedSecretStores = CopyOnWriteArrayList<SealedSecretStore>()
 
     /**
@@ -125,21 +138,30 @@ class SharedConfigurationFacade(
     init {
         val jsonSchemaLoader = JsonSchemaLoader()
         val knownSchemes = jsonSchemaLoader.loadGeneratedSchemes().associateBy { it.name }
+        // Read when a schema is served, not here, so a storage plugin that loads after this facade is offered as well.
+        val storageVariants = StorageProviderVariants(
+            registry = extensions.storageProviders,
+            generate = { schemaGenerator.value.generateSchema(it) },
+            guard = storageSecretGuard,
+            warn = { journalist.logger.warn(it) },
+        )
 
         sharedSettingsProvider.domains.forEach { (type, settings) ->
             // Holds the document as it was written when references are on. Consumers read [settings], which then holds the
             // resolved view. Without references the document and the consumer view are the same object, as they always were.
             val written = AtomicReference<SharedSettings?>(null)
+            val generated: Supplier<InputStream> = knownSchemes[type.name]
+                ?.let { Supplier { it.getContent() } }
+                ?: run {
+                    journalist.logger.warn("[SharedConfigurationFacade] Cannot find scheme for $type, scheme has to be generated at runtime")
+                    val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
+                    Supplier { scheme.byteInputStream() }
+                }
             registerSettingsWatcher(
                 DefaultSharedSettingsReference(
                     type = type,
-                    schema = knownSchemes[type.name]
-                        ?.let { Supplier { it.getContent() } }
-                        ?: run {
-                            journalist.logger.warn("[SharedConfigurationFacade] Cannot find scheme for $type, scheme has to be generated at runtime")
-                            val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
-                            Supplier { scheme.byteInputStream() }
-                        },
+                    // The variants of the loaded storage plugins are appended to storageProvider. Without a plugin the bytes are unchanged.
+                    schema = Supplier { storageVariants.apply(generated.get().use { it.readBytes() }).inputStream() },
                     getter = { written.get() ?: settings.get() },
                     setter = { value ->
                         // Resolved before anything is stored, so a failing reference leaves the previous document and view in place.
@@ -191,7 +213,7 @@ class SharedConfigurationFacade(
         failures.forEach { (ref, result) ->
             journalist.logger.error("Shared configuration | Cannot update '${ref.name}' due to ${result.error}")
             journalist.logger.debug("Shared configuration | Source:")
-            journalist.logger.debug(SettingsSecrets.redactDocument(content, domainTypes()))
+            journalist.logger.debug(SettingsSecrets.redactDocument(content, domainTypes(), secretVariants))
             failureFacade.throwException("Shared configuration", result.error)
         }
 
@@ -220,7 +242,7 @@ class SharedConfigurationFacade(
      * domain and the property, never the value.
      */
     private fun openSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode =
-        SettingsSecrets.transformSensitive(type, node) { path, value ->
+        SettingsSecrets.transformSensitive(type, node, secretVariants) { path, value ->
             if (!SettingsEnvelopeCodec.isEnvelope(value)) {
                 return@transformSensitive value
             }
@@ -238,7 +260,7 @@ class SharedConfigurationFacade(
      */
     private fun sealSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode {
         val cipher = secretCipher?.takeIf { it.sealing } ?: return node
-        return SettingsSecrets.transformSensitive(type, node) { path, value ->
+        return SettingsSecrets.transformSensitive(type, node, secretVariants) { path, value ->
             if (isPlainSecret(value)) cipher.seal(name, path, value) else value
         }
     }
@@ -389,7 +411,7 @@ class SharedConfigurationFacade(
     private fun resolveEffective(type: SharedSettingsClass, settings: SharedSettings): SharedSettings {
         val resolver = secretReferences ?: return settings
         val name = settingsName(type)
-        val resolved = SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings)) { path, value ->
+        val resolved = SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings), secretVariants) { path, value ->
             try {
                 resolver.resolve(value)
             } catch (exception: SecretReferenceException) {
@@ -498,7 +520,7 @@ class SharedConfigurationFacade(
         getDomainNames().forEach { name ->
             val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
             val node = root.get(name) ?: return@forEach
-            SettingsSecrets.transformSensitive(reference.type, node) { path, value ->
+            SettingsSecrets.transformSensitive(reference.type, node, secretVariants) { path, value ->
                 if (SettingsEnvelopeCodec.isEnvelope(value)) {
                     found.add(SealedSetting(domain = name, path = path, keyId = value.split(':').getOrElse(2) { "" }))
                 }
@@ -570,7 +592,7 @@ class SharedConfigurationFacade(
 
         val type = getSettingsReference<SharedSettings>(name)?.type ?: return false
         var plain = false
-        SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(value)) { _, stored ->
+        SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(value), secretVariants) { _, stored ->
             plain = plain || isPlainSecret(stored)
             stored
         }
@@ -586,7 +608,7 @@ class SharedConfigurationFacade(
         getDomainNames().forEach { name ->
             val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
             val node = root.get(name) ?: return@forEach
-            SettingsSecrets.transformSensitive(reference.type, node) { _, value ->
+            SettingsSecrets.transformSensitive(reference.type, node, secretVariants) { _, value ->
                 if (value.isNotEmpty() && predicate(value)) {
                     count++
                 }

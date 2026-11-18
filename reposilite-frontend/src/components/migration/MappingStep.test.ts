@@ -121,4 +121,24 @@ describe('the Mapping step', () => {
 
     expect(wizard.state.mapping!.conflictPolicy).toBe('overwrite')
   })
+
+  it('takes the focus to the cancel action when the overwrite dialog opens, so Enter does not replace the files', async () => {
+    const wizard = discoveredWizard()
+    const { wrapper } = await mountWith(MappingStep, { wizard, at: '/settings/migration/mapping', attachTo: document.body })
+
+    await policyChoice(wrapper, 'overwrite').setValue(true)
+    await flushPromises()
+
+    expect(document.activeElement?.id, 'the focus starts on the cancel action').toBe('migration-overwrite-cancel')
+  })
+
+  it('marks the destructive overwrite confirmation with the error role', async () => {
+    const wizard = discoveredWizard()
+    const { wrapper } = await mountWith(MappingStep, { wizard, at: '/settings/migration/mapping', attachTo: document.body })
+
+    await policyChoice(wrapper, 'overwrite').setValue(true)
+    await flushPromises()
+
+    expect(document.getElementById('migration-overwrite-confirm')!.classList.contains('bg-error'), 'the confirmation uses the error colour role').toBe(true)
+  })
 })

@@ -15,14 +15,18 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 
-const mountBar = (props = {}) => mount(UnsavedChangesBar, {
+const mountBar = (props: { count?: number; invalid?: boolean; saving?: boolean; firstError?: { label: string; href: string } | null } = {}): VueWrapper => mount(UnsavedChangesBar, {
   props: { count: 1, invalid: false, saving: false, ...props }
-})
+}) as VueWrapper
 
-const buttonNamed = (wrapper, name) => wrapper.findAll('button').find(button => button.text() === name)
+const buttonNamed = (wrapper: VueWrapper, name: string) => {
+  const found = wrapper.findAll('button').find(button => button.text() === name)
+  if (!found) throw new Error(`no button named ${name}`)
+  return found
+}
 
 describe('UnsavedChangesBar', () => {
   it('counts one pending change in the singular', () => {
@@ -68,6 +72,46 @@ describe('UnsavedChangesBar', () => {
     expect(wrapper.text()).toContain('Fix the errors before saving.')
   })
 
+  it('links the save bar to the first tab with an error, naming the tab', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+
+    const link = wrapper.get('[data-test="first-error-link"]')
+    expect(link.text()).toBe('Show the first error: Rebuild schedule')
+    expect(link.attributes('href'), 'the link carries the address of the tab').toBe('/settings/search?tab=rebuild-schedule')
+  })
+
+  it('shows no link to an error while the domain is valid', () => {
+    const wrapper = mountBar({ invalid: false, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+
+    expect(wrapper.find('[data-test="first-error-link"]').exists()).toBe(false)
+  })
+
+  it('shows the link without a tab to go to when no tab holds an error', () => {
+    const wrapper = mountBar({ invalid: true })
+
+    expect(wrapper.find('[data-test="first-error-link"]').exists()).toBe(false)
+  })
+
+  it('moves to the first error inside the page on a plain click on the link, without leaving the page', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+
+    wrapper.get('[data-test="first-error-link"]').element.dispatchEvent(event)
+
+    expect(wrapper.emitted('show-error')).toEqual([[]])
+    expect(event.defaultPrevented, 'the browser does not follow the link itself').toBe(true)
+  })
+
+  it('leaves a click with a modifier key to the browser, so the tab opens in a new one', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ctrlKey: true })
+
+    wrapper.get('[data-test="first-error-link"]').element.dispatchEvent(event)
+
+    expect(wrapper.emitted('show-error')).toBeUndefined()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
   it('still allows discarding while the domain is invalid', () => {
     const wrapper = mountBar({ invalid: true })
 
@@ -84,7 +128,7 @@ describe('UnsavedChangesBar', () => {
   it('opens the review of the changes when the count is pressed', async () => {
     const wrapper = mountBar({ count: 3 })
 
-    await wrapper.findAll('button').find(button => button.text().includes('3 unsaved changes')).trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('3 unsaved changes'))!.trigger('click')
 
     expect(wrapper.emitted('review')).toEqual([[]])
   })

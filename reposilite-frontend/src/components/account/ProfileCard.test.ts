@@ -90,3 +90,12 @@ describe('ProfileCard', () => {
     expect(card.classes()).not.toContain('rounded-corner-large')
   })
 })
+
+describe('ProfileCard card edge', () => {
+  it('draws the card with the 1 pixel outline edge of the surface table', () => {
+    const card = render().find('[data-variant="low"]')
+
+    expect(card.classes(), 'the card keeps its tinted surface').toContain('bg-surface-container-low')
+    expect(card.classes(), 'the card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
+})

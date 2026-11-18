@@ -31,7 +31,15 @@ import java.util.ServiceLoader
 @OptIn(ExperimentalIngotStorageApi::class)
 internal class StorageProviderRegistry(private val warn: (String) -> Unit = {}) {
 
-    private class Registration(val factory: StorageProviderFactory<*, *>, val source: String, val className: String)
+    private class Registration(
+        val factory: StorageProviderFactory<*, *>,
+        val source: String,
+        val className: String,
+        val builtIn: Boolean,
+    )
+
+    /** A factory of a plugin class loader that is registered, with the type it provides and the source it was loaded from. */
+    internal class PluginStorageProvider(val type: String, val factory: StorageProviderFactory<*, *>, val source: String)
 
     private val registrations = LinkedHashMap<String, Registration>()
     private val discoveredClasses = mutableSetOf<Class<*>>()
@@ -77,7 +85,7 @@ internal class StorageProviderRegistry(private val warn: (String) -> Unit = {}) 
             return false
         }
 
-        registrations[type] = Registration(factory, source, className)
+        registrations[type] = Registration(factory, source, className, builtIn)
         return true
     }
 
@@ -89,6 +97,12 @@ internal class StorageProviderRegistry(private val warn: (String) -> Unit = {}) 
 
     fun types(): List<String> =
         registrations.keys.toList()
+
+    /** The factories of the plugin class loaders that are registered, in registration order. */
+    fun pluginProviders(): List<PluginStorageProvider> =
+        registrations
+            .filterValues { !it.builtIn }
+            .map { (type, registration) -> PluginStorageProvider(type, registration.factory, registration.source) }
 
     private fun sourceOf(factory: Any, builtIn: Boolean): String =
         if (builtIn) {

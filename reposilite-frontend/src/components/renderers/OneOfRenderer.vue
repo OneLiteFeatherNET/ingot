@@ -19,6 +19,7 @@
       v-if="selectedRenderInfo"
       role="tabpanel"
       class="pt-4"
+      :aria-label="selectedRenderInfo.label"
     >
       <DispatchRenderer
         :schema="selectedRenderInfo.schema"
@@ -28,22 +29,14 @@
         :cells="control.cells"
       />
     </div>
-    <VueFinalModal
+    <MdDialog
       :model-value="dialog"
-      teleport-to="body"
-      :overlay-style="SCRIM_STYLE"
-      :focus-trap="focusTrap"
-      class="flex min-h-full items-center justify-center p-4"
+      role="alertdialog"
+      :labelledby="switchTitleId"
+      :describedby="switchBodyId"
       @update:model-value="onDialogUpdate"
     >
-      <!-- The role sits on the card: the modal root always carries role="dialog" of its own. -->
-      <div
-        class="w-full min-w-[280px] max-w-[560px] rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-        role="alertdialog"
-        aria-modal="true"
-        :aria-labelledby="switchTitleId"
-        :aria-describedby="switchBodyId"
-      >
+      <template #header>
         <h2
           :id="switchTitleId"
           class="md-headline-small text-on-surface"
@@ -56,26 +49,29 @@
         >
           {{ switchBody }}
         </p>
-        <div class="mt-6 flex flex-wrap justify-end gap-2">
+      </template>
+      <template #actions>
+        <MdDialogActions>
           <MdButton
             :id="switchCancelId"
             variant="text"
             type="button"
+            data-autofocus
             @click="cancelSwitch"
           >
             Cancel
           </MdButton>
           <MdButton
             :id="switchConfirmId"
-            variant="text"
             type="button"
+            error
             @click="confirmSwitch"
           >
             Switch
           </MdButton>
-        </div>
-      </div>
-    </VueFinalModal>
+        </MdDialogActions>
+      </template>
+    </MdDialog>
   </div>
 </template>
 
@@ -91,12 +87,12 @@ import {
 import type {ControlElement, JsonFormsSubStates, JsonSchema, Layout, UISchemaElement} from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsOneOfControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {VueFinalModal} from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSelect from '../md/MdSelect.vue'
 import isEqual from 'lodash/isEqual'
 import isPlainObject from 'lodash/isPlainObject'
-import {SCRIM_STYLE} from '../settings/dialog'
 import { descriptionText } from './description'
 import { createEntryValue } from './util'
 
@@ -187,8 +183,9 @@ export default defineComponent({
   components: {
     DispatchRenderer,
     MdButton,
-    MdSelect,
-    VueFinalModal
+    MdDialog,
+    MdDialogActions,
+    MdSelect
   },
   props: rendererProps<ControlElement>(),
   setup(props) {
@@ -247,16 +244,6 @@ export default defineComponent({
       return `The settings of ${current} will be removed. This takes effect when you save.`
     })
 
-    /*
-     * The modal traps focus, starts on Cancel and gives focus back to the select. Each id is read
-     * when the dialog opens, so the functions below always find the elements that are on the page.
-     */
-    const focusTrap = computed(() => ({
-      allowOutsideClick: true,
-      initialFocus: () => document.getElementById(switchCancelId.value) as HTMLElement,
-      setReturnFocus: () => document.getElementById(variantSelectId.value) as HTMLElement
-    }))
-
     const switchTo = (index: number) => {
       pendingIndex.value = null
       input.handleChange(jsonformsControl.value.path, defaultValueOf(branches.value[index]))
@@ -291,7 +278,6 @@ export default defineComponent({
     return {
       ...vanilla,
       dialog,
-      focusTrap,
       oneOfRenderInfos,
       controlEnabled,
       committedIndex,
@@ -309,7 +295,6 @@ export default defineComponent({
       cancelSwitch,
       confirmSwitch,
       onDialogUpdate,
-      SCRIM_STYLE,
       descriptionText
     }
   }

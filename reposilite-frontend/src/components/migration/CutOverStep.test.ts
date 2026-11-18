@@ -166,4 +166,14 @@ describe('the Cut-over step', () => {
 
     expect(api.deleteJob).toHaveBeenCalledWith(12)
   })
+
+  it('marks the destructive removal confirmation with the error role', async () => {
+    const api = fakeApi()
+    const { wrapper } = await mountWith(CutOverStep, { api, wizard: wizardWith([importJob(), verifyJob(verified)]), at: '/settings/migration/cut-over', attachTo: document.body })
+
+    await wrapper.find('#migration-cutover-delete').trigger('click')
+    await flushPromises()
+
+    expect(document.getElementById('migration-cutover-delete-confirm')!.classList.contains('bg-error'), 'the removal uses the error colour role').toBe(true)
+  })
 })

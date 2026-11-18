@@ -16,10 +16,11 @@
  */
 
 import type { PropType } from 'vue'
+import MdAlert from '../md/MdAlert.vue'
 import type { Problem } from './types'
 
 // A failed call, in words: the title and the detail of the problem the server answered. It never shows a secret,
-// because the server does not echo one.
+// because the server does not echo one. It is the shared error alert of the dashboard (MdAlert).
 defineProps({
   problem: {
     type: Object as PropType<Problem | null>,
@@ -36,19 +37,19 @@ defineProps({
   <div
     v-if="problem"
     :id="id"
-    role="alert"
-    class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"
     data-ingot-component="problem-alert"
     data-ingot-state="error"
   >
-    <p class="md-title-small">
-      {{ problem.title || 'The request failed' }}
-    </p>
-    <p
-      v-if="problem.detail"
-      class="md-body-medium"
+    <MdAlert
+      tone="error"
+      :title="problem.title || 'The request failed'"
     >
-      {{ problem.detail }}
-    </p>
+      <p
+        v-if="problem.detail"
+        class="m-0"
+      >
+        {{ problem.detail }}
+      </p>
+    </MdAlert>
   </div>
 </template>

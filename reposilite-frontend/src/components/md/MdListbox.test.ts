@@ -72,6 +72,16 @@ describe('MdListbox', () => {
     expect(optionsOf(wrapper)[2].attributes('aria-disabled'), 'the disabled option is announced as disabled').toBe('true')
   })
 
+  it('sets the option values in the monospace face when mono is given', () => {
+    const wrapper = mountListbox({ mono: true })
+    expect(optionsOf(wrapper)[0].find('span').classes(), 'the value uses the monospace face').toContain('font-mono')
+  })
+
+  it('keeps the option values in the body face by default', () => {
+    const wrapper = mountListbox()
+    expect(optionsOf(wrapper)[0].find('span').classes(), 'the value is not monospace by default').not.toContain('font-mono')
+  })
+
   it('emits the value of the option that was clicked', async () => {
     const wrapper = mountListbox()
 

@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { buildKeyTree, filterTree, groupLabels, splitMatch, type GroupNode, type LeafNode, type TreeNode } from './keyTree'
+import { buildKeyTree, filterTree, flattenNested, groupLabels, splitMatch, type GroupNode, type LeafNode, type TreeNode } from './keyTree'
 
 // Pure grouping of key/value rows into a tree: no component, no router and no clock.
 const leaf = (key: string): LeafNode => ({ kind: 'leaf', key, value: 'v' })
@@ -202,5 +202,44 @@ describe('splitMatch', () => {
 
   it('returns the whole text unmarked for an empty query', () => {
     expect(splitMatch('PUID', '')).toEqual([{ text: 'PUID', hit: false }])
+  })
+})
+
+describe('flattenNested', () => {
+  it('joins the keys of nested objects with dots, so each leaf is one row', () => {
+    expect(flattenNested({ storage: { type: 's3', secretKey: '********' } }), 'the nested keys are dotted from the domain').toEqual([
+      ['storage.type', 's3'],
+      ['storage.secretKey', '********'],
+    ])
+  })
+
+  it('keeps a scalar under a domain as a row of its own', () => {
+    expect(flattenNested({ retention: 30 })).toEqual([['retention', '30']])
+  })
+
+  it('writes numbers and booleans as text and null as the word null', () => {
+    expect(flattenNested({ limits: { size: 100, enabled: true, owner: null } })).toEqual([
+      ['limits.size', '100'],
+      ['limits.enabled', 'true'],
+      ['limits.owner', 'null'],
+    ])
+  })
+
+  it('numbers the items of an array by their index', () => {
+    expect(flattenNested({ zones: [{ name: 'eu' }, 'us'] })).toEqual([
+      ['zones.0.name', 'eu'],
+      ['zones.1', 'us'],
+    ])
+  })
+
+  it('shows an empty object and an empty array as their brackets, so the key is still visible', () => {
+    expect(flattenNested({ empty: {}, none: [] })).toEqual([
+      ['empty', '{}'],
+      ['none', '[]'],
+    ])
+  })
+
+  it('returns no rows for a configuration without domains', () => {
+    expect(flattenNested({})).toEqual([])
   })
 })

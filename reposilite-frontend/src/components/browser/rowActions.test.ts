@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { actionSlotClass, actionCountOf, widestActionCount, type RowActionOptions } from './rowActions'
+import { actionSlotClass, actionCountOf, rowActionsOf, widestActionCount, type RowActionOptions } from './rowActions'
 
 const SUFFIXES = ['-javadoc.jar', '-groovydoc.jar']
 const qualifier = { path: 'releases/net/example' }
@@ -64,6 +64,18 @@ describe('actionCountOf', () => {
 
   it('counts all three actions of the widest row', () => {
     expect(countOf(widest, true), 'view, javadoc and delete').toBe(3)
+  })
+})
+
+describe('rowActionsOf javadoc action', () => {
+  const demo = { name: 'demo-1.0-javadoc.jar', type: 'FILE', contentLength: 4096 }
+
+  it('is not offered when the server sends no javadoc suffixes', () => {
+    expect(rowActionsOf({ file: demo, qualifier, canDelete: false, javadocSuffixes: [] }).javadoc, 'without the viewer there is no javadoc route').toBe(false)
+  })
+
+  it('is offered when the server sends the javadoc suffixes', () => {
+    expect(rowActionsOf({ file: demo, qualifier, canDelete: false, javadocSuffixes: SUFFIXES }).javadoc, 'the viewer serves this jar').toBe(true)
   })
 })
 

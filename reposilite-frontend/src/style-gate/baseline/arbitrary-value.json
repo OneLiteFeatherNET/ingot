@@ -320,16 +320,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": "z-[1100]",
-    "count": 1
-  },
-  {
-    "file": "src/components/md/MdTextField.vue",
-    "match": "[&>svg]:size-6",
-    "count": 2
-  },
-  {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "[&::-webkit-scrollbar]:hidden",
     "count": 1
@@ -367,16 +357,6 @@
   {
     "file": "src/components/plugins/PluginBlock.vue",
     "match": "grid-cols-[max-content_1fr]",
-    "count": 1
-  },
-  {
-    "file": "src/components/renderers/OneOfRenderer.vue",
-    "match": "max-w-[560px]",
-    "count": 1
-  },
-  {
-    "file": "src/components/renderers/OneOfRenderer.vue",
-    "match": "min-w-[280px]",
     "count": 1
   },
   {
@@ -457,11 +437,6 @@
   {
     "file": "src/components/settings/SettingsReviewSheet.vue",
     "match": "expanded:w-[28rem]",
-    "count": 1
-  },
-  {
-    "file": "src/components/tokens/SegmentedControl.vue",
-    "match": "rounded-[20px]",
     "count": 1
   },
   {

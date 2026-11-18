@@ -15,11 +15,11 @@
   -->
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+import { computed, ref, useId, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { SCRIM_STYLE } from './dialog'
 
 /*
  * Confirms the removal of one entry. The delete action stays disabled until the id is typed
@@ -47,120 +47,97 @@ const emit = defineEmits(['update:modelValue', 'confirm'])
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.id)
-const cancel = ref(null)
-let opener = null
-let confirmed = false
+const titleId = useId()
+const bodyId = useId()
 
 watch(() => props.modelValue, (open) => {
-  if (open) {
-    typed.value = ''
-    opener = document.activeElement
-    confirmed = false
-    return
-  }
-  if (!confirmed && opener?.isConnected) opener.focus()
+  if (open) typed.value = ''
 })
-
-// Cancel takes the focus as soon as it is drawn, and the focus trap of the modal starts on it too, so the modal's own
-// first focus (the id field) does not take it away.
-watch(cancel, (button) => {
-  if (button && props.modelValue) button.$el.focus()
-})
-const focusTrap = {
-  allowOutsideClick: true,
-  initialFocus: () => cancel.value?.$el
-}
 
 const close = () => emit('update:modelValue', false)
 
 const confirm = () => {
   if (!matches.value) return
-  confirmed = true
   emit('confirm')
   close()
 }
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
-    :focus-trap="focusTrap"
+    :labelledby="titleId"
+    :describedby="bodyId"
+    role="alertdialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <form
-      id="delete-entry-form"
-      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      aria-labelledby="delete-entry-title"
-      aria-describedby="delete-entry-body"
-      role="alertdialog"
-      aria-modal="true"
-      novalidate
-      data-ingot-component="delete-entry-dialog"
-      @submit.prevent="confirm"
-    >
+    <div data-ingot-component="delete-entry-dialog">
       <h2
-        id="delete-entry-title"
+        :id="titleId"
         class="md-headline-small text-on-surface"
       >
         Delete {{ id }}?
       </h2>
       <p
-        id="delete-entry-body"
+        :id="bodyId"
         class="mt-3 md-body-medium text-on-surface-variant"
       >
         It is removed from the configuration when you save. Type its id to confirm.
       </p>
-      <div
-        v-if="references.length > 0"
-        data-test="delete-references"
-        class="mt-4 flex flex-col gap-1"
+      <form
+        id="delete-entry-form"
+        novalidate
+        @submit.prevent="confirm"
       >
-        <p class="md-body-medium text-warning">
-          A group lists this repository as a member. Removing it leaves the group without that member.
-        </p>
-        <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
-          <li
-            v-for="group in references"
-            :key="group"
+        <div
+          v-if="references.length > 0"
+          data-test="delete-references"
+          class="mt-4 flex flex-col gap-1"
+        >
+          <p class="md-body-medium text-warning">
+            A group lists this repository as a member. Removing it leaves the group without that member.
+          </p>
+          <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
+            <li
+              v-for="group in references"
+              :key="group"
+            >
+              {{ group }}
+            </li>
+          </ul>
+        </div>
+        <div class="mt-6">
+          <MdTextField
+            id="delete-entry-confirm-input"
+            label="Id"
+            variant="outlined"
+            autocomplete="off"
+            :model-value="typed"
+            :supporting-text="`Type ${id} exactly.`"
+            @update:model-value="typed = $event"
+          />
+        </div>
+        <MdDialogActions class="mt-6">
+          <MdButton
+            id="delete-entry-cancel"
+            data-autofocus
+            variant="text"
+            type="button"
+            @click="close"
           >
-            {{ group }}
-          </li>
-        </ul>
-      </div>
-      <div class="mt-6">
-        <MdTextField
-          id="delete-entry-confirm-input"
-          label="Id"
-          variant="outlined"
-          autocomplete="off"
-          :model-value="typed"
-          :supporting-text="`Type ${id} exactly.`"
-          @update:model-value="typed = $event"
-        />
-      </div>
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
-        <MdButton
-          id="delete-entry-cancel"
-          ref="cancel"
-          variant="text"
-          type="button"
-          @click="close"
-        >
-          Cancel
-        </MdButton>
-        <MdButton
-          id="delete-entry-confirm"
-          variant="filled"
-          error
-          type="submit"
-          :disabled="!matches"
-        >
-          Delete
-        </MdButton>
-      </div>
-    </form>
-  </VueFinalModal>
+            Cancel
+          </MdButton>
+          <MdButton
+            id="delete-entry-confirm"
+            variant="filled"
+            error
+            type="submit"
+            :disabled="!matches"
+          >
+            Delete
+          </MdButton>
+        </MdDialogActions>
+      </form>
+    </div>
+  </MdDialog>
 </template>

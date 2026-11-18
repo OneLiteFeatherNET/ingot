@@ -116,6 +116,35 @@ describe('SsoProvidersPanel', () => {
     document.body.innerHTML = ''
   })
 
+  describe('headings', () => {
+    it('titles the panel with a level 2 heading in the title-medium role, under the level 1 page heading', async () => {
+      await mountPanel()
+
+      const title = wrapper.findAll('h2').find(heading => heading.text() === 'Single sign on')
+      expect(title, 'the panel title is a level 2 heading').toBeDefined()
+      expect(title!.classes(), 'a level 2 title uses md-title-medium').toContain('md-title-medium')
+    })
+
+    it('titles the public address as a level 3 heading in the title-small role, and draws no level 4 heading', async () => {
+      await mountPanel()
+
+      const title = wrapper.findAll('h3').find(heading => heading.text() === 'Public address')
+      expect(title, 'the public address is a level 3 heading').toBeDefined()
+      expect(title!.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+      expect(wrapper.find('h4').exists(), 'the panel has no level 4 heading').toBe(false)
+    })
+
+    it('titles the kind picker of the add dialog in the title-small role of its other level 3 headings', async () => {
+      await mountPanel()
+      await wrapper.find('[data-test="add-provider"]').trigger('click')
+      await flushPromises()
+
+      const title = [...dialog().querySelectorAll('h3')].find(heading => heading.textContent?.trim() === 'Which provider is it?')
+      expect(title, 'the kind picker is a level 3 heading').toBeDefined()
+      expect([...title!.classList], 'a level 3 title uses md-title-small').toContain('md-title-small')
+    })
+  })
+
   describe('the list', () => {
     it('reads the login domain and lists each provider with its label and issuer', async () => {
       await mountPanel()

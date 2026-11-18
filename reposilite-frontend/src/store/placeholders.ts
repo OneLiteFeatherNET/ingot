@@ -62,7 +62,9 @@ const FALLBACKS: Record<string, string> = {
   'REPOSILITE.ORGANIZATION_LOGO': 'https://avatars.githubusercontent.com/u/103827826?s=200&v=4',
   'REPOSILITE.PRIVACY_POLICY': '',
   'REPOSILITE.ICP_LICENSE': '',
-  'REPOSILITE.JAVADOC_SUFFIXES': '-javadoc.jar,-groovydoc.jar'
+  // Empty on purpose: the server sends the suffixes only while the javadoc viewer is loaded and
+  // enabled. A default list here would link to javadoc routes a server without the viewer lacks.
+  'REPOSILITE.JAVADOC_SUFFIXES': ''
 }
 
 // The settings field behind each token. The typed fields are read first; the placeholder map

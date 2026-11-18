@@ -45,31 +45,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdLinearProgress.vue",
-    "match": ".md-linear-indeterminate",
-    "count": 2
-  },
-  {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": ".md-snackbar-enter-active",
-    "count": 2
-  },
-  {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": ".md-snackbar-enter-from",
-    "count": 1
-  },
-  {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": ".md-snackbar-leave-active",
-    "count": 2
-  },
-  {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": ".md-snackbar-leave-to",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/SettingsView.vue",
     "match": ".settings-view",
     "count": 3

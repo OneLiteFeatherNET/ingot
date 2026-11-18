@@ -11,7 +11,7 @@ name: "OpenAPI diff"
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/**" ]
     # edited: fixing the title to add or remove the marker reruns the check without a new push.
     types: [ "opened", "synchronize", "reopened", "edited" ]
 

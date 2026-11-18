@@ -45,6 +45,10 @@ internal class PluginTierResolverTest {
         "PLUGIN_STORE, CORE, COMMUNITY",
         "PLUGIN_STORE, OFFICIAL, OFFICIAL",
         "PLUGIN_STORE, EXPERIMENTAL, EXPERIMENTAL",
+        "EMBEDDED, COMMUNITY, CORE",
+        "EMBEDDED, CORE, CORE",
+        "EMBEDDED, OFFICIAL, CORE",
+        "EMBEDDED, EXPERIMENTAL, EXPERIMENTAL",
     )
     fun `should resolve the effective tier from the origin and the declared tier`(
         origin: PluginOrigin,

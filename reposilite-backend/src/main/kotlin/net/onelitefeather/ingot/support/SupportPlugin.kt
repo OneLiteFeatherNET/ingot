@@ -186,7 +186,7 @@ internal class SupportPlugin : ReposilitePlugin() {
             val type = reference.type as Class<SharedSettings>
             // The resolved view: a reference is replaced by its value, so the known secrets include the values behind references
             val document: JsonNode = DEFAULT_OBJECT_MAPPER.valueToTree(shared.getDomainSettings(type).get())
-            SharedDomainDocument(name, type, document)
+            SharedDomainDocument(name, type, document, shared.secretVariants)
         }
 
     private fun repositoryDetails(shared: SharedConfigurationFacade, registry: RepositoryRegistry): Map<String, Map<String, String>> {

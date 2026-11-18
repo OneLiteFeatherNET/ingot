@@ -241,7 +241,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
     </div>
 
     <template v-else-if="detail">
-      <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
+      <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
             <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">

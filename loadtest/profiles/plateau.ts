@@ -16,7 +16,9 @@
 // The step list of the plateau profile (design D3): five constant-rate steps at 60, 70, 80, 90 and 100 percent of the
 // breakpoint. Pure: no clock, no k6 runtime, no network. The k6 script maps each step to a constant-arrival-rate executor.
 
+import type { ConstantArrivalRateScenario } from 'k6/options';
 import { PLATEAU_DEFAULT_HOLD_MINUTES, assertPlateauHold } from '../lib/config.ts';
+import { ARRIVAL_TIME_UNIT, arrivalVus } from './arrival.ts';
 
 /** The share of the breakpoint each plateau step runs at, in the order the steps run. */
 export const PLATEAU_PERCENTAGES = [60, 70, 80, 90, 100] as const;
@@ -52,4 +54,27 @@ export function plateauSteps(
     rate: Math.round((breakpoint * percent) / 100),
     holdMinutes: hold,
   }));
+}
+
+/**
+ * Maps the plateau steps to k6 constant-arrival-rate scenarios, named plateau-1 to plateau-N. Each step starts when the
+ * steps before it have ended, so the steps run one after another in one run. Each step runs the given exec function.
+ */
+export function plateauScenarios(
+  steps: readonly PlateauStep[],
+  exec: string,
+): Record<string, ConstantArrivalRateScenario> {
+  const scenarios: Record<string, ConstantArrivalRateScenario> = {};
+  for (const step of steps) {
+    scenarios[`plateau-${step.index}`] = {
+      executor: 'constant-arrival-rate',
+      rate: step.rate,
+      timeUnit: ARRIVAL_TIME_UNIT,
+      duration: `${step.holdMinutes}m`,
+      startTime: `${(step.index - 1) * step.holdMinutes}m`,
+      exec,
+      ...arrivalVus(step.rate),
+    };
+  }
+  return scenarios;
 }

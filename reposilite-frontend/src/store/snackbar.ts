@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { computed, ref } from 'vue'
+import { computed, ref, type InjectionKey } from 'vue'
 
 /*
  * The queue behind MdSnackbar. Only the head of the queue is shown, so a burst of
@@ -158,3 +158,6 @@ export function createSnackbarQueue({ timers = systemTimers }: { timers?: Snackb
 
 // The queue the application shares. Components and the toast helper use this one.
 export const snackbar = createSnackbarQueue()
+
+// App.vue provides the shared queue under this key. A component that injects it without a provider gets the shared queue.
+export const SNACKBAR_QUEUE_KEY: InjectionKey<ReturnType<typeof createSnackbarQueue>> = Symbol('snackbar-queue')

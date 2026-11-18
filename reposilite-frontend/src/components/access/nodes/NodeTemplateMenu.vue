@@ -17,7 +17,9 @@
 <script setup lang="ts">
 import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../../md/MdButton.vue'
+import MdListbox from '../../md/MdListbox.vue'
 import MdTextField from '../../md/MdTextField.vue'
+import { filterOptions, useCombobox } from '../../../helpers/useCombobox'
 import { artifactIdProblem, groupIdProblem } from './artifactNodes'
 import { isRepositorySegment, parseNode } from './nodeGrammar'
 import { repositoryNames } from './nodeList'
@@ -55,7 +57,7 @@ const emit = defineEmits(['apply'])
 
 const uid = useId()
 const panelId = `template-panel-${uid}`
-const datalistId = `template-repositories-${uid}`
+const listboxId = `template-repositories-${uid}`
 
 const open = ref(false)
 const chosen = ref<NodeTemplate | null>(null)
@@ -68,6 +70,8 @@ const trimmed = computed(() => repository.value.trim())
 const group = computed(() => groupId.value.trim())
 const artifact = computed(() => artifactId.value.trim())
 const names = computed(() => repositoryNames(props.catalog))
+// The suggestions are the repositories whose name contains the typed text, as a datalist filtered them.
+const repositoryOptions = computed(() => filterOptions(names.value.map(value => ({ value })), trimmed.value))
 const asksRepository = computed(() => chosen.value !== null && needsRepository(chosen.value))
 const asksArtifact = computed(() => chosen.value !== null && needsArtifact(chosen.value))
 
@@ -94,6 +98,36 @@ const fieldsReady = computed(() =>
   (!asksArtifact.value || (group.value !== '' && groupError.value === '' && artifactError.value === '')))
 const canApply = computed(() => chosen.value !== null && fieldsReady.value && nodeError.value === '')
 const preview = computed(() => (canApply.value ? filled.value.join(', ') : ''))
+
+const {
+  open: repositoryOpen,
+  active: repositoryActive,
+  visible: repositoryVisible,
+  inputAttrs: repositoryAttrs,
+  onInput: repositoryTyped,
+  onBlur: repositoryBlur,
+  onKeydown: repositoryKey,
+  choose: pickRepository
+} = useCombobox({
+  id: listboxId,
+  options: () => repositoryOptions.value,
+  onChoose: value => {
+    repository.value = value
+  }
+})
+
+const typeRepository = (value: string) => {
+  repository.value = value
+  repositoryTyped()
+}
+
+const openRepositories = () => {
+  repositoryOpen.value = true
+}
+
+const onRepositoryKeydown = (event: KeyboardEvent) => {
+  if (repositoryKey(event.key)) event.preventDefault()
+}
 
 const close = () => {
   open.value = false
@@ -198,25 +232,33 @@ const submit = () => {
           {{ chosen.label }}
         </p>
         <template v-if="asksRepository">
-          <MdTextField
-            v-model="repository"
-            label="Repository"
-            variant="outlined"
-            autocomplete="off"
-            spellcheck="false"
-            :list="datalistId"
-            :error="repositoryError !== ''"
-            :error-text="repositoryError"
-            :supporting-text="asksArtifact ? 'Choose a repository or type its name' : (preview ? `Adds ${preview}` : 'Choose a repository or type its name')"
-            data-test="template-repository"
-          />
-          <datalist :id="datalistId">
-            <option
-              v-for="name in names"
-              :key="name"
-              :value="name"
+          <div class="relative min-w-0">
+            <MdTextField
+              v-bind="repositoryAttrs"
+              :model-value="repository"
+              label="Repository"
+              variant="outlined"
+              autocomplete="off"
+              spellcheck="false"
+              :error="repositoryError !== ''"
+              :error-text="repositoryError"
+              :supporting-text="asksArtifact ? 'Choose a repository or type its name' : (preview ? `Adds ${preview}` : 'Choose a repository or type its name')"
+              data-test="template-repository"
+              @update:model-value="typeRepository"
+              @keydown="onRepositoryKeydown"
+              @focus="openRepositories"
+              @blur="repositoryBlur"
             />
-          </datalist>
+            <MdListbox
+              :id="listboxId"
+              class="absolute inset-x-0 top-14"
+              label="Repository suggestions"
+              :options="repositoryOptions"
+              :active="repositoryActive"
+              :open="repositoryVisible"
+              @choose="pickRepository"
+            />
+          </div>
         </template>
         <template v-if="asksArtifact">
           <MdTextField

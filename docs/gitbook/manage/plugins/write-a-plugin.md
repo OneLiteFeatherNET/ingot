@@ -187,3 +187,4 @@ The startup log lists your plugin. The route answers `hello`. Deploying a file w
 * Serving your own dashboard files or placeholders: [Serve a custom frontend](../../configure/dashboard/serve-custom-frontend.md).
 * What a plugin can change on the dashboard, and which stable names it can target: [Extend the dashboard from a plugin](extend-the-dashboard-from-a-plugin.md).
 * Plugin dependencies: set `dependencies = ["maven"]` (or another plugin name) in `@Plugin`. Ingot initializes dependencies first and sorts the rest by name. A dependency name that matches no loaded plugin stops startup with `Unknown dependency`.
+* Listing background runs on the Jobs page: [Plugin API, Job sources](../../references/plugins/plugin-api.md#job-sources).

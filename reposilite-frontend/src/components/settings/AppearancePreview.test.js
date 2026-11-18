@@ -62,6 +62,15 @@ describe('AppearancePreview', () => {
     expect(swatch(wrapper, 'primary')).toBe(generatedLight('#8a1c1c', 'primary'))
   })
 
+  it('titles the preview as a level 3 heading in the title-small role, under the level 2 appearance section', async () => {
+    const wrapper = await mountPreview({ seedColor: '#006a6a' })
+
+    const title = wrapper.get('h3')
+    expect(title.text()).toBe('Preview')
+    expect(title.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+    expect(wrapper.find('h4').exists(), 'the preview has no level 4 heading').toBe(false)
+  })
+
   it('asks for a seed when none is set, instead of showing a scheme', async () => {
     const wrapper = await mountPreview({ primaryColor: '#123456' })
 

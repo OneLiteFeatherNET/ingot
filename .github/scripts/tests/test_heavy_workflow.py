@@ -73,8 +73,8 @@ class TriggerTest(unittest.TestCase):
         types = triggers()["pull_request"]["types"]
         self.assertEqual({"opened", "reopened", "synchronize", "labeled", "unlabeled"}, set(types))
 
-    def test_pull_request_targets_main(self):
-        self.assertEqual(["main"], triggers()["pull_request"]["branches"])
+    def test_pull_request_targets_main_and_release_branches(self):
+        self.assertEqual({"main", "release/**"}, set(triggers()["pull_request"]["branches"]))
 
     def test_there_is_no_schedule(self):
         self.assertNotIn("schedule", triggers())

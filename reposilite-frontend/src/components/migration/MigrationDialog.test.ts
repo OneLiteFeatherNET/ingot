@@ -78,7 +78,7 @@ describe('the migration dialog', () => {
     await flushPromises()
     document.getElementById('second-action')!.focus()
 
-    document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
     await flushPromises()
 
     expect(document.activeElement?.id, 'Tab from the last control goes to the first').toBe('first-action')
@@ -90,9 +90,32 @@ describe('the migration dialog', () => {
     await flushPromises()
     document.getElementById('first-action')!.focus()
 
-    document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
     await flushPromises()
 
     expect(document.activeElement?.id).toBe('second-action')
+  })
+
+  it('draws its frame from the shared MdDialog', async () => {
+    const { wrapper } = await mountDialog()
+
+    expect(wrapper.findComponent({ name: 'MdDialog' }).exists(), 'the frame is MdDialog, not a frame of its own').toBe(true)
+  })
+
+  it('leaves the stacking layer and the scrim to MdDialog, with no z-50 literal of its own', async () => {
+    const { wrapper } = await mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    expect(document.querySelector('.z-50'), 'no element carries the z-50 literal').toBeNull()
+  })
+
+  it('names the dialog by the heading text', async () => {
+    const { wrapper } = await mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    const name = document.getElementById(document.querySelector('[role="dialog"]')!.getAttribute('aria-labelledby')!)
+    expect(name?.textContent.trim(), 'the accessible name is the title').toBe('Replace existing files?')
   })
 })

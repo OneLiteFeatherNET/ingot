@@ -115,6 +115,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-dialog-actions` | experimental | `src/components/md/MdDialogActions.vue` | none | none | none |
 | `md-disclosure` | experimental | `src/components/md/MdDisclosure.vue` | none | none | none |
 | `md-divider` | experimental | `src/components/md/MdDivider.vue` | none | none | none |
+| `md-field-shell` | experimental | `src/components/md/MdFieldShell.vue` | none | none | none |
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none | none |
 | `md-icon-button` | experimental | `src/components/md/MdIconButton.vue` | none | none | none |
 | `md-key-value-list` | experimental | `src/components/md/MdKeyValueList.vue` | none | none | none |
@@ -144,6 +145,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-text-area-renderer` (no element of its own) | stable | `src/components/renderers/MdTextAreaRenderer.vue` | none | none | none |
 | `md-text-field` | experimental | `src/components/md/MdTextField.vue` | none | none | none |
 | `md-text-field-renderer` (no element of its own) | stable | `src/components/renderers/MdTextFieldRenderer.vue` | none | none | none |
+| `md-transition` (no element of its own) | experimental | `src/components/md/MdTransition.vue` | none | none | none |
 | `menu-panel` | stable | `src/components/header/MenuPanel.vue` | none | none | none |
 | `migration-dialog` | experimental | `src/components/migration/MigrationDialog.vue` | none | none | none |
 | `migration-view` | experimental | `src/components/migration/MigrationView.vue` | none | none | none |
@@ -202,8 +204,8 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `secret-once-dialog` | experimental | `src/components/identity/SecretOnceDialog.vue` | none | none | none |
 | `section-renderer` | stable | `src/components/renderers/SectionRenderer.vue` | none | none | none |
 | `security-panel` | experimental | `src/components/access/SecurityPanel.vue` | none | none | none |
-| `segmented-control` | experimental | `src/components/tokens/SegmentedControl.vue` | none | none | none |
-| `segmented-option` | experimental | `src/components/tokens/SegmentedOption.vue` | none | none | none |
+| `segmented-control` | experimental | `src/components/md/MdSegmentedButton.vue` | none | none | none |
+| `segmented-option` | experimental | `src/components/md/MdSegmentedOption.vue` | none | none | none |
 | `settings-attention` | experimental | `src/components/settings/SettingsAttention.vue` | none | none | none |
 | `settings-backup-panel` | experimental | `src/components/maintenance/SettingsBackupPanel.vue` | none | none | none |
 | `settings-download-menu` | stable | `src/components/settings/SettingsDownloadMenu.vue` | none | none | none |
@@ -236,6 +238,8 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `time-series-chart` | experimental | `src/components/dashboard/TimeSeriesChart.vue` | none | none | none |
 | `token-list` | experimental | `src/components/identity/TokenList.vue` | none | none | none |
 | `token-tag` | experimental | `src/components/tokens/TokenTag.vue` | none | none | none |
+| `tokens-segmented-control` (no element of its own) | experimental | `src/components/tokens/SegmentedControl.vue` | none | none | none |
+| `tokens-segmented-option` (no element of its own) | experimental | `src/components/tokens/SegmentedOption.vue` | none | none | none |
 | `type-badge` | experimental | `src/components/repositories/TypeBadge.vue` | none | none | none |
 | `unsaved-changes-bar` | stable | `src/components/settings/UnsavedChangesBar.vue` | none | none | none |
 | `unsupported-renderer` | stable | `src/components/renderers/UnsupportedRenderer.vue` | none | none | none |

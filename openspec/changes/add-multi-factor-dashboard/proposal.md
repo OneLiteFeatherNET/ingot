@@ -1,18 +1,25 @@
 # Proposal
 
-## Open maintainer questions
+## Maintainer questions
+
+Questions 1 to 5 were settled on 2026-11-18 by adopting each recommended default. The answers are recorded in the
+decisions D4 to D7 and D10 of `design.md`. Question 6 is not settled yet.
 
 1. **Recovery codes.** Default: shown once in a dialog with two actions, copy and download as a text file, and a check
-   box that must be ticked before the dialog closes. They are never shown again.
+   box that must be ticked before the dialog closes. They are never shown again. *Resolved 2026-11-18: default adopted (D4).*
 2. **Passkey sign-in button.** Default: shown only when the server announces `passkeyFirstFactor` on the login route. It is
    a separate button above the password fields and does not replace them. Decided 2026-11-18: the server signal is `passkeyFirstFactor` on `GET /api/auth/providers`, and the button is
    shown only when it is set.
 3. **Step-up prompt.** Default: a sensitive action in the dashboard opens the step-up dialog when the last second factor is
-   older than the step-up window, then retries the action. Nothing is stored in the browser. Decided 2026-11-18: a passkey is offered in addition to the code, never instead of it.
+   older than the step-up window, then retries the action. Nothing is stored in the browser. *Resolved 2026-11-18: default
+   adopted (D5). The trigger is the server's `step_up_required` answer, so the window is decided by the server and the
+   dashboard keeps no clock of its own. A passkey is offered in addition to the code, never instead of it.*
 4. **Grace banner.** Default: shown on every page of a covered user without a factor until the grace period ends. It is
-   not dismissible, because it is the only signal before the session is restricted.
+   not dismissible, because it is the only signal before the session is restricted. *Resolved 2026-11-18: default adopted
+   (D6).*
 5. **Administrator reset.** Default: a row action "Reset second factors" on the user's page in the administration area,
    behind a confirmation that names the user and says that their sessions end. It is hidden without instance admin rights.
+   *Resolved 2026-11-18: default adopted (D7).*
 6. **Account page section.** Default: the section `Sign-in and security` is added to the account page provided by the
    change `rework-account-menu-and-profile`. That change is proposed in parallel and is not on main yet. If it lands later,
    this change's code pull request waits for it.

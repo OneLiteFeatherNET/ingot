@@ -20,6 +20,7 @@ import java.net.http.HttpClient
 import java.net.http.WebSocket
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 internal class ConsoleSocket(uri: URI) {
 
     private val messages = LinkedBlockingQueue<String>()
+    private val closed = CountDownLatch(1)
 
     private val socket: WebSocket = HttpClient.newHttpClient()
         .newWebSocketBuilder()
@@ -38,6 +40,11 @@ internal class ConsoleSocket(uri: URI) {
             override fun onText(webSocket: WebSocket, data: CharSequence, last: Boolean): CompletionStage<*> {
                 messages.add(data.toString())
                 webSocket.request(1)
+                return CompletableFuture.completedFuture(null)
+            }
+
+            override fun onClose(webSocket: WebSocket, statusCode: Int, reason: String): CompletionStage<*> {
+                closed.countDown()
                 return CompletableFuture.completedFuture(null)
             }
         })
@@ -56,6 +63,9 @@ internal class ConsoleSocket(uri: URI) {
             if (predicate(message)) return seen
         }
     }
+
+    /** Whether the server closed the connection, waiting up to the timeout for the close frame. */
+    fun awaitClosed(): Boolean = closed.await(TIMEOUT_SECONDS, SECONDS)
 
     fun close() {
         socket.abort()

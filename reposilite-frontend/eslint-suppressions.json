@@ -376,40 +376,23 @@
     }
   },
   "src/components/migration/ConnectStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 11
-    },
     "@typescript-eslint/require-await": {
       "count": 3
     }
   },
   "src/components/migration/CutOverStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 11
-    },
     "@typescript-eslint/require-await": {
       "count": 1
     }
   },
   "src/components/migration/DiscoverStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 9
-    },
     "@typescript-eslint/require-await": {
       "count": 1
     }
   },
   "src/components/migration/DryRunStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 11
-    },
     "@typescript-eslint/require-await": {
       "count": 7
-    }
-  },
-  "src/components/migration/MappingStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 8
     }
   },
   "src/components/migration/MigrationDialog.test.ts": {
@@ -418,33 +401,21 @@
     }
   },
   "src/components/migration/MigrationView.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 8
-    },
     "@typescript-eslint/require-await": {
       "count": 3
     }
   },
   "src/components/migration/SyncStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 11
-    },
     "@typescript-eslint/require-await": {
       "count": 11
     }
   },
   "src/components/migration/VerifyStep.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 6
-    },
     "@typescript-eslint/require-await": {
       "count": 9
     }
   },
   "src/components/migration/accessibility.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 11
-    },
     "@typescript-eslint/require-await": {
       "count": 3
     }

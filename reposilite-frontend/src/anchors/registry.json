@@ -1027,6 +1027,13 @@
       "states": []
     },
     {
+      "name": "md-field-shell",
+      "file": "src/components/md/MdFieldShell.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-text-area",
       "file": "src/components/md/MdTextArea.vue",
       "stability": "experimental",
@@ -1039,6 +1046,14 @@
       "stability": "experimental",
       "parts": [],
       "states": []
+    },
+    {
+      "name": "md-transition",
+      "file": "src/components/md/MdTransition.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
     },
     {
       "name": "connect-step",
@@ -1569,17 +1584,33 @@
     },
     {
       "name": "segmented-control",
-      "file": "src/components/tokens/SegmentedControl.vue",
+      "file": "src/components/md/MdSegmentedButton.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
     },
     {
       "name": "segmented-option",
-      "file": "src/components/tokens/SegmentedOption.vue",
+      "file": "src/components/md/MdSegmentedOption.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
+    },
+    {
+      "name": "tokens-segmented-control",
+      "file": "src/components/tokens/SegmentedControl.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "tokens-segmented-option",
+      "file": "src/components/tokens/SegmentedOption.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
     },
     {
       "name": "token-tag",

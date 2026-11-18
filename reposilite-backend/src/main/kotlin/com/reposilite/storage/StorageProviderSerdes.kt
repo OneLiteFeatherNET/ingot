@@ -42,6 +42,12 @@ class StorageProviderSerdes {
         private val STORAGE_PROVIDERS: Map<String, Class<out StorageProviderSettings>> =
             ServiceLoader.load(StorageProviderFactory::class.java).associate { factory -> factory.type to factory.settingsType }
 
+        /** The settings classes by type id of [registry], or of the built-in providers when there is no registry. */
+        private fun providersOf(registry: StorageProviderRegistry?): Map<String, Class<out StorageProviderSettings>> =
+            registry
+                ?.let { live -> live.types().mapNotNull { type -> live.resolve(type)?.let { type to it.settingsType } }.toMap() }
+                ?: STORAGE_PROVIDERS
+
     }
 
     class StorageProviderDeserializationProblemHandler : DeserializationProblemHandler() {
@@ -89,20 +95,32 @@ class StorageProviderSerdes {
 
     }
 
-    class StorageProviderEnumResolver : EnumResolver {
+    /**
+     * The `type` enum of a storage settings class. Built by the service loader it reads the built-in providers; the server builds it
+     * with its live registry, so a loaded plugin type is resolved as well.
+     */
+    class StorageProviderEnumResolver internal constructor(private val registry: StorageProviderRegistry?) : EnumResolver {
+
+        constructor() : this(null)
 
         override fun resolve(scope: FieldScope): Collection<String>? =
             if (scope.name == "type")
-                STORAGE_PROVIDERS.filterValues { it == scope.declaringType.erasedType }.keys
+                providersOf(registry).filterValues { it == scope.declaringType.erasedType }.keys
             else null
 
     }
 
-    class StorageProviderSubtypeResolver : SubtypeResolver {
+    /**
+     * The variants of a [StorageProviderSettings] property. Built by the service loader it reads the built-in providers; the server
+     * builds it with its live registry, so a loaded plugin type is resolved as well.
+     */
+    class StorageProviderSubtypeResolver internal constructor(private val registry: StorageProviderRegistry?) : SubtypeResolver {
+
+        constructor() : this(null)
 
         override fun resolve(declaredType: ResolvedType, context: SchemaGenerationContext): List<ResolvedType>? =
             if (declaredType.erasedType == StorageProviderSettings::class.java)
-                STORAGE_PROVIDERS.values.map { context.typeContext.resolveSubtype(declaredType, it) }
+                providersOf(registry).values.map { context.typeContext.resolveSubtype(declaredType, it) }
             else null
 
     }

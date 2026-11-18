@@ -21,6 +21,8 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
 import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
+import ingot.plugin.CheckPluginApiClosureTask
+import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.cyclonedx.Version
@@ -232,6 +234,8 @@ dependencies {
         exclude(group = "org.apache.commons", module = "commons-compress")
     }
     testImplementation("org.apache.commons:commons-compress:1.28.0")
+    // Compiles the Kotlin samples of ExperimentalIngotPluginApiTest in process. Keep the version equal to kotlinVersion of the root build.
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.0")
 
     val ldap = "7.0.4"
     testImplementation("com.unboundid:unboundid-ldapsdk:$ldap")
@@ -276,6 +280,18 @@ tasks.withType<ShadowJar> {
         // see also https://github.com/ben-manes/caffeine/discussions/762
         exclude(dependency("com.github.ben-manes.caffeine:.*"))
     }
+    // With minimize on, the shadow plugin lists the classes of every source set as an input, which makes this jar depend
+    // on their compile tasks, the container tests included. Those tests use nothing from the shipped classpath, so they
+    // are left out of that list and the server jar builds without resolving their dependencies.
+    sourceSetsClassesDirs.setFrom(
+        minimizeJar.map { minimize ->
+            if (minimize) {
+                sourceSets.filter { it.name != "containerTest" }.map { it.output.classesDirs.filter(File::isDirectory) }
+            } else {
+                emptyList()
+            }
+        }
+    )
 }
 
 // CycloneDX SBOM of the runtime classpath that the standalone jar contains. The release workflow attaches it to the
@@ -291,6 +307,28 @@ tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
     schemaVersion = Version.VERSION_16
     xmlOutput.unsetConvention()
     jsonOutput = rootProject.layout.buildDirectory.file("sbom/ingot-${project.version}.cdx.json")
+}
+
+// The slim plugin API jar (see openspec change add-plugin-api-artifact). It holds only the classes that plugin-api-classes.txt
+// lists, and pluginApiClosure fails the build when a listed class names a new Ingot type that the jar does not hold. Only the
+// jar and the check are built here. The publication of the jar follows in its own change, and the bundle is not touched.
+val pluginApiClasses = PluginApiAllowlist.parse(file("plugin-api-classes.txt").readText())
+
+val pluginApiJar by tasks.registering(Jar::class) {
+    group = "build"
+    description = "Builds the slim plugin API jar: the classes listed in plugin-api-classes.txt and nothing else."
+    archiveBaseName.set("ingot-plugin-api")
+    destinationDirectory.set(layout.buildDirectory.dir("plugin-api"))
+    from(sourceSets.main.get().output) {
+        include(pluginApiClasses.map { it.replace('.', '/') + ".class" })
+    }
+}
+
+val pluginApiClosure by tasks.registering(CheckPluginApiClosureTask::class) {
+    group = "verification"
+    description = "Fails when a class of the slim plugin API jar names a new Ingot type that the jar does not hold."
+    artifact.set(pluginApiJar.flatMap { it.archiveFile })
+    allowlist.set(layout.projectDirectory.file("plugin-api-classes.txt"))
 }
 
 publishing {
@@ -586,6 +624,24 @@ val pluginApiPackages = listOf(
     "com.reposilite.configuration.shared.api",
     "com.reposilite.console.api",
     "com.reposilite.status",
+)
+
+// The Ingot packages that plugins are documented to use (docs/gitbook/references/plugins/plugin-api.md). Each prerequisite adds
+// its own package in its own pull request. com.reposilite.frontend.api is the dashboard facade, which keeps its com.reposilite.*
+// name. com.reposilite.journalist is a third-party library and never belongs here.
+val ingotPluginApiPackages = listOf(
+    "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.repository",
+    "net.onelitefeather.ingot.search.backend",
+    "net.onelitefeather.ingot.storage.capability",
+    "com.reposilite.frontend.api",
+)
+
+// The packages of ingotPluginApiPackages whose findings are experimental, because the documentation marks them so.
+val ingotExperimentalPackages = listOf(
+    "net.onelitefeather.ingot.format",
+    "net.onelitefeather.ingot.search.backend",
+    "net.onelitefeather.ingot.storage.capability",
 )
 
 // Compares the jar of this build with the jar Reposilite 3.5.28 published, the release Ingot forked from. The report is

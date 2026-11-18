@@ -16,6 +16,7 @@
 
 import { randomBytes } from 'node:crypto'
 import { buildStylePlugin } from './plugin-fixture'
+import { NEXUS_IMPORT_ENV, resolveNexusImportJar } from './nexus-import-plugin'
 import { resolveJar, startServer } from './server'
 
 /*
@@ -39,7 +40,14 @@ export default async function globalSetup() {
   const stylePlugin = buildStylePlugin(resolveJar())
   let server
   try {
-    server = await startServer({ tokenName: TOKEN_NAME, tokenSecret, plugins: [stylePlugin.jar] })
+    // The nexus-import plugin is loaded with its switch on, so the Migration page is part of this run.
+    const nexusImportJar = resolveNexusImportJar()
+    server = await startServer({
+      tokenName: TOKEN_NAME,
+      tokenSecret,
+      plugins: [stylePlugin.jar, nexusImportJar],
+      env: NEXUS_IMPORT_ENV,
+    })
   } catch (error) {
     stylePlugin.dispose()
     throw error

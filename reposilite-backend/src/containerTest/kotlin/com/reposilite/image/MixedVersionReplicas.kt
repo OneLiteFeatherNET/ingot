@@ -219,7 +219,6 @@ internal data class SchemaColumn(
 }
 
 private const val NO_DEFAULT = "<none>"
-private const val MARIADB_IMAGE = "mariadb:11.4"
 private const val POSTGRES_PORT = 5432
 private const val DB_NAME = "ingot"
 private const val DB_USER = "ingot"

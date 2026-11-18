@@ -290,4 +290,10 @@ describe('TokenList', () => {
       expect(api.revoke).not.toHaveBeenCalled()
     })
   })
+
+  it('draws the list with the 1 pixel outline edge of the surface table', async () => {
+    await mountList()
+
+    expect(wrapper.classes(), 'the list card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
 })

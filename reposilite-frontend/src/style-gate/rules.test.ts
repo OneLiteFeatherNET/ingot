@@ -33,6 +33,16 @@ describe('the rule table', () => {
     expect(RULES.map((rule) => rule.id), 'the rule ids in order').toEqual(IDS)
   })
 
+  it('accepts the Vue transition classes of MdTransition in the md3 stylesheets, and only there', () => {
+    const classSelector = RULES.find((rule) => rule.id === 'class-selector')!
+    const findingsOf = (file: string, text: string) => classSelector.match({ file, text } as never)
+
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-menu-enter-active { opacity: 1; }'), 'a transition class in an md3 sheet').toEqual([])
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-shared-x-back-leave-to { opacity: 0; }')).toEqual([])
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-menu-open { opacity: 1; }'), 'a motion class that is not a transition hook').toEqual(['.motion-menu-open'])
+    expect(findingsOf('src/components/card/Other.css', '.motion-menu-enter-active { opacity: 1; }'), 'a transition class outside the documented sheets').toEqual(['.motion-menu-enter-active'])
+  })
+
   it('gives each rule a scope and an allowlist file named after its id', () => {
     for (const rule of RULES) {
       expect(rule.scope, `the scope of ${rule.id}`).toBeInstanceOf(Array)

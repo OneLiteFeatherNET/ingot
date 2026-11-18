@@ -24,6 +24,7 @@ import DeleteEntryDialog from './DeleteEntryDialog.vue'
 import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
+import { nestedUischemas } from './nestedLayouts'
 import {
   SETTING_TYPE_OPTIONS,
   blankEntriesNotice,
@@ -430,6 +431,7 @@ const formLayout = computed(() => {
         :schema="collection.itemSchema"
         :uischema="formLayout"
         :renderers="renderers"
+        :uischemas="nestedUischemas"
         :ajv="validator"
         :config="formConfiguration"
         @change="onChange"

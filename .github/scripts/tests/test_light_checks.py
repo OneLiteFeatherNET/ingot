@@ -146,7 +146,7 @@ class WorkflowTest(unittest.TestCase):
     def test_job_needs_every_light_job(self):
         for job_id in (
             "build", "coverage-changes", "coverage-backend", "coverage-frontend",
-            "frontend", "licenses", "vulnerabilities", "sbom", "plugin-api", "script-tests", "docs-tests",
+            "frontend", "licenses", "vulnerabilities", "sbom", "plugin-api", "script-tests", "docs-tests", "support-lines",
         ):
             self.assertRegex(self.block, rf"needs:[^\n]*\b{re.escape(job_id)}\b", job_id)
 

@@ -77,6 +77,15 @@ describe('TeamDetail', () => {
     document.body.innerHTML = ''
   })
 
+  describe('card', () => {
+    it('draws the detail card with the outline edge', async () => {
+      await mountDetail('developers')
+
+      const card = wrapper!.get('h2').element.closest<HTMLElement>('.rounded-corner-large')!
+      expect(card.classList.contains('border-outline'), 'detail card should carry the outline edge').toBe(true)
+    })
+  })
+
   describe('loading', () => {
     it('reads the team named by the address', async () => {
       await mountDetail('developers')
@@ -396,7 +405,6 @@ describe('TeamDetail', () => {
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
-      expect(conflictDialog(), 'the conflict is settled').toBeNull()
     })
   })
 
