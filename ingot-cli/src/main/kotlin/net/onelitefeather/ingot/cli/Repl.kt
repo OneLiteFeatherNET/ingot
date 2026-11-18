@@ -76,6 +76,8 @@ fun runRepl(
                     reader.readLine("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ").trim().lowercase().let { it == "y" || it == "yes" }
                 } catch (_: UserInterruptException) {
                     false
+                } catch (_: EndOfFileException) {
+                    false
                 }
             },
         ),
