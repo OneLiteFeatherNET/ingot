@@ -2,7 +2,7 @@
 
 ## Open maintainer questions
 
-1. **One code PR or one PR per wave.** Default: one PR per wave, five PRs in the order of the waves, each under the type `fix`
+1. **One code PR or one PR per wave.** Resolved 2026-11-18: one PR per wave. Default: one PR per wave, five PRs in the order of the waves, each under the type `fix`
    and the scope `ui`, with the wave in the summary:
    - wave 1: `fix(ui): build cards and sections from shared components`
    - wave 2: `fix(ui): build lists and rows from shared components`
@@ -12,17 +12,16 @@
 
    Alternative: one code PR under the umbrella title `fix(ui): build cards, lists, tables and forms from shared components`,
    with the five waves as commit series. The waves are independently revertible either way, so the default keeps each review small.
-2. **Card shape.** Default: one card, `MdCard` with `rounded-corner-medium` (12px) and `p-4` (16px) on every width. Alternative:
+2. **Card shape.** Resolved 2026-11-18: `rounded-corner-medium` (12px). Large radii become medium, and hand-built low cards become `MdCard` with `variant="low"`. Default: one card, `MdCard` with `rounded-corner-medium` (12px) and `p-4` (16px) on every width. Alternative:
    `rounded-corner-large` (16px), which is the radius of the larger containers today. The default keeps the 8 existing
    `MdCard` users unchanged and moves about 60 hand-built cards onto them.
-3. **Form field variant.** Default: `outlined` for every form field, which makes `MdTextField` default to outlined. Alternative:
+3. **Form field variant.** Resolved 2026-11-18: `outlined` for every form field. Default: `outlined` for every form field, which makes `MdTextField` default to outlined. Alternative:
    `filled`, the current primitive default. Outlined fields are the variant of the newest views (Audit, Password), so the
    migration touches fewer of them.
-4. **The value of the `large` window class.** `add-administration-overview` and `rework-administration-side-navigation` draw the
-   tree beside the page from 1240 pixels, and `refactor-md3-token-utilities` names that value `large` (its question 2) so that it
-   changes no pixel. The MD3 `large` window class starts at 1200 pixels. Default: wave 5 moves `--breakpoint-large` from 1240 to
-   1200 pixels, a change of 40 pixels that is visible only between 1200 and 1239 pixels. Alternative: keep `large` at 1240,
-   which leaves one window class off the MD3 value.
+4. **The value of the `large` window class.** Resolved 2026-11-18: `large` stays at 1240 pixels. Wave 5 does not move
+   `--breakpoint-large`, so no pixel changes in wave 5, and the MD3 value of 1200 pixels is not adopted. Background:
+   `add-administration-overview` and `rework-administration-side-navigation` draw the tree beside the page from 1240 pixels, and
+   `refactor-md3-token-utilities` names that value `large` so that it changes no pixel.
 
 ## Why
 
@@ -68,8 +67,8 @@ Everything below is visible in the layout and carries no change to data, routes,
   (open question 3). Field grids, fieldsets (with `legend`, not `span`), the save bar and the repository wizard's repeated
   pieces become shared components. Renderer prop wiring is one helper, not six copies.
 - **Breakpoints and leftovers (wave 5).** Every `sm:`, `md:`, `lg:` and `xl:` and every literal width becomes one of the MD3
-  window classes: `medium` (600 pixels), `expanded` (840 pixels), `large` (1200 pixels) and `xlarge` (1600 pixels). Tailwind's
-  default breakpoints are removed from the theme, so the window classes are the only ones that exist. Remaining arbitrary values,
+  window classes: `medium` (600 pixels), `expanded` (840 pixels), `large` (1240 pixels) and `xlarge` (1600 pixels). The window classes
+  are declared as `@custom-variant`s, and Tailwind's default breakpoints are reset, so the window classes are the only ones that exist. Remaining arbitrary values,
   `!important` overrides, opacity fades and hand-set font weights go. The style gate baseline is emptied and its allowlist
   entries that no longer apply are removed.
 
@@ -100,7 +99,7 @@ one, the change gains an operator-facing item and is marked BREAKING before merg
 Proposal PR `docs(openspec): propose migrate-content-to-components`: only the files under
 `openspec/changes/migrate-content-to-components/`, tasks unchecked, from the remote main branch.
 
-Code PRs under the type `fix` and the scope `ui`, after the proposal is merged. Default: one PR per wave (open question 1). The
+Code PRs under the type `fix` and the scope `ui`, after the proposal is merged. Decided 2026-11-18: one PR per wave (question 1). The
 exact umbrella title is `fix(ui): build cards, lists, tables and forms from shared components`. Supporting commits inside a PR
 carry the types `test(ui)` (red tests), `build(ui)` (style gate baseline), `docs(gitbook)` (generated anchor reference) and
 `fix(ui)` (implementation), as in `add-administration-overview`. No file under `openspec/` is in a code PR.

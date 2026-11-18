@@ -5,7 +5,7 @@ Each group is one or more commits of one Conventional Commits type. The change s
 `add-administration-overview`. Every red test is written first and seen to fail before the production code exists. Every test follows
 F.I.R.S.T.: no sleeps or waits by time, no system clock, no network, a fresh mount or a fresh input per test, no shared module state,
 assertions with messages. Vitest and Playwright runs go through the slot runner (`heavy`). Each wave is one pull request, merged before
-the next wave starts (open question 1 in `proposal.md`). Line numbers come from the maintainer's inventory and are re-read at the start
+the next wave starts (decided 2026-11-18, question 1 in `proposal.md`). Line numbers come from the maintainer's inventory and are re-read at the start
 of each wave. No file under `reposilite-backend/` and no file under `openspec/` changes in a code commit.
 
 ## 1. Proposal
@@ -179,9 +179,9 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 7. Wave 5: breakpoints and leftovers
 
-- [ ] 7.1 `test(ui)`: in a new `src/styles/md3/breakpoints.test.js`, read `src/style.css` as text and assert that `--breakpoint-*: initial`
-  is declared and that the four `--breakpoint-*` values are the window classes (600, 840, 1200, 1600 pixels), with no other breakpoint.
-  Verify: it fails, because the Tailwind defaults are still there.
+- [ ] 7.1 `test(ui)`: in a new `src/styles/md3/breakpoints.test.js`, read `src/style.css` as text and assert that the four window
+  classes are declared as `@custom-variant`s at 600, 840, 1240 and 1600 pixels, with `max-medium` and `max-expanded` below the first two,
+  and that `--breakpoint-*: initial` is declared in `@theme`. Verify: it fails, because the reset is not there yet.
 - [ ] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
   values of `src/styles/md3/typography.css`. Verify: it fails, because the module does not exist.
 - [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert that the anchor `page-footer` appears once, and that the icon lookup returns a
@@ -191,9 +191,10 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
   folder group. Verify: the Playwright layout suite passes at 320, 600, 840, 1280 and 1920 pixels, and each changed threshold is in the
   wave's screenshots on both sides of the threshold.
-- [ ] 7.6 `fix(ui)`: change `src/style.css` `@theme` to `--breakpoint-*: initial` plus the four window classes, after 7.5 so that no view
-  depends on a default. Verify: 7.1 passes, and the `.container` gutter is still 16 pixels below 600 pixels and 24 pixels from it (the
-  `window-margins.test.js` assertions pass).
+- [ ] 7.6 `fix(ui)`: in `src/style.css` `@theme`, add `--breakpoint-*: initial` so that Tailwind's default breakpoints are gone. The
+  window classes stay the `@custom-variant`s that the file already declares, with `large` at 1240 pixels. Do this after 7.5 so that no
+  view depends on a default. Verify: 7.1 passes, and the `.container` gutter is still 16 pixels below 600 pixels and 24 pixels from it
+  (the `window-margins.test.js` assertions pass).
 - [ ] 7.7 `fix(ui)`: remove the arbitrary values and `!important` overrides (`size-6!` in `LoginModal`, `!px-2` in `MenuPanel`, the two in
   `SearchView`, any `shadow-[inset...]` left in `MdFieldShell` by the catalogue change), the opacity fades (`opacity-70` in `SearchFilters`, `opacity-80` in
   `RepositoryTypeBadge`, `opacity-60` in `MigrationView`) and the hand-set font weights (`RevokeTokenDialog`, `RotateTokenDialog`,
@@ -215,6 +216,6 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 - [ ] 8.1 Check that the five wave pull requests are merged in order, that the proposal is merged, and that the change's `openspec/`
   files are not in any code pull request. Verify: `git log --oneline` on the remote main branch shows the five wave commits in order.
-- [ ] 8.2 Open the final pull request under the title named in the proposal, `fix(ui): build cards, lists, tables and forms from shared components`,
-  only if the maintainer chose the one pull request alternative (open question 1). Otherwise open no further pull request and record in the
-  wave 5 description that the umbrella title was not used. The last task of the change is this decision.
+- [ ] 8.2 Decided 2026-11-18: one pull request per wave (question 1 in `proposal.md`). No umbrella pull request is opened. The
+  wave 5 pull request description records that the umbrella title was not used. Verify: the five wave pull requests are merged and
+  no umbrella pull request exists.
