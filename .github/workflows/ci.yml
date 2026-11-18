@@ -763,6 +763,106 @@ jobs:
       - name: "Run the docs guide tests"
         run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -p 'test_*guides.py' -v
 
+  # Decides whether the pull request changes the Helm chart. Only a change under charts/ counts. A diff that cannot be
+  # read counts as a change, so the lint below is never skipped by accident.
+  chart-changes:
+    name: "Detect chart changes"
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      chart: ${{ steps.filter.outputs.chart }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # Both ends of the pull request have to be present for the diff below.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Check whether the chart changed"
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if ! git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"; then
+            echo "chart=true" >> "$GITHUB_OUTPUT"
+            echo "Could not diff the pull request, running the chart lint." >&2
+          elif grep -q '^charts/' "$RUNNER_TEMP/changed.txt"; then
+            echo "chart=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "chart=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The pre-cluster part of the Helm chart job in heavy.yml, run on every pull request that changes charts/. The
+  # cluster install and the image smoke test stay label-gated in heavy.yml. This job is not a required check.
+  chart-lint:
+    name: "Chart lint"
+    needs: [ chart-changes ]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (needs.chart-changes.result != 'success' || needs.chart-changes.outputs.chart == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install the chart test dependencies"
+        run: python3 -m pip install "pyyaml==6.0.3"
+
+      - name: "Install promtool"
+        # Prometheus 3.5.0 release archive, verified against the sha256 published with the release.
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/prometheus.tar.gz" \
+            https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
+          echo "e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum --check --strict -
+          tar --extract --gzip --file "$RUNNER_TEMP/prometheus.tar.gz" --directory "$RUNNER_TEMP" prometheus-3.5.0.linux-amd64/promtool
+          echo "PROMTOOL=$RUNNER_TEMP/prometheus-3.5.0.linux-amd64/promtool" >> "$GITHUB_ENV"
+
+      - name: "Lint the chart in both deploy modes"
+        run: |
+          helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/tests/scalable/values.yaml
+
+      - name: "Check the alert rules with promtool"
+        run: |
+          helm template ingot charts/ingot --namespace reposilite-staging --set prometheusRule.enabled=true \
+            --show-only templates/prometheusrule.yaml > "$RUNNER_TEMP/prometheusrule.yaml"
+          python3 -c 'import sys, yaml; print(yaml.safe_dump(yaml.safe_load(open(sys.argv[1]))["spec"]))' \
+            "$RUNNER_TEMP/prometheusrule.yaml" > "$RUNNER_TEMP/rules.yaml"
+          "$PROMTOOL" check rules "$RUNNER_TEMP/rules.yaml"
+
+      - name: "Run the chart tests"
+        run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
+
+      - name: "Check the dashboard segment copy against its source"
+        run: cmp charts/ingot/files/dashboard-segments.json reposilite-frontend/src/router/dashboard-segments.json
+
+      - name: "Set up chart-testing"
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f  # v2.8.0
+        with:
+          version: "3.14.0"
+
+      - name: "Lint the chart with chart-testing"
+        run: ct lint --config ct.yaml --all
+
   # The required check for everything that must stay fast. It is green when each light job succeeded or was skipped,
   # and red when one failed or was cancelled. The summary lists each light job's duration against its budget, and a
   # job over budget only warns, so a slow runner does not block a merge. Container images, the Helm chart, the HA smoke
