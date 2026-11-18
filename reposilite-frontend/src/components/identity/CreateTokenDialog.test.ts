@@ -144,6 +144,36 @@ describe('CreateTokenDialog', () => {
     expect(api.create.mock.calls[0][0].scopes).toEqual(['READ'])
   })
 
+  // The fields in the order the user answers them: the required name and access first, the optional description after the expiry.
+  const drawnOrder = (anchors: [string, Element | null][]) => {
+    const missing = anchors.filter(([, node]) => node === null).map(([name]) => name)
+    expect(missing, 'every field named in the order is drawn').toEqual([])
+    return [...anchors]
+      .sort(([, a], [, b]) => (a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([name]) => name)
+  }
+  const labelled = (text: string) => [...dialog().querySelectorAll('span, legend')].find(node => node.textContent?.trim() === text) ?? null
+
+  it('asks for the name and the access before the expiry and the optional description', () => {
+    expect(drawnOrder([
+      ['Name', field('create-token-name')],
+      ['Access', labelled('Access')],
+      ['Expires', labelled('Expires')],
+      ['Description', field('create-token-description')],
+      ['Advanced', labelled('Advanced: limit to artifacts')]
+    ])).toEqual(['Name', 'Access', 'Expires', 'Description', 'Advanced'])
+  })
+
+  it('draws the expiry date right after the custom choice, before the description', async () => {
+    await pick('Custom')
+
+    expect(drawnOrder([
+      ['Expires', labelled('Expires')],
+      ['Expiry date', field('create-token-expiry-date')],
+      ['Description', field('create-token-description')]
+    ])).toEqual(['Expires', 'Expiry date', 'Description'])
+  })
+
   it('shows what each access choice allows, beside its radio', () => {
     expect(dialog().querySelector('#create-token-access-all-help')?.textContent?.trim()).toBe('Everything your teams allow')
     expect(dialog().querySelector('#create-token-access-read-help')?.textContent?.trim()).toBe('Download artifacts, no deploy')

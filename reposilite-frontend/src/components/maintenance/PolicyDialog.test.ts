@@ -129,6 +129,44 @@ describe('PolicyDialog validation', () => {
   })
 })
 
+describe('PolicyDialog field order', () => {
+  // The fields in the order the user answers them: what the policy is and where it applies, then the group filter, the limits and the schedule.
+  const drawnOrder = (anchors: [string, Element | null][]) => {
+    const missing = anchors.filter(([, node]) => node === null).map(([name]) => name)
+    expect(missing, 'every field named in the order is drawn').toEqual([])
+    return [...anchors]
+      .sort(([, a], [, b]) => (a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([name]) => name)
+  }
+  const labelled = (text: string) => [...document.querySelectorAll('legend')].find(node => node.textContent?.trim() === text) ?? null
+
+  it('asks for the id, the switch, the repositories and the scope before the limits and the schedule', async () => {
+    await openDialog()
+
+    expect(drawnOrder([
+      ['Id', field('policy-id')],
+      ['Enabled', document.getElementById('policy-enabled')],
+      ['Repositories', labelled('Repositories')],
+      ['Scope', field('policy-scope')],
+      ['Group filter', field('policy-group-filter')],
+      ['Keep newest', field('policy-keep-latest')],
+      ['Older than', field('policy-older-than-days')],
+      ['Not downloaded for', field('policy-not-downloaded-days')],
+      ['When to run', field('policy-schedule')]
+    ])).toEqual([
+      'Id',
+      'Enabled',
+      'Repositories',
+      'Scope',
+      'Group filter',
+      'Keep newest',
+      'Older than',
+      'Not downloaded for',
+      'When to run'
+    ])
+  })
+})
+
 describe('PolicyDialog submit body', () => {
   it('sends the policy in the wire shape with blanks as null', async () => {
     await openDialog()
