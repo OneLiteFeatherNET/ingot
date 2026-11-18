@@ -922,13 +922,43 @@ jobs:
       - name: "Lint the chart with chart-testing"
         run: ct lint --config ct.yaml --all
 
+  # The support tables of SUPPORT.md and .github/SECURITY.md are rendered from support-lines.json, so a window
+  # cannot drift from its table. The job fails when a table differs, when a backport label is missing for an open
+  # line, or when an open line has no release branch. With no open line the label and branch loops do nothing.
+  support-lines:
+    name: "Support lines"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Check the support tables against support-lines.json"
+        run: python3 .github/scripts/render_support_tables.py --mode check
+
+      - name: "Check the backport labels and release branches of the open lines"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while read -r label branch; do
+            if ! gh label list --repo "$GITHUB_REPOSITORY" --limit 500 --json name --jq '.[].name' | grep -qxF "$label"; then
+              echo "::error::the label $label is missing, create it before the line is open"
+              exit 1
+            fi
+            if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "::error::the branch $branch is missing for an open line"
+              exit 1
+            fi
+          done < <(python3 .github/scripts/render_support_tables.py --mode labels)
+
   # The required check for everything that must stay fast. It is green when each light job succeeded or was skipped,
   # and red when one failed or was cancelled. The summary lists each light job's duration against its budget, and a
   # job over budget only warns, so a slow runner does not block a merge. Container images, the Helm chart, the HA smoke
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests, support-lines]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
