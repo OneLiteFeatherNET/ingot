@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import EntryList from './EntryList.vue'
 
 const itemSchema = {
@@ -35,13 +35,13 @@ const entries = [
 // The keys belong to the entries, not to their ids: they stay when the entries are edited.
 const keys = ['entry-1', 'entry-2', 'entry-3']
 
-let wrapper
+let wrapper: VueWrapper
 
-const mountList = (props = {}) => {
+const mountList = (props: Record<string, unknown> = {}) => {
   wrapper = mount(EntryList, {
     props: { entries, keys, selectedKey: null, itemSchema, collectionTitle: 'Repositories', noun: 'repository', ...props },
     attachTo: document.body
-  })
+  }) as VueWrapper
   return wrapper
 }
 
@@ -51,7 +51,6 @@ const itemIds = () => itemButtons().map(button => button.find('span').text())
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('EntryList', () => {
@@ -150,10 +149,10 @@ describe('EntryList with descriptions and tags', () => {
     wrapper = mount(EntryList, {
       props: { entries: tagged, keys: taggedKeys, selectedKey: null, itemSchema: taggedItemSchema, collectionTitle: 'Repositories', noun: 'repository' },
       attachTo: document.body
-    })
+    }) as VueWrapper
     return wrapper
   }
-  const chipsOf = (index) => wrapper.findAll('li')[index].findAll('[data-test="tag-chip"]').map(chip => chip.text())
+  const chipsOf = (index: number) => wrapper.findAll('li')[index].findAll('[data-test="tag-chip"]').map(chip => chip.text())
   // In document order: releases (team-core, public), snapshots (team-core, ci), private (internal).
   const chipButtons = () => wrapper.findAll('[data-test="tag-chip"]')
 
@@ -282,11 +281,11 @@ describe('EntryList item layout', () => {
     { id: 'archive', description: 'Old builds' }
   ]
 
-  const mountLayout = (selectedKey = null) => {
+  const mountLayout = (selectedKey: string | null = null) => {
     wrapper = mount(EntryList, {
       props: { entries: layoutEntries, keys: ['entry-1', 'entry-2'], selectedKey, itemSchema: layoutSchema, collectionTitle: 'Repositories', noun: 'repository' },
       attachTo: document.body
-    })
+    }) as VueWrapper
     return wrapper
   }
 

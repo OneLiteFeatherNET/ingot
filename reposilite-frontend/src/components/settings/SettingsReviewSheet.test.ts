@@ -15,9 +15,9 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
-import { diffSettings } from './settingsDiff'
+import { diffSettings, type SettingsChange } from './settingsDiff'
 
 const SCHEMAS = {
   maven: {
@@ -80,24 +80,31 @@ const DRAFT = {
 
 const CHANGES = diffSettings(SAVED, DRAFT, SCHEMAS)
 
-let wrapper
+let wrapper: VueWrapper
 
-const mountSheet = (props = {}) => {
+const mountSheet = (props: Record<string, unknown> = {}) => {
   wrapper = mount(SettingsReviewSheet, {
     props: { open: true, changes: CHANGES, invalid: false, saving: false, ...props },
     attachTo: document.body
-  })
+  }) as VueWrapper
   return wrapper
 }
 
 // The sheet is teleported to the body, so it is read from the document. The modal's own wrapper also
 // has role="dialog", so the sheet is the one that is labelled.
-const sheet = () => document.querySelector('[role="dialog"][aria-labelledby]')
-const buttonIn = (name) => [...sheet().querySelectorAll('button')].find(button => button.textContent.trim() === name)
+const sheet = (): HTMLElement => {
+  const element = document.querySelector<HTMLElement>('[role="dialog"][aria-labelledby]')
+  if (!element) throw new Error('no review sheet is shown')
+  return element
+}
+const buttonIn = (name: string): HTMLButtonElement => {
+  const button = [...sheet().querySelectorAll('button')].find(item => item.textContent.trim() === name)
+  if (!button) throw new Error(`no ${name} button in the review sheet`)
+  return button
+}
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
   document.body.innerHTML = ''
 })
 
@@ -106,8 +113,8 @@ describe('SettingsReviewSheet', () => {
     mountSheet()
     await flushPromises()
 
-    expect(sheet(), 'a dialog is shown').not.toBeNull()
-    expect(document.getElementById(sheet().getAttribute('aria-labelledby'))?.textContent).toContain('Review changes')
+    expect(document.querySelector('[role="dialog"][aria-labelledby]'), 'a dialog is shown').not.toBeNull()
+    expect(document.getElementById(sheet().getAttribute('aria-labelledby') ?? '')?.textContent).toContain('Review changes')
   })
 
   it('lists the changes under their domain and entry', async () => {
@@ -148,13 +155,13 @@ describe('SettingsReviewSheet', () => {
     mountSheet()
     await flushPromises()
 
-    const revertVisibility = sheet().querySelector('[aria-label="Revert Visibility"]')
-    revertVisibility.click()
+    const revertVisibility = sheet().querySelector<HTMLButtonElement>('[aria-label="Revert Visibility"]')
+    revertVisibility?.click()
     await flushPromises()
 
     const emitted = wrapper.emitted('revert')
     expect(emitted, 'a revert is requested').toHaveLength(1)
-    expect(emitted[0][0].id).toBe(CHANGES.find(change => change.label === 'Visibility').id)
+    expect((emitted?.[0]?.[0] as SettingsChange | undefined)?.id).toBe(CHANGES.find(change => change.label === 'Visibility')?.id)
   })
 
   it('discards all changes and saves from the footer', async () => {

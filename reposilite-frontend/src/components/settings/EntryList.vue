@@ -14,13 +14,15 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdTextField from '../md/MdTextField.vue'
 import NewEntryDialog from './NewEntryDialog.vue'
 import { entryAddresses, filterEntries, idText, summaryOf, validateNewId } from './collections'
+import type { CollectionEntry, SettingsSchema } from './collections'
+import type { Searchable } from '../../store/maven/repositories'
 
 /*
  * The list pane of a collection: a search field over the ids, descriptions and tags, the action that
@@ -30,39 +32,46 @@ import { entryAddresses, filterEntries, idText, summaryOf, validateNewId } from 
  * the id or, while there is no usable id, the key. The selected item takes the secondary-container role.
  * The tags of an entry are assist chips under its id; pressing one searches for that tag.
  */
-const props = defineProps({
-  entries: {
-    type: Array,
-    required: true
-  },
-  keys: {
-    type: Array,
-    default: () => []
-  },
-  selectedKey: {
-    type: String,
-    default: null
-  },
-  itemSchema: {
-    type: Object,
-    required: true
-  },
-  collectionTitle: {
-    type: String,
-    required: true
-  },
-  noun: {
-    type: String,
-    required: true
-  }
+
+const props = withDefaults(defineProps<{
+  entries: ListEntry[]
+  keys?: string[]
+  selectedKey?: string | null
+  itemSchema: SettingsSchema
+  collectionTitle: string
+  noun: string
+}>(), {
+  keys: () => [],
+  selectedKey: null
 })
 
-const emit = defineEmits(['select', 'create'])
+const emit = defineEmits<{
+  select: [address: string]
+  create: [id: string]
+}>()
+
+/* An entry as the list reads it: its fields are free, and the id, description and tags are searched when present. */
+type ListEntry = CollectionEntry & Searchable
+
+interface ListItem {
+  key: string
+  address: string
+  title: string
+  unnamed: boolean
+  problem: string
+  summary: string
+  tags: string[]
+}
+
+const tagsOf = (entry: ListEntry | undefined): string[] => {
+  const tags = entry?.tags
+  return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === 'string') : []
+}
 
 const query = ref('')
 const dialogOpen = ref(false)
 
-const items = computed(() => {
+const items = computed((): ListItem[] => {
   const addresses = entryAddresses(props.entries, props.keys)
   const ids = props.entries.map(idText)
   return filterEntries(props.entries, query.value).map((item) => {
@@ -74,7 +83,7 @@ const items = computed(() => {
       unnamed: item.id === '',
       problem,
       summary: problem ? '' : summaryOf(props.itemSchema, item.entry),
-      tags: Array.isArray(item.entry?.tags) ? item.entry.tags.filter(tag => typeof tag === 'string') : []
+      tags: tagsOf(item.entry)
     }
   })
 })
@@ -82,7 +91,7 @@ const items = computed(() => {
 const existingIds = computed(() => props.entries.map(idText))
 
 // A tag chip narrows the list to that tag, the same way typing `tag:name` does.
-const filterBy = (tag) => {
+const filterBy = (tag: string) => {
   query.value = `tag:${tag}`
 }
 
@@ -91,7 +100,7 @@ const emptyText = computed(() => {
   return `No ${props.noun} matches "${query.value.trim()}".`
 })
 
-const isSelected = (item) => item.key === props.selectedKey
+const isSelected = (item: ListItem) => item.key === props.selectedKey
 </script>
 
 <template>

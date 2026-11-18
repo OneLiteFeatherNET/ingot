@@ -14,66 +14,65 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import { SCRIM_STYLE } from './dialog'
 import { formatChangeValue, groupChanges } from './settingsDiff'
+import type { ChangeKind, SettingsChange } from './settingsDiff'
 
 /*
  * Every unsaved change, grouped by domain and entry, with a revert for each one. From 840px it is a
  * side sheet on the right; below that it fills the window. Nothing is written until Save is pressed,
  * and Revert only moves the draft back to the saved value of that one field.
  */
-const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false
-  },
-  changes: {
-    type: Array,
-    default: () => []
-  },
-  invalid: {
-    type: Boolean,
-    default: false
-  },
-  saving: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  open?: boolean
+  changes?: readonly SettingsChange[]
+  invalid?: boolean
+  saving?: boolean
   /*
    * The stored settings changed elsewhere: the changes compare the stored value (before) with the draft (after).
    * Revert then takes the stored value into the draft, and nothing is saved from here; the conflict dialog owns that.
    */
-  conflict: {
-    type: Boolean,
-    default: false
-  }
+  conflict?: boolean
+}>(), {
+  open: false,
+  changes: () => [],
+  invalid: false,
+  saving: false,
+  conflict: false
 })
 
-const emit = defineEmits(['update:open', 'revert', 'discard', 'save'])
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  revert: [change: SettingsChange]
+  discard: []
+  save: []
+}>()
 
 const sections = computed(() => groupChanges(props.changes))
 
 const close = () => emit('update:open', false)
 
-const labelOf = (change) => {
+const BADGES: Partial<Record<ChangeKind, string>> = { added: 'Added', removed: 'Removed' }
+
+const labelOf = (change: SettingsChange): string => {
   if (change.label) return change.label
   return change.group ? 'Entry' : change.domainTitle
 }
 
-const valueOf = (change) => {
+const valueOf = (change: SettingsChange): string => {
   if (change.masked) return 'changed'
   if (change.kind === 'changed') return `${formatChangeValue(change.before)} → ${formatChangeValue(change.after)}`
   if (change.kind === 'added') return change.after === undefined ? '' : formatChangeValue(change.after)
   return change.before === undefined ? '' : formatChangeValue(change.before)
 }
 
-const badgeOf = (change) => ({ added: 'Added', removed: 'Removed' })[change.kind] ?? ''
+const badgeOf = (change: SettingsChange): string => BADGES[change.kind] ?? ''
 
-const revertLabelOf = (change) => {
+const revertLabelOf = (change: SettingsChange): string => {
   const badge = badgeOf(change)
   return badge ? `Revert ${badge.toLowerCase()} ${labelOf(change)}` : `Revert ${labelOf(change)}`
 }
