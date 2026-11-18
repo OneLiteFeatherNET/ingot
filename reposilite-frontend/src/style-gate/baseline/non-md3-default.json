@@ -185,11 +185,6 @@
     "count": 1
   },
   {
-    "file": "src/components/migration/MigrationDialog.vue",
-    "match": "z-50",
-    "count": 1
-  },
-  {
     "file": "src/components/migration/MigrationView.vue",
     "match": "opacity-60",
     "count": 1

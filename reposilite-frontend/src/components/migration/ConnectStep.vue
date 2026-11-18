@@ -19,6 +19,7 @@
 // credential works; on success the connection is kept in the page and the literal password in the holder.
 import { computed, inject, nextTick, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import PasswordField from './PasswordField.vue'
@@ -42,7 +43,7 @@ const problem = ref<Problem | null>(null)
 const pending = ref(false)
 
 const connected = computed(() => wizard.state.connection !== null)
-const summary = ref<HTMLElement | null>(null)
+const summary = ref<{ $el: HTMLElement } | null>(null)
 const forgotten = ref(false)
 const passwordHeld = computed(() => wizard.passwords.recall() !== null)
 
@@ -80,7 +81,7 @@ const validate = () => {
 const submit = async () => {
   if (!validate()) {
     await nextTick()
-    summary.value?.focus()
+    summary.value?.$el.focus()
     return
   }
   pending.value = true
@@ -139,18 +140,15 @@ const submit = async () => {
       novalidate
       @submit.prevent="submit"
     >
-      <div
+      <MdAlert
         v-if="errorItems.length"
         id="migration-connect-errors"
         ref="summary"
+        tone="error"
+        title="Fix the fields below before the connection can be tested."
         data-ingot-state="error"
         tabindex="-1"
-        role="alert"
-        class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"
       >
-        <p class="md-title-small">
-          Fix the fields below before the connection can be tested.
-        </p>
         <ul class="list-disc pl-6">
           <li
             v-for="item in errorItems"
@@ -163,7 +161,7 @@ const submit = async () => {
             >{{ item.text }}</a>
           </li>
         </ul>
-      </div>
+      </MdAlert>
       <MdTextField
         id="migration-connect-url"
         label="Nexus URL"
