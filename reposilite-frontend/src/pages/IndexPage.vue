@@ -57,7 +57,7 @@ import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
 import MdTransition from '../components/md/MdTransition.vue'
 import { NoMotion } from '../components/md/NoMotion'
-import { useFocusOnInsert } from '../composables/useFocusOnInsert'
+import { settlePageFocus, useFocusOnInsert } from '../composables/useFocusOnInsert'
 
 // Each section is its own bundle. While it downloads the page shows a progress bar, and if
 // the download fails it says so and offers a reload instead of an empty panel.
@@ -209,6 +209,8 @@ let stopFocusOnInsert: () => void = () => {}
 onMounted(() => {
   stopFocusOnInsert = useFocusOnInsert(() => document.getElementById('main'))
 })
+// A page change that inserts nothing into main (a page inside the same frame) takes the focus once it has rendered.
+watch(() => route.path, () => settlePageFocus(document.getElementById('main')), { flush: 'post' })
 onBeforeUnmount(() => {
   stopFocusOnInsert()
   document.documentElement.style.removeProperty(BOTTOM_BAR_VARIABLE)

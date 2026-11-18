@@ -21,6 +21,7 @@ import {
   focusTargetOf,
   pageFocusRequested,
   requestPageFocus,
+  settlePageFocus,
   useFocusOnInsert
 } from './useFocusOnInsert'
 
@@ -132,5 +133,40 @@ describe('useFocusOnInsert', () => {
     await nextTick()
 
     expect(document.activeElement, 'a stopped observer does not take the request').not.toBe(main)
+  })
+})
+
+describe('settlePageFocus', () => {
+  it('moves focus to the heading when the new page was drawn in place, with nothing leaving main', () => {
+    const frame = document.createElement('section')
+    const heading = headingIn(frame, 'Repositories')
+    main.appendChild(frame)
+    requestPageFocus()
+
+    settlePageFocus(main)
+
+    expect(document.activeElement, 'a page inside the same frame takes the focus without an insertion').toBe(heading)
+    expect(pageFocusRequested(), 'the request is used up').toBe(false)
+  })
+
+  it('leaves the request to the insertion while the old page is still leaving', () => {
+    const leaving = document.createElement('section')
+    leaving.className = 'motion-fade-through-leave-from motion-fade-through-leave-active'
+    headingIn(leaving, 'Overview')
+    main.appendChild(leaving)
+    requestPageFocus()
+
+    settlePageFocus(main)
+
+    expect(pageFocusRequested(), 'the new page takes the focus when it is inserted').toBe(true)
+    expect(document.activeElement, 'the leaving page is not focused').toBe(document.body)
+  })
+
+  it('moves no focus when no request was made', () => {
+    headingIn(main)
+
+    settlePageFocus(main)
+
+    expect(document.activeElement, 'without a request the focus stays where it is').toBe(document.body)
   })
 })

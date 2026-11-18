@@ -70,3 +70,17 @@ export const useFocusOnInsert = (target: () => HTMLElement | null): (() => void)
   observer.observe(observed, { childList: true })
   return () => observer.disconnect()
 }
+
+/*
+ * Called once a page change has rendered. A page inside the frame that stays (one Administration page to the next)
+ * replaces only part of main, so no element is inserted into main and the observer above never takes the request.
+ * When nothing in main is leaving, the new page is already drawn and takes the focus now. While the old page is still
+ * leaving, the request waits for the insertion of the new page.
+ */
+export const settlePageFocus = (main: HTMLElement | null): void => {
+  if (!focusRequested || !main) return
+  if (main.querySelector(':scope > [class*="-leave-"]')) return
+  focusRequested = false
+  const element = focusTargetOf(main)
+  if (element) focusElement(element)
+}
