@@ -6,6 +6,8 @@ description: Store a repository in a Google Cloud Storage bucket through the opt
 
 A repository can keep its files in a Google Cloud Storage bucket. The provider is not part of the Ingot image. It is the optional `gcs-storage` plugin, which registers the storage type `gcs`. Without the plugin, a repository of type `gcs` does not load, and the other repositories are not affected.
 
+Once the plugin is installed, the dashboard offers Google Cloud Storage in the storage settings of a repository. A repository that already stores its block as `gcs` keeps that block unchanged when another setting is saved.
+
 Use the S3 provider with HMAC keys when the bucket is reachable through the XML interoperability API and you do not need workload identity. See [Use S3 storage](use-s3-storage.md#limits) for its limits. This plugin uses the native JSON API, so the credentials come from Google Cloud and no HMAC key is stored.
 
 ## Before you begin
