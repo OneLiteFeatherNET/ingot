@@ -6029,6 +6029,7 @@ export interface components {
             type?: string;
         };
         LoginProvidersResponse: {
+            passkeyFirstFactor?: boolean;
             /** Format: int32 */
             passwordMinLength?: number;
             providers?: components["schemas"]["LoginProviderDto"][];

@@ -32,7 +32,8 @@ data class LoginProviderDto(
 
 /**
  * `GET /api/auth/providers`. [setupRequired] is true while no human user exists, see the setup code. [passwordMinLength]
- * is the shortest password the server accepts for a new password, see `login.passwordPolicy.minLength`.
+ * is the shortest password the server accepts for a new password, see `login.passwordPolicy.minLength`. [passkeyFirstFactor]
+ * is true while `login.mfa.passkeyFirstFactor` lets a passkey sign a user in without a password.
  */
 @JsonSchema(requireNonNulls = false)
 data class LoginProvidersResponse(
@@ -40,6 +41,7 @@ data class LoginProvidersResponse(
     val tokenLogin: Boolean,
     val setupRequired: Boolean,
     val passwordMinLength: Int,
+    val passkeyFirstFactor: Boolean = false,
 )
 
 @JsonSchema(requireNonNulls = false)
