@@ -19,6 +19,7 @@ import { computed, ref, watch } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdDataTable from '../md/MdDataTable.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
@@ -180,156 +181,160 @@ const rows = computed(() => {
 <template>
   <section
     v-if="allowed"
-    data-test="repository-access"
     aria-labelledby="repository-access-title"
-    class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
     data-ingot-component="repository-access-card"
   >
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h4
-        id="repository-access-title"
-        class="md-title-medium text-on-surface"
-      >
-        Who has access
-      </h4>
-      <TokenTag
-        v-if="status === 'ready'"
-        data-test="visibility"
-      >
-        {{ visibility }}
-      </TokenTag>
-    </div>
-
-    <p
-      v-if="status === 'loading'"
-      data-ingot-state="loading"
-      data-test="loading"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
+    <MdCard
+      variant="low"
+      data-test="repository-access"
+      class="flex flex-col gap-4"
     >
-      Loading...
-    </p>
-    <div
-      v-else-if="status === 'error'"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-    >
-      <span class="md-body-medium text-error">Could not load who has access: {{ failure }}</span>
-      <MdButton
-        data-test="retry"
-        variant="tonal"
-        type="button"
-        @click="load"
-      >
-        Retry
-      </MdButton>
-    </div>
-    <p
-      v-else-if="entries.length === 0"
-      data-test="empty"
-      class="md-body-medium text-on-surface-variant"
-    >
-      No one has access through identity grants yet.
-    </p>
-    <div
-      v-else
-      class="flex flex-col gap-3"
-    >
-      <MdTextField
-        v-if="showFilter"
-        v-model="query"
-        data-test="filter"
-        label="Filter principals"
-        variant="outlined"
-        type="search"
-        autocomplete="off"
-      />
-
-      <MdDataTable
-        :caption="caption"
-        :columns="COLUMNS"
-        :rows="rows"
-      >
-        <template #cell="{ row, column }">
-          <div
-            v-if="column.key === 'principal'"
-            class="flex flex-col gap-1"
-            data-test="access-row"
-            :data-principal="row.principal"
-          >
-            <span
-              data-test="principal"
-              class="break-all md-title-small text-on-surface"
-            >{{ row.principal }}</span>
-            <span class="flex flex-wrap items-center gap-2 md-label-medium text-on-surface-variant">
-              <span data-test="kind">{{ row.kind }}</span>
-              <span
-                v-if="row.disabled"
-                data-test="disabled"
-              >Disabled</span>
-            </span>
-          </div>
-          <ul
-            v-else-if="column.key === 'access'"
-            class="m-0 flex list-none flex-col gap-1 p-0"
-          >
-            <li
-              v-for="label in row.access"
-              :key="label"
-              data-test="action"
-            >
-              {{ label }}
-            </li>
-          </ul>
-          <ul
-            v-else-if="column.key === 'through'"
-            class="m-0 flex list-none flex-col gap-1 p-0"
-          >
-            <li
-              v-for="(grant, index) in row.grants"
-              :key="index"
-              data-test="via"
-            >
-              <template v-if="grant.team">
-                Team
-                <router-link
-                  data-test="via-team"
-                  class="text-primary underline"
-                  :to="{ name: 'access-team', params: { name: grant.team } }"
-                >
-                  {{ grant.team }}
-                </router-link>
-                ({{ grant.role }})
-              </template>
-              <span
-                v-else
-                data-test="via-team"
-              >{{ grant.text }}</span>
-            </li>
-          </ul>
-          <ul
-            v-else-if="column.key === 'scope'"
-            class="m-0 flex list-none flex-col gap-1 p-0"
-          >
-            <li
-              v-for="(grant, index) in row.grants"
-              :key="index"
-              data-test="via-prefix"
-              class="break-all"
-            >
-              {{ grant.scope }}
-            </li>
-          </ul>
-        </template>
-      </MdDataTable>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h4
+          id="repository-access-title"
+          class="md-title-medium text-on-surface"
+        >
+          Who has access
+        </h4>
+        <TokenTag
+          v-if="status === 'ready'"
+          data-test="visibility"
+        >
+          {{ visibility }}
+        </TokenTag>
+      </div>
 
       <p
-        v-if="rows.length === 0"
-        data-test="no-match"
+        v-if="status === 'loading'"
+        data-ingot-state="loading"
+        data-test="loading"
+        role="status"
         class="md-body-medium text-on-surface-variant"
       >
-        No principal matches the filter.
+        Loading...
       </p>
-    </div>
+      <div
+        v-else-if="status === 'error'"
+        role="alert"
+        class="flex flex-wrap items-center gap-3"
+      >
+        <span class="md-body-medium text-error">Could not load who has access: {{ failure }}</span>
+        <MdButton
+          data-test="retry"
+          variant="tonal"
+          type="button"
+          @click="load"
+        >
+          Retry
+        </MdButton>
+      </div>
+      <p
+        v-else-if="entries.length === 0"
+        data-test="empty"
+        class="md-body-medium text-on-surface-variant"
+      >
+        No one has access through identity grants yet.
+      </p>
+      <div
+        v-else
+        class="flex flex-col gap-3"
+      >
+        <MdTextField
+          v-if="showFilter"
+          v-model="query"
+          data-test="filter"
+          label="Filter principals"
+          variant="outlined"
+          type="search"
+          autocomplete="off"
+        />
+
+        <MdDataTable
+          :caption="caption"
+          :columns="COLUMNS"
+          :rows="rows"
+        >
+          <template #cell="{ row, column }">
+            <div
+              v-if="column.key === 'principal'"
+              class="flex flex-col gap-1"
+              data-test="access-row"
+              :data-principal="row.principal"
+            >
+              <span
+                data-test="principal"
+                class="break-all md-title-small text-on-surface"
+              >{{ row.principal }}</span>
+              <span class="flex flex-wrap items-center gap-2 md-label-medium text-on-surface-variant">
+                <span data-test="kind">{{ row.kind }}</span>
+                <span
+                  v-if="row.disabled"
+                  data-test="disabled"
+                >Disabled</span>
+              </span>
+            </div>
+            <ul
+              v-else-if="column.key === 'access'"
+              class="m-0 flex list-none flex-col gap-1 p-0"
+            >
+              <li
+                v-for="label in row.access"
+                :key="label"
+                data-test="action"
+              >
+                {{ label }}
+              </li>
+            </ul>
+            <ul
+              v-else-if="column.key === 'through'"
+              class="m-0 flex list-none flex-col gap-1 p-0"
+            >
+              <li
+                v-for="(grant, index) in row.grants"
+                :key="index"
+                data-test="via"
+              >
+                <template v-if="grant.team">
+                  Team
+                  <router-link
+                    data-test="via-team"
+                    class="text-primary underline"
+                    :to="{ name: 'access-team', params: { name: grant.team } }"
+                  >
+                    {{ grant.team }}
+                  </router-link>
+                  ({{ grant.role }})
+                </template>
+                <span
+                  v-else
+                  data-test="via-team"
+                >{{ grant.text }}</span>
+              </li>
+            </ul>
+            <ul
+              v-else-if="column.key === 'scope'"
+              class="m-0 flex list-none flex-col gap-1 p-0"
+            >
+              <li
+                v-for="(grant, index) in row.grants"
+                :key="index"
+                data-test="via-prefix"
+                class="break-all"
+              >
+                {{ grant.scope }}
+              </li>
+            </ul>
+          </template>
+        </MdDataTable>
+
+        <p
+          v-if="rows.length === 0"
+          data-test="no-match"
+          class="md-body-medium text-on-surface-variant"
+        >
+          No principal matches the filter.
+        </p>
+      </div>
+    </MdCard>
   </section>
 </template>
