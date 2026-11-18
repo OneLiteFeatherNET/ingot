@@ -31,6 +31,8 @@ Once Ingot has two or more maintainers:
 - If an objection stays open, the lead maintainer decides. The outcome is recorded in the pull request or the issue
   where the question was raised.
 
+Security reports follow [.github/SECURITY.md](.github/SECURITY.md) and are not decided in public.
+
 ## Becoming and stopping being a maintainer
 
 - The lead maintainer appoints new maintainers. Once Ingot has two or more maintainers, a new maintainer needs the

@@ -2,7 +2,7 @@
 #
 # The upstream Reposilite Discord and documentation site do not apply to Ingot and are
 # not linked here. Questions and ideas go to GitHub Discussions of this repository, and
-# documentation goes to the Ingot documentation site.
+# documentation is in the `docs/gitbook` folder of this repository.
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
@@ -12,7 +12,7 @@ contact_links:
     url: https://github.com/OneLiteFeatherNET/ingot/discussions
     about: Ask questions and talk to other Ingot users.
   - name: Documentation
-    url: https://docs.onelitefeather.net/ingot
+    url: https://github.com/OneLiteFeatherNET/ingot/tree/main/docs/gitbook
     about: Installation, configuration and deployment guides.
 # - name: Upstream Reposilite
 #   url: https://github.com/dzikoysk/reposilite/issues
