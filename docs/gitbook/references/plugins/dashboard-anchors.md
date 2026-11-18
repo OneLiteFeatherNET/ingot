@@ -200,8 +200,8 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `secret-once-dialog` | experimental | `src/components/identity/SecretOnceDialog.vue` | none | none | none |
 | `section-renderer` | stable | `src/components/renderers/SectionRenderer.vue` | none | none | none |
 | `security-panel` | experimental | `src/components/access/SecurityPanel.vue` | none | none | none |
-| `segmented-control` | experimental | `src/components/tokens/SegmentedControl.vue` | none | none | none |
-| `segmented-option` | experimental | `src/components/tokens/SegmentedOption.vue` | none | none | none |
+| `segmented-control` | experimental | `src/components/md/MdSegmentedButton.vue` | none | none | none |
+| `segmented-option` | experimental | `src/components/md/MdSegmentedOption.vue` | none | none | none |
 | `settings-attention` | experimental | `src/components/settings/SettingsAttention.vue` | none | none | none |
 | `settings-backup-panel` | experimental | `src/components/maintenance/SettingsBackupPanel.vue` | none | none | none |
 | `settings-download-menu` | stable | `src/components/settings/SettingsDownloadMenu.vue` | none | none | none |
@@ -234,6 +234,8 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `time-series-chart` | experimental | `src/components/dashboard/TimeSeriesChart.vue` | none | none | none |
 | `token-list` | experimental | `src/components/identity/TokenList.vue` | none | none | none |
 | `token-tag` | experimental | `src/components/tokens/TokenTag.vue` | none | none | none |
+| `tokens-segmented-control` (no element of its own) | experimental | `src/components/tokens/SegmentedControl.vue` | none | none | none |
+| `tokens-segmented-option` (no element of its own) | experimental | `src/components/tokens/SegmentedOption.vue` | none | none | none |
 | `type-badge` | experimental | `src/components/repositories/TypeBadge.vue` | none | none | none |
 | `unsaved-changes-bar` | stable | `src/components/settings/UnsavedChangesBar.vue` | none | none | none |
 | `unsupported-renderer` | stable | `src/components/renderers/UnsupportedRenderer.vue` | none | none | none |

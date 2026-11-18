@@ -465,11 +465,6 @@
     "count": 1
   },
   {
-    "file": "src/components/tokens/SegmentedControl.vue",
-    "match": "rounded-[20px]",
-    "count": 1
-  },
-  {
     "file": "src/pages/IndexPage.vue",
     "match": "medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))]",
     "count": 1
