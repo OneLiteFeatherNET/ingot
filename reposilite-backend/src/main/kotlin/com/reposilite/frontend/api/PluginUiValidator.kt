@@ -17,6 +17,8 @@ package com.reposilite.frontend.api
 
 import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.plugin.ui.PluginUiReaderPage
 
 /**
  * Checks what a plugin registers, as plain functions that return the problems found. An empty list means valid.
@@ -54,6 +56,27 @@ internal object PluginUiValidator {
             add("page '${page.id}' has ${page.blocks.size} blocks, a page takes 1 to ${PluginUiModel.MAX_BLOCKS} blocks")
         }
         page.blocks.forEachIndexed { index, block -> addAll(blockProblems(plugin, page.id, index, block)) }
+    }
+
+    /**
+     * A reader page takes the read-only blocks only. Its id, title, description and block count follow the admin page
+     * rules, and a `form`, `action` or `status` block is refused with its position and its kind.
+     */
+    @OptIn(ExperimentalIngotPluginApi::class)
+    fun readerPageProblems(plugin: String, page: PluginUiReaderPage): List<String> = buildList {
+        if (!ID.matches(page.id)) add("id '${page.id}' must match [a-z0-9-] and be at most 32 characters")
+        if (page.title.isEmpty() || page.title.length > TITLE_LIMIT) add("title of reader page '${page.id}' must be 1 to $TITLE_LIMIT characters")
+        page.description?.let { if (it.length > DESCRIPTION_LIMIT) add("description of reader page '${page.id}' is longer than $DESCRIPTION_LIMIT characters") }
+        if (page.blocks.isEmpty() || page.blocks.size > PluginUiModel.MAX_BLOCKS) {
+            add("reader page '${page.id}' has ${page.blocks.size} blocks, a page takes 1 to ${PluginUiModel.MAX_BLOCKS} blocks")
+        }
+        page.blocks.forEachIndexed { index, block ->
+            when (block) {
+                is PluginUiBlock.Form, is PluginUiBlock.Action, is PluginUiBlock.Status ->
+                    add("block $index of page '${page.id}' is a ${block.type} block, a reader page takes only text, keyValue and table blocks")
+                else -> addAll(blockProblems(plugin, page.id, index, block))
+            }
+        }
     }
 
     private fun blockProblems(plugin: String, pageId: String, index: Int, block: PluginUiBlock): List<String> {
@@ -163,6 +186,17 @@ internal object PluginUiValidator {
         if (section.label.isEmpty() || section.label.length > LABEL_LIMIT) add("label of the settings section '${section.domain}' must be 1 to $LABEL_LIMIT characters")
         if (section.group !in PluginUiModel.SECTION_GROUPS) {
             add("group '${section.group}' of the settings section '${section.domain}' is unknown, valid groups: ${PluginUiModel.SECTION_GROUPS.joinToString()}")
+        }
+    }
+
+    /** The serialised reader pages of one plugin must fit in [PluginUiModel.MAX_MANIFEST_BYTES]. Null when they fit. */
+    @OptIn(ExperimentalIngotPluginApi::class)
+    fun readerManifestProblem(plugin: String, pages: List<PluginUiReaderPage>): String? {
+        val size = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.writeValueAsBytes(pages).size
+        return if (size > PluginUiModel.MAX_MANIFEST_BYTES) {
+            "the reader pages of plugin '$plugin' take $size bytes, the limit is 64 KiB"
+        } else {
+            null
         }
     }
 

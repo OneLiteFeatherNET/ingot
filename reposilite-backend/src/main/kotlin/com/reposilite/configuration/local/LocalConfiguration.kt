@@ -172,6 +172,11 @@ class LocalConfiguration : Facade {
     @Description("# Plugin pages and settings sections are not affected, see the switch of pluginUi.")
     val pluginStyles = mutableReference(true)
 
+    @Description("# Let server plugins contribute reader pages, which anonymous visitors may read in the Browse section.")
+    @Description("# false hides every reader page: the reader manifest is empty and their data routes answer 404.")
+    @Description("# Admin pages are not affected, and pluginUi=false switches the readers off as well.")
+    val pluginReaders = mutableReference(true)
+
     @Description("# Set custom base path for Ingot instance.")
     @Description("# It's not recommended to mount Ingot under custom base path")
     @Description("# and you should always prioritize subdomain over this option.")
