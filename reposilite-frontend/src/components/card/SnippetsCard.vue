@@ -241,7 +241,7 @@ const selectTab = (tab: string) =>
   >
     <div>
       <div class="flex min-h-12 flex-row items-center justify-between">
-        <h1 class="flex w-full min-w-0 items-center md-title-large">
+        <h2 class="flex w-full min-w-0 items-center md-title-large">
           <button
             type="button"
             class="md-state-layer md-focus-ring -mx-2 inline-flex min-h-12 min-w-0 max-w-full items-center gap-1 rounded-corner-small px-2 text-left text-on-surface"
@@ -266,7 +266,7 @@ const selectTab = (tab: string) =>
               <DownIcon />
             </span>
           </button>
-        </h1>
+        </h2>
       </div>
       <p
         v-if="subtitle && !loading"

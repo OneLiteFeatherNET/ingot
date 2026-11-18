@@ -167,6 +167,15 @@ describe('TeamsPanel', () => {
     expect(wrapper!.find('[data-test="detail"]').text()).toBe('release')
   })
 
+  it('keeps the same inset on the detail pane at every width', async () => {
+    await mountPanel({ name: 'release' }, '/access/teams/release')
+
+    const pane = wrapper!.find('.expanded\\:p-6')
+    expect(pane.exists(), 'the detail pane takes the wide inset from 840 pixels').toBe(true)
+    expect(pane.classes(), 'the detail pane has an inset below 840 pixels too').toContain('p-4')
+    expect(pane.classes(), 'the detail pane is never hidden below 840 pixels').not.toContain('max-expanded:hidden')
+  })
+
   it('offers the permission check next to New team on the list when no team is selected', async () => {
     await mountPanel()
 

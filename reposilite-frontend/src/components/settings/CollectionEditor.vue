@@ -154,10 +154,7 @@ watch([addresses, () => props.keys], () => {
         />
       </div>
 
-      <div
-        class="min-w-0 expanded:p-6"
-        :class="hasSelection ? '' : 'max-expanded:hidden'"
-      >
+      <div class="min-w-0 p-4 expanded:p-6">
         <EntryDetail
           v-if="hasSelection"
           :id="selectedId"
@@ -176,7 +173,7 @@ watch([addresses, () => props.keys], () => {
         />
         <p
           v-else
-          class="md-body-large text-on-surface-variant"
+          class="md-body-large text-on-surface-variant max-expanded:hidden"
         >
           Select a {{ collection.noun }} to edit its settings.
         </p>
