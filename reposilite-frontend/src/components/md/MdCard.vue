@@ -46,9 +46,9 @@ const PADDINGS = {
 
 const VARIANTS = {
   elevated: 'bg-surface-container-low shadow-elevation-1',
-  filled: 'bg-surface-container-highest',
+  filled: 'border border-outline bg-surface-container-low',
   low: 'bg-surface-container-low',
-  outlined: 'border border-outline-variant bg-surface'
+  outlined: 'border border-outline bg-surface'
 }
 </script>
 
