@@ -67,11 +67,11 @@ const renderers = markRaw([
 
 let wrapper: VueWrapper | undefined
 
-const mountStorage = (data: Record<string, unknown>) => {
+const mountStorage = (data: Record<string, unknown>, schema: JsonSchema7 = storageSchema) => {
   wrapper = mount(JsonForms, {
     props: {
       data,
-      schema: storageSchema,
+      schema,
       uischema: { type: 'VerticalLayout', elements: [{ type: 'Control', scope: '#/properties/storageProvider', label: 'Storage Provider' }] } as UISchemaElement,
       renderers,
       config: { showUnfocusedDescription: true },
@@ -306,5 +306,38 @@ describe('the switch dialog on the shared dialog', () => {
     const markup = dialogCard()!.outerHTML
     expect(markup, 'no min-w-[280px] literal in the dialog').not.toContain('min-w-[280px]')
     expect(markup, 'no max-w-[560px] literal in the dialog').not.toContain('max-w-[560px]')
+  })
+})
+
+// The served storage variants with a plugin variant, as the server lists them after the built-in ones.
+const pluginStore: JsonSchema7 = {
+  type: 'object',
+  title: 'Fake Store Storage Provider',
+  properties: { type: { type: 'string', const: 'fake-store' }, endpoint: { type: 'string', title: 'Endpoint' } },
+  required: ['type', 'endpoint']
+}
+const servedSchema: JsonSchema7 = { type: 'object', properties: { storageProvider: { oneOf: [fileSystem, s3, pluginStore] } } }
+
+describe('the storage variants of a served schema with a plugin variant', () => {
+  it('lists the plugin variant after the built-in variants', async () => {
+    mountStorage({ storageProvider: { type: 'fs' } }, servedSchema)
+    await flushPromises()
+
+    const options = Array.from(select().element.options, option => option.textContent.trim())
+    expect(options).toEqual(['File system Storage Provider', 'S3 Storage Provider', 'Fake Store Storage Provider'])
+  })
+
+  it('selects the plugin variant from the stored type', async () => {
+    mountStorage({ storageProvider: { type: 'fake-store', endpoint: 'https://store.example.net' } }, servedSchema)
+    await flushPromises()
+
+    expect(select().element.value).toBe('2')
+  })
+
+  it('draws the fields of the plugin variant', async () => {
+    mountStorage({ storageProvider: { type: 'fake-store', endpoint: 'https://store.example.net' } }, servedSchema)
+    await flushPromises()
+
+    expect(wrapper!.find('[role="tabpanel"]').text()).toContain('Endpoint')
   })
 })
