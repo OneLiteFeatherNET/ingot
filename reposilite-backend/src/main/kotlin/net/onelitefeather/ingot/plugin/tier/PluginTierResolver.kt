@@ -26,6 +26,9 @@ enum class PluginOrigin {
     /** A jar of the bundled plugins directory of the image. */
     BUNDLED_IMAGE,
 
+    /** A jar embedded in the server. */
+    EMBEDDED,
+
     /** A jar of the operator's plugins directory. */
     PLUGINS_DIRECTORY,
 
@@ -42,7 +45,7 @@ object PluginTierResolver {
 
     fun resolve(origin: PluginOrigin, declared: PluginTier): PluginTier =
         when (origin) {
-            PluginOrigin.BUILT_IN, PluginOrigin.BUNDLED_IMAGE ->
+            PluginOrigin.BUILT_IN, PluginOrigin.BUNDLED_IMAGE, PluginOrigin.EMBEDDED ->
                 if (declared == PluginTier.EXPERIMENTAL) PluginTier.EXPERIMENTAL else PluginTier.CORE
 
             PluginOrigin.PLUGINS_DIRECTORY, PluginOrigin.PLUGIN_STORE ->
