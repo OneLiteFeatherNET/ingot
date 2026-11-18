@@ -1,0 +1,6 @@
+{
+  "lines": [
+    { "line": "1.1", "kind": "regular", "status": "latest", "released": "2026-08-09" },
+    { "line": "1.0", "kind": "regular", "status": "archived", "released": "2026-08-08", "end_of_life": "2026-11-07" }
+  ]
+}
