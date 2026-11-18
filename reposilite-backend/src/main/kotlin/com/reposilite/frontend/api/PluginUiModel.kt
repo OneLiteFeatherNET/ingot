@@ -110,6 +110,32 @@ sealed interface PluginUiBlock {
     data class ListBlock(val source: String, val pageSize: Int = 50) : PluginUiBlock {
         override val type: String = "list"
     }
+
+    /**
+     * Controls that narrow the list drawn after this block on the same page. The values are sent as query parameters
+     * of that list. The page must have a [ListBlock] after the filter, and [controls] holds 1 to 6 controls.
+     */
+    data class FilterBlock(val controls: List<FilterControl>) : PluginUiBlock {
+        override val type: String = "filter"
+    }
+
+    /**
+     * One control of a [FilterBlock]. [key] is the query parameter, 1 to 32 letters or digits starting with a letter,
+     * unique within the block, and `cursor` is reserved for paging. [label] is 1 to 60 characters.
+     */
+    sealed interface FilterControl {
+        val key: String
+        val label: String
+
+        /** A free text field. Its value is sent as the query parameter [key]. */
+        data class Text(override val key: String, override val label: String) : FilterControl
+
+        /** A choice among [options], one of which is sent as the query parameter [key]. An empty choice sends nothing. */
+        data class Select(override val key: String, override val label: String, val options: List<Option>) : FilterControl
+
+        /** An option of a [Select]: the [value] sent to the server and the [label] shown to the visitor. */
+        data class Option(val value: String, val label: String)
+    }
 }
 
 /** A column of a [PluginUiBlock.Table]: the key of the object field and its heading. */

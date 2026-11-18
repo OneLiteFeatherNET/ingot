@@ -43,6 +43,11 @@ internal object PluginUiValidator {
     private const val MAX_LIST_PAGE = 100
     private val CODE_LANGUAGES = listOf("plain", "kotlin", "groovy", "xml", "properties")
     private val LINK_CHARACTERS = Regex("[A-Za-z0-9._~/?=&-]+")
+    private val FILTER_KEY = Regex("[a-z][A-Za-z0-9]{0,31}")
+    private const val MAX_FILTER_CONTROLS = 6
+    private const val MAX_FILTER_OPTIONS = 100
+    private const val OPTION_VALUE_LIMIT = 200
+    private const val RESERVED_KEY = "cursor"
 
     fun pageProblems(plugin: String, page: PluginUiPage): List<String> = buildList {
         if (!ID.matches(page.id)) add("id '${page.id}' must match [a-z0-9-] and be at most 32 characters")
@@ -54,6 +59,11 @@ internal object PluginUiValidator {
             add("page '${page.id}' has ${page.blocks.size} blocks, a page takes 1 to ${PluginUiModel.MAX_BLOCKS} blocks")
         }
         page.blocks.forEachIndexed { index, block -> addAll(blockProblems(plugin, page.id, index, block)) }
+        page.blocks.forEachIndexed { index, block ->
+            if (block is PluginUiBlock.FilterBlock && page.blocks.drop(index + 1).none { it is PluginUiBlock.ListBlock }) {
+                add("filter in block $index of page '${page.id}' has no list after it, a filter narrows the list that follows it")
+            }
+        }
     }
 
     private fun blockProblems(plugin: String, pageId: String, index: Int, block: PluginUiBlock): List<String> {
@@ -106,6 +116,32 @@ internal object PluginUiValidator {
                     pathProblem(plugin, block.source, "source of $where")?.let(::add)
                     if (block.pageSize !in 1..MAX_LIST_PAGE) add("pageSize ${block.pageSize} of $where must be 1 to $MAX_LIST_PAGE")
                 }
+                is PluginUiBlock.FilterBlock -> {
+                    if (block.controls.isEmpty() || block.controls.size > MAX_FILTER_CONTROLS) {
+                        add("$where has ${block.controls.size} controls, a filter takes 1 to $MAX_FILTER_CONTROLS")
+                    }
+                    block.controls.map { it.key }.groupingBy { it }.eachCount()
+                        .filterValues { it > 1 }
+                        .keys.forEach { add("key '$it' of $where is used by more than one control") }
+                    block.controls.forEach { control -> addAll(filterControlProblems(control, where)) }
+                }
+            }
+        }
+    }
+
+    private fun filterControlProblems(control: PluginUiBlock.FilterControl, where: String): List<String> = buildList {
+        when {
+            control.key == RESERVED_KEY -> add("key '$RESERVED_KEY' of $where is reserved for paging")
+            !FILTER_KEY.matches(control.key) -> add("key '${control.key}' of $where must match a letter, then letters or digits, at most 32 characters")
+        }
+        if (control.label.isEmpty() || control.label.length > LABEL_LIMIT) add("label of control '${control.key}' of $where must be 1 to $LABEL_LIMIT characters")
+        if (control is PluginUiBlock.FilterControl.Select) {
+            if (control.options.isEmpty() || control.options.size > MAX_FILTER_OPTIONS) {
+                add("control '${control.key}' of $where has ${control.options.size} options, a select takes 1 to $MAX_FILTER_OPTIONS")
+            }
+            control.options.forEach { option ->
+                if (option.value.isEmpty() || option.value.length > OPTION_VALUE_LIMIT) add("value of an option of '${control.key}' in $where must be 1 to $OPTION_VALUE_LIMIT characters")
+                if (option.label.isEmpty() || option.label.length > LABEL_LIMIT) add("label of an option of '${control.key}' in $where must be 1 to $LABEL_LIMIT characters")
             }
         }
     }
