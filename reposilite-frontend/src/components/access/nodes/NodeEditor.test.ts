@@ -417,8 +417,20 @@ describe('NodeEditor', () => {
 
       await openTemplate('Read')
 
-      const options = wrapper.findAll('[data-test="template-panel"] datalist option')
-      expect(options.map(option => option.attributes('value'))).toEqual(['releases', 'snapshots'])
+      const options = wrapper.findAll('[data-test="template-panel"] [role="listbox"] [role="option"]')
+      expect(options.map(option => option.text())).toEqual(['releases', 'snapshots'])
+    })
+
+    it('picks a repository suggestion with the keyboard', async () => {
+      mountEditor()
+      await openTemplate('Read')
+      const field = wrapper.find('[data-test="template-panel"] input')
+
+      await field.trigger('focus')
+      await field.trigger('keydown', { key: 'ArrowDown' })
+      await field.trigger('keydown', { key: 'Enter' })
+
+      expect((field.element as HTMLInputElement).value, 'the first repository is filled in').toBe('releases')
     })
 
     it('refuses a repository name the grammar does not allow', async () => {

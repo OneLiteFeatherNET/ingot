@@ -17,10 +17,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useId, watch } from 'vue'
 import type { AxiosError } from 'axios'
+import { useCombobox } from '../../helpers/useCombobox'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdListbox from '../md/MdListbox.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { teamParentsApi } from './nodes/teamParentsApi'
 
@@ -58,7 +60,6 @@ const api = () => teamParentsApi(client.value)
 const titleId = useId()
 const inputId = `parent-add-${useId()}`
 const listboxId = `${inputId}-listbox`
-const optionId = (index: number) => `${inputId}-option-${index}`
 
 const status = ref<'loading' | 'ready' | 'error'>('loading')
 const failure = ref('')
@@ -71,8 +72,6 @@ const serverError = ref('')
 const stale = ref(false)
 
 const text = ref('')
-const open = ref(false)
-const active = ref(-1)
 const entryError = ref('')
 
 let latest = 0
@@ -133,8 +132,18 @@ const suggestions = computed(() => {
     .map(entry => entry.team)
 })
 
-const showList = computed(() => open.value && suggestions.value.length > 0)
-const activeDescendant = computed(() => (showList.value && active.value >= 0 ? optionId(active.value) : undefined))
+const suggestionOptions = computed(() => suggestions.value.map(team => ({ value: team })))
+
+// The keys and the state of the field are those of useCombobox. A choice from the list adds the team.
+const { open, active, visible, inputAttrs, onInput: openOnType, onBlur, onKeydown: comboboxKey } = useCombobox({
+  id: listboxId,
+  options: () => suggestionOptions.value,
+  onChoose: team => add(team)
+})
+
+const onFocus = () => {
+  open.value = true
+}
 
 // The message for a name that cannot become a parent, or an empty string. `team` is the name as
 // the list knows it when it is known.
@@ -172,45 +181,19 @@ const remove = (team: string) => {
   serverError.value = ''
 }
 
-const onInput = (value: string) => {
+const onType = (value: string) => {
   text.value = value
-  open.value = true
-  active.value = -1
   entryError.value = ''
-}
-
-const move = (step: number) => {
-  const count = suggestions.value.length
-  if (count === 0) return
-  if (!open.value || active.value < 0) {
-    open.value = true
-    active.value = step > 0 ? 0 : count - 1
-    return
-  }
-  active.value = (active.value + step + count) % count
+  openOnType()
 }
 
 const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'ArrowDown') {
+  if (comboboxKey(event.key)) {
     event.preventDefault()
-    move(1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    move(-1)
   } else if (event.key === 'Enter') {
     event.preventDefault()
-    if (showList.value && active.value >= 0) add(suggestions.value[active.value])
-    else add(text.value)
-  } else if (event.key === 'Escape' && open.value) {
-    event.preventDefault()
-    open.value = false
-    active.value = -1
+    add(text.value)
   }
-}
-
-const onBlur = () => {
-  open.value = false
-  active.value = -1
 }
 
 const save = async () => {
@@ -331,38 +314,21 @@ const save = async () => {
               :error="entryError !== ''"
               :error-text="entryError"
               supporting-text="Type a team name or choose one from the list"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-expanded="showList ? 'true' : 'false'"
-              :aria-controls="listboxId"
-              :aria-activedescendant="activeDescendant"
-              @update:model-value="onInput"
+              v-bind="inputAttrs"
+              @update:model-value="onType"
               @keydown="onKeydown"
-              @focus="open = true"
+              @focus="onFocus"
               @blur="onBlur"
             />
-            <ul
-              v-show="showList"
+            <MdListbox
               :id="listboxId"
-              role="listbox"
-              aria-label="Team suggestions"
-              class="absolute inset-x-0 top-14 z-20 max-h-72 overflow-y-auto rounded-corner-extra-small bg-surface-container shadow-elevation-2"
-              @mousedown.prevent
-            >
-              <li
-                v-for="(team, index) in suggestions"
-                :id="optionId(index)"
-                :key="team"
-                role="option"
-                :aria-selected="index === active ? 'true' : 'false'"
-                class="md-state-layer relative cursor-pointer px-4 py-2 md-body-medium"
-                :class="index === active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
-                data-test="suggestion"
-                @click="add(team)"
-              >
-                {{ team }}
-              </li>
-            </ul>
+              class="absolute inset-x-0 top-14"
+              label="Team suggestions"
+              :options="suggestionOptions"
+              :active="active"
+              :open="visible"
+              @choose="add"
+            />
           </div>
           <MdButton
             variant="outlined"
