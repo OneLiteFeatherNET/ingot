@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 
@@ -23,41 +23,38 @@ import MdButton from '../md/MdButton.vue'
  * The draft, edits included, is offered only when there are unsaved changes, and it is labelled as
  * such, because it is not a backup of what the server holds.
  */
-defineProps({
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  hasUnsaved: {
-    type: Boolean,
-    default: false
-  },
-  canIncludeUnsaved: {
-    type: Boolean,
-    default: true
-  },
-  secretsHidden: {
-    type: Boolean,
-    default: false
-  }
+withDefaults(defineProps<{
+  disabled?: boolean
+  hasUnsaved?: boolean
+  canIncludeUnsaved?: boolean
+  secretsHidden?: boolean
+}>(), {
+  disabled: false,
+  hasUnsaved: false,
+  canIncludeUnsaved: true,
+  secretsHidden: false
 })
 
-const emit = defineEmits(['saved', 'draft'])
+const emit = defineEmits<{
+  saved: []
+  draft: []
+}>()
 
 const open = ref(false)
 
-const choose = (event) => {
+const choose = (event: 'saved' | 'draft') => {
   open.value = false
-  emit(event)
+  if (event === 'saved') emit('saved')
+  else emit('draft')
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') open.value = false
 }
 
 // Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
-const onFocusout = (event) => {
-  if (!event.currentTarget.contains(event.relatedTarget)) open.value = false
+const onFocusout = (event: FocusEvent) => {
+  if (!(event.currentTarget as Node).contains(event.relatedTarget as Node | null)) open.value = false
 }
 </script>
 
