@@ -925,15 +925,20 @@ class IdentityFacade(
         if (!callerIsAdmin && callerSubject.principalName != principal) {
             return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
         }
-        val subject = principalNamed(principal) ?: return notFoundError("Principal not found")
+        // A user or machine of that name wins; otherwise the name may be a team, which is checked by the rights its members get.
+        val user = principalNamed(principal)
+        val team = if (user == null) publicTeam(principal) else null
+        if (user == null && team == null) return notFoundError("Principal not found")
         val tokenRecord = token?.let { name ->
-            store.tokensOf(subject.id).firstOrNull { it.name == name } ?: return notFoundError("Token not found")
+            user?.let { store.tokensOf(it.id).firstOrNull { record -> record.name == name } }
+                ?: return notFoundError("Token not found")
         }
 
-        val access = store.loadAccess(subject, tokenNodes = tokenRecord?.nodes)
+        val access = if (user != null) store.loadAccess(user, tokenNodes = tokenRecord?.nodes) else store.loadTeamAccess(checkNotNull(team))
         val decision = decide(access)
         return PermissionCheckDto(
-            principal = subject.name,
+            principal = user?.name ?: checkNotNull(team).name,
+            principalKind = user?.kind?.name ?: "TEAM",
             node = node,
             allowed = decision.allowed,
             decision = CheckDecisionDto(

@@ -209,6 +209,79 @@ internal class NodeCatalogAndCheckTest {
     }
 
     @Test
+    fun `the check decides a team by its own nodes when no user or machine has the name`() {
+        withService { service, _ ->
+            // given: deployers may deploy to releases, and no principal is called deployers
+            val admin = bootstrapAdmin(service)
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+
+            // when
+            val check = service.permissionCheck(admin, "deployers", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            // then
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.principal).describedAs("principal").isEqualTo("deployers")
+            assertThat(check.principalKind).describedAs("principal kind").isEqualTo("TEAM")
+            assertThat(check.decision.source).describedAs("source").isEqualTo("TEAM")
+            assertThat(check.decision.subject).describedAs("deciding team").isEqualTo("deployers")
+        }
+    }
+
+    @Test
+    fun `the check decides a team through the parent teams it inherits`() {
+        withService { service, _ ->
+            // given: deployers inherits the read node of release-managers
+            val admin = bootstrapAdmin(service)
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "release-managers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.replaceTeamNodes("release-managers", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
+            service.replaceTeamParents("deployers", listOf("release-managers"), ifMatch = null)
+
+            // when
+            val check = service.permissionCheck(admin, "deployers", "ingot.repository.releases.read", token = null).orNull()!!
+
+            // then
+            assertThat(check.allowed).describedAs("allowed through the parent").isTrue
+            assertThat(check.principalKind).describedAs("principal kind").isEqualTo("TEAM")
+            assertThat(check.decision.source).describedAs("source").isEqualTo("INHERITED_TEAM")
+            assertThat(check.decision.subject).describedAs("inherited team").isEqualTo("release-managers")
+            assertThat(check.decision.depth).describedAs("distance").isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `the check decides a name held by a user and a team as the user`() {
+        withService { service, _ ->
+            // given: alice is a user without nodes, and a team is called alice with the deploy node
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createTeam(CreateTeamRequest(name = "alice"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.replaceTeamNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+
+            // when
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            // then
+            assertThat(check.principalKind).describedAs("principal kind").isEqualTo("USER")
+            assertThat(check.allowed).describedAs("the team's node does not reach the user").isFalse
+            assertThat(check.decision.source).describedAs("the team does not decide for the user").isNotEqualTo("TEAM")
+        }
+    }
+
+    @Test
+    fun `the check still answers principal not found for a name that is neither a principal nor a team`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+
+            val result = service.permissionCheck(admin, "nobody", "ingot.repository.releases.read", token = null)
+
+            assertThat(result.error.status).describedAs("status").isEqualTo(404)
+            assertThat(result.error.message).describedAs("message").isEqualTo("Principal not found")
+        }
+    }
+
+    @Test
     fun `the check shows a token that narrows its owner as the deciding source`() {
         withService { service, _ ->
             val admin = bootstrapAdmin(service)
