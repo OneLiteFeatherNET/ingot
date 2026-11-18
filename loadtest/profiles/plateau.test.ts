@@ -16,7 +16,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PLATEAU_DEFAULT_HOLD_MINUTES, PLATEAU_MIN_HOLD_MINUTES } from '../lib/config.ts';
-import { plateauSteps } from './plateau.ts';
+import { plateauScenarios, plateauSteps } from './plateau.ts';
 
 test('plateauSteps returns the five steps at 60, 70, 80, 90 and 100 percent in that order', () => {
   const steps = plateauSteps(100);
@@ -101,4 +101,48 @@ test('plateauSteps refuses a breakpoint that is not a finite number', () => {
 
 test('plateauSteps refuses a negative breakpoint and names it', () => {
   assert.throws(() => plateauSteps(-5), /breakpoint of -5/);
+});
+
+test('plateauScenarios names one constant-arrival-rate scenario per step', () => {
+  const scenarios = plateauScenarios(plateauSteps(100), 'mix');
+
+  assert.deepEqual(Object.keys(scenarios), ['plateau-1', 'plateau-2', 'plateau-3', 'plateau-4', 'plateau-5']);
+  assert.ok(Object.values(scenarios).every((scenario) => scenario.executor === 'constant-arrival-rate'));
+});
+
+test('plateauScenarios holds each step at its rate for its hold', () => {
+  const scenarios = plateauScenarios(plateauSteps(200), 'mix');
+
+  assert.deepEqual(
+    Object.values(scenarios).map((scenario) => [scenario.rate, scenario.duration]),
+    [
+      [120, '15m'],
+      [140, '15m'],
+      [160, '15m'],
+      [180, '15m'],
+      [200, '15m'],
+    ],
+  );
+});
+
+test('plateauScenarios starts each step when the steps before it have ended', () => {
+  const scenarios = plateauScenarios(plateauSteps(100, 10), 'mix');
+
+  assert.deepEqual(
+    Object.values(scenarios).map((scenario) => scenario.startTime),
+    ['0m', '10m', '20m', '30m', '40m'],
+  );
+});
+
+test('plateauScenarios runs every step through the given exec function', () => {
+  const scenarios = plateauScenarios(plateauSteps(100), 'deploy');
+
+  assert.ok(Object.values(scenarios).every((scenario) => scenario.exec === 'deploy'));
+});
+
+test('plateauScenarios sizes the virtual users from the rate of each step', () => {
+  const scenarios = plateauScenarios(plateauSteps(100), 'mix');
+
+  assert.equal(scenarios['plateau-1']?.preAllocatedVUs, 60);
+  assert.equal(scenarios['plateau-1']?.maxVUs, 240);
 });
