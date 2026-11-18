@@ -623,6 +623,8 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      GRADLE_RETRY: "-Dorg.gradle.internal.repository.max.retries=10 -Dorg.gradle.internal.repository.initial.backoff=2000"
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -652,8 +654,10 @@ jobs:
         working-directory: reposilite-frontend
         run: npm ci
 
+      # Maven Central answers bursts of downloads with 429 Too Many Requests, which failed this job in the merge queue
+      # before a single browser test ran. Gradle retries a download with a growing pause, as the integration shards do.
       - name: "Build the server jar"
-        run: ./gradlew :reposilite-backend:shadowJar
+        run: ./gradlew :reposilite-backend:shadowJar $GRADLE_RETRY
 
       # The suite loads the nexus-import plugin into the server, so its jar is built beside the server jar. The switch
       # that turns the plugin on is set by the suite itself, not by this job.
