@@ -68,6 +68,46 @@ describe('UnsavedChangesBar', () => {
     expect(wrapper.text()).toContain('Fix the errors before saving.')
   })
 
+  it('links the save bar to the first tab with an error, naming the tab', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+
+    const link = wrapper.get('[data-test="first-error-link"]')
+    expect(link.text()).toBe('Show the first error: Rebuild schedule')
+    expect(link.attributes('href'), 'the link carries the address of the tab').toBe('/settings/search?tab=rebuild-schedule')
+  })
+
+  it('shows no link to an error while the domain is valid', () => {
+    const wrapper = mountBar({ invalid: false, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+
+    expect(wrapper.find('[data-test="first-error-link"]').exists()).toBe(false)
+  })
+
+  it('shows the link without a tab to go to when no tab holds an error', () => {
+    const wrapper = mountBar({ invalid: true })
+
+    expect(wrapper.find('[data-test="first-error-link"]').exists()).toBe(false)
+  })
+
+  it('moves to the first error inside the page on a plain click on the link, without leaving the page', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+
+    wrapper.get('[data-test="first-error-link"]').element.dispatchEvent(event)
+
+    expect(wrapper.emitted('show-error')).toEqual([[]])
+    expect(event.defaultPrevented, 'the browser does not follow the link itself').toBe(true)
+  })
+
+  it('leaves a click with a modifier key to the browser, so the tab opens in a new one', () => {
+    const wrapper = mountBar({ invalid: true, firstError: { label: 'Rebuild schedule', href: '/settings/search?tab=rebuild-schedule' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ctrlKey: true })
+
+    wrapper.get('[data-test="first-error-link"]').element.dispatchEvent(event)
+
+    expect(wrapper.emitted('show-error')).toBeUndefined()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
   it('still allows discarding while the domain is invalid', () => {
     const wrapper = mountBar({ invalid: true })
 

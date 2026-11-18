@@ -203,8 +203,15 @@ const activeSection = computed(() => activeTabKey(sectionTabs.value, route.query
 const indexRebuild = computed(() => (activeDomain.value === 'search' ? indexRebuildLinkOf(can) : undefined))
 const activeSectionLayout = computed(() => sectionTabs.value.find(tab => tab.key === activeSection.value)?.layout)
 const firstErrorSection = computed(() => firstErrorTab(sectionTabs.value, sectionErrors.value))
+// The save bar names that tab and links to its address, so the link works like any other link of the page.
+const firstErrorLink = computed(() => {
+  const key = firstErrorSection.value
+  if (key === undefined) return null
+  const tab = sectionTabs.value.find(entry => entry.key === key)
+  return { label: tab.label, href: router.resolve({ path: route.path, query: { ...route.query, tab: key }, hash: route.hash }).href }
+})
 
-// The bar's button moves to the tab that holds the first error, where the error is fixed. Save stays off while the domain is invalid.
+// The bar's link moves to the tab that holds the first error, where the error is fixed. Save stays off while the domain is invalid.
 const showFirstError = () => {
   const key = firstErrorSection.value
   if (key === undefined) return
@@ -555,7 +562,7 @@ watch(
         :count="countOfChanges"
         :invalid="invalidDomains.length > 0"
         :saving="saving"
-        :first-error-label="firstErrorSection === undefined ? '' : 'Show the first error'"
+        :first-error="firstErrorLink"
         @save="save"
         @discard="discard"
         @review="reviewOpen = true"

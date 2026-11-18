@@ -177,11 +177,22 @@ describe('the sections of a settings page as tabs', () => {
 
     editDraft(store, draft => { draft.rebuildSchedule.everyDays = 'often' })
     await flushPromises()
-    await buttonLabelled('Show the first error').trigger('click')
+    await wrapper.get('[data-test="first-error-link"]').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.query.tab).toBe('rebuild-schedule')
     expect(tabLabelled('Rebuild schedule (1 error)').attributes('aria-selected')).toBe('true')
+  })
+
+  it('names the first tab with an error in the save bar, and links to its address', async () => {
+    const { store } = await setup()
+
+    editDraft(store, draft => { draft.rebuildSchedule.everyDays = 'often' })
+    await flushPromises()
+    const link = wrapper.get('[data-test="first-error-link"]')
+
+    expect(link.text()).toBe('Show the first error: Rebuild schedule')
+    expect(link.attributes('href'), 'the link names the tab in the address').toContain('tab=rebuild-schedule')
   })
 
   it('sends every section in one save, whichever tab is shown', async () => {
