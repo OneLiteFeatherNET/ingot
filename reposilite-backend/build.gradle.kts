@@ -22,12 +22,15 @@ import com.github.jk1.license.render.InventoryHtmlReportRenderer
 import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
 import ingot.plugin.CheckPluginApiClosureTask
+import ingot.plugin.EmbeddedPluginJars
 import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.cyclonedx.Version
 import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.cyclonedx.model.Component
+import org.gradle.api.GradleException
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
 
 plugins {
@@ -292,6 +295,51 @@ tasks.withType<ShadowJar> {
             }
         }
     )
+}
+
+// Plugin modules that the server jar embeds as embedded-plugins/<jar name>, see openspec change add-embedded-plugin-jars.
+// The list is empty, so the server jar is unchanged until a module is named here together with its loader.
+val embeddedPluginProjects: List<String> = emptyList()
+
+// The shadow jars of those modules. The configuration is on no classpath, so the compile and runtime classpaths do not change.
+val embeddedPlugin by configurations.creating {
+    description = "The shadow jars of the plugin modules that the server jar embeds"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    embeddedPluginProjects.forEach { "embeddedPlugin"(project(path = it, configuration = "shadow")) }
+}
+
+// A jar is copied as it is into embedded-plugins/, so its classes stay in their own jar and the loader opens it on its own.
+tasks.withType<ShadowJar> {
+    from(embeddedPlugin) { into("embedded-plugins") }
+}
+
+// Fails the build when the server jar does not embed exactly the plugin jars named in embeddedPluginProjects. It runs in check.
+val embeddedPluginArtifacts = embeddedPlugin.incoming.artifacts.resolvedArtifacts
+val verifyEmbeddedPlugins by tasks.registering {
+    group = "verification"
+    description = "Fails when the server jar does not embed exactly the plugin jars named in embeddedPluginProjects."
+    dependsOn(tasks.named("shadowJar"))
+    val serverJar = tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }
+    inputs.file(serverJar)
+    doLast {
+        val expected = embeddedPluginArtifacts.get().mapNotNull { artifact ->
+            (artifact.id.componentIdentifier as? ProjectComponentIdentifier)
+                ?.let { EmbeddedPluginJars.Expected(module = it.projectPath, jarName = artifact.file.name) }
+        }
+        val violations = EmbeddedPluginJars.violations(serverJar.get().asFile, expected)
+        if (violations.isNotEmpty()) {
+            throw GradleException(violations.joinToString(separator = "\n"))
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(verifyEmbeddedPlugins)
 }
 
 // CycloneDX SBOM of the runtime classpath that the standalone jar contains. The release workflow attaches it to the
