@@ -15,9 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobPage
-import com.reposilite.plugin.api.jobs.JobQuery
-import com.reposilite.plugin.api.jobs.JobSource
 
 /** Answers whether the visitor may read the runs behind a node. */
 fun interface JobAccess {

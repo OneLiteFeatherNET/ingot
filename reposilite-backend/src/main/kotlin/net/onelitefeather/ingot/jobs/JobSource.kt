@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.reposilite.plugin.api.jobs
+package net.onelitefeather.ingot.jobs
 
 import com.reposilite.plugin.api.Event
-import net.onelitefeather.ingot.jobs.JobCursor
-import net.onelitefeather.ingot.jobs.JobRun
-import net.onelitefeather.ingot.jobs.JobState
-import net.onelitefeather.ingot.jobs.JobTrigger
 
 /**
  * A place that keeps a record of background runs and lists them on the Jobs page.

@@ -15,8 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobQuery
-import com.reposilite.plugin.api.jobs.JobSource
 import java.time.Instant
 
 const val MAINTENANCE_NODE = "ingot.admin.maintenance"

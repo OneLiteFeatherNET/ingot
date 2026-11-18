@@ -15,8 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobRegistry
-import com.reposilite.plugin.api.jobs.JobSource
 
 /**
  * The sources of one instance. [seal] is called after the registration event; a source that registers later is reported

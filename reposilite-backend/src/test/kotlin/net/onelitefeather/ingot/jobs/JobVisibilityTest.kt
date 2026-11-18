@@ -15,7 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.plugin.api.jobs.JobQuery
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
