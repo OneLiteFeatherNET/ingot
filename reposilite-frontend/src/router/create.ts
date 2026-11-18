@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import type { Component } from 'vue'
+import { watch, type Component } from 'vue'
 import { createRouter, type Router, type RouterHistory, type RouteLocationRaw, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from './routes'
 import { administrationLocation, firstAccessRoute, visibleChildren, type Can } from '../navigation/registry'
 import { ADMIN_NODES } from '../store/nodeAccess'
-import { createManagerGuard, createPasswordChangeGuard } from './guard'
+import { createEnrolmentScopeGuard, createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
 import { requestPageFocus } from '../composables/useFocusOnInsert'
 
@@ -44,6 +44,7 @@ export interface AppRouterOptions {
   isManager?: () => boolean
   can?: Can
   mustChangePassword?: () => boolean
+  restricted?: () => boolean
   narrow?: () => boolean
 }
 
@@ -56,6 +57,7 @@ const createAppRouter = ({
   isManager = () => false,
   can = () => isManager(),
   mustChangePassword = () => false,
+  restricted = () => false,
   narrow = () => false
 }: AppRouterOptions): Router => {
   const router = createRouter({
@@ -86,6 +88,14 @@ const createAppRouter = ({
   })
 
   router.beforeEach(createPasswordChangeGuard({ mustChangePassword }))
+  router.beforeEach(createEnrolmentScopeGuard({ restricted }))
+  // The restriction arrives with the security status, after the first page may have opened. A restricted session is then moved to
+  // the account page at once.
+  watch(() => restricted(), (value) => {
+    if (value && router.currentRoute.value.name !== 'account') {
+      void router.replace({ name: 'account' })
+    }
+  })
   router.beforeEach(createManagerGuard({ whenSessionKnown }))
 
   // /access forwards to the one page a visitor may open, or to the first one on a wide screen, and shows

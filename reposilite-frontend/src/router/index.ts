@@ -35,10 +35,11 @@ export function createIngotRouter(): Router {
   // The store is still JavaScript, so the two values it gives are typed here, at the boundary.
   const { basePath, title } = usePlaceholders() as { basePath: string; title: string }
   // The store is still JavaScript, so the session values are typed here, at the boundary.
-  const { isManager, can, mustChangePassword } = useSession() as {
+  const { isManager, can, mustChangePassword, restricted } = useSession() as {
     isManager: { value: boolean }
     can: Can
     mustChangePassword: { value: boolean }
+    restricted: { value: boolean }
   }
 
   return createAppRouter({
@@ -50,6 +51,7 @@ export function createIngotRouter(): Router {
     isManager: () => isManager.value,
     can,
     mustChangePassword: () => mustChangePassword.value,
+    restricted: () => restricted.value,
     // The same breakpoint as the side navigation: below 1240px it is an index.
     narrow: () => window.matchMedia('(max-width: 1239px)').matches
   })

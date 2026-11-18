@@ -15,7 +15,7 @@
  */
 
 import { computed, ref, watch, watchEffect } from "vue"
-import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler, tokenCredentials, type SecondFactorChallenge } from './client'
+import { createClient, readCsrfToken, secondFactorProblemOf, setCookieMode, setUnauthorizedHandler, tokenCredentials, type SecondFactorChallenge, type SecondFactorMethod, type SecurityStatus } from './client'
 import { openSessionChannel, type ChannelMessage } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
@@ -105,12 +105,30 @@ const passwordMinLength = ref(12)
 const defaultDetails: SessionDetails | undefined = undefined
 const details = ref<SessionDetails | undefined>(defaultDetails)
 
+// The second factor status of the session, from GET /api/identity/me/security. The grace end is set while a covered user
+// has no factor and the grace period runs; the scope `enrol` restricts the session to the account page.
+const graceUntil = ref<string | undefined>(undefined)
+const securityScope = ref<'full' | 'enrol'>('full')
+const restricted = computed(() => securityScope.value === 'enrol')
+
+// The step-up dialog is open while a sensitive action waits for a second factor. The methods are the ones the server listed,
+// and the message is the reason of the last refused code.
+export interface StepUpRequest {
+  methods: SecondFactorMethod[]
+  message: string
+  busy: boolean
+}
+const stepUp = ref<StepUpRequest | undefined>(undefined)
+let stepUpWaiter: { resolve: () => void; reject: () => void } | undefined
+
 const clearSession = () => {
   setToken('', '')
   details.value = undefined
   authMode.value = undefined
   principal.value = undefined
   mustChangePassword.value = false
+  graceUntil.value = undefined
+  securityScope.value = 'full'
   setCookieMode(false)
 }
 
@@ -134,6 +152,18 @@ const applyMe = (data: SessionDetails | undefined) => {
   mustChangePassword.value = data?.mustChangePassword === true
 }
 
+// Reads the second factor status of the session. The dashboard only shows what the server decides, so a failed read
+// keeps the session as it is: no banner and no restriction.
+const loadSecurityStatus = async (): Promise<void> => {
+  const status: SecurityStatus = (await client.value.identity.me.security()).data
+  graceUntil.value = status.graceUntil ?? undefined
+  securityScope.value = status.scope === 'enrol' ? 'enrol' : 'full'
+}
+
+const refreshSecurityStatus = (): void => {
+  loadSecurityStatus().catch(() => undefined)
+}
+
 const login = (name: string, secret: string) =>
   createClient(name, secret)
     .auth
@@ -143,6 +173,7 @@ const login = (name: string, secret: string) =>
       setToken(name, secret)
       authMode.value = 'token'
       applyMe(viewOf(response.data))
+      refreshSecurityStatus()
     })
 
 const signInWithToken = login
@@ -168,6 +199,7 @@ const startCookieSession = async (data: { principal?: ApiLoginPrincipal; mustCha
     // Signed in, but the details could not be read; the views see a session without extra rights.
     details.value = details.value ?? { permissions: [], routes: [] }
   }
+  refreshSecurityStatus()
   channel.signedIn(principal.value)
 }
 
@@ -225,6 +257,59 @@ const secondFactorFailureMessage = (error: unknown): string => {
   if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
   if (status === 401) return String(failure.response?.data?.message ?? '') || 'The code is not valid'
   return errorMessage(error)
+}
+
+// Opens the step-up dialog for a refused action. The promise resolves once a second factor is confirmed, and rejects with the
+// refusal the action gave when the dialog is dismissed.
+const openStepUp = (methods: SecondFactorMethod[], refusal: Error): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    stepUp.value = { methods, message: '', busy: false }
+    stepUpWaiter = { resolve, reject: () => reject(refusal) }
+  })
+
+const closeStepUp = (): void => {
+  stepUp.value = undefined
+  stepUpWaiter = undefined
+}
+
+// Runs a sensitive action. A refusal with step_up_required opens the step-up dialog, and the action is retried once after a
+// second factor is confirmed. A second refusal is the error of the call. A refusal that lists no factor is not a step-up.
+const withStepUp = async <T>(action: () => Promise<T>): Promise<T> => {
+  try {
+    return await action()
+  } catch (error) {
+    const problem = secondFactorProblemOf(error)
+    if (problem?.problem !== 'step_up_required' || problem.methods.length === 0) {
+      throw error
+    }
+    await openStepUp(problem.methods, error as Error)
+    return action()
+  }
+}
+
+// The code of the step-up dialog, checked by the server. A wrong code keeps the dialog open with the reason.
+const confirmStepUp = async (code: string): Promise<void> => {
+  const waiter = stepUpWaiter
+  if (!stepUp.value || !waiter) return
+  stepUp.value = { ...stepUp.value, busy: true, message: '' }
+  try {
+    await client.value.identity.me.stepUp(code)
+  } catch (error) {
+    if (stepUpWaiter === waiter && stepUp.value) {
+      stepUp.value = { ...stepUp.value, busy: false, message: secondFactorFailureMessage(error) }
+    }
+    return
+  }
+  if (stepUpWaiter !== waiter) return
+  closeStepUp()
+  waiter.resolve()
+}
+
+// The dialog was dismissed: the sensitive action is refused with its original error.
+const cancelStepUp = (): void => {
+  const waiter = stepUpWaiter
+  closeStepUp()
+  waiter?.reject()
 }
 
 // First run: the setup response signs the new administrator in. A server that answers without a
@@ -359,6 +444,7 @@ const probeCookieSession = async (): Promise<void> => {
     setCookieMode(true)
     authMode.value = 'cookie'
     applyMe(viewOf(response.data))
+    refreshSecurityStatus()
   } catch {
     // Anonymous, or the server could not be reached; the views report their own failures.
   }
@@ -490,6 +576,14 @@ export function useSession() {
     completeSecondFactor,
     completePasskeySecondFactor,
     signInWithToken,
+    graceUntil,
+    securityScope,
+    restricted,
+    loadSecurityStatus,
+    stepUp,
+    withStepUp,
+    confirmStepUp,
+    cancelStepUp,
     signOut,
     completeSetup,
     loadProviders,

@@ -1650,6 +1650,20 @@
       "stability": "experimental",
       "parts": [],
       "states": []
+    },
+    {
+      "name": "grace-banner",
+      "file": "src/components/identity/GraceBanner.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "step-up-dialog",
+      "file": "src/components/identity/StepUpDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": ["error"]
     }
   ],
   "aliases": [
