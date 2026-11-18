@@ -9,6 +9,7 @@ Run from the repository root:
 """
 
 import importlib.util
+import io
 import os
 import unittest
 
@@ -141,6 +142,59 @@ class VersionOnLineTest(unittest.TestCase):
     def test_malformed_version_is_refused(self):
         with self.assertRaises(ValueError, msg="a version without patch part is not a release"):
             release_tags.require_version_on_line("1.1", "1.1")
+
+
+class PreviousReleaseTest(unittest.TestCase):
+
+    def test_previous_release_on_a_line_is_the_highest_tag_of_that_line(self):
+        tags = ["v1.1.1", "v1.1.2", "v2.0.0"]
+
+        self.assertEqual("v1.1.2", release_tags.previous_release(tags, "1.1"), "2.0.0 is not on the 1.1 line")
+
+    def test_previous_release_on_a_line_compares_the_minor_as_a_number(self):
+        tags = ["v1.9.0", "v1.10.0"]
+
+        self.assertEqual("v1.9.0", release_tags.previous_release(tags, "1.9"), "1.10.0 is not on the 1.9 line")
+
+    def test_previous_release_on_a_line_is_none_when_the_line_has_no_tag(self):
+        self.assertIsNone(release_tags.previous_release(["v2.0.0"], "1.1"), "no 1.1 release exists yet")
+
+    def test_previous_release_without_a_line_is_the_newest_tag(self):
+        tags = ["v1.1.2", "v2.0.0"]
+
+        self.assertEqual("v2.0.0", release_tags.previous_release(tags, None), "main compares across all lines")
+
+
+class CommandLineTest(unittest.TestCase):
+
+    def run_cli(self, argv, stdin_text):
+        stdout = io.StringIO()
+        code = release_tags.main(argv, stdin=io.StringIO(stdin_text), stdout=stdout)
+        return code, stdout.getvalue()
+
+    def test_container_tags_command_prints_one_tag_per_line(self):
+        code, out = self.run_cli(["container-tags", "1.1.2"], "v1.1.1\nv2.0.0\nnightly\n")
+
+        self.assertEqual(0, code, "a release on an old line is accepted")
+        self.assertEqual("1.1.2\n1.1\n1\n", out, "1.1.2 moves 1.1 and 1, never latest, while 2.0.0 exists")
+
+    def test_previous_command_reads_the_line_of_a_release_branch(self):
+        code, out = self.run_cli(["previous", "release/1.1.x"], "v1.1.1\nv1.1.2\nv2.0.0\n")
+
+        self.assertEqual(0, code, "a release branch names its line")
+        self.assertEqual("v1.1.2\n", out, "the previous release of a branch is the highest tag of its line")
+
+    def test_previous_command_on_main_reads_the_newest_tag(self):
+        code, out = self.run_cli(["previous", "main"], "v1.1.2\nv2.0.0\n")
+
+        self.assertEqual(0, code, "main has no line")
+        self.assertEqual("v2.0.0\n", out, "main takes the highest tag overall")
+
+    def test_previous_command_prints_nothing_when_no_release_exists(self):
+        code, out = self.run_cli(["previous", "release/1.1.x"], "v2.0.0\n")
+
+        self.assertNotEqual(0, code, "a missing previous release must fail the job")
+        self.assertEqual("", out, "nothing is printed when no tag exists")
 
 
 if __name__ == "__main__":

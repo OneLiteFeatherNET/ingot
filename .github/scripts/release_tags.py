@@ -12,11 +12,14 @@ Container tag rules (see openspec/changes/add-release-branches-and-backports/des
 - `X` is set only when the release is the highest version with major `X`.
 - `latest` is set only when the release is the highest version across all lines.
 
-The standard library only. Imported by the workflows and by `tests/test_release_tags.py`.
+The standard library only. Imported by the workflows and by `tests/test_release_tags.py`. The command line runs the
+same rules for the workflows: `container-tags VERSION` and `previous BRANCH`, both reading the version tags on stdin.
 """
 
+import argparse
 import re
-from typing import Iterable, List, Optional, Tuple
+import sys
+from typing import IO, Iterable, List, Optional, Tuple
 
 VERSION_PATTERN = re.compile(r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 BRANCH_PATTERN = re.compile(r"^release/(0|[1-9]\d*)\.(0|[1-9]\d*)\.x$")
@@ -95,3 +98,57 @@ def container_tags(version: str, tags: Iterable[str]) -> List[str]:
     if not any(parsed > released for parsed in known):
         result.append("latest")
     return result
+
+
+def previous_release(tags: Iterable[str], line: Optional[str]) -> Optional[str]:
+    """Returns the tag of the previous release that an upgrade rehearsal starts from, or None when there is none.
+
+    On a release line `X.Y` it is the highest tag of that line, so a `1.1.x` build is never rehearsed from a `2.0.x`
+    image. Without a line (main) it is the highest tag across all lines.
+    """
+    if line is None:
+        return newest_tag(tags)
+    line_major, line_minor = (int(part) for part in line.split("."))
+    pairs = [pair for pair in _versions(tags) if (pair[0][0], pair[0][1]) == (line_major, line_minor)]
+    if not pairs:
+        return None
+    return max(pairs)[1]
+
+
+def _read_tags(stream: IO[str]) -> List[str]:
+    return [line.strip() for line in stream if line.strip()]
+
+
+def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[str]] = None) -> int:
+    """Runs one rule for a workflow step. The version tags are read from stdin, one per line.
+
+    `container-tags VERSION` prints the container tags of a release. `previous BRANCH` prints the previous release of
+    the branch's line, or of all lines for any other branch, and exits 1 when there is none.
+    """
+    parser = argparse.ArgumentParser(prog="release_tags.py", description=__doc__.splitlines()[0])
+    commands = parser.add_subparsers(dest="command", required=True)
+    container = commands.add_parser("container-tags", help="print the container tags of a release")
+    container.add_argument("version")
+    previous = commands.add_parser("previous", help="print the previous release of a branch line")
+    previous.add_argument("branch")
+    args = parser.parse_args(argv)
+
+    stdin = stdin if stdin is not None else sys.stdin
+    stdout = stdout if stdout is not None else sys.stdout
+    tags = _read_tags(stdin)
+
+    if args.command == "container-tags":
+        for tag in container_tags(args.version, tags):
+            stdout.write(tag + "\n")
+        return 0
+
+    branch = args.branch[len("refs/heads/"):] if args.branch.startswith("refs/heads/") else args.branch
+    tag = previous_release(tags, branch_line(branch))
+    if tag is None:
+        return 1
+    stdout.write(tag + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
