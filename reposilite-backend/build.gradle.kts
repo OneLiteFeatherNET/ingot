@@ -280,6 +280,18 @@ tasks.withType<ShadowJar> {
         // see also https://github.com/ben-manes/caffeine/discussions/762
         exclude(dependency("com.github.ben-manes.caffeine:.*"))
     }
+    // With minimize on, the shadow plugin lists the classes of every source set as an input, which makes this jar depend
+    // on their compile tasks, the container tests included. Those tests use nothing from the shipped classpath, so they
+    // are left out of that list and the server jar builds without resolving their dependencies.
+    sourceSetsClassesDirs.setFrom(
+        minimizeJar.map { minimize ->
+            if (minimize) {
+                sourceSets.filter { it.name != "containerTest" }.map { it.output.classesDirs.filter(File::isDirectory) }
+            } else {
+                emptyList()
+            }
+        }
+    )
 }
 
 // CycloneDX SBOM of the runtime classpath that the standalone jar contains. The release workflow attaches it to the
