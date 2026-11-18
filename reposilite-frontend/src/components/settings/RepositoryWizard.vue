@@ -442,32 +442,6 @@ const onModalUpdate = (open) => {
             :error="Boolean(shownErrors.id)"
             :error-text="shownErrors.id ?? ''"
           />
-          <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 md-title-small text-on-surface">
-              Who can read it
-            </legend>
-            <MdRadio
-              v-for="option in VISIBILITY_OPTIONS"
-              :key="option.value"
-              v-model="draft.basics.visibility"
-              name="visibility"
-              :value="option.value"
-              card
-              class="rounded-corner-medium border p-3"
-              :class="draft.basics.visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
-            >
-              <span class="flex min-w-0 flex-col gap-0.5">
-                <span class="md-title-small">{{ option.label }}</span>
-                <span class="md-body-medium">{{ option.who }}</span>
-              </span>
-            </MdRadio>
-            <p
-              v-if="shownErrors.visibility"
-              class="md-body-small text-error"
-            >
-              {{ shownErrors.visibility }}
-            </p>
-          </fieldset>
           <MdTextField
             v-if="optional.description"
             id="wizard-description"
@@ -737,6 +711,32 @@ const onModalUpdate = (open) => {
           v-else-if="stepKey === 'access'"
           class="flex flex-col gap-6"
         >
+          <fieldset class="flex flex-col gap-2">
+            <legend class="pb-2 md-title-small text-on-surface">
+              Who can read it
+            </legend>
+            <MdRadio
+              v-for="option in VISIBILITY_OPTIONS"
+              :key="option.value"
+              v-model="draft.basics.visibility"
+              name="visibility"
+              :value="option.value"
+              card
+              class="rounded-corner-medium border p-3"
+              :class="draft.basics.visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
+            >
+              <span class="flex min-w-0 flex-col gap-0.5">
+                <span class="md-title-small">{{ option.label }}</span>
+                <span class="md-body-medium">{{ option.who }}</span>
+              </span>
+            </MdRadio>
+            <p
+              v-if="shownErrors.visibility"
+              class="md-body-small text-error"
+            >
+              {{ shownErrors.visibility }}
+            </p>
+          </fieldset>
           <fieldset class="flex flex-col gap-2">
             <legend class="pb-2 md-title-small text-on-surface">
               Who gets access to this repository
