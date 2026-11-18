@@ -22,6 +22,9 @@ import MdSkeleton from './MdSkeleton.vue'
  * The state of a list, a table or a page that has no content to show: empty, loading or error.
  * Loading draws skeleton lines instead of a spinner and sets aria-busy on the panel. The error
  * state offers one Retry action; the parent does the request and emits nothing else.
+ *
+ * A panel that needs more than one action passes them through the `actions` slot. The slot
+ * replaces the default Retry in the error state, and it is drawn in the empty state too.
  */
 withDefaults(defineProps<{
   state?: 'empty' | 'loading' | 'error'
@@ -79,7 +82,14 @@ const emit = defineEmits<{
     >
       {{ description }}
     </p>
+    <div
+      v-if="$slots.actions"
+      class="flex flex-wrap items-center justify-center gap-2"
+    >
+      <slot name="actions" />
+    </div>
     <MdButton
+      v-else
       variant="tonal"
       @click="emit('retry')"
     >
@@ -104,5 +114,11 @@ const emit = defineEmits<{
     >
       {{ description }}
     </p>
+    <div
+      v-if="$slots.actions"
+      class="flex flex-wrap items-center justify-center gap-2"
+    >
+      <slot name="actions" />
+    </div>
   </div>
 </template>

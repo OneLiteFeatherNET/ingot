@@ -66,6 +66,46 @@ describe('MdStatePanel', () => {
     expect(wrapper.attributes('aria-busy'), 'only the loading state is busy').toBeUndefined()
   })
 
+  it('renders the actions slot in place of the default Retry in the error state', () => {
+    const wrapper = mount(MdStatePanel, {
+      props: { state: 'error', title: 'Not connected' },
+      slots: { actions: '<button type="button">Reconnect</button><button type="button">Sign in</button>' }
+    })
+
+    const labels = wrapper.findAll('button').map(button => button.text())
+    expect(labels, 'the slot must supply every action of the error state').toEqual(['Reconnect', 'Sign in'])
+    expect(labels, 'the default Retry must not be drawn next to the slot').not.toContain('Retry')
+  })
+
+  it('emits nothing for the default retry when the actions slot is used', async () => {
+    const wrapper = mount(MdStatePanel, {
+      props: { state: 'error', title: 'Not connected' },
+      slots: { actions: '<button type="button">Reconnect</button>' }
+    })
+
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('retry'), 'a slot action must not emit the default retry').toBeUndefined()
+  })
+
+  it('renders the actions slot in the empty state', () => {
+    const wrapper = mount(MdStatePanel, {
+      props: { state: 'empty', title: 'Nothing here' },
+      slots: { actions: '<button type="button">Create</button>' }
+    })
+
+    expect(wrapper.findAll('button').map(button => button.text()), 'the empty state must show the slot action').toEqual(['Create'])
+  })
+
+  it('keeps the slot actions in document order', () => {
+    const wrapper = mount(MdStatePanel, {
+      props: { state: 'error', title: 'Not connected' },
+      slots: { actions: '<button type="button">Sign in</button><button type="button">Reconnect</button>' }
+    })
+
+    expect(wrapper.findAll('button').map(button => button.text()), 'the order given by the slot must be kept').toEqual(['Sign in', 'Reconnect'])
+  })
+
   it('carries the anchor on the root', () => {
     const wrapper = mount(MdStatePanel, { props: { state: 'empty', title: 'No artifacts yet' } })
 
