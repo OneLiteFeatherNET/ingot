@@ -273,6 +273,21 @@ describe('LdapPanel', () => {
     })
   })
 
+  describe('the connection section', () => {
+    it('asks whether to offer LDAP, then the server address, then StartTLS, then the label', async () => {
+      await mountPanel()
+
+      const section = wrapper.get('section[aria-labelledby="ldap-connection-title"]').element as HTMLElement
+      const names = [...section.querySelectorAll('label')].map(label => label.textContent.trim())
+      expect(names, 'the order of the connection fields').toEqual([
+        'Enabled: offer LDAP sign in',
+        'Server address',
+        'Upgrade the connection with StartTLS',
+        'Label on the sign in form'
+      ])
+    })
+  })
+
   describe('test connection', () => {
     it('is offered for the saved directory', async () => {
       await mountPanel()
