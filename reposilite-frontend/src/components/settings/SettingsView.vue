@@ -149,7 +149,11 @@ const nameOfEntry = (domain, collectionKey, address) => {
 }
 // The name of the item on a detail page: the entry it opens. Empty on every other page, and on a repository, whose page
 // keeps the name of the Repositories list; the repository is named by its own heading in the detail.
-const detailTitle = computed(() => (entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''))
+// The frame names the repository of its detail page, as the detail no longer repeats it in a heading.
+const detailTitle = computed(() => {
+  if (repositoryPage.value) return nameOfEntry(activeDomain.value, 'repositories', String(route.params.id ?? ''))
+  return entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''
+})
 // The entry of the tree on screen: the domain in the address, or the Repositories page. The hub marks none.
 const settingsCurrent = computed(() => currentTreeKey(route.name, props.domain))
 
