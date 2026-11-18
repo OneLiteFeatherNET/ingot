@@ -134,7 +134,7 @@ operator gets from `seedColor: "#3A5F85"`, and they are the source of truth in `
 | `surface-variant` | `#dae3f1` | `#3f4753` |
 | `on-surface-variant` | `#3f4753` | `#bec7d5` |
 | `surface-tint` | `#0062a1` | `#9ccaff` |
-| `surface-dim` | `#d4dae5` | `#0d141c` |
+| `surface-dim` | `#d4dae5` | `#080f16` |
 | `surface-bright` | `#f8f9ff` | `#333a42` |
 | `surface-container-lowest` | `#ffffff` | `#080f16` |
 | `surface-container-low` | `#eef4ff` | `#161c24` |
@@ -230,6 +230,35 @@ for dark, and the `prefers-contrast: more` block for both high contrast schemes.
   picker behind an icon button, and a Clear action. A value must be `#RRGGBB` or empty, and the
   domain cannot be saved otherwise. Under the Appearance section a preview strip shows the
   primary, secondary, tertiary, error and surface roles of the scheme the form would give.
+
+### Surfaces
+
+Every surface takes one row of this table, and a view or primitive follows the row. A new surface picks its row before it picks a colour.
+
+| Surface | Role | Edge | Elevation |
+| --- | --- | --- | --- |
+| Page (behind everything) | `surface` | none | none |
+| Frame: top bar, navigation rail | `surface-container` | none, the content sheet is the edge | none |
+| Content sheet | `surface` | 1 pixel `outline` | none |
+| Card (`MdCard` default) | `surface-container-low` | 1 pixel `outline` | none |
+| Card, outlined variant | `surface` | 1 pixel `outline` | none |
+| Card, elevated variant | `surface-container-low` | none | `elevation-1` |
+| Block nested in a card | one role above the card: `surface-container` | none | none |
+| Block nested in that block | `surface-container-high` | none | none |
+| Menu, select listbox | `surface-container` | none | `elevation-2` |
+| Side sheet (modal) | `surface-container-low` | none | `elevation-1` |
+| Dialog | `surface-container-high` | none | `elevation-3` |
+| Floating panel (More panel, snackbar) | the role of its kind | none | always, at least `elevation-2` |
+
+Nested blocks step up exactly one role from their parent and never repeat it or step down. The deepest allowed level is
+`surface-container-high`; a fourth step is rejected in review.
+
+Outline is the role of an edge that carries meaning: a card, a field, the content sheet. `outline-variant` is the role of decorative
+dividers inside a surface. Its measured contrast (1.46 to 1.97:1) is below the 3:1 that a visible boundary needs, so it is not used for
+any edge.
+
+In dark mode `surface-dim` takes the value of `surface-container-lowest` (`#080f16`), so it is the darkest surface. The seeded theme
+applies the same rule, so a seed colour does not change the order of the surfaces.
 
 ## Charts
 
@@ -459,6 +488,9 @@ Props:
 
 - `variant`: `'filled'` (default), `'elevated'`, `'low'`, `'outlined'`. `low` is the flat `surface-container-low` panel without a shadow, as hand-built cards used it
 
+The variants follow the surface table (see Surfaces). `filled` (the default) is `surface-container-low` with a 1 pixel `outline`
+border, `outlined` is `surface` with the same border, and `elevated` is `surface-container-low` with `elevation-1` and no border.
+
 Slot: `default`. The card adds the 12px corner radius and 16px padding.
 
 ### MdTextField
@@ -582,7 +614,7 @@ Same props and events as `MdNavigationBar`. 96px `surface-container` rail, 56 by
 
 ### Adaptive navigation
 
-Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 96px, header included. From 600px the content is a `surface` sheet with rounded corners inside the frame of rail and top bar, and the sticky corner pieces under the top bar finish the sheet's corners. Switch with the window classes `max-medium:` / `medium:` (see Window margins), never with JavaScript. A user with one section gets no navigation.
+Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 96px, header included. From 600px the content is a `surface` sheet with rounded corners and a 1 pixel `outline` edge inside the frame of rail and top bar, and the sticky corner pieces under the top bar finish the sheet's corners. Switch with the window classes `max-medium:` / `medium:` (see Window margins), never with JavaScript. A user with one section gets no navigation.
 
 The page publishes the bar height as `--app-bottom-bar-height` on the document root (80px with a
 bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it sits above the bar.
@@ -601,7 +633,7 @@ A modal panel from the leading edge, 320px wide or the window less 56px, whichev
 
 ### Top app bar
 
-64px, `sticky top-0`, `surface-container` at every scroll position, the same role as the rail, so the two form one frame. It has no tone change on scroll, no border, no shadow and no decorative rule: the `surface` content sheet is the edge. It holds the instance name, as a link to the start page, and the account menu, and nothing else. The instance name is not a heading; each page has its own level one heading.
+64px, `sticky top-0`, `surface-container` at every scroll position, the same role as the rail, so the two form one frame. It has no tone change on scroll, no border, no shadow and no decorative rule of its own: the content sheet's 1 pixel `outline` edge is the edge. It holds the instance name, as a link to the start page, and the account menu, and nothing else. The instance name is not a heading; each page has its own level one heading.
 
 ### Account menu
 
@@ -804,9 +836,50 @@ Gaps that are deliberately left for the views that own them are listed here:
 
 - No tabs, list, dialog or drawer primitive under `src/components/md/`. Views that need one build it in their own folder until a primitive is added here.
 - The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries) has no rules in this document until `rework-administration-information-architecture` adds them.
-- The surface-dim of the dark theme is `#0d141c`, the same value as the surface role, so a
-  surface that is meant to sit below the default cannot be told apart from the page. The
-  value is kept by the token change; `fix-surface-hierarchy-and-page-header` changes it.
+## Page shell, header and trail
+
+### Page shell: `MdPage`
+
+`MdPage` renders the page container. The gutter stays the shared `container` class (see Window margins). `MdPage` has one width:
+`container mx-auto max-w-none` with the page's top and bottom padding. Every page takes the full width after the side navigation:
+lists, tables, detail panes, the account page, the dashboard, the file browser and Overview.
+
+Running text and forms do not use the page width. A block of prose or a form inside a page takes the reading measure
+(`max-w-md-reading`, left-aligned, no `mx-auto`). The measure is set on the block, never on the page container, so the title, the
+trail, the description and the text share one left edge at every width.
+
+No view writes `container` itself, and no view writes `mx-auto` or `max-w-*` on the page container. `MdPage` owns the top and bottom
+spacing, so the spacing cannot disagree between pages.
+
+### Page header: `MdPageHeader`
+
+The header has up to four regions, and the back control is outside the text column:
+
+- back row: the back control, when the page has one. It is alone in its own row above the text column.
+- columns row: a flex column below 600 pixels, a row from 600 pixels.
+- text column: the trail, the one `h1` and the description.
+- actions: buttons, shortcuts and the Sections button.
+
+The back control's 48 pixel target is pulled left by 12 pixels (`-ms-3`), so its 24 pixel glyph starts at the container edge. A detail
+page draws its back control at every width, because it is the way to its list page. A list page draws one below 1240 pixels. The text
+column never moves when the back control appears or disappears.
+
+Each page has exactly one `h1`. On a page with a repository name, the name is the `h1`, and the repository type section stays an `h2`.
+
+### Trail: `MdBreadcrumb`
+
+`MdBreadcrumb` renders a `nav` with an `ol`. Each crumb is an `li` with one child: a link, or the current text. The separator is the
+first child of every `li` after the first, a `span` with `aria-hidden="true"`. No crumb draws its separator with `after:` or
+`before:`. The current crumb carries `aria-current="page"`.
+
+- The administration trail is the section (a link to the index), the group heading (text, or a link on a detail page to the list page),
+  and on a detail page the current entry as text. A page whose entry has no group heading, and Overview, draw the section name as the
+  current crumb.
+- The file browser trail keeps its own anchor on the `nav`. Its parent directory button stays beside the trail as a separate action,
+  outside `MdBreadcrumb`.
+- The crumbs wrap by `li`, never inside one. A long crumb truncates. No crumb wraps its separator onto a line of its own.
+- Below 1240 pixels the trail draws its last crumb only. The full trail is the `title` of that crumb, so no information is lost for a
+  pointer user. The accessible name of the `nav` stays "Breadcrumb".
 
 ## Window margins
 
