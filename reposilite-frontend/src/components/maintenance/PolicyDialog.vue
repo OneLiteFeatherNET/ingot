@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PropType } from 'vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
@@ -41,29 +40,20 @@ import type { PolicyDraft, PolicyErrors, PolicyPayload, PolicyWire, ScheduleMode
  * user has tried to save, and a save with an error sends nothing: the parent receives the policy
  * in the wire shape only when every rule holds.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   /** The policy being edited, or null for a new one. */
-  policy: {
-    type: Object as PropType<PolicyWire | null>,
-    default: null
-  },
-  existingIds: {
-    type: Array as PropType<string[]>,
-    default: () => []
-  },
+  policy?: PolicyWire | null
+  existingIds?: string[]
   /** The repository ids the maven settings define. */
-  repositoryIds: {
-    type: Array as PropType<string[]>,
-    default: () => []
-  },
-  saving: {
-    type: Boolean,
-    default: false
-  }
+  repositoryIds?: string[]
+  saving?: boolean
+}>(), {
+  modelValue: false,
+  policy: null,
+  existingIds: () => [],
+  repositoryIds: () => [],
+  saving: false
 })
 
 const emit = defineEmits<{

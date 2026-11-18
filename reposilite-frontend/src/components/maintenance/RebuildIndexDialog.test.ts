@@ -116,3 +116,8 @@ describe('RebuildIndexDialog confirmation', () => {
     expect(confirmButton().hasAttribute('disabled') || confirmButton().closest('[disabled]') !== null, 'the confirm action is disabled').toBe(true)
   })
 })
+
+// Type contract, checked by vue-tsc: repositories is a list of names. Never called at runtime.
+// @ts-expect-error repositories is a list, a single name is not
+const mountWithOneRepository = () => mount(RebuildIndexDialog, { props: { modelValue: false, repositories: 'releases' } })
+void mountWithOneRepository
