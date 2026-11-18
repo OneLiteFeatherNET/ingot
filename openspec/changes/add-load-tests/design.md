@@ -75,9 +75,10 @@ tests, so the decision does not depend on k6 being present.
 The soak profile holds that maximum for 2 hours by default. A leak in the heap, a growing cache or an exhausted pool shows as a
 rising trend in the dashboard that a 15-minute step would not show.
 
-Thresholds for each scenario are declared in one file, `loadtest/lib/thresholds.ts`, and can be overridden per run. Examples: the
-`resolve` p95 under 150 ms, the `deploy` p95 under 2 s for 1 MB. The numbers are a starting point, and the maintainer tunes them
-after the first runs.
+Thresholds for each scenario are declared in one file, `loadtest/lib/thresholds.ts`, and can be overridden per run. No number is
+chosen in advance. Each entry is provisional until the first measured run on the cluster (task 6.3) sets it from the measured p95 of
+its scenario, and the entry then names the `testid` of that run. That first run has its abort on fail disabled, because no limit exists
+yet, and its record is marked provisional. The maintainer changes an entry only with a new measured run.
 
 ### D4. The same resources for every pod
 
@@ -127,9 +128,11 @@ that checks the variables and the panel titles.
 
 ### D10. Seeded test data and no login throttling
 
-`setup()` creates the fixtures: artifacts of the sizes the scenarios use, versions for the metadata and resolve scenarios, tokens
-and users for auth, and the search index inputs. A fixed seed makes the bytes and the checksums identical across runs. Login throttling
-stays at its default, off, so that the auth scenario measures the credential path and not the throttle.
+`setup()` creates the fixtures through the Ingot admin API, the same path a user takes, and never writes to the database or the
+bucket directly: artifacts of the sizes the scenarios use, versions for the metadata and resolve scenarios, tokens and users for
+auth, and the search index inputs. A failed fixture call fails the setup. A fixed seed makes the bytes and the checksums identical
+across runs. The 200 MB deploy body is streamed in chunks from the seeded generator and is never held in memory per virtual user.
+Login throttling stays at its default, off, so that the auth scenario measures the credential path and not the throttle.
 
 ### D11. Reference pod sizes
 
@@ -197,7 +200,9 @@ reference page. Reference values are published only from reference runs. The mai
 
 ## Prerequisites in the infrastructure repository
 
-These are created outside this repository and before the first run. This change does not create them.
+These are created outside this repository and before the first run. This change does not create them. The infrastructure repository
+owns the k6-operator, the namespace, Mimir, the node pool and the services; this repository ships only the overlays, the scripts, the
+runner and the upstream mock of task 5.3.
 
 - The k6-operator installed in the cluster, with its CRD.
 - The namespace `ingot-loadtest`, a service account for the runner that has rights in this namespace only, and a network policy
@@ -218,3 +223,12 @@ These are created outside this repository and before the first run. This change 
 4. Anti-affinity of the load generators: required, as in D6.
 5. Records: checked in under `loadtest/results/` (D13).
 6. Worker: one replica in `scalable`, as in `add-worker-target`.
+
+Decisions of 2026-11-18 by the maintainer:
+
+7. Infrastructure: the k6-operator, the namespace `ingot-loadtest`, Mimir, PostgreSQL, the bucket, NATS and the labelled node pool are
+   created in the infrastructure repository, not here (see the prerequisites above).
+8. Thresholds come from the first measured run and are not chosen in advance (D3).
+9. Test data is created in `setup()` through the Ingot admin API (D10).
+10. The 200 MB deploy body is streamed and is not held per virtual user (D10).
+11. The mirror scenario (task 3.3) runs its live check in group 5 against the in-cluster upstream mock (task 5.3).

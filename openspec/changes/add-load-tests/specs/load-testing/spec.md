@@ -28,7 +28,8 @@ The change SHALL NOT alter the server, the image, the chart defaults or any conf
 
 The suite SHALL provide the scenarios `resolve`, `resolve-miss`, `metadata`, `deploy`, `mirror`, `auth`, `search-browse` and
 `dashboard`, and a `mix` scenario that combines them with weights. Every request SHALL carry the tag `scenario:<name>`. Test data
-SHALL be seeded in `setup()` with a fixed seed.
+SHALL be created in `setup()` through the Ingot admin API with a fixed seed. The 200 MB deploy body SHALL be streamed in chunks and
+SHALL NOT be held in memory per virtual user.
 
 #### Scenario: Tag per request
 
@@ -109,7 +110,8 @@ sustainable rate of a topology and a scenario SHALL be the rate of the highest p
 
 ### Requirement: Thresholds in one file
 
-The thresholds of every scenario SHALL be declared in one file, `loadtest/lib/thresholds.ts`. Each threshold SHALL be overridable for a run.
+The thresholds of every scenario SHALL be declared in one file, `loadtest/lib/thresholds.ts`. Each threshold SHALL be overridable for a run. A threshold SHALL stay provisional until the first measured run sets it from the measured
+p95 of its scenario, and its entry SHALL then name the `testid` of that run.
 
 #### Scenario: Override for a run
 

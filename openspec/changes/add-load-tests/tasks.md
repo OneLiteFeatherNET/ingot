@@ -21,12 +21,15 @@ Pull request: `test(load): add the typescript scaffolding for k6 load tests`
   refusal of any other namespace. Verify: the test of 1.1 passes unchanged, and a unit test asserts that the refusal names the
   rejected namespace.
 - [ ] 1.3 Test: `loadtest/lib/artifacts.test.ts` asserts that the same seed yields identical artifact bytes and SHA-1 values on two
-  calls and different bytes for a different seed. Then add `loadtest/lib/artifacts.ts` with the seeded generator for the sizes 1 KB,
-  1 MB, 50 MB and 200 MB, and `loadtest/lib/auth.ts` and `loadtest/lib/checks.ts` for Basic and token headers and the shared checks.
+  calls and different bytes for a different seed, and that the 200 MB artifact is produced as chunks and never as one buffer. Then add
+  `loadtest/lib/artifacts.ts` with the seeded generator for the sizes 1 KB, 1 MB, 50 MB and 200 MB, `loadtest/lib/auth.ts` and
+  `loadtest/lib/checks.ts` for Basic and token headers and the shared checks, and `loadtest/lib/setup.ts`, which creates the fixtures
+  in `setup()` through the admin API only (a unit test with a fake admin client asserts that no other client is called).
 - [ ] 1.4 Test: `loadtest/lib/sizes.test.ts` asserts the five reference sizes N, T, S, M and L with their CPU and memory values, and
   that the requests of every size equal its limits. Then add `loadtest/lib/sizes.ts`, the one file that defines them.
 - [ ] 1.5 Add `loadtest/lib/thresholds.ts`, the one file that declares the thresholds of every scenario, and a unit test that
-  reads it and asserts that every scenario name of the design has a threshold entry.
+  reads it and asserts that every scenario name of the design has a threshold entry. Every entry starts as `provisional` and is set
+  from the first measured run (design.md D3).
 - [ ] 1.6 Open the pull request `test(load): add the typescript scaffolding for k6 load tests` on main, with the template filled as the
   maintainer's story. Verify with `gh pr view --json title,body,files`.
 
@@ -36,8 +39,8 @@ Pull request: `test(load): add the resolve, deploy and mix scenarios`
 
 - [ ] 2.1 Test: `loadtest/scenarios/resolve.test.ts` for the request list of a Maven and a Gradle client (pom, jar, `.sha1`, `.module`)
   against a fixture. Then add `loadtest/scenarios/resolve.ts` with the executor, the tag `scenario:resolve` and the expected status set.
-- [ ] 2.2 Add `loadtest/scenarios/deploy.ts` (PUT of 1 KB, 1 MB, 50 MB and 200 MB artifacts, several versions concurrently). Verify the
-  executor and the sizes against the artifacts of 1.3.
+- [ ] 2.2 Add `loadtest/scenarios/deploy.ts` (PUT of 1 KB, 1 MB, 50 MB and 200 MB artifacts, several versions concurrently, the 200 MB
+  body streamed from the generator of 1.3 and not held per virtual user). Verify the executor and the sizes against the artifacts of 1.3.
 - [ ] 2.3 Add `loadtest/scenarios/mix.ts`, which combines `resolve` and `deploy` with weights set in one file. Test: the weights sum to 1
   and every scenario present is in the mix. Later scenarios join the weights in group 3.
 - [ ] 2.4 Verify: each scenario runs with `k6 run --iterations 1` against an Ingot started locally with the default settings, and passes
@@ -53,7 +56,8 @@ Pull request: `test(load): add the remaining function scenarios`
   `http.expectedStatuses(200, 404)`. Verify with a unit test of the request list and the expected status set.
 - [ ] 3.2 Add `loadtest/scenarios/metadata.ts` (snapshot `maven-metadata.xml`).
 - [ ] 3.3 Add `loadtest/scenarios/mirror.ts`: a proxy repository against the in-cluster upstream mock of 5.3 only. A unit test asserts
-  that no URL in the scenario points outside the cluster. The live check runs once group 5 is merged.
+  that no URL in the scenario points outside the cluster. The live check runs in group 5 (task 5.3), and the scenario joins the mix
+  only after that check passes.
 - [ ] 3.4 Add `loadtest/scenarios/auth.ts` for Basic and token access to private repositories, and tag the requests so that the
   credential cache can be read per scheme.
 - [ ] 3.5 Add `loadtest/scenarios/search-browse.ts` (search API and directory listings) and `loadtest/scenarios/dashboard.ts` (login and
@@ -94,7 +98,8 @@ Pull request: `test(load): add the topology overlays and the upstream mock`
   change is on main, and otherwise in a follow-up pull request. Verify: the read replica count of each rendered Deployment matches the
   file name.
 - [ ] 5.3 Add `loadtest/k8s/upstream-mock.yaml`: an nginx Deployment and Service in `ingot-loadtest` that serve fixed artifacts, with the
-  latency set by a value. Verify: the mock answers with the bytes of the seeded artifacts of 1.3 at latency 0 and at a set latency.
+  latency set by a value. Verify: the mock answers with the bytes of the seeded artifacts of 1.3 at latency 0 and at a set latency,
+  and the live check of the mirror scenario (3.3) passes against it.
 - [ ] 5.4 Verify on every overlay that PostgreSQL, bucket and NATS settings are identical across overlays.
 - [ ] 5.5 Open the pull request `test(load): add the topology overlays and the upstream mock` on the branch of 4.6, with the template
   filled. Verify with `gh pr view --json title,body,files`.
@@ -110,7 +115,8 @@ Pull request: `test(load): add the k6-operator runner`
   completion, record, uninstall) and for the uninstall running after a failed step. The record step is an injected writer that group 8
   implements. Then add `loadtest/runner/main.ts` and `loadtest/runner/steps.ts`. No `sleep`: waits use deadlines from an injected clock.
 - [ ] 6.3 Add the `k6 archive` step that packs the scenario and the libraries into the ConfigMap. Verify: `npm run load -- --topology
-  monolith --profile breakpoint --scenario resolve` runs end to end on the cluster and uninstalls its release.
+  monolith --profile breakpoint --scenario resolve` runs end to end on the cluster and uninstalls its release. This first cluster run
+  sets the provisional thresholds (design.md D3), with abort on fail disabled.
 - [ ] 6.4 Verify: a `TestRun` with a target namespace other than `ingot-loadtest` is refused by the runner before any `kubectl` call.
 - [ ] 6.5 Test: `loadtest/runner/nodes.test.ts` for the reference node check: a reference run with fewer labelled nodes than the topology
   needs is refused before the install, with the found and the needed count; a non-reference run skips the check and is marked

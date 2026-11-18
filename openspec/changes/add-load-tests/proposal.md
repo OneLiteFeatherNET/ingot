@@ -22,8 +22,8 @@ and the server metrics behind them are read side by side.
   overlays, a TypeScript runner and the Grafana dashboard JSON. k6 1.x runs `.ts` files natively, so there is no bundler and no
   JavaScript source file. `npm run typecheck` (`tsc --noEmit`) passes.
 - **One scenario per function**, each request tagged `scenario:<name>`: `resolve`, `resolve-miss`, `metadata`, `deploy`,
-  `mirror`, `auth`, `search-browse` and `dashboard`, plus a `mix` scenario that combines them with weights. Test data is seeded
-  in `setup()` with a fixed seed, so runs are repeatable.
+  `mirror`, `auth`, `search-browse` and `dashboard`, plus a `mix` scenario that combines them with weights. Test data is created
+  in `setup()` through the Ingot admin API with a fixed seed, so runs are repeatable.
 - **A two-phase capacity search per topology and scenario.** A breakpoint run ramps the arrival rate until a threshold breaks,
   which gives an upper bound. Plateau confirmation then holds the steps at 60, 70, 80, 90 and 100 percent of that bound, each
   for at least 10 minutes (15 minutes by default). The maximum sustainable rate is the highest step that passed for its whole
