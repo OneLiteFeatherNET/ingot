@@ -97,7 +97,7 @@ To see what you may do yourself, without the instance admin role, call `GET /api
 curl -H "Authorization: Bearer $INGOT_TOKEN" "$INGOT_URL/api/identity/me/access"
 ```
 
-The dashboard shows the same answer on the account page, under **Your access**. Open the account menu and choose **My account**. The section is read only. Each permission there has an **Explain** link: if you may use the Access area, the link opens this check with your own name and the node filled in, and otherwise it opens this page.
+The dashboard shows the same answer on the account page, under **Your access**. Open the account menu and choose **My account**. The section is read only. Each permission there has an **Explain** link. It opens this page in a new tab, whatever your rights are, so the account page never leads into the check itself.
 
 ## Related
 
