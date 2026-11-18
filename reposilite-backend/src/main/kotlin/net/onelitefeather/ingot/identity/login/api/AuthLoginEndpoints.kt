@@ -76,12 +76,7 @@ internal class AuthLoginEndpoints(
         ]
     )
     private val providers = ReposiliteRoute<LoginProvidersResponse>("/api/auth/providers", Route.GET) {
-        response = LoginProvidersResponse(
-            providers = facade.providers().map { LoginProviderDto(id = it.id, type = it.type.name, label = it.label, icon = it.icon, loginUrl = it.loginUrl) },
-            tokenLogin = true,
-            setupRequired = facade.setupRequired(),
-            passwordMinLength = facade.passwordMinLength(),
-        ).asSuccess()
+        response = loginProvidersAnswer(facade).asSuccess()
     }
 
     @OpenApi(
@@ -470,3 +465,13 @@ private fun clearSessionCookies(ctx: Context, basePath: String) {
 
 private fun secure(ctx: Context): Boolean =
     SessionCookies.isSecure(ctx)
+
+/** The answer of `GET /api/auth/providers` for the login state of [facade]. */
+internal fun loginProvidersAnswer(facade: LoginFacade): LoginProvidersResponse =
+    LoginProvidersResponse(
+        providers = facade.providers().map { LoginProviderDto(id = it.id, type = it.type.name, label = it.label, icon = it.icon, loginUrl = it.loginUrl) },
+        tokenLogin = true,
+        setupRequired = facade.setupRequired(),
+        passwordMinLength = facade.passwordMinLength(),
+        passkeyFirstFactor = facade.passkeyFirstFactorEnabled(),
+    )

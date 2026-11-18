@@ -1299,6 +1299,9 @@
       },
       "LoginProvidersResponse" : {
         "properties" : {
+          "passkeyFirstFactor" : {
+            "type" : "boolean"
+          },
           "passwordMinLength" : {
             "format" : "int32",
             "type" : "integer"
