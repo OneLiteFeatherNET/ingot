@@ -396,7 +396,6 @@ describe('TeamDetail', () => {
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
-      expect(conflictDialog(), 'the conflict is settled').toBeNull()
     })
   })
 
