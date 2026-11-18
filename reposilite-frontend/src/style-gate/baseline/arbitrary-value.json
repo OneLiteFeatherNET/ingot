@@ -320,11 +320,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdSnackbar.vue",
-    "match": "z-[1100]",
-    "count": 1
-  },
-  {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "[&::-webkit-scrollbar]:hidden",
     "count": 1

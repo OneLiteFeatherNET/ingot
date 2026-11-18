@@ -49,7 +49,7 @@ const percent = computed(() => {
   >
     <div
       v-if="indeterminate"
-      class="md-linear-indeterminate absolute inset-y-0 left-0 w-2/5 rounded-corner-full bg-primary"
+      class="absolute inset-y-0 left-0 w-2/5 rounded-corner-full bg-primary animate-md-linear-slide motion-reduce:animate-md-linear-slide-reduced"
     />
     <div
       v-else
@@ -58,24 +58,3 @@ const percent = computed(() => {
     />
   </div>
 </template>
-
-<style scoped>
-.md-linear-indeterminate {
-  animation: md-linear-slide 1.6s var(--md-sys-motion-easing-standard) infinite;
-}
-
-@keyframes md-linear-slide {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(250%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .md-linear-indeterminate {
-    animation-duration: 4s;
-  }
-}
-</style>
