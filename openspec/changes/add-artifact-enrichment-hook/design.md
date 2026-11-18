@@ -78,11 +78,16 @@ interface ArtifactContent {
     fun range(offset: Long, length: Long): InputStream   // throws if the budget is exhausted
 }
 
-sealed interface EnrichmentResult {
-    data object Completed : EnrichmentResult
-    data class Skipped(val reason: String) : EnrichmentResult
-    data class Failed(val reason: String) : EnrichmentResult
-}
+sealed interface EnrichmentResult
+
+@ExperimentalIngotSearchApi
+data object EnrichmentCompleted : EnrichmentResult
+
+@ExperimentalIngotSearchApi
+data class EnrichmentSkipped(val reason: String) : EnrichmentResult
+
+@ExperimentalIngotSearchApi
+data class EnrichmentFailed(val reason: String) : EnrichmentResult
 ```
 
 `ArtifactFileRecord` and `Provenance` are the types the index already uses (`search/ArtifactFileRecord.kt:35`, `search/IndexModel.kt`).
@@ -90,7 +95,7 @@ The `reason` strings are short, bounded to 200 characters and stripped of contro
 built by the core only.
 
 `ArtifactEnrichmentRequest` has an `internal` constructor so that the content handle can only be created by the core. The result type
-is sealed, so `add-search-document-attributes` can add a variant without a new interface.
+is sealed and its outcomes are top-level classes (decision 69), so `add-search-document-attributes` can add a variant without a new interface.
 
 ### D2: registration through the event, with the backend rules
 
@@ -137,9 +142,9 @@ Each enricher runs on a single executor owned by the search plugin with a bounde
 pipeline. The worker submits the call and waits at most the deadline. Then:
 
 - a normal return sets the result;
-- an exception becomes `Failed("exception: <class simple name>")`, never the message, because messages can carry paths or content;
-- a deadline expiry cancels the task with interruption and becomes `Failed("timeout")`;
-- a full queue becomes `Skipped("busy")` without calling the enricher.
+- an exception becomes `EnrichmentFailed("exception: <class simple name>")`, never the message, because messages can carry paths or content;
+- a deadline expiry cancels the task with interruption and becomes `EnrichmentFailed("timeout")`;
+- a full queue becomes `EnrichmentSkipped("busy")` without calling the enricher.
 
 In every case the row is still upserted, without enrichment output. The worker never waits longer than the deadline. The deadline is the
 only wall-clock wait; in tests it is replaced by a fake executor that completes, times out or rejects on command, so no test waits.
@@ -207,3 +212,16 @@ The maintainer settled every question with the default recommended here. The ans
   re-enriches a row on a version mismatch.
 - **Q4. Enrichment of unchanged files on rebuild.** Settled 2026-11-17: no in this change. Full re-enrichment comes with the version
   of Q3.
+
+## Decision 69, settled 2026-11-18
+
+The maintainer decided that the enrichment result types are top-level classes, not nested classes of `EnrichmentResult`.
+
+- `EnrichmentResult` stays a `sealed interface` in `net.onelitefeather.ingot.search.enrichment`.
+- The three outcomes are top-level classes in the same package: `EnrichmentCompleted` (a `data object`), `EnrichmentSkipped(reason)`
+  and `EnrichmentFailed(reason)` (`data class`). All of them are `@ExperimentalIngotSearchApi`.
+- The sealed interface and the three outcome classes are listed in the plugin API allowlist (`plugin-api-classes.txt`).
+
+Reason: the slim artifact allowlist of `add-plugin-api-artifact` names classes by their fully qualified name and can only carry
+top-level classes. Nested classes such as `EnrichmentResult.Completed` cannot be listed there, so a plugin could not compile against
+them. The sealed hierarchy, the reason strings and the behaviour of D5 and D6 are unchanged.
