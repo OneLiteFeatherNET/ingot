@@ -1,3 +1,6 @@
+<script setup lang="ts">
+</script>
+
 <template>
   <!-- Source: https://heroicons.dev/ -->
   <svg
