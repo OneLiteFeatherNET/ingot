@@ -186,3 +186,4 @@ The instance starts with the users, tokens and settings from the backup. The rep
 * [Back up before upgrading](../upgrade/upgrade-ingot.md#back-up-before-upgrading) covers the copy that you take before a new version.
 * [Roll back an upgrade](../upgrade/upgrade-ingot.md#roll-back-an-upgrade) describes returning to an older version with the copy.
 * [Use S3 storage](../../set-up/cluster/use-s3-storage.md) and [Configure a database](../../set-up/cluster/configure-database.md) describe the two storage parts.
+* [Back up and restore the settings](back-up-and-restore-settings.md) covers the encrypted settings file, which is a copy of the shared settings only.

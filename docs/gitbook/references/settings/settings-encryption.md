@@ -85,7 +85,7 @@ A replica that holds only the previous key stops at start once the record names 
 
 ## Export and import
 
-The settings can be exported with a password, independently of the key. The file holds the saved state with the secrets in clear inside the ciphertext, so it can restore an instance that has another key or a fresh one. The file is protected by the password, which must be at least 12 characters, through Argon2id (64 MiB, three passes, one lane, with declared costs bounded at 256 MiB, ten passes and four lanes) and AES-256-GCM. See the [HTTP API](../http-api/http-api.md) for the routes.
+The settings can be exported with a password, independently of the key. The file holds the saved state with the secrets in clear inside the ciphertext, so it can restore an instance that has another key or a fresh one. The file is protected by the password, which must be at least 12 characters, through Argon2id (64 MiB, three passes, one lane, with declared costs bounded at 256 MiB, ten passes and four lanes) and AES-256-GCM. See the [HTTP API](../http-api/http-api.md) for the routes. The steps for an operator, and what to keep apart from the file, are in [Back up and restore the settings](../../manage/operate/back-up-and-restore-settings.md).
 
 ## What is not protected
 
