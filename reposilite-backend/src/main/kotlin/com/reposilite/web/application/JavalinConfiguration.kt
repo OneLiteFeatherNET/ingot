@@ -33,6 +33,7 @@ import net.onelitefeather.ingot.deploy.WorkerRoutes
 import net.onelitefeather.ingot.logging.AccessLogHandler
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
+import net.onelitefeather.ingot.web.openapi.SecondFactorAlternative
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.describeSecuritySchemes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
@@ -246,7 +247,10 @@ internal object JavalinConfiguration {
             }
             // Enums that grow get x-extensible-enum, so clients accept values they do not know yet.
             openapi.withDefinitionProcessor { document ->
-                describeSecuritySchemes(ExtensibleEnumSchemas.apply(document, listOf(RunTrigger::class.java))).toString()
+                // The login answer that asks for a second factor is listed next to the session answer.
+                describeSecuritySchemes(
+                    SecondFactorAlternative.apply(ExtensibleEnumSchemas.apply(document, listOf(RunTrigger::class.java)))
+                ).toString()
             }
         })
     }

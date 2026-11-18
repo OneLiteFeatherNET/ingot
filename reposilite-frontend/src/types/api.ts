@@ -401,7 +401,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["LoginResponse"];
+                        "application/json": components["schemas"]["LoginResponse"] | components["schemas"]["SecondFactorRequiredResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -6371,6 +6371,13 @@ export interface components {
         SecondFactorRequest: {
             code?: string | null;
             passkey?: components["schemas"]["PasskeyAssertionDto"] | null;
+        };
+        /** @description The answer of a password login for a user with a second factor. No session is started and no session cookie is set. The challenge cookie is set, and the verification at /api/auth/mfa/verify completes the sign-in. */
+        SecondFactorRequiredResponse: {
+            /** @description The methods the verification takes: AUTHENTICATOR, RECOVERY_CODE or PASSKEY. */
+            methods: string[];
+            /** @description Always true in this answer. */
+            mfaRequired: boolean;
         };
         /** @enum {string} */
         SecretType: "RAW" | "ENCRYPTED";

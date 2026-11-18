@@ -2362,6 +2362,24 @@
         },
         "type" : "object"
       },
+      "SecondFactorRequiredResponse" : {
+        "description" : "The answer of a password login for a user with a second factor. No session is started and no session cookie is set. The challenge cookie is set, and the verification at /api/auth/mfa/verify completes the sign-in.",
+        "properties" : {
+          "methods" : {
+            "description" : "The methods the verification takes: AUTHENTICATOR, RECOVERY_CODE or PASSKEY.",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "mfaRequired" : {
+            "description" : "Always true in this answer.",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "mfaRequired", "methods" ],
+        "type" : "object"
+      },
       "SecretType" : {
         "enum" : [ "RAW", "ENCRYPTED" ],
         "type" : "string"
@@ -3001,7 +3019,11 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/LoginResponse"
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/LoginResponse"
+                  }, {
+                    "$ref" : "#/components/schemas/SecondFactorRequiredResponse"
+                  } ]
                 }
               }
             },
