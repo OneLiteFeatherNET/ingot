@@ -1,7 +1,7 @@
 # Proposal
 
 **Status: UNBLOCKED (decided 2026-11-18).** The wire format of the challenge is option (a): an optional field on the login
-request body. The change is no longer deferred. Its code still waits for the account throttle (pull request 1 of
+request body, named `challenge`, with the shapes settled below. The change is no longer deferred. Its code still waits for the account throttle (pull request 1 of
 `add-login-protection`).
 
 ## Why
@@ -32,8 +32,21 @@ The commit type and scope for the code is `feat(identity)`. It ships under that 
 
 The maintainer chose option (a): an optional field on the login request body carries the challenge response on
 `/api/auth/login`. Options (b), a separate challenge endpoint, and (c), a page served by the plugin, are not taken. Their
-trade-offs are recorded in `design.md`. The field name and the `ChallengeRequest` and `ChallengeResponse` shapes are not
-decided yet. They follow from option (a) and are settled in the spec before the code starts.
+trade-offs are recorded in `design.md`.
+
+## Decision: field name and shapes (2026-11-18)
+
+The field is named `challenge`. The shapes are settled in `design.md` and the spec delta:
+
+- `ChallengeRequest`: the `429` answer, with `Retry-After`, for a delayed dashboard login when a provider demands a
+  challenge. It is an `ErrorResponse` whose `message` is the code `challenge_required`, plus `provider` (the challenge
+  provider id) and `parameters` (a JSON object of public, provider specific values).
+- `ChallengeResponse`: the optional `challenge` member of the login request, with `provider` (the challenge provider id)
+  and `answer` (a JSON object, provider specific).
+- A login without `challenge` is answered exactly as today. `challenge` is ignored unless a provider is registered and the
+  name is delayed by the account throttle. A missing, malformed or foreign challenge gets a fresh `ChallengeRequest`.
+- A `ChallengeRequest` is audited as `LOGIN_THROTTLED` like any delayed login. A verified challenge does not replace the
+  second factor, and step-up is not affected.
 
 ## Capabilities
 
@@ -45,9 +58,9 @@ decided yet. They follow from option (a) and are settled in the spec before the 
 ## Impact
 
 - **Type and scope.** `feat(identity)` for the code, when it is picked up.
-- **Status.** The API change is the optional field of option (a). It changes the OpenAPI snapshot and the frontend login
-  types. Default behaviour does not change: no provider is registered by default, and a client that sends no field is
-  answered as before.
+- **Status.** The API change is the optional `challenge` field of option (a) and the `ChallengeRequest` alternative of the
+  login `429`. It changes the OpenAPI snapshot and the frontend login types. Default behaviour does not change: no provider
+  is registered by default, and a client that sends no field is answered as before.
 - **Dependency.** Pull request 1 of `add-login-protection` (the per-account throttle) must be merged first. The challenge
   is asked only for a name that this throttle delays.
 - **Drop-in analysis.** The change adds no configuration key, environment variable, volume, image change or plugin change.
