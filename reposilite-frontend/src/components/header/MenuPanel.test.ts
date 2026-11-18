@@ -166,7 +166,9 @@ describe('MenuPanel, signed in', () => {
     mounted = mountPanel()
 
     const avatar = accountTrigger(mounted.wrapper).find('[aria-hidden="true"]')
-    expect(avatar.text(), 'the initial of the name, in capitals').toBe('A')
+    expect(avatar.attributes('data-initial'), 'the initial of the name, in capitals').toBe('A')
+    expect(avatar.classes(), 'drawn by CSS from the attribute').toContain('initial-from-data')
+    expect(avatar.text(), 'no text node, so the visible text of the button is the name alone').toBe('')
   })
 
   it('takes the name out of the layout below 900 pixels, but keeps it as the button name', () => {

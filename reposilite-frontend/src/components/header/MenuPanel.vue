@@ -121,10 +121,11 @@ const onAccountSelect = (value: string): void => {
     >
       <template #trigger>
         <span
-          class="flex size-8 shrink-0 items-center justify-center rounded-corner-full bg-primary-container md-title-small text-on-primary-container"
+          class="initial-from-data flex size-8 shrink-0 items-center justify-center rounded-corner-full bg-primary-container md-title-small text-on-primary-container"
+          :data-initial="initial"
           aria-hidden="true"
-        >{{ initial }}</span>
-        <!-- The trigger label names the button as the account menu of the name. Below 900px the name leaves the layout; the full name is the title. -->
+        />
+        <!-- The trigger label names the button as the account menu of the name. The initial is drawn by CSS, so the only visible text is the name, which the label contains. Below 900px the name leaves the layout; the full name is the title. -->
         <span
           data-test="account-name"
           :title="signedInName"
