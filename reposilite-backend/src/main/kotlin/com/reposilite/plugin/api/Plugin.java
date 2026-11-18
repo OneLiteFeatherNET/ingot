@@ -58,4 +58,11 @@ public @interface Plugin {
      */
     PluginTier tier() default PluginTier.COMMUNITY;
 
+    /**
+     * @return a short description of what this plugin is for, as plain text. Control characters are removed, and a text longer
+     * than 280 characters is cut with a warning at start. The description never decides whether the plugin loads, and the empty
+     * text, the default, means no description.
+     */
+    String description() default "";
+
 }
