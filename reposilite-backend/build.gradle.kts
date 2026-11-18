@@ -338,6 +338,12 @@ publishing {
                     }
             }
         }
+        // The slim plugin API artifact (openspec change add-plugin-api-artifact). It is built from the same sources as the bundle and
+        // holds only the classes that plugin-api-classes.txt lists. The bundle above keeps its coordinates and its contents.
+        create<MavenPublication>("pluginApi") {
+            artifactId = "ingot-plugin-api"
+            artifact(pluginApiJar)
+        }
     }
 }
 

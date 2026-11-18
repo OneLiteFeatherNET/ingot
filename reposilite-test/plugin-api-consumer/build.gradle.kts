@@ -19,3 +19,14 @@
 plugins {
     kotlin("jvm")
 }
+
+// The slim jar is a file dependency. Its producer is the pluginApiJar task of reposilite-backend, so no project dependency reaches the
+// server classes and the sample compiles against the jar alone.
+val slimPluginApiJar = project(":reposilite-backend").tasks.named<Jar>("pluginApiJar")
+
+dependencies {
+    // Kotlin standard library at the version the server compiles with, pinned by the root build.
+    implementation(kotlin("stdlib"))
+    compileOnly(files(slimPluginApiJar))
+    testImplementation(files(slimPluginApiJar))
+}
