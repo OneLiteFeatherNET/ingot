@@ -17,10 +17,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { PropType } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSelect from '../md/MdSelect.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 
 /*
  * Confirms a rebuild of the search index. The scope is all repositories or one of them. The dialog
@@ -68,21 +68,13 @@ const confirm = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
+    labelledby="search-index-rebuild-title"
+    describedby="search-index-rebuild-body"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div
-      class="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="search-index-rebuild-title"
-      aria-describedby="search-index-rebuild-body"
-      data-ingot-component="rebuild-index-dialog"
-    >
+    <div data-ingot-component="rebuild-index-dialog">
       <h2
         id="search-index-rebuild-title"
         class="md-headline-small text-on-surface"
@@ -107,7 +99,8 @@ const confirm = () => {
           @update:model-value="scope = $event"
         />
       </div>
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
+
+      <MdDialogActions class="mt-6">
         <MdButton
           id="search-index-rebuild-cancel"
           variant="text"
@@ -126,7 +119,7 @@ const confirm = () => {
         >
           {{ running ? 'Starting…' : 'Rebuild' }}
         </MdButton>
-      </div>
+      </MdDialogActions>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>

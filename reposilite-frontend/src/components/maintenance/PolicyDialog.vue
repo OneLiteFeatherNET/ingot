@@ -17,13 +17,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { PropType } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 import {
   SCOPES,
   draftFromPolicy,
@@ -114,20 +115,12 @@ const submit = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
+    labelledby="policy-dialog-title"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div
-      class="w-[calc(100vw-2rem)] max-w-xl max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="policy-dialog-title"
-      data-ingot-component="policy-dialog"
-    >
+    <div data-ingot-component="policy-dialog">
       <h2
         id="policy-dialog-title"
         class="md-headline-small text-on-surface"
@@ -256,13 +249,12 @@ const submit = () => {
             :error-text="shownErrors.notDownloadedForDays"
             @update:model-value="draft.notDownloadedForDays = $event"
           />
-          <p
+          <MdAlert
             v-if="shownErrors.retention"
-            class="md-body-medium text-error"
-            role="alert"
+            tone="error"
           >
             {{ shownErrors.retention }}
-          </p>
+          </MdAlert>
         </fieldset>
 
         <MdTextField
@@ -301,26 +293,27 @@ const submit = () => {
             @update:model-value="draft.scheduleTime = $event"
           />
         </fieldset>
-
-        <div class="mt-2 flex flex-wrap justify-end gap-2">
-          <MdButton
-            id="policy-cancel"
-            variant="text"
-            type="button"
-            @click="close"
-          >
-            Cancel
-          </MdButton>
-          <MdButton
-            id="policy-save"
-            variant="filled"
-            type="submit"
-            :disabled="saving"
-          >
-            Save policy
-          </MdButton>
-        </div>
       </form>
+
+      <MdDialogActions class="mt-7">
+        <MdButton
+          id="policy-cancel"
+          variant="text"
+          type="button"
+          @click="close"
+        >
+          Cancel
+        </MdButton>
+        <MdButton
+          id="policy-save"
+          variant="filled"
+          type="submit"
+          form="policy-form"
+          :disabled="saving"
+        >
+          Save policy
+        </MdButton>
+      </MdDialogActions>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>

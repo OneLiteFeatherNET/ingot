@@ -280,26 +280,6 @@
     "count": 1
   },
   {
-    "file": "src/components/maintenance/PolicyDialog.vue",
-    "match": "max-h-[90dvh]",
-    "count": 1
-  },
-  {
-    "file": "src/components/maintenance/PolicyDialog.vue",
-    "match": "w-[calc(100vw-2rem)]",
-    "count": 1
-  },
-  {
-    "file": "src/components/maintenance/RebuildIndexDialog.vue",
-    "match": "max-h-[90dvh]",
-    "count": 1
-  },
-  {
-    "file": "src/components/maintenance/RebuildIndexDialog.vue",
-    "match": "w-[calc(100vw-2rem)]",
-    "count": 1
-  },
-  {
     "file": "src/components/maintenance/RunNowDialog.vue",
     "match": "max-h-[90dvh]",
     "count": 1
