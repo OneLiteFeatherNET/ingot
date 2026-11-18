@@ -101,6 +101,8 @@ on hover and to a pointer user. The accessible name is the full `triggerLabel`, 
 
 The must-change-password behaviour is kept: the password card moves to the top, and Your access is drawn below Tokens.
 
+The page keeps the full width of the content area, as built on main (`fix(ui): let my account use the full width`, #633). No section is narrowed to a reading column. Decided 2026-11-18, with the two-factor card under "Sign-in and security" (proposal question 3).
+
 ### D6. Your access and its view model
 
 `src/components/account/accessView.js` exports a pure function `accessView(summary)`. It takes the response of
@@ -133,9 +135,10 @@ form, and it has no control that writes anything.
 
 ### D7. The explain link
 
-Each permission and each repository scope has an "Explain" link. For a principal who may use the Access area (the nodes in
-`accessNodes`, the same as `src/router` uses), it points to `/access/check?principal=<name>&node=<node>`. Otherwise it points to the
-how-to page, `docs/gitbook/how-to/check-access.md`, using the documentation's address. The default is in the open questions.
+Each permission and each repository scope has an "Explain" link. Decided 2026-11-18: every signed-in principal gets the same
+link, to the how-to page `docs/gitbook/how-to/check-access.md` at its GitHub address
+(`https://github.com/OneLiteFeatherNET/ingot/blob/main/docs/gitbook/how-to/check-access.md`). The account page does not link to
+`/access/check`, so the links do not depend on the Access area's nodes. The Access area and the check are unchanged.
 
 ### D8. Placeholder for two-step sign-in
 

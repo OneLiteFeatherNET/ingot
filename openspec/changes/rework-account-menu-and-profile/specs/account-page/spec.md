@@ -11,7 +11,7 @@ tells the signed-in principal what it may do, read only, and leaves a place for 
 
 The account page SHALL show four sections, in this order, each with a heading: Profile, Sign-in and security, Tokens and Your access.
 The must-change-password banner and the password card SHALL keep their current behaviour: when a new password is required, the password
-card moves to the top of the page.
+card moves to the top of the page. The two-factor card, when `add-multi-factor-authentication` lands, sits under Sign-in and security.
 
 #### Scenario: Section order
 
@@ -22,6 +22,15 @@ card moves to the top of the page.
 
 - **WHEN** the server requires a new password
 - **THEN** the password card is the first section, and Your access is still drawn below Tokens
+
+### Requirement: Full width page
+
+The account page SHALL use the full width of the page, as built on main, and SHALL NOT narrow its sections to a centred reading column.
+
+#### Scenario: Wide window
+
+- **WHEN** a signed-in user opens "My account" at 1440 pixels
+- **THEN** the sections use the width of the page, and no section is limited to a centred column
 
 ### Requirement: Each value once on the page
 
@@ -95,20 +104,20 @@ The page SHALL request only the signed-in principal's own summary and SHALL NOT 
 - **WHEN** the page requests the access summary
 - **THEN** the request carries no principal parameter, and the answer is the summary of the signed-in principal
 
-### Requirement: Explain link to the check
+### Requirement: Explain link to the how-to page
 
-The Explain link of a permission or of a repository access SHALL open the check page at `/access/check` with the principal and the node filled in
-when the signed-in principal may use the Access area. Otherwise it SHALL open the how-to page that explains the check.
+The Explain link of a permission or of a repository access SHALL open the how-to page that explains the check, for every signed-in
+principal, whatever its nodes. The account page SHALL NOT link to the check page at `/access/check`.
 
 #### Scenario: Administrator explains
 
 - **WHEN** a principal with `ingot.admin.users` opens Explain on `ingot.repository.releases.deploy`
-- **THEN** the browser opens `/access/check` with the principal and the node set to the signed-in principal and that node
+- **THEN** the browser opens the how-to page for the check, and not the check page
 
 #### Scenario: Other principal explains
 
 - **WHEN** a principal without an Access area node opens Explain
-- **THEN** the browser opens the how-to page for the check and not the check page
+- **THEN** the browser opens the same how-to page
 
 ### Requirement: Plain language for every node form
 
