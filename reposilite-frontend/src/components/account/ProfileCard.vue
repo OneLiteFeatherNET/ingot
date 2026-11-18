@@ -50,7 +50,7 @@ const username = computed(() => (props.principal.name === displayName.value ? ''
   >
     <MdCard
       variant="low"
-      class="flex flex-col gap-4"
+      class="flex flex-col gap-4 border border-outline"
     >
       <h3
         id="profile-title"

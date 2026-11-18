@@ -100,7 +100,7 @@ const submit = async () => {
   >
     <MdCard
       variant="low"
-      class="flex flex-col gap-4"
+      class="flex flex-col gap-4 border border-outline"
     >
       <h3
         id="password-title"
