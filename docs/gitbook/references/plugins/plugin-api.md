@@ -510,7 +510,11 @@ The classes are in `net.onelitefeather.ingot.plugin.ui` and carry `@Experimental
 - The blocks only read. `text`, `keyValue` and `table` are accepted. A `form`, an `action` or a `status` block is refused with a warning, and the rest of the page is still served.
 - A plugin takes at most 20 reader pages, counted apart from its admin pages, and the serialised reader pages of one plugin take at most 64 KiB.
 - Every source is a route of the plugin below `/api/plugins/<plugin>/`, as for admin pages.
-- A reader source must filter its rows for the viewer and must not answer with more than a bounded size. The rules for serving reader pages to visitors follow in a later change.
+- A reader source must filter its rows for the viewer and must not answer with more than a bounded size. The core passes no viewer object to the handler. The handler reads the caller from the request, as every plugin route does. An item the viewer may not read answers `404`, so the answer does not reveal that the item exists.
+
+Anonymous visitors read a source with a `GET` at its exact address, and need no sign in. The `HEAD` method needs its own route: register `GET` and `HEAD` for the source address if the source should answer `HEAD`. Such an answer carries `Vary: Cookie, Authorization` and `Cache-Control: private, no-cache`, unless the handler sets its own `Cache-Control`. Any other method at a source address needs a signed in caller. A path with a `..` segment, an empty segment or a percent sign never counts as the source, and the admin rule of the plugin applies to it. While `INGOT_LOCAL_PLUGINREADERS=false`, a source answers `404` without running the handler.
+
+The reader pages are listed for every visitor by `GET /api/frontend/plugin-ui/readers`, which carries no stylesheet and no plugin list. The admin manifest `GET /api/frontend/plugin-ui` still answers `401` to an anonymous caller.
 
 ### Switch
 
