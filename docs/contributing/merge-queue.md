@@ -27,8 +27,25 @@ from the diff of a pull request:
 | `Container images` | `heavy.yml` | Runs when a Dockerfile, the entrypoint or a compose file changed, or a path the scope cannot place (a build file, a workflow). |
 | `Helm chart` | `heavy.yml` | Runs when the chart or an image input changed, or a path the scope cannot place. |
 
-`Dashboard end-to-end` also runs in the queue when backend or frontend code changed. The integration suite, the HA smoke test,
-the search backends and CodeQL do not run in the queue; they stay on their labels (see [Heavy tests](heavy-tests.md)).
+`Dashboard end-to-end` also runs in the queue, but only when the change touches something the dashboard can see.
+`.github/scripts/ci_scope.sh` decides that with its `e2e` flag:
+
+| Change | `Dashboard end-to-end` |
+|---|---|
+| `reposilite-frontend/`, including the end-to-end specs, their harness and fixtures and `playwright.config.js` | runs |
+| The OpenAPI document `docs/openapi/ingot-openapi.json` | runs |
+| Backend HTTP surface: Kotlin files under `reposilite-backend/src/main/kotlin` in a `web/`, `api/` or `frontend/` package, or named `*Endpoint*.kt` or `*Routes.kt`, and `reposilite-backend/src/main/resources/` | runs |
+| Login, sessions, tokens and access checks: `com/reposilite/auth/`, `com/reposilite/token/`, `net/onelitefeather/ingot/identity/` (login, session, authorization), `net/onelitefeather/ingot/search/access/` and `com/reposilite/maven/RepositorySecurityProvider.kt` under `reposilite-backend/src/main/kotlin` | runs |
+| What builds or starts the server: the root Gradle files, `gradle/`, `buildSrc/`, `reposilite-backend/build.gradle.kts`, `heavy.yml`, `ci_scope.sh`, `heavy_gate.py` | runs |
+| Any path the script cannot place | runs (fail-safe) |
+| Other backend code and backend tests | skipped |
+| `reposilite-plugins/` (the suite loads no plugin of this repository) and `reposilite-search-http/` | skipped |
+| The chart, the image inputs (the suite starts the jar, not the image), `loadtest/` | skipped |
+| Other workflows and workflow scripts, documentation, OpenSpec proposals | skipped |
+
+A plugin that gains a dashboard part, or a backend endpoint whose file name does not match, does not start the suite in the queue;
+add the `ci:e2e` label to the pull request instead. The integration suite, the HA smoke test, the search backends and CodeQL do not
+run in the queue; they stay on their labels (see [Heavy tests](heavy-tests.md)).
 
 Nothing in the queue writes to a pull request: no comment, no Codecov upload, no image push.
 
