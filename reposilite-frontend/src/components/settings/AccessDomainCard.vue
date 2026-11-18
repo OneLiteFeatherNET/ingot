@@ -32,35 +32,37 @@ const entry = () => ACCESS_DOMAINS[props.domain]
 </script>
 
 <template>
-  <MdCard
-    as="section"
-    variant="low"
+  <section
     aria-labelledby="access-domain-title"
-    class="flex flex-col gap-3 border border-outline-variant"
-    data-test="access-domain"
     data-ingot-component="access-domain-card"
   >
-    <h3
-      id="access-domain-title"
-      class="md-title-medium text-on-surface"
+    <MdCard
+      variant="low"
+      class="flex flex-col gap-3 border border-outline-variant"
+      data-test="access-domain"
     >
-      {{ title }} is managed under Access
-    </h3>
-    <p class="md-body-medium text-on-surface-variant">
-      {{ entry().text }}
-    </p>
-    <ul class="flex flex-wrap list-none gap-2 p-0">
-      <li
-        v-for="link in entry().links"
-        :key="link.name"
+      <h3
+        id="access-domain-title"
+        class="md-title-medium text-on-surface"
       >
-        <RouterLink
-          :to="{ name: link.name }"
-          class="md-state-layer md-focus-ring relative inline-flex min-h-10 items-center rounded-corner-full border border-outline-variant px-4 md-label-large text-primary no-underline hover:underline"
+        {{ title }} is managed under Access
+      </h3>
+      <p class="md-body-medium text-on-surface-variant">
+        {{ entry().text }}
+      </p>
+      <ul class="flex flex-wrap list-none gap-2 p-0">
+        <li
+          v-for="link in entry().links"
+          :key="link.name"
         >
-          {{ link.label }}
-        </RouterLink>
-      </li>
-    </ul>
-  </MdCard>
+          <RouterLink
+            :to="{ name: link.name }"
+            class="md-state-layer md-focus-ring relative inline-flex min-h-10 items-center rounded-corner-full border border-outline-variant px-4 md-label-large text-primary no-underline hover:underline"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </li>
+      </ul>
+    </MdCard>
+  </section>
 </template>

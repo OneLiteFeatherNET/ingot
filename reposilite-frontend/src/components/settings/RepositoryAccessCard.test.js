@@ -444,8 +444,8 @@ describe('RepositoryAccessCard', () => {
       expect(card().classes(), 'the low card has no outline').not.toContain('border-outline-variant')
     })
 
-    it('keeps the repository-access-card anchor on the card root', () => {
-      expect(card().attributes('data-ingot-component')).toBe('repository-access-card')
+    it('keeps the repository-access-card anchor on the plain root element of the component', () => {
+      expect(wrapper.attributes('data-ingot-component')).toBe('repository-access-card')
     })
   })
 })

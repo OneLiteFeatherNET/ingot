@@ -65,8 +65,8 @@ describe('AccessDomainCard', () => {
     expect(labels).toEqual(['Single sign on', 'LDAP'])
   })
 
-  it('keeps the access-domain-card anchor on the card root', () => {
-    expect(card().attributes('data-ingot-component')).toBe('access-domain-card')
+  it('keeps the access-domain-card anchor on the plain root element of the component', () => {
+    expect(wrapper.attributes('data-ingot-component')).toBe('access-domain-card')
   })
 
   it('is drawn as the low variant of the card, a flat tinted panel on the page', () => {
