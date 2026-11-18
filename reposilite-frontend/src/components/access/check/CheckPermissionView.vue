@@ -419,12 +419,12 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
     data-ingot-component="check-permission-view"
   >
     <div class="flex flex-col gap-1">
-      <h3
+      <h2
         id="check-title"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         Check permission
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         See whether a user or machine account may use a node, and which rule decides it.
       </p>
@@ -668,9 +668,9 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       </p>
 
       <div class="flex flex-col gap-3">
-        <h4 class="md-title-medium text-on-surface">
+        <h3 class="md-title-small text-on-surface">
           How it was derived
-        </h4>
+        </h3>
         <ol
           class="m-0 flex list-none flex-col p-0"
           aria-label="Derivation trace"

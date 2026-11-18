@@ -138,8 +138,14 @@ describe('RepositoryAccessCard', () => {
       expect(repositoryAccess).toHaveBeenCalledWith('releases')
     })
 
-    it('titles the section "Who has access"', () => {
-      expect(wrapper.get('[data-test="repository-access"] h4').text()).toBe('Who has access')
+    it('titles the section "Who has access" as a level 3 heading in the title-small role', () => {
+      const title = wrapper.get('[data-test="repository-access"] h3')
+      expect(title.text()).toBe('Who has access')
+      expect(title.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+    })
+
+    it('draws no level 4 heading, since the card sits in the level 2 section of its repository', () => {
+      expect(wrapper.find('h4').exists(), 'the card has no level 4 heading').toBe(false)
     })
 
     it('shows the visibility as a chip', () => {

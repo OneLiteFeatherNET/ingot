@@ -113,12 +113,12 @@ onMounted(load)
     data-ingot-component="ldap-panel"
   >
     <div class="flex flex-col gap-1">
-      <h3
+      <h2
         id="ldap-title"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         Dashboard sign in
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         Users with an account in the directory sign in to this dashboard with their directory username and password.
         The directory that Maven and Gradle clients use is set in the section Maven and Gradle clients below,
@@ -158,12 +158,12 @@ onMounted(load)
         class="flex flex-col gap-4"
         aria-labelledby="ldap-connection-title"
       >
-        <h4
+        <h3
           id="ldap-connection-title"
           class="md-title-small text-on-surface"
         >
           Connection
-        </h4>
+        </h3>
         <MdSwitch
           id="ldap-enabled"
           v-model="form.enabled"
@@ -201,12 +201,12 @@ onMounted(load)
         class="flex flex-col gap-4"
         aria-labelledby="ldap-bind-title"
       >
-        <h4
+        <h3
           id="ldap-bind-title"
           class="md-title-small text-on-surface"
         >
           Bind
-        </h4>
+        </h3>
         <p class="md-body-medium text-on-surface-variant">
           The service account the server uses to search. Leave both empty to search anonymously.
         </p>
@@ -235,12 +235,12 @@ onMounted(load)
         class="flex flex-col gap-4"
         aria-labelledby="ldap-users-title"
       >
-        <h4
+        <h3
           id="ldap-users-title"
           class="md-title-small text-on-surface"
         >
           User search
-        </h4>
+        </h3>
         <div class="grid gap-4 sm:grid-cols-2">
           <MdTextField
             id="ldap-user-base"
@@ -298,12 +298,12 @@ onMounted(load)
         class="flex flex-col gap-4"
         aria-labelledby="ldap-groups-title"
       >
-        <h4
+        <h3
           id="ldap-groups-title"
           class="md-title-small text-on-surface"
         >
           Groups
-        </h4>
+        </h3>
         <p class="md-body-medium text-on-surface-variant">
           A team whose external reference is <code>ldap:&lt;group&gt;</code> is synced from the groups
           of this directory: its members follow the group, and they cannot be removed by hand.
@@ -372,12 +372,12 @@ onMounted(load)
       class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
       aria-labelledby="ldap-test-title"
     >
-      <h4
+      <h3
         id="ldap-test-title"
         class="md-title-small text-on-surface"
       >
         Test connection
-      </h4>
+      </h3>
       <p class="md-body-medium text-on-surface-variant">
         {{ dirty
           ? 'Save your changes first. The test reads the saved directory.'
@@ -432,12 +432,12 @@ onMounted(load)
       data-test="ldap-clients"
     >
       <div class="flex flex-col gap-1">
-        <h3
+        <h2
           id="ldap-clients-title"
-          class="md-title-large text-on-surface"
+          class="md-title-medium text-on-surface"
         >
           Maven and Gradle clients
-        </h3>
+        </h2>
         <p class="md-body-medium text-on-surface-variant">
           Maven and Gradle clients sign in to the repositories with the directory below, through basic
           authentication. It is separate from the dashboard sign in above.

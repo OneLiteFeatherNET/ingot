@@ -181,12 +181,12 @@ onMounted(load)
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="flex min-w-0 flex-col gap-1">
-        <h3
+        <h2
           id="sso-title"
-          class="md-title-large text-on-surface"
+          class="md-title-medium text-on-surface"
         >
           Single sign on
-        </h3>
+        </h2>
         <p class="md-body-medium text-on-surface-variant">
           Users can sign in with an account of these providers. Each one needs a client registered at
           the provider, with the callback URL that its dialog shows.
@@ -206,12 +206,12 @@ onMounted(load)
       class="flex flex-col gap-3 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4"
       data-test="sso-public-url"
     >
-      <h4
+      <h3
         id="sso-public-title"
         class="md-title-small text-on-surface"
       >
         Public address
-      </h4>
+      </h3>
       <p class="md-body-medium text-on-surface-variant">
         The callback URLs are built from this address, so a provider keeps the same callback when the dashboard is
         reached through another name. Leave it empty to build them from the address the dashboard is opened at.

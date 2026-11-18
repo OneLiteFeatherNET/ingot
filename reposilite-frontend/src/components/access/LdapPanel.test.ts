@@ -104,6 +104,30 @@ describe('LdapPanel', () => {
     document.body.innerHTML = ''
   })
 
+  describe('headings', () => {
+    it('titles both sections with level 2 headings in the title-medium role, under the level 1 page heading', async () => {
+      await mountPanel()
+
+      const titles = wrapper.findAll('h2')
+      expect(titles.map(heading => heading.text()), 'both sections are level 2').toEqual(['Dashboard sign in', 'Maven and Gradle clients'])
+      for (const title of titles) {
+        expect(title.classes(), `"${title.text()}" uses md-title-medium`).toContain('md-title-medium')
+      }
+    })
+
+    it('titles the parts of the sign in as level 3 headings in the title-small role, and draws no level 4 heading', async () => {
+      await mountPanel()
+
+      const titles = wrapper.findAll('h3')
+      expect(titles.map(heading => heading.text()), 'the parts of the sign in are level 3')
+        .toEqual(expect.arrayContaining(['Connection', 'Bind', 'User search', 'Groups', 'Test connection']))
+      for (const title of titles) {
+        expect(title.classes(), `"${title.text()}" uses md-title-small`).toContain('md-title-small')
+      }
+      expect(wrapper.find('h4').exists(), 'the panel has no level 4 heading').toBe(false)
+    })
+  })
+
   describe('the form', () => {
     it('reads the login domain and fills the form from the stored directory', async () => {
       await mountPanel()
@@ -243,7 +267,7 @@ describe('LdapPanel', () => {
     it('renders the dashboard sign in first and the Maven and Gradle clients below it', async () => {
       await mountPanel()
 
-      const headings = wrapper.findAll('h3').map(heading => heading.text())
+      const headings = wrapper.findAll('h2').map(heading => heading.text())
       expect(headings, 'both sections have a heading').toEqual(expect.arrayContaining(['Dashboard sign in', 'Maven and Gradle clients']))
       expect(headings.indexOf('Dashboard sign in'), 'the dashboard sign in comes first').toBeLessThan(headings.indexOf('Maven and Gradle clients'))
     })
