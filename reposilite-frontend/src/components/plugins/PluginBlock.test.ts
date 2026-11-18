@@ -201,12 +201,14 @@ describe('code block', () => {
   it('selects the code text when the clipboard refuses the write', async () => {
     clipboardOf(vi.fn().mockRejectedValue(new Error('denied')))
 
-    const wrapper = mountBlock({ type: 'code', text: 'select me' })
+    // The element is attached to the document, because a selection can only hold text that is in the page.
+    const wrapper = mount(PluginBlock, { props: { plugin: PLUGIN, block: { type: 'code', text: 'select me' } }, attachTo: document.body })
     await wrapper.findAll('button').find(button => button.text() === 'Copy')!.trigger('click')
     await flushPromises()
 
     expect(window.getSelection()?.toString(), 'the selected text').toContain('select me')
     expect(wrapper.find('[role="status"]').text(), 'the status region').not.toBe('Copied')
+    wrapper.unmount()
   })
 })
 
