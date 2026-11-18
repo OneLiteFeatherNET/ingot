@@ -179,4 +179,11 @@ describe('PasswordCard', () => {
     expect(card.classes(), 'the corner is the medium one').toContain('rounded-corner-medium')
     expect(card.classes()).not.toContain('rounded-corner-large')
   })
+
+  it('draws the card with the 1 pixel outline edge of the surface table', () => {
+    mountCard()
+
+    const card = wrapper.find('[data-variant="low"]')
+    expect(card.classes(), 'the card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
 })

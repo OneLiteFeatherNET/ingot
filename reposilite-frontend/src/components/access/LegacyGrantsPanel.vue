@@ -36,7 +36,7 @@ defineProps({
 
 <template>
   <section
-    class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
+    class="flex flex-col gap-3 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4"
     aria-labelledby="legacy-routes-title"
     data-test="legacy-grants"
     data-ingot-component="legacy-grants-panel"

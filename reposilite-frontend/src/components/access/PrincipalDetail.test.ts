@@ -187,6 +187,13 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="heading-username"]').exists(), 'the name is not repeated').toBe(false)
     })
 
+    it('draws the detail card with the 1 pixel outline edge of the surface table', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const card = wrapper.find('[data-test="heading-row"]').element.parentElement!
+      expect(card.classList.contains('border-outline'), 'the card has the outline edge').toBe(true)
+    })
+
     it('keeps the actions in the row of the heading', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 
@@ -410,6 +417,13 @@ describe('PrincipalDetail', () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
         expect(legacyGet).toHaveBeenCalledWith('ci-bot')
+      })
+
+      it('draws the legacy routes panel with the 1 pixel outline edge of the surface table', async () => {
+        await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+        const panel = wrapper.find('[data-test="legacy-grants"]')
+        expect(panel.classes(), 'the panel has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
       })
 
       it('shows the panel labeled Legacy routes with the routes', async () => {

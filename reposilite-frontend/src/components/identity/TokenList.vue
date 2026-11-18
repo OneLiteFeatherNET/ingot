@@ -141,7 +141,7 @@ const lastUsedText = (token: IdentityToken) => {
 
 <template>
   <section
-    class="overflow-hidden rounded-corner-large bg-surface-container-low"
+    class="overflow-hidden rounded-corner-large border border-outline bg-surface-container-low"
     aria-labelledby="token-list-title"
     data-ingot-component="token-list"
   >
