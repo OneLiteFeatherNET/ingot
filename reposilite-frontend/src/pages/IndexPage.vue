@@ -69,6 +69,8 @@ const lazyView = <T extends Component>(loader: () => Promise<{ default: T }>): T
 
 const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
 const MaintenanceView = lazyView(() => import('../components/maintenance/MaintenanceView.vue'))
+const JobsView = lazyView(() => import('../components/jobs/JobsView.vue'))
+const JobDetailView = lazyView(() => import('../components/jobs/JobDetailView.vue'))
 const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsView.vue'))
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 // The tab names AccessView takes, read from its own props so the two cannot drift apart.
@@ -99,7 +101,7 @@ defineProps<{
 
 // The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
 // Migration is the System page of the tree; it exists only while the nexus-import plugin is enabled (see migrationMissing).
-const ADMIN_SIDE_PAGES: readonly string[] = ['audit', 'console', 'maintenance', 'analytics', 'migration']
+const ADMIN_SIDE_PAGES: readonly string[] = ['audit', 'console', 'maintenance', 'jobs', 'analytics', 'migration']
 // The system information page, which holds the support bundle, is a child of Settings: it shares its section, and draws the same tree as the ADMIN_SIDE_PAGES.
 const SUPPORT_ROUTES: readonly string[] = ['system-info']
 // The pages that the Administration entry of the rail and the bar stands for.
@@ -528,6 +530,11 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
               @update:search="setConsoleSearch"
             />
             <MaintenanceView v-else-if="section === 'maintenance'" />
+            <JobsView v-else-if="route.name === 'jobs'" />
+            <JobDetailView
+              v-else-if="route.name === 'job'"
+              :id="routeText(route.params.id)"
+            />
             <MigrationView
               v-else-if="section === 'migration'"
               :step="routeText(route.params.step)"

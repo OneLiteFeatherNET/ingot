@@ -221,6 +221,8 @@ const MORE_KEY = 'more'
 
 // The server plugin whose enabled state shows the nexus import wizard. The name is the plugin's id.
 const NEXUS_IMPORT_PLUGIN = 'nexus-import'
+// The Jobs page is open to the maintenance area and to the instance admin. The server filters each source by its own node.
+const JOBS_NODES: string[] = [ADMIN_NODES.maintenance, INSTANCE_ADMIN_NODE]
 
 /*
  * The pages and settings sections that server plugins contribute, from GET /api/frontend/plugin-ui. The
@@ -369,6 +371,8 @@ const ADMIN_TREE: TreeGroup[] = [
       { domain: 'audit', label: 'Audit settings', description: 'How long audit events are kept, and whether the client address is recorded.', keywords: 'audit, retention, client address' },
       { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console }, description: 'The log lines of this instance, filtered by level and text.', keywords: 'logs' },
       { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance }, description: 'Storage usage, the search index and cleanup for this Ingot instance.', keywords: 'storage, rebuild index, cleanup run' },
+      // The background runs of every source on one page. Its address is /settings/jobs, and one run is /settings/jobs/:id.
+      { key: 'jobs', route: 'jobs', detail: 'job', label: 'Jobs', permission: { anyNode: JOBS_NODES }, description: 'The background runs of this instance: search index rebuilds and verifies, cleanup runs and migrations.', keywords: 'runs, background, index, cleanup, migration' },
       { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] }, description: 'What this instance collects about its usage, and the metrics it exposes.', keywords: 'usage statistics, stats, traffic, metrics, prometheus, collection, charts' },
       { key: 'system-info', route: 'system-info', label: 'System and support', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What this instance runs on and what a maintainer needs to look at. Secrets are withheld or masked, and the page only reads.', keywords: 'version, java, environment, zip, debug' },
     ],
@@ -433,6 +437,7 @@ const PAGES: Page[] = [
   { key: 'audit', route: 'audit', label: 'Audit log', area: 'none', permission: { node: ADMIN_NODES.audit } },
   { key: 'console', route: 'console', label: 'Console', area: 'none', permission: { node: ADMIN_NODES.console } },
   { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'none', permission: { node: ADMIN_NODES.maintenance } },
+  { key: 'jobs', route: 'jobs', label: 'Jobs', area: 'none', permission: { anyNode: JOBS_NODES } },
   // The nexus import wizard lives in the System group of the Administration tree (see ADMIN_TREE). This entry only gives its
   // route a page, so the route has a section and a title; it is never listed in the rail.
   { key: 'migration', route: 'settings-migration', label: 'Migration', area: 'none', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN) },

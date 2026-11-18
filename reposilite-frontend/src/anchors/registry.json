@@ -413,6 +413,20 @@
       "states": []
     },
     {
+      "name": "job-detail",
+      "file": "src/components/jobs/JobDetailView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "jobs-view",
+      "file": "src/components/jobs/JobsView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "domain-settings-panel",
       "file": "src/components/settings/DomainSettingsPanel.vue",
       "stability": "experimental",

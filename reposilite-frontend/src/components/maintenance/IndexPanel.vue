@@ -18,6 +18,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useSession } from '../../store/session'
+import { stateLabel as jobStateLabel } from '../jobs/jobs'
+import type { JobRun } from '../jobs/jobs'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
@@ -31,7 +33,6 @@ import {
   normalizeIndexStatus,
   repositoryProgress,
   runKindLabel,
-  runStatusLabel,
   runTriggerLabel
 } from './searchIndex'
 import type { IndexCounters, IndexStatus } from './searchIndex'
@@ -74,7 +75,19 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined
 const live = computed(() => isRunLive(index.value?.activeRun))
 const busy = computed(() => live.value || starting.value)
 const stateLabel = computed(() => INDEX_STATE_LABELS[index.value?.state ?? 'UNKNOWN'])
-const runs = computed(() => [...(index.value?.runs ?? [])].sort((a, b) => b.id - a.id))
+// The latest run of each index kind comes from the Jobs endpoint, one run per kind. The full history is on the Jobs page.
+const LATEST_KINDS = ['index.rebuild', 'index.verify'] as const
+const LATEST_LABELS: Record<(typeof LATEST_KINDS)[number], string> = {
+  'index.rebuild': 'Latest rebuild',
+  'index.verify': 'Latest verify'
+}
+const latestRuns = ref<Record<string, JobRun | null>>({})
+// One card per kind, in the order of LATEST_KINDS, with the run it shows (null until one has been started).
+const latestCards = computed(() => LATEST_KINDS.map(kind => ({
+  kind,
+  label: LATEST_LABELS[kind],
+  run: latestRuns.value[kind] ?? null
+})))
 const progress = computed(() => {
   const status = index.value
   const run = status?.activeRun
@@ -104,6 +117,16 @@ const schedulePoll = () => {
   if (live.value) pollTimer = setTimeout(load, POLL_INTERVAL_MS)
 }
 
+// One request per kind for its latest run. A failed request leaves the cards as they were.
+async function loadLatestRuns() {
+  try {
+    const pages = await Promise.all(LATEST_KINDS.map(kind => client.value.jobs.list({ kind, size: '1' })))
+    latestRuns.value = Object.fromEntries(LATEST_KINDS.map((kind, position) => [kind, pages[position].data.items[0] ?? null]))
+  } catch {
+    // The status above still shows; the cards stay until the next status answer.
+  }
+}
+
 async function load() {
   try {
     const { data } = await client.value.maven.searchIndex()
@@ -111,6 +134,7 @@ async function load() {
     loadError.value = ''
     notAvailable.value = false
     notAllowed.value = false
+    void loadLatestRuns()
   } catch (error) {
     const status = statusOf(error)
     index.value = null
@@ -402,45 +426,39 @@ onBeforeUnmount(stopPolling)
 
         <div class="flex flex-col gap-3">
           <h4 class="md-title-medium text-on-surface">
-            Index runs
+            Latest runs
           </h4>
-          <p
-            v-if="!runs.length"
-            class="md-body-medium text-on-surface-variant"
-          >
-            No run has been started yet.
-          </p>
           <ul
-            v-else
-            class="flex flex-col divide-y divide-outline-variant rounded-corner-medium bg-surface-container-low"
-            aria-label="Index runs, newest first"
+            class="grid gap-3 sm:grid-cols-2"
+            aria-label="Latest index runs"
           >
             <li
-              v-for="run in runs"
-              :key="run.id"
-              :data-run-id="String(run.id)"
-              class="flex flex-col gap-1 px-4 py-3"
+              v-for="card in latestCards"
+              :key="card.kind"
+              :data-latest-run="card.kind"
+              class="flex flex-col gap-1 rounded-corner-medium bg-surface-container-low px-4 py-3"
             >
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <span class="md-title-small text-on-surface">
-                  {{ runKindLabel(run.kind) }}, {{ runTriggerLabel(run.trigger) }}
+              <span class="md-title-small text-on-surface">{{ card.label }}</span>
+              <template v-if="card.run">
+                <span class="md-body-small text-on-surface-variant">
+                  {{ jobStateLabel(card.run.state) }}, started {{ formatDateTime(card.run.startedAt) }}
                 </span>
-                <span class="md-label-large text-on-surface-variant">{{ runStatusLabel(run.status) }}</span>
-              </div>
-              <p class="md-body-small text-on-surface-variant">
-                Started {{ formatDateTime(run.startedAt) }}, finished {{ formatDateTime(run.finishedAt, 'not finished') }}
-              </p>
-              <p class="md-body-small text-on-surface-variant">
-                {{ countersText(run.counters) }}
-              </p>
-              <p
-                v-if="run.lastError"
-                class="md-body-small text-error"
-              >
-                {{ run.lastError }}
-              </p>
+                <span class="md-body-small text-on-surface-variant">
+                  {{ card.run.label }}
+                </span>
+              </template>
+              <span
+                v-else
+                class="md-body-small text-on-surface-variant"
+              >No run has been started yet.</span>
             </li>
           </ul>
+          <RouterLink
+            :to="{ name: 'jobs', query: { kind: 'index' } }"
+            class="md-label-large self-start text-primary"
+          >
+            All runs
+          </RouterLink>
         </div>
       </template>
 

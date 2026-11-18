@@ -92,7 +92,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `index-panel` | experimental | `src/components/maintenance/IndexPanel.vue` | none | none | none |
 | `instance-health-row` | experimental | `src/components/dashboard/InstanceHealthRow.vue` | none | none | none |
 | `instance-status-panel` | experimental | `src/components/dashboard/InstanceStatusPanel.vue` | `read-only-banner`, `cluster-summary`, `cluster-instances`, `cluster-instance` | none | none |
+| `job-detail` | experimental | `src/components/jobs/JobDetailView.vue` | none | none | none |
 | `job-progress` | experimental | `src/components/migration/JobProgress.vue` | none | none | none |
+| `jobs-view` | experimental | `src/components/jobs/JobsView.vue` | none | none | none |
 | `key-value-tree` | experimental | `src/components/support/KeyValueTree.vue` | none | none | none |
 | `ldap-panel` | experimental | `src/components/access/LdapPanel.vue` | none | none | none |
 | `legacy-grants-panel` | experimental | `src/components/access/LegacyGrantsPanel.vue` | none | none | none |

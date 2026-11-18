@@ -807,6 +807,20 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
         return get(`/api/cleanup/runs${query}`)
       }
     },
+    jobs: {
+      /*
+       * One page of the background runs of every source the caller may read. The params are the filters
+       * (kind, state, trigger), the page size and the cursor of the next page, as the Jobs endpoint takes them.
+       */
+      list(params: Record<string, string> = {}) {
+        const query = new URLSearchParams(params).toString()
+        return get(`/api/jobs${query ? `?${query}` : ""}`)
+      },
+      // One run by its id, `<source>:<local id>`. The id is encoded as one path segment.
+      detail(id: string) {
+        return get(`/api/jobs/${encodeURIComponent(id)}`)
+      }
+    },
     settings: {
       domains() {
         return axios.get(createURL("/api/settings/domains"), {

@@ -85,7 +85,6 @@ const repositoryIds = ref<string[]>([])
 const loaded = ref(false)
 const loadError = ref('')
 const saving = ref(false)
-const historyPolicy = ref('')
 
 // The editor: `policy` is null for a new policy.
 const editor = ref<EditorState>({ open: false, policy: null })
@@ -343,8 +342,6 @@ load()
       <RunHistory
         :runs="runs"
         :policy-ids="policies.map(policy => policy.id)"
-        :policy="historyPolicy"
-        @update:policy="historyPolicy = $event"
       />
     </MdCard>
 
