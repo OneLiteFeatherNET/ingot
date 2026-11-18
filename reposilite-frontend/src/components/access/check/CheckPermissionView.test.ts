@@ -136,6 +136,26 @@ describe('CheckPermissionView', () => {
     document.body.innerHTML = ''
   })
 
+  describe('the field order', () => {
+    // The labelled controls of the form in the order they are drawn.
+    const formNames = (): string[] =>
+      [...wrapper.get('[data-test="check-form"]').element.querySelectorAll<HTMLElement>('label, [role="radiogroup"]')]
+        .map(element => element.getAttribute('aria-label') ?? element.textContent.trim())
+
+    it('asks for the principal and its token before the check by choice and the node', async () => {
+      await mountView()
+
+      expect(formNames(), 'the token follows the principal it belongs to').toEqual(['Principal', 'Token', 'Check by', 'Node'])
+    })
+
+    it('keeps the token after the principal when the check is by artifact path, and the action after the path', async () => {
+      await mountView()
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+
+      expect(formNames()).toEqual(['Principal', 'Token', 'Check by', 'Repository', 'Path', 'Action'])
+    })
+  })
+
   describe('before a check', () => {
     it('asks for a principal and a node', async () => {
       await mountView()
