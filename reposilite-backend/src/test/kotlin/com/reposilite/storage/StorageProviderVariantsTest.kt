@@ -17,6 +17,7 @@
 package com.reposilite.storage
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.victools.jsonschema.generator.SchemaGenerator
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder
 import com.github.victools.jsonschema.generator.SchemaVersion
@@ -42,6 +43,15 @@ internal class StorageProviderVariantsTest {
     data class FakeStoreSettings(
         override val type: String = "fake-store",
         @get:Doc(title = "Bucket", description = "Bucket of the fake store") val bucket: String = "",
+    ) : StorageProviderSettings
+
+    data class Endpoint(val url: String = "")
+
+    @Doc(title = "Nested store", description = "Storage of a fake plugin whose settings reuse a nested type")
+    data class NestedStoreSettings(
+        override val type: String = "nested-store",
+        val primary: Endpoint = Endpoint(),
+        val secondary: Endpoint = Endpoint(),
     ) : StorageProviderSettings
 
     @Doc(title = "Broken store", description = "Settings whose schema cannot be generated in these tests")
@@ -153,6 +163,57 @@ internal class StorageProviderVariantsTest {
         assertThat(warnings.single())
             .describedAs("warning")
             .contains("broken", "broken-store.jar")
+    }
+
+    @Test
+    fun `should warn once about a broken plugin however often the schema is served`() {
+        registry.register(FakeFactory("broken", BrokenSettings::class.java), source = "broken-store.jar", builtIn = false)
+        registry.register(FakeFactory("fake-store", FakeStoreSettings::class.java), source = "fake-store-plugin.jar", builtIn = false)
+        val variants = variants { if (it == BrokenSettings::class.java) error("no schema for the broken fixture") else generator.generateSchema(it) }
+
+        repeat(3) { servedWith(variants) }
+
+        assertThat(warnings)
+            .describedAs("warnings after the schema was served three times")
+            .hasSize(1)
+    }
+
+    @Test
+    fun `should keep the nested definitions of a plugin variant resolvable without touching those of the served schema`() {
+        registry.register(FakeFactory("nested-store", NestedStoreSettings::class.java), source = "nested-store.jar", builtIn = false)
+        assertThat(generator.generateSchema(NestedStoreSettings::class.java).has("definitions"))
+            .describedAs("precondition: the plugin schema keeps its nested type in definitions")
+            .isTrue()
+        val servedWithDefinitions = DEFAULT_OBJECT_MAPPER.readTree(served).also {
+            (it as ObjectNode).putObject("definitions")
+                .putObject("Endpoint").put("type", "string").put("title", "Endpoint of the served schema")
+        }
+
+        val root = DEFAULT_OBJECT_MAPPER.readTree(variants().apply(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(servedWithDefinitions)))
+
+        val variant = root.storageVariants().last()
+        listOf("primary", "secondary").forEach { field ->
+            val reference = variant.at("/properties/$field/\$ref").asText()
+            assertThat(reference).describedAs("reference of the $field field of the plugin variant").startsWith("#/")
+            assertThat(root.at(reference.removePrefix("#")).at("/properties/url").isMissingNode)
+                .describedAs("target of $reference in the served schema has the url property of the nested type")
+                .isFalse()
+        }
+        assertThat(root.at("/definitions/Endpoint/title").asText())
+            .describedAs("definition of the served schema with the same name as the nested type of the plugin")
+            .isEqualTo("Endpoint of the served schema")
+    }
+
+    @Test
+    fun `should not append a plugin variant that the served schema already offers`() {
+        registry.register(FakeFactory("fs", FakeStoreSettings::class.java), source = "shadow.jar", builtIn = false)
+        registry.register(FakeFactory("fake-store", FakeStoreSettings::class.java), source = "fake-store-plugin.jar", builtIn = false)
+
+        val offered = servedWith(variants()).storageVariants()
+
+        assertThat(offered.consts())
+            .describedAs("constant types of the served storageProvider variants")
+            .containsExactly("fs", "s3", "fake-store")
     }
 
 }

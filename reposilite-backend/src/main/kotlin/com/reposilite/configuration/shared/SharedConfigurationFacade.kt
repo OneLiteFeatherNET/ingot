@@ -36,7 +36,9 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.PluginStorageSecretGuard
 import com.reposilite.storage.StorageProviderVariants
+import com.reposilite.storage.secretVariants
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
@@ -99,6 +101,15 @@ class SharedConfigurationFacade(
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
 
+    /** Leaves out the storage plugins whose secrets cannot be hidden, for the served schema and the secret shape alike. */
+    private val storageSecretGuard = PluginStorageSecretGuard { journalist.logger.warn(it) }
+
+    /**
+     * The settings classes of the loaded storage plugins, which the secret shape of every domain includes: their `@Sensitive` fields
+     * are masked, restored, sealed and opened like the secrets of the built-in providers.
+     */
+    internal val secretVariants: OneOfVariants = extensions.storageProviders.secretVariants(storageSecretGuard)
+
     private val sealedSecretStores = CopyOnWriteArrayList<SealedSecretStore>()
 
     /**
@@ -131,6 +142,7 @@ class SharedConfigurationFacade(
         val storageVariants = StorageProviderVariants(
             registry = extensions.storageProviders,
             generate = { schemaGenerator.value.generateSchema(it) },
+            guard = storageSecretGuard,
             warn = { journalist.logger.warn(it) },
         )
 
@@ -201,7 +213,7 @@ class SharedConfigurationFacade(
         failures.forEach { (ref, result) ->
             journalist.logger.error("Shared configuration | Cannot update '${ref.name}' due to ${result.error}")
             journalist.logger.debug("Shared configuration | Source:")
-            journalist.logger.debug(SettingsSecrets.redactDocument(content, domainTypes()))
+            journalist.logger.debug(SettingsSecrets.redactDocument(content, domainTypes(), secretVariants))
             failureFacade.throwException("Shared configuration", result.error)
         }
 
@@ -230,7 +242,7 @@ class SharedConfigurationFacade(
      * domain and the property, never the value.
      */
     private fun openSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode =
-        SettingsSecrets.transformSensitive(type, node) { path, value ->
+        SettingsSecrets.transformSensitive(type, node, secretVariants) { path, value ->
             if (!SettingsEnvelopeCodec.isEnvelope(value)) {
                 return@transformSensitive value
             }
@@ -248,7 +260,7 @@ class SharedConfigurationFacade(
      */
     private fun sealSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode {
         val cipher = secretCipher?.takeIf { it.sealing } ?: return node
-        return SettingsSecrets.transformSensitive(type, node) { path, value ->
+        return SettingsSecrets.transformSensitive(type, node, secretVariants) { path, value ->
             if (isPlainSecret(value)) cipher.seal(name, path, value) else value
         }
     }
@@ -399,7 +411,7 @@ class SharedConfigurationFacade(
     private fun resolveEffective(type: SharedSettingsClass, settings: SharedSettings): SharedSettings {
         val resolver = secretReferences ?: return settings
         val name = settingsName(type)
-        val resolved = SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings)) { path, value ->
+        val resolved = SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings), secretVariants) { path, value ->
             try {
                 resolver.resolve(value)
             } catch (exception: SecretReferenceException) {
@@ -508,7 +520,7 @@ class SharedConfigurationFacade(
         getDomainNames().forEach { name ->
             val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
             val node = root.get(name) ?: return@forEach
-            SettingsSecrets.transformSensitive(reference.type, node) { path, value ->
+            SettingsSecrets.transformSensitive(reference.type, node, secretVariants) { path, value ->
                 if (SettingsEnvelopeCodec.isEnvelope(value)) {
                     found.add(SealedSetting(domain = name, path = path, keyId = value.split(':').getOrElse(2) { "" }))
                 }
@@ -580,7 +592,7 @@ class SharedConfigurationFacade(
 
         val type = getSettingsReference<SharedSettings>(name)?.type ?: return false
         var plain = false
-        SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(value)) { _, stored ->
+        SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(value), secretVariants) { _, stored ->
             plain = plain || isPlainSecret(stored)
             stored
         }
@@ -596,7 +608,7 @@ class SharedConfigurationFacade(
         getDomainNames().forEach { name ->
             val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
             val node = root.get(name) ?: return@forEach
-            SettingsSecrets.transformSensitive(reference.type, node) { _, value ->
+            SettingsSecrets.transformSensitive(reference.type, node, secretVariants) { _, value ->
                 if (value.isNotEmpty() && predicate(value)) {
                     count++
                 }
