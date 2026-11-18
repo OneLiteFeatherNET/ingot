@@ -19,11 +19,13 @@ Do not report vulnerabilities in public issues, discussions or pull requests. Fo
 - The previous minor release line receives security fixes only, for 90 days after the next minor release line ships.
 - Older release lines receive no fixes.
 
-| Release line       | Fixes received                                    | Status                                                |
-|:-------------------|:--------------------------------------------------|:------------------------------------------------------|
-| `1.1.x` (latest)   | Every fix, bugs and security                      | Supported                                             |
-| `1.0.x`            | Security fixes only                               | Security window ended on 2026-11-07 (90 days after 1.1.0) |
-| Older lines        | None                                              | Not supported                                         |
+<!-- support-table:start -->
+| Release line     | Fixes received               | Status                                           |
+|:-----------------|:-----------------------------|:-------------------------------------------------|
+| `1.1.x` (latest) | Every fix, bugs and security | Supported                                        |
+| `1.0.x`          | None                         | Window ended on 2026-11-07 (90 days after 1.1.0) |
+| Older lines      | None                         | Not supported                                    |
+<!-- support-table:end -->
 
 The upstream [Reposilite](https://github.com/dzikoysk/reposilite) project is not covered by this policy. Report upstream
 issues to the upstream project.
