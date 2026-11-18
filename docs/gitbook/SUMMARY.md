@@ -106,6 +106,7 @@
 * [Manage Ingot](manage/README.md)
 * [Operate](manage/operate/README.md)
   * [Back up and restore](manage/operate/back-up-and-restore.md)
+  * [Back up and restore the settings](manage/operate/back-up-and-restore-settings.md)
   * [Freeze writes for maintenance](manage/operate/freeze-writes-for-maintenance.md)
   * [Shut down without dropping requests](manage/operate/shut-down-without-dropping-requests.md)
   * [Harden a deployment](manage/operate/harden-a-deployment.md)
