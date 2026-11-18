@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MdLinearProgress from './MdLinearProgress.vue'
+import source from './MdLinearProgress.vue?raw'
 
 describe('MdLinearProgress', () => {
   it('exposes a progressbar with the value as a percentage', () => {
@@ -54,5 +55,30 @@ describe('MdLinearProgress', () => {
     const wrapper = mount(MdLinearProgress, { props: { label: 'Uploading artifact' } })
 
     expect(wrapper.attributes('aria-label')).toBe('Uploading artifact')
+  })
+
+  it('gives the indeterminate bar the linear slide animation token', () => {
+    const wrapper = mount(MdLinearProgress, { props: { indeterminate: true } })
+    const bar = (wrapper.element as HTMLElement).firstElementChild as HTMLElement
+
+    expect(bar.className, 'the slide comes from the animate-md-linear-slide utility').toContain('animate-md-linear-slide')
+  })
+
+  it('gives the reduced-motion variant the slower token under motion-reduce', () => {
+    const wrapper = mount(MdLinearProgress, { props: { indeterminate: true } })
+    const bar = (wrapper.element as HTMLElement).firstElementChild as HTMLElement
+
+    expect(bar.className, 'reduced motion switches to the slower token').toContain('motion-reduce:animate-md-linear-slide-reduced')
+  })
+
+  it('draws no animation on a determinate bar', () => {
+    const wrapper = mount(MdLinearProgress, { props: { value: 0.4 } })
+    const bar = (wrapper.element as HTMLElement).firstElementChild as HTMLElement
+
+    expect(bar.className, 'only the indeterminate bar slides').not.toContain('animate-md-linear-slide')
+  })
+
+  it('has no style element in its source', () => {
+    expect(source, 'the component styles itself with tokens, not a style block').not.toContain('<style')
   })
 })
