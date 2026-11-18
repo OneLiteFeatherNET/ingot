@@ -5,14 +5,14 @@
 # from INGOT_TOKEN_FILE. It is a separate image from the server, which is not changed by this file.
 
 # --platform=$BUILDPLATFORM keeps the build stage on the architecture of the builder: a jar holds no machine code.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk-noble@sha256:a871f3e3caddad75608fd4531ed8bbca5cc42a27dc1da3ea3a2e554772b0ee15 AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21.0.13.1_1-jdk-noble AS build
 WORKDIR /src
 COPY . .
 RUN ./gradlew :ingot-cli:shadowJar --no-daemon --max-workers=2 \
  && cp "$(ls ingot-cli/build/libs/ingot-cli-*.jar | head -n 1)" /ingot-cli.jar
 
 # The JRE base is the one the server image uses, so Renovate raises one digest for both.
-FROM eclipse-temurin:21-jre-noble@sha256:000fd431958bc81a24abe1e8e5f0f0fd3ae365a594bd50aadb20696805f9408c AS run
+FROM eclipse-temurin:21.0.13.1_1-jre-noble AS run
 
 # A fixed non-root user. The image has no volume and nothing to chown, so no entrypoint script is needed.
 RUN groupadd --gid 10001 ingot \
