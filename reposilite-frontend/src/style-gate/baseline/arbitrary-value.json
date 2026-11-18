@@ -170,21 +170,6 @@
     "count": 1
   },
   {
-    "file": "src/components/dashboard/PublicRepositoriesDialog.vue",
-    "match": "max-h-[50vh]",
-    "count": 1
-  },
-  {
-    "file": "src/components/dashboard/ReadOnlyToggle.vue",
-    "match": "max-h-[90dvh]",
-    "count": 1
-  },
-  {
-    "file": "src/components/dashboard/ReadOnlyToggle.vue",
-    "match": "w-[calc(100vw-2rem)]",
-    "count": 1
-  },
-  {
     "file": "src/components/dashboard/ResourceTrends.vue",
     "match": "min-[1024px]:grid-cols-2",
     "count": 1
