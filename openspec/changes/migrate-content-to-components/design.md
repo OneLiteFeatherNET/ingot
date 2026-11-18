@@ -56,6 +56,8 @@ maintainer's inventory and are re-read at the start of each wave):
 
 ### D1. One card
 
+Resolved 2026-11-18 (question 2): the radius is `rounded-corner-medium`. Hand-built cards with `rounded-corner-large` become medium, and hand-built low cards become `MdCard` with `variant="low"`, which `MdCard` already has.
+
 `MdCard` is the only card container. Its radius is `rounded-corner-medium` (12px). Its padding is `p-4` (16px) at every window
 size, and its variants stay `elevated`, `filled` and `outlined`. A card that holds a table or a full-bleed list uses
 `padding="none"`, which removes the padding and clips the content to the radius, so no card is built with `p-0` or a negative margin.
@@ -63,7 +65,7 @@ size, and its variants stay `elevated`, `filled` and `outlined`. A card that hol
 The value `none` of the catalogue's `padding` prop on `MdCard` is added in wave 1. The default is unchanged. A card with an inset header uses `MdSection` inside the card,
 not a second card.
 
-Open maintainer question 2 records the alternative of 16px. Changing it later is one class in `MdCard`.
+The 16px alternative of question 2 is not taken. Changing the radius later is one class in `MdCard`.
 
 ### D2. One section, one heading per level
 
@@ -132,8 +134,9 @@ to check that the numbers agree.
 Form controls are the primitives: `MdRadio`, `MdCheckbox`, `MdSelect`, `MdSwitch`, `MdLinearProgress`, `MdButton` and `MdIconButton`.
 A link that looks like a button is an `MdButton` with `href` (the `href` prop exists today), not a `RouterLink` with classes.
 
-Field variant (open question 3): `MdTextField` defaults to `outlined` after wave 4, and every form uses the default. A filled field is
-an explicit prop and the only use is in `ProfileCard` if the default is kept; the change lists each such use.
+Field variant (resolved 2026-11-18, question 3): `outlined` is the variant of every form field. `MdTextField` defaults to `outlined`
+after wave 4, and every form uses the default. No form keeps a filled field. The wave 4 pull request lists each field that changes
+from filled to outlined.
 
 Form scaffolding, new components (proposed names, placed in the folder that owns their use):
 
@@ -158,18 +161,25 @@ drop zone (wave 4 checks it in a Playwright snapshot before and after).
 
 ### D7. Breakpoints
 
-The MD3 window classes become the only breakpoints. In `src/style.css`, inside the `@theme` block:
+The MD3 window classes are the only breakpoints. They are declared as `@custom-variant`s in `src/style.css`, as the comment there
+already explains, and the theme resets Tailwind's default breakpoints:
 
 ```
---breakpoint-*: initial;
---breakpoint-medium: 600px;
---breakpoint-expanded: 840px;
---breakpoint-large: 1200px;
---breakpoint-xlarge: 1600px;
+@theme {
+  --breakpoint-*: initial;
+}
+
+@custom-variant medium (@media (width >= 600px));
+@custom-variant expanded (@media (width >= 840px));
+@custom-variant large (@media (width >= 1240px));
+@custom-variant xlarge (@media (width >= 1600px));
+@custom-variant max-medium (@media (width < 600px));
+@custom-variant max-expanded (@media (width < 840px));
 ```
 
-The variants are `medium:`, `expanded:`, `large:` and `xlarge:`, and the max variants (`max-medium:`) follow from the same names.
-The default, compact, has no prefix. The `.container` gutter keeps its own media query (600px) and is not changed.
+Resolved 2026-11-18 (question 4): `large` stays at 1240 pixels. The value of 1200 pixels is not adopted. The variants are not theme
+breakpoints, because Tailwind derives the width steps of its own container from theme breakpoints. The default, compact, has no
+prefix. The `.container` gutter keeps its own media query (600px) and is not changed.
 
 Mapping of the old values, rounding to the nearest MD3 threshold and to the lower one on a tie:
 
@@ -185,15 +195,17 @@ Mapping of the old values, rounding to the nearest MD3 threshold and to the lowe
 | 900px | `expanded:` | MenuPanel |
 | 960px | `expanded:` | AccountView |
 | 1024px | `large:` | ResourceTrends, RepositoryOverview |
-| 1240px | `large:` (already named by `refactor-md3-token-utilities`; the value moves to 1200px, question 4) | SideNavLayout |
+| 1240px | `large:` (already named by `refactor-md3-token-utilities`; the value stays at 1240px, question 4) | SideNavLayout |
 | 1920px and 2560px | `xlarge:` | RepositoriesTable, RepositoryOverview, FileBrowserView |
 
 Each row is checked in the wave's review by a before and after screenshot at the two widths on each side of the threshold where the
-layout changes. A test in `src/styles/md3/breakpoints.test.js` reads `style.css` and asserts that the four names above are the only
-`--breakpoint-*` values and that `--breakpoint-*: initial` is present.
+layout changes. A test in `src/styles/md3/breakpoints.test.js` reads `style.css` and asserts that the four window classes are declared
+as `@custom-variant`s at 600, 840, 1240 and 1600 pixels, with `max-medium` and `max-expanded` below the first two, and that
+`--breakpoint-*: initial` is present in `@theme`.
 
-Visible effect: a layout that changed at 1024px changes at 1200px; one that changed at 1920px changes at 1600px. The before and after
-screenshots at 1440px show the difference for the `large` threshold, and the screenshots at 1920px show `xlarge`.
+Visible effect: a layout that changed at 1024px now changes at 1240px, and one that changed at 1920px changes at 1600px. The rows
+that name `large:` for 1024 and 1280 pixels were written against the MD3 value of 1200 pixels. With `large` at 1240 pixels they are
+checked in wave 5 at 1024, 1239 and 1240 pixels.
 
 ### D8. Anchors
 
@@ -213,7 +225,7 @@ replaces a stable name. `docs/gitbook/reference/dashboard-anchors.md` is regener
    fades, the font weights, `StatusLabel`, `StatTile`, `TimeSeriesChart`, the duplicated footer and the icon lookup in `IndexPage`,
    then the gate baseline.
 
-Each wave is one pull request (open question 1), merged before the next starts, so that every wave is reviewed against the same main
+Each wave is one pull request (resolved 2026-11-18, question 1), merged before the next starts, so that every wave is reviewed against the same main
 branch. Wave 5 contains the breakpoint theme change, which is the one change that moves every view at once, so it goes last.
 
 ### D10. Tests
@@ -242,3 +254,8 @@ Two sets per wave PR, both in light and dark, stored with the pull request and n
 
 Vitest and Playwright runs go through the slot runner (`heavy npx vitest run <pattern>`, `heavy npx playwright test <suite>`), with one
 suite at a time while a wave is in review.
+
+### D12. Page width (decided 2026-11-18)
+
+Pages are full width. The reading measure (`max-w-md-reading`, the `measure` prop of `MdPage`) is used only on pages of prose and
+forms. Tables, lists, dashboards and consoles stay full width in every window class.

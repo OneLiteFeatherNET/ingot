@@ -15,8 +15,8 @@
   -->
 
 <script setup lang="ts">
-import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 
 withDefaults(defineProps<{
   title: string
@@ -65,35 +65,35 @@ const emit = defineEmits<{
     <div
       v-if="loading"
       data-ingot-state="loading"
-      class="skeleton-bars h-[220px] w-full rounded-corner-small bg-surface-container-high"
-    />
+      class="flex h-56 items-center"
+    >
+      <MdStatePanel state="loading" />
+    </div>
 
     <div
       v-else-if="error"
-      role="alert"
-      class="flex h-[220px] flex-col items-center justify-center gap-3 px-6 text-center"
+      class="flex h-56 items-center"
     >
-      <p class="md-body-medium text-on-surface">
-        {{ error }}
-      </p>
-      <MdButton
-        variant="tonal"
-        @click="emit('retry')"
-      >
-        Retry
-      </MdButton>
+      <MdStatePanel
+        state="error"
+        :description="error"
+        @retry="emit('retry')"
+      />
     </div>
 
     <!--
       An empty state says which switch produces the emptiness. A blank rectangle leaves the
       reader deciding between "nothing happened" and "this is broken".
     -->
-    <p
+    <div
       v-else-if="emptyMessage"
-      class="flex h-[220px] items-center justify-center px-6 text-center md-body-medium text-on-surface-variant"
+      class="flex h-56 items-center"
     >
-      {{ emptyMessage }}
-    </p>
+      <MdStatePanel
+        state="empty"
+        :description="emptyMessage"
+      />
+    </div>
 
     <slot v-else />
   </MdCard>

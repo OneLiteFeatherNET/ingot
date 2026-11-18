@@ -14,41 +14,38 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import { MIN_PASSWORD_LENGTH, PASSWORD_PROBLEM_MESSAGES, passwordProblem } from './settingsEncryption'
+import { passphraseGuidance } from './passphraseGuidance'
 
 /*
  * Asks for the password of the settings file. An export asks twice, because a file that cannot be opened
  * is lost. The password is held here only while the dialog is open: it is cleared when the dialog closes
  * and after it is submitted, so it does not stay in the component.
  */
-const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false
-  },
-  mode: {
-    type: String,
-    default: 'export',
-    validator: value => value === 'export' || value === 'import'
-  },
-  busy: {
-    type: Boolean,
-    default: false
-  },
-  error: {
-    type: String,
-    default: ''
-  }
+const props = withDefaults(defineProps<{
+  open?: boolean
+  mode?: 'export' | 'import'
+  busy?: boolean
+  error?: string
+}>(), {
+  open: false,
+  mode: 'export',
+  busy: false,
+  error: ''
 })
 
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits<{
+  submit: [password: string]
+  cancel: []
+}>()
 
 const password = ref('')
 const confirmation = ref('')
 const attempted = ref(false)
+const visible = ref(false)
 
 const isExport = computed(() => props.mode === 'export')
 const problem = computed(() => passwordProblem({
@@ -56,12 +53,22 @@ const problem = computed(() => passwordProblem({
   confirmation: isExport.value ? confirmation.value : null
 }))
 const message = computed(() => (problem.value ? PASSWORD_PROBLEM_MESSAGES[problem.value] : ''))
+const strength = computed(() => passphraseGuidance({
+  password: password.value,
+  confirmation: isExport.value ? confirmation.value : null
+}))
+const inputType = computed(() => (visible.value ? 'text' : 'password'))
 const title = computed(() => (isExport.value ? 'Download the settings with a password' : 'Open the settings file'))
+
+const toggleVisible = () => {
+  visible.value = !visible.value
+}
 
 const clear = () => {
   password.value = ''
   confirmation.value = ''
   attempted.value = false
+  visible.value = false
 }
 
 watch(() => props.open, (open) => {
@@ -81,7 +88,7 @@ const cancel = () => {
   emit('cancel')
 }
 
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') cancel()
 }
 </script>
@@ -109,17 +116,37 @@ const onKeydown = (event) => {
       <input
         id="settings-password"
         v-model="password"
-        type="password"
+        :type="inputType"
         autocomplete="new-password"
         class="mb-2 w-full rounded-corner-small border border-outline bg-surface px-3 py-2"
         :aria-describedby="isExport ? 'settings-password-hint' : undefined"
       >
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <p
+          v-if="isExport && strength.label"
+          id="settings-password-strength"
+          class="md-body-small text-on-surface-variant"
+          aria-live="polite"
+        >
+          Strength: {{ strength.label }}
+        </p>
+        <MdButton
+          variant="text"
+          type="button"
+          data-test="toggle-passphrase-visibility"
+          :aria-pressed="visible ? 'true' : 'false'"
+          @click="toggleVisible"
+        >
+          {{ visible ? 'Hide passphrase' : 'Show passphrase' }}
+        </MdButton>
+      </div>
       <p
         v-if="isExport"
         id="settings-password-hint"
         class="md-body-small mb-4 text-on-surface-variant"
       >
         At least {{ MIN_PASSWORD_LENGTH }} characters. The file cannot be opened without it, and nobody can recover it for you.
+        A passphrase of several words is easy to remember and hard to guess, and a password manager can keep it for you.
       </p>
 
       <template v-if="isExport">
@@ -127,7 +154,7 @@ const onKeydown = (event) => {
         <input
           id="settings-password-confirmation"
           v-model="confirmation"
-          type="password"
+          :type="inputType"
           autocomplete="new-password"
           class="mb-4 w-full rounded-corner-small border border-outline bg-surface px-3 py-2"
         >

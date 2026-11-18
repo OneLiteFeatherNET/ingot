@@ -159,6 +159,6 @@ describe('group section', () => {
     const wrapper = mountForm(schema, layout, { name: 'releases' })
 
     expect(wrapper.find('fieldset').exists(), 'the fieldset with the notched legend is gone').toBe(false)
-    expect(wrapper.get('[data-test="section"] h3').text()).toBe('General')
+    expect(wrapper.get('[data-test="section"] h2').text()).toBe('General')
   })
 })

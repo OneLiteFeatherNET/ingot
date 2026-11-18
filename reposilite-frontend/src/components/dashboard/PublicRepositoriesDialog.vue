@@ -17,8 +17,9 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 /*
  * The review behind the "Review public repositories" step. It lists the public repositories and asks
@@ -65,20 +66,13 @@ const follow = (repository: PublicRepository) => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     v-model="open"
-    teleport-to="body"
-    :overlay-class="'vfm__overlay bg-scrim/md-scrim!'"
-    class="flex items-center justify-center p-4"
+    size="md"
+    :labelledby="titleId"
+    :describedby="explanationId"
   >
-    <section
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="titleId"
-      :aria-describedby="explanationId"
-      class="flex w-full max-w-md flex-col gap-4 rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      data-ingot-component="public-repositories-dialog"
-    >
+    <div data-ingot-component="public-repositories-dialog">
       <div class="flex flex-col gap-2">
         <h2
           :id="titleId"
@@ -94,40 +88,42 @@ const follow = (repository: PublicRepository) => {
         </p>
       </div>
 
-      <ul
-        v-if="repositories.length > 0"
-        aria-label="Public repositories"
-        class="flex max-h-[50vh] flex-col gap-2 overflow-y-auto"
-      >
-        <li
-          v-for="repository in repositories"
-          :key="repository.id"
-          class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
+      <div class="mt-4 flex flex-col gap-2">
+        <ul
+          v-if="repositories.length > 0"
+          aria-label="Public repositories"
+          class="flex flex-col gap-2"
         >
-          <div class="flex min-w-0 flex-1 basis-40 flex-col">
-            <span class="md-title-small break-all">{{ repository.id }}</span>
-            <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
-          </div>
-          <MdButton
-            variant="text"
-            :href="hrefOf(repository)"
-            :aria-label="`Change visibility of ${repository.id}`"
-            @click.prevent="follow(repository)"
+          <li
+            v-for="repository in repositories"
+            :key="repository.id"
+            class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
           >
-            Change visibility
-          </MdButton>
-        </li>
-      </ul>
-      <p
-        v-else
-        class="md-body-medium text-on-surface-variant"
-      >
-        No repository is public.
-      </p>
+            <div class="flex min-w-0 flex-1 basis-40 flex-col">
+              <span class="md-title-small break-all">{{ repository.id }}</span>
+              <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
+            </div>
+            <MdButton
+              variant="text"
+              :href="hrefOf(repository)"
+              :aria-label="`Change visibility of ${repository.id}`"
+              @click.prevent="follow(repository)"
+            >
+              Change visibility
+            </MdButton>
+          </li>
+        </ul>
+        <p
+          v-else
+          class="md-body-medium text-on-surface-variant"
+        >
+          No repository is public.
+        </p>
+      </div>
 
-      <div
+      <MdDialogActions
         v-if="repositories.length > 0"
-        class="flex justify-end"
+        class="mt-6"
       >
         <MdButton
           variant="filled"
@@ -136,7 +132,7 @@ const follow = (repository: PublicRepository) => {
         >
           Looks right
         </MdButton>
-      </div>
-    </section>
-  </VueFinalModal>
+      </MdDialogActions>
+    </div>
+  </MdDialog>
 </template>

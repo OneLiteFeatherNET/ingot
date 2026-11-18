@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, ref, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import AddMemberDialog from './AddMemberDialog.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
@@ -98,97 +99,101 @@ const openAdd = () => {
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
-    aria-labelledby="team-members-title"
+  <MdCard
+    variant="low"
     data-test="members"
-    data-ingot-component="team-members-card"
   >
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h2
-        id="team-members-title"
-        class="md-title-medium text-on-surface"
-      >
-        Members
-      </h2>
-      <MdButton
-        variant="tonal"
-        data-test="add-member"
-        @click="openAdd()"
-      >
-        Add member
-      </MdButton>
-    </div>
-
-    <ul
-      v-if="team.members.length > 0"
-      class="m-0 flex list-none flex-col gap-1 p-0"
+    <section
+      class="flex flex-col gap-3"
+      aria-labelledby="team-members-title"
+      data-ingot-component="team-members-card"
     >
-      <li
-        v-for="member in team.members"
-        :key="member.principal"
-        data-test="member"
-        class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-corner-medium px-2 py-2"
-      >
-        <router-link
-          :to="{ name: member.kind === 'MACHINE' ? 'access-machine' : 'access-user', params: { name: member.principal } }"
-          class="md-title-small min-w-0 flex-1 text-on-surface [overflow-wrap:anywhere]"
-          data-test="member-name"
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2
+          id="team-members-title"
+          class="md-title-medium text-on-surface"
         >
-          {{ member.principal }}
-        </router-link>
-        <span class="flex flex-wrap items-center gap-2">
-          <TokenTag data-test="kind-chip">{{ member.kind === 'MACHINE' ? 'Machine' : 'User' }}</TokenTag>
-          <TokenTag
-            v-if="disabledNames.has(member.principal)"
-            data-test="disabled-chip"
-          >Disabled</TokenTag>
-          <TokenTag data-test="source-chip">{{ member.source === 'SYNC' ? 'Synced' : 'Manual' }}</TokenTag>
-        </span>
+          Members
+        </h2>
         <MdButton
-          v-if="member.source !== 'SYNC'"
-          variant="text"
-          error
-          data-test="remove-member"
-          :aria-label="`Remove ${member.principal} from ${team.name}`"
-          @click="askRemove(member)"
+          variant="tonal"
+          data-test="add-member"
+          @click="openAdd()"
         >
-          Remove
+          Add member
         </MdButton>
-        <span
-          v-else
-          class="md-body-small text-on-surface-variant"
-          data-test="sync-note"
-        >Synced from the identity provider</span>
-      </li>
-    </ul>
-    <p
-      v-else
-      class="md-body-medium text-on-surface-variant"
-    >
-      This team has no members yet.
-    </p>
+      </div>
 
-    <AddMemberDialog
-      v-model="addOpen"
-      :team-name="team.name"
-      :principals="principals"
-      :members="team.members"
-      :load-error="principalsError"
-      :busy="busy"
-      :failure="failure"
-      @add="add"
-    />
-    <ConfirmActionDialog
-      v-model="removeOpen"
-      title="Remove member"
-      confirm-label="Remove"
-      danger
-      :busy="busy"
-      :failure="failure"
-      @confirm="remove()"
-    >
-      {{ removing?.principal }} will no longer get the permissions of {{ team.name }}.
-    </ConfirmActionDialog>
-  </section>
+      <ul
+        v-if="team.members.length > 0"
+        class="m-0 flex list-none flex-col gap-1 p-0"
+      >
+        <li
+          v-for="member in team.members"
+          :key="member.principal"
+          data-test="member"
+          class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-corner-medium px-2 py-2"
+        >
+          <router-link
+            :to="{ name: member.kind === 'MACHINE' ? 'access-machine' : 'access-user', params: { name: member.principal } }"
+            class="md-title-small min-w-0 flex-1 text-on-surface [overflow-wrap:anywhere]"
+            data-test="member-name"
+          >
+            {{ member.principal }}
+          </router-link>
+          <span class="flex flex-wrap items-center gap-2">
+            <TokenTag data-test="kind-chip">{{ member.kind === 'MACHINE' ? 'Machine' : 'User' }}</TokenTag>
+            <TokenTag
+              v-if="disabledNames.has(member.principal)"
+              data-test="disabled-chip"
+            >Disabled</TokenTag>
+            <TokenTag data-test="source-chip">{{ member.source === 'SYNC' ? 'Synced' : 'Manual' }}</TokenTag>
+          </span>
+          <MdButton
+            v-if="member.source !== 'SYNC'"
+            variant="text"
+            error
+            data-test="remove-member"
+            :aria-label="`Remove ${member.principal} from ${team.name}`"
+            @click="askRemove(member)"
+          >
+            Remove
+          </MdButton>
+          <span
+            v-else
+            class="md-body-small text-on-surface-variant"
+            data-test="sync-note"
+          >Synced from the identity provider</span>
+        </li>
+      </ul>
+      <p
+        v-else
+        class="md-body-medium text-on-surface-variant"
+      >
+        This team has no members yet.
+      </p>
+
+      <AddMemberDialog
+        v-model="addOpen"
+        :team-name="team.name"
+        :principals="principals"
+        :members="team.members"
+        :load-error="principalsError"
+        :busy="busy"
+        :failure="failure"
+        @add="add"
+      />
+      <ConfirmActionDialog
+        v-model="removeOpen"
+        title="Remove member"
+        confirm-label="Remove"
+        danger
+        :busy="busy"
+        :failure="failure"
+        @confirm="remove()"
+      >
+        {{ removing?.principal }} will no longer get the permissions of {{ team.name }}.
+      </ConfirmActionDialog>
+    </section>
+  </MdCard>
 </template>

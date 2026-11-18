@@ -114,4 +114,56 @@ describe('PublicRepositoriesDialog', () => {
     expect(router.currentRoute.value.fullPath).toBe('/settings/repositories/mirror')
     expect(wrapper?.emitted('update:modelValue')).toEqual([[false]])
   })
+
+  it('keeps the heading, the rows and the confirmation in one content block', async () => {
+    await mountDialog()
+
+    // The heading sits in a header block, which sits in the content block that also holds the rows and the actions.
+    const content = dialog()?.querySelector('h2')?.parentElement?.parentElement
+    expect(content?.querySelectorAll('li'), 'the content block holds every row').toHaveLength(2)
+    expect(buttonNamed('Looks right') && content?.contains(buttonNamed('Looks right') ?? null), 'the content block holds the confirmation').toBe(true)
+  })
+
+  it('names the dialog by its heading', async () => {
+    await mountDialog()
+
+    const labelledBy = dialog()?.getAttribute('aria-labelledby') ?? ''
+    expect(document.getElementById(labelledBy)?.textContent?.trim(), 'the dialog is named by the Public repositories heading').toBe('Public repositories')
+  })
+
+  it('moves focus into the dialog when it opens, to the first row action', async () => {
+    await mountDialog()
+
+    expect(document.activeElement?.textContent?.trim(), 'focus lands on the first Change visibility action').toBe('Change visibility')
+  })
+
+  it('returns focus to the button that opened the dialog when it closes', async () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    await mountDialog()
+
+    await wrapper?.setProps({ modelValue: false })
+    await flushPromises()
+
+    const focused = document.activeElement
+    opener.remove()
+    expect(focused, 'focus is back on the button that opened the dialog').toBe(opener)
+  })
+
+  it('closes on Escape and asks the page to close it', async () => {
+    await mountDialog()
+
+    dialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper?.emitted('update:modelValue'), 'Escape asks the page to close the dialog').toEqual([[false]])
+  })
+
+  it('offers exactly one filled button, the confirmation', async () => {
+    await mountDialog()
+
+    const filled = [...(dialog()?.querySelectorAll('[data-variant="filled"]') ?? [])].map(button => button.textContent?.trim())
+    expect(filled, 'the only filled button confirms the list').toEqual(['Looks right'])
+  })
 })

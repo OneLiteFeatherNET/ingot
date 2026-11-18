@@ -192,7 +192,7 @@ const validateDomain = (text: string, existing: string[]) => {
       >
         <h3
           id="sso-kind-title"
-          class="md-title-medium text-on-surface"
+          class="md-title-small text-on-surface"
         >
           Which provider is it?
         </h3>
@@ -223,6 +223,43 @@ const validateDomain = (text: string, existing: string[]) => {
         novalidate
         @submit.prevent="save()"
       >
+        <div class="grid gap-4 sm:grid-cols-2">
+          <MdTextField
+            id="sso-id"
+            v-model="form.id"
+            label="Id"
+            type="text"
+            autocomplete="off"
+            :disabled="isEditing"
+            :supporting-text="isEditing ? 'The id is part of the callback URL and of team links, so it cannot change' : 'Lowercase letters, digits and dashes, for example keycloak'"
+            :error="errorOf('id') !== ''"
+            :error-text="errorOf('id')"
+            required
+          />
+          <MdTextField
+            id="sso-label"
+            v-model="form.label"
+            label="Label on the sign in button"
+            type="text"
+            :error="errorOf('label') !== ''"
+            :error-text="errorOf('label')"
+            required
+          />
+        </div>
+
+        <MdTextField
+          id="sso-issuer"
+          v-model="form.issuerUrl"
+          label="Issuer URL"
+          type="url"
+          autocomplete="off"
+          :placeholder="kind?.issuerHint"
+          :supporting-text="kind?.issuerNote ?? (kind?.issuerHint ? `For example ${kind?.issuerHint}` : '')"
+          :error="errorOf('issuerUrl') !== ''"
+          :error-text="errorOf('issuerUrl')"
+          :required="!githubEndpoints"
+        />
+
         <!-- The callback the provider has to accept, and how to register it there. -->
         <section
           class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
@@ -256,43 +293,6 @@ const validateDomain = (text: string, existing: string[]) => {
             </MdIconButton>
           </div>
         </section>
-
-        <div class="grid gap-4 sm:grid-cols-2">
-          <MdTextField
-            id="sso-label"
-            v-model="form.label"
-            label="Label on the sign in button"
-            type="text"
-            :error="errorOf('label') !== ''"
-            :error-text="errorOf('label')"
-            required
-          />
-          <MdTextField
-            id="sso-id"
-            v-model="form.id"
-            label="Id"
-            type="text"
-            autocomplete="off"
-            :disabled="isEditing"
-            :supporting-text="isEditing ? 'The id is part of the callback URL and of team links, so it cannot change' : 'Lowercase letters, digits and dashes, for example keycloak'"
-            :error="errorOf('id') !== ''"
-            :error-text="errorOf('id')"
-            required
-          />
-        </div>
-
-        <MdTextField
-          id="sso-issuer"
-          v-model="form.issuerUrl"
-          label="Issuer URL"
-          type="url"
-          autocomplete="off"
-          :placeholder="kind?.issuerHint"
-          :supporting-text="kind?.issuerNote ?? (kind?.issuerHint ? `For example ${kind?.issuerHint}` : '')"
-          :error="errorOf('issuerUrl') !== ''"
-          :error-text="errorOf('issuerUrl')"
-          :required="!githubEndpoints"
-        />
 
         <div class="grid gap-4 sm:grid-cols-2">
           <MdTextField
@@ -369,12 +369,6 @@ const validateDomain = (text: string, existing: string[]) => {
         </section>
 
         <MdSwitch
-          id="sso-enabled"
-          v-model="form.enabled"
-        >
-          Enabled: offer this provider at sign in
-        </MdSwitch>
-        <MdSwitch
           id="sso-create-users"
           v-model="form.autoCreateUsers"
         >
@@ -418,6 +412,12 @@ const validateDomain = (text: string, existing: string[]) => {
           </div>
         </details>
 
+        <MdSwitch
+          id="sso-enabled"
+          v-model="form.enabled"
+        >
+          Enabled: offer this provider at sign in
+        </MdSwitch>
         <!-- The test reads the saved provider, so it waits for the save. -->
         <section
           class="flex flex-col gap-3 border-t border-outline-variant pt-4"

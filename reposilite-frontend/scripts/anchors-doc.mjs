@@ -18,7 +18,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { renderAnchorsDoc } from "../src/anchors/render.js"
+import { renderAnchorsDoc } from "../src/anchors/render"
 
 const frontendRoot = fileURLToPath(new URL("..", import.meta.url))
 const registry = JSON.parse(readFileSync(`${frontendRoot}/src/anchors/registry.json`, "utf8"))

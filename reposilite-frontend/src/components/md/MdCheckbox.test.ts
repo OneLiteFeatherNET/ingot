@@ -176,4 +176,19 @@ describe('MdCheckbox', () => {
     expect(wrapper.classes()).toContain('mt-2')
     expect(input(wrapper).classes()).not.toContain('mt-2')
   })
+
+  describe('label gap', () => {
+    it('keeps the 8px gap between the box and the label by default', () => {
+      const wrapper = mountCheckbox()
+
+      expect(wrapper.classes(), 'the root has gap-2').toContain('gap-2')
+    })
+
+    it('takes the loose label gap from the labelGap prop', () => {
+      const wrapper = mountCheckbox({ labelGap: 'loose' })
+
+      expect(wrapper.classes(), 'labelGap loose gives gap-3').toContain('gap-3')
+      expect(wrapper.classes(), 'the tight gap is replaced').not.toContain('gap-2')
+    })
+  })
 })

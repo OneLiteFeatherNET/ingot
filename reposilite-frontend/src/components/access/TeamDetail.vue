@@ -36,7 +36,7 @@ import { useTeamDetail, type TeamWrite, type WriteResult } from './useTeamDetail
 
 /*
  * The detail of one team: the header (name, description, external reference, the instance admin
- * switch and the delete action), the members, the parent teams it inherits from, the child teams,
+ * switch, the check permission link and the delete action), the members, the parent teams it inherits from, the child teams,
  * the permission nodes (with the nodes inherited from the ancestors) and the legacy role grants
  * (read only).
  *
@@ -241,7 +241,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
     </div>
 
     <template v-else-if="detail">
-      <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
+      <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
             <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">
@@ -259,14 +259,30 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
               </TokenTag>
             </div>
           </div>
-          <MdButton
-            variant="outlined"
-            error
-            data-test="delete-team"
-            @click="askDelete()"
-          >
-            Delete team
-          </MdButton>
+          <div class="flex max-w-full flex-wrap items-center gap-2">
+            <router-link
+              v-slot="{ href, navigate }"
+              :to="{ name: 'access-check', query: { principal: detail.name } }"
+              custom
+            >
+              <MdButton
+                variant="tonal"
+                :href="href"
+                data-test="check-permission"
+                @click="navigate"
+              >
+                Check permission
+              </MdButton>
+            </router-link>
+            <MdButton
+              variant="outlined"
+              error
+              data-test="delete-team"
+              @click="askDelete()"
+            >
+              Delete team
+            </MdButton>
+          </div>
         </div>
 
         <form

@@ -210,3 +210,23 @@ describe('organization website', () => {
     expect(placeholders.default().organizationWebsite).toBe('')
   })
 })
+
+describe('javadoc suffixes', () => {
+  it('are empty when the server sends no placeholder for them', async () => {
+    respondWith(settingsResponse())
+
+    await placeholders.loadFrontendSettings({ mountPath: '/' })
+
+    expect(placeholders.default().javadocSuffixes, 'a server without the javadoc viewer has no javadoc routes to link to').toEqual([])
+  })
+
+  it('are the ones the server sends while the javadoc viewer is loaded', async () => {
+    respondWith(settingsResponse({
+      placeholders: { '{{REPOSILITE.JAVADOC_SUFFIXES}}': '-javadoc.jar,-groovydoc.jar' }
+    }))
+
+    await placeholders.loadFrontendSettings({ mountPath: '/' })
+
+    expect(placeholders.default().javadocSuffixes, 'the suffixes the server sends').toEqual(['-javadoc.jar', '-groovydoc.jar'])
+  })
+})

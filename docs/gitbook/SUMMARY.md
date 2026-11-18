@@ -175,6 +175,7 @@
   * [Search filters and API](references/http-api/search-filters-and-api.md)
   * [Web routes](references/http-api/web-routes.md)
   * [Dashboard pages](references/http-api/dashboard-pages.md)
+  * [Jobs](references/jobs.md)
 * [Identity](references/identity/README.md)
   * [Permission nodes](references/identity/permission-nodes.md)
   * [Artifact permission nodes](references/identity/artifact-permission-nodes.md)

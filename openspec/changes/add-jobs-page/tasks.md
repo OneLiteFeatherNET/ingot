@@ -34,9 +34,9 @@ dark, before and after the change.
   message, and that a filter on an unknown kind answers an empty page and no error. Verify: it fails.
 - [ ] 2.4 `test(jobs)`: in `JobRegistrationTest.kt`, assert that a source registered on `JobRegistrationEvent` is listed, that a
   registration after the event is logged and not listed, and that the sources of a disabled plugin leave the registry. Verify: it fails.
-- [ ] 2.5 `feat(jobs)`: add `net.onelitefeather.ingot.jobs` (the `JobRun` model, the state and trigger enums, the cursor codec, the merge
-  and the registry) and the types of `com.reposilite.plugin.api.jobs` (`JobSource`, `JobQuery`, `JobPage`, `JobRegistrationEvent`).
-  No existing type of `com.reposilite.plugin.api` changes its signature. Verify: 2.1 to 2.4 pass.
+- [ ] 2.5 `feat(jobs)`: add `net.onelitefeather.ingot.jobs` (the `JobRun` model, the state and trigger enums, the cursor codec, the merge,
+  the registry, and the contract types `JobSource`, `JobQuery`, `JobPage`, `JobRegistrationEvent`). No type of `com.reposilite.*`
+  is added, and no existing type of `com.reposilite.plugin.api` changes its signature. Verify: 2.1 to 2.4 pass.
 
 ### 2b. The endpoints and the core sources
 

@@ -411,7 +411,7 @@ const setShowDetails = (value: boolean) => {
       -->
       <ul
         v-else-if="matches.length > 0"
-        class="mt-2 m-0 list-none overflow-hidden rounded-corner-medium bg-surface-container-low p-0"
+        class="mt-2 m-0 list-none overflow-hidden rounded-corner-medium border border-outline bg-surface-container-low p-0"
       >
         <li
           v-for="repository in matches"

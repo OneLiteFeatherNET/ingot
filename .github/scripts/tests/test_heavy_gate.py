@@ -174,6 +174,59 @@ class DispatchTest(unittest.TestCase):
         self.assertIn("full=true", buffer.getvalue())
 
 
+class MergeGroupTest(unittest.TestCase):
+    """A merge group has no labels: the changed paths, read through ci_scope.sh, decide what runs."""
+
+    NONE = {"image": "false", "chart": "false", "e2e": "false"}
+
+    def merge_group(self, **flags):
+        return heavy_gate.decide("merge_group", "checks_requested", [], "", "", REPO, scope={**self.NONE, **flags})
+
+    def test_untouched_scope_runs_nothing_and_passes(self):
+        decision = self.merge_group()
+        self.assertEqual((), decision.jobs)
+        self.assertTrue(decision.ok)
+
+    def test_image_change_runs_the_images_and_the_chart_install(self):
+        self.assertEqual({"images", "helm"}, set(self.merge_group(image="true").jobs))
+
+    def test_chart_change_runs_only_the_chart(self):
+        self.assertEqual(("helm",), self.merge_group(chart="true").jobs)
+
+    def test_source_change_runs_only_the_end_to_end_tests(self):
+        self.assertEqual(("e2e",), self.merge_group(e2e="true").jobs)
+
+    def test_a_merge_group_never_starts_the_jobs_outside_the_scope_flags(self):
+        jobs = set(self.merge_group(image="true", chart="true", e2e="true").jobs)
+        self.assertEqual({"images", "helm", "e2e"}, jobs)
+
+    def test_unknown_scope_runs_every_scoped_job_and_passes(self):
+        decision = heavy_gate.decide("merge_group", "checks_requested", [], "", "", REPO, scope=None)
+        self.assertEqual({"images", "helm", "e2e"}, set(decision.jobs))
+        self.assertTrue(decision.ok)
+        self.assertFalse(decision.full)
+
+    def test_command_line_reads_the_scope_file_and_null_labels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scope = os.path.join(tmp, "scope.txt")
+            with open(scope, "w", encoding="utf-8") as handle:
+                handle.write("backend=true\nimage=false\nchart=true\ne2e=false\nunit=false\n")
+            with contextlib.redirect_stdout(io.StringIO()) as buffer:
+                code = heavy_gate.main(["decide", "--event-name", "merge_group", "--action", "checks_requested",
+                                        "--labels", "null", "--repo", REPO, "--scope-file", scope])
+        self.assertEqual(0, code)
+        self.assertIn("jobs=helm", buffer.getvalue())
+        self.assertIn("ok=true", buffer.getvalue())
+
+    def test_command_line_without_a_scope_file_runs_every_scoped_job(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stdout(io.StringIO()) as buffer:
+                code = heavy_gate.main(["decide", "--event-name", "merge_group", "--labels", "[]", "--repo", REPO,
+                                        "--scope-file", os.path.join(tmp, "missing.txt")])
+        self.assertEqual(0, code)
+        self.assertIn("jobs=images,e2e,helm", buffer.getvalue())
+
+
 class RenderTest(unittest.TestCase):
     def test_render_has_a_flag_per_job(self):
         lines = heavy_gate.render_decision(pull_request(["ci:e2e"]))

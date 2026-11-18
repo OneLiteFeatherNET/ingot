@@ -31,6 +31,7 @@ import com.reposilite.shared.notFoundError
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.walkFiles
 import io.javalin.http.HttpStatus.CONFLICT
+import net.onelitefeather.ingot.deploy.JobLastSuccessSource
 import panda.std.Result
 import panda.std.asSuccess
 import java.time.Clock
@@ -77,7 +78,9 @@ class CleanupService internal constructor(
     private val claims: ScheduledJobClaims = ScheduledJobClaims.Unshared,
     /** The schedule tick that the timer runs, see [runScheduledTick]. */
     private val scheduledTick: () -> Unit = {},
-) : Facade {
+) : Facade, JobLastSuccessSource {
+
+    override val job: String = "cleanup"
 
     private val running = ConcurrentHashMap.newKeySet<String>()
 
@@ -195,7 +198,7 @@ class CleanupService internal constructor(
     private val lastScheduledSuccess = AtomicReference<Instant?>(null)
 
     /** When a scheduled run of this instance last ended without an error. Null until the first one, read by the metrics. */
-    fun lastScheduledRunSucceededAt(): Instant? = lastScheduledSuccess.get()
+    override fun lastSuccessAt(): Instant? = lastScheduledSuccess.get()
 
     private fun findPolicy(policyId: String): CleanupPolicy? =
         policies().firstOrNull { it.id == policyId }

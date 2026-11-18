@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, useId, watch } from 'vue'
+import MdFieldShell from './MdFieldShell.vue'
 
 /*
  * Multi-line outlined text field, drawn as the MD3 outlined field of MdTextField: the label floats in
@@ -61,7 +62,6 @@ const PADDING_PX = 24
 
 const generatedId = useId()
 const inputId = computed(() => props.id || `md-text-area-${generatedId}`)
-const helperId = computed(() => `${inputId.value}-helper`)
 
 const field = ref<HTMLTextAreaElement | null>(null)
 let observer: ResizeObserver | undefined
@@ -126,10 +126,6 @@ const labelClass = computed(() => [
   props.disabled ? 'text-on-surface/38' : (invalid.value ? 'text-error peer-focus:text-error' : 'text-on-surface-variant peer-focus:text-primary')
 ])
 
-const helperClass = computed(() => {
-  if (props.disabled) return 'text-on-surface/38'
-  return invalid.value ? 'text-error' : 'text-on-surface-variant'
-})
 </script>
 
 <template>
@@ -137,43 +133,43 @@ const helperClass = computed(() => {
     class="flex min-w-0 w-full flex-col gap-1"
     data-ingot-component="md-text-area"
   >
-    <div class="relative">
-      <textarea
-        :id="inputId"
-        ref="field"
-        :value="modelValue"
-        :rows="rows"
-        :maxlength="maxLength > 0 ? maxLength : undefined"
-        :required="required"
-        :disabled="disabled"
-        placeholder=" "
-        :aria-invalid="invalid ? 'true' : undefined"
-        :aria-describedby="helperText ? helperId : undefined"
-        class="peer block w-full resize-none rounded-corner-extra-small border bg-transparent px-4 py-3 md-body-large text-on-surface outline-none"
-        :class="fieldClass"
-        @input="onInput"
-      />
-      <label
-        :for="inputId"
-        :class="labelClass"
-      >{{ label }}</label>
-    </div>
-    <div class="flex items-start justify-between gap-2 px-4">
-      <p
-        :id="helperId"
-        class="md-body-small"
-        :class="helperClass"
-      >
-        {{ helperText }}
-      </p>
-      <p
-        v-if="maxLength > 0"
-        data-test="counter"
-        class="shrink-0 md-body-small"
-        :class="overLimit ? 'text-error' : 'text-on-surface-variant'"
-      >
-        {{ length }} / {{ maxLength }}
-      </p>
-    </div>
+    <MdFieldShell
+      :input-id="inputId"
+      :helper-text="helperText"
+      :invalid="invalid"
+      :disabled="disabled"
+    >
+      <template #default="{ describedBy }">
+        <textarea
+          :id="inputId"
+          ref="field"
+          :value="modelValue"
+          :rows="rows"
+          :maxlength="maxLength > 0 ? maxLength : undefined"
+          :required="required"
+          :disabled="disabled"
+          placeholder=" "
+          :aria-invalid="invalid ? 'true' : undefined"
+          :aria-describedby="describedBy"
+          class="peer block w-full resize-none rounded-corner-extra-small border bg-transparent px-4 py-3 md-body-large text-on-surface outline-none"
+          :class="fieldClass"
+          @input="onInput"
+        />
+        <label
+          :for="inputId"
+          :class="labelClass"
+        >{{ label }}</label>
+      </template>
+      <template #counter>
+        <p
+          v-if="maxLength > 0"
+          data-test="counter"
+          class="shrink-0 md-body-small"
+          :class="overLimit ? 'text-error' : 'text-on-surface-variant'"
+        >
+          {{ length }} / {{ maxLength }}
+        </p>
+      </template>
+    </MdFieldShell>
   </div>
 </template>

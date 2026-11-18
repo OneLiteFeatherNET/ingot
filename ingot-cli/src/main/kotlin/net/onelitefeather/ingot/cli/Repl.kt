@@ -72,7 +72,11 @@ fun runRepl(
             keepGoing = false,
             interactive = true,
             confirm = { command, reason ->
-                reader.readLine("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ").trim().lowercase().let { it == "y" || it == "yes" }
+                try {
+                    reader.readLine("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ").trim().lowercase().let { it == "y" || it == "yes" }
+                } catch (_: UserInterruptException) {
+                    false
+                }
             },
         ),
     )

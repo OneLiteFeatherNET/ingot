@@ -107,4 +107,17 @@ internal class DependencyRulesTest {
             .check(backendClasses)
     }
 
+    /**
+     * The javadoc viewer is on its way into its own plugin module. The core reaches it only through JavadocCacheReceiver of
+     * the cluster package, so no class outside the viewer may name one of its classes, see design D3 of extract-javadoc-plugin.
+     */
+    @Test
+    fun `only the javadoc viewer depends on the javadoc package`() {
+        noClasses()
+            .that().resideOutsideOfPackage("com.reposilite.javadocs..")
+            .should().dependOnClassesThat().resideInAPackage("com.reposilite.javadocs..")
+            .because("the core reaches the javadoc viewer through net.onelitefeather.ingot.cluster.JavadocCacheReceiver, see design D3")
+            .check(backendClasses)
+    }
+
 }

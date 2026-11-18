@@ -83,7 +83,7 @@ for (const width of WIDTHS) {
 
       const explain = access.getByRole('link', { name: /^Explain / })
       await expect(explain.first(), 'the signed-in operator has at least one right to explain').toBeVisible()
-      await expect(access.getByRole('link', { name: 'Explain ingot.admin.*', exact: true }), 'the instance administration right is named with its node').toBeVisible()
+      await expect(access.getByRole('link', { name: 'Explain ingot.admin.* (opens in a new tab)', exact: true }), 'the instance administration right is named with its node').toBeVisible()
     })
   })
 }

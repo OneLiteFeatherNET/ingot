@@ -266,4 +266,79 @@ describe('MdRadio', () => {
       expect(mounted.group.value).toBe('read')
     })
   })
+
+  describe('label gap', () => {
+    it('keeps the 8px gap between the circle and the label of the plain radio by default', () => {
+      mounted = mountRadio()
+
+      expect((mounted.wrapper.element as HTMLElement).className, 'the plain radio root has gap-2').toContain('gap-2')
+    })
+
+    it('keeps the 12px gap between the circle and the text of the card radio by default', () => {
+      mounted = mountRadio({ attrs: { card: true } })
+
+      expect(label().className, 'the card root has gap-3').toContain('gap-3')
+    })
+
+    it('takes the loose label gap from the labelGap prop on the plain radio', () => {
+      mounted = mountRadio({ attrs: { labelGap: 'loose' } })
+
+      expect((mounted.wrapper.element as HTMLElement).className, 'labelGap loose gives gap-3').toContain('gap-3')
+      expect((mounted.wrapper.element as HTMLElement).className, 'the tight gap is replaced').not.toContain('gap-2')
+    })
+
+    it('takes the tight label gap from the labelGap prop on the card radio', () => {
+      mounted = mountRadio({ attrs: { card: true, labelGap: 'tight' } })
+
+      expect(label().className, 'labelGap tight gives gap-2').toContain('gap-2')
+      expect(label().className, 'the loose gap is replaced').not.toContain('gap-3')
+    })
+  })
+
+  describe('supporting text', () => {
+    const mountWithSupporting = () => mount({
+      setup: () => () => h(MdRadio, {
+        modelValue: 'all',
+        value: 'read',
+        name: 'access'
+      }, {
+        default: () => 'Read only',
+        supporting: () => 'Can browse and download'
+      })
+    }, { attachTo: document.body })
+
+    it('renders the supporting slot as a line under the label', () => {
+      mounted = { wrapper: mountWithSupporting(), group: ref('all') }
+
+      const supporting = document.querySelector<HTMLElement>('[data-part="supporting"]')
+      expect(supporting, 'the supporting line is rendered').not.toBeNull()
+      expect(supporting!.textContent.trim()).toBe('Can browse and download')
+    })
+
+    it('keeps the supporting line out of the accessible name of the radio', () => {
+      mounted = { wrapper: mountWithSupporting(), group: ref('all') }
+
+      expect(input().labels![0].textContent.trim(), 'the name is the label text only').toBe('Read only')
+    })
+
+    it('renders no supporting line when the slot is not given', () => {
+      mounted = mountRadio()
+
+      expect(document.querySelector('[data-part="supporting"]'), 'no supporting line by default').toBeNull()
+    })
+  })
+
+  describe('focus ring', () => {
+    it('draws no focus ring on the plain radio by default', () => {
+      mounted = mountRadio()
+
+      expect(input().parentElement!.className, 'the circle container has no ring class').not.toContain('md-focus-ring')
+    })
+
+    it('draws the focus ring on the plain radio when focus-ring is set', () => {
+      mounted = mountRadio({ attrs: { focusRing: true } })
+
+      expect(input().parentElement!.className, 'the ring shows while the radio has keyboard focus').toContain('has-focus-visible:md-focus-ring-within')
+    })
+  })
 })

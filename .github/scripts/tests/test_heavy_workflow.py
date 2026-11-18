@@ -73,8 +73,8 @@ class TriggerTest(unittest.TestCase):
         types = triggers()["pull_request"]["types"]
         self.assertEqual({"opened", "reopened", "synchronize", "labeled", "unlabeled"}, set(types))
 
-    def test_pull_request_targets_main(self):
-        self.assertEqual(["main"], triggers()["pull_request"]["branches"])
+    def test_pull_request_targets_main_and_release_branches(self):
+        self.assertEqual({"main", "release/**"}, set(triggers()["pull_request"]["branches"]))
 
     def test_there_is_no_schedule(self):
         self.assertNotIn("schedule", triggers())
@@ -90,7 +90,10 @@ class TriggerTest(unittest.TestCase):
         self.assertIn("REF: ${{ github.ref }}", read_text())
 
     def test_only_expected_events_start_the_workflow(self):
-        self.assertLessEqual(set(triggers()), {"pull_request", "workflow_dispatch"})
+        self.assertLessEqual(set(triggers()), {"pull_request", "workflow_dispatch", "merge_group"})
+
+    def test_the_merge_queue_starts_the_workflow(self):
+        self.assertEqual({"types": ["checks_requested"]}, triggers()["merge_group"])
 
 
 class SafetyTest(unittest.TestCase):

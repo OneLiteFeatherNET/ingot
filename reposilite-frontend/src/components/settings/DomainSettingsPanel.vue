@@ -21,6 +21,7 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { useSession } from '../../store/session'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import { collectionsOf } from './collections'
+import { nestedUischemas } from './nestedLayouts'
 import { domainFormOf } from './domainForm'
 import { diffSettings, revertChange } from './settingsDiff'
 import { settingsByDomain } from './settingsExport'
@@ -131,6 +132,7 @@ const discardAll = () => {
       :schema="form.schema"
       :uischema="form.layout"
       :renderers="renderers"
+      :uischemas="nestedUischemas"
       :ajv="store.configurationValidator"
       @change="onChange"
     />

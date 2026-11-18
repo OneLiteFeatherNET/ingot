@@ -39,6 +39,7 @@ import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
 import { collectionsOf, entryAddresses, idText, validateNewId } from './collections'
+import { nestedUischemas } from './nestedLayouts'
 import { barClearance } from './barClearance'
 import { settingsByDomain } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
@@ -146,11 +147,9 @@ const nameOfEntry = (domain, collectionKey, address) => {
   if (!list || !entry) return address
   return idText(entry) || `Unnamed ${list.noun}`
 }
-// The name of the item on a detail page: the repository or the entry it opens. Empty on every other page.
-const detailTitle = computed(() => {
-  if (repositoryPage.value) return nameOfEntry('maven', 'repositories', route.params.id)
-  return entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''
-})
+// The name of the item on a detail page: the entry it opens. Empty on every other page, and on a repository, whose page
+// keeps the name of the Repositories list; the repository is named by its own heading in the detail.
+const detailTitle = computed(() => (entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''))
 // The entry of the tree on screen: the domain in the address, or the Repositories page. The hub marks none.
 const settingsCurrent = computed(() => currentTreeKey(route.name, props.domain))
 
@@ -205,8 +204,15 @@ const activeSection = computed(() => activeTabKey(sectionTabs.value, route.query
 const indexRebuild = computed(() => (activeDomain.value === 'search' ? indexRebuildLinkOf(can) : undefined))
 const activeSectionLayout = computed(() => sectionTabs.value.find(tab => tab.key === activeSection.value)?.layout)
 const firstErrorSection = computed(() => firstErrorTab(sectionTabs.value, sectionErrors.value))
+// The save bar names that tab and links to its address, so the link works like any other link of the page.
+const firstErrorLink = computed(() => {
+  const key = firstErrorSection.value
+  if (key === undefined) return null
+  const tab = sectionTabs.value.find(entry => entry.key === key)
+  return { label: tab.label, href: router.resolve({ path: route.path, query: { ...route.query, tab: key }, hash: route.hash }).href }
+})
 
-// The bar's button moves to the tab that holds the first error, where the error is fixed. Save stays off while the domain is invalid.
+// The bar's link moves to the tab that holds the first error, where the error is fixed. Save stays off while the domain is invalid.
 const showFirstError = () => {
   const key = firstErrorSection.value
   if (key === undefined) return
@@ -505,6 +511,7 @@ watch(
                   :schema="domainForm.schema"
                   :uischema="activeSectionLayout"
                   :renderers="renderers"
+                  :uischemas="nestedUischemas"
                   :ajv="store.configurationValidator"
                   @change="onDomainChange(activeDomain, $event)"
                 />
@@ -518,6 +525,7 @@ watch(
               :schema="domainForm.schema"
               :uischema="domainForm.layout"
               :renderers="renderers"
+              :uischemas="nestedUischemas"
               :ajv="store.configurationValidator"
               @change="onDomainChange(activeDomain, $event)"
             />
@@ -557,7 +565,7 @@ watch(
         :count="countOfChanges"
         :invalid="invalidDomains.length > 0"
         :saving="saving"
-        :first-error-label="firstErrorSection === undefined ? '' : 'Show the first error'"
+        :first-error="firstErrorLink"
         @save="save"
         @discard="discard"
         @review="reviewOpen = true"

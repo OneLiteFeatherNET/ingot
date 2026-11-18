@@ -189,7 +189,6 @@ class ClusterBusImageTest {
         val STATUS_BOUND: Duration = Duration.ofSeconds(180)
 
         const val NATS_IMAGE = "nats:2.12-alpine"
-        const val MARIADB_IMAGE = "mariadb:11.4"
         const val DB_NAME = "ingot"
         const val DB_USER = "ingot"
         const val DB_PASSWORD = "database-password-for-the-rehearsal"

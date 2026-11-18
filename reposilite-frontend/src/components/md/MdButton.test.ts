@@ -16,8 +16,22 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import MdButton from './MdButton.vue'
+
+const makeRouter = async (path: string): Promise<Router> => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/tokens', component: { render: () => null } },
+      { path: '/settings', component: { render: () => null } }
+    ]
+  })
+  await router.push(path)
+  await router.isReady()
+  return router
+}
 
 describe('MdButton', () => {
   it('renders a button element with type button by default', () => {
@@ -182,5 +196,53 @@ describe('MdButton', () => {
     await wrapper.trigger('click')
 
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a router link when to is given', async () => {
+    const router = await makeRouter('/tokens')
+    const wrapper = mount(MdButton, { props: { to: '/settings' }, slots: { default: 'Settings' }, global: { plugins: [router] } })
+
+    expect((wrapper.element as HTMLElement).tagName).toBe('A')
+    expect(wrapper.attributes('href')).toBe('/settings')
+  })
+
+  it('moves the router to the target of a plain click on a to button', async () => {
+    const router = await makeRouter('/tokens')
+    const wrapper = mount(MdButton, { props: { to: '/settings' }, slots: { default: 'Settings' }, global: { plugins: [router] } })
+
+    await wrapper.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path, 'the click navigates the router to the target').toBe('/settings')
+  })
+
+  it('renders no router link for a disabled to button and removes its href', () => {
+    const wrapper = mount(MdButton, { props: { to: '/settings', disabled: true }, slots: { default: 'Settings' } })
+
+    expect((wrapper.element as HTMLElement).tagName).toBe('A')
+    expect(wrapper.attributes('href'), 'a disabled button has no destination').toBeUndefined()
+    expect(wrapper.attributes('aria-disabled')).toBe('true')
+  })
+
+  it('uses the inverse primary and inverse surface roles for the filled inverse button', () => {
+    const wrapper = mount(MdButton, { props: { inverse: true }, slots: { default: 'Undo' } })
+
+    expect(wrapper.classes()).toContain('bg-inverse-primary')
+    expect(wrapper.classes()).toContain('text-inverse-surface')
+    expect(wrapper.classes()).not.toContain('bg-primary')
+  })
+
+  it('uses the inverse primary text role for the text inverse button', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text', inverse: true }, slots: { default: 'Undo' } })
+
+    expect(wrapper.classes()).toContain('text-inverse-primary')
+    expect(wrapper.classes()).not.toContain('text-primary')
+  })
+
+  it('shows the disabled colours instead of the inverse colours when disabled', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text', inverse: true, disabled: true }, slots: { default: 'Undo' } })
+
+    expect(wrapper.classes()).not.toContain('text-inverse-primary')
+    expect(wrapper.classes()).toContain('text-on-surface/md-disabled-content')
   })
 })

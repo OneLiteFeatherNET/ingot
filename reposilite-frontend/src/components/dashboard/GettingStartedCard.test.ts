@@ -228,6 +228,14 @@ describe('GettingStartedCard', () => {
     expect($('#getting-started-title')).toBeNull()
   })
 
+  it('marks the failed settings notice with the error state attribute', async () => {
+    await mountCard({ client: fakeClient({ failDomains: true }) })
+
+    const alert = $('[role="alert"]')
+    expect(alert?.getAttribute('data-ingot-state'), 'the notice should carry the error state').toBe('error')
+    expect(alert?.getAttribute('data-tone'), 'the notice should be drawn in the error tone').toBe('error')
+  })
+
   it('shows an explanation instead of a checklist that can never complete when the settings fail to load', async () => {
     await mountCard({ client: fakeClient({ failDomains: true }) })
 

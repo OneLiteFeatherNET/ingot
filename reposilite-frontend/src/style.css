@@ -24,6 +24,7 @@
 @import "./styles/md3/color.css";
 @import "./styles/md3/typography.css";
 @import "./styles/md3/shape-elevation-motion.css";
+@import "./styles/md3/motion-transitions.css";
 @import "./styles/md3/state-layer.css";
 @import "./styles/md3/touch-target.css";
 
@@ -68,6 +69,17 @@
   & > svg {
     width: var(--spacing-md-icon);
     height: var(--spacing-md-icon);
+  }
+}
+
+/*
+ * Draws the data-initial attribute of an avatar as generated content instead of a text node. A button named by an
+ * aria-label must show text that the label contains (WCAG 2.5.3, label in name); a decorative initial in front of the
+ * name would break that, and aria-hidden does not take visible text out of the check.
+ */
+@utility initial-from-data {
+  &::before {
+    content: attr(data-initial);
   }
 }
 

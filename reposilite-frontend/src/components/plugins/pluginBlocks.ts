@@ -24,7 +24,7 @@ import type { Method } from 'axios'
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core'
 import type { PluginPage } from '../../navigation/registry'
 
-export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status']
+export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link']
 
 // One block of a page as the server declares it. Each kind reads only the fields it names.
 export interface PluginBlockDefinition {
@@ -38,6 +38,8 @@ export interface PluginBlockDefinition {
   confirm?: string
   danger?: boolean
   refreshSeconds?: number
+  language?: string
+  href?: string
   columns?: { key: string; label: string }[]
   schema?: JsonSchema
   uiSchema?: UISchemaElement
@@ -59,6 +61,17 @@ export const pathAllowed = (plugin: string, path: unknown): boolean => {
   if (typeof path !== 'string' || !path.startsWith(prefix) || !PATH_CHARACTERS.test(path)) return false
   const rest = path.slice(prefix.length)
   return rest.length > 0 && rest.split('/').every(segment => segment !== '' && segment !== '.' && segment !== '..')
+}
+
+const LINK_CHARACTERS = /^[A-Za-z0-9._~/?=&-]+$/
+const LINK_LIMIT = 500
+
+// A link is a same-origin path, checked with the same rules as the server (PluginUiValidator.linkProblem).
+export const linkAllowed = (href: unknown): boolean => {
+  if (typeof href !== 'string' || href.length > LINK_LIMIT || !LINK_CHARACTERS.test(href)) return false
+  if (!href.startsWith('/') || href[1] === '/' || href[1] === '\\') return false
+  if (href.startsWith('/api/') || href.startsWith('/assets/')) return false
+  return href.split('?')[0].slice(1).split('/').every(segment => segment !== '' && segment !== '.' && segment !== '..')
 }
 
 // The text a value shows as: strings as they are, everything else as compact JSON.

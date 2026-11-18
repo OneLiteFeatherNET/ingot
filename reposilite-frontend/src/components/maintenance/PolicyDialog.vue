@@ -16,14 +16,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PropType } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 import {
   SCOPES,
   draftFromPolicy,
@@ -40,29 +40,20 @@ import type { PolicyDraft, PolicyErrors, PolicyPayload, PolicyWire, ScheduleMode
  * user has tried to save, and a save with an error sends nothing: the parent receives the policy
  * in the wire shape only when every rule holds.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   /** The policy being edited, or null for a new one. */
-  policy: {
-    type: Object as PropType<PolicyWire | null>,
-    default: null
-  },
-  existingIds: {
-    type: Array as PropType<string[]>,
-    default: () => []
-  },
+  policy?: PolicyWire | null
+  existingIds?: string[]
   /** The repository ids the maven settings define. */
-  repositoryIds: {
-    type: Array as PropType<string[]>,
-    default: () => []
-  },
-  saving: {
-    type: Boolean,
-    default: false
-  }
+  repositoryIds?: string[]
+  saving?: boolean
+}>(), {
+  modelValue: false,
+  policy: null,
+  existingIds: () => [],
+  repositoryIds: () => [],
+  saving: false
 })
 
 const emit = defineEmits<{
@@ -114,20 +105,12 @@ const submit = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
+    labelledby="policy-dialog-title"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div
-      class="w-[calc(100vw-2rem)] max-w-xl max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="policy-dialog-title"
-      data-ingot-component="policy-dialog"
-    >
+    <div data-ingot-component="policy-dialog">
       <h2
         id="policy-dialog-title"
         class="md-headline-small text-on-surface"
@@ -210,6 +193,18 @@ const submit = () => {
           @update:model-value="draft.scope = $event"
         />
 
+        <MdTextField
+          id="policy-group-filter"
+          label="Group filter (optional)"
+          variant="outlined"
+          autocomplete="off"
+          :model-value="draft.groupFilter"
+          supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
+          :error="!!shownErrors.groupFilter"
+          :error-text="shownErrors.groupFilter"
+          @update:model-value="draft.groupFilter = $event"
+        />
+
         <fieldset class="flex flex-col gap-4">
           <legend class="md-label-large text-on-surface-variant">
             Limits. Set at least one.
@@ -256,26 +251,13 @@ const submit = () => {
             :error-text="shownErrors.notDownloadedForDays"
             @update:model-value="draft.notDownloadedForDays = $event"
           />
-          <p
+          <MdAlert
             v-if="shownErrors.retention"
-            class="md-body-medium text-error"
-            role="alert"
+            tone="error"
           >
             {{ shownErrors.retention }}
-          </p>
+          </MdAlert>
         </fieldset>
-
-        <MdTextField
-          id="policy-group-filter"
-          label="Group filter (optional)"
-          variant="outlined"
-          autocomplete="off"
-          :model-value="draft.groupFilter"
-          supporting-text="A Java regular expression matched against the artifact path, for example net/onelitefeather/.*"
-          :error="!!shownErrors.groupFilter"
-          :error-text="shownErrors.groupFilter"
-          @update:model-value="draft.groupFilter = $event"
-        />
 
         <fieldset class="flex flex-col gap-3 pt-3">
           <legend class="md-label-large text-on-surface-variant">
@@ -301,26 +283,27 @@ const submit = () => {
             @update:model-value="draft.scheduleTime = $event"
           />
         </fieldset>
-
-        <div class="mt-2 flex flex-wrap justify-end gap-2">
-          <MdButton
-            id="policy-cancel"
-            variant="text"
-            type="button"
-            @click="close"
-          >
-            Cancel
-          </MdButton>
-          <MdButton
-            id="policy-save"
-            variant="filled"
-            type="submit"
-            :disabled="saving"
-          >
-            Save policy
-          </MdButton>
-        </div>
       </form>
+
+      <MdDialogActions class="mt-7">
+        <MdButton
+          id="policy-cancel"
+          variant="text"
+          type="button"
+          @click="close"
+        >
+          Cancel
+        </MdButton>
+        <MdButton
+          id="policy-save"
+          variant="filled"
+          type="submit"
+          form="policy-form"
+          :disabled="saving"
+        >
+          Save policy
+        </MdButton>
+      </MdDialogActions>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>

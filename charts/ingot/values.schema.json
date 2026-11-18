@@ -35,6 +35,21 @@
         "existingSecret": {"type": "string", "description": "Secret with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and optional AWS_REGION."}
       }
     },
+    "tests": {
+      "type": "object",
+      "description": "Helm test hook. enabled renders the test pod, tokenSecret names the Secret with the token.",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "image": {"type": "string"},
+        "tokenSecret": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "Secret that holds the token. Empty means no token."},
+            "key": {"type": "string", "description": "Key of the token Secret. Required when name is set."}
+          }
+        }
+      }
+    },
     "clusterBus": {
       "type": "object",
       "properties": {

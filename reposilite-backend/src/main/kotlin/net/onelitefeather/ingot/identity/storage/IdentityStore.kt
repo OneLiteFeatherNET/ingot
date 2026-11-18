@@ -645,54 +645,7 @@ class IdentityStore(
                 .where { TeamMemberTable.principalId eq principal.id }
                 .map { it[TeamMemberTable.teamId].value }
                 .toSet()
-            val parentsOf = TeamParentTable.selectAll()
-                .groupBy({ it[TeamParentTable.teamId].value }, { it[TeamParentTable.parentTeamId].value })
-                .mapValues { (_, parents) -> parents.toSet() }
-            val reached = TeamHierarchy.levelsFrom(directTeams, parentsOf)
-            val teamIds = reached.flatMap { it.second }.toList()
-
-            val teamNames: Map<Int, String> = if (teamIds.isEmpty()) emptyMap() else TeamTable.selectAll()
-                .where { TeamTable.id inList teamIds.map { EntityID(it, TeamTable) } }
-                .associate { it[TeamTable.id].value to it[TeamTable.name] }
-            val nodesByTeam: Map<Int, List<NodeRow>> = if (teamIds.isEmpty()) emptyMap() else PermissionNodeTable.selectAll()
-                .where { (PermissionNodeTable.subjectKind eq NODE_SUBJECT_TEAM) and (PermissionNodeTable.subjectId inList teamIds) }
-                .groupBy { it[PermissionNodeTable.subjectId] }
-                .mapValues { (_, rows) -> rows.map { NodeRow(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) } }
-            val grantsByTeam: Map<Int, List<Grant>> = if (teamIds.isEmpty()) emptyMap() else TeamGrantTable.selectAll()
-                .where { TeamGrantTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
-                .groupBy { it[TeamGrantTable.teamId].value }
-                .mapValues { (teamId, rows) ->
-                    rows.mapNotNull { row ->
-                        teamNames[teamId]?.let { name ->
-                            Grant(
-                                team = name,
-                                role = Role.valueOf(row[TeamGrantTable.role]),
-                                repository = row[TeamGrantTable.repository],
-                                pathPrefix = row[TeamGrantTable.pathPrefix],
-                            )
-                        }
-                    }
-                }
-
-            val levels = mutableListOf(
-                AccessLevel(
-                    source = DecisionSource.USER,
-                    depth = 0,
-                    rules = nodeRulesOf(principal.kind.name, principal.id, principal.name),
-                    grants = emptyList(),
-                ),
-            )
-            reached.forEach { (depth, ids) ->
-                levels += AccessLevel(
-                    source = if (depth == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
-                    depth = depth,
-                    rules = ids.flatMap { id ->
-                        val name = teamNames[id] ?: return@flatMap emptyList()
-                        nodesByTeam[id].orEmpty().mapNotNull { row -> sourcedRule(name, row.node, row.allowed) }
-                    },
-                    grants = ids.flatMap { grantsByTeam[it].orEmpty() },
-                )
-            }
+            val (levels, teamNames) = levelsOf(directTeams, nodeRulesOf(principal.kind.name, principal.id, principal.name))
 
             AccessSubject(
                 principalId = principal.id,
@@ -704,6 +657,82 @@ class IdentityStore(
                 teams = directTeams.mapNotNull { teamNames[it] }.sorted(),
             )
         }
+
+    /**
+     * What a team grants to a check: the same rights a member of the team gets, its own nodes and grants and those of the
+     * parents it inherits, at the same distances. A team holds no node list of its own and no token, so none is read. The
+     * kind is a placeholder: a team is neither a user nor a machine, and nothing in the evaluation reads it for an access
+     * subject that has no principal id.
+     */
+    fun loadTeamAccess(team: TeamRecord): AccessSubject =
+        transaction(database) {
+            val (levels, _) = levelsOf(setOf(team.id), ownRules = emptyList())
+
+            AccessSubject(
+                principalId = null,
+                principalName = team.name,
+                kind = PrincipalKind.USER,
+                disabled = false,
+                levels = levels,
+                tokenRules = null,
+            )
+        }
+
+    /**
+     * The precedence levels of a subject that belongs to [directTeams], with the names of the teams it reaches. The first
+     * level holds the subject's own [ownRules]; then one level per distance holds the nodes and grants of each reached team.
+     */
+    private fun levelsOf(directTeams: Set<Int>, ownRules: List<SourcedRule>): Pair<List<AccessLevel>, Map<Int, String>> {
+        val parentsOf = TeamParentTable.selectAll()
+            .groupBy({ it[TeamParentTable.teamId].value }, { it[TeamParentTable.parentTeamId].value })
+            .mapValues { (_, parents) -> parents.toSet() }
+        val reached = TeamHierarchy.levelsFrom(directTeams, parentsOf)
+        val teamIds = reached.flatMap { it.second }.toList()
+
+        val teamNames: Map<Int, String> = if (teamIds.isEmpty()) emptyMap() else TeamTable.selectAll()
+            .where { TeamTable.id inList teamIds.map { EntityID(it, TeamTable) } }
+            .associate { it[TeamTable.id].value to it[TeamTable.name] }
+        val nodesByTeam: Map<Int, List<NodeRow>> = if (teamIds.isEmpty()) emptyMap() else PermissionNodeTable.selectAll()
+            .where { (PermissionNodeTable.subjectKind eq NODE_SUBJECT_TEAM) and (PermissionNodeTable.subjectId inList teamIds) }
+            .groupBy { it[PermissionNodeTable.subjectId] }
+            .mapValues { (_, rows) -> rows.map { NodeRow(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) } }
+        val grantsByTeam: Map<Int, List<Grant>> = if (teamIds.isEmpty()) emptyMap() else TeamGrantTable.selectAll()
+            .where { TeamGrantTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
+            .groupBy { it[TeamGrantTable.teamId].value }
+            .mapValues { (teamId, rows) ->
+                rows.mapNotNull { row ->
+                    teamNames[teamId]?.let { name ->
+                        Grant(
+                            team = name,
+                            role = Role.valueOf(row[TeamGrantTable.role]),
+                            repository = row[TeamGrantTable.repository],
+                            pathPrefix = row[TeamGrantTable.pathPrefix],
+                        )
+                    }
+                }
+            }
+
+        val levels = mutableListOf(
+            AccessLevel(
+                source = DecisionSource.USER,
+                depth = 0,
+                rules = ownRules,
+                grants = emptyList(),
+            ),
+        )
+        reached.forEach { (depth, ids) ->
+            levels += AccessLevel(
+                source = if (depth == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
+                depth = depth,
+                rules = ids.flatMap { id ->
+                    val name = teamNames[id] ?: return@flatMap emptyList()
+                    nodesByTeam[id].orEmpty().mapNotNull { row -> sourcedRule(name, row.node, row.allowed) }
+                },
+                grants = ids.flatMap { grantsByTeam[it].orEmpty() },
+            )
+        }
+        return levels to teamNames
+    }
 
     /**
      * The rows the last-admin rule needs, read in one query each. The rule itself is pure (see [AdminReachability]).

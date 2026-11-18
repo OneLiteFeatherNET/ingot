@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test \"lib/**/*.test.ts\" \"runner/**/*.test.ts\" \"scenarios/**/*.test.ts\" \"profiles/**/*.test.ts\"",
+    "test": "tsx --test \"lib/**/*.test.ts\" \"runner/**/*.test.ts\" \"scenarios/**/*.test.ts\" \"profiles/**/*.test.ts\" \"topologies/**/*.test.ts\" \"k8s/**/*.test.ts\"",
     "load": "tsx runner/main.ts"
   },
   "devDependencies": {

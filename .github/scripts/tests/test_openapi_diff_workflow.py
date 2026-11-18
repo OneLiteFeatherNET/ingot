@@ -106,7 +106,7 @@ class TriggerTest(unittest.TestCase):
         text = load_workflow()
         self.assertIn("pull_request:", text, "the workflow must run on pull requests")
         self.assertIn('"edited"', text, "the workflow must run on edited, so fixing the title needs no new push")
-        self.assertIn('branches: [ "main" ]', text, "the workflow must run for pull requests to main")
+        self.assertIn('branches: [ "main", "release/**" ]', text, "the workflow must run for pull requests to main and release branches")
 
 
 class TitleInputTest(unittest.TestCase):

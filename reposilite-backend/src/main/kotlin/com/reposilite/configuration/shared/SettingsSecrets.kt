@@ -43,6 +43,21 @@ private const val WITHHELD_DOMAIN = "<withheld>"
 private const val UNREADABLE_DOCUMENT = "<unreadable shared configuration withheld>"
 
 /**
+ * The classes a `oneOf` property may hold beyond those its [OneOf] annotation lists, by the declared type of the property. A storage
+ * plugin adds its settings class this way, so its [Sensitive] fields are secrets like those of the built-in providers.
+ */
+fun interface OneOfVariants {
+
+    fun of(declared: KClass<*>): List<KClass<*>>
+
+    companion object {
+        /** No class beyond the annotation, which is the shape of a server without plugins. */
+        val NONE = OneOfVariants { emptyList() }
+    }
+
+}
+
+/**
  * Where the secrets of one settings type sit, derived once from the annotations of its properties.
  * [fields] only holds the children that contain a secret, [items] describes the entries of a list.
  */
@@ -87,33 +102,44 @@ internal object SettingsSecrets {
      * Masks the secrets of [settings]. With [keepReferences] set, a value that holds nothing but settings secret references is left as
      * written, because a reference names a secret without containing one. Every other secret is masked.
      */
-    fun mask(type: Class<*>, settings: JsonNode, keepReferences: Boolean = false): JsonNode =
-        maskNode(settings.deepCopy(), shapeOf(type), keepReferences)
+    fun mask(type: Class<*>, settings: JsonNode, keepReferences: Boolean = false, variants: OneOfVariants = OneOfVariants.NONE): JsonNode =
+        maskNode(settings.deepCopy(), shapeOf(type, variants), keepReferences)
 
     /**
      * Replaces every non-null [Sensitive] text value of [settings] with the result of [transform], which receives the property path of
      * the value. The input is not changed.
      */
-    fun transformSensitive(type: Class<*>, settings: JsonNode, transform: (path: String, value: String) -> String): JsonNode =
-        transformNode(settings.deepCopy(), shapeOf(type), path = "", transform)
+    fun transformSensitive(
+        type: Class<*>,
+        settings: JsonNode,
+        variants: OneOfVariants = OneOfVariants.NONE,
+        transform: (path: String, value: String) -> String,
+    ): JsonNode =
+        transformNode(settings.deepCopy(), shapeOf(type, variants), path = "", transform)
 
     /**
      * Restores the secrets of [incoming] from [stored]. A placeholder is replaced only when [placeholders] is set, which is the case
      * while secrets are hidden. Absent secrets of matched entries are kept either way.
      */
-    fun restore(type: Class<*>, incoming: JsonNode, stored: JsonNode, placeholders: Boolean = true): Result<JsonNode, String> =
-        restoreNode(incoming, listOf(stored), shapeOf(type), path = "", placeholders = placeholders, inEntry = false)
+    fun restore(
+        type: Class<*>,
+        incoming: JsonNode,
+        stored: JsonNode,
+        placeholders: Boolean = true,
+        variants: OneOfVariants = OneOfVariants.NONE,
+    ): Result<JsonNode, String> =
+        restoreNode(incoming, listOf(stored), shapeOf(type, variants), path = "", placeholders = placeholders, inEntry = false)
 
     /**
      * Masks a shared configuration document for logging. Domains without a known type are withheld completely.
      */
-    fun redactDocument(document: String, types: Map<String, Class<*>>): String {
+    fun redactDocument(document: String, types: Map<String, Class<*>>, variants: OneOfVariants = OneOfVariants.NONE): String {
         val root = runCatching { DEFAULT_OBJECT_MAPPER.readTree(document) }.getOrNull() as? ObjectNode
             ?: return UNREADABLE_DOCUMENT
 
         root.fieldNames().asSequence().toList().forEach { domain ->
             val type = types[domain]
-            root.set<JsonNode>(domain, if (type == null) TextNode(WITHHELD_DOMAIN) else mask(type, root.get(domain)))
+            root.set<JsonNode>(domain, if (type == null) TextNode(WITHHELD_DOMAIN) else mask(type, root.get(domain), variants = variants))
         }
 
         return DEFAULT_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root)
@@ -234,25 +260,40 @@ internal object SettingsSecrets {
         return incoming.asSuccess()
     }
 
-    private fun shapeOf(type: Class<*>): SecretShape =
-        objectShape(type.kotlin, enclosing = emptySet())
+    /**
+     * The first property of [type], or of a class nested in it, that is marked [Sensitive] but is not a String, or null when every
+     * secret of [type] can be hidden. A plugin class with such a property is left out instead of breaking the shape of its domain.
+     */
+    fun unusableSensitiveField(type: KClass<*>): String? =
+        try {
+            objectShape(type, enclosing = emptySet(), OneOfVariants.NONE)
+            null
+        } catch (exception: UnusableSecretException) {
+            exception.property
+        }
 
-    private fun objectShape(type: KClass<*>, enclosing: Set<KClass<*>>): SecretShape {
+    private class UnusableSecretException(val property: String) :
+        IllegalStateException("Property '$property' is marked @Sensitive but is not a String")
+
+    private fun shapeOf(type: Class<*>, variants: OneOfVariants): SecretShape =
+        objectShape(type.kotlin, enclosing = emptySet(), variants)
+
+    private fun objectShape(type: KClass<*>, enclosing: Set<KClass<*>>, variants: OneOfVariants): SecretShape {
         if (type in enclosing) {
             return SecretShape.EMPTY
         }
 
         val path = enclosing + type
         val fields = type.memberProperties
-            .associate { property -> property.name to propertyShape(property, path) }
+            .associate { property -> property.name to propertyShape(property, path, variants) }
             .filterValues { !it.isEmpty }
 
         return SecretShape(fields = fields)
     }
 
-    private fun propertyShape(property: KProperty1<*, *>, enclosing: Set<KClass<*>>): SecretShape {
+    private fun propertyShape(property: KProperty1<*, *>, enclosing: Set<KClass<*>>, variants: OneOfVariants): SecretShape {
         if (property.getter.findAnnotation<Sensitive>() != null) {
-            check(property.returnType.classifier == String::class) { "Property '${property.name}' is marked @Sensitive but is not a String" }
+            if (property.returnType.classifier != String::class) throw UnusableSecretException(property.name)
             return SecretShape(sensitive = true)
         }
 
@@ -261,7 +302,7 @@ internal object SettingsSecrets {
         if (classifier == List::class) {
             val element = property.returnType.arguments.firstOrNull()?.type?.classifier as? KClass<*>
                 ?: return SecretShape.EMPTY
-            val elementShape = objectShape(element, enclosing)
+            val elementShape = objectShape(element, enclosing, variants)
             if (elementShape.isEmpty) {
                 return SecretShape.EMPTY
             }
@@ -272,12 +313,12 @@ internal object SettingsSecrets {
         }
 
         property.getter.findAnnotation<OneOf>()?.let { oneOf ->
-            return oneOf.value
-                .map { objectShape(it, enclosing) }
+            return (oneOf.value.toList() + variants.of(classifier))
+                .map { objectShape(it, enclosing, variants) }
                 .fold(SecretShape.EMPTY, ::union)
         }
 
-        return if (classifier.isData) objectShape(classifier, enclosing) else SecretShape.EMPTY
+        return if (classifier.isData) objectShape(classifier, enclosing, variants) else SecretShape.EMPTY
     }
 
     /**

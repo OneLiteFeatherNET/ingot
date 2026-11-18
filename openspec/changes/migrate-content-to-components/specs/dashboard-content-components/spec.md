@@ -20,6 +20,11 @@ the radius.
 - **WHEN** a view that drew a card with `rounded-corner-medium` or `rounded-corner-large` by hand is migrated
 - **THEN** the card is an `MdCard`, its radius and padding come from the component, and the view carries no corner radius class
 
+#### Scenario: A hand-built low card
+
+- **WHEN** a view draws a flat tinted panel by hand
+- **THEN** the panel is an `MdCard` with `variant="low"`, and the view carries no background class for it
+
 #### Scenario: Full-bleed content
 
 - **WHEN** a card holds a table or a list that fills its width
@@ -204,7 +209,7 @@ visible size.
 
 ### Requirement: Breakpoints are the MD3 window classes only
 
-The layout SHALL use only the MD3 window classes `medium` (600 pixels), `expanded` (840 pixels), `large` (1200 pixels) and
+The layout SHALL use only the MD3 window classes `medium` (600 pixels), `expanded` (840 pixels), `large` (1240 pixels) and
 `xlarge` (1600 pixels), with the compact window below 600 pixels having no prefix. The theme SHALL reset every default
 breakpoint of Tailwind, so that `sm:`, `md:`, `lg:`, `xl:` and `2xl:` do not exist. A view SHALL NOT use a width literal in a
 utility, a media query or a `max-[...]` variant.
@@ -212,8 +217,9 @@ utility, a media query or a `max-[...]` variant.
 #### Scenario: Window classes exist
 
 - **WHEN** the theme in `src/style.css` is read
-- **THEN** `--breakpoint-*: initial` is declared, and the breakpoints are `--breakpoint-medium: 600px`, `--breakpoint-expanded: 840px`,
-  `--breakpoint-large: 1200px` and `--breakpoint-xlarge: 1600px`, and no other breakpoint
+- **THEN** `--breakpoint-*: initial` is declared in `@theme`, the window classes are `@custom-variant`s at 600px (`medium`), 840px
+  (`expanded`), 1240px (`large`) and 1600px (`xlarge`), `max-medium` and `max-expanded` sit below the first two, and no other
+  breakpoint exists
 
 #### Scenario: Former literal
 

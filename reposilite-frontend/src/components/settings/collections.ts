@@ -79,22 +79,49 @@ const isStructural = (property: SettingsSchema): boolean => {
 const control = (key: string): ControlElement => ({ type: 'Control', scope: `#/properties/${key}` })
 
 /*
- * The JSON Forms layout of one entry. Scalar properties share one "General" group at the top,
- * and every nested object or array follows as its own control, which renders as its own
- * titled section. The id is left out by default: it is the heading of the entry, and renaming
- * it would move the entry to another address.
+ * The order in which the fields of a form are drawn, by the title of the schema they belong to. The stored configuration
+ * keeps the declaration order of the server: this table only changes what the dashboard shows first. A field that is
+ * not named here follows the named ones in schema order.
  */
-export const entryLayout = (schema: SettingsSchema, { exclude = ['id'] }: { exclude?: string[] } = {}): VerticalLayout => {
+export const ENTRY_ORDER: Record<string, string[]> = {
+  // Cleanup policy: what runs, then what it acts on, then how far back it keeps versions, then when it runs.
+  'Cleanup Policy': ['enabled', 'repositories', 'scope', 'groupFilter', 'keepLatest', 'olderThanDays', 'notDownloadedForDays', 'schedule'],
+  // Branding: the texts and links a visitor sees, then the technical id.
+  Frontend: ['title', 'description', 'organizationLogo', 'organizationWebsite', 'privacyPolicy', 'icpLicense', 'id']
+}
+
+/*
+ * The JSON Forms layout of one entry. Scalar properties share one "General" group, and every nested object or array
+ * follows as its own control, which renders as its own titled section. The named order of the schema (see ENTRY_ORDER,
+ * or the `order` option) comes first: a named field keeps its place, so a section can sit between two scalars, and a
+ * scalar group starts after it. Fields that are not named keep the old layout: scalars first, then the nested ones.
+ * The id is left out by default: it is the heading of the entry, and renaming it would move the entry to another address.
+ */
+export const entryLayout = (
+  schema: SettingsSchema,
+  { exclude = ['id'], order }: { exclude?: string[]; order?: string[] } = {}
+): VerticalLayout => {
   const keys = Object.keys(schema.properties ?? {}).filter(key => !exclude.includes(key))
-  const scalars = keys.filter(key => !isStructural(schema.properties?.[key] ?? {}))
-  const structural = keys.filter(key => isStructural(schema.properties?.[key] ?? {}))
+  const isScalar = (key: string) => !isStructural(schema.properties?.[key] ?? {})
+  const named = (order ?? ENTRY_ORDER[schema.title ?? ''] ?? []).filter(key => keys.includes(key))
+  const unnamed = keys.filter(key => !named.includes(key))
+  const ordered = [...named, ...unnamed.filter(isScalar), ...unnamed.filter(key => !isScalar(key))]
 
   const elements: UISchemaElement[] = []
-  if (scalars.length > 0) {
-    const general: GroupLayout = { type: 'Group', label: 'General', elements: scalars.map(control) }
-    elements.push(general)
+  let scalars: string[] = []
+  const flush = () => {
+    if (scalars.length > 0) elements.push({ type: 'Group', label: 'General', elements: scalars.map(control) } as GroupLayout)
+    scalars = []
   }
-  elements.push(...structural.map(control))
+  for (const key of ordered) {
+    if (isScalar(key)) {
+      scalars.push(key)
+    } else {
+      flush()
+      elements.push(control(key))
+    }
+  }
+  flush()
   return { type: 'VerticalLayout', elements }
 }
 

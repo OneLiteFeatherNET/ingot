@@ -69,6 +69,18 @@ describe('MdOverflowMenu', () => {
     expect(trigger().attributes('aria-label'), 'no label overrides the content').toBeUndefined()
   })
 
+  it('names a trigger with a slot by the trigger label, so the name says what the button does', async () => {
+    wrapper = mount(MdOverflowMenu, {
+      props: { label: 'Account menu', triggerLabel: 'Account menu, Alice Example', items: ITEMS },
+      slots: { trigger: '<span aria-hidden="true">A</span> <span>Alice Example</span>' },
+      attachTo: document.body
+    })
+    await flushPromises()
+
+    expect(trigger().attributes('aria-label'), 'the trigger label names the button').toBe('Account menu, Alice Example')
+    expect(computeAccessibleName(trigger().element), 'a screen reader hears the menu and the name').toBe('Account menu, Alice Example')
+  })
+
   it('gives the header and the items the same horizontal inset', async () => {
     wrapper = mount(MdOverflowMenu, {
       props: { label: 'Account menu for Alice', items: ITEMS },

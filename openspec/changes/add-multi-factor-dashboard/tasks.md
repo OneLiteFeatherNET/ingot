@@ -29,7 +29,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 4. Account page section
 
 - [ ] 4.1 `test(ui)`: failing tests for `SecondFactorsCard` (list, rename, remove, the authenticator enrolment with the seed
-  shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with the confirmation check box, and
+  shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with copy and download actions and the confirmation check box, and
   no seed after the dialog closes), built with an injected `api` object like `PasswordCard`. Verify: the tests fail before 4.2.
 - [ ] 4.2 `feat(ui)`: add `SecondFactorsCard` into the `Sign-in and security` section of the account page. Depends on
   `rework-account-menu-and-profile` being merged; if it is not, this task waits. Verify: 4.1 passes and `AccountView.test.js`
@@ -46,7 +46,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 ## 6. Administration controls
 
 - [ ] 6.1 `test(ui)`: failing tests for the factor summary on the user page, the reset action shown only to instance admins,
-  the confirmation that names the user, and the `login.mfa` and `mfaAcrValues`/`mfaAmrValues` fields and the break-glass
+  the confirmation that names the user and says that their sessions end, and the `login.mfa` and `mfaAcrValues`/`mfaAmrValues` fields and the break-glass
   warning in `components/access/loginSettings.js`. Verify: the tests fail before 6.2.
 - [ ] 6.2 `feat(ui)`: add the reset action and the summary on the user page, and the new fields to the login settings form.
   Verify: 6.1 passes and the existing login settings tests still pass.

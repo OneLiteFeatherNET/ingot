@@ -145,12 +145,25 @@ describe('NodeEditor', () => {
       expect(wrapper.text()).toContain('Use ingot.repository.<repository>.<read|deploy|delete|manage>')
     })
 
-    it('says "Already listed" for a node that is in the list', async () => {
+    it('does not show an error for a node that is in the list', async () => {
       mountEditor()
 
       await type('ingot.admin.users')
 
-      expect(wrapper.text()).toContain('Already listed')
+      expect(wrapper.text(), 'the duplicate is not refused with a message').not.toContain('Already listed')
+      expect(input().attributes('aria-invalid'), 'the field is not marked invalid').not.toBe('true')
+    })
+
+    it('highlights the listed row when the field is submitted with Add', async () => {
+      Element.prototype.scrollIntoView = vi.fn()
+      mountEditor()
+
+      await type('ingot.admin.users')
+      await wrapper.find('[data-test="add-node"]').trigger('click')
+      await flushPromises()
+
+      expect(row('ingot.admin.users').attributes('data-highlighted'), 'the existing row is highlighted').toBe('true')
+      expect((input().element as HTMLInputElement).value, 'the field is cleared').toBe('')
     })
 
     it('focuses the listed row on Enter instead of adding a second row', async () => {
@@ -404,8 +417,20 @@ describe('NodeEditor', () => {
 
       await openTemplate('Read')
 
-      const options = wrapper.findAll('[data-test="template-panel"] datalist option')
-      expect(options.map(option => option.attributes('value'))).toEqual(['releases', 'snapshots'])
+      const options = wrapper.findAll('[data-test="template-panel"] [role="listbox"] [role="option"]')
+      expect(options.map(option => option.text())).toEqual(['releases', 'snapshots'])
+    })
+
+    it('picks a repository suggestion with the keyboard', async () => {
+      mountEditor()
+      await openTemplate('Read')
+      const field = wrapper.find('[data-test="template-panel"] input')
+
+      await field.trigger('focus')
+      await field.trigger('keydown', { key: 'ArrowDown' })
+      await field.trigger('keydown', { key: 'Enter' })
+
+      expect((field.element as HTMLInputElement).value, 'the first repository is filled in').toBe('releases')
     })
 
     it('refuses a repository name the grammar does not allow', async () => {

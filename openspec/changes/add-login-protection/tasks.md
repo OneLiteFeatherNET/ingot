@@ -11,39 +11,39 @@ that contains the merged proposal, and contains no file under `openspec/`.
 
 ## 1. Proposal and verification
 
-- [ ] 1.1 `docs(openspec): propose add-login-protection`: this change only, in its own proposal pull request from the remote main
+- [x] 1.1 `docs(openspec): propose add-login-protection`: this change only, in its own proposal pull request from the remote main
   branch. Verify: `openspec validate add-login-protection --strict` passes and the dash grep prints nothing.
-- [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 8 on a `429` with `Retry-After` from a remote repository, with a Basic
+- [ ] 1.2 Record the behaviour of Maven 3.9 and Gradle 9 on a `429` with `Retry-After` from a remote repository, with a Basic
   credential, and record the result in the description of pull request 1 (design open question 2). Verify: both clients are run
   against a local stub server in a temporary directory, and the exit code and the retry count are recorded.
-- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 9 before pull request 1 is opened. Verify: the
-  answer, or the silence that the defaults stand, is noted in the description of pull request 1. Open question 9 (the
-  dummy hash timing) is the one default that is not behind a switch.
+- [ ] 1.3 Confirm with the maintainer the default of design open questions 1 to 8 before pull request 1 is opened. Open question 9
+  (the dummy hash timing) was decided on 2026-11-18: eager and ungated, with no switch. Verify: the answer, or the silence that the
+  defaults stand, is noted in the description of pull request 1.
 
 ## 2. Pull request 1: per-account throttling
 
 Title: `feat(identity): throttle sign-in attempts per account across every credential path`
 
-- [ ] 2.1 `test(identity)`: failing unit tests for `LoginDelayPolicy`, one behaviour each, on an injected clock: the failures
+- [x] 2.1 `test(identity)`: failing unit tests for `LoginDelayPolicy`, one behaviour each, on an injected clock: the failures
   below the threshold are not delayed; failure `n` sets `min(cap, 2^(n-threshold))` seconds; a delay ends when the clock reaches
   it; a quiet period resets the count; a success clears the state. Verify: the tests fail because the class does not exist.
-- [ ] 2.2 `test(identity)`: failing tests for the known-address store on an in-memory database, in a temporary directory: an
+- [x] 2.2 `test(identity)`: failing tests for the known-address store on an in-memory database, in a temporary directory: an
   address is known within `knownAddressDays` and unknown after it; a successful login records the address for its principal;
   a token identifier is recorded for a name that is not a principal. Verify: the tests fail before 2.4.
-- [ ] 2.3 `test(identity)`: failing tests across two `LoginAttemptLimiter` instances on one database (the existing pattern of
+- [x] 2.3 `test(identity)`: failing tests across two `LoginAttemptLimiter` instances on one database (the existing pattern of
   `LoginAttemptLimiterTest`): a failure on one counts on the other; the account key delays a request from a new address and
   does not delay a request from a known address; a `mfa|account|` failure does not increase `account|`. The tests run with
   the switch on. Verify: the tests fail before 2.4.
-- [ ] 2.4 `test(identity)`: failing tests for the paths: a Basic request for a delayed name gets `429` with `Retry-After` and
+- [x] 2.4 `test(identity)`: failing tests for the paths: a Basic request for a delayed name gets `429` with `Retry-After` and
   its secret is not verified (a stub authenticator counts its calls); the same for a Bearer secret; the dashboard login gets
   the same `429`; a delayed unknown name and an existing name get the same answer; the mirror identity is neither counted nor
   delayed. Default tests, with no switch set (`INGOT_LOGIN_ACCOUNT_THROTTLE` unset): 12 wrong secrets for one name from one
   address give `401` with the message of today on every request, the secret is verified each time, and no `login_known_address`
   row or `LOGIN_THROTTLED` entry is written. Verify: the tests fail on main for the switch, and pass on main as the
   characterisation of today's answers.
-- [ ] 2.5 `test(identity)`: failing test for the dummy hash: the first unknown-user verification computes exactly one hash, and
+- [x] 2.5 `test(identity)`: failing test for the dummy hash: the first unknown-user verification computes exactly one hash, and
   no hash is computed lazily during it. Verify: the test fails on the lazy `unusedHash` of `LocalLoginProvider.kt`.
-- [ ] 2.6 `feat(identity)`: implement `LoginDelayPolicy`, the `login_known_address` table in `IdentityTables.kt` and
+- [x] 2.6 `feat(identity)`: implement `LoginDelayPolicy`, the `login_known_address` table in `IdentityTables.kt` and
   `LoginStore`, the account key in `LoginService` and in the authenticate path of `AuthenticationFacade`, the `429` with
   `Retry-After` for Basic and Bearer, and the eager dummy hash. Every delay and every write of the account key sits behind
   `INGOT_LOGIN_ACCOUNT_THROTTLE` (fallback `REPOSILITE_LOGIN_ACCOUNT_THROTTLE`), default off. The eager dummy hash is not behind
@@ -53,11 +53,11 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
   `AuthenticationFacade` into `login_attempt` under `basic-address|<ip>` (not `address|<ip>`, which the dashboard uses), keep its
   default off, use the injected clock, and add the
   atomic increment after the fifth conflicting write of `LoginAttemptLimiter.recordFailure`. Verify: a test for a counter that
-  conflicts five times (2.3 style) and the existing `AuthenticationFacadeTest` pass.
-- [ ] 2.8 `test(identity)`: an integration test (Testcontainers only here, with the existing harness) that two replicas on one
+  conflicts five times (2.3 style), a test that the legacy counter is written with `INGOT_LOGIN_ACCOUNT_THROTTLE` unset and that the account throttle alone writes no `basic-address|` row, and the existing `AuthenticationFacadeTest` pass.
+- [x] 2.8 `test(identity)`: an integration test (Testcontainers only here, with the existing harness) that two replicas on one
   PostgreSQL or MariaDB database share the delay. Verify: `heavy` with `HEAVY_SLOTS=8 HEAVY_MIN_MEM_MB=8192` and
   `:reposilite-backend:integration --tests '...LoginThrottle*'` pass.
-- [ ] 2.9 `docs(identity)`: describe the account throttle, the known-address window, the 429 answer and the legacy switch in the
+- [x] 2.9 `docs(identity)`: describe the account throttle, the known-address window, the 429 answer and the legacy switch in the
   matching page under `docs/gitbook/`. Verify: the page names the switch `INGOT_LOGIN_ACCOUNT_THROTTLE` with its fallback,
   every new key with its default, the upgrade caveat (the empty known-address table and how it warms), and states that
   nothing changes until the switch is on.
@@ -68,21 +68,21 @@ Title: `feat(identity): throttle sign-in attempts per account across every crede
 
 Title: `feat(identity): check new passwords against breached password lists`
 
-- [ ] 3.1 `test(identity)`: failing tests for the length policy: the default minimum is 12, measured in UTF-16 code units as
+- [x] 3.1 `test(identity)`: failing tests for the length policy: the default minimum is 12, measured in UTF-16 code units as
   today (`password.length`); 11 characters are refused with the message naming 12; `minLength` below 8 or above 256 is a
   settings violation on the key; the maximum is 256 as today. Verify: the tests fail on main for the settings key, and pass
   on main for the default answers.
-- [ ] 3.2 `test(identity)`: failing tests for the breached-password check with a fake range client behind an interface: the
+- [x] 3.2 `test(identity)`: failing tests for the breached-password check with a fake range client behind an interface: the
   request carries the five character prefix only, the suffix match refuses the password, `OFF` makes no call, the `OFFLINE`
   file in a temporary directory refuses a listed hash, a missing offline file fails the startup with the key named, and a
   timeout with `failClosed=false` writes `PASSWORD_BREACH_CHECK_UNAVAILABLE` and allows the change. No test touches the network.
   Verify: the tests fail before 3.3.
-- [ ] 3.3 `test(identity)`: failing test that the check does not run at login (a fake client counts zero calls on a sign-in).
+- [x] 3.3 `test(identity)`: failing test that the check does not run at login (a fake client counts zero calls on a sign-in).
   Verify: the test fails before 3.4 because the check is not wired yet, and passes after 3.4.
-- [ ] 3.4 `feat(identity)`: implement the `passwordPolicy` settings with validation, the `BreachCheck` interface with `OFF`,
+- [x] 3.4 `feat(identity)`: implement the `passwordPolicy` settings with validation, the `BreachCheck` interface with `OFF`,
   `RANGE` (the production client, with the 3 second timeouts and no identity headers) and `OFFLINE` (a sorted array loaded at
   startup), and the calls in the set, change, reset and setup paths of `LoginService`. Verify: 3.1 to 3.3 pass.
-- [ ] 3.5 `docs(identity)`: document the modes, the range URL, the offline file format and the fail-open default in
+- [x] 3.5 `docs(identity)`: document the modes, the range URL, the offline file format and the fail-open default in
   `docs/gitbook/`. Verify: the page states that the range service is an external call and that the default is `OFF`.
 - [ ] 3.6 Container job: as 2.10.
 
@@ -92,32 +92,32 @@ Title: `feat(identity): record throttled sign-ins in the audit trail and plugin 
 
 Depends on pull request 1.
 
-- [ ] 4.1 `test(identity)`: failing tests: a delayed request writes exactly one `LOGIN_THROTTLED` with the path and no
+- [x] 4.1 `test(identity)`: failing tests: a delayed request writes exactly one `LOGIN_THROTTLED` with the path and no
   `LOGIN_FAILED`; the enum values of `AuditAction` keep their serialised values (a golden test over the existing names); the
   counters increase per path and outcome and carry no name; `LoginThrottledEvent` is published after the state is stored and
   a throwing listener does not change the answer; `NewSignInEvent` is published for the first sign-in and for an unknown
   address, and not for a known one. With the switch off, no `LOGIN_THROTTLED`, no counter, no `NewSignInEvent` and no
   `LoginThrottledEvent` is produced, and the status response is unchanged. Verify: the tests fail before 4.2.
-- [ ] 4.2 `feat(identity)`: add `LOGIN_THROTTLED` to `AuditAction`, the counters, the two plugin events in
+- [x] 4.2 `feat(identity)`: add `LOGIN_THROTTLED` to `AuditAction`, the counters, the two plugin events in
   `com.reposilite.plugin.api` next to `SessionFamilyRevokedEvent`, and the publication. Verify: 4.1 passes and the audit JSON
   sink test (`add-audit-json-sink` if merged, otherwise the existing audit tests) still passes.
-- [ ] 4.3 `docs(identity)`: document the new audit action, the counters on the status endpoint and the two events for plugin
+- [x] 4.3 `docs(identity)`: document the new audit action, the counters on the status endpoint and the two events for plugin
   authors in `docs/gitbook/`. Verify: the page lists the fields of each event and states that no secret is carried.
 
 ## 5. Pull request 4: optional idle timeout
 
 Title: `feat(identity): add an optional idle timeout for browser sessions`
 
-- [ ] 5.1 `test(identity)`: failing tests, written first and passing on main for the pinned rules: the cookie flags of
+- [x] 5.1 `test(identity)`: failing tests, written first and passing on main for the pinned rules: the cookie flags of
   `SessionCookies` (`HttpOnly`, `SameSite=Lax`, `Secure` on a secure request, refresh path limited, CSRF not `HttpOnly`); reuse of
   a spent refresh token revokes the family and audits `SESSION_REFRESH_REUSE_DETECTED`; a password change revokes every family;
   an anonymous request sets no cookie. Verify: these tests pass on main before any change, so they are a characterisation.
-- [ ] 5.2 `test(identity)`: failing tests for the idle timeout on an injected clock: the default leaves the 168 hour idle
+- [x] 5.2 `test(identity)`: failing tests for the idle timeout on an injected clock: the default leaves the 168 hour idle
   limit; a 30 minute timeout refuses a refresh at minute 31; the value 2 is a violation; the value above the refresh lifetime
   is a violation; the absolute end still wins. Verify: the tests fail before 6.3.
-- [ ] 5.3 `feat(identity)`: add `login.idleTimeoutMinutes` to `LoginSettings` with the validation, and the expiry rule in
+- [x] 5.3 `feat(identity)`: add `login.idleTimeoutMinutes` to `LoginSettings` with the validation, and the expiry rule in
   `SessionService.issue`. Verify: 6.1 and 6.2 pass and `SessionServiceTest` is unchanged and green.
-- [ ] 5.4 `docs(identity)`: document the timeout and the recommended value of 30 for instances with administrators in
+- [x] 5.4 `docs(identity)`: document the timeout and the recommended value of 30 for instances with administrators in
   `docs/gitbook/`, as an opt-in. Verify: the default stated on the page is `0`.
 
 ## 6. Open the pull requests
@@ -125,11 +125,11 @@ Title: `feat(identity): add an optional idle timeout for browser sessions`
 - [ ] 6.1 Open the pull request for section 2 against `main` with the title `feat(identity): throttle sign-in attempts per account
   across every credential path`, with the sections of `.github/PULL_REQUEST_TEMPLATE.md` filled in. Verify: `gh pr view` shows the
   title and the template sections, and the `Container images` check runs.
-- [ ] 6.2 Open the pull request for section 3 against `main` with the title `feat(identity): check new passwords against breached
+- [x] 6.2 Open the pull request for section 3 against `main` with the title `feat(identity): check new passwords against breached
   password lists`. Verify: `gh pr view` shows the title.
-- [ ] 6.3 Open the pull request for section 4 after pull request 1 is merged, with the title `feat(identity): record throttled
+- [x] 6.3 Open the pull request for section 4 after pull request 1 is merged, with the title `feat(identity): record throttled
   sign-ins in the audit trail and plugin events`. Verify: `gh pr view` shows the title and the base is `main`.
-- [ ] 6.4 Open the pull request for section 5 with the title `feat(identity): add an optional idle timeout for browser sessions`.
+- [x] 6.4 Open the pull request for section 5 with the title `feat(identity): add an optional idle timeout for browser sessions`.
   Verify: `gh pr view` shows the title, and the pull request description contains no session link or attribution line.
 
 ## 7. Follow-up changes (not part of this proposal)

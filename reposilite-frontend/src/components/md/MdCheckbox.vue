@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
+import { controlLabelGapClass, type ControlLabelGap } from './controlLabel'
 
 /*
  * Material Design 3 checkbox. The control is a real <input type="checkbox">, so keyboard,
@@ -26,6 +27,9 @@ import { computed, useAttrs, useId } from 'vue'
  *
  * `indeterminate` shows a dash in place of the check mark. The browser sets the state on the
  * input, so it is not an attribute. `error` draws the box in the error role.
+ *
+ * `labelGap` sets the gap between the box and the label (see controlLabel.ts). It defaults to
+ * the gap the checkbox has always had.
  *
  * Attributes that are not props (aria-describedby, name and so on) go to the input. class and
  * style stay on the root.
@@ -38,12 +42,14 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   error?: boolean
   id?: string
+  labelGap?: ControlLabelGap
 }>(), {
   modelValue: false,
   indeterminate: false,
   disabled: false,
   error: false,
-  id: ''
+  id: '',
+  labelGap: 'tight'
 })
 
 defineSlots<{
@@ -98,6 +104,9 @@ const stateLayerClass = computed(() => {
   return [base, colour, 'peer-hover:opacity-md-state-hover peer-focus-visible:opacity-md-state-focus peer-active:opacity-md-state-pressed']
 })
 
+// The root is a flex row; the gap between the control and its label comes from the shared part.
+const rootClass = computed(() => ['flex items-center', controlLabelGapClass(props.labelGap)])
+
 const labelClass = computed(() =>
   props.disabled ? 'cursor-not-allowed text-on-surface/38' : 'cursor-pointer text-on-surface'
 )
@@ -105,8 +114,7 @@ const labelClass = computed(() =>
 
 <template>
   <div
-    class="flex items-center gap-2"
-    :class="attrs.class"
+    :class="[rootClass, attrs.class]"
     :style="attrs.style"
     data-ingot-component="md-checkbox"
   >

@@ -317,6 +317,45 @@ describe('RepositoryWizard steps', () => {
   })
 })
 
+describe('RepositoryWizard field order', () => {
+  // The fields in the order the user answers them, by where each is drawn on the page.
+  const drawnOrder = (anchors) => {
+    const missing = anchors.filter(([, node]) => node === null).map(([name]) => name)
+    expect(missing, 'every field named in the order is drawn').toEqual([])
+    return [...anchors]
+      .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([name]) => name)
+  }
+  const legend = text => [...document.querySelectorAll('legend')].find(node => node.textContent?.trim() === text) ?? null
+
+  it('asks for the id, the description and the tags on the basics step, and not yet who can read it', async () => {
+    await mountWizard()
+    configuration.schemas.value.maven.properties.repositories.items.properties.description = { type: 'string' }
+    configuration.schemas.value.maven.properties.repositories.items.properties.tags = { type: 'array' }
+    await flushPromises()
+
+    expect(heading()).toBe('Basics')
+    expect(drawnOrder([
+      ['Id', $('#wizard-repository-id')],
+      ['Description', $('#wizard-description')],
+      ['Tags', $('#wizard-tags')]
+    ])).toEqual(['Id', 'Description', 'Tags'])
+    expect(legend('Who can read it'), 'visibility moved to the access step').toBeNull()
+  })
+
+  it('asks who can read the repository before who gets access to it', async () => {
+    await mountWizard()
+
+    await reachAccessStep('team')
+
+    expect(heading()).toBe('Access')
+    expect(drawnOrder([
+      ['Who can read it', legend('Who can read it')],
+      ['Who gets access', legend('Who gets access to this repository')]
+    ])).toEqual(['Who can read it', 'Who gets access'])
+  })
+})
+
 describe('RepositoryWizard access step', () => {
   it('offers the teams that exist, loaded from the teams endpoint', async () => {
     await mountWizard()
@@ -624,6 +663,7 @@ const keyDown = (element, key) => element.dispatchEvent(new KeyboardEvent('keydo
 describe('RepositoryWizard option cards', () => {
   it('selects a visibility card when a click lands on its description text', async () => {
     await mountWizard()
+    await reachAccessStep('team')
     const [, , hidden] = optionInputs('visibility')
 
     optionCard(hidden).querySelector('[data-part="card-content"]').click()
@@ -635,6 +675,7 @@ describe('RepositoryWizard option cards', () => {
 
   it('shows only the chosen visibility card as selected', async () => {
     await mountWizard()
+    await reachAccessStep('team')
     const [first, second] = optionInputs('visibility')
 
     optionCard(second).click()
@@ -646,6 +687,7 @@ describe('RepositoryWizard option cards', () => {
 
   it('moves the visibility selection with the down arrow', async () => {
     await mountWizard()
+    await reachAccessStep('team')
     const [first, second] = optionInputs('visibility')
     optionCard(first).click()
     await flushPromises()

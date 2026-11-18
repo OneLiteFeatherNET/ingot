@@ -40,18 +40,18 @@ Non-goals: a new API surface; a compatibility gate; a public repository; a new p
 
 The artifact holds the classes named in `reposilite-backend/plugin-api-classes.txt`, one fully qualified name per line, with a
 trailing `*` allowed for a nested set of one class (`Outer*` for `Outer$Inner`). Packages are not used, for the reason in Context.
-The first version of the list is derived from the types a plugin can reach today: the annotation, the base classes, the helper
-file, the facades listed in `plugin/api`, the events of `maven/api`, `storage/api`, `web/api` and `token`, and the value types those
-signatures use. The list is reviewed by a maintainer in the first code pull request. Every later change that adds plugin-facing
-types adds its classes to the list in its own pull request.
+The list names only the new Ingot plugin API: the marker of D4 and the other new types under `net.onelitefeather.ingot.*` that a
+later change names explicitly. The legacy base classes are not on it (see the legacy exception in D2). The list is reviewed by a
+maintainer in the first code pull request. Every later change that adds plugin-facing types adds its classes to the list in its
+own pull request.
 
 The jar is built by a task `pluginApiJar` from `sourceSets.main.output`, filtered by the list. No class is generated or copied from
 another module.
 
 ### D2: the closure check fails the build
 
-A class in the artifact may reference a class outside the artifact only if that class is on the allowlist, or is a JDK or Kotlin
-standard library class. The check reads the constant pool and the signatures of the class files in the artifact and fails with the
+A class in the artifact may reference a class outside the artifact only if that class is on the allowlist, is named in
+`reposilite-backend/plugin-api-provided.txt` (the legacy exception below), or is a JDK or Kotlin standard library class. The check reads the constant pool and the signatures of the class files in the artifact and fails with the
 referring class and the missing target, one line per violation. Two cases are handled explicitly:
 
 - A type that appears only in a private member is not a violation, because it is not part of the signature a plugin compiles
@@ -65,12 +65,24 @@ into a temporary directory and need no server.
 The number of violations for the first list is not known until the list is built. If it is large, the allowlist grows in the
 pull request that finds the violation, as D2 states (Q2). No class is moved or renamed by this change.
 
+**Legacy exception (decided 2026-11-18 by the maintainer).** The scope of the allowlist is the new Ingot plugin API only. The legacy
+base classes, `com.reposilite.plugin.api.*` (among them `Plugin`, `ReposilitePlugin`, `ReposilitePluginExtensions` and
+`SharedSettings`), and the third-party `com.reposilite.journalist` are not in the artifact. They keep living in the server jar,
+and existing plugins keep compiling against the bundle without any change. The closure check stops at them and treats them as
+provided: a public signature that refers to one of them is not a violation. They are named in
+`reposilite-backend/plugin-api-provided.txt`, one fully qualified name per line, which a maintainer reviews like the allowlist (Q5).
+The reason is that their signatures reach into the server core, so putting them into a slim artifact would mean moving server code,
+which this change does not do. The consequence: a plugin built only on the new Ingot API compiles against the artifact alone, and a
+plugin that extends a legacy base class compiles against the bundle as today.
+
 ### D3: the consumer fixture is the proof
 
-`reposilite-test/plugin-api-consumer` is a Gradle module with one sample plugin. It depends on the slim jar as a file, not as a
-project, and on nothing else of the monorepo. Its test asserts that the plugin class carries `@Plugin` and that the
-annotation is readable at runtime. The fixture is the executable form of "a plugin built only against the published API". In CI it
-runs with the artifact built in the same job, so no network and no credentials are needed (F.I.R.S.T.: repeatable).
+`reposilite-test/plugin-api-consumer` is a Gradle module with one sample class. It depends on the slim jar as a file, not as a
+project, and on nothing else of the monorepo. The sample uses only the new Ingot API, the marker of D4, with an explicit opt-in. It
+does not extend a legacy base class (D2), because that class is not in the artifact. Its test asserts that the sample class carries
+`@ExperimentalIngotPluginApi` and that the annotation is readable at runtime. The fixture is the executable form of "a plugin built
+only against the published new API". In CI it runs with the artifact built in the same job, so no network and no credentials are
+needed (F.I.R.S.T.: repeatable).
 
 ### D4: the marker annotation
 
@@ -92,7 +104,9 @@ nightlies (Q3, settled). A consumer that wants a nightly uses the bundle as toda
 
 - `add-artifact-enrichment-hook`, `add-search-document-attributes`, `add-search-attribute-facets` and `expose-plugin-access-checks`
   each add their classes to the allowlist. Their closure is checked by this change's build.
-- The two portal plugins build against `net.onelitefeather.ingot:ingot-plugin-api` (`compileOnly`) and never against a project.
+- The two portal plugins build against `net.onelitefeather.ingot:ingot-plugin-api` (`compileOnly`) and never against a project. A
+  portal plugin that extends a legacy base class also needs the bundle as `compileOnly` for those classes (D2); its own proposal
+  states which case applies.
 - `extend-plugin-abi-gate` may later compare the slim artifact against the previous release instead of the bundle.
 
 ## Alternatives considered
@@ -102,9 +116,10 @@ nightlies (Q3, settled). A consumer that wants a nightly uses the bundle as toda
 - **Shading the whole bundle.** Rejected: the goal is the opposite, a smaller set.
 - **Publishing only a Kotlin interface module.** Rejected: the plugin API is Java and Kotlin, and `@Plugin` is Java.
 
-## Open questions, settled 2026-11-17
+## Open questions, settled 2026-11-17 and 2026-11-18
 
-The maintainer settled every question with the default recommended here. The answers are binding for the code pull requests.
+The maintainer settled Q1 to Q5 with the default recommended here, on 2026-11-17. Q6 on 2026-11-18 departs from that default in
+one point. The answers are binding for the code pull requests.
 
 - **Q1. Publication target.** Settled 2026-11-17: the repository that already hosts `ingot`, so reads need credentials as they do
   today. A public repository or Maven Central is not part of this change.
@@ -114,6 +129,8 @@ The maintainer settled every question with the default recommended here. The ans
 - **Q4. Version.** Settled 2026-11-17: the same version as `ingot`, with no independent versioning.
 - **Q5. Ownership of the allowlist.** Settled 2026-11-17: a maintainer reviews every change of `plugin-api-classes.txt`. The review
   is enforced by review, not by a code owners file.
+- **Q6. Scope of the allowlist.** Settled 2026-11-18 by the maintainer: the allowlist covers only the new Ingot plugin API. The
+  legacy base classes and `com.reposilite.journalist` are a documented exception, named in `plugin-api-provided.txt` (D2).
 
 ## Risks
 

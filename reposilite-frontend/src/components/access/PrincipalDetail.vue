@@ -170,7 +170,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
     </div>
 
     <template v-else-if="detail">
-      <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
+      <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">
         <div
           class="flex flex-wrap items-start justify-between gap-2"
           data-test="heading-row"

@@ -87,6 +87,20 @@ sealed interface PluginUiBlock {
     data class Status(val source: String, val refreshSeconds: Int = 10) : PluginUiBlock {
         override val type: String = "status"
     }
+
+    /**
+     * A snippet shown as plain text, with a copy action. [text] is 1 to 4000 characters. [label] is an optional caption
+     * of at most 60 characters. [language] is one of `plain`, `kotlin`, `groovy`, `xml` or `properties`, and names the
+     * block for assistive technology only.
+     */
+    data class CodeBlock(val text: String, val label: String? = null, val language: String = "plain") : PluginUiBlock {
+        override val type: String = "code"
+    }
+
+    /** A link to a same-origin [href], a path of the dashboard or a repository, opened in the same tab. */
+    data class LinkBlock(val label: String, val href: String) : PluginUiBlock {
+        override val type: String = "link"
+    }
 }
 
 /** A column of a [PluginUiBlock.Table]: the key of the object field and its heading. */

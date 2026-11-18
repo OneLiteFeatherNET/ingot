@@ -274,6 +274,19 @@ describe('MdTextField', () => {
     expect(wrapper.find('input').classes(), 'the browser does not draw a second clear button').toContain('[&::-webkit-search-cancel-button]:appearance-none')
   })
 
+  it('marks the input readonly without disabling it', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Token', modelValue: 'ci-token', readonly: true } })
+
+    expect(wrapper.find('input').attributes('readonly'), 'the value is shown but cannot be edited').toBeDefined()
+    expect(wrapper.find('input').attributes('disabled'), 'a readonly field stays focusable, so it is not disabled').toBeUndefined()
+  })
+
+  it('declares readonly as a prop of its own instead of passing it through as an attribute', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Token', readonly: true } })
+
+    expect(wrapper.props('readonly'), 'readonly is part of the typed field api').toBe(true)
+  })
+
   it('leaves a text input without the date styling', () => {
     const wrapper = mount(MdTextField, { props: { label: 'Name' } })
 

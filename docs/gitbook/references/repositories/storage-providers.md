@@ -260,6 +260,7 @@ The provider of type `gcs` is not part of the image. It is the optional `gcs-sto
 | `projectId` | String | empty | no | Project for billing and quota. Empty leaves the client default. |
 | `bucket` | String | empty | no | Required. Bucket that holds the repository. |
 | `prefix` | String | empty | no | Prefix of every object name. Leading and trailing slashes are removed. |
+| `endpoint` | String | empty | no | Emulator only. Refused unless the process-wide switch `INGOT_GCS_ALLOW_EMULATOR_ENDPOINT` is `true`, which this release does not read, so the field is refused in every installation. See [Google Cloud Storage variables](../configuration/environment-variables.md#google-cloud-storage-variables). |
 | `authentication` | String | `adc` | no | `adc` for Application Default Credentials, including GKE workload identity, or `service-account-key`. |
 | `credentialsJson` | String | empty | yes | Service account key as JSON. Required with `service-account-key`, refused with `adc`. |
 | `chunkSize` | Long | `8388608` | no | Bytes per resumable upload chunk. A multiple of 256 KiB, from 256 KiB to 64 MiB. |

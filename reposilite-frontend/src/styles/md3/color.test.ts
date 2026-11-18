@@ -235,6 +235,27 @@ describe('high contrast', () => {
   })
 })
 
+describe('dark surface-dim', () => {
+  it('is the darkest surface, the value of surface-container-lowest', () => {
+    expect(THEMES.dark['--md-sys-color-surface-dim'], 'the dark surface-dim should be #080f16').toBe('#080f16')
+  })
+
+  it('has a lower luminance than the dark surface, so the dim surface is a step below the page', () => {
+    const dim = luminance(resolveColour('dark', THEMES.dark['--md-sys-color-surface-dim']))
+    const surface = luminance(resolveColour('dark', THEMES.dark['--md-sys-color-surface']))
+
+    expect(dim, 'dark surface-dim must be darker than dark surface').toBeLessThan(surface)
+  })
+
+  it('keeps outline at 3:1 or more against surface-container in both themes', () => {
+    for (const theme of ['light', 'dark'] as const) {
+      const outline = resolveColour(theme, THEMES[theme]['--md-sys-color-outline'])
+      const container = resolveColour(theme, THEMES[theme]['--md-sys-color-surface-container'])
+      expect(contrastRatio(outline, container), `outline against surface-container in the ${theme} theme`).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
 describe('brand expression', () => {
   it('runs the brand gradient at 135 degrees from the primary to the tertiary of the default scheme', () => {
     const light = resolveColour('light', THEMES.light['--olf-gradient'])

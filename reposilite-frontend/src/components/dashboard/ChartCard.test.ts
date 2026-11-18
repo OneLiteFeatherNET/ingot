@@ -52,6 +52,29 @@ describe('ChartCard', () => {
     expect(wrapper.emitted('retry'), 'pressing retry should ask the owner to load again').toHaveLength(1)
   })
 
+  it('marks the error panel with the error state, and says the failure once', () => {
+    const wrapper = mount(ChartCard, {
+      props: { title: 'Traffic', error: 'Cannot load statistics.' },
+      slots: { default: plot }
+    })
+
+    const alert = wrapper.find('[role="alert"]')
+    expect(alert.exists(), 'the failure should be announced as an alert').toBe(true)
+    expect(alert.attributes('data-ingot-state'), 'the error panel should carry the error state').toBe('error')
+    expect(wrapper.findAll('[role="alert"]'), 'the failure should be announced once').toHaveLength(1)
+  })
+
+  it('shows a loading panel with no pulse animation while the data is loading', () => {
+    const wrapper = mount(ChartCard, {
+      props: { title: 'Traffic', loading: true },
+      slots: { default: plot }
+    })
+
+    expect(wrapper.find('[aria-busy="true"]').exists(), 'the loading state should be marked busy').toBe(true)
+    expect(wrapper.find('.animate-pulse').exists(), 'the placeholder should not pulse').toBe(false)
+    expect(wrapper.find('.plot').exists(), 'the plot must not render while loading').toBe(false)
+  })
+
   it('renders the plot when there is no error', () => {
     const wrapper = mount(ChartCard, { props: { title: 'Traffic' }, slots: { default: plot } })
 

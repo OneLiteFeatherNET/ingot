@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { watchEffect } from 'vue'
+import { provide, watchEffect } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useSession } from "./store/session"
 import useTheme from "./store/theme"
@@ -23,6 +23,7 @@ import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
 import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
+import { SNACKBAR_QUEUE_KEY, snackbar } from './store/snackbar'
 import SkipLink from './components/layout/SkipLink.vue'
 
 // The footer and the legal line are drawn by the page (see PageFooter), so they sit in the
@@ -31,6 +32,9 @@ const { description } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
 const { initializeSession, loadProviders } = useSession()
 const { qualifier } = useQualifier()
+
+// The snackbar queue is provided once here; MdSnackbar injects it, and the shared queue is its default.
+provide(SNACKBAR_QUEUE_KEY, snackbar)
 
 // The document title belongs to the router now: it names the section or the browsed path.
 useHead({

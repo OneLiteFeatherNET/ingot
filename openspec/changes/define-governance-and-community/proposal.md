@@ -17,14 +17,14 @@ has not been compared with the CNCF text, and the decision has never been writte
 
 ## What Changes
 
-- **Governance decision rules.** `GOVERNANCE.md` gains three sections after the trust-files change has created it: the roles
-  contributor, committer and maintainer, lazy consensus for ordinary changes, and conflict resolution. The upstream relation
-  is not repeated, because the trust-files change already states it.
+- **Governance text stays as it is.** `GOVERNANCE.md` on main holds the decision rules: the roles, the lead maintainer's decisions and
+  the tie rule. This change keeps them and adds one sentence: security reports follow `SECURITY.md` and are not decided in public. The
+  rules of the first draft (a committer role, a seven-day lazy consensus for ordinary changes, a majority vote with a tie that keeps the
+  current state) are not adopted, because the file on main does not have them.
 - **Code of conduct decision.** The current text is kept. The reasons are recorded in `design.md` and in the code pull request
-  description. Adopting the CNCF text is not done.
-- **Community links.** The placeholder in `.github/CONTRIBUTING.md`, the placeholder in the README and the two commented
-  contact links in `.github/ISSUE_TEMPLATE/config.yml` point at GitHub Discussions and at the documentation folder. The
-  Discussions link is valid once the maintainer enables Discussions (settings table of `add-project-health-files`).
+  description. Its origin is not confirmed, and the maintainer decides on an attribution line once a source is named.
+- **Community links.** GitHub Discussions is the community channel and is enabled. The issue template's documentation contact link
+  points at the `docs/gitbook` folder on GitHub instead of `docs.onelitefeather.net/ingot`.
 
 ### Out of scope
 
@@ -50,12 +50,10 @@ has not been compared with the CNCF text, and the decision has never been writte
 - **Breaking marker.** None. Documentation only. Nothing an operator configures changes.
 - **Behaviour that changes by default.** None.
 - **Dependencies on other changes.**
-  - `add-repository-trust-files` creates `GOVERNANCE.md` and the `Maintainers` section of `.github/CONTRIBUTING.md`. This change
-    adds to `GOVERNANCE.md` and must be applied after that change has merged.
-  - `add-project-health-files` owns the settings change that enables GitHub Discussions. The community link must not be merged
-    before that setting is on.
+  - `add-repository-trust-files` has merged. It created `GOVERNANCE.md`, which this change reads.
+  - GitHub Discussions is enabled on the repository (`has_discussions` is `true`, checked on 2026-11-18).
   - `complete-security-disclosure` and `add-project-health-files` edit other hunks of `.github/README.md`.
-- **Code.** None. `GOVERNANCE.md`, `.github/CONTRIBUTING.md`, `.github/README.md`, `.github/ISSUE_TEMPLATE/config.yml`.
+- **Code.** None. `GOVERNANCE.md` (one sentence) and `.github/ISSUE_TEMPLATE/config.yml` (the documentation link).
 
 ## Verification
 

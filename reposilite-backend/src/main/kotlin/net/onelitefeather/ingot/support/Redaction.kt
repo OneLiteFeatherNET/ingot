@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.support
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.TextNode
+import com.reposilite.configuration.shared.OneOfVariants
 import com.reposilite.configuration.shared.SettingsSecrets
 import net.onelitefeather.ingot.cluster.ClusterBusUrl
 
@@ -35,7 +36,13 @@ class RedactionTally {
 }
 
 /** One shared settings domain as the support bundle reads it: its name, its settings type when known, and its resolved document. */
-data class SharedDomainDocument(val name: String, val type: Class<*>?, val document: JsonNode)
+data class SharedDomainDocument(
+    val name: String,
+    val type: Class<*>?,
+    val document: JsonNode,
+    /** The settings classes of loaded plugins that the secret shape of [type] includes, see [OneOfVariants]. */
+    val secretVariants: OneOfVariants = OneOfVariants.NONE,
+)
 
 /**
  * The redaction contract, version 1. Every value the bundle writes passes through one of these rules, and a value that no rule
@@ -133,11 +140,11 @@ object Redaction {
             val masked: JsonNode = if (type == null) {
                 TextNode(withheld(tally))
             } else {
-                val counted = SettingsSecrets.transformSensitive(type, domain.document) { _, value ->
+                val counted = SettingsSecrets.transformSensitive(type, domain.document, domain.secretVariants) { _, value ->
                     if (value.isNotEmpty()) tally.add()
                     value
                 }
-                SettingsSecrets.mask(type, counted, keepReferences = false)
+                SettingsSecrets.mask(type, counted, keepReferences = false, variants = domain.secretVariants)
             }
             domain.name to masked
         }
@@ -157,7 +164,7 @@ object Redaction {
         val values = linkedSetOf<String>()
         domains.forEach { domain ->
             val type = domain.type ?: return@forEach
-            SettingsSecrets.transformSensitive(type, domain.document) { _, value ->
+            SettingsSecrets.transformSensitive(type, domain.document, domain.secretVariants) { _, value ->
                 values.add(value)
                 value
             }

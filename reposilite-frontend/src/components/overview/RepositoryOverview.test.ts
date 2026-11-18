@@ -161,6 +161,14 @@ afterEach(() => {
 })
 
 describe('RepositoryOverview list', () => {
+  it('draws the list with the 1 pixel outline edge of the surface table', async () => {
+    await mountAt('/')
+
+    const list = rowFor('releases').element.closest('ul')
+    expect(list, 'the rows sit in a list').not.toBeNull()
+    expect(list!.classList.contains('border-outline'), 'the list block has the outline edge').toBe(true)
+  })
+
   it('lists every repository the backend returns, sorted by id', async () => {
     await mountAt('/')
 

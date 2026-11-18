@@ -60,7 +60,7 @@ test.describe('repositories page writes', () => {
     await page.goto(siteUrl('/settings/repositories'))
     await page.getByRole('button', { name: `Actions for ${repository}`, exact: true }).click()
     await page.getByRole('menuitem', { name: `Delete ${repository}`, exact: true }).click()
-    const confirm = page.getByRole('dialog').filter({ hasText: `Delete ${repository}?` })
+    const confirm = page.getByRole('alertdialog', { name: `Delete ${repository}?`, exact: true })
     await confirm.getByRole('textbox', { name: 'Id', exact: true }).fill(repository)
     await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByText(`${repository} deleted, not saved yet`)).toBeVisible()

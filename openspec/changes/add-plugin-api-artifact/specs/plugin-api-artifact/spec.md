@@ -2,20 +2,28 @@
 
 ## Purpose
 
-A plugin author can compile a plugin against a published artifact that contains the plugin API and nothing else of the server. The
-artifact is a second publication. The server bundle and every existing plugin stay as they are.
+A plugin author can compile a plugin that uses the new Ingot plugin API against a published artifact that contains that API and
+nothing else of the server. The artifact is a second publication. The server bundle, the legacy plugin base classes and every
+existing plugin stay as they are.
 
 ## ADDED Requirements
 
 ### Requirement: Separate plugin API artifact
 
 The build SHALL publish a Maven artifact `net.onelitefeather.ingot:ingot-plugin-api` whose classes are exactly the classes named in
-`reposilite-backend/plugin-api-classes.txt`. The artifact SHALL NOT contain any other class of the server.
+`reposilite-backend/plugin-api-classes.txt`. Every name on that list SHALL be in the `net.onelitefeather.ingot.*` namespace. The
+artifact SHALL NOT contain any other class of the server.
 
 #### Scenario: Contents match the allowlist
 
 - **WHEN** the artifact is built from a clean checkout
 - **THEN** every class in it is named in the allowlist, and every class named in the allowlist that exists in the server is in it
+
+#### Scenario: Legacy classes stay in the server jar
+
+- **WHEN** the artifact is built from a clean checkout
+- **THEN** it contains no class of `com.reposilite.*`, including `com.reposilite.plugin.api.*` and `com.reposilite.journalist`, and the
+  server bundle still contains them
 
 #### Scenario: Bundle unchanged
 
@@ -25,28 +33,37 @@ The build SHALL publish a Maven artifact `net.onelitefeather.ingot:ingot-plugin-
 
 ### Requirement: Closure of the artifact
 
-The build SHALL fail when a public signature of a class in the artifact refers to a class that is neither in the artifact nor a JDK or
-Kotlin standard library class. The failure SHALL name the referring class and the missing target.
+The build SHALL fail when a public signature of a class in the artifact refers to a class that is neither in the artifact, nor named
+in `reposilite-backend/plugin-api-provided.txt`, nor a JDK or Kotlin standard library class. The failure SHALL name the referring
+class and the missing target.
 
 #### Scenario: Missing reference
 
-- **WHEN** an allowlisted class has a public method whose parameter type is a server class outside the allowlist
+- **WHEN** an allowlisted class has a public method whose parameter type is a server class outside the artifact and outside the
+  provided list
 - **THEN** the closure check fails and names the method's class and the parameter type
+
+#### Scenario: Legacy base class in a public signature
+
+- **WHEN** an allowlisted class has a public method whose parameter type is a class named in the provided list, such as
+  `com.reposilite.plugin.api.ReposilitePlugin`
+- **THEN** the closure check passes
 
 #### Scenario: Reference in a private member
 
 - **WHEN** an allowlisted class refers to a server class only in a private member
 - **THEN** the closure check passes
 
-### Requirement: Compilation without the server
+### Requirement: Compilation against the published API
 
-A plugin SHALL compile against the artifact alone. The consumer fixture SHALL depend on the artifact as a file and on no project of the
-monorepo.
+A plugin that uses only the new Ingot plugin API SHALL compile against the artifact alone. A plugin that extends a legacy base class
+SHALL compile against the server bundle as before. The consumer fixture SHALL depend on the artifact as a file and on no project of
+the monorepo.
 
 #### Scenario: Consumer fixture
 
 - **WHEN** the consumer fixture is built with only the artifact on its compile classpath
-- **THEN** the build succeeds and the sample plugin class carries the `@Plugin` annotation at runtime
+- **THEN** the build succeeds and the sample class carries the `@ExperimentalIngotPluginApi` annotation, readable at runtime
 
 ### Requirement: Experimental marker
 

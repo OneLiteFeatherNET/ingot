@@ -161,4 +161,29 @@ describe('PasswordCard', () => {
     expect(wrapper.find('form').exists(), 'a token session has no password to change').toBe(false)
     expect(wrapper.text()).toContain('signed in with an access token')
   })
+
+  it('draws the card through MdCard in the low variant', () => {
+    mountCard()
+
+    const card = wrapper.find('[data-variant="low"]')
+    expect(card.exists(), 'the password card is drawn by MdCard in the low variant').toBe(true)
+    expect(card.classes(), 'a flat tinted panel on the page').toContain('bg-surface-container-low')
+    expect(card.find('form').exists(), 'the form sits inside the card').toBe(true)
+  })
+
+  it('takes the default padding and the medium corner of MdCard', () => {
+    mountCard()
+
+    const card = wrapper.find('[data-variant="low"]')
+    expect(card.classes(), 'the inset is the card padding').toContain('p-4')
+    expect(card.classes(), 'the corner is the medium one').toContain('rounded-corner-medium')
+    expect(card.classes()).not.toContain('rounded-corner-large')
+  })
+
+  it('draws the card with the 1 pixel outline edge of the surface table', () => {
+    mountCard()
+
+    const card = wrapper.find('[data-variant="low"]')
+    expect(card.classes(), 'the card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
 })

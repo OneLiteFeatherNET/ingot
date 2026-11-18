@@ -207,3 +207,19 @@ describe('scrollbar gutter of the root element', () => {
     expect(rootRules.join('\n'), 'no reserved gutter on html').not.toContain('scrollbar-gutter: stable')
   })
 })
+
+describe('motion transitions and the one reduced motion rule', () => {
+  const motionStylesheets = ['src/styles/md3/motion-transitions.css', 'src/styles/md3/shape-elevation-motion.css']
+
+  it('imports the named transition classes into the stylesheet', () => {
+    expect(stylesheet, 'style.css imports the transition classes').toContain('@import "./styles/md3/motion-transitions.css";')
+  })
+
+  it('declares no second reduced motion block in the transition classes', () => {
+    for (const path of motionStylesheets) {
+      const css = readFileSync(join(process.cwd(), path), 'utf8')
+
+      expect(css, `${path} leaves reduced motion to the rule of src/style.css`).not.toContain('prefers-reduced-motion')
+    }
+  })
+})

@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue'
 import type { TextValidator } from './types'
+import MdFieldShell from './MdFieldShell.vue'
 
 /*
  * An input chip field: a list of values, each shown as a chip with a close button, and a text
@@ -59,7 +60,6 @@ const SUGGESTION_LIMIT = 8
 
 const generatedId = useId()
 const inputId = computed(() => props.id || `md-chip-input-${generatedId}`)
-const helperId = computed(() => `${inputId.value}-helper`)
 
 const input = ref<HTMLInputElement | null>(null)
 const draft = ref('')
@@ -153,7 +153,6 @@ const fieldClass = computed(() => {
   if (props.disabled) return FIELD.disabled
   return invalid.value ? FIELD.error : FIELD.default
 })
-const helperClass = computed(() => (invalid.value ? 'text-error' : 'text-on-surface-variant'))
 
 /*
  * The label floats into the notch of the outline, like the label of MdTextField, once the field has focus
@@ -181,98 +180,99 @@ const labelClass = computed(() => {
     class="flex min-w-0 w-full flex-col gap-1"
     data-ingot-component="md-chip-input"
   >
-    <div class="relative">
-      <div
-        class="flex min-h-14 flex-wrap items-center gap-2 rounded-corner-extra-small border bg-transparent px-4 py-2"
-        :class="fieldClass"
-        @click="input?.focus()"
-      >
+    <MdFieldShell
+      :input-id="inputId"
+      :helper-text="helperText"
+      :invalid="invalid"
+    >
+      <template #default="{ describedBy }">
+        <div
+          class="flex min-h-14 flex-wrap items-center gap-2 rounded-corner-extra-small border bg-transparent px-4 py-2"
+          :class="fieldClass"
+          @click="input?.focus()"
+        >
+          <ul
+            class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
+            :aria-label="`${label} chips`"
+          >
+            <li
+              v-for="(tag, index) in modelValue"
+              :key="`${index}:${tag}`"
+              data-test="chip"
+              class="inline-flex h-8 items-center gap-1 rounded-corner-small border pl-3 pr-1 md-label-large"
+              :class="disabled ? 'border-on-surface/12 text-on-surface/38' : 'border-outline bg-surface-container-low text-on-surface'"
+            >
+              <span class="[overflow-wrap:anywhere]">{{ tag }}</span>
+              <button
+                type="button"
+                class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
+                :aria-label="`Remove ${tag}`"
+                :disabled="disabled"
+                @click.stop="remove(index)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="size-md-icon"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
+            </li>
+          </ul>
+          <input
+            :id="inputId"
+            ref="input"
+            v-model="draft"
+            type="text"
+            autocomplete="off"
+            class="md-embedded-input min-h-6 min-w-6 min-w-[8rem] flex-1 px-1 md-body-large text-on-surface disabled:text-on-surface/38"
+            :disabled="disabled"
+            :aria-invalid="invalid ? 'true' : undefined"
+            :aria-describedby="describedBy"
+            @input="onInput"
+            @keydown="onKeydown"
+            @focus="focused = true"
+            @blur="focused = false"
+          >
+        </div>
+        <label
+          :for="inputId"
+          :class="labelClass"
+        >{{ label }}</label>
+      </template>
+      <template #below>
         <ul
-          class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
-          :aria-label="`${label} chips`"
+          v-if="visibleSuggestions.length > 0"
+          class="m-0 flex list-none flex-wrap gap-2 px-4 pt-1"
+          :aria-label="`Suggested ${label.toLowerCase()}`"
         >
           <li
-            v-for="(tag, index) in modelValue"
-            :key="`${index}:${tag}`"
-            data-test="chip"
-            class="inline-flex h-8 items-center gap-1 rounded-corner-small border pl-3 pr-1 md-label-large"
-            :class="disabled ? 'border-on-surface/12 text-on-surface/38' : 'border-outline bg-surface-container-low text-on-surface'"
+            v-for="suggestion in visibleSuggestions"
+            :key="suggestion"
           >
-            <span class="[overflow-wrap:anywhere]">{{ tag }}</span>
             <button
               type="button"
-              class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
-              :aria-label="`Remove ${tag}`"
-              :disabled="disabled"
-              @click.stop="remove(index)"
+              data-test="suggestion"
+              class="md-state-layer md-focus-ring md-touch-target relative inline-flex h-8 items-center rounded-corner-small border border-outline bg-surface-container-low px-3 md-label-large text-on-surface"
+              @mousedown.prevent
+              @click="addSuggestion(suggestion)"
             >
-              <svg
-                viewBox="0 0 24 24"
-                class="size-md-icon"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
+              {{ suggestion }}
             </button>
           </li>
         </ul>
-        <input
-          :id="inputId"
-          ref="input"
-          v-model="draft"
-          type="text"
-          autocomplete="off"
-          class="md-embedded-input min-h-6 min-w-6 min-w-[8rem] flex-1 px-1 md-body-large text-on-surface disabled:text-on-surface/38"
-          :disabled="disabled"
-          :aria-invalid="invalid ? 'true' : undefined"
-          :aria-describedby="helperText ? helperId : undefined"
-          @input="onInput"
-          @keydown="onKeydown"
-          @focus="focused = true"
-          @blur="focused = false"
+      </template>
+      <template #counter>
+        <p
+          v-if="maxItems > 0"
+          class="shrink-0 md-body-small text-on-surface-variant"
         >
-      </div>
-      <label
-        :for="inputId"
-        :class="labelClass"
-      >{{ label }}</label>
-    </div>
-    <ul
-      v-if="visibleSuggestions.length > 0"
-      class="m-0 flex list-none flex-wrap gap-2 px-4 pt-1"
-      :aria-label="`Suggested ${label.toLowerCase()}`"
-    >
-      <li
-        v-for="suggestion in visibleSuggestions"
-        :key="suggestion"
-      >
-        <button
-          type="button"
-          data-test="suggestion"
-          class="md-state-layer md-focus-ring md-touch-target relative inline-flex h-8 items-center rounded-corner-small border border-outline bg-surface-container-low px-3 md-label-large text-on-surface"
-          @mousedown.prevent
-          @click="addSuggestion(suggestion)"
-        >
-          {{ suggestion }}
-        </button>
-      </li>
-    </ul>
-    <div class="flex items-start justify-between gap-2 px-4">
-      <p
-        :id="helperId"
-        class="md-body-small"
-        :class="helperClass"
-      >
-        {{ helperText }}
-      </p>
-      <p
-        v-if="maxItems > 0"
-        class="shrink-0 md-body-small text-on-surface-variant"
-      >
-        {{ modelValue.length }} / {{ maxItems }}
-      </p>
-    </div>
+          {{ modelValue.length }} / {{ maxItems }}
+        </p>
+      </template>
+    </MdFieldShell>
   </div>
 </template>

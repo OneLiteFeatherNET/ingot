@@ -80,6 +80,17 @@ describe('SecurityPanel', () => {
     status.instance.mockReset()
   })
 
+  describe('headings', () => {
+    it('titles the panel with a level 2 heading in the title-medium role, under the level 1 page heading', async () => {
+      await mountPanel()
+
+      const title = wrapper!.findAll('h2').find(heading => heading.text() === 'Security')
+      expect(title, 'the panel title is a level 2 heading').toBeDefined()
+      expect(title!.classes(), 'a level 2 title uses md-title-medium').toContain('md-title-medium')
+      expect(wrapper!.findAll('h3, h4').map(heading => heading.text()), 'the panel title is not a deeper heading').not.toContain('Security')
+    })
+  })
+
   describe('tabs', () => {
     it('shows the four tabs in order: IP addresses, Accounts, Passwords and Sessions', async () => {
       await mountPanel()

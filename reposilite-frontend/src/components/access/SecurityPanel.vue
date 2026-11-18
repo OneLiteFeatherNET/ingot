@@ -51,12 +51,12 @@ const selected = computed(() => {
     data-ingot-component="security-panel"
   >
     <div class="flex flex-col gap-1">
-      <h3
+      <h2
         id="security-title"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         Security
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         Limits on repeated failed sign-ins, the rules for new passwords and the length of browser sessions.
       </p>

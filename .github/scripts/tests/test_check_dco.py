@@ -270,7 +270,7 @@ class WorkflowShapeTests(unittest.TestCase):
         # PyYAML reads the bare key `on` as the boolean True, so accept both spellings.
         triggers = workflow.get("on", workflow.get(True))
         self.assertEqual({"pull_request"}, set(triggers))
-        self.assertEqual(["main"], triggers["pull_request"]["branches"])
+        self.assertEqual({"main", "release/**"}, set(triggers["pull_request"]["branches"]))
 
     def test_workflow_permissions_are_contents_read_only(self):
         self.assertEqual({"contents": "read"}, self.load_workflow()["permissions"])

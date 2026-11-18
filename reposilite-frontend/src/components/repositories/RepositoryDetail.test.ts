@@ -91,11 +91,18 @@ const writePolicyRadios = () => Array.from(document.querySelectorAll<HTMLInputEl
 const buttonNamed = (text: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent?.trim() === text)!
 
 describe('the repository detail page', () => {
-  it('does not repeat the id of the repository as a heading, the page heading names it', async () => {
+  it('names the repository in the first heading of the detail, the second level heading with its id', async () => {
     await mountDetail({ id: 'releases' })
 
-    const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
-    expect(headings, 'no heading of the detail is the id').not.toContain('releases')
+    expect(wrapper.find('h2').text(), 'the first heading of the detail is the id').toBe('releases')
+  })
+
+  it('draws the id as the heading of the header of the detail', async () => {
+    await mountDetail({ id: 'releases' })
+
+    const name = wrapper.get('[data-test="repository-name"]').element
+    expect(name.tagName, 'the id is a second level heading').toBe('H2')
+    expect(name.closest('header'), 'the heading sits in the header of the detail').not.toBeNull()
   })
 
   it('starts the headings of the detail at the second level, under the page heading', async () => {
@@ -401,5 +408,83 @@ describe('the repository tabs', () => {
 
     expect(router.currentRoute.value.params.id, 'the address follows the new id').toBe('renamed')
     expect(router.currentRoute.value.query.tab, 'the tab of the address is kept').toBe('general')
+  })
+})
+
+// The fields of a repository in the order the server declares them, with the titles the server gives them.
+const declaredOrderSchema = (): RepositorySchema => ({
+  type: 'object',
+  title: 'Maven',
+  properties: {
+    repositories: {
+      title: 'Repositories',
+      description: 'List of Maven repositories.',
+      type: 'array',
+      items: {
+        type: 'object',
+        title: 'Repository',
+        properties: {
+          id: { type: 'string', title: 'Id' },
+          visibility: { type: 'string', enum: ['PUBLIC', 'HIDDEN', 'PRIVATE'], title: 'Visibility' },
+          description: { type: 'string', title: 'Description' },
+          tags: { type: 'array', items: { type: 'string' }, title: 'Tags' },
+          redeployment: { type: 'boolean', title: 'Redeployment' },
+          preserveSnapshots: { type: 'boolean', title: 'Preserved snapshots' },
+          storageProvider: {
+            title: 'Storage provider',
+            oneOf: [
+              { type: 'object', title: 'File system Storage Provider', properties: { type: { type: 'string', const: 'fs' } }, additionalProperties: false },
+              { type: 'object', title: 'S3 Storage Provider', properties: { type: { type: 'string', const: 's3' } }, additionalProperties: false }
+            ]
+          },
+          storagePolicy: { type: 'string', enum: ['PRIORITIZE_UPSTREAM_METADATA', 'STRICT'], title: 'Storage policy' },
+          metadataMaxAge: { type: 'integer', title: 'Max age of metadata file' },
+          resolutionCacheMaxEntries: { type: 'integer', title: 'Resolution cache size' },
+          protectedGroupPrefixes: { type: 'array', items: { type: 'string' }, title: 'Protected group prefixes' },
+          uploadChecksumPolicy: { type: 'string', enum: ['IGNORE', 'WARN', 'FAIL'], title: 'Upload checksum policy' },
+          versionPolicy: { type: 'string', enum: ['RELEASE', 'SNAPSHOT', 'MIXED'], title: 'Version policy' },
+          readOnly: { type: 'boolean', title: 'Read-only' },
+          format: { type: 'string', title: 'Format' },
+          proxied: { type: 'array', title: 'Mirrored repositories', items: { type: 'object', properties: { reference: { type: 'string', title: 'Reference' } } } }
+        }
+      }
+    }
+  }
+})
+
+// The position of each text in the drawn form of a tab, so the test reads the order the admin sees.
+const textPositions = (texts: string[]) => {
+  const drawn = wrapper.get('[data-test="entry-form"]').text()
+  return texts.map(text => drawn.indexOf(text))
+}
+
+describe('the order of the fields on each tab', () => {
+  it('draws the storage provider before the preserved snapshots flag on Storage', async () => {
+    await mountDetail({ id: 'releases', schema: declaredOrderSchema(), address: '/settings/repositories/releases?tab=storage' })
+
+    const [provider, snapshots] = textPositions(['Storage provider', 'Preserved snapshots'])
+    expect(provider, 'the storage provider is drawn').toBeGreaterThanOrEqual(0)
+    expect(snapshots, 'the flag is drawn').toBeGreaterThanOrEqual(0)
+    expect(provider, 'the provider comes before the flag').toBeLessThan(snapshots)
+  })
+
+  it('draws the version policy before the upload checksum policy on Policy', async () => {
+    await mountDetail({ id: 'releases', schema: declaredOrderSchema(), address: '/settings/repositories/releases?tab=policy' })
+
+    const [version, checksum] = textPositions(['Version policy', 'Upload checksum policy'])
+    expect(version, 'the version policy is drawn').toBeGreaterThanOrEqual(0)
+    expect(checksum, 'the checksum policy is drawn').toBeGreaterThanOrEqual(0)
+    expect(version, 'the version policy comes before the checksum policy').toBeLessThan(checksum)
+  })
+
+  it('draws the mirrored repositories before the storage policy and the protected prefixes on Mirror and proxy', async () => {
+    await mountDetail({ id: 'central', schema: declaredOrderSchema(), address: '/settings/repositories/central?tab=mirror' })
+
+    const [mirrors, storage, protectedPrefixes] = textPositions(['Mirrored repositories', 'Storage policy', 'Protected group prefixes'])
+    expect(mirrors, 'the mirrors are drawn').toBeGreaterThanOrEqual(0)
+    expect(storage, 'the storage policy is drawn').toBeGreaterThanOrEqual(0)
+    expect(protectedPrefixes, 'the protected prefixes are drawn').toBeGreaterThanOrEqual(0)
+    expect(mirrors, 'the mirrors come before the storage policy').toBeLessThan(storage)
+    expect(storage, 'the storage policy comes before the protected prefixes').toBeLessThan(protectedPrefixes)
   })
 })

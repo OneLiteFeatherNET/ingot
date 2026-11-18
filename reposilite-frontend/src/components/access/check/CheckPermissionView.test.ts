@@ -136,6 +136,45 @@ describe('CheckPermissionView', () => {
     document.body.innerHTML = ''
   })
 
+  describe('headings', () => {
+    it('titles the view with a level 2 heading in the title-medium role, under the level 1 page heading', async () => {
+      await mountView()
+
+      const title = wrapper.findAll('h2').find(heading => heading.text() === 'Check permission')
+      expect(title, 'the view title is a level 2 heading').toBeDefined()
+      expect(title!.classes(), 'a level 2 title uses md-title-medium').toContain('md-title-medium')
+    })
+
+    it('titles the derivation as a level 3 heading in the title-small role, and draws no level 4 heading', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      const title = wrapper.findAll('h3').find(heading => heading.text() === 'How it was derived')
+      expect(title, 'the derivation is a level 3 heading').toBeDefined()
+      expect(title!.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+      expect(wrapper.find('h4').exists(), 'the view has no level 4 heading').toBe(false)
+    })
+  })
+
+  describe('the field order', () => {
+    // The labelled controls of the form in the order they are drawn.
+    const formNames = (): string[] =>
+      [...wrapper.get('[data-test="check-form"]').element.querySelectorAll<HTMLElement>('label, [role="radiogroup"]')]
+        .map(element => element.getAttribute('aria-label') ?? element.textContent.trim())
+
+    it('asks for the principal and its token before the check by choice and the node', async () => {
+      await mountView()
+
+      expect(formNames(), 'the token follows the principal it belongs to').toEqual(['Principal', 'Token', 'Check by', 'Node'])
+    })
+
+    it('keeps the token after the principal when the check is by artifact path, and the action after the path', async () => {
+      await mountView()
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+
+      expect(formNames()).toEqual(['Principal', 'Token', 'Check by', 'Repository', 'Path', 'Action'])
+    })
+  })
+
   describe('before a check', () => {
     it('asks for a principal and a node', async () => {
       await mountView()

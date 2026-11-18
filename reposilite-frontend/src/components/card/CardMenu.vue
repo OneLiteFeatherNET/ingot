@@ -26,12 +26,15 @@ defineProps({
 })
 
 const emit = defineEmits<{
+  'select-tab': [tab: string]
+  /** @deprecated Listen to select-tab instead. The alias is kept for one release with the same tab name. */
   selectTab: [tab: string]
 }>()
 
 const selectedTab = ref(localStorage.getItem('card-tab') || 'Maven')
 watchEffect(() => {
   localStorage.setItem('card-tab', selectedTab.value)
+  emit('select-tab', selectedTab.value)
   emit('selectTab', selectedTab.value)
 })
 
