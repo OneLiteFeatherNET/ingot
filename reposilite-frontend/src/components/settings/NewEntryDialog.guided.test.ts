@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h, ref, type Ref } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { VueFinalModal } from 'vue-final-modal'
 import NewEntryDialog from './NewEntryDialog.vue'
 import { guidedCreateKey } from './guidedCreate'
@@ -26,7 +26,7 @@ import { guidedCreateKey } from './guidedCreate'
  * Without one, the dialog works as before; NewEntryDialog.test.js covers that path.
  */
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -34,14 +34,14 @@ afterEach(() => {
 })
 
 // A host with its own open state, the way EntryList holds the dialog it opens.
-const mountList = (guided) => {
+const mountList = (guided: (() => void) | null) => {
   const open = ref(false)
   const List = defineComponent({
     setup: () => () => h(NewEntryDialog, {
       modelValue: open.value,
       noun: 'repository',
       existingIds: [],
-      'onUpdate:modelValue': (value) => { open.value = value }
+      'onUpdate:modelValue': (value: boolean) => { open.value = value }
     })
   })
   wrapper = mount(List, {
@@ -51,13 +51,13 @@ const mountList = (guided) => {
   return { open }
 }
 
-const pressNew = async ({ open }) => {
+const pressNew = async ({ open }: { open: Ref<boolean> }) => {
   open.value = true
   await flushPromises()
 }
 
 // The id dialog is the modal that NewEntryDialog renders; its own open state is the one that matters.
-const dialogOpen = () => wrapper.findComponent(VueFinalModal).props('modelValue')
+const dialogOpen = () => wrapper?.findComponent(VueFinalModal).props('modelValue')
 
 describe('NewEntryDialog with a guided flow', () => {
   it('starts the guided flow instead of opening the id dialog', async () => {

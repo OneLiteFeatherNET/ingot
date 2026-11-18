@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import { property } from '../../helpers/vue-extensions'
 import MdButton from '../md/MdButton.vue'
 
-const props = defineProps({
-  callback: property(Function, true)
+defineOptions({
+  inheritAttrs: false
 })
+
+const props = defineProps<{
+  callback: () => void
+}>()
 
 const showFactoryReset = ref(false)
 
@@ -23,12 +26,6 @@ const overlayStyle = {
 const factoryReset = () => {
   props.callback()
   showFactoryReset.value = false
-}
-</script>
-
-<script>
-export default {
-  inheritAttrs: false
 }
 </script>
 

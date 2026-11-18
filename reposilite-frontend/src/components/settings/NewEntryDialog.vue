@@ -14,8 +14,8 @@
   - limitations under the License.
   -->
 
-<script setup>
-import { computed, inject, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, inject, ref, watch, type Ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -28,28 +28,26 @@ import { guidedCreateKey } from './guidedCreate'
  * and the rest of the entry is edited in the detail pane once it exists. Validation is shown after
  * the first keystroke or the first attempt to submit, so the dialog does not open with an error.
  */
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  noun: {
-    type: String,
-    default: 'entry'
-  },
-  existingIds: {
-    type: Array,
-    default: () => []
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  noun?: string
+  existingIds?: unknown[]
+}>(), {
+  modelValue: false,
+  noun: 'entry',
+  existingIds: () => []
 })
 
-const emit = defineEmits(['update:modelValue', 'create'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  create: [id: string]
+}>()
 
 const id = ref('')
 const touched = ref(false)
 
 // A collection with a guided flow (the maven repositories) hands "New entry" to that flow instead.
-const guidedFlow = inject(guidedCreateKey, null)
+const guidedFlow = inject<Ref<(() => void) | null> | null>(guidedCreateKey, null)
 // The template unwraps top-level refs, so it must read this computed, not guidedFlow.value.
 const guided = computed(() => guidedFlow?.value ?? null)
 
@@ -68,7 +66,7 @@ watch(() => props.modelValue, (open) => {
   touched.value = false
 })
 
-const onInput = (value) => {
+const onInput = (value: string) => {
   id.value = value
   touched.value = true
 }
