@@ -38,6 +38,14 @@ describe('SettingsImportErrors', () => {
     wrapper.unmount()
   })
 
+  it('is drawn as an error notice of the shared alert', () => {
+    const wrapper = mountErrors()
+
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.attributes('data-tone'), 'the notice must use the error tone of MdAlert').toBe('error')
+    wrapper.unmount()
+  })
+
   it('groups each error under its domain, with the field it is about', () => {
     const wrapper = mountErrors()
 
