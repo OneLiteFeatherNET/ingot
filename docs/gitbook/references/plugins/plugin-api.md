@@ -115,6 +115,31 @@ Facades are registered by Ingot's built-in plugins. A plugin gets one with `faca
 | `FailureFacade` (`com.reposilite.status`) | Records failures. |
 | `StatusFacade` (`com.reposilite.status`) | Server status. |
 
+## Job sources
+
+A plugin that keeps a record of its background runs can list them on the [Jobs page](../jobs.md). The plugin registers a job source on the `JobRegistrationEvent` of the Ingot namespace (experimental). The types are in the jobs package of the Ingot namespace, not in `com.reposilite.*`.
+
+The core fires `JobRegistrationEvent` at `ReposilitePostInitializeEvent`, after every plugin has initialized. Listen for it in `initialize()`, and register the source on the registry that the event carries. The registration returns a handle. Closing the handle removes the source again.
+
+* A source registered after the event is logged by the core and not listed.
+* When the plugin is disabled, its sources leave the registry. Their rows disappear from the Jobs page, and the history stays in the plugin's own tables.
+
+A source has these members:
+
+| Member | Contract |
+| --- | --- |
+| `id` | The source id, such as `billing`. It contains neither a colon nor a pipe. |
+| `kinds` | The kinds of run the source keeps, such as `billing.invoice`. |
+| `requiredNode` | The node a visitor needs to read the runs of the source. The default is `ingot.admin.*`. Choose the narrowest node that fits the data. |
+| `page(query, before, limit)` | Returns the runs strictly older than `before` (all runs when it is null), at most `limit` of them, sorted by start time, newest first, then by local id. The server passes a limit of at most 100. |
+| `detail(localId)` | Returns the run with that local id, or null. |
+
+The `page` method honours the `state` and `trigger` of the query by mapping them to its own values, so a page is full when rows exist. It never returns a run twice across the pages of one cursor. A run has the id `<source>:<local id>`, a kind, a label, a trigger, a state, the start and finish times, counts and failures, as described in the [Jobs reference](../jobs.md#fields-of-a-run).
+
+A source throws for a store error. The server then leaves the source out of that page and names it in `sourceErrors`, and the other sources still list their runs.
+
+Failures and counts can name paths and URLs of the instance, and the page shows them only to the nodes that read the source. Never put a credential in a failure.
+
 ## Routes
 
 A route is a `ReposiliteRoute<R>`:
