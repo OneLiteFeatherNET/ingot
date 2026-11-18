@@ -14,19 +14,23 @@ Prerequisite: none. This is the first change of the order in `add-gradle-plugin-
 ## 2. Closure check and allowlist (red, then green)
 
 - [ ] 2.1 `test(plugin)`: failing unit tests of the closure check, with class files built into a temporary directory: an allowlisted
-  reference passes; a public signature referring to a class outside the list fails and names the referring class and the target;
-  a reference in a private member passes; a JDK or Kotlin standard library type passes. Verify: they fail on the missing check.
-- [ ] 2.2 `feat(plugin)`: add `reposilite-backend/plugin-api-classes.txt` with the first list (reviewed in this pull request), the
-  `pluginApiJar` task and the closure check as a Gradle task that fails the build with one line per violation. Verify: the tests of
-  2.1 pass, and `heavy ./gradlew :reposilite-backend:pluginApiJar :reposilite-backend:pluginApiClosure --max-workers=2` passes.
+  reference passes; a public signature referring to a class that is neither in the list nor in `plugin-api-provided.txt` fails and
+  names the referring class and the target; a public signature referring to a class named in the provided list passes; a reference
+  in a private member passes; a JDK or Kotlin standard library type passes; an allowlist line outside `net.onelitefeather.ingot.`
+  fails. Verify: they fail on the missing check.
+- [ ] 2.2 `feat(plugin)`: add `reposilite-backend/plugin-api-classes.txt` with the first list of new Ingot classes only (reviewed in
+  this pull request), `reposilite-backend/plugin-api-provided.txt` with the legacy exceptions of D2 (`com.reposilite.plugin.api.*`
+  base classes and `com.reposilite.journalist`, reviewed in this pull request), the `pluginApiJar` task and the closure check as a
+  Gradle task that fails the build with one line per violation. Verify: the tests of 2.1 pass, and
+  `heavy ./gradlew :reposilite-backend:pluginApiJar :reposilite-backend:pluginApiClosure --max-workers=2` passes.
 - [ ] 2.3 `feat(plugin)`: add `@ExperimentalIngotPluginApi` in `net.onelitefeather.ingot.plugin` with the opt-in level `WARNING`,
   and list it. Verify: a test compiles a sample with and without the opt-in and asserts the warning text.
 
 ## 3. Consumer fixture (red, then green)
 
-- [ ] 3.1 `test(plugin)`: add `reposilite-test/plugin-api-consumer` with one sample plugin and a test that its class carries `@Plugin`
-  and that the annotation is readable at runtime. The module depends on the slim jar as a file only. Verify: the test fails before
-  the artifact exists.
+- [ ] 3.1 `test(plugin)`: add `reposilite-test/plugin-api-consumer` with one sample class that uses `@ExperimentalIngotPluginApi` with
+  an explicit opt-in, and a test that the sample class carries that annotation and that it is readable at runtime. The module depends
+  on the slim jar as a file only and on no legacy base class. Verify: the test fails before the artifact exists.
 - [ ] 3.2 `build(plugin)`: add the second publication `net.onelitefeather.ingot:ingot-plugin-api` next to `bundle`
   (`reposilite-backend/build.gradle.kts`, around lines 291-296), leaving `bundle` unchanged. Verify: the consumer test of 3.1 passes
   and the bundle jar hash matches the hash of `origin/main` apart from the marker class of 2.3.
@@ -42,8 +46,8 @@ Prerequisite: none. This is the first change of the order in `add-gradle-plugin-
 ## 5. Documentation (pull request of its own)
 
 - [ ] 5.1 `docs(plugin)`: update `docs/gitbook/references/plugins/plugin-api.md` with both coordinates, the rule that a plugin uses only
-  allowlisted classes, and the statement that existing plugins need no change. Verify: the page links the allowlist file and the
-  consumer fixture.
+  allowlisted classes or the legacy classes of the bundle named in `plugin-api-provided.txt`, and the statement that existing plugins
+  need no change. Verify: the page links the allowlist file, the provided list and the consumer fixture.
 
 ## 6. Pull requests
 
