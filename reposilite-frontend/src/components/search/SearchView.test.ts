@@ -172,6 +172,27 @@ afterEach(() => {
   wrapper?.unmount()
 })
 
+describe('SearchView page shell', () => {
+  it('takes the page gutter from the shared container of MdPage', async () => {
+    await mountAt('/search')
+
+    expect(wrapper.classes(), 'the page root carries the container gutter').toContain('container')
+  })
+
+  it('keeps the page spacing on the page root', async () => {
+    await mountAt('/search')
+
+    expect(wrapper.classes(), 'the bottom spacing is on the page root').toContain('mb-12')
+    expect(wrapper.classes(), 'the top spacing is on the page root').toContain('pt-7')
+  })
+
+  it('does not centre the page with mx-auto, so it aligns with the other pages', async () => {
+    await mountAt('/search')
+
+    expect(wrapper.classes(), 'the page is not centred').not.toContain('mx-auto')
+  })
+})
+
 describe('SearchView request and address', () => {
   it('builds the request from the address', async () => {
     const client = await mountAt('/search?q=commons&origin=mirror&extension=jar&extension=pom&sort=size&order=desc&page=2')
