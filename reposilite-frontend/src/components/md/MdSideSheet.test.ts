@@ -31,10 +31,12 @@ afterEach(() => {
 
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
 const closeButton = () => dialog().querySelector<HTMLElement>('[aria-label="Close"]')!
+// The panel is the scrollable column that holds the heading and the content of the sheet.
+const panel = () => dialog().querySelector<HTMLElement>('.overflow-y-auto')!
 
 // A page that owns the open state, as the Administration frame does. The test reads `state` to close the sheet from the
 // page side, as a choice of an entry does.
-const mountSheet = async ({ open = true } = {}) => {
+const mountSheet = async ({ open = true, side = 'start', width = 'default' }: { open?: boolean, side?: 'start' | 'end', width?: 'default' | 'wide' } = {}) => {
   const opener = document.createElement('button')
   opener.textContent = 'Sections'
   document.body.append(opener)
@@ -46,6 +48,8 @@ const mountSheet = async ({ open = true } = {}) => {
     setup() {
       return () => h(MdSideSheet, {
         open: state.open,
+        side,
+        width,
         title: 'Administration pages',
         'onUpdate:open': (value: boolean) => { state.open = value }
       }, () => [
@@ -154,5 +158,67 @@ describe('MdSideSheet', () => {
     await mountSheet()
 
     expect(dialog().classList, 'the transition is off under prefers-reduced-motion').toContain('motion-reduce:transition-none')
+  })
+
+  it('draws the panel at the leading edge by default', async () => {
+    await mountSheet()
+
+    expect(panel().classList, 'the panel is pinned to the start edge').toContain('start-0')
+    expect(panel().classList, 'the panel is not pinned to the end edge').not.toContain('end-0')
+  })
+
+  it('draws the panel at the trailing edge when side is end', async () => {
+    await mountSheet({ side: 'end' })
+
+    expect(panel().classList, 'the panel is pinned to the end edge').toContain('end-0')
+    expect(panel().classList, 'the panel is not pinned to the start edge').not.toContain('start-0')
+  })
+
+  it('returns focus to the opener when a trailing sheet closes with Escape', async () => {
+    const { state, opener } = await mountSheet({ side: 'end' })
+
+    dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await flushPromises()
+
+    expect(state.open, 'the sheet asked its page to close').toBe(false)
+    expect(document.activeElement, 'focus is back on the Sections button').toBe(opener)
+  })
+
+  it('takes the default width from the sheet width token', async () => {
+    await mountSheet()
+
+    expect(panel().classList, 'the width is the sheet width token').toContain('w-md-sheet')
+    expect(panel().classList, 'the width is capped at the window less the margin token').toContain('max-w-md-sheet-max')
+    expect(panel().getAttribute('style'), 'the panel has no inline width').toBeNull()
+  })
+
+  it('takes the wide width from the wide sheet width token when width is wide', async () => {
+    await mountSheet({ side: 'end', width: 'wide' })
+
+    expect(panel().classList, 'the width is the wide sheet width token').toContain('w-md-sheet-wide')
+    expect(panel().classList, 'the default width token is not used').not.toContain('w-md-sheet')
+  })
+
+  it('draws the dialog on the dialog stacking layer', async () => {
+    await mountSheet()
+
+    expect(dialog().classList, 'the stacking layer is the dialog token').toContain('z-md-dialog')
+    expect(dialog().classList, 'the stacking layer is not the default z-50').not.toContain('z-50')
+  })
+
+  it('draws the scrim from the scrim token with no inline style', async () => {
+    await mountSheet()
+    const scrim = dialog().firstElementChild as HTMLElement
+
+    expect(scrim.classList, 'the scrim is the md3 scrim at its token opacity').toContain('bg-scrim/md-scrim')
+    expect(scrim.getAttribute('style'), 'the scrim has no inline style').toBeNull()
+  })
+
+  it('draws the frame, the scrim and the panel of the sheet with no arbitrary value class', async () => {
+    await mountSheet()
+    const frame = [dialog(), dialog().firstElementChild as HTMLElement, panel()]
+    const classes = frame.flatMap(element => [...element.classList])
+
+    expect(classes.filter(name => name.includes('[')), 'no class uses an arbitrary value').toEqual([])
   })
 })

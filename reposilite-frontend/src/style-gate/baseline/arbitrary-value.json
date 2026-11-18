@@ -315,16 +315,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdSideSheet.vue",
-    "match": "bg-[color-mix(in_srgb,var(--md-sys-color-scrim)_32%,transparent)]",
-    "count": 1
-  },
-  {
-    "file": "src/components/md/MdSideSheet.vue",
-    "match": "w-[min(var(--container-md-sheet),calc(100vw-56px))]",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdSnackbar.vue",
     "match": "[&>svg]:size-6",
     "count": 1

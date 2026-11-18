@@ -160,11 +160,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdSideSheet.vue",
-    "match": "z-50",
-    "count": 1
-  },
-  {
     "file": "src/components/migration/CutOverStep.vue",
     "match": "font-normal",
     "count": 1
