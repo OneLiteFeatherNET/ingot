@@ -16,10 +16,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { statusLabel } from './cleanup'
 import type { CleanupRun } from './cleanup'
@@ -27,7 +28,8 @@ import type { CleanupRun } from './cleanup'
 /*
  * Confirms a run now. A run deletes artifacts at once and cannot be undone, so the run button
  * stays disabled until the policy id is typed exactly. After the run the dialog shows its result
- * in place of the form.
+ * in place of the form. Initial focus is on Cancel, and a dialog closed without a run returns the
+ * focus to the control that opened it.
  */
 const props = withDefaults(defineProps<{
   modelValue?: boolean
@@ -51,27 +53,10 @@ const emit = defineEmits<{
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.policyId)
-const cancel = ref<{ $el: HTMLElement } | null>(null)
-let opener: Element | null = null
 
 watch(() => props.modelValue, (open) => {
-  if (open) {
-    typed.value = ''
-    opener = document.activeElement
-    return
-  }
-  if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
+  if (open) typed.value = ''
 })
-
-// Cancel takes the focus as soon as it is drawn, and the focus trap of the modal starts on it too, so the modal's own
-// first focus (the id field) does not take it away.
-watch(cancel, (button) => {
-  if (button && props.modelValue) button.$el.focus()
-})
-const focusTrap = {
-  allowOutsideClick: true,
-  initialFocus: () => cancel.value?.$el
-}
 
 const close = () => emit('update:modelValue', false)
 
@@ -82,22 +67,14 @@ const confirm = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
-    :focus-trap="focusTrap"
+    :labelledby="'run-now-title'"
+    :describedby="result ? undefined : 'run-now-body'"
+    role="alertdialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div
-      class="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="run-now-title"
-      :aria-describedby="result ? undefined : 'run-now-body'"
-      data-ingot-component="run-now-dialog"
-    >
+    <div data-ingot-component="run-now-dialog">
       <h2
         id="run-now-title"
         class="md-headline-small text-on-surface"
@@ -128,18 +105,17 @@ const confirm = () => {
             :supporting-text="`Type ${policyId} exactly.`"
             @update:model-value="typed = $event"
           />
-          <p
+          <MdAlert
             v-if="error"
             data-ingot-state="error"
-            class="md-body-medium text-error"
-            role="alert"
+            tone="error"
           >
             {{ error }}
-          </p>
-          <div class="flex flex-wrap justify-end gap-2">
+          </MdAlert>
+          <MdDialogActions>
             <MdButton
               id="run-now-cancel"
-              ref="cancel"
+              data-autofocus
               variant="text"
               type="button"
               :disabled="running"
@@ -156,7 +132,7 @@ const confirm = () => {
             >
               {{ running ? 'Running…' : 'Run now' }}
             </MdButton>
-          </div>
+          </MdDialogActions>
         </form>
       </template>
 
@@ -182,16 +158,17 @@ const confirm = () => {
             </li>
           </ul>
         </div>
-        <div class="mt-6 flex justify-end">
+        <MdDialogActions class="mt-6">
           <MdButton
+            data-autofocus
             variant="tonal"
             type="button"
             @click="close"
           >
             Close
           </MdButton>
-        </div>
+        </MdDialogActions>
       </template>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>

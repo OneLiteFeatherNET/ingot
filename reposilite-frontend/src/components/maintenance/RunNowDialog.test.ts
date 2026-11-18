@@ -100,6 +100,12 @@ describe('RunNowDialog confirmation', () => {
 
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('The policy is locked by another run')
   })
+
+  it('draws the failure of the run as an error alert', async () => {
+    await openDialog({ error: 'The policy is locked by another run' })
+
+    expect(document.querySelector('[role="alert"]')?.getAttribute('data-tone'), 'the failure uses the error tone').toBe('error')
+  })
 })
 
 describe('RunNowDialog result', () => {
@@ -156,7 +162,7 @@ describe('RunNowDialog focus and announcement', () => {
     await flushPromises()
   }
 
-  const dialog = () => document.getElementById('run-now-title')?.closest('[aria-modal="true"]') as HTMLElement
+  const dialog = () => document.getElementById('run-now-title')?.closest<HTMLElement>('.vfm') as HTMLElement
 
   afterEach(() => {
     opener?.remove()

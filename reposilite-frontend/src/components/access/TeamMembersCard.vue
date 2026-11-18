@@ -18,6 +18,7 @@
 import { computed, ref, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import AddMemberDialog from './AddMemberDialog.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
@@ -166,12 +167,11 @@ const openAdd = () => {
           >Synced from the identity provider</span>
         </li>
       </ul>
-      <p
+      <MdStatePanel
         v-else
-        class="md-body-medium text-on-surface-variant"
-      >
-        This team has no members yet.
-      </p>
+        state="empty"
+        title="This team has no members yet."
+      />
 
       <AddMemberDialog
         v-model="addOpen"

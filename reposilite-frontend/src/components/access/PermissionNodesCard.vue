@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdSection from '../md/MdSection.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import NodeEditor from './nodes/NodeEditor.vue'
 import { permissionNodesApi } from './nodes/permissionNodesApi'
 import { teamParentsApi } from './nodes/teamParentsApi'
@@ -129,21 +130,23 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
         :heading-id="titleId"
         :aria-labelledby="titleId"
       >
-        <div
+        <MdStatePanel
           v-if="failed"
-          role="alert"
-          class="flex flex-wrap items-center gap-3"
+          state="error"
+          title="Could not load the permission nodes"
+          :description="failure"
           data-test="nodes-error"
         >
-          <span class="md-body-medium text-error">Could not load the permission nodes: {{ failure }}</span>
-          <MdButton
-            variant="tonal"
-            data-test="nodes-retry"
-            @click="nodes.load()"
-          >
-            Retry
-          </MdButton>
-        </div>
+          <template #actions>
+            <MdButton
+              variant="tonal"
+              data-test="nodes-retry"
+              @click="nodes.load()"
+            >
+              Retry
+            </MdButton>
+          </template>
+        </MdStatePanel>
         <p
           v-else-if="missing"
           role="alert"

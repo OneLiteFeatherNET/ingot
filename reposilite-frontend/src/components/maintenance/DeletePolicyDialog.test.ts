@@ -67,3 +67,33 @@ describe('DeletePolicyDialog', () => {
     expect(wrapper?.emitted('update:modelValue')).toEqual([[false]])
   })
 })
+
+describe('DeletePolicyDialog focus', () => {
+  let opener: HTMLButtonElement | undefined
+
+  afterEach(() => {
+    opener?.remove()
+    opener = undefined
+  })
+
+  it('returns the focus to the opener after Cancel closes the dialog', async () => {
+    opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    wrapper = mount(DeletePolicyDialog, {
+      props: {
+        modelValue: false,
+        policyId: 'snapshots-weekly',
+        'onUpdate:modelValue': (value: boolean) => wrapper?.setProps({ modelValue: value })
+      },
+      attachTo: document.body
+    }) as VueWrapper
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    cancelButton().click()
+    await flushPromises()
+
+    expect(document.activeElement, 'the focus goes back to the control that opened the dialog').toBe(opener)
+  })
+})

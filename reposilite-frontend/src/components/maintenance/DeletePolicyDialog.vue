@@ -15,9 +15,9 @@
   -->
 
 <script setup lang="ts">
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 /*
  * Removes a policy from the settings. It does not touch any artifact: the policy is only the rule
@@ -43,21 +43,15 @@ const confirm = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
+    :labelledby="'delete-policy-title'"
+    :describedby="'delete-policy-body'"
+    role="alertdialog"
+    size="md"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div
-      class="w-[calc(100vw-2rem)] max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="delete-policy-title"
-      aria-describedby="delete-policy-body"
-      data-ingot-component="delete-policy-dialog"
-    >
+    <div data-ingot-component="delete-policy-dialog">
       <h2
         id="delete-policy-title"
         class="md-headline-small text-on-surface"
@@ -71,9 +65,10 @@ const confirm = () => {
         The policy is removed from the settings. No artifact is deleted: a policy only deletes when a
         run of it happens.
       </p>
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
+      <MdDialogActions class="mt-6">
         <MdButton
           id="delete-policy-cancel"
+          data-autofocus
           variant="text"
           type="button"
           @click="close"
@@ -89,7 +84,7 @@ const confirm = () => {
         >
           Delete policy
         </MdButton>
-      </div>
+      </MdDialogActions>
     </div>
-  </VueFinalModal>
+  </MdDialog>
 </template>
