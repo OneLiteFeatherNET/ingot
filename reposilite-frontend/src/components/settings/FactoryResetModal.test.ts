@@ -16,10 +16,10 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import FactoryResetModal from './FactoryResetModal.vue'
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const openDialog = async () => {
   wrapper = mount(FactoryResetModal, {
@@ -42,7 +42,7 @@ describe('FactoryResetModal', () => {
 
     const title = document.getElementById('factory-reset-title')
     expect(title, 'the dialog title is in the document').not.toBeNull()
-    expect(wrapper.element.contains(title), 'the dialog is teleported out of the page').toBe(false)
+    expect((wrapper?.element as HTMLElement | undefined)?.contains(title), 'the dialog is teleported out of the page').toBe(false)
   })
 
   it('announces the open dialog as an alert dialog', async () => {
@@ -50,7 +50,7 @@ describe('FactoryResetModal', () => {
 
     const alert = document.querySelector('[role="alertdialog"]')
     expect(alert, 'an element with role alertdialog is in the document').not.toBeNull()
-    expect(alert.contains(document.getElementById('factory-reset-title'))).toBe(true)
+    expect(alert?.contains(document.getElementById('factory-reset-title'))).toBe(true)
   })
 
   it('paints the scrim with the md3 scrim colour at 32% opacity', async () => {
@@ -58,6 +58,6 @@ describe('FactoryResetModal', () => {
 
     const overlay = document.querySelector('.vfm__overlay')
     expect(overlay, 'the modal overlay is in the document').not.toBeNull()
-    expect(overlay.getAttribute('style')).toContain('color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)')
+    expect(overlay?.getAttribute('style')).toContain('color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)')
   })
 })

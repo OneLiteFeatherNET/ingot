@@ -15,10 +15,10 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NewEntryDialog from './NewEntryDialog.vue'
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const EXISTING = ['releases', 'snapshots']
 
@@ -27,20 +27,20 @@ const openDialog = async () => {
     props: { modelValue: false, noun: 'repository', existingIds: EXISTING },
     attachTo: document.body
   })
-  await wrapper.setProps({ modelValue: true })
+  await wrapper?.setProps({ modelValue: true })
   await flushPromises()
 }
 
 // The dialog is teleported to the body, so its controls are reached through the document.
-const idInput = () => document.getElementById('new-entry-id')
-const form = () => document.querySelector('#new-entry-form')
+const idInput = () => document.getElementById('new-entry-id') as HTMLInputElement
+const form = () => document.querySelector('#new-entry-form') as HTMLFormElement
 // The helper text is the error only while the field is marked invalid; otherwise it is the hint.
 const errorText = () => {
   const invalid = idInput().getAttribute('aria-invalid') === 'true'
   return invalid ? document.getElementById('new-entry-id-helper')?.textContent?.trim() ?? '' : ''
 }
 
-const typeId = async (value) => {
+const typeId = async (value: string) => {
   idInput().value = value
   idInput().dispatchEvent(new Event('input'))
   await flushPromises()
@@ -76,7 +76,7 @@ describe('NewEntryDialog', () => {
     await submit()
 
     expect(errorText()).toBe('Enter an id.')
-    expect(wrapper.emitted('create')).toBeUndefined()
+    expect(wrapper?.emitted('create')).toBeUndefined()
   })
 
   it('refuses an id that is already used, ignoring case', async () => {
@@ -86,7 +86,7 @@ describe('NewEntryDialog', () => {
     await submit()
 
     expect(errorText()).toBe('A repository with this id already exists.')
-    expect(wrapper.emitted('create')).toBeUndefined()
+    expect(wrapper?.emitted('create')).toBeUndefined()
   })
 
   it('refuses an id with characters that are not URL-safe', async () => {
@@ -96,7 +96,7 @@ describe('NewEntryDialog', () => {
     await submit()
 
     expect(errorText()).toBe('Use only letters, digits, dots, underscores and hyphens.')
-    expect(wrapper.emitted('create')).toBeUndefined()
+    expect(wrapper?.emitted('create')).toBeUndefined()
   })
 
   it('marks the id field invalid while it shows an error', async () => {
@@ -113,18 +113,18 @@ describe('NewEntryDialog', () => {
 
     await submit()
 
-    expect(wrapper.emitted('create')).toEqual([['mirror-2']])
-    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(wrapper?.emitted('create')).toEqual([['mirror-2']])
+    expect(wrapper?.emitted('update:modelValue')).toEqual([[false]])
   })
 
   it('starts empty the next time it opens, so an earlier attempt does not leak into it', async () => {
     await openDialog()
     await typeId('releases')
     await submit()
-    await wrapper.setProps({ modelValue: false })
+    await wrapper?.setProps({ modelValue: false })
     await flushPromises()
 
-    await wrapper.setProps({ modelValue: true })
+    await wrapper?.setProps({ modelValue: true })
     await flushPromises()
 
     expect(idInput().value).toBe('')
