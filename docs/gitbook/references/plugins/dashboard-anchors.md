@@ -142,6 +142,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-text-area-renderer` (no element of its own) | stable | `src/components/renderers/MdTextAreaRenderer.vue` | none | none | none |
 | `md-text-field` | experimental | `src/components/md/MdTextField.vue` | none | none | none |
 | `md-text-field-renderer` (no element of its own) | stable | `src/components/renderers/MdTextFieldRenderer.vue` | none | none | none |
+| `md-transition` (no element of its own) | experimental | `src/components/md/MdTransition.vue` | none | none | none |
 | `menu-panel` | stable | `src/components/header/MenuPanel.vue` | none | none | none |
 | `migration-dialog` | experimental | `src/components/migration/MigrationDialog.vue` | none | none | none |
 | `migration-view` | experimental | `src/components/migration/MigrationView.vue` | none | none | none |

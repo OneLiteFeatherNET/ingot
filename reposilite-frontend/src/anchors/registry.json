@@ -1027,6 +1027,14 @@
       "states": []
     },
     {
+      "name": "md-transition",
+      "file": "src/components/md/MdTransition.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
       "name": "connect-step",
       "file": "src/components/migration/ConnectStep.vue",
       "stability": "experimental",
