@@ -20,6 +20,7 @@ import com.reposilite.frontend.api.PluginUiFacade
 import com.reposilite.frontend.infrastructure.PluginStylesheetEndpoint
 import com.reposilite.frontend.infrastructure.PluginUiDataGuard
 import com.reposilite.frontend.infrastructure.PluginUiEndpoint
+import com.reposilite.frontend.infrastructure.PluginUiReaderEndpoint
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
@@ -54,6 +55,8 @@ internal class PluginUiPlugin : ReposilitePlugin() {
                     enabledPlugins = { event.reposilite.extensions.getPlugins().keys.sorted() },
                 )
             )
+            // The reader manifest is empty while its switch is off, so it is registered whatever the switch says.
+            event.registerRoutes(PluginUiReaderEndpoint(facade))
             // The stylesheet path answers 404 while its switch is off, so it is registered whatever the switch says.
             event.registerRoutes(PluginStylesheetEndpoint(facade))
             if (pluginUi.get()) {

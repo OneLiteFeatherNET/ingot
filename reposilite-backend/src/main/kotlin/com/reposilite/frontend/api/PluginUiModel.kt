@@ -203,6 +203,23 @@ data class PluginUiManifestPage(
     }
 }
 
+/**
+ * The manifest of the reader pages, read from `GET /api/frontend/plugin-ui/readers` by every visitor. It names no
+ * stylesheet and no plugin list, and its pages carry no area, because anonymous visitors may read them.
+ */
+data class PluginUiReaderManifest(
+    val version: Int = PluginUiModel.VERSION,
+    val pages: List<PluginUiReaderManifestPage>,
+)
+
+data class PluginUiReaderManifestPage(
+    val plugin: String,
+    val id: String,
+    val title: String,
+    val description: String?,
+    val blocks: List<PluginUiBlock>,
+)
+
 data class PluginUiManifestSection(
     val plugin: String,
     val domain: String,
