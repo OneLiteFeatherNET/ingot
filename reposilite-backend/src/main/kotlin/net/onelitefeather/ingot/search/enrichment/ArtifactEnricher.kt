@@ -83,15 +83,19 @@ interface ArtifactContent {
 
 /** The outcome of one call. The reasons are short and carry no content. */
 @ExperimentalIngotSearchApi
-sealed interface EnrichmentResult {
+sealed interface EnrichmentResult
 
-    data object Completed : EnrichmentResult
+/** The enricher finished and its output is indexed. */
+@ExperimentalIngotSearchApi
+data object EnrichmentCompleted : EnrichmentResult
 
-    data class Skipped(val reason: String) : EnrichmentResult
+/** The enricher chose not to index this file. [reason] is short and carries no content. */
+@ExperimentalIngotSearchApi
+data class EnrichmentSkipped(val reason: String) : EnrichmentResult
 
-    data class Failed(val reason: String) : EnrichmentResult
-
-}
+/** The enricher failed on this file. [reason] is short and carries no content. */
+@ExperimentalIngotSearchApi
+data class EnrichmentFailed(val reason: String) : EnrichmentResult
 
 /**
  * Emitted by the search plugin after every plugin has initialised. A plugin registers its [ArtifactEnricher] here, from its own

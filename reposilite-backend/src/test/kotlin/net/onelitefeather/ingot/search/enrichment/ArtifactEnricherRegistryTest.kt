@@ -127,7 +127,7 @@ internal class ArtifactEnricherRegistryTest {
 
         override val extensions: Set<String> = setOf("jar")
 
-        override fun enrich(artifact: ArtifactEnrichmentRequest): EnrichmentResult = EnrichmentResult.Completed
+        override fun enrich(artifact: ArtifactEnrichmentRequest): EnrichmentResult = EnrichmentCompleted
 
     }
 

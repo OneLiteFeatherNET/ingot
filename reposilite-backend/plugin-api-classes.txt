@@ -15,5 +15,8 @@ net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentRequest
 net.onelitefeather.ingot.search.enrichment.ArtifactContent
 net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
 net.onelitefeather.ingot.search.enrichment.EnrichmentResult
+net.onelitefeather.ingot.search.enrichment.EnrichmentCompleted
+net.onelitefeather.ingot.search.enrichment.EnrichmentSkipped
+net.onelitefeather.ingot.search.enrichment.EnrichmentFailed
 net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistrationEvent
 net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistry
