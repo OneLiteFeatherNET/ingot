@@ -141,6 +141,11 @@ signature.
 - **WHEN** one source throws while its page is read
 - **THEN** the other sources' runs are listed, and the response names the failed source in `sourceErrors`
 
+#### Scenario: Namespace of the job model
+
+- **WHEN** the job model and the source contract are built
+- **THEN** the run model, its enums, the registry, the cursor, the page and the source and registration types are all in `net.onelitefeather.ingot.jobs`, and none is in `com.reposilite.*`
+
 #### Scenario: Additive plugin API
 
 - **WHEN** the plugin ABI gate compares the plugin API with the 3.5.28 release
