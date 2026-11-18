@@ -20,11 +20,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import net.onelitefeather.ingot.search.database.SearchDialect
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchTables
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
@@ -204,6 +206,33 @@ internal class RunStore(
 
     fun get(runId: Long): RunSummary? = transaction(database) {
         runs.selectAll().where { runs.id eq runId }.map { it.toSummary() }.firstOrNull()
+    }
+
+    /**
+     * One page of the runs that match the filters, newest first. An empty filter does not filter. Only the runs that started
+     * before [beforeMillis], or at it with an id below [beforeId], belong to the page, so a page continues where the last one ended.
+     */
+    fun page(
+        kinds: Set<RunKind>,
+        statuses: Set<RunStatus>,
+        triggers: Set<RunTrigger>,
+        beforeMillis: Long?,
+        beforeId: Long?,
+        limit: Int,
+    ): List<RunSummary> = transaction(database) {
+        val conditions = buildList<Op<Boolean>> {
+            if (kinds.isNotEmpty()) add(runs.kind inList kinds.map { it.name })
+            if (statuses.isNotEmpty()) add(runs.status inList statuses.map { it.name })
+            if (triggers.isNotEmpty()) add(runs.trigger inList triggers.map { it.name })
+            if (beforeMillis != null) {
+                add((runs.startedAt less beforeMillis) or ((runs.startedAt eq beforeMillis) and (runs.id less (beforeId ?: 0L))))
+            }
+        }
+        runs.selectAll()
+            .where { conditions.fold(Op.TRUE as Op<Boolean>) { acc, condition -> acc and condition } }
+            .orderBy(runs.startedAt to SortOrder.DESC, runs.id to SortOrder.DESC)
+            .limit(limit)
+            .map { it.toSummary() }
     }
 
     /** The newest [limit] runs of either kind, newest first. */

@@ -28,8 +28,10 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.jobs.JobRegistrationEvent
 import net.onelitefeather.ingot.nexusimport.jobs.JobScheduler
 import net.onelitefeather.ingot.nexusimport.jobs.JobStore
+import net.onelitefeather.ingot.nexusimport.jobs.NexusMigrationJobSource
 import net.onelitefeather.ingot.nexusimport.jobs.NexusImportService
 import net.onelitefeather.ingot.nexusimport.nexus.JdkNexusTransport
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
@@ -77,6 +79,7 @@ class NexusImportPlugin : ReposilitePlugin() {
 
         val connections = NexusConnectionService(settings, JdkNexusTransport(), clock, sleeper, secretReferences)
         event { event: RoutingSetupEvent -> event.registerRoutes(NexusImportEndpoints(connections, service)) }
+        event { event: JobRegistrationEvent -> event.registry.register(NexusMigrationJobSource(store)) }
         event { _: ReposiliteDisposeEvent -> scheduler.close() }
 
         logger.info("NEXUS IMPORT | Enabled with ${settings.concurrency} files in flight and ${settings.maxRequestsPerSecond} requests per second")
