@@ -164,8 +164,13 @@ const schemeFor = (appearance: Appearance, isDark: boolean, contrastLevel: numbe
   })
 }
 
-const roleValues = (scheme: DynamicScheme): Map<string, string> =>
-  new Map(ROLES.map(([name, getter]) => [name, hexFromArgb(scheme[getter])]))
+// The dark surface-dim is the darkest surface (surface-container-lowest), as in color.css, so a seeded theme
+// matches the built-in one.
+const roleValues = (scheme: DynamicScheme): Map<string, string> => {
+  const values = new Map(ROLES.map(([name, getter]) => [name, hexFromArgb(scheme[getter])]))
+  if (scheme.isDark) values.set('surface-dim', values.get('surface-container-lowest')!)
+  return values
+}
 
 // Declarations for one block: every role, chart series 1 to 3, and the brand gradient.
 // Series 1 is the primary, 2 the tertiary and 3 the secondary; the gradient runs primary to tertiary.
