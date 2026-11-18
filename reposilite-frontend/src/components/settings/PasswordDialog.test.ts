@@ -85,3 +85,38 @@ describe('PasswordDialog import', () => {
     expect(wrapper.text()).toContain('cannot be opened')
   })
 })
+
+describe('PasswordDialog strength hint', () => {
+  it('shows the strength of the passphrase while it is typed', async () => {
+    const wrapper = mountDialog()
+    await fill(wrapper, 'fourteen-char')
+
+    expect(wrapper.text()).toContain('acceptable')
+  })
+
+  it('recommends several words and a password manager', () => {
+    const wrapper = mountDialog()
+
+    expect(wrapper.text()).toContain('several words')
+    expect(wrapper.text()).toContain('password manager')
+  })
+
+  it('shows the passphrase as text while the show control is chosen', async () => {
+    const wrapper = mountDialog()
+    await fill(wrapper, 'twelve-chars!')
+
+    await wrapper.find('[data-test="toggle-passphrase-visibility"]').trigger('click')
+
+    expect(wrapper.find('#settings-password').attributes('type')).toBe('text')
+  })
+
+  it('hides the passphrase again when the show control is chosen twice', async () => {
+    const wrapper = mountDialog()
+    await fill(wrapper, 'twelve-chars!')
+
+    await wrapper.find('[data-test="toggle-passphrase-visibility"]').trigger('click')
+    await wrapper.find('[data-test="toggle-passphrase-visibility"]').trigger('click')
+
+    expect(wrapper.find('#settings-password').attributes('type')).toBe('password')
+  })
+})
