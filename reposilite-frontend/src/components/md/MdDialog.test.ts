@@ -123,6 +123,23 @@ describe('MdDialog', () => {
     expect(frame().classList.contains('medium:max-w-140'), 'from 600px the frame is the lg size, capped at 560px').toBe(true)
   })
 
+  it('drops the 24px side inset below the medium window for the compact size only', async () => {
+    await mountDialog({ size: 'compact' })
+
+    const compactInset = frame().parentElement!
+    expect(compactInset.classList.contains('max-medium:px-0'), 'below 600px the compact size has no side inset').toBe(true)
+    expect(compactInset.classList.contains('medium:px-6'), 'from 600px the compact size keeps the 24px inset').toBe(true)
+    expect(compactInset.classList.contains('px-6'), 'the compact size has no unconditional 24px inset').toBe(false)
+    document.body.querySelectorAll('.vfm').forEach(element => element.remove())
+
+    for (const size of ['sm', 'md', 'lg'] as const) {
+      await mountDialog({ size })
+      expect(frame().parentElement!.classList.contains('px-6'), `the ${size} size keeps the 24px inset below 600px`).toBe(true)
+      expect(frame().parentElement!.classList.contains('max-medium:px-0'), `the ${size} size has no max-medium inset change`).toBe(false)
+      document.body.querySelectorAll('.vfm').forEach(element => element.remove())
+    }
+  })
+
   it('exposes exactly one element with role dialog by default', async () => {
     await mountDialog()
 
