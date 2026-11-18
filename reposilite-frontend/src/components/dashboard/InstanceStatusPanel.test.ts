@@ -121,6 +121,27 @@ describe('InstanceStatusPanel', () => {
     wrapper.unmount()
   })
 
+  it('shows the failed load as an error state panel with its own error attribute', async () => {
+    session.client = ref(clientWith(() => Promise.reject(new Error('unreachable'))))
+    const wrapper = mount(InstanceStatusPanel)
+    await flushPromises()
+
+    const alert = wrapper.find('[role="alert"]')
+    expect(alert.exists(), 'the failed load should be announced as an alert').toBe(true)
+    expect(alert.attributes('data-ingot-state'), 'the failed load should carry the error state').toBe('error')
+    expect(wrapper.findAll('[role="alert"]'), 'the failure should be announced once').toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('draws the placeholders as a busy status with no pulse animation while the first status loads', () => {
+    session.client = ref(clientWith(() => new Promise(() => {})))
+    const wrapper = mount(InstanceStatusPanel)
+
+    expect(wrapper.find('[role="status"][aria-busy="true"]').exists(), 'the placeholders should be a busy status').toBe(true)
+    expect(wrapper.find('.animate-pulse').exists(), 'the placeholders should not pulse').toBe(false)
+    wrapper.unmount()
+  })
+
   it('requests the status again when the error card is retried', async () => {
     const instance = vi.fn()
       .mockRejectedValueOnce(new Error('unreachable'))
@@ -508,6 +529,15 @@ describe('InstanceStatusPanel read-only banner', () => {
     await flushPromises()
     return wrapper
   }
+
+  it('draws the read-only banner as a tinted notice with no alert role', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'stored' })
+    const banner = wrapper.find('[data-testid="read-only-banner"]')
+
+    expect(banner.attributes('data-tone'), 'the banner should be an MdAlert in the tertiary tone').toBe('tertiary')
+    expect(banner.attributes('role'), 'a static notice should not be an alert').not.toBe('alert')
+    wrapper.unmount()
+  })
 
   it('shows the read-only banner while the instance is read-only', async () => {
     const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'environment' })

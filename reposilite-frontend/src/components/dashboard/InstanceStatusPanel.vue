@@ -22,8 +22,11 @@ import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import type { STATUS } from '../../store/palette'
 import type { components } from '../../types/api'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdSkeleton from '../md/MdSkeleton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
 import FailuresSheet from './FailuresSheet.vue'
 import InstanceHealthRow from './InstanceHealthRow.vue'
@@ -244,18 +247,13 @@ const readOnlyScope = computed(() => {
   <MdCard
     v-if="!instanceStatus && failed"
     variant="outlined"
-    role="alert"
-    class="flex flex-wrap items-center justify-between gap-3"
   >
-    <p class="md-body-large text-on-surface">
-      Cannot load instance status. The server may be down or unreachable.
-    </p>
-    <MdButton
-      variant="tonal"
-      @click="requestStatus()"
-    >
-      Retry
-    </MdButton>
+    <MdStatePanel
+      state="error"
+      title="Cannot load instance status"
+      description="The server may be down or unreachable."
+      @retry="requestStatus()"
+    />
   </MdCard>
 
   <!--
@@ -264,6 +262,9 @@ const readOnlyScope = computed(() => {
   -->
   <div
     v-else-if="!instanceStatus"
+    role="status"
+    aria-busy="true"
+    aria-label="Loading instance status"
     class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
     data-ingot-component="instance-status-panel"
   >
@@ -273,9 +274,9 @@ const readOnlyScope = computed(() => {
       variant="outlined"
       class="h-28"
     >
-      <div class="skeleton-bars">
-        <div class="h-3 w-20 rounded-corner-extra-small bg-surface-container-high" />
-        <div class="mt-3 h-6 w-24 rounded-corner-extra-small bg-surface-container-high" />
+      <div class="flex flex-col gap-3">
+        <MdSkeleton width="sm" />
+        <MdSkeleton width="md" />
       </div>
     </MdCard>
   </div>
@@ -285,17 +286,14 @@ const readOnlyScope = computed(() => {
     class="flex flex-col gap-3"
     data-ingot-component="instance-status-panel"
   >
-    <div
+    <MdAlert
       v-if="instanceStatus.readOnly"
+      tone="tertiary"
+      title="Read-only mode is on"
       data-testid="read-only-banner"
       data-ingot-part="read-only-banner"
-      role="status"
-      class="flex flex-col gap-1 rounded-corner-medium bg-tertiary-container p-4 text-on-tertiary-container"
     >
-      <p class="md-title-small">
-        Read-only mode is on
-      </p>
-      <p class="md-body-medium">
+      <p>
         Writes are refused until read-only mode is turned off.
       </p>
       <p class="md-body-small">
@@ -313,7 +311,7 @@ const readOnlyScope = computed(() => {
           A maintenance administrator can turn it off.
         </template>
       </p>
-    </div>
+    </MdAlert>
 
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       <StatTile

@@ -26,6 +26,7 @@ import CloseIcon from '../icons/CloseIcon.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import { absoluteTime, relativeTime } from './failures'
 
 type FailureResponse = components['schemas']['FailureResponse']
@@ -177,35 +178,25 @@ const clear = () =>
       </header>
 
       <div class="flex-1 overflow-y-auto p-4">
-        <div
+        <MdStatePanel
           v-if="loadFailed"
-          role="alert"
-          class="flex flex-col items-start gap-3"
-        >
-          <p class="md-body-large">
-            Cannot load failures. The server may be down or unreachable.
-          </p>
-          <MdButton
-            variant="tonal"
-            @click="load()"
-          >
-            Retry
-          </MdButton>
-        </div>
+          state="error"
+          title="Cannot load failures"
+          description="The server may be down or unreachable."
+          @retry="load()"
+        />
 
-        <p
+        <MdStatePanel
           v-else-if="loading && !hasFailures"
-          class="md-body-large text-on-surface-variant"
-        >
-          Loading failures
-        </p>
+          state="loading"
+          title="Loading failures"
+        />
 
-        <p
+        <MdStatePanel
           v-else-if="!hasFailures"
-          class="md-body-large text-on-surface-variant"
-        >
-          No failures recorded.
-        </p>
+          state="empty"
+          description="No failures recorded."
+        />
 
         <ol
           v-else

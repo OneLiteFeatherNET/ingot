@@ -172,6 +172,25 @@ describe('FailuresSheet', () => {
     expect(wrapper?.emitted('cleared'), 'the owner learns that the count has changed').toHaveLength(1)
   })
 
+  it('marks the failed load as an error state panel, announced once', async () => {
+    session.client = ref(clientWith({ failures: vi.fn().mockRejectedValue(new Error('unreachable')) }))
+    mountSheet()
+    await flushPromises()
+
+    const alerts = [...(dialog()?.querySelectorAll('[role="alert"]') ?? [])]
+    expect(alerts, 'the failed load should be announced once').toHaveLength(1)
+    expect(alerts[0]?.getAttribute('data-ingot-state'), 'the failed load should carry the error state').toBe('error')
+  })
+
+  it('shows the list as busy while the failures are loading', async () => {
+    session.client = ref(clientWith({ failures: vi.fn().mockReturnValue(new Promise(() => {})) }))
+    mountSheet()
+    await flushPromises()
+
+    expect(dialog()?.querySelector('[aria-busy="true"]'), 'the loading state should be marked busy').not.toBeNull()
+    expect(dialog()?.querySelector('.animate-pulse'), 'the loading state should not pulse').toBeNull()
+  })
+
   it('offers a retry when the failures cannot be loaded', async () => {
     const failures = vi.fn()
       .mockRejectedValueOnce(new Error('unreachable'))
