@@ -164,6 +164,8 @@ object PluginUiModel {
     const val RESERVED_DOMAIN: String = "plugins"
 
     const val MAX_PAGES: Int = 20
+    /** Reader pages have their own count, separate from the admin pages of the plugin. */
+    const val MAX_READER_PAGES: Int = 20
     const val MAX_BLOCKS: Int = 30
     const val MAX_MANIFEST_BYTES: Int = 64 * 1024
 }

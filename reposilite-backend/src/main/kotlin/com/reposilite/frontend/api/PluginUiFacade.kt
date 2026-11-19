@@ -22,6 +22,8 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import java.nio.charset.StandardCharsets.UTF_8
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.plugin.ui.PluginUiReaderPage
 
 /**
  * The extension point for dashboard pages. A plugin obtains a registrar for itself with [forPlugin] and registers
@@ -30,15 +32,19 @@ import java.nio.charset.StandardCharsets.UTF_8
  *
  * Plugins that never call this facade see no change.
  */
+@OptIn(ExperimentalIngotPluginApi::class)
 class PluginUiFacade internal constructor(
     private val logger: Logger,
     private val enabled: () -> Boolean,
     /** The switch `INGOT_LOCAL_PLUGINSTYLES`. It is read on every request, so a change applies without a restart. */
     private val stylesheetsEnabled: () -> Boolean = { true },
+    /** The switch `INGOT_LOCAL_PLUGINREADERS`. Off hides every reader page. */
+    private val readersEnabled: () -> Boolean = { true },
 ) : Facade {
 
     private val lock = Any()
     private val pagesByPlugin = linkedMapOf<String, MutableList<PluginUiPage>>()
+    private val readerPagesByPlugin = linkedMapOf<String, MutableList<PluginUiReaderPage>>()
     private val sectionsByPlugin = linkedMapOf<String, MutableList<PluginUiManifestSection>>()
     private val stylesheetsByPlugin = linkedMapOf<String, PluginStylesheet>()
     private val stylesheetCallers = mutableSetOf<String>()
@@ -76,6 +82,32 @@ class PluginUiFacade internal constructor(
         }
         pagesByPlugin.getOrPut(plugin) { mutableListOf() }.add(page)
         true
+    }
+
+    @OptIn(ExperimentalIngotPluginApi::class)
+    internal fun addReaderPage(plugin: String, page: PluginUiReaderPage): Boolean = synchronized(lock) {
+        val existing = readerPagesByPlugin[plugin].orEmpty()
+        val problems = buildList {
+            addAll(PluginUiValidator.readerPageProblems(plugin, page))
+            if (existing.size >= PluginUiModel.MAX_READER_PAGES) {
+                add("plugin '$plugin' already has ${existing.size} reader pages, a plugin takes at most ${PluginUiModel.MAX_READER_PAGES} reader pages")
+            }
+            if (existing.any { it.id == page.id }) add("plugin '$plugin' already registered a reader page with id '${page.id}'")
+            PluginUiValidator.readerManifestProblem(plugin, existing + page)?.let(::add)
+        }
+        if (problems.isNotEmpty()) {
+            logger.warn("Plugin UI | reader page '${page.id}' of plugin '$plugin' is dropped: ${problems.joinToString("; ")}")
+            return false
+        }
+        readerPagesByPlugin.getOrPut(plugin) { mutableListOf() }.add(page)
+        true
+    }
+
+    /** The reader pages of every plugin, in registration order. Empty while either switch is off. */
+    @OptIn(ExperimentalIngotPluginApi::class)
+    internal fun readerPages(): List<PluginUiReaderPage> {
+        if (!enabled() || !readersEnabled()) return emptyList()
+        return synchronized(lock) { readerPagesByPlugin.values.flatten() }
     }
 
     internal fun addSection(plugin: String, ownDomain: String?, section: PluginUiSection): Boolean = synchronized(lock) {
@@ -173,6 +205,14 @@ class PluginUiRegistrar internal constructor(
     /** Adds a page. Returns false when the page was dropped; the reason is in the log. */
     fun registerPage(page: PluginUiPage): Boolean =
         facade.addPage(plugin, page)
+
+    /**
+     * Adds a reader page, which anonymous visitors may read. Its blocks only read: a form, an action or a status block is
+     * refused. Returns false when the page was dropped; the reason is in the log.
+     */
+    @ExperimentalIngotPluginApi
+    fun registerReaderPage(page: PluginUiReaderPage): Boolean =
+        facade.addReaderPage(plugin, page)
 
     /** Gives one of the plugin's own settings domains a label and a menu group. Returns false when it was dropped. */
     fun registerSettingsSection(section: PluginUiSection): Boolean =

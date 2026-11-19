@@ -468,8 +468,32 @@ The sheet is checked against these rules, and a sheet that breaks one is dropped
 
 The dashboard loads the sheet after the manifest, only for a signed in caller. The manifest lists it in `stylesheets` with its path and the SHA-256 of the served bytes, and the sheet is served at `/api/frontend/plugin-styles/<plugin>/<hash>.css`, where `<hash>` is the first 16 hexadecimal characters of that digest. The answer is cached for a year. A worked example and the authoring rules are in [Extend the dashboard from a plugin](../../manage/plugins/extend-the-dashboard-from-a-plugin.md#ship-a-stylesheet).
 
+### Reader pages
+
+A reader page is a dashboard page that anonymous visitors may read, for example the versions of a repository. It is registered like an admin page, with its own class and no area or menu group:
+
+```kotlin
+@OptIn(ExperimentalIngotPluginApi::class)
+facade<PluginUiFacade>().forPlugin(this).registerReaderPage(
+    PluginUiReaderPage(
+        id = "releases",
+        title = "Releases",
+        blocks = listOf(PluginUiBlock.Table(source = "/api/plugins/example/releases", columns = listOf(PluginUiColumn("version", "Version")))),
+    )
+)
+```
+
+The classes are in `net.onelitefeather.ingot.plugin.ui` and carry `@ExperimentalIngotPluginApi`, so a plugin opts in. The rules are the rules of admin pages, with these differences:
+
+- The blocks only read. `text`, `keyValue` and `table` are accepted. A `form`, an `action` or a `status` block is refused with a warning, and the rest of the page is still served.
+- A plugin takes at most 20 reader pages, counted apart from its admin pages, and the serialised reader pages of one plugin take at most 64 KiB.
+- Every source is a route of the plugin below `/api/plugins/<plugin>/`, as for admin pages.
+- A reader source must filter its rows for the viewer and must not answer with more than a bounded size. The rules for serving reader pages to visitors follow in a later change.
+
 ### Switch
 
 `INGOT_LOCAL_PLUGINUI=false` turns the contributions off for the whole instance. The manifest is then empty and the contributed pages are not served. The plugins themselves keep running. The variable defaults to `true`, and a plugin that never registers a page is not affected by it.
+
+`INGOT_LOCAL_PLUGINREADERS=false` hides every reader page, and leaves the `/plugins/...` address unclaimed. Admin pages are not affected. The variable defaults to `true`, and `INGOT_LOCAL_PLUGINUI=false` switches the reader pages off as well.
 
 `INGOT_LOCAL_PLUGINSTYLES=false` turns off the stylesheets of all plugins. The manifest lists no stylesheet and the stylesheet address answers `404`. Pages and settings sections are not affected. The variable defaults to `true`, and an instance without a plugin stylesheet sees no change.

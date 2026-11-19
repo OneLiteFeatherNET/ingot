@@ -30,6 +30,7 @@ import com.reposilite.web.api.RoutingSetupEvent
  * The `plugin-ui` facade: the extension point through which server plugins contribute dashboard pages as data.
  * The switch `INGOT_LOCAL_PLUGINUI` (fallback `REPOSILITE_LOCAL_PLUGINUI`) turns the contributions off.
  * The switch `INGOT_LOCAL_PLUGINSTYLES` (fallback `REPOSILITE_LOCAL_PLUGINSTYLES`) turns the plugin stylesheets off.
+ * The switch `INGOT_LOCAL_PLUGINREADERS` (fallback `REPOSILITE_LOCAL_PLUGINREADERS`) turns the reader pages off.
  */
 @Plugin(name = "plugin-ui", dependencies = ["local-configuration"])
 internal class PluginUiPlugin : ReposilitePlugin() {
@@ -37,7 +38,13 @@ internal class PluginUiPlugin : ReposilitePlugin() {
     override fun initialize(): PluginUiFacade {
         val pluginUi = facade<LocalConfiguration>().pluginUi
         val pluginStyles = facade<LocalConfiguration>().pluginStyles
-        val facade = PluginUiFacade(logger = logger, enabled = { pluginUi.get() }, stylesheetsEnabled = { pluginStyles.get() })
+        val pluginReaders = facade<LocalConfiguration>().pluginReaders
+        val facade = PluginUiFacade(
+            logger = logger,
+            enabled = { pluginUi.get() },
+            stylesheetsEnabled = { pluginStyles.get() },
+            readersEnabled = { pluginReaders.get() },
+        )
 
         event { event: RoutingSetupEvent ->
             // The manifest is served whatever the switch says, so the dashboard learns the enabled plugins either way.

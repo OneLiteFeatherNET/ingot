@@ -72,7 +72,7 @@ object Redaction {
         "hostname", "port", "sslEnabled", "sslPort", "enforceSsl", "webThreadPool", "ioThreadPool", "databaseThreadPool",
         "compressionStrategy", "idleTimeout", "bypassExternalCache", "cachedLogSize", "defaultFrontend", "basePath",
         "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "databaseMaxLifetime",
-        "databaseConnectionTimeout", "databaseKeepalive", "debugEnabled", "pluginUi", "pluginStyles",
+        "databaseConnectionTimeout", "databaseKeepalive", "debugEnabled", "pluginUi", "pluginStyles", "pluginReaders",
         "plugins",
     )
 
