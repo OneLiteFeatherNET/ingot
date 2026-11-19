@@ -50,7 +50,8 @@ Source files:
   its own z-index, so a dialog left in place can paint under it. The `.vfm` rule in
   `src/style.css` gives every modal root the `--md-sys-z-dialog` stacking value. The dialog
   itself keeps a 24px side inset (set on the modal's `content-class`), caps at 560px and
-  never goes below 280px.
+  never goes below 280px. The dialog rules of `MdDialog` (sizes, focus, the confirm button)
+  are in "Dialogs, menus and status messages" below.
 - **The style gate enforces these rules in `npm test` and `npm run eslint`.** It lives in
   `src/style-gate/` and rejects a `<style>` block, an arbitrary value, a raw colour, a palette
   colour, a Tailwind default, a literal inline style, an unknown class and an inline icon
@@ -722,8 +723,8 @@ Queue rules:
 Visuals: `bg-inverse-surface` with `text-inverse-on-surface`, `md-body-medium`, the
 `rounded-corner-extra-small` corner and `shadow-elevation-3`. The action label is
 `text-inverse-primary`. The snackbar sits at the bottom centre with a 16px inset, and at the
-bottom left from the `md` breakpoint. It is at most 560px wide. It stacks above dialogs
-(`z-[1100]`, while dialogs use `--md-sys-z-dialog`).
+bottom left from the `medium` window class, which is 600px. It is at most 560px wide. It stacks above
+dialogs: `z-md-snackbar` (1100) against `z-md-dialog` (1000, `--md-sys-z-dialog`).
 
 Accessibility: errors are `role="alert"`, everything else is `role="status"` with
 `aria-live="polite"`. The close button is named "Dismiss notification".
@@ -864,11 +865,71 @@ Your access draws the view model of the own access summary (`src/components/acco
 - **Token sessions.** A token narrows the list, and the section says so.
 - **States.** While the summary is on its way the section shows a loading line. When the server does not have the summary, it shows that it is not available. The rest of the page does not wait for either.
 
+## Dialogs, menus and status messages
+
+These rules cover the primitives that dialogs, menus, choices and status messages are built from. Every name below is
+the one in `src/components/md/` and `src/helpers/` on the main branch.
+
+### Dialogs
+
+- A dialog is `MdDialog`. It is a vue-final-modal teleported to the body, over the scrim (`bg-scrim/md-scrim`, 32%), and
+  it stacks at `z-md-dialog` (1000). A view does not draw a frame, a scrim or an overlay style of its own.
+- Sizes: `sm` (360px), `md` (480px) and `lg` (560px, the default). Every size keeps the 24px side inset and the 280px
+  floor. `compact` fills the window below the `medium` window class (600px) and is `lg` from 600px.
+- Props: `modelValue` (v-model), `labelledby` (the id of the heading in the `header` slot, required), `describedby`
+  (optional), `role` (`dialog` by default, `alertdialog` for a destructive confirmation) and `dismissable` (`true` by
+  default). Slots: `header`, `default` and `actions`, where `actions` takes an `MdDialogActions`.
+- Each dialog has its own heading id. Two mounted dialogs with one fixed id name both of them the same.
+- Focus on open goes to the element with `data-autofocus`, or to the first focusable element of the body. A dialog that
+  asks for a decision puts `data-autofocus` on its cancel button, so that an accidental Enter does not confirm it. A
+  dialog with a text field puts it on the field.
+- Tab and Shift+Tab stay inside the open dialog. On close, focus returns to the element that had it on open. If that
+  element is gone, focus goes to its nearest ancestor that is still in the page.
+- Escape and a click outside close the dialog. `dismissable` set to `false` keeps it open for both, and is used only when
+  the dialog's own buttons are its only exit, such as a one-time secret or a cut-over.
+- Confirm buttons: a dialog has at most one filled button, its confirming action. The cancel action is `variant="text"`.
+  A destructive confirmation (delete, revoke, discard, reset) is the filled button with the `error` prop, and its label
+  names the action, such as "Delete policy" or "Revoke token". An informational dialog with one button uses one filled
+  button.
+- Side sheets are `MdSideSheet`. Its `side` prop is `start` (the default) or `end`, for a sheet pinned to the trailing
+  edge. Its `width` prop is `default` (the sheet width token, 320px) or `wide` (the wide sheet width token, 28rem). A
+  width is a token, never a class with a literal value.
+
+### Menus and choices
+
+- `MdOverflowMenu` items take `value`, `label`, `ariaLabel`, `supporting`, `error`, `disabled` and `href`. `supporting`
+  is a second line in the on-surface-variant role, and it joins the accessible name. `disabled` draws the item in the
+  disabled role, reports it with `aria-disabled="true"` and skips it with the arrow keys. `href` makes the item a link,
+  so that middle click and open in a new tab work.
+- The error colour of an item comes from the item's own class. A `!` modifier is not used, because it overrides the
+  focus ring.
+- A choice from a list of options is `MdListbox` with `useCombobox` (`src/helpers/useCombobox.ts`), which owns the
+  keyboard contract: ArrowDown and ArrowUp move the active option and wrap, Home and End go to the first and the last
+  enabled option, Enter chooses the active option, and Escape closes the list and keeps the typed text. The input has
+  `role="combobox"`, `aria-expanded`, `aria-controls` and `aria-activedescendant`. The options have `role="option"` and
+  `aria-selected`. The list is not teleported: the consumer places it, and it takes the menu layer `z-md-menu` (50).
+- A native `datalist` is not used for a choice, because it cannot be styled and is not shown the same way in every browser.
+
+### Status messages
+
+Each situation has one primitive:
+
+| Situation | Primitive | Announcement |
+| --- | --- | --- |
+| Inline error next to a form or a control | `MdAlert` with the `error` tone | `role="alert"`, announced when it appears |
+| Notice that stays on the page (a warning, a success, information) | `MdAlert` with its tone | `role="status"`, polite |
+| A panel whose load failed, with a Retry action | `MdStatePanel` in the error state, Retry is a tonal `MdButton` | `role="alert"` on the panel |
+| A panel that is loading | `MdSkeleton` for the placeholder and the `MdStatePanel` loading line | `aria-busy="true"` on the panel |
+| A panel with nothing to show | `MdStatePanel` in the empty state | No live role |
+
+`MdAlert` and `MdStatePanel` set `data-ingot-state` to their state (`error`, `loading` or `empty`). Static copy that does
+not change, such as a one-time secret, is a notice and carries no `role="alert"`. A skeleton fades in only when the visitor
+allows motion.
+
 ## Known gaps
 
 Gaps that are deliberately left for the views that own them are listed here:
 
-- No tabs, list, dialog or drawer primitive under `src/components/md/`. Views that need one build it in their own folder until a primitive is added here.
 - The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries) has no rules in this document until `rework-administration-information-architecture` adds them.
 ## Page shell, header and trail
 
