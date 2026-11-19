@@ -212,6 +212,27 @@ internal class SharedBasicAddressCounterTest {
         }
     }
 
+    @Test
+    fun `every failure is counted when each write of the shared counter loses its race`() {
+        withDatabase { database, first, _ ->
+            // given: a replica that reads every row with a stale version, so that each conditional write of its counter loses
+            createToken("deploy-bot", "secret")
+            val stale = object : LoginStore(database, clock) {
+                override fun findAttempt(attemptKey: String): AttemptRecord? =
+                    super.findAttempt(attemptKey)?.let { AttemptRecord(it.state, version = -1) }
+            }
+            val replicaA = replica(stale)
+
+            // when: three wrong secrets are sent from one address
+            repeat(3) { replicaA.authenticate(ADDRESS, "deploy-bot", "wrong-secret") }
+
+            // then: the atomic increment after the lost races keeps all three failures in the row
+            assertThat(first.findAttempt(LoginAttemptLimiter.basicAddressKey(ADDRESS))?.state?.failures)
+                .describedAs("failures stored for the address after three lost conditional writes")
+                .isEqualTo(3)
+        }
+    }
+
     private fun createToken(name: String, secret: String): AccessTokenDto =
         tokens.createAccessToken(
             CreateAccessTokenRequest(type = TEMPORARY, name = name, secret = secret, expiresAt = null)
