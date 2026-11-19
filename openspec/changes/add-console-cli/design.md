@@ -194,7 +194,7 @@ Server to client:
   at once and is not queued behind an `execute`. Log frames interleave with everything.
 - A declined confirmation (`accept: false`, or no answer within 120 seconds) runs nothing. It returns a `result` with `exitCode` 3,
   `status` `FAILED`, `confirmed` `false` and one `stderr` line that says the command did not run.
-- `error` codes: `unauthorized`, `unsupported_protocol`, `timeout`, `not_hello`, `unknown_type`, `too_long`, `busy`, `rate_limited`,
+- `error` codes: `unauthorized`, `unsupported_protocol`, `not_hello`, `unknown_type`, `too_long`, `busy`, `rate_limited`,
   `slow_consumer`, `shutdown`, `internal`.
 - `complete` is answered from the same listing as `GET /api/console/commands`: names, aliases, options and fixed values. Values from
   data (token names, repository ids) are not completed in version 1 (open question 6).
