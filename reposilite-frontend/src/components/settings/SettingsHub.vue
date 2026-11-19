@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import StatTile from '../dashboard/StatTile.vue'
+import type { SettingsGlanceRow } from './settingsHub'
 
 /*
  * The part of the Overview page of /settings below its heading that the tree cannot show: At a glance, the count of every
@@ -27,9 +28,9 @@ import StatTile from '../dashboard/StatTile.vue'
  * Props:
  *   glance     [{ key, label, count, to }], as glanceRows builds them; `to` is the router location of the page
  */
-defineProps({
-  glance: { type: Array, required: true }
-})
+defineProps<{
+  glance: SettingsGlanceRow[]
+}>()
 </script>
 
 <template>

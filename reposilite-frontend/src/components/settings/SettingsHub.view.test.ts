@@ -1,17 +1,18 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import SettingsHub from './SettingsHub.vue'
+import type { SettingsGlanceRow } from './settingsHub'
 
 const shell = { render: () => null }
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   { name: 'settings', path: '/settings/:domain?', component: shell },
   { name: 'settings-repositories', path: '/settings/repositories', component: shell }
 ]
 
 // Each test builds its own counts and router, so no test can change what another one reads.
-const counts = () => [
+const counts = (): SettingsGlanceRow[] => [
   { key: 'page:repositories', label: 'Repositories', count: 7, to: { name: 'settings-repositories' } },
   { key: 'settings:cleanup', label: 'Cleanup policies', count: 0, to: { name: 'settings', params: { domain: 'cleanup' } } }
 ]
@@ -19,14 +20,14 @@ const counts = () => [
 // The application is served under /repo/, so every link of the page must carry that base.
 const BASE = '/repo/'
 
-let wrapper
+// Assigned by mountHub before every test that reads it; afterEach unmounts it.
+let wrapper: VueWrapper<InstanceType<typeof SettingsHub>>
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
-const mountHub = async (props = {}) => {
+const mountHub = async (props: Partial<{ glance: SettingsGlanceRow[] }> = {}) => {
   const router = createRouter({ history: createMemoryHistory(BASE), routes })
   await router.push('/settings')
   await router.isReady()
@@ -45,7 +46,7 @@ describe('SettingsHub anchor', () => {
   it('carries the settings-hub anchor on its root element', async () => {
     await mountHub()
 
-    expect(wrapper.element.getAttribute('data-ingot-component'), 'the root is the anchor').toBe('settings-hub')
+    expect(wrapper.attributes('data-ingot-component'), 'the root is the anchor').toBe('settings-hub')
   })
 })
 
