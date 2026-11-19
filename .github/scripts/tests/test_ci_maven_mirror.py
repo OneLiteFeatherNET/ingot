@@ -86,6 +86,12 @@ class CiMavenMirrorTest(unittest.TestCase):
             self.assertTrue(all(re.search(r"(^|:)publishToMavenLocal$", task) for task in tasks), line)
             self.assertIn('-Dmaven.repo.local="$RUNNER_TEMP/', line)
 
+    def test_publications_job_publishes_every_project_into_the_runner_temp_directory(self):
+        # The release publishes every project, so the local check must cover the same set instead of one module.
+        publish = [line for line in re.findall(r"\./gradlew[^\n]*publish[^\n]*", self.workflow)]
+        self.assertEqual(len(publish), 1, "the Publications job runs one publish command")
+        self.assertRegex(publish[0], r"\./gradlew --build-cache publishToMavenLocal -Dmaven\.repo\.local=\"\$RUNNER_TEMP/m2\"$")
+
 
 if __name__ == "__main__":
     unittest.main()

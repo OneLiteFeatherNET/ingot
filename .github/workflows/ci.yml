@@ -778,7 +778,7 @@ jobs:
 
   # The release runs the Gradle publish task for every project, and no other job builds a publication, so a module whose
   # publication points at an artifact the build no longer produces is found only by the release. This publishes into a
-  # throwaway local repository instead. It covers ingot-cli, which disables its plain jar.
+  # throwaway local repository instead. It covers every project, so the set matches the release.
   publications:
     name: "Publications"
     if: ${{ !cancelled() && github.event_name != 'push' }}
@@ -808,7 +808,7 @@ jobs:
           cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
 
       - name: "Publish into a throwaway local repository"
-        run: ./gradlew --build-cache :ingot-cli:publishToMavenLocal -Dmaven.repo.local="$RUNNER_TEMP/m2"
+        run: ./gradlew --build-cache publishToMavenLocal -Dmaven.repo.local="$RUNNER_TEMP/m2"
 
   # The workflow script tests used to run only inside the container images job, which is heavy. A change to a workflow
   # or a workflow script is the one that can break them, and the scope step turns the image and chart flags on together
