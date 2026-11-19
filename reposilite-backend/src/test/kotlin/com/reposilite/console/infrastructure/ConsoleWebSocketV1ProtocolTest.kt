@@ -92,7 +92,6 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
     @Test
     fun `welcomes a hello that lists protocol 1 with protocol 1`() {
         // when: the hello lists protocols 1 and 2
-        handler.connect(connection)
         handler.handleMessage(connection, hello(protocols = "[1,2]"))
 
         // then: the only frame is the welcome for protocol 1
@@ -103,7 +102,6 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
     @Test
     fun `closes a hello without protocol 1 with 1002 and unsupported_protocol`() {
         // when: the hello lists only protocol 2
-        handler.connect(connection)
         handler.handleMessage(connection, hello(protocols = "[2]"))
 
         // then: the error names the supported protocols and the connection closes with 1002
@@ -111,32 +109,6 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
         assertThat(error.code).`as`("error code").isEqualTo("unsupported_protocol")
         assertThat(error.supported).`as`("supported protocols").containsExactly(1)
         assertThat(connection.closeCode).`as`("close code").isEqualTo(1002)
-    }
-
-    @Test
-    fun `closes a socket that sends no valid hello with 1008 and a timeout after ten seconds`() {
-        // given: a connection that sends nothing
-        handler.connect(connection)
-
-        // when: ten seconds pass
-        scheduler.advance(Duration.ofSeconds(10))
-
-        // then: the timeout error is sent and the connection closes with 1008
-        assertThat((connection.json.single() as ErrorFrame).code).`as`("error code").isEqualTo("timeout")
-        assertThat(connection.closeCode).`as`("close code").isEqualTo(1008)
-    }
-
-    @Test
-    fun `keeps a socket without a hello open during the first nine seconds`() {
-        // given: a connection that sends nothing
-        handler.connect(connection)
-
-        // when: nine seconds pass
-        scheduler.advance(Duration.ofSeconds(9))
-
-        // then: the connection is still open
-        assertThat(connection.closeCode).`as`("close code").isNull()
-        assertThat(connection.json).`as`("json frames").isEmpty()
     }
 
     @Test
@@ -271,7 +243,6 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
     }
 
     private fun welcome() {
-        handler.connect(connection)
         handler.handleMessage(connection, hello(protocols = "[1]"))
         connection.json.clear()
     }

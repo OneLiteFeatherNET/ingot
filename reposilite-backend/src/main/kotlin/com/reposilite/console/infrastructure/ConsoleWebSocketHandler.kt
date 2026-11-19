@@ -70,9 +70,6 @@ private data class WsIdentity(val tokenName: String, val address: String) {
 private const val PROTOCOL_VERSION = 1
 private val SUPPORTED_PROTOCOLS = setOf(PROTOCOL_VERSION)
 
-/** How long a new socket may wait for a valid hello before it is closed. */
-private val HELLO_DEADLINE: Duration = Duration.ofSeconds(10)
-
 /** How long a dangerous command waits for its confirm before it is declined. */
 private val CONFIRM_DEADLINE: Duration = Duration.ofSeconds(120)
 
@@ -150,19 +147,6 @@ internal class ConsoleWebSocketHandler(
     private val nodeId: String,
 ) : Consumer<WsConfig> {
 
-    /** Starts the deadline of a new socket: it must send a valid hello in time, or it is closed with 1008. */
-    internal fun connect(connection: ConsoleConnection) {
-        helloDeadlines[connection] = scheduler.schedule(HELLO_DEADLINE) {
-            helloDeadlines.remove(connection)
-            if (users[connection] == null && v1Sessions[connection] == null) {
-                runCatching {
-                    connection.sendJson(ErrorFrame(code = "timeout", message = "no valid hello within ten seconds"))
-                    connection.close(CLOSE_POLICY_VIOLATION, "timeout")
-                }
-            }
-        }
-    }
-
     /**
      * Written by the message and close callbacks of every connection, each on its own Jetty thread, so it is synchronized.
      */
@@ -171,16 +155,14 @@ internal class ConsoleWebSocketHandler(
     /** The version 1 sessions, keyed like [users]. Written by the callbacks of each connection, so it is synchronized. */
     private val v1Sessions: MutableMap<ConsoleConnection, V1Session> = Collections.synchronizedMap(WeakHashMap())
 
-    /** The hello deadline of each socket that has not authenticated yet. */
-    private val helloDeadlines: MutableMap<ConsoleConnection, ConsoleTimer> = Collections.synchronizedMap(WeakHashMap())
-
     @OpenApi(
         path = "/api/console/sock",
         methods = [HttpMethod.PATCH],
         tags = ["Console"]
     )
     override fun accept(ws: WsConfig) {
-        ws.onConnect { ctx -> connect(JavalinConsoleConnection(ctx)) }
+        // No hello deadline on connect: protocol 1 is announced in band by the hello itself, so a socket that is silent so
+        // far may be a legacy client, and a legacy socket was never closed for waiting before it authenticates.
         ws.onMessage { ctx -> handleMessage(JavalinConsoleConnection(ctx), ctx.message()) }
         ws.onClose { ctx -> release(JavalinConsoleConnection(ctx)) }
         ws.onError { ctx -> release(JavalinConsoleConnection(ctx)) }
@@ -200,7 +182,6 @@ internal class ConsoleWebSocketHandler(
             null ->
                 authenticateContext(connection, message)
                     .peek { identity ->
-                        cancelHelloDeadline(connection)
                         val identifier = identity.identifier
                         journalist.logger.info("CLI | $identifier accessed remote console")
 
@@ -221,7 +202,6 @@ internal class ConsoleWebSocketHandler(
                             .forEach { cached -> outbox.put(cached.value) }
                     }
                     .onError {
-                        cancelHelloDeadline(connection)
                         journalist.logger.info("CLI | ${it.message} (${it.status})")
                         connection.sendJson(it)
                         connection.disconnect()
@@ -252,16 +232,11 @@ internal class ConsoleWebSocketHandler(
 
     /** Releases the writer and the subscription of a connection. Both close callbacks may run, and only the first one finds the session. */
     internal fun release(connection: ConsoleConnection) {
-        cancelHelloDeadline(connection)
         v1Sessions.remove(connection)?.dropAll()
         val session = users.remove(connection) ?: return
         session.outbox.close()
         journalist.logger.info("CLI | ${session.identifier} closed connection")
         journalist.unsubscribe(session.subscriberId)
-    }
-
-    private fun cancelHelloDeadline(connection: ConsoleConnection) {
-        helloDeadlines.remove(connection)?.cancel()
     }
 
     /** Answers a hello: the highest common protocol and the token, checked like the legacy first frame. */
@@ -273,7 +248,6 @@ internal class ConsoleWebSocketHandler(
             ?.maxOrNull()
 
         if (protocol == null) {
-            cancelHelloDeadline(connection)
             connection.sendJson(
                 ErrorFrame(
                     code = "unsupported_protocol",
@@ -287,13 +261,11 @@ internal class ConsoleWebSocketHandler(
 
         authenticateContext(connection, AUTHORIZATION_PREFIX + hello.text("token").orEmpty())
             .peek { identity ->
-                cancelHelloDeadline(connection)
                 journalist.logger.info("CLI | ${identity.identifier} accessed remote console (protocol $protocol)")
                 v1Sessions[connection] = V1Session(identity)
                 connection.sendJson(WelcomeFrame(protocol = protocol))
             }
             .onError {
-                cancelHelloDeadline(connection)
                 journalist.logger.info("CLI | ${it.message} (${it.status})")
                 connection.sendJson(ErrorFrame(code = "unauthorized", message = it.message))
                 connection.close(CLOSE_POLICY_VIOLATION, "unauthorized")

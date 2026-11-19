@@ -115,6 +115,21 @@ internal class ConsoleWebSocketHandlerTest : AuthenticationSpecification() {
     }
 
     @Test
+    fun `keeps a silent socket open and accepts its credentials after eleven seconds`() {
+        // given: a new socket that sends nothing for eleven seconds
+        scheduler.advance(Duration.ofSeconds(11))
+
+        // when: the legacy first frame arrives late
+        handler.handleMessage(connection, "Authorization:deploy-bot:s3cret")
+
+        // then: nothing closed the socket, and the late credentials open the session as before
+        assertThat(connection.closeCode).`as`("close code").isNull()
+        assertThat(connection.disconnected).`as`("disconnected").isFalse
+        assertThat(connection.json).`as`("json frames").isEmpty()
+        assertThat(scheduler.outboxes).`as`("opened outboxes").hasSize(1)
+    }
+
+    @Test
     fun `answers keep-alive with keep-alive`() {
         // given: an authenticated connection
         handler.handleMessage(connection, "Authorization:deploy-bot:s3cret")
