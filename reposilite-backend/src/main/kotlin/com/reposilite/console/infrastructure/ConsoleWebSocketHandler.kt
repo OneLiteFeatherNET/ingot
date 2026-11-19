@@ -17,7 +17,12 @@ package com.reposilite.console.infrastructure
 
 import com.reposilite.ReposiliteJournalist
 import com.reposilite.auth.api.Credentials
+import com.reposilite.console.ConfirmationNeeded
 import com.reposilite.console.ConsoleFacade
+import com.reposilite.console.PreparedCommand
+import com.reposilite.console.StructuredExecution
+import com.reposilite.console.StructuredRun
+import com.reposilite.console.CommandStatus
 import com.reposilite.console.consoleCommandAudit
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
@@ -31,7 +36,12 @@ import io.javalin.websocket.WsConfig
 import io.javalin.websocket.WsContext
 import panda.std.Result
 import panda.std.reactive.Reference
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import java.io.IOException
 import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.nio.channels.ClosedChannelException
 import net.onelitefeather.ingot.web.TrustedProxies
 import java.util.Collections
@@ -56,6 +66,76 @@ private data class WsIdentity(val tokenName: String, val address: String) {
     val identifier: String get() = "$tokenName@$address"
 }
 
+/** The protocol version of the envelope protocol. A first frame that is a hello opens it, any other first frame is legacy. */
+private const val PROTOCOL_VERSION = 1
+private val SUPPORTED_PROTOCOLS = setOf(PROTOCOL_VERSION)
+
+/** How long a new socket may wait for a valid hello before it is closed. */
+private val HELLO_DEADLINE: Duration = Duration.ofSeconds(10)
+
+/** How long a dangerous command waits for its confirm before it is declined. */
+private val CONFIRM_DEADLINE: Duration = Duration.ofSeconds(120)
+
+/** The largest version 1 frame, in UTF-8 bytes. */
+private const val MAX_FRAME_BYTES = 4096
+
+/** The exit code of a declined or unanswered confirmation. Nothing runs. It is the code of the HTTP 409 answer. */
+private const val DECLINED_EXIT_CODE = 3
+
+private const val CLOSE_PROTOCOL_ERROR = 1002
+private const val CLOSE_POLICY_VIOLATION = 1008
+
+private val frameMapper = ObjectMapper()
+
+/** A dangerous command that waits for its confirm. [deadline] declines it when no answer arrives in time. */
+private class PendingConfirm(val id: String, val prepared: PreparedCommand, val deadline: ConsoleTimer)
+
+/** A version 1 connection after its hello. At most one dangerous command waits for its confirm, and every other execute is busy. */
+private class V1Session(val identity: WsIdentity) {
+
+    private var pending: PendingConfirm? = null
+
+    @Synchronized
+    fun isBusy(): Boolean = pending != null
+
+    @Synchronized
+    fun hold(confirm: PendingConfirm) {
+        pending = confirm
+    }
+
+    /** Takes the pending command if it waits for [id], and stops its deadline. Null for any other id. */
+    @Synchronized
+    fun take(id: String): PendingConfirm? {
+        val held = pending?.takeIf { it.id == id } ?: return null
+        pending = null
+        held.deadline.cancel()
+        return held
+    }
+
+    /** Drops the pending command without running it, when the connection is released. */
+    @Synchronized
+    fun dropAll() {
+        pending?.deadline?.cancel()
+        pending = null
+    }
+
+}
+
+/** The JSON object of a version 1 frame, or null when the message is not one. */
+private fun frameOf(message: String): JsonNode? {
+    if (!message.startsWith("{")) {
+        return null
+    }
+    return try {
+        frameMapper.readTree(message)?.takeIf { it.isObject }
+    } catch (_: IOException) {
+        null
+    }
+}
+
+private fun JsonNode.text(field: String): String? =
+    get(field)?.takeIf { it.isTextual }?.asText()
+
 internal class ConsoleWebSocketHandler(
     private val journalist: ReposiliteJournalist,
     private val consoleAuthenticator: ConsoleAuthenticator,
@@ -70,8 +150,17 @@ internal class ConsoleWebSocketHandler(
     private val nodeId: String,
 ) : Consumer<WsConfig> {
 
-    /** Starts the time a connection has to send a valid hello. Version 1 only; a stub until the protocol lands. */
+    /** Starts the deadline of a new socket: it must send a valid hello in time, or it is closed with 1008. */
     internal fun connect(connection: ConsoleConnection) {
+        helloDeadlines[connection] = scheduler.schedule(HELLO_DEADLINE) {
+            helloDeadlines.remove(connection)
+            if (users[connection] == null && v1Sessions[connection] == null) {
+                runCatching {
+                    connection.sendJson(ErrorFrame(code = "timeout", message = "no valid hello within ten seconds"))
+                    connection.close(CLOSE_POLICY_VIOLATION, "timeout")
+                }
+            }
+        }
     }
 
     /**
@@ -79,12 +168,19 @@ internal class ConsoleWebSocketHandler(
      */
     private val users: MutableMap<ConsoleConnection, WsSession> = Collections.synchronizedMap(WeakHashMap())
 
+    /** The version 1 sessions, keyed like [users]. Written by the callbacks of each connection, so it is synchronized. */
+    private val v1Sessions: MutableMap<ConsoleConnection, V1Session> = Collections.synchronizedMap(WeakHashMap())
+
+    /** The hello deadline of each socket that has not authenticated yet. */
+    private val helloDeadlines: MutableMap<ConsoleConnection, ConsoleTimer> = Collections.synchronizedMap(WeakHashMap())
+
     @OpenApi(
         path = "/api/console/sock",
         methods = [HttpMethod.PATCH],
         tags = ["Console"]
     )
     override fun accept(ws: WsConfig) {
+        ws.onConnect { ctx -> connect(JavalinConsoleConnection(ctx)) }
         ws.onMessage { ctx -> handleMessage(JavalinConsoleConnection(ctx), ctx.message()) }
         ws.onClose { ctx -> release(JavalinConsoleConnection(ctx)) }
         ws.onError { ctx -> release(JavalinConsoleConnection(ctx)) }
@@ -92,10 +188,19 @@ internal class ConsoleWebSocketHandler(
 
     /** Handles one text frame of [connection]: the credentials while it is not authenticated, a command or keep-alive after. */
     internal fun handleMessage(connection: ConsoleConnection, message: String) {
+        v1Sessions[connection]?.let { session ->
+            handleVersionOneFrame(connection, session, message)
+            return
+        }
+        if (users[connection] == null && frameOf(message)?.text("type") == "hello") {
+            handleHello(connection, message)
+            return
+        }
         when (val session = users[connection]) {
             null ->
                 authenticateContext(connection, message)
                     .peek { identity ->
+                        cancelHelloDeadline(connection)
                         val identifier = identity.identifier
                         journalist.logger.info("CLI | $identifier accessed remote console")
 
@@ -116,6 +221,7 @@ internal class ConsoleWebSocketHandler(
                             .forEach { cached -> outbox.put(cached.value) }
                     }
                     .onError {
+                        cancelHelloDeadline(connection)
                         journalist.logger.info("CLI | ${it.message} (${it.status})")
                         connection.sendJson(it)
                         connection.disconnect()
@@ -146,10 +252,165 @@ internal class ConsoleWebSocketHandler(
 
     /** Releases the writer and the subscription of a connection. Both close callbacks may run, and only the first one finds the session. */
     internal fun release(connection: ConsoleConnection) {
+        cancelHelloDeadline(connection)
+        v1Sessions.remove(connection)?.dropAll()
         val session = users.remove(connection) ?: return
         session.outbox.close()
         journalist.logger.info("CLI | ${session.identifier} closed connection")
         journalist.unsubscribe(session.subscriberId)
+    }
+
+    private fun cancelHelloDeadline(connection: ConsoleConnection) {
+        helloDeadlines.remove(connection)?.cancel()
+    }
+
+    /** Answers a hello: the highest common protocol and the token, checked like the legacy first frame. */
+    private fun handleHello(connection: ConsoleConnection, message: String) {
+        val hello = frameOf(message) ?: return
+        val protocol = hello.get("protocols")?.takeIf { it.isArray }
+            ?.mapNotNull { if (it.isInt) it.asInt() else null }
+            ?.filter { it in SUPPORTED_PROTOCOLS }
+            ?.maxOrNull()
+
+        if (protocol == null) {
+            cancelHelloDeadline(connection)
+            connection.sendJson(
+                ErrorFrame(
+                    code = "unsupported_protocol",
+                    message = "no common protocol, this server speaks ${SUPPORTED_PROTOCOLS.sorted()}",
+                    supported = SUPPORTED_PROTOCOLS.sorted(),
+                )
+            )
+            connection.close(CLOSE_PROTOCOL_ERROR, "unsupported_protocol")
+            return
+        }
+
+        authenticateContext(connection, AUTHORIZATION_PREFIX + hello.text("token").orEmpty())
+            .peek { identity ->
+                cancelHelloDeadline(connection)
+                journalist.logger.info("CLI | ${identity.identifier} accessed remote console (protocol $protocol)")
+                v1Sessions[connection] = V1Session(identity)
+                connection.sendJson(WelcomeFrame(protocol = protocol))
+            }
+            .onError {
+                cancelHelloDeadline(connection)
+                journalist.logger.info("CLI | ${it.message} (${it.status})")
+                connection.sendJson(ErrorFrame(code = "unauthorized", message = it.message))
+                connection.close(CLOSE_POLICY_VIOLATION, "unauthorized")
+            }
+    }
+
+    /** Handles one frame of a version 1 session: an execute or a confirm, and an error for anything else. */
+    private fun handleVersionOneFrame(connection: ConsoleConnection, session: V1Session, message: String) {
+        if (message.toByteArray(StandardCharsets.UTF_8).size > MAX_FRAME_BYTES) {
+            connection.sendJson(ErrorFrame(code = "too_long", message = "a frame may hold $MAX_FRAME_BYTES bytes at most"))
+            return
+        }
+        val frame = frameOf(message)
+        if (frame == null) {
+            connection.sendJson(ErrorFrame(code = "bad_frame", message = "a frame is one JSON object"))
+            return
+        }
+        val id = frame.text("id")
+        when (val type = frame.text("type")) {
+            "execute" -> handleExecute(connection, session, id, frame)
+            "confirm" -> handleConfirm(connection, session, id, frame)
+            else -> connection.sendJson(ErrorFrame(code = "unknown_type", message = "unknown frame type ${type ?: "none"}", id = id))
+        }
+    }
+
+    private fun handleExecute(connection: ConsoleConnection, session: V1Session, id: String?, frame: JsonNode) {
+        if (id == null) {
+            connection.sendJson(ErrorFrame(code = "bad_frame", message = "an execute needs an id"))
+            return
+        }
+        if (session.isBusy()) {
+            connection.sendJson(ErrorFrame(code = "busy", message = "a command waits for its confirmation", id = id, retryable = true))
+            return
+        }
+        val confirmed = frame.get("confirm")?.takeIf { it.isBoolean }?.asBoolean() ?: false
+        consoleFacade.prepareCommand(frame.text("command").orEmpty())
+            .peek { prepared -> runPrepared(connection, session, id, prepared, confirmed) }
+            .onError { connection.sendJson(ErrorFrame(code = "bad_command", message = it.message, id = id)) }
+    }
+
+    /** Runs the command, or holds a dangerous one until its confirm arrives or its deadline passes. */
+    private fun runPrepared(connection: ConsoleConnection, session: V1Session, id: String, prepared: PreparedCommand, confirmed: Boolean) {
+        when (val answer = prepared.executeStructured(confirmed)) {
+            is StructuredRun -> finish(connection, session, id, prepared, answer.execution, confirmed)
+            is ConfirmationNeeded -> {
+                val deadline = scheduler.schedule(CONFIRM_DEADLINE) {
+                    session.take(id)?.let { decline(connection, session, it) }
+                }
+                session.hold(PendingConfirm(id, prepared, deadline))
+                connection.sendJson(ConfirmFrame(id = id, command = answer.command, reason = answer.reason))
+            }
+        }
+    }
+
+    private fun handleConfirm(connection: ConsoleConnection, session: V1Session, id: String?, frame: JsonNode) {
+        val pending = id?.let { session.take(it) }
+        if (pending == null) {
+            connection.sendJson(ErrorFrame(code = "unknown_id", message = "no command waits for this confirmation", id = id))
+            return
+        }
+        val accept = frame.get("accept")?.takeIf { it.isBoolean }?.asBoolean() ?: false
+        if (!accept) {
+            decline(connection, session, pending)
+            return
+        }
+        when (val answer = pending.prepared.executeStructured(confirmed = true)) {
+            is StructuredRun -> finish(connection, session, pending.id, pending.prepared, answer.execution, confirmed = true)
+            is ConfirmationNeeded -> connection.sendJson(ErrorFrame(code = "confirmation_required", message = "the command still needs its confirmation", id = pending.id))
+        }
+    }
+
+    private fun decline(connection: ConsoleConnection, session: V1Session, pending: PendingConfirm) {
+        audit(
+            consoleCommandAudit(
+                actor = AuditActor.named(session.identity.tokenName, session.identity.address),
+                command = pending.prepared.redactedCommand,
+                channel = "websocket",
+                client = null,
+                confirmed = false,
+                exitCode = DECLINED_EXIT_CODE,
+            )
+        )
+        connection.sendJson(
+            ResultFrame(
+                id = pending.id,
+                status = CommandStatus.FAILED,
+                exitCode = DECLINED_EXIT_CODE,
+                output = emptyList(),
+                data = null,
+                node = nodeId,
+                confirmed = false,
+            )
+        )
+    }
+
+    private fun finish(connection: ConsoleConnection, session: V1Session, id: String, prepared: PreparedCommand, execution: StructuredExecution, confirmed: Boolean) {
+        audit(
+            consoleCommandAudit(
+                actor = AuditActor.named(session.identity.tokenName, session.identity.address),
+                command = prepared.redactedCommand,
+                channel = "websocket",
+                client = null,
+                confirmed = confirmed,
+                exitCode = execution.exitCode,
+            )
+        )
+        connection.sendJson(
+            ResultFrame(
+                id = id,
+                status = execution.status,
+                exitCode = execution.exitCode,
+                output = execution.output,
+                data = execution.data,
+                node = nodeId,
+                confirmed = confirmed,
+            )
+        )
     }
 
     private fun handleSendFailure(connection: ConsoleConnection, identifier: String, failure: Exception) {
