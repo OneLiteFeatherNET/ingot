@@ -771,6 +771,40 @@ jobs:
       - name: "Check the plugin tiers"
         run: ./gradlew --build-cache checkPluginTiers
 
+  # The release runs the Gradle publish task for every project, and no other job builds a publication, so a module whose
+  # publication points at an artifact the build no longer produces is found only by the release. This publishes into a
+  # throwaway local repository instead. It covers ingot-cli, which disables its plain jar.
+  publications:
+    name: "Publications"
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Route Maven Central through the CI mirror"
+        if: ${{ vars.INGOT_CI_MAVEN_MIRROR != '' }}
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp .github/gradle/ci-maven-mirror.init.gradle "$HOME/.gradle/init.d/"
+
+      - name: "Publish into a throwaway local repository"
+        run: ./gradlew --build-cache :ingot-cli:publishToMavenLocal -Dmaven.repo.local="$RUNNER_TEMP/m2"
+
   # The workflow script tests used to run only inside the container images job, which is heavy. A change to a workflow
   # or a workflow script is the one that can break them, and the scope step turns the image and chart flags on together
   # only for a path it cannot place, which is what an edit under .github is. They need no Docker and no network.
@@ -958,7 +992,7 @@ jobs:
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, script-tests, docs-tests, support-lines]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, plugin-contracts, plugin-tiers, publications, script-tests, docs-tests, support-lines]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
