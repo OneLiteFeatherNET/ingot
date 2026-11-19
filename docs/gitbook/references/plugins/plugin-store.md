@@ -39,11 +39,12 @@ Each entry has these fields. Unknown fields are ignored, so a schema 1 reader ac
 | `sha256` | text | Yes | SHA-256 of the jar in hexadecimal, in either case. |
 | `compatibility` | object | Yes, for the entry to be usable | See the compatibility rule below. |
 | `tier` | text | No, `community` by default | The tier of the plugin: `core`, `official`, `community` or `experimental`. See [Plugin tiers](plugin-tiers.md). |
+| `description` | text | No, empty by default | One line that says what the plugin does. It is plain text, read like the `description` of the `@Plugin` annotation: control characters and line breaks are removed, surrounding whitespace is trimmed, and it is cut to 280 characters. A missing field, or a value that is not text, reads as no description. |
 | `yanked` | boolean | No, `false` by default | A yanked entry stays listed, but a new selection of it is refused. A copy already in the cache still loads. |
 
-A text field that is missing or blank, or a `coordinates` value that is malformed, refuses the whole catalogue. An entry without a complete `compatibility` block is refused by itself, and the other entries of the same catalogue stay usable.
+A required text field that is missing or blank, or a `coordinates` value that is malformed, refuses the whole catalogue. An entry without a complete `compatibility` block is refused by itself, and the other entries of the same catalogue stay usable.
 
-The `tier` field is optional and additive, so the schema stays `1`. A missing `tier` reads as `community`. A value other than the four names, such as `"gold"`, refuses that entry only, with a reason that names the field. When a plugin loads, its tier in the catalogue is compared with the tier of the loaded jar. A difference is logged as one warning that names both tiers, the plugin still loads, and the tier of the jar is the one shown.
+The `tier` and `description` fields are optional and additive, so the schema stays `1`. A missing `tier` reads as `community`. A value other than the four names, such as `"gold"`, refuses that entry only, with a reason that names the field. When a plugin loads, its tier in the catalogue is compared with the tier of the loaded jar. A difference is logged as one warning that names both tiers, the plugin still loads, and the tier of the jar is the one shown.
 
 ```json
 {
@@ -59,6 +60,7 @@ The `tier` field is optional and additive, so the schema stays `1`. A missing `t
         "ingot": { "min": "1.2.0", "below": "2.0.0" },
         "pluginApi": 1
       },
+      "description": "Adds an example page to the dashboard",
       "yanked": false
     }
   ]

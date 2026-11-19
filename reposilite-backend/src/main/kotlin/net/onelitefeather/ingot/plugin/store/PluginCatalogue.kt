@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.plugin.store
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.reposilite.plugin.api.PluginTier
+import net.onelitefeather.ingot.plugin.description.PluginDescriptionNormaliser
 import panda.std.Result
 
 /** The Ingot versions an entry works with, `min` inclusive and `below` exclusive, and the store's plugin API integer. */
@@ -40,6 +41,8 @@ data class PluginCatalogueEntry(
     val yanked: Boolean,
     /** The tier the catalogue states. A missing field reads as Community, and null means an unknown value, which the store refuses. */
     val tier: PluginTier? = PluginTier.COMMUNITY,
+    /** The description the catalogue states, normalised like the one of `@Plugin`. A missing field reads as the empty text. */
+    val description: String = "",
 ) {
 
     /** A yanked entry stays visible, but a new selection of it is refused. A jar already cached still loads. */
@@ -96,6 +99,7 @@ class PluginCatalogue(val entries: List<PluginCatalogueEntry>) {
                 compatibility = parseCompatibility(node.get("compatibility")),
                 yanked = node.get("yanked")?.asBoolean(false) ?: false,
                 tier = parseTier(node.get("tier")),
+                description = parseDescription(node.get("description")),
             )
         }
 
@@ -109,6 +113,10 @@ class PluginCatalogue(val entries: List<PluginCatalogueEntry>) {
             }
             return PluginTier.values().firstOrNull { it.name.lowercase() == node.asText() }
         }
+
+        /** A description that is missing or not text reads as the empty text. A description never refuses an entry. */
+        private fun parseDescription(node: JsonNode?): String =
+            node?.takeIf { it.isTextual }?.let { PluginDescriptionNormaliser.normalise(it.asText()).text } ?: ""
 
         private fun parseCompatibility(node: JsonNode?): Compatibility? {
             if (node == null || node.isNull || !node.isObject) {
