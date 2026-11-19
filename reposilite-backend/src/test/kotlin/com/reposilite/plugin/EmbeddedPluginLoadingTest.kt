@@ -141,16 +141,19 @@ internal class EmbeddedPluginLoadingTest {
     }
 
     @Test
-    fun `should stop the start when a plugins directory jar has the id of an embedded plugin`() {
-        // given: a jar of the plugins directory with the id fixture and an embedded plugin with the same id
+    fun `should keep the embedded copy when a plugins directory jar without a version has the id of an embedded plugin`() {
+        // given: a jar of the plugins directory with the id fixture, without a manifest version, and an embedded plugin with the same id
         PluginJarFixture.write(pluginsDirectory, "manual.jar", FixturePluginOne::class)
         val embedded = EmbeddedPluginFixture.compileJar(root.resolve("build"), "fixture-embedded.jar", "com.reposilite.plugin.embedded.fixture.ManualDuplicatePlugin", "fixture")
         val loader = loader(serverEmbedding(embedded))
 
-        // when / then: the start stops with the existing duplicate message, until the next change replaces that behaviour
-        assertThatThrownBy { loader.loadPluginsByServiceFiles() }
-            .describedAs("a duplicate id of the plugins directory")
-            .hasMessageContaining("Plugin fixture is already registered")
+        // when: the plugins are loaded
+        loader.loadPluginsByServiceFiles()
+
+        // then: the embedded copy is used and the start goes on, as a missing version counts as lowest
+        assertThat(loader.extensions.originOf("fixture"))
+            .describedAs("the origin of the registered plugin with the id fixture")
+            .isEqualTo(PluginOrigin.EMBEDDED)
     }
 
     @Test
