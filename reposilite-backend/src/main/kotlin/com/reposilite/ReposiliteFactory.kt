@@ -190,7 +190,12 @@ object ReposiliteFactory {
                 dataDirectory = parameters.workingDirectory,
                 journalist = journalist,
             )
-            val pluginLoader = PluginLoader(parameters.pluginDirectory, reposilite.extensions, pluginStore = pluginStore)
+            val pluginLoader = PluginLoader(
+                parameters.pluginDirectory,
+                reposilite.extensions,
+                pluginStore = pluginStore,
+                embeddedPluginsDirectory = parameters.workingDirectory.resolve(PluginLoader.EMBEDDED_DIRECTORY_NAME),
+            )
             pluginLoader.extensions.registerFacade(reposilite)
             pluginLoader.loadPluginsByServiceFiles()
             pluginLoader.initialize()
