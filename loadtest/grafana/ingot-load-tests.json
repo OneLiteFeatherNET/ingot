@@ -1,0 +1,383 @@
+{
+  "uid": "ingot-load-tests",
+  "title": "Ingot load tests",
+  "description": "One load test run (testid), its request rates and latencies, and the server metrics that explain them. Checked in with the load tests (design D9); change it here, not in the Grafana user interface.",
+  "tags": ["ingot", "load-test"],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "",
+  "timezone": "utc",
+  "annotations": {
+    "list": [
+      {
+        "name": "Step changes",
+        "enable": true,
+        "iconColor": "orange",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "ingot_load_step_passed{testid=\"$testid\"}",
+        "titleFormat": "Step {{result}}",
+        "textFormat": "Step rate {{ingot_load_step_passed}} requests per second"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Mimir",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "testid",
+        "label": "Test run",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": { "query": "label_values(k6_vus, testid)", "refId": "testid" },
+        "definition": "label_values(k6_vus, testid)",
+        "refresh": 2,
+        "sort": 1,
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "topology",
+        "label": "Topology",
+        "type": "custom",
+        "query": "monolith,ha,split,scalable,scalable-read-1,scalable-read-2,scalable-read-4",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "monolith", "value": "monolith" },
+          { "selected": false, "text": "ha", "value": "ha" },
+          { "selected": false, "text": "split", "value": "split" },
+          { "selected": false, "text": "scalable", "value": "scalable" },
+          { "selected": false, "text": "scalable-read-1", "value": "scalable-read-1" },
+          { "selected": false, "text": "scalable-read-2", "value": "scalable-read-2" },
+          { "selected": false, "text": "scalable-read-4", "value": "scalable-read-4" }
+        ],
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "hide": 0,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "scenario",
+        "label": "Scenario",
+        "type": "custom",
+        "query": "resolve,resolve-miss,metadata,deploy,mirror,auth,search-browse,dashboard,mix",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "resolve", "value": "resolve" },
+          { "selected": false, "text": "resolve-miss", "value": "resolve-miss" },
+          { "selected": false, "text": "metadata", "value": "metadata" },
+          { "selected": false, "text": "deploy", "value": "deploy" },
+          { "selected": false, "text": "mirror", "value": "mirror" },
+          { "selected": false, "text": "auth", "value": "auth" },
+          { "selected": false, "text": "search-browse", "value": "search-browse" },
+          { "selected": false, "text": "dashboard", "value": "dashboard" },
+          { "selected": false, "text": "mix", "value": "mix" }
+        ],
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "hide": 0,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "size",
+        "label": "Pod size",
+        "type": "custom",
+        "query": "N,T,S,M,L",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "N", "value": "N" },
+          { "selected": false, "text": "T", "value": "T" },
+          { "selected": false, "text": "S", "value": "S" },
+          { "selected": false, "text": "M", "value": "M" },
+          { "selected": false, "text": "L", "value": "L" }
+        ],
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "hide": 0,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Target and achieved request rate",
+      "description": "The step rate from ingot_load_step_passed against the requests per second the samples show.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max by (topology, scenario) (ingot_load_step_passed{testid=\"$testid\", topology=~\"$topology\", scenario=~\"$scenario\"})",
+          "legendFormat": "target {{topology}} {{scenario}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (topology, scenario) (rate(k6_http_reqs_total{testid=\"$testid\", topology=~\"$topology\", scenario=~\"$scenario\"}[1m]))",
+          "legendFormat": "achieved {{topology}} {{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Latency p50, p95 and p99 per scenario",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.50, sum by (scenario) (rate(k6_http_req_duration_seconds{testid=\"$testid\", scenario=~\"$scenario\"}[$__rate_interval])))",
+          "legendFormat": "p50 {{scenario}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.95, sum by (scenario) (rate(k6_http_req_duration_seconds{testid=\"$testid\", scenario=~\"$scenario\"}[$__rate_interval])))",
+          "legendFormat": "p95 {{scenario}}",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.99, sum by (scenario) (rate(k6_http_req_duration_seconds{testid=\"$testid\", scenario=~\"$scenario\"}[$__rate_interval])))",
+          "legendFormat": "p99 {{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Error rate",
+      "description": "Failed requests as a share of all requests. A step passes only under 1 percent (design D3).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (scenario) (rate(k6_http_req_failed_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m])) / sum by (scenario) (rate(k6_http_reqs_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
+          "legendFormat": "{{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Dropped iterations",
+      "description": "Iterations the load generator could not start. Any dropped iteration fails its step.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (scenario) (rate(k6_dropped_iterations_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
+          "legendFormat": "{{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Active virtual users",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max by (scenario) (k6_vus{testid=\"$testid\", scenario=~\"$scenario\"})",
+          "legendFormat": "{{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Bytes per second",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (scenario) (rate(k6_data_received_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
+          "legendFormat": "received {{scenario}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (scenario) (rate(k6_data_sent_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
+          "legendFormat": "sent {{scenario}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Server CPU per pod",
+      "description": "CPU seconds used per second by each Ingot pod of the load test namespace.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (pod) (rate(process_cpu_seconds_total{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\"}[1m]))",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Heap and garbage collection per pod",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "decbytes" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (pod) (jvm_memory_used_bytes{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\", area=\"heap\"})",
+          "legendFormat": "heap {{pod}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (pod) (rate(jvm_gc_collection_seconds_sum{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\"}[1m]))",
+          "legendFormat": "gc time {{pod}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Database pool active and pending per pod",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (pod) (hikaricp_connections_active{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\"})",
+          "legendFormat": "active {{pod}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (pod) (hikaricp_connections_pending{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\"})",
+          "legendFormat": "pending {{pod}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Storage latency per pod",
+      "description": "95th percentile of a storage operation per pod. The histogram is named by the storage metrics of the server.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.95, sum by (pod, le) (rate(ingot_storage_operation_duration_seconds_bucket{namespace=\"ingot-loadtest\", pod=~\".*ingot.*\"}[5m])))",
+          "legendFormat": "p95 {{pod}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Maximum sustainable rate per topology and size",
+      "description": "The highest plateau step that passed for each topology, size and scenario (design D9). Only reference runs are published.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 40, "w": 12, "h": 9 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "topology", "desc": false }] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max by (topology, size, scenario) (ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "barchart",
+      "title": "Topology comparison",
+      "description": "The maximum sustainable rate of each topology for the selected scenarios and sizes.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 40, "w": 12, "h": 9 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "orientation": "auto", "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max by (topology) (ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
+          "legendFormat": "{{topology}}",
+          "range": false,
+          "instant": true
+        }
+      ]
+    }
+  ]
+}
