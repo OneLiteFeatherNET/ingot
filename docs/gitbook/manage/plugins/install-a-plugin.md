@@ -102,6 +102,24 @@ The startup log lists your plugin name in the loaded plugins section. The log do
 If the log shows `Invalid JAR file` for your file, the file is not a readable jar. Copy it again and check that the file is complete.
 {% endhint %}
 
+## Update a plugin
+
+A plugin can be copied into the plugin directory to replace the copy that the server embeds. Copy the newer jar into the plugin directory and restart. The loader compares the version in the manifest of each jar (`Implementation-Version`), and the higher version is used:
+
+* A jar with a higher version replaces the embedded copy.
+* A jar with the same or a lower version does not replace it, and the embedded copy stays in use.
+* A jar without a version, or with a version that is not a number such as `latest`, counts as lower than every version, so the embedded copy stays in use.
+
+Each decision writes one `INFO` line to the startup log. Look for the line that names the plugin, for example:
+
+```
+Plugin javadoc: embedded version 1.0.0, plugins directory version 1.1.0, the plugins directory copy is used
+```
+
+The line names the version of the embedded copy and the version of your jar, and the copy that is used. A plugin that is not embedded in the server has no such line.
+
+A plugin whose jar loses the comparison is still created by the server, so its constructor runs at start, but its `initialize` does not. Two jars of the plugin directory with the same name still stop the start.
+
 ## Remove a plugin
 
 Stop the server, delete the jar from the plugin directory, and start the server again. A plugin is not unloaded while the server runs.

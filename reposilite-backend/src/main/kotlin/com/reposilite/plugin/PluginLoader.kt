@@ -26,12 +26,14 @@ import net.onelitefeather.ingot.plugin.store.PluginStore
 import net.onelitefeather.ingot.plugin.store.StoreEntry
 import net.onelitefeather.ingot.plugin.store.StoreState
 import net.onelitefeather.ingot.plugin.tier.PluginOrigin
+import net.onelitefeather.ingot.plugin.version.PluginVersion
 import kotlin.reflect.full.findAnnotation
 import panda.std.Result.supplyThrowing
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Path
 import java.util.ServiceLoader
+import java.util.jar.Attributes
 import java.util.jar.JarFile
 import kotlin.io.path.absolute
 import kotlin.io.path.createDirectories
@@ -145,6 +147,7 @@ class PluginLoader(
 
     internal fun loadPluginsByServiceFiles() {
         val embedded = extractEmbeddedPlugins()
+        val held = holdEmbeddedPlugins(embedded)
 
         if (pluginsDirectory.notExists()) {
             pluginsDirectory.createDirectories()
@@ -167,13 +170,19 @@ class PluginLoader(
                 .let { URLClassLoader(it.toTypedArray()).also(pluginClassLoaders::add) }
                 .let { ServiceLoader.load(ReposilitePlugin::class.java, it) }
                 .onEach { extensions.logger.debug("Plugin class: $it") }
-                .forEach {
-                    val origin = if (it::class.java.name in declaredByPluginJars) PluginOrigin.PLUGINS_DIRECTORY else PluginOrigin.BUILT_IN
-                    extensions.registerPlugin(it, origin)
+                .forEach { plugin ->
+                    val declaringJar = declaredByPluginJars[plugin::class.java.name]
+                    val heldCopy = declaringJar?.let { pluginIdOf(plugin)?.let { id -> held.remove(id) } }
+                    when {
+                        declaringJar == null -> extensions.registerPlugin(plugin, PluginOrigin.BUILT_IN)
+                        heldCopy != null -> decideReplacement(heldCopy, plugin, declaringJar)
+                        else -> extensions.registerPlugin(plugin, PluginOrigin.PLUGINS_DIRECTORY)
+                    }
                 }
         }
 
-        loadEmbeddedPlugins(embedded)
+        // An embedded copy that no plugins directory jar replaces is registered now, as it was before the scan.
+        held.values.forEach { extensions.registerPlugin(it.plugin, PluginOrigin.EMBEDDED) }
         loadStorePlugins()
         loadBundledPlugins()
     }
@@ -191,18 +200,61 @@ class PluginLoader(
         ).extract(embeddedPluginSource.jars())
 
     /**
-     * Loads each extracted jar in a class loader of its own, whose parent is the class loader of the server, and registers the
-     * plugins that the jar names in its own service file with the origin [PluginOrigin.EMBEDDED]. A plugins directory jar or a
-     * built-in plugin with the same id stops the start in [Extensions.registerPlugin], as it does for two copies of one id.
+     * Loads each extracted jar in a class loader of its own, whose parent is the class loader of the server, and holds the
+     * plugins that the jar names in its own service file. A held plugin is not registered yet: the scan of the plugins directory
+     * decides each id that a plugins directory jar also declares (see [decideReplacement]), and the others are registered after it.
+     * Two embedded jars with one id stop the start, as two copies of one id always did.
      */
-    private fun loadEmbeddedPlugins(extracted: List<ExtractedJar>) {
+    private fun holdEmbeddedPlugins(extracted: List<ExtractedJar>): MutableMap<String, HeldEmbeddedPlugin> {
+        val held = linkedMapOf<String, HeldEmbeddedPlugin>()
         extracted.forEach { jar ->
             val jarLoader = URLClassLoader(arrayOf(jar.path.toUri().toURL()), ReposilitePlugin::class.java.classLoader)
             pluginClassLoaders.add(jarLoader)
             instantiateDeclared(readServiceNames(jar.path), jarLoader).forEach { plugin ->
-                extensions.registerPlugin(plugin, PluginOrigin.EMBEDDED)
+                val id = pluginIdOf(plugin) ?: error("Plugin ${plugin::class} does not have @Plugin annotation")
+                check(id !in held) { "Plugin $id is already registered" }
+                held[id] = HeldEmbeddedPlugin(id, plugin, manifestVersionOf(jar.path))
             }
         }
+        return held
+    }
+
+    /**
+     * Decides between the embedded copy and the plugins directory copy of one id by their manifest versions (design D3 and D7).
+     * The plugins directory copy wins only when its version is strictly higher, and the other copy is not registered. Either way
+     * one INFO line names both versions. The held copy is taken out of the held set before this call, so a second copy of the
+     * id in the plugins directory meets a registered id and stops the start as before.
+     */
+    private fun decideReplacement(held: HeldEmbeddedPlugin, provider: ReposilitePlugin, providerJar: Path) {
+        val providerVersion = manifestVersionOf(providerJar)
+        val pluginsWins = PluginVersion.compareOrLowest(PluginVersion.parse(providerVersion), PluginVersion.parse(held.version)) > 0
+        val winner = if (pluginsWins) "plugins directory" else "embedded"
+        extensions.logger.info(
+            "Plugin ${held.id}: embedded version ${shownVersion(held.version)}, plugins directory version ${shownVersion(providerVersion)}, " +
+                "the $winner copy is used"
+        )
+        if (pluginsWins) {
+            extensions.registerPlugin(provider, PluginOrigin.PLUGINS_DIRECTORY)
+        } else {
+            extensions.registerPlugin(held.plugin, PluginOrigin.EMBEDDED)
+        }
+    }
+
+    /** The id that the annotation of the plugin declares, or null for a class without the annotation. */
+    private fun pluginIdOf(plugin: ReposilitePlugin): String? =
+        plugin::class.findAnnotation<Plugin>()?.name
+
+    /** The value of `Implementation-Version` in the main manifest of [jar], or null when the jar or the attribute cannot be read. */
+    private fun manifestVersionOf(jar: Path): String? =
+        runCatching {
+            JarFile(jar.toFile()).use { it.manifest?.mainAttributes?.getValue(Attributes.Name.IMPLEMENTATION_VERSION) }
+        }.getOrNull()
+
+    /** The version as the replacement line shows it: `none` when it is missing, the raw value in quotes when it is invalid. */
+    private fun shownVersion(raw: String?): String = when {
+        raw.isNullOrBlank() -> "none"
+        PluginVersion.parse(raw) == null -> "\"$raw\""
+        else -> raw
     }
 
     /**
@@ -365,14 +417,14 @@ class PluginLoader(
             }
     }
 
-    /** The plugin class names that the jars of [directory] declare in their own service files. */
-    private fun declaredByJarsIn(directory: Path): Set<String> =
+    /** The plugin class names that the jars of [directory] declare in their own service files, each with the jar that declares it. */
+    private fun declaredByJarsIn(directory: Path): Map<String, Path> =
         directory.useDirectoryEntries { entries ->
             entries
                 .filter { it.extension == "jar" }
-                .flatMap { serviceNamesOf(it) }
+                .flatMap { jar -> serviceNamesOf(jar).map { it to jar } }
                 .toList()
-        }.toSet()
+        }.toMap()
 
     /** The class names of the plugin service file of [jar], or nothing when the jar has none or cannot be read. */
     private fun serviceNamesOf(jar: Path): List<String> =
@@ -423,3 +475,6 @@ class PluginLoader(
     }
 
 }
+
+/** A plugin of an embedded jar that waits for the scan of the plugins directory, with the version of the manifest of its jar. */
+private class HeldEmbeddedPlugin(val id: String, val plugin: ReposilitePlugin, val version: String?)

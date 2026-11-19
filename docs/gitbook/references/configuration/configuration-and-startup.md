@@ -243,12 +243,21 @@ The identity migrations run automatically at start. The migrations of `--run-mig
 | `003` | Converts timestamp dates in SQLite to the ISO format. Other databases are skipped. |
 | `004` | Removes orphaned access token permissions and routes. |
 
+## Embedded plugin jars
+
+The server jar can carry plugin jars under `embedded-plugins/`. At each start they are written to `<working directory>/embedded-plugins/`, and the plugins that they declare are loaded. The directory is removed and written again at every start, so a copy that the server no longer embeds does not stay behind. When the server embeds no plugin jar, the directory is not created.
+
+A jar of the plugins directory with the same plugin id replaces the embedded copy only when its manifest version is higher. See [Install a plugin](../../manage/plugins/install-a-plugin.md#update-a-plugin).
+
+When `<working directory>/embedded-plugins/` cannot be written, for example in a read-only container, the jars are written to `<temporary directory>/ingot-embedded-plugins-<hash>` instead, where the temporary directory is the one of the Java runtime and `<hash>` is a short fingerprint of the working directory. One `WARN` line names both directories. A tmpfs mounted on the temporary directory is an option for a read-only container. When neither directory can be written, one `ERROR` line names the jar, that plugin is not loaded, and the start goes on.
+
 ## Files that Ingot writes at start
 
 | Path | Content |
 | --- | --- |
 | `<working directory>/.local/reposilite.address` | `http://<hostname>:<port>`. The container health check reads it. |
 | `<working directory>/configuration.cdn` | The rendered local configuration, in mode `auto`. |
+| `<working directory>/embedded-plugins/` | The plugin jars that the server embeds, rewritten at each start. Absent when the server embeds none. See [Embedded plugin jars](#embedded-plugin-jars). |
 
 ## Related pages
 
