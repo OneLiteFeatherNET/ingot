@@ -21,6 +21,7 @@ import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import TokenList from '../identity/TokenList.vue'
 import { instantToDate } from '../../helpers/apiTime'
 import { formatDate } from '../identity/identityTokens'
@@ -155,19 +156,13 @@ const admin = computed(() => isInstanceAdmin(detail.value))
     >
       {{ name }} does not exist (any more).
     </div>
-    <div
+    <MdStatePanel
       v-else-if="status === 'error'"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-    >
-      <span class="md-body-medium text-error">Could not load {{ name }}: {{ failure }}</span>
-      <MdButton
-        variant="text"
-        @click="load()"
-      >
-        Retry
-      </MdButton>
-    </div>
+      state="error"
+      :title="`Could not load ${name}`"
+      :description="failure"
+      @retry="load()"
+    />
 
     <template v-else-if="detail">
       <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">

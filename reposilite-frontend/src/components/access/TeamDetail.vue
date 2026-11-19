@@ -20,6 +20,7 @@ import type { AxiosResponse } from 'axios'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextArea from '../md/MdTextArea.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -210,14 +211,11 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
     class="flex min-w-0 flex-col gap-4"
     data-ingot-component="team-detail"
   >
-    <p
+    <MdStatePanel
       v-if="status === 'loading'"
       data-ingot-state="loading"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
-    >
-      Loading...
-    </p>
+      state="loading"
+    />
     <div
       v-else-if="status === 'missing'"
       role="alert"
@@ -226,19 +224,13 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
     >
       {{ name }} does not exist (any more).
     </div>
-    <div
+    <MdStatePanel
       v-else-if="status === 'error'"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-    >
-      <span class="md-body-medium text-error">Could not load {{ name }}: {{ failure }}</span>
-      <MdButton
-        variant="text"
-        @click="team.load()"
-      >
-        Retry
-      </MdButton>
-    </div>
+      state="error"
+      :title="`Could not load ${name}`"
+      :description="failure"
+      @retry="team.load()"
+    />
 
     <template v-else-if="detail">
       <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">

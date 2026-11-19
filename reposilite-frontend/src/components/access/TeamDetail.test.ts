@@ -87,6 +87,14 @@ describe('TeamDetail', () => {
   })
 
   describe('loading', () => {
+    it('shows the loading of the team as a busy state panel', async () => {
+      teams.get.mockReturnValue(new Promise(() => {}))
+      await mountDetail('developers')
+
+      expect(wrapper!.find('[aria-busy="true"]').exists(), 'the loading panel is busy').toBe(true)
+      expect(wrapper!.text(), 'the loading panel has no plain loading line').not.toContain('Loading...')
+    })
+
     it('reads the team named by the address', async () => {
       await mountDetail('developers')
 
