@@ -185,8 +185,9 @@ describe('MdOverflowMenu', () => {
     await trigger().trigger('click')
     await flushPromises()
 
-    expect(menuItems()[2].className, 'Delete is drawn as an error item').toContain('!text-error')
-    expect(menuItems()[0].className, 'Edit is not drawn as an error item').not.toContain('!text-error')
+    expect(menuItems()[2].classList.contains('text-error'), 'Delete is drawn as an error item').toBe(true)
+    expect(menuItems()[2].classList.contains('!text-error'), 'the error tone is not an important override').toBe(false)
+    expect(menuItems()[0].classList.contains('text-error'), 'Edit is not drawn as an error item').toBe(false)
   })
 
   describe('link items', () => {
@@ -398,5 +399,116 @@ describe('MdOverflowMenu', () => {
 
       expect(menu(), 'a menu without its button on screen closes').toBeNull()
     })
+  })
+})
+
+describe('MdOverflowMenu catalogue features', () => {
+  const clickEvent = () => new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+
+  it('marks a disabled item with aria-disabled and reports no choice when it is clicked', async () => {
+    await mountMenu({
+      items: [
+        { value: 'edit', label: 'Edit', ariaLabel: 'Edit releases' },
+        { value: 'archive', label: 'Archive', ariaLabel: 'Archive releases', disabled: true }
+      ]
+    })
+    await trigger().trigger('click')
+    await flushPromises()
+
+    expect(menuItems()[1].getAttribute('aria-disabled'), 'the disabled item says so').toBe('true')
+    menuItems()[1].dispatchEvent(clickEvent())
+    await flushPromises()
+
+    expect(wrapper!.emitted('select'), 'a disabled item reports no choice').toBeUndefined()
+    expect(menu(), 'the menu stays open after a click on a disabled item').not.toBeNull()
+  })
+
+  it('skips a disabled item when the arrow keys move between the items', async () => {
+    await mountMenu({
+      items: [
+        { value: 'edit', label: 'Edit', ariaLabel: 'Edit releases' },
+        { value: 'archive', label: 'Archive', ariaLabel: 'Archive releases', disabled: true },
+        { value: 'copy', label: 'Copy address', ariaLabel: 'Copy address of releases' }
+      ]
+    })
+    await trigger().trigger('click')
+    await flushPromises()
+
+    menuItems()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushPromises()
+
+    expect(document.activeElement, 'ArrowDown passes over the disabled item').toBe(menuItems()[2])
+  })
+
+  it('draws the supporting line of a two-line item under its label', async () => {
+    await mountMenu({
+      items: [{ value: 'copy', label: 'Copy address', supporting: 'Latest release only' }]
+    })
+    await trigger().trigger('click')
+    await flushPromises()
+
+    const item = menuItems()[0]
+    expect(item.textContent, 'the label is drawn').toContain('Copy address')
+    expect(item.textContent, 'the supporting line is drawn').toContain('Latest release only')
+  })
+
+  it('joins the supporting line to the accessible name of a two-line item with an aria label', async () => {
+    await mountMenu({
+      items: [{ value: 'copy', label: 'Copy address', ariaLabel: 'Copy releases', supporting: 'Latest release only' }]
+    })
+    await trigger().trigger('click')
+    await flushPromises()
+
+    expect(computeAccessibleName(menuItems()[0]), 'the supporting line is part of the name').toBe('Copy releases, Latest release only')
+  })
+
+  it('draws the checked radio item with the secondary container tone and no important override', async () => {
+    await mountMenu({
+      items: [{ value: 'theme:dark', label: 'Dark', type: 'radio', checked: true }]
+    })
+    await trigger().trigger('click')
+    await flushPromises()
+
+    const checked = document.querySelector<HTMLElement>('[role="menuitemradio"]')!
+    expect(checked.classList.contains('bg-secondary-container'), 'the checked choice has the container tone').toBe(true)
+    expect(checked.classList.contains('text-on-secondary-container'), 'the checked choice has the on-container text').toBe(true)
+    expect(checked.className, 'no class is an important override').not.toContain('!')
+  })
+
+  it('keeps the focus ring on every item', async () => {
+    await mountMenu()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    for (const item of menuItems()) {
+      expect(item.classList.contains('md-focus-ring'), `${item.textContent?.trim()} keeps the focus ring`).toBe(true)
+    }
+  })
+
+  it('gives every item a touch target of at least 48 pixels', async () => {
+    await mountMenu()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    for (const item of menuItems()) {
+      expect(item.classList.contains('md-touch-target'), `${item.textContent?.trim()} has the touch target`).toBe(true)
+    }
+  })
+
+  it('stacks the menu on the menu layer token and caps its width with the menu token', async () => {
+    await mountMenu()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    expect(menu().classList.contains('z-md-menu'), 'the menu uses the z token').toBe(true)
+    expect(menu().classList.contains('z-50'), 'the literal z-50 is gone').toBe(false)
+    expect(menu().classList.contains('max-w-md-menu'), 'the width cap is a token').toBe(true)
+    expect(menu().className, 'no arbitrary max width is left').not.toContain('max-w-[')
+  })
+
+  it('still applies the deprecated triggerClass to the trigger button', async () => {
+    await mountMenu({ triggerClass: 'w-10' })
+
+    expect(trigger().classes(), 'the class string keeps working for one release').toContain('w-10')
   })
 })
