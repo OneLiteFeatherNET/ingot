@@ -183,6 +183,49 @@ Two alternatives were considered and rejected.
 - A separate jar in `/app/bundled-plugins`. Its switch would need a default of on, because a missing switch is off for every bundled jar.
   A server jar started outside the image would lose the viewer, because `/app/bundled-plugins` does not exist there.
 
+### D13. Embedded plugins carry their API document fragment and settings schema
+
+Found on the draft cleanup move pull request #895, and true of this move as well: the server builds two things at compile time from its own
+classes only, and neither sees a plugin that loads from its own jar.
+
+- **The API document.** `kapt` runs `openapi-annotation-processor` on the backend's main source set only (`reposilite-backend/build.gradle.kts`,
+  the exclusion of `kaptTest`, `kaptIntegration` and `kaptTestFixtures`). It writes `openapi-plugin/.index` and
+  `openapi-plugin/openapi-default.json` into the server's resources. `JavalinConfiguration.configureOpenApi` registers Javalin's
+  `OpenApiPlugin`, whose `OpenApiLoader` reads that index through one class loader (by default the server's) on the first request to
+  `/openapi`. The same document feeds the Swagger UI and the committed snapshot `docs/openapi/ingot-openapi.json`, which
+  `OpenApiSnapshotIntegrationTest` compares with the served one. The viewer declares no `@OpenApi` route today, so the document holds no
+  javadoc entry and the move removes nothing from it. The rule still applies, so that a documented route added to the viewer later reaches
+  the document.
+- **The settings schema.** The same processor writes `json-schemes/index` and one file `json-schemes/<class name>` per `@JsonSchema` class,
+  here `JavadocSettings`. `SharedConfigurationFacade` reads them with `JsonSchemaLoader`, which calls
+  `JsonSchemaLoader::class.java.getResourceAsStream("/json-schemes/index")`, so only the server's index is seen. After the move the
+  `javadoc` domain is not in it, and the server logs `Cannot find scheme for class ...JavadocSettings, scheme has to be generated at runtime`
+  (`SharedConfigurationFacade.kt`, line 156) on every start and serves a schema from the runtime generator, which is not the one served today.
+
+Both break the drop-in contract: an existing installation would see a new warning on every start and a different settings schema. The
+decision, the same as `extract-cleanup-plugin` D13:
+
+- **The module generates both at build time, as the server does.** The module applies `kapt` with `openapi-annotation-processor`. Its build
+  renames the processor's `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/javadoc.json` (the plugin id) and drops its
+  `openapi-plugin/.index` and `json-schemes/index`, so the server's indexes stay the only ones on any classpath, including the flat
+  integration classpath of task 3.2. The `json-schemes/<class name>` files keep their names, which are unique per class.
+- **The server merges the fragments of loaded plugins into the served document.** The definition processor of `configureOpenApi` adds the
+  `paths` and `components.schemas` of `META-INF/ingot/openapi/<id>.json` for every registered plugin id, read through the plugin's own class
+  loader and, for the flat test classpath, through the server's. An entry whose key the server document already has is not replaced, and the
+  start logs one WARN line that names the plugin and the key. The merge runs on the first request, after every plugin has loaded.
+- **The server looks up a domain's schema in the plugin's own jar before the runtime generator.** For a domain type that the server's index
+  does not list, and whose class loader is not the server's, `SharedConfigurationFacade` reads `json-schemes/<type name>` through
+  `type.classLoader`, which is the plugin jar's own loader. Only when that also fails does it log the warning and generate the schema at
+  runtime, as today. Classes on the server's own loader keep today's path, so the tests, whose empty `json-schemes/index` keeps them on the
+  runtime generator, do not change behaviour.
+- **The committed snapshot stays the full merged document.** `docs/openapi/ingot-openapi.json` is not refreshed by the move pull request,
+  and `OpenApiSnapshotIntegrationTest` passing unchanged keeps guarding the drop-in contract.
+
+The server part (the merge and the schema lookup, with their tests against a fixture plugin) is shared with `extract-cleanup-plugin` and is
+generic to every plugin jar, so neither extraction owns it. It is a new small change `add-plugin-api-fragments` (`feat(plugin)`), a follow-up
+of `add-embedded-plugin-jars`, proposed in its own proposal pull request. Its merge on main is a gate of the move pull request (task 2a.1).
+This change owns the module side: the build step above and the guard tests of group 2a.
+
 ## Risks
 
 - **The prerequisite is a dependency.** If it slips, this change slips. Its code pull requests cannot start before it merges.
@@ -200,7 +243,28 @@ Each step is one pull request, buildable and passing alone:
 
 0. The prerequisite `add-embedded-plugin-jars` is merged (outside this change).
 1. The seam of D3 and the architecture test. The core stops importing the viewer, which is still in the core.
+1a. The guard test of D13 (task group 2a), green on main. The move waits for `add-plugin-api-fragments` as well.
 2. The module, the move of the sources and the tests, the build wiring of D1, the embedded jar and the removal of the run configuration.
    Renames dominate the diff, so the pull request stays near 400 changed lines.
 3. The frontend fallback of D5 and its tests.
 4. The docs of the module, the embedded copy and the update path.
+
+## Open questions
+
+- **Q112. The unit tests of the viewer cannot move as D7 says.** Raised by the maintainer as question 112, not decided yet.
+  `specification/JavadocSpecification.kt` extends `MavenSpecification` (`reposilite-backend/src/test/kotlin/com/reposilite/maven/specification/`),
+  which is `internal` and builds its fixture from backend `internal` types (`MavenComponents`, `InMemoryMirrorCacheLedger`,
+  `RecordingArtifactIndexSink` and others). Kotlin `internal` is visible only inside the module that declares it, so the four unit tests of D7
+  do not compile in the module's test source set. The options:
+  1. **Keep the unit tests in the backend.** `JavadocSpecification` and the four tests stay in `reposilite-backend/src/test/`, and the
+     backend's test source set depends on the module. The move pull request stays small, but the tests no longer move with the code, and the
+     core gains a test dependency on a plugin module.
+  2. **Move the shared fixture into the backend's test fixtures.** `MavenSpecification` and what it needs move into the existing
+     `testFixtures` source set of `reposilite-backend`, and the `internal` types it touches become public there or are reached through a
+     public fixture factory. The module's tests use `testImplementation(testFixtures(project(":reposilite-backend")))`. The tests move with the
+     code, at the cost of a wider fixture surface that other plugin modules can also use.
+  3. **Rewrite the viewer's tests against public API.** The module gets its own small specification built only from public types, or the
+     cases become integration tests over the HTTP surface of the viewer. Nothing in the backend changes, but the tests are rewritten rather
+     than moved, so the move pull request grows and the "no assertion changes" promise of D7 no longer holds.
+
+  Until it is decided, task 3.3 cannot move the unit tests, and group 3 does not start.
