@@ -644,6 +644,11 @@ jobs:
       - name: "Test the bundled plugins"
         run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:test :reposilite-plugins:migration-plugin:test
 
+      # The release job publishes the bundle, the libraries and the slim plugin API jar. Writing their POMs here catches
+      # a publication that cannot be written before a release does.
+      - name: "Generate the POM of every publication"
+        run: ./gradlew --build-cache generatePublicationPoms
+
       - name: "Write the results to the job summary"
         if: always()
         env:
