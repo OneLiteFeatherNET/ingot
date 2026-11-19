@@ -1,0 +1,11 @@
+# Legacy classes that the server provides to plugins, one fully qualified name per line. They are not in the slim plugin API
+# artifact (net.onelitefeather.ingot:ingot-plugin-api), and a public signature that names one of them is not a closure violation.
+# A plugin that extends one of these base classes compiles against the server bundle, as it does today.
+# A maintainer reviews every change of this file. The names here must not be in plugin-api-classes.txt.
+com.reposilite.plugin.api.Plugin
+com.reposilite.plugin.api.PluginTier
+com.reposilite.plugin.api.ReposilitePlugin
+com.reposilite.plugin.api.Event
+com.reposilite.plugin.api.Facade
+com.reposilite.plugin.api.PluginComponents
+com.reposilite.journalist.Journalist
