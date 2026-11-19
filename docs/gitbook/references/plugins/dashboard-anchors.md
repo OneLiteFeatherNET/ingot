@@ -35,6 +35,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `account-view` | experimental | `src/components/account/AccountView.vue` | none | none | `add-multi-factor-authentication` |
 | `add-member-dialog` | experimental | `src/components/access/AddMemberDialog.vue` | none | `error` | none |
 | `adjustments-modal` | experimental | `src/components/browser/AdjustmentsModal.vue` | none | none | none |
+| `administration-breadcrumb` | experimental | `src/components/layout/AdministrationTrail.vue` | none | none | none |
 | `administration-frame` | stable | `src/components/layout/AdministrationFrame.vue` | none | none | none |
 | `all-of-renderer` | stable | `src/components/renderers/AllOfRenderer.vue` | none | none | none |
 | `analytics-view` | experimental | `src/components/dashboard/AnalyticsView.vue` | none | none | none |
