@@ -60,7 +60,8 @@ data class StorageInformation(val repository: String, val kind: String, val regi
 
 /**
  * A plugin of the instance. The [origin] is a kind, never a path: built-in, bundled-image, plugins-directory or plugin-store.
- * The [settingsDomain] is the name of the settings page of the plugin, or null when it has none.
+ * The [settingsDomain] is the name of the settings page of the plugin, or null when it has none. The [description] is the
+ * redacted plain text of the plugin, or null when it has none, so the field is absent from the JSON of such a plugin.
  */
 data class PluginInformation(
     val name: String,
@@ -69,6 +70,7 @@ data class PluginInformation(
     val tier: String = "community",
     val origin: String = "plugins-directory",
     val settingsDomain: String? = null,
+    val description: String? = null,
 )
 
 data class ConfigurationInformation(val local: Map<String, String>, val shared: Map<String, JsonNode>)

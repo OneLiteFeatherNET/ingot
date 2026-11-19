@@ -1876,6 +1876,9 @@
             },
             "type" : "array"
           },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
           "name" : {
             "type" : "string"
           },
