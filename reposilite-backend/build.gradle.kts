@@ -23,6 +23,7 @@ import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
 import ingot.plugin.CheckPluginApiClosureTask
 import ingot.plugin.EmbeddedPluginJars
+import ingot.plugin.IngotBaselineRepository
 import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
@@ -391,6 +392,8 @@ publishing {
                 project.repositories
                     .filterIsInstance<MavenArtifactRepository>()
                     .filter { it.url.toString().startsWith("https") }
+                    // Only the plugin API report reads from it, and only with credentials, see ingotPluginApiReport.
+                    .filter { it.name != IngotBaselineRepository.NAME }
                     .forEach { repo ->
                         val repository = repositories.appendNode("repository")
                         repository.appendNode("id", repo.url.toString().replace("https://", "").replace(".", "-").replace("/", "-"))
@@ -722,6 +725,49 @@ tasks.register<JapicmpTask>("pluginApiReport") {
     ignoreMissingClasses.set(true)
     htmlOutputFile.set(layout.buildDirectory.file("reports/plugin-api/report.html"))
     mdOutputFile.set(layout.buildDirectory.file("reports/plugin-api/report.md"))
+}
+
+// The last Ingot release, the baseline of ingotPluginApiReport. The release process raises it, so each release is compared with the
+// one before it (design D2 of extend-plugin-abi-gate).
+val ingotBaseline = "1.1.1"
+
+// The releases repository asks for credentials even to read. Without them, in a fork or a local run, the repository is not added and
+// the report is skipped with a message that names what to set. See ingot.plugin.IngotBaselineRepository.
+val ingotBaselineCredentials = IngotBaselineRepository.credentials(
+    environment = { providers.environmentVariable(it).orNull },
+    property = { providers.gradleProperty(it).orNull },
+)
+ingotBaselineCredentials?.let { IngotBaselineRepository.register(repositories, it) }
+val ingotBaselineSkipReason = IngotBaselineRepository.skipReason(ingotBaselineCredentials)
+
+// Compares the Ingot plugin API packages of this build with the last Ingot release. Report-only, like pluginApiReport.
+tasks.register<JapicmpTask>("ingotPluginApiReport") {
+    group = "verification"
+    description = "Compares the Ingot plugin API with the last Ingot release and writes HTML and Markdown reports under build/reports/plugin-api"
+
+    val skipReason = ingotBaselineSkipReason
+    onlyIf("credentials for the Ingot releases repository are set") {
+        if (skipReason != null) it.logger.lifecycle(skipReason)
+        skipReason == null
+    }
+
+    val baseline = "net.onelitefeather.ingot:ingot:$ingotBaseline"
+    // The archive is the released jar alone. Its dependencies only serve as the classpath, so japicmp can follow supertypes.
+    val baselineArchive = configurations.detachedConfiguration(dependencies.create(baseline))
+        .apply { isTransitive = false }
+    val baselineClasspath = configurations.detachedConfiguration(dependencies.create(baseline))
+
+    oldArchives.from(baselineArchive)
+    oldClasspath.from(baselineClasspath)
+    newArchives.from(tasks.named("jar"))
+    newClasspath.from(configurations.named("runtimeClasspath"))
+
+    packageIncludes.set(ingotPluginApiPackages)
+    onlyBinaryIncompatibleModified.set(true)
+    failOnModification.set(false)
+    ignoreMissingClasses.set(true)
+    htmlOutputFile.set(layout.buildDirectory.file("reports/plugin-api/ingot-report.html"))
+    mdOutputFile.set(layout.buildDirectory.file("reports/plugin-api/ingot-report.md"))
 }
 
 // The OpenAPI annotation processor writes an index into the output of every source set it runs on. The test source sets
