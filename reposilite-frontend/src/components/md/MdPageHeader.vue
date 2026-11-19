@@ -19,12 +19,15 @@
  * Material Design 3 page header: the page's only h1, an optional description, and three slots.
  * `trail` sits above the title, `actions` on the right, and `back` before the text column. The
  * text column is min-w-0, so a long title wraps inside it and never runs past the content edge.
+ * `headingId` names the h1, so a region can be labelled by it.
  */
 withDefaults(defineProps<{
   title: string
   description?: string
+  headingId?: string
 }>(), {
-  description: undefined
+  description: undefined,
+  headingId: undefined
 })
 
 defineSlots<{
@@ -55,7 +58,10 @@ defineSlots<{
       >
         <slot name="trail" />
       </div>
-      <h1 class="md-headline-medium break-words text-on-surface">
+      <h1
+        :id="headingId"
+        class="md-headline-medium break-words text-on-surface"
+      >
         {{ title }}
       </h1>
       <p

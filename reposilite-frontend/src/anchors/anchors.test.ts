@@ -384,6 +384,13 @@ describe("anchor checks across the dashboard source", () => {
     expect(missing).toEqual([])
   })
 
+  it("registers the administration trail as administration-breadcrumb, in the component that draws it", () => {
+    const entry = registry.components.find((component) => component.name === "administration-breadcrumb")
+    expect(entry, "the trail is a registered component").toBeDefined()
+    expect(entry?.file, "the trail is drawn by its own component, because a file holds one name").toBe("src/components/layout/AdministrationTrail.vue")
+    expect(entry?.stability).toBe("experimental")
+  })
+
   it("no longer registers support-view as a component, and declares it as an alias of the merged page", () => {
     const aliases = (registry as { aliases?: RegistryAlias[] }).aliases ?? []
 

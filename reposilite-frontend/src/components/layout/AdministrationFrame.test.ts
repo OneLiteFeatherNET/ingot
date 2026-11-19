@@ -48,7 +48,10 @@ const groups = () => [
 ]
 
 // The element that holds the side navigation and the page: the wrapper of the layout, which follows the header.
-const measureOf = (wrapper: VueWrapper) => wrapper.get('header').element.nextElementSibling as Element
+const headerColumn = (wrapper: VueWrapper) => wrapper.get('header').element.parentElement as Element
+const measureOf = (wrapper: VueWrapper) => headerColumn(wrapper).nextElementSibling as Element
+// The MdPage of the frame: the first element of the section, which holds the header column and the layout.
+const pageOf = (wrapper: VueWrapper) => wrapper.get('section').element.firstElementChild as Element
 
 // The label of a crumb: its text without the separator after it, which is decorative and aria-hidden.
 const crumbLabel = (crumb: { element: Element }) => {
@@ -95,23 +98,6 @@ describe('AdministrationFrame', () => {
     expect(wrapper.find('[aria-label="Administration"]').exists(), 'the side navigation is drawn').toBe(true)
   })
 
-  it('gives a wide page the full width after the side navigation, with no maximum width', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const classes = (wrapper.element as Element).classList
-    expect(classes, 'a wide page (a list or a table) takes the width it is given').toContain('max-w-none')
-    expect(classes, 'no 1280 pixel cap').not.toContain('max-w-[1280px]')
-    expect(classes, 'no 1600 pixel cap').not.toContain('min-[1920px]:max-w-[1600px]')
-  })
-
-  it('keeps the section at full width on a reading page too, so its header spans like a wide page', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
-
-    const classes = (wrapper.element as Element).classList
-    expect(classes, 'the header spans the container on both kinds of page').toContain('max-w-none')
-    expect(classes, 'no 960 pixel cap on the section, which would float the header shortcuts').not.toContain('max-w-md-reading')
-  })
-
   it('keeps a reading page at a 960 pixel measure around the layout only, at the start of the content column', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: true })
 
@@ -126,25 +112,6 @@ describe('AdministrationFrame', () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: false })
 
     expect(measureOf(wrapper).classList).not.toContain('max-w-md-reading')
-  })
-
-  it('draws the page heading and its actions in one row from 600 pixels', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const header = wrapper.find('header').classes()
-    expect(header, 'the row starts at the 600 pixel breakpoint').toContain('medium:flex-row')
-    expect(header, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
-  })
-
-  it('lets the actions wrap below the text when the row is short of room, instead of squeezing the text', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
-
-    expect(wrapper.find('header').classes(), 'the header row may wrap').toContain('medium:flex-wrap')
-    const textColumn = wrapper.get('header > div').classes()
-    expect(textColumn, 'the text keeps a basis of 20 rem before the actions take room').toEqual(expect.arrayContaining(['medium:basis-80', 'min-w-0']))
-    const actions = wrapper.get('header > div:last-child').classes()
-    expect(actions, 'the actions group may wrap onto its own line').toContain('flex-wrap')
-    expect(actions, 'the actions group does not refuse to shrink').not.toContain('shrink-0')
   })
 
   it('does not make the page header sticky, so it scrolls away', async () => {
@@ -166,14 +133,6 @@ describe('AdministrationFrame', () => {
 
     const marked = wrapper.findAll('[aria-label="Administration"] a').filter(link => link.attributes('aria-current') === 'page')
     expect(marked.map(link => link.text()), 'exactly one entry is current').toEqual(['Audit settings'])
-  })
-
-  it('names the group of the current entry in the breadcrumb, and the page in the heading', async () => {
-    const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
-
-    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumbLabel)
-    expect(crumbs, 'the section, then the group of the page').toEqual(['Administration', 'Monitoring and support'])
-    expect(wrapper.get('h1').text(), 'the page itself is named by the heading').toBe('Audit settings')
   })
 
   it('draws no side navigation on a page without entries, such as the hub', async () => {
@@ -215,48 +174,6 @@ describe('AdministrationFrame page header', () => {
     expect(crumbs[1].find('a').exists(), 'the group is not a link').toBe(false)
   })
 
-  it('keeps the description line when the description is empty, so the heading does not move between pages', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', description: '' })
-
-    const line = wrapper.findAll('header p')
-    expect(line.length, 'the description element is drawn').toBe(1)
-    expect(line[0].classes(), 'it is one line high, cut at the edge and not wrapped').toEqual(expect.arrayContaining(['truncate', 'min-h-6']))
-    expect(line[0].text(), 'it is empty').toBe('')
-  })
-
-  it('draws the description element with the one-line class when the page has no entry at all', async () => {
-    const wrapper = await mountFrame({ current: undefined, description: undefined, groups: [] }, '/settings')
-
-    const line = wrapper.findAll('header p')
-    expect(line.length, 'the description element is drawn').toBe(1)
-    expect(line[0].classes(), 'the one-line class').toContain('truncate')
-  })
-
-  it('draws the first row of the title block, 48 pixels high at least, on a page without a trail', async () => {
-    const wrapper = await mountFrame({
-      current: 'page:plain',
-      groups: [{ id: 'plain', links: [{ key: 'page:plain', label: 'Plain', to: { name: 'audit' } }] }]
-    })
-
-    const row = wrapper.find('[data-test="title-row"]')
-    expect(row.exists(), 'the first row is drawn').toBe(true)
-    expect(row.classes(), 'the first row is drawn with a 48 pixel minimum').toContain('min-h-12')
-  })
-
-  it('draws the first row of the title block on a page that has a trail as well, at the same height', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    expect(wrapper.get('[data-test="title-row"]').classes(), 'the first row of a group page').toContain('min-h-12')
-  })
-
-  it('puts the actions on their own row from 600 to 1239 pixels, so every page has the same header height there', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
-
-    const actions = wrapper.get('header > div:last-child').classes()
-    expect(actions, 'a full row below the title in the medium window').toContain('medium:basis-full')
-    expect(actions, 'beside the title again from 1240 pixels').toContain('large:basis-auto')
-  })
-
   it('keeps the header actions container out of the tab order and draws no focus outline on it', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
 
@@ -266,54 +183,12 @@ describe('AdministrationFrame page header', () => {
     expect(focusClasses, 'no focus style on the container: only the focused control draws its ring').toEqual([])
   })
 
-  it('keeps the empty actions row at 48 pixels from the medium window, so the header keeps its height there', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const actions = wrapper.get('header > div:last-child')
-    expect(actions.classes(), 'the empty actions row keeps the 48 pixel minimum').toContain('min-h-12')
-    expect(actions.classes(), 'drawn from the medium window on').toContain('medium:flex')
-    expect(wrapper.find('[aria-label="Related pages"]').exists(), 'no shortcuts are drawn').toBe(false)
-  })
-
-  it('hides the empty actions row on a phone, where it would only leave a gap under the title', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const actions = wrapper.get('header > div:last-child')
-    expect(actions.classes(), 'no row below the title on a phone without actions').toContain('hidden')
-    expect(actions.classes(), 'the row is not hidden from the medium window').not.toContain('flex')
-  })
-
   it('draws the actions row on a phone when the page has shortcuts', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
 
     const actions = wrapper.get('header > div:last-child')
     expect(actions.classes(), 'the row holds the shortcuts on every width').toContain('flex')
     expect(actions.classes(), 'and is not hidden on a phone').not.toContain('hidden')
-  })
-
-  it('keeps the actions row 48 pixels high, so the header keeps its height whichever buttons a page has', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
-
-    const actions = wrapper.get('header > div:last-child')
-    expect(actions.classes(), 'the actions row has a 48 pixel minimum, the height of the Sections button').toContain('min-h-12')
-  })
-
-  it('truncates the heading to one line and gives it the full text as its title', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit', title: 'Audit log of every administrator action on this instance' })
-
-    const heading = wrapper.get('h1')
-    expect(heading.classes(), 'one line, cut at the edge').toContain('truncate')
-    expect(heading.attributes('title'), 'the full heading is the title of the element').toBe('Audit log of every administrator action on this instance')
-  })
-
-  it('adds the list page as a link to the trail of a detail page, and names the page by its item', async () => {
-    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
-
-    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
-    expect(crumbs.map(crumbLabel), 'Administration, Access, then the list').toEqual(['Administration', 'Access', 'Users'])
-    expect(crumbs[1].find('a').exists(), 'Access is not a link').toBe(false)
-    expect(crumbs[2].find('a').attributes('href'), 'Users links to the list').toBe('/access/users')
-    expect(wrapper.get('h1').text(), 'the heading is the item name').toBe('alice')
   })
 
   it('draws a back arrow with a 48 pixel target on narrow widths', async () => {
@@ -336,16 +211,6 @@ describe('AdministrationFrame page header', () => {
     const wrapper = await mountFrame({ current: 'page:audit', narrow: false })
 
     expect(wrapper.find('[aria-label="Back to Administration"]').exists()).toBe(false)
-  })
-
-  it('shows only the last crumb on narrow widths, beside the back arrow, with the full trail as its name', async () => {
-    const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
-
-    const crumbs = wrapper.findAll('nav[aria-label="Administration / Monitoring and support"] li').map(crumbLabel)
-    expect(crumbs, 'only the last crumb is drawn').toEqual(['Monitoring and support'])
-    const trail = wrapper.get('nav[aria-label="Administration / Monitoring and support"]')
-    expect(trail.attributes('title'), 'the full trail is the title').toBe('Administration / Monitoring and support')
-    expect([...(trail.element.parentElement as HTMLElement).classList], 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
   })
 
   it('draws the shortcut links of the page in a related pages block, each to its own address', async () => {
@@ -446,20 +311,6 @@ describe('AdministrationFrame breadcrumb markup', () => {
     }
   })
 
-  it('lets a plain crumb truncate inside its row, instead of breaking the row', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const plain = crumbItems(wrapper)[1].get('span:not([aria-hidden])')
-    expect(plain.text()).toBe('Monitoring and support')
-    expect(plain.classes(), 'the text may shrink and ends with an ellipsis').toEqual(expect.arrayContaining(['min-w-0', 'truncate']))
-  })
-
-  it('lets a link crumb truncate inside its row as well', async () => {
-    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
-
-    const link = crumbItems(wrapper)[2].get('a')
-    expect(link.classes(), 'the link may shrink and ends with an ellipsis').toEqual(expect.arrayContaining(['min-w-0', 'truncate']))
-  })
 })
 
 describe('AdministrationFrame on the settings pages', () => {
@@ -498,29 +349,6 @@ describe('AdministrationFrame on the settings pages', () => {
 // The placement of design D2: from 1240 pixels the header sits in the page column, beside the side navigation, and
 // below 1240 pixels the three stack in DOM order (header, side navigation, page).
 describe('AdministrationFrame header beside the side navigation', () => {
-  it('places the frame in a grid with a side navigation column and a page column from 1240 pixels', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const classes = (wrapper.element as Element).classList
-    expect(classes, 'the frame is a grid from the 1240 pixel breakpoint').toContain('large:grid')
-    expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-(--grid-md-side-nav)')
-  })
-
-  it('sizes the header row on its own, so the side navigation spanning both rows does not stretch the header', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const classes = (wrapper.element as Element).classList
-    expect(classes, 'the header row is auto and the page row takes the rest of the height').toContain('large:grid-rows-(--grid-md-administration-rows)')
-  })
-
-  it('puts the header in the page column on the first row from 1240 pixels', async () => {
-    const wrapper = await mountFrame({ current: 'page:audit' })
-
-    const header = wrapper.find('header').classes()
-    expect(header, 'the header starts in the page column').toContain('large:col-start-2')
-    expect(header, 'and sits on the first row, above the page').toContain('large:row-start-1')
-  })
-
   it('lets the layout join the grid of the frame from 1240 pixels, so the side navigation can start with the header', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
@@ -548,5 +376,170 @@ describe('AdministrationFrame header beside the side navigation', () => {
 
     const page = wrapper.get('[data-test="page-column"]').element.classList
     expect(page, 'a wide page takes the page column').not.toContain('large:max-w-md-reading-page')
+  })
+})
+
+// The page shell and the one trail of fix-surface-hierarchy-and-page-header (tasks 2.4 and 2.12, design D2 to D4 and D9).
+describe('AdministrationFrame page shell and trail', () => {
+  const pageFixtures = (): Array<{ name: string; props: FrameProps; url: string }> => [
+    { name: 'a group page', props: { current: 'page:audit' }, url: '/audit' },
+    { name: 'a detail page', props: { current: 'page:users', title: 'alice', detail: true }, url: '/access/users/alice' },
+    { name: 'the audit settings page', props: { current: 'settings:audit' }, url: '/settings/audit' },
+    { name: 'the settings page without an entry', props: { groups: [], current: undefined }, url: '/settings' },
+    {
+      name: 'Overview',
+      props: {
+        groups: [{ id: 'overview', label: 'Overview', links: [{ key: 'page:overview', label: 'Overview', to: { name: 'settings' } }] }, ...groups()],
+        current: 'page:overview',
+        overview: true
+      },
+      url: '/settings'
+    }
+  ]
+
+  for (const page of pageFixtures()) {
+    it(`draws exactly one h1 on ${page.name}`, async () => {
+      const wrapper = await mountFrame(page.props, page.url)
+
+      expect(wrapper.findAll('h1'), `the one heading of ${page.name}`).toHaveLength(1)
+    })
+  }
+
+  it('draws no separator with an after or before class in the header', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const classes = wrapper.get('header').findAll('*').flatMap(element => element.classes())
+    expect(classes.filter(name => /^(after|before):/.test(name)), 'separators are elements, not pseudo-elements').toEqual([])
+  })
+
+  it('marks only the last crumb of a detail page trail as the current page, as text', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const current = wrapper.get('header').findAll('[aria-current="page"]')
+    expect(current.map(element => element.text()), 'exactly one current crumb, the list entry').toEqual(['Users'])
+  })
+
+  it('draws only the last crumb below 1240 pixels, with the full trail as the title of that crumb', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
+
+    expect(wrapper.get('header').findAll('li').map(crumbLabel), 'only the last crumb is drawn').toEqual(['Monitoring and support'])
+    expect(wrapper.get('header').get('[aria-current="page"]').attributes('title'), 'the full trail').toBe('Administration / Monitoring and support')
+  })
+
+  it('draws the back control outside the header text column', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    const back = wrapper.get('[aria-label="Back to Administration"]').element
+    expect(wrapper.get('header').element.contains(back), 'the back control is not inside the text column').toBe(false)
+  })
+
+  it('pulls the back control 12 pixels into the gutter with -ms-3', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    expect(wrapper.get('[aria-label="Back to Administration"]').classes(), 'the glyph starts on the title edge').toContain('-ms-3')
+  })
+
+  it('renders the page as the MdPage gutter, with no centring and no maximum width class', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const page = (wrapper.get('section').element.firstElementChild as Element).classList
+    expect(page, 'the page is the container of MdPage').toContain('container')
+    expect(page, 'the page is not centred').not.toContain('mx-auto')
+    expect([...page].filter(name => name.startsWith('max-w-')), 'the page takes the full width').toEqual([])
+  })
+})
+
+// The page shell, the header and the trail after fix-surface-hierarchy-and-page-header (design D2 to D5).
+describe('AdministrationFrame page shell after the fix', () => {
+  it('gives a wide page the full width after the side navigation, with no maximum width class', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect([...pageOf(wrapper).classList].filter(name => name.startsWith('max-w-')), 'no width cap on the page').toEqual([])
+  })
+
+  it('keeps the page at full width on a reading page too, so its header spans like a wide page', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const classes = [...pageOf(wrapper).classList]
+    expect(classes.filter(name => name.startsWith('max-w-')), 'no 960 pixel cap on the page').toEqual([])
+    expect(measureOf(wrapper).classList, 'the reading measure is on the layout').toContain('max-w-md-reading')
+  })
+
+  it('names the group of the current entry in the trail, and the page in the heading', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
+
+    expect(wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumbLabel), 'the section, then the group of the page').toEqual(['Administration', 'Monitoring and support'])
+    expect(wrapper.get('h1').text(), 'the page itself is named by the heading').toBe('Audit settings')
+  })
+
+  it('draws only the last crumb below 1240 pixels, and the full trail as the title of that crumb', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
+
+    expect(wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumbLabel), 'only the last crumb is drawn').toEqual(['Monitoring and support'])
+    expect(wrapper.get('[aria-current="page"]').attributes('title'), 'the full trail').toBe('Administration / Monitoring and support')
+  })
+
+  it('draws the description line of the header when the page has no description, so the heading does not move', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', description: '' })
+
+    const line = wrapper.findAll('header p')
+    expect(line.length, 'the description line is drawn').toBe(1)
+    expect(line[0].text(), 'it is empty').toBe('')
+  })
+
+  it('wraps a long heading inside the text column instead of cutting it', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', title: 'Audit log of every administrator action on this instance' })
+
+    const heading = wrapper.get('h1')
+    expect(heading.classes(), 'the heading may break onto more lines').toContain('break-words')
+    expect(heading.classes(), 'it is not cut to one line').not.toContain('truncate')
+  })
+
+  it('adds the group of a detail page as a link to the list, and names the page by its item', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumbLabel), 'Administration, the group, then the list').toEqual(['Administration', 'Access', 'Users'])
+    expect(crumbs[1].find('a').attributes('href'), 'the group leads to the list').toBe('/access/users')
+    expect(crumbs[2].find('a').exists(), 'the list entry is text').toBe(false)
+    expect(wrapper.get('h1').text(), 'the heading is the item name').toBe('alice')
+  })
+
+  it('draws the crumbs as a list whose text is a span that truncates inside its row', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const plain = wrapper.get('[aria-current="page"] span')
+    expect(plain.text()).toBe('Monitoring and support')
+    expect(plain.classes(), 'the text may shrink and ends with an ellipsis').toEqual(expect.arrayContaining(['min-w-0', 'truncate']))
+  })
+
+  it('places the page on the frame grid from 1240 pixels, with the side navigation and the page column', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const classes = [...pageOf(wrapper).classList]
+    expect(classes, 'the frame is a grid from the 1240 pixel breakpoint').toContain('large:grid')
+    expect(classes, 'the columns are the 208 pixel side navigation and the page').toContain('large:grid-cols-(--grid-md-side-nav)')
+    expect(classes, 'the header row is auto and the page row takes the rest').toContain('large:grid-rows-(--grid-md-administration-rows)')
+  })
+
+  it('puts the header column in the page column on the first row from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const column = headerColumn(wrapper).classList
+    expect(column, 'the header column starts in the page column').toContain('large:col-start-2')
+    expect(column, 'and sits on the first row, above the page').toContain('large:row-start-1')
+  })
+
+  it('draws the shortcut links of the page in the actions of the header', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
+
+    expect(wrapper.findAll('header [aria-label="Related pages"] a').map(link => link.text())).toEqual(['Audit settings'])
+  })
+
+  it('draws no actions in the header of a page without actions, shortcuts or Sections', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(wrapper.get('header').findAll('button').length, 'no button').toBe(0)
+    expect(wrapper.find('[aria-label="Related pages"]').exists(), 'no related pages').toBe(false)
   })
 })

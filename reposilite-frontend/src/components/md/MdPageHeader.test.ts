@@ -83,3 +83,17 @@ describe('MdPageHeader', () => {
     expect(wrapper.attributes('data-ingot-component')).toBe('md-page-header')
   })
 })
+
+describe('MdPageHeader heading id', () => {
+  it('gives the h1 the id it is passed, so a region can be labelled by the heading', () => {
+    const wrapper = mount(MdPageHeader, { props: { title: 'Repositories', headingId: 'repositories-title' } })
+
+    expect(wrapper.get('h1').attributes('id'), 'the id is on the page heading').toBe('repositories-title')
+  })
+
+  it('draws the h1 without an id when none is passed', () => {
+    const wrapper = mount(MdPageHeader, { props: { title: 'Repositories' } })
+
+    expect(wrapper.get('h1').attributes('id'), 'no id by default').toBeUndefined()
+  })
+})

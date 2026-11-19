@@ -19,7 +19,11 @@ import { computed, ref, type PropType } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import SideNavTree from './SideNavTree.vue'
+import AdministrationTrail from './AdministrationTrail.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
+import MdPage from '../md/MdPage.vue'
+import MdPageHeader from '../md/MdPageHeader.vue'
+import type { MdBreadcrumbItem } from '../md/MdBreadcrumb.vue'
 
 interface NavLink {
   key: string | undefined
@@ -40,19 +44,16 @@ interface Shortcut {
   to: RouteLocationRaw
 }
 
-interface Crumb {
-  label: string
-  to?: RouteLocationRaw
-}
-
 /*
- * The frame of every Administration page. The header draws, in this order: the trail (Administration, the group of the
- * page as plain text and, on a detail page, the list page as a link), the one level one heading that names the page,
- * the description of the page, and the page actions with the shortcuts of the page on the right. Beside it, below the
- * header, the Administration tree and the page content. The heading is the label of the current tree entry unless a
- * title is given (a detail page names its item, a plugin page its manifest title). The description is the one of the
- * current entry unless one is given. From 1240 pixels the header sits in the page column, beside the side navigation,
- * which starts at the same top edge (a grid of the frame); below 1240 pixels the header stays above the side navigation.
+ * The frame of every Administration page. The page is an MdPage: the header draws, in this order: the trail (Administration,
+ * the group of the page as plain text and, on a detail page, the group as a link to the list page and the page as text),
+ * the one level one heading that names the page, the description of the page, and the page actions with the shortcuts of
+ * the page on the right. Above the header, below 1240 pixels, the back arrow stands alone in its row.
+ * Beside it, below the header, the Administration tree and the page content. The heading is the label of the current tree
+ * entry unless a title is given (a detail page names its item, a plugin page its manifest title). The description is the
+ * one of the current entry unless one is given. From 1240 pixels the header sits in the page column, beside the side
+ * navigation, which starts at the same top edge (a grid of the page); below 1240 pixels the header stays above the side
+ * navigation.
  *
  * Props:
  *   title        the heading, when it is not the label of the current entry
@@ -97,50 +98,59 @@ const currentLink = computed(() => props.groups
 const currentGroup = computed(() => props.groups
   .find(group => group.links.some(link => link.key === props.current)))
 
-// The trail: the section, the group of the current entry, and on a detail page the list page. Empty when no entry is
-// on screen, as on the settings hub, whose heading already is the section.
-// Overview has no group, and its crumb would link to the page itself, so its trail is the section alone, as plain text.
-const crumbs = computed<Crumb[]>(() => {
+// The trail: the section, the group of the current entry and, on a detail page, the current entry as text. On a detail
+// page the group is a link to the list. Overview has no group and draws the section alone. A page whose entry has no
+// group heading draws the section as its current crumb. Empty when no entry is on screen, as on the settings hub.
+const crumbs = computed<MdBreadcrumbItem[]>(() => {
   if (props.overview) return [{ label: props.sectionLabel }]
-  if (!currentLink.value || !currentGroup.value || currentGroup.value.heading === undefined) return []
-  const trail: Crumb[] = [{ label: props.sectionLabel, to: props.indexTo }, { label: currentGroup.value.heading }]
-  if (props.detail) trail.push({ label: currentLink.value.label, to: currentLink.value.to })
+  const link = currentLink.value
+  if (!link) return []
+  const heading = currentGroup.value?.heading
+  if (heading === undefined) return [{ label: props.sectionLabel }]
+  const trail: MdBreadcrumbItem[] = [
+    { label: props.sectionLabel, to: props.indexTo },
+    { label: heading, to: props.detail ? link.to : undefined }
+  ]
+  if (props.detail) trail.push({ label: link.label })
   return trail
 })
 
-// Below 1240 pixels the trail is its last crumb on one line, as plain text: the back arrow beside it is the one link.
-const visibleCrumbs = computed((): Crumb[] => (props.narrow ? crumbs.value.slice(-1).map(crumb => ({ label: crumb.label })) : crumbs.value))
 const fullTrail = computed(() => crumbs.value.map(crumb => crumb.label).join(' / '))
+// Below 1240 pixels the trail is its last crumb on one line: the back arrow beside it is the one link, and the full trail
+// is the title of that crumb.
+const visibleCrumbs = computed<MdBreadcrumbItem[]>(() => (props.narrow
+  ? crumbs.value.slice(-1).map(crumb => ({ label: crumb.label, title: fullTrail.value }))
+  : crumbs.value))
 const heading = computed(() => props.title || currentLink.value?.label || props.sectionLabel)
 // The list description belongs to the list; a detail page shows the description of its item only, when one is given.
 const lineDescription = computed(() => props.description ?? (props.detail ? '' : currentLink.value?.description ?? ''))
-// The back arrow leads to the list a detail page belongs to, and to the index everywhere else. Overview is the index on
-// narrow widths, so it draws none.
+// The back arrow leads to the list a detail page belongs to, and to the index everywhere else.
 const back = computed(() => (props.detail && currentLink.value
   ? { label: currentLink.value.label, to: currentLink.value.to }
   : { label: props.sectionLabel, to: props.indexTo }))
+// The back arrow is drawn below 1240 pixels on a page with an entry. Overview is the index on narrow widths, so it draws none.
+// From 1240 pixels a detail page reaches its list by the group link of the trail, so the header never has two ways back.
 const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined && !props.overview)
-// The Sections button sits beside the back arrow, so a page without one draws none. It is drawn from 600 pixels (see the
-// classes below); the sheet it opens is the same tree, in a modal side sheet, and it closes on the choice of an entry.
-const showsSections = computed(() => showsBack.value)
+// The Sections button sits beside the back arrow below 1240 pixels; it is drawn from 600 pixels (see the classes below)
+// and opens the same tree in a modal side sheet, which closes on the choice of an entry.
+const showsSections = computed(() => props.narrow && showsBack.value)
 const sheetOpen = ref(false)
 
 </script>
 
 <template>
   <section
-    class="container mx-auto max-w-none pb-12 pt-7 large:grid large:grid-cols-(--grid-md-side-nav) large:grid-rows-(--grid-md-administration-rows) large:gap-x-10"
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >
-    <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between large:col-start-2 large:row-start-1">
-      <div class="flex min-w-0 flex-col gap-1 medium:basis-80 medium:grow">
+    <MdPage class="pb-12 pt-7 large:grid large:grid-cols-(--grid-md-side-nav) large:grid-rows-(--grid-md-administration-rows) large:gap-x-10">
+      <div class="flex flex-col gap-4 pb-6 large:col-start-2 large:row-start-1">
+        <!-- The back arrow is alone in its row. Its 48 pixel target is pulled 12 pixels into the gutter, so the glyph starts on the title edge. -->
         <div
-          data-test="title-row"
-          class="flex min-h-12 min-w-0 items-center gap-2"
+          v-if="showsBack"
+          class="flex"
         >
           <RouterLink
-            v-if="showsBack"
             v-slot="{ href, navigate }"
             :to="back.to"
             custom
@@ -148,7 +158,7 @@ const sheetOpen = ref(false)
             <a
               :href="href"
               :aria-label="`Back to ${back.label}`"
-              class="md-state-layer md-focus-ring relative inline-flex size-12 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
+              class="-ms-3 md-state-layer md-focus-ring relative inline-flex size-12 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
               @click="navigate"
             >
               <svg
@@ -168,153 +178,112 @@ const sheetOpen = ref(false)
               </svg>
             </a>
           </RouterLink>
-          <nav
-            v-if="crumbs.length > 0"
-            :aria-label="narrow ? fullTrail : 'Breadcrumb'"
-            :title="narrow ? fullTrail : undefined"
-            class="min-w-0"
-          >
-            <ol
-              class="flex min-w-0 items-center md-label-large text-on-surface-variant"
-              :class="narrow ? 'whitespace-nowrap' : 'flex-wrap'"
-            >
-              <li
-                v-for="(crumb, index) in visibleCrumbs"
-                :key="index"
-                class="flex min-w-0 items-center"
-              >
-                <RouterLink
-                  v-if="crumb.to"
-                  v-slot="{ href, navigate }"
-                  :to="crumb.to"
-                  custom
-                >
-                  <a
-                    :href="href"
-                    class="md-focus-ring min-w-0 truncate rounded-corner-small hover:text-on-surface"
-                    @click="navigate"
-                  >{{ crumb.label }}</a>
-                </RouterLink>
-                <span
-                  v-else
-                  class="min-w-0 truncate"
-                >{{ crumb.label }}</span>
-                <!-- The slash between two crumbs: decorative, so it is hidden from assistive technology and not in any name. -->
-                <span
-                  v-if="index < visibleCrumbs.length - 1"
-                  aria-hidden="true"
-                  class="shrink-0 px-2"
-                >/</span>
-              </li>
-            </ol>
-          </nav>
         </div>
-        <h1
-          id="administration-title"
-          class="truncate md-headline-medium text-on-surface"
+        <!-- A no-break space keeps the description line when a page has none, so the heading does not move between pages. -->
+        <MdPageHeader
+          heading-id="administration-title"
           :title="heading"
+          :description="lineDescription || '\u00a0'"
         >
-          {{ heading }}
-        </h1>
-        <p
-          class="min-h-6 truncate md-body-large text-on-surface-variant"
-        >
-          {{ lineDescription }}
-        </p>
-      </div>
-      <!-- Empty, the row is drawn only from the medium window: its 48 pixel minimum keeps the header as high there, and on a phone it would
-           only leave a gap under the title. -->
-      <div
-        class="min-h-12 max-w-full flex-wrap items-center gap-2 medium:basis-full large:basis-auto"
-        :class="shortcuts.length > 0 || showsSections || $slots.actions ? 'flex' : 'hidden medium:flex'"
-      >
-        <button
-          v-if="showsSections"
-          type="button"
-          aria-haspopup="dialog"
-          class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary medium:inline-flex"
-          @click="sheetOpen = true"
-        >
-          <svg
-            class="size-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
+          <template
+            v-if="visibleCrumbs.length > 0"
+            #trail
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-          Sections
-        </button>
-        <nav
-          v-if="shortcuts.length > 0"
-          aria-label="Related pages"
-          class="flex flex-wrap items-center gap-2"
-        >
-          <RouterLink
-            v-for="shortcut in shortcuts"
-            :key="shortcut.label"
-            v-slot="{ href, navigate }"
-            :to="shortcut.to"
-            custom
+            <AdministrationTrail :items="visibleCrumbs" />
+          </template>
+          <template
+            v-if="showsSections || shortcuts.length > 0 || $slots.actions"
+            #actions
           >
-            <a
-              :href="href"
-              class="md-state-layer md-focus-ring md-label-large relative inline-flex min-h-10 items-center rounded-corner-full px-3 text-primary no-underline"
-              @click="navigate"
+            <button
+              v-if="showsSections"
+              type="button"
+              aria-haspopup="dialog"
+              class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary medium:inline-flex"
+              @click="sheetOpen = true"
             >
-              {{ shortcut.label }}
-            </a>
-          </RouterLink>
-        </nav>
-        <slot name="actions" />
+              <svg
+                class="size-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+              Sections
+            </button>
+            <nav
+              v-if="shortcuts.length > 0"
+              aria-label="Related pages"
+              class="flex flex-wrap items-center gap-2"
+            >
+              <RouterLink
+                v-for="shortcut in shortcuts"
+                :key="shortcut.label"
+                v-slot="{ href, navigate }"
+                :to="shortcut.to"
+                custom
+              >
+                <a
+                  :href="href"
+                  class="md-state-layer md-focus-ring md-label-large relative inline-flex min-h-10 items-center rounded-corner-full px-3 text-primary no-underline"
+                  @click="navigate"
+                >
+                  {{ shortcut.label }}
+                </a>
+              </RouterLink>
+            </nav>
+            <slot name="actions" />
+          </template>
+        </MdPageHeader>
       </div>
-    </header>
 
-    <!-- The reading measure caps the layout (side navigation and page content), never the header: the header spans the
-         container on every page, and a reading page only keeps its content column at 960 pixels. -->
-    <div :class="reading ? 'max-w-md-reading large:contents' : 'min-w-0 large:contents'">
-      <SideNavLayout
-        :label="label"
-        :groups="groups"
-        :current="current"
-        :narrow="narrow && groups.length > 0"
-        :replace="replace"
-        :unsaved="unsaved"
-        :overview="overview"
-        :reading="reading"
-      >
-        <template
-          v-if="$slots.lead"
-          #lead
+      <!-- The reading measure caps the layout (side navigation and page content), never the header: the header spans the
+           container on every page, and a reading page only keeps its content column at 960 pixels. -->
+      <div :class="reading ? 'max-w-md-reading large:contents' : 'min-w-0 large:contents'">
+        <SideNavLayout
+          :label="label"
+          :groups="groups"
+          :current="current"
+          :narrow="narrow && groups.length > 0"
+          :replace="replace"
+          :unsaved="unsaved"
+          :overview="overview"
+          :reading="reading"
         >
-          <slot name="lead" />
-        </template>
-        <slot />
-      </SideNavLayout>
-    </div>
+          <template
+            v-if="$slots.lead"
+            #lead
+          >
+            <slot name="lead" />
+          </template>
+          <slot />
+        </SideNavLayout>
+      </div>
 
-    <MdSideSheet
-      v-if="showsSections"
-      :open="sheetOpen"
-      title="Administration pages"
-      @update:open="sheetOpen = $event"
-    >
-      <SideNavTree
-        :label="label"
-        :groups="groups"
-        :current="current"
-        :unsaved="unsaved"
-        :replace="replace"
-        described
-        @select="sheetOpen = false"
-      />
-    </MdSideSheet>
+      <MdSideSheet
+        v-if="showsSections"
+        :open="sheetOpen"
+        title="Administration pages"
+        @update:open="sheetOpen = $event"
+      >
+        <SideNavTree
+          :label="label"
+          :groups="groups"
+          :current="current"
+          :unsaved="unsaved"
+          :replace="replace"
+          described
+          @select="sheetOpen = false"
+        />
+      </MdSideSheet>
+    </MdPage>
   </section>
 </template>
