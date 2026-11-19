@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { RouteParamsRawGeneric } from 'vue-router'
 import { collectionsOf } from './collections'
 import type { SettingsSchema } from './collections'
 
@@ -21,7 +22,7 @@ import type { SettingsSchema } from './collections'
 export interface SettingsLink {
   key: string
   label: string
-  to: { name?: string | symbol | null; params?: Record<string, unknown> }
+  to: { name?: string | symbol; params?: RouteParamsRawGeneric }
 }
 
 /*
@@ -59,6 +60,9 @@ const glanceRows = ({ links, schemas, saved }: {
     to: link.to,
   }))
 })
+
+// One row of At a glance, as glanceRows builds it.
+export type SettingsGlanceRow = ReturnType<typeof glanceRows>[number]
 
 // The keys of the tree entries that a domain with an unsaved draft marks. The Repositories page edits the maven domain, so its
 // draft marks that page, and the other domains mark their own settings entry.
