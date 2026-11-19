@@ -139,3 +139,65 @@ test.describe('the Overview page of the administration', () => {
     await expect(tree.getByRole('link', { name: 'Javadoc', exact: true }), 'an entry that does not match is hidden').toHaveCount(0)
   })
 })
+
+// The rail of the window holds the top-level pages. A page change moves the focus to the heading of the page that opens.
+const railLink = (page, name) => page.locator('.fixed.inset-y-0 > nav').getByRole('link', { name, exact: true })
+const pageHeading = (page, name) => page.getByRole('heading', { name, level: 1, exact: true })
+const searchBox = (page) => page.getByRole('searchbox', { name: 'Search by group, artifact or version', exact: true })
+
+test.describe('focus on a top-level page change', () => {
+  test('moves the focus from Browse to the heading of Search', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(siteUrl('/'))
+    await railLink(page, 'Search').click()
+
+    await expect(page).toHaveURL(/\/search$/)
+    await expect(pageHeading(page, 'Search'), 'the heading of the page that opened takes the focus').toBeFocused()
+  })
+
+  test('keeps the focus in the search box when only the query changes', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(siteUrl('/'))
+    await railLink(page, 'Search').click()
+    await expect(pageHeading(page, 'Search')).toBeFocused()
+
+    const box = searchBox(page)
+    await box.click()
+    await box.fill('ingot')
+    await box.press('Enter')
+
+    await expect(page, 'the query is in the address').toHaveURL(/[?&]q=ingot/)
+    await expect(box, 'the focus stays where the visitor put it').toBeFocused()
+  })
+
+  test('draws the heading of Search without a transform under reduced motion, and still moves the focus to it', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(siteUrl('/'))
+    await railLink(page, 'Search').click()
+
+    await expect(pageHeading(page, 'Search'), 'the heading takes the focus under reduced motion').toBeFocused()
+    const transforms = await pageHeading(page, 'Search').evaluate((element) => {
+      const chain = []
+      for (let node = element; node && node.tagName !== 'MAIN'; node = node.parentElement) {
+        chain.push(getComputedStyle(node).transform)
+      }
+      return chain
+    })
+    expect(transforms.filter(transform => transform !== 'none'), 'transforms on the heading and its ancestors inside main').toEqual([])
+  })
+
+  test('shows only the second page when a navigation starts during the first transition', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(siteUrl('/'))
+    await railLink(page, 'Search').click()
+    await railLink(page, 'Administration').click()
+
+    await expect(pageHeading(page, 'Overview'), 'the second page is drawn').toBeVisible()
+    await expect(pageHeading(page, 'Search'), 'the page that was left first is not drawn').toHaveCount(0)
+    await expect.poll(
+      () => page.evaluate(() => document.querySelectorAll('[class*="-leave-active"]').length),
+      'no leave transition class remains once the transition has ended'
+    ).toBe(0)
+  })
+})
