@@ -108,6 +108,20 @@ internal class DependencyRulesTest {
     }
 
     /**
+     * The plugin access facade answers with the route decisions of the current rules. It names no type of the authorizer
+     * chain, so the follow-up change that moves the answers to the chain stays the only edit that connects them, see
+     * expose-plugin-access-checks, decision D2.
+     */
+    @Test
+    fun `the access package does not depend on the authorization chain`() {
+        noClasses()
+            .that().resideInAPackage("net.onelitefeather.ingot.access..")
+            .should().dependOnClassesThat().resideInAPackage("net.onelitefeather.ingot.identity.authorization..")
+            .because("the plugin access facade answers with the current route rules, see expose-plugin-access-checks D2")
+            .check(backendClasses)
+    }
+
+    /**
      * The javadoc viewer is on its way into its own plugin module. The core reaches it only through JavadocCacheReceiver of
      * the cluster package, so no class outside the viewer may name one of its classes, see design D3 of extract-javadoc-plugin.
      */
