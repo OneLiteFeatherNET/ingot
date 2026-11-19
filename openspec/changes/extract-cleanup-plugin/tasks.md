@@ -35,6 +35,30 @@ PR title: `refactor(cleanup): report the last scheduled run through a core inter
   `reposilite-plugins/prometheus-plugin`. Verify: the test of 1.1 passes, `OperationalMetricsTest` passes unedited, and the prometheus module
   compiles without any class of `com.reposilite.cleanup`.
 
+## 1a. API document and settings schema of the embedded plugin (prerequisite of group 2, red, then green)
+
+PR title: `test(cleanup): guard the api document and the settings schema of the cleanup domain`
+
+Group 2 does not start before this group is merged and the gate of 1a.1 passes. See design D13.
+
+- [ ] 1a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
+  `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
+  a plugin's own class loader before the runtime generator. Verify: its pull requests are linked in the description of the move pull request
+  (group 2). The tests of this group do not need it; the move does.
+- [ ] 1a.2 `test(cleanup)`: integration test `CleanupApiDocumentIntegrationTest` in `reposilite-backend/src/integration/kotlin/com/reposilite/cleanup/`
+  that the served `/openapi` document holds the paths `/api/cleanup/runs`, `/api/cleanup/policies/{id}/run` and
+  `/api/cleanup/policies/{id}/dry-run` and the schemas they reference, each named in its own assertion message, so a failure names the missing
+  entry rather than a whole-file diff. Verify: it passes on main, and it fails on the branch of draft pull request #895, which is the failure
+  the move has to avoid. `OpenApiSnapshotIntegrationTest` stays as it is and passes without `-PrefreshOpenApiSnapshot`.
+- [ ] 1a.3 `test(cleanup)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/cleanup/` that the compile-time schema
+  `json-schemes/com.reposilite.cleanup.application.CleanupSettings` is readable through the class loader of `CleanupSettings` and that its
+  `properties` name every property of `CleanupSettings`, each missing name in its own assertion message. Verify: it passes on main, and it fails on the
+  branch of draft pull request #895, because the module does not generate the file there. The test moves with the code in task 2.3.
+- [ ] 1a.4 Open the code pull request of this group under
+  `test(cleanup): guard the api document and the settings schema of the cleanup domain`, branched from the remote main branch, after its
+  tests pass on main. Verify: the title is a valid Conventional Commit, `gh pr view` shows only the two test files, and no file under
+  `openspec/`.
+
 ## 2. Move the cleanup feature into its own module (red, then green)
 
 PR title: `refactor(cleanup): move the cleanup policies into the cleanup-plugin module`
@@ -65,6 +89,12 @@ This pull request is the single move. The classes must leave the server classpat
   request, including the upgrade rehearsal against the upstream image.
 - [ ] 2.5 Verify: `git diff --stat -M` shows the renames, the pull request names no file under `openspec/`, and its changed lines stay near 400
   with the renames not counted. The pull request description names the prerequisite pull request.
+- [ ] 2.6 `build(cleanup)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
+  `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/cleanup.json`, and leaves out its `openapi-plugin/.index` and
+  `json-schemes/index` (design D13). The module's resources join the backend integration classpath with its classes (task 2.2). Verify: the
+  jar lists `META-INF/ingot/openapi/cleanup.json` and `json-schemes/com.reposilite.cleanup.application.CleanupSettings`; the tests of 1a.2 and
+  1a.3 pass unedited; `OpenApiSnapshotIntegrationTest` passes without `-PrefreshOpenApiSnapshot`; and the start log of the built server jar
+  of task 2.4 holds no line with `Cannot find scheme`, checked by `grep -c 'Cannot find scheme'` printing `0`.
 
 ## 3. Documentation of the module (red, then green)
 
@@ -87,6 +117,6 @@ PR title: `test(cleanup): cover the replacement of the embedded copy by a newer 
 
 ## 5. Open the code pull requests
 
-- [ ] 5.1 Open the code pull requests in the order of groups 1 to 4, each on the remote main branch that holds the previous one and the merged
+- [ ] 5.1 Open the code pull requests in the order of groups 1, 1a and 2 to 4, each on the remote main branch that holds the previous one and the merged
   prerequisite, with the titles named above. Each one is opened only after its tests pass and no file under `openspec/` is in it. Verify: each
   pull request title is a valid Conventional Commit, and `gh pr view` shows the expected title and files.

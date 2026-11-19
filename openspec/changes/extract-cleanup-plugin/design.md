@@ -182,6 +182,53 @@ Publishing the jar, its catalogue entry and a release-please component for the m
 - A separate jar in `/app/bundled-plugins`. Its switch would need a default of on, because a missing switch is off for every bundled jar. A
   server jar started outside the image would lose cleanup, because `/app/bundled-plugins` does not exist there.
 
+### D13. Embedded plugins carry their API document fragment and settings schema
+
+Found on the draft move pull request #895: the server builds two things at compile time from its own classes only, and neither sees a
+plugin that loads from its own jar.
+
+- **The API document.** `kapt` runs `openapi-annotation-processor` on the backend's main source set only (`reposilite-backend/build.gradle.kts`,
+  the exclusion of `kaptTest`, `kaptIntegration` and `kaptTestFixtures`). It writes `openapi-plugin/.index` and
+  `openapi-plugin/openapi-default.json` into the server's resources. `JavalinConfiguration.configureOpenApi` registers Javalin's
+  `OpenApiPlugin`, whose `OpenApiLoader` reads that index through one class loader (`resourceClassLoader`, by default the loader of
+  `OpenApiLoader`, which is the server's) on the first request to `/openapi`. The same document feeds the Swagger UI and the committed
+  snapshot `docs/openapi/ingot-openapi.json`, which `OpenApiSnapshotIntegrationTest` compares with the served one. With cleanup in its own
+  jar, the `@OpenApi` routes of `CleanupEndpoints` (`/api/cleanup/runs`, `/api/cleanup/policies/{id}/run`, `/api/cleanup/policies/{id}/dry-run`)
+  and their schemas leave the document, and the snapshot test fails.
+- **The settings schema.** The same processor writes `json-schemes/index` and one file `json-schemes/<class name>` per `@JsonSchema` class,
+  here `CleanupSettings`. `SharedConfigurationFacade` reads them with `JsonSchemaLoader`, which calls
+  `JsonSchemaLoader::class.java.getResourceAsStream("/json-schemes/index")`, so only the server's index is seen. A domain that is not in it
+  logs `Cannot find scheme for class ...CleanupSettings, scheme has to be generated at runtime` (`SharedConfigurationFacade.kt`, line 156)
+  on every start and is served a schema from the runtime generator, which is not the one served today.
+
+Both break the drop-in contract: an existing installation would see a different API document and a new warning on every start. The
+decision:
+
+- **The module generates both at build time, as the server does.** The module applies `kapt` with `openapi-annotation-processor`. Its build
+  renames the processor's `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/cleanup.json` (the plugin id) and drops its
+  `openapi-plugin/.index`, so the server's index stays the only one on any classpath, including the flat integration classpath of task 2.2.
+  The `json-schemes/<class name>` files keep their names, which are unique per class. The module's `json-schemes/index` is dropped for the
+  same reason.
+- **The server merges the fragments of loaded plugins into the served document.** The definition processor of `configureOpenApi` adds the
+  `paths` and `components.schemas` of `META-INF/ingot/openapi/<id>.json` for every registered plugin id, read through the plugin's own class
+  loader and, for the flat test classpath, through the server's. An entry whose key the server document already has is not replaced, and the
+  start logs one WARN line that names the plugin and the key. The merge runs on the first request, after every plugin has loaded, as the
+  document is built today.
+- **The server looks up a domain's schema in the plugin's own jar before the runtime generator.** For a domain type that the server's index
+  does not list, and whose class loader is not the server's, `SharedConfigurationFacade` reads `json-schemes/<type name>` through
+  `type.classLoader`, which is the plugin jar's own loader. Only when that also fails does it log the warning and generate the schema at
+  runtime, as today. A domain of an embedded or a plugins-directory jar that ships its schema is therefore served the compile-time schema
+  with no warning. Classes on the server's own loader keep today's path, so the unit and integration tests, whose empty `json-schemes/index`
+  keeps them on the runtime generator, do not change behaviour.
+- **The committed snapshot stays the full merged document.** `docs/openapi/ingot-openapi.json` keeps the cleanup routes and schemas, and
+  the move pull request does not refresh it. `OpenApiSnapshotIntegrationTest` passing unchanged is the proof that the move kept the API
+  document, so the test keeps guarding the drop-in contract.
+
+The server part (the merge and the schema lookup, with their tests against a fixture plugin) is shared with `extract-javadoc-plugin` and is
+generic to every plugin jar, so neither extraction owns it. It is a new small change `add-plugin-api-fragments` (`feat(plugin)`), a follow-up
+of `add-embedded-plugin-jars`, proposed in its own proposal pull request. Its merge on main is a gate of the move pull request (task 1a.1).
+This change owns the module side: the build step above and the guard tests of group 1a.
+
 ## Risks
 
 - **The prerequisite is a dependency.** If it slips, this change slips. The move pull request cannot start before it merges.
@@ -196,6 +243,7 @@ Each step is one pull request, buildable and passing alone:
 
 0. The prerequisite `add-embedded-plugin-jars` is merged (outside this change).
 1. The seam of D3 and its test. The prometheus plugin stops importing the cleanup service, which is still in the core.
+1a. The guard tests of D13, green on main and red on the draft move. The move waits for `add-plugin-api-fragments` as well.
 2. The module, the move of the sources and the tests, the build wiring of D1 and the embedded jar. This pull request is the single move of D2.
 3. The docs of the module, the embedded copy and the update path.
 4. The replacement test of group 7, which is written after the prerequisite and passes against it.

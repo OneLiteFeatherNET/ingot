@@ -42,6 +42,27 @@ PR title: `refactor(javadoc): let the cluster reach the javadoc cache through a 
 - [ ] 2.3 `refactor(javadoc)`: add `JavadocCacheReceiver` in `net.onelitefeather.ingot.cluster`, make `JavadocFacade` implement it, and let
   `FacadeCacheHooks` find it among the facades. Verify: the tests of 2.1 and 2.2 pass, and the tests of `javadocs` pass unedited.
 
+## 2a. API document and settings schema of the embedded plugin (prerequisite of group 3, red, then green)
+
+PR title: `test(javadoc): guard the api document and the settings schema of the javadoc domain`
+
+Group 3 does not start before this group is merged, the gate of 2a.1 passes, and question Q112 of `design.md` is decided. See design D13.
+
+- [ ] 2a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
+  `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
+  a plugin's own class loader before the runtime generator. Verify: its pull requests are linked in the description of the move pull request
+  (group 3). The tests of this group do not need it; the move does.
+- [ ] 2a.2 `test(javadoc)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` that the compile-time schema
+  `json-schemes/com.reposilite.javadocs.application.JavadocSettings` is readable through the class loader of `JavadocSettings` and that its
+  `properties` name every property of `JavadocSettings`, each missing name in its own assertion message. Verify: it passes on main, and it
+  fails when the file is left out of the module jar, which is the failure the move has to avoid. The test moves with the code in task 3.3.
+- [ ] 2a.3 Verify that `OpenApiSnapshotIntegrationTest` holds no javadoc entry today, so the move must leave `docs/openapi/ingot-openapi.json`
+  byte for byte as it is: `grep -ci javadoc docs/openapi/ingot-openapi.json` prints `0`. Record the result in the description of the pull
+  request of this group.
+- [ ] 2a.4 Open the code pull request of this group under
+  `test(javadoc): guard the api document and the settings schema of the javadoc domain`, branched from the remote main branch, after its
+  test passes on main. Verify: the title is a valid Conventional Commit, `gh pr view` shows only the test file, and no file under `openspec/`.
+
 ## 3. Move the viewer into its own module (red, then green)
 
 PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugin module`
@@ -72,6 +93,12 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
   prerequisite). Verify: the container images job passes on this pull request, including the upgrade rehearsal against the upstream image.
 - [ ] 3.5 Verify: `git diff --stat` shows renames of the files above, the pull request names no file under `openspec/`, and its changed
   lines stay near 400 with the renames not counted.
+- [ ] 3.6 `build(javadoc)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
+  `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/javadoc.json`, and leaves out its `openapi-plugin/.index` and
+  `json-schemes/index` (design D13). The module's resources join the backend integration classpath with its classes (task 3.2). Verify: the
+  jar lists `json-schemes/com.reposilite.javadocs.application.JavadocSettings`; the test of 2a.2 passes unedited;
+  `OpenApiSnapshotIntegrationTest` passes without `-PrefreshOpenApiSnapshot`; and the start log of the built server jar of task 3.4 holds
+  no line with `Cannot find scheme`, checked by `grep -c 'Cannot find scheme'` printing `0`.
 
 ## 4. Dashboard without a viewer (red, then green)
 
@@ -97,6 +124,6 @@ PR title: `refactor(javadoc): describe the javadoc module and its embedded copy 
 
 ## 6. Open the code pull requests
 
-- [ ] 6.1 Open the code pull requests in the order of groups 2 to 5, each on the remote main branch that holds the previous one and the
+- [ ] 6.1 Open the code pull requests in the order of groups 2, 2a and 3 to 5, each on the remote main branch that holds the previous one and the
   merged prerequisite, with the titles named in those groups. Each one is opened only after its tests pass and no file under `openspec/` is
   in it. Verify: each pull request title is a valid Conventional Commit, and `gh pr view` shows the expected title and files.
