@@ -16,6 +16,7 @@
 
 package com.reposilite
 
+import com.reposilite.console.infrastructure.ConsoleLogSequencer
 import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
@@ -65,6 +66,9 @@ class ReposiliteJournalist(
 
     val cachedLogger = CachedLogger(Channel.ALL, cachedLogSize)
 
+    /** The lines of the visible logger, stamped with sequence numbers for the version 1 console socket. */
+    internal val consoleLog = ConsoleLogSequencer(cachedLogSize)
+
     private val publisherLogger = PublisherLogger(Channel.ALL)
 
     /** Only lines logged by this instance at its visibility threshold, so that lines received from the cluster bus are never forwarded again. */
@@ -82,7 +86,7 @@ class ReposiliteJournalist(
         }
 
         // Journalist's logger usually logs to console, the publisher logger forwards messages to subscribers
-        this.visibleLogger = AggregatedLogger(visibleJournalist.logger, publisherLogger, localLinePublisher)
+        this.visibleLogger = AggregatedLogger(visibleJournalist.logger, publisherLogger, localLinePublisher, consoleLog)
         setVisibleThreshold(defaultVisibilityThreshold)
 
         // Redirects logs to TinyLog and local cache for later retrieval
@@ -115,6 +119,9 @@ class ReposiliteJournalist(
      */
     fun deliverRemote(channel: Channel, origin: String, message: String) {
         publisherLogger.log(channel, "[$origin] $message")
+        if (channel.priority >= visibleThreshold.priority) {
+            consoleLog.appendRemote(channel, origin, message)
+        }
     }
 
     fun setVisibleThreshold(channel: Channel) {

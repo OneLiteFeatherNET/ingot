@@ -19,7 +19,26 @@ import com.reposilite.console.CommandStatus
 import com.reposilite.console.OutputLine
 
 /** The version 1 frames the server sends. Each one is a JSON object whose `type` names it. */
-internal data class WelcomeFrame(val protocol: Int, val type: String = "welcome")
+internal data class WelcomeFrame(
+    val protocol: Int,
+    /** The boot id of this process. A client compares it with the boot it resumes from. */
+    val boot: String? = null,
+    /** The last log sequence number of this boot at the time of the welcome. */
+    val seq: Long? = null,
+    /** `resumed` when the server replays after the resumed number, `full` when it replays the whole cache, null without a resume. */
+    val replay: String? = null,
+    val type: String = "welcome",
+)
+
+/** One log line. [seq] is unique within the boot, [node] names the instance that logged it, and [dropped] counts the lines lost before it. */
+internal data class LogFrame(
+    val seq: Long,
+    val node: String,
+    val level: String,
+    val text: String,
+    val dropped: Int,
+    val type: String = "log",
+)
 
 internal data class ErrorFrame(
     val code: String,

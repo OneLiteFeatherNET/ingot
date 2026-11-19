@@ -86,6 +86,9 @@ internal class FakeConsoleScheduler(start: Instant = Instant.EPOCH) : ConsoleSch
     override fun openOutbox(send: (String) -> Unit, onFailure: (Exception) -> Unit): ConsoleOutbox =
         DirectOutbox(send, onFailure).also { outboxes += it }
 
+    override fun openFrameOutbox(send: (Any) -> Unit, onFailure: (Exception) -> Unit, onSlowConsumer: () -> Unit): ConsoleV1Outbox =
+        DirectFrameOutbox(send, onFailure)
+
 }
 
 /** An outbox without a queue: every line is sent at once, and a failed send is reported like the real writer does. */
@@ -115,3 +118,38 @@ internal class DirectOutbox(private val send: (String) -> Unit, private val onFa
     }
 
 }
+
+/**
+ * A version 1 outbox without a queue: every frame is sent at once, and a log line is sent with no dropped lines before it.
+ * Tests of the queue itself use [ConsoleFrameOutbox] with a gated sender.
+ */
+internal class DirectFrameOutbox(private val send: (Any) -> Unit, private val onFailure: (Exception) -> Unit) : ConsoleV1Outbox {
+
+    var closed = false
+        private set
+
+    override fun offerLog(line: LogLine): Boolean {
+        if (closed) {
+            return false
+        }
+        return putFrame(LogFrame(seq = line.seq, node = line.node, level = line.level, text = line.text, dropped = 0))
+    }
+
+    override fun putFrame(frame: Any): Boolean {
+        if (closed) {
+            return false
+        }
+        try {
+            send(frame)
+        } catch (failure: Exception) {
+            onFailure(failure)
+        }
+        return true
+    }
+
+    override fun close() {
+        closed = true
+    }
+
+}
+

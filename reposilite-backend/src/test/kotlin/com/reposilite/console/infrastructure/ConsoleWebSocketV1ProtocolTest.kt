@@ -95,7 +95,8 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
         handler.handleMessage(connection, hello(protocols = "[1,2]"))
 
         // then: the only frame is the welcome for protocol 1
-        assertThat(connection.json).`as`("json frames").containsExactly(WelcomeFrame(protocol = 1))
+        assertThat(connection.json.single()).`as`("the only frame").isInstanceOf(WelcomeFrame::class.java)
+        assertThat((connection.json.single() as WelcomeFrame).protocol).`as`("protocol").isEqualTo(1)
         assertThat(connection.closeCode).`as`("close code").isNull()
     }
 

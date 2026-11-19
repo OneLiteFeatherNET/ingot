@@ -23,6 +23,7 @@ import com.reposilite.console.PreparedCommand
 import com.reposilite.console.StructuredExecution
 import com.reposilite.console.StructuredRun
 import com.reposilite.console.CommandStatus
+import com.reposilite.journalist.Channel
 import com.reposilite.console.consoleCommandAudit
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
@@ -45,6 +46,7 @@ import java.time.Duration
 import java.nio.channels.ClosedChannelException
 import net.onelitefeather.ingot.web.TrustedProxies
 import java.util.Collections
+import java.util.UUID
 import java.util.WeakHashMap
 import java.util.function.Consumer
 
@@ -81,14 +83,22 @@ private const val DECLINED_EXIT_CODE = 3
 
 private const val CLOSE_PROTOCOL_ERROR = 1002
 private const val CLOSE_POLICY_VIOLATION = 1008
+private const val CLOSE_SLOW_CONSUMER = 1013
 
 private val frameMapper = ObjectMapper()
+
+/** The replay states of a welcome: resumed after the number the client holds, or the whole cache for another boot. */
+private const val REPLAY_RESUMED = "resumed"
+private const val REPLAY_FULL = "full"
 
 /** A dangerous command that waits for its confirm. [deadline] declines it when no answer arrives in time. */
 private class PendingConfirm(val id: String, val prepared: PreparedCommand, val deadline: ConsoleTimer)
 
-/** A version 1 connection after its hello. At most one dangerous command waits for its confirm, and every other execute is busy. */
-private class V1Session(val identity: WsIdentity) {
+/**
+ * A version 1 connection after its hello. Its frames go through [outbox], and [subscriberId] names its log subscription.
+ * At most one dangerous command waits for its confirm, and every other execute is busy.
+ */
+private class V1Session(val identity: WsIdentity, val outbox: ConsoleV1Outbox, val subscriberId: Int) {
 
     private var pending: PendingConfirm? = null
 
@@ -145,6 +155,8 @@ internal class ConsoleWebSocketHandler(
     private val scheduler: ConsoleScheduler = SystemConsoleScheduler(),
     /** The instance id that a version 1 result names as its node. */
     private val nodeId: String,
+    /** The id of this process. A version 1 welcome names it, and a client resumes only within the boot it was given. */
+    private val boot: String = UUID.randomUUID().toString(),
 ) : Consumer<WsConfig> {
 
     /**
@@ -232,14 +244,21 @@ internal class ConsoleWebSocketHandler(
 
     /** Releases the writer and the subscription of a connection. Both close callbacks may run, and only the first one finds the session. */
     internal fun release(connection: ConsoleConnection) {
-        v1Sessions.remove(connection)?.dropAll()
+        v1Sessions.remove(connection)?.let { session ->
+            session.dropAll()
+            session.outbox.close()
+            journalist.consoleLog.unsubscribe(session.subscriberId)
+        }
         val session = users.remove(connection) ?: return
         session.outbox.close()
         journalist.logger.info("CLI | ${session.identifier} closed connection")
         journalist.unsubscribe(session.subscriberId)
     }
 
-    /** Answers a hello: the highest common protocol and the token, checked like the legacy first frame. */
+    /**
+     * Answers a hello: the highest common protocol and the token, checked like the legacy first frame. A resume replays the
+     * cached lines after the number the client holds when it is for this boot, and the whole cache otherwise.
+     */
     private fun handleHello(connection: ConsoleConnection, message: String) {
         val hello = frameOf(message) ?: return
         val protocol = hello.get("protocols")?.takeIf { it.isArray }
@@ -262,8 +281,32 @@ internal class ConsoleWebSocketHandler(
         authenticateContext(connection, AUTHORIZATION_PREFIX + hello.text("token").orEmpty())
             .peek { identity ->
                 journalist.logger.info("CLI | ${identity.identifier} accessed remote console (protocol $protocol)")
-                v1Sessions[connection] = V1Session(identity)
-                connection.sendJson(WelcomeFrame(protocol = protocol))
+                val outbox = scheduler.openFrameOutbox(
+                    send = { connection.sendJson(it) },
+                    onFailure = { failure -> handleSendFailure(connection, identity.identifier, failure) },
+                    onSlowConsumer = { slowConsumer(connection) },
+                )
+                val resume = hello.get("resume")?.takeIf { it.isObject }
+                val resumedSeq = resume?.get("seq")?.takeIf { it.isIntegralNumber }?.asLong()
+                val replay = when {
+                    resume == null -> null
+                    resume.text("boot") == boot && resumedSeq != null -> REPLAY_RESUMED
+                    else -> REPLAY_FULL
+                }
+                // The welcome is queued before the subscription, so the replayed lines follow it.
+                outbox.putFrame(WelcomeFrame(protocol = protocol, boot = boot, seq = journalist.consoleLog.lastSequence(), replay = replay))
+                val replayFrom: Long? = when (replay) {
+                    REPLAY_RESUMED -> resumedSeq
+                    REPLAY_FULL -> 0L
+                    else -> null
+                }
+                val threshold = levelOf(hello)
+                val subscriberId = journalist.consoleLog.subscribe(from = replayFrom) { line ->
+                    if (line.level.priority >= threshold.priority) {
+                        outbox.offerLog(LogLine(seq = line.seq, node = line.node ?: nodeId, level = line.level.name, text = line.text))
+                    }
+                }
+                v1Sessions[connection] = V1Session(identity, outbox, subscriberId)
             }
             .onError {
                 journalist.logger.info("CLI | ${it.message} (${it.status})")
@@ -272,38 +315,51 @@ internal class ConsoleWebSocketHandler(
             }
     }
 
+    /** The level of the log lines a hello asks for. It can raise the visible threshold but never lower it. */
+    private fun levelOf(hello: JsonNode): Channel {
+        val visible = journalist.visibleThreshold
+        val requested = hello.text("logLevel")?.let { Channel.of(it.uppercase()).orElse(null) } ?: return visible
+        return if (requested.priority > visible.priority) requested else visible
+    }
+
+    /** Refuses a connection that does not read its frames: the queue is full of frames, so it is closed with 1013. */
+    private fun slowConsumer(connection: ConsoleConnection) {
+        connection.sendJson(ErrorFrame(code = "slow_consumer", message = "this connection reads too slowly"))
+        connection.close(CLOSE_SLOW_CONSUMER, "slow_consumer")
+    }
+
     /** Handles one frame of a version 1 session: an execute or a confirm, and an error for anything else. */
     private fun handleVersionOneFrame(connection: ConsoleConnection, session: V1Session, message: String) {
         if (message.toByteArray(StandardCharsets.UTF_8).size > MAX_FRAME_BYTES) {
-            connection.sendJson(ErrorFrame(code = "too_long", message = "a frame may hold $MAX_FRAME_BYTES bytes at most"))
+            session.outbox.putFrame(ErrorFrame(code = "too_long", message = "a frame may hold $MAX_FRAME_BYTES bytes at most"))
             return
         }
         val frame = frameOf(message)
         if (frame == null) {
-            connection.sendJson(ErrorFrame(code = "bad_frame", message = "a frame is one JSON object"))
+            session.outbox.putFrame(ErrorFrame(code = "bad_frame", message = "a frame is one JSON object"))
             return
         }
         val id = frame.text("id")
         when (val type = frame.text("type")) {
             "execute" -> handleExecute(connection, session, id, frame)
             "confirm" -> handleConfirm(connection, session, id, frame)
-            else -> connection.sendJson(ErrorFrame(code = "unknown_type", message = "unknown frame type ${type ?: "none"}", id = id))
+            else -> session.outbox.putFrame(ErrorFrame(code = "unknown_type", message = "unknown frame type ${type ?: "none"}", id = id))
         }
     }
 
     private fun handleExecute(connection: ConsoleConnection, session: V1Session, id: String?, frame: JsonNode) {
         if (id == null) {
-            connection.sendJson(ErrorFrame(code = "bad_frame", message = "an execute needs an id"))
+            session.outbox.putFrame(ErrorFrame(code = "bad_frame", message = "an execute needs an id"))
             return
         }
         if (session.isBusy()) {
-            connection.sendJson(ErrorFrame(code = "busy", message = "a command waits for its confirmation", id = id, retryable = true))
+            session.outbox.putFrame(ErrorFrame(code = "busy", message = "a command waits for its confirmation", id = id, retryable = true))
             return
         }
         val confirmed = frame.get("confirm")?.takeIf { it.isBoolean }?.asBoolean() ?: false
         consoleFacade.prepareCommand(frame.text("command").orEmpty())
             .peek { prepared -> runPrepared(connection, session, id, prepared, confirmed) }
-            .onError { connection.sendJson(ErrorFrame(code = "bad_command", message = it.message, id = id)) }
+            .onError { session.outbox.putFrame(ErrorFrame(code = "bad_command", message = it.message, id = id)) }
     }
 
     /** Runs the command, or holds a dangerous one until its confirm arrives or its deadline passes. */
@@ -315,7 +371,7 @@ internal class ConsoleWebSocketHandler(
                     session.take(id)?.let { decline(connection, session, it) }
                 }
                 session.hold(PendingConfirm(id, prepared, deadline))
-                connection.sendJson(ConfirmFrame(id = id, command = answer.command, reason = answer.reason))
+                session.outbox.putFrame(ConfirmFrame(id = id, command = answer.command, reason = answer.reason))
             }
         }
     }
@@ -323,7 +379,7 @@ internal class ConsoleWebSocketHandler(
     private fun handleConfirm(connection: ConsoleConnection, session: V1Session, id: String?, frame: JsonNode) {
         val pending = id?.let { session.take(it) }
         if (pending == null) {
-            connection.sendJson(ErrorFrame(code = "unknown_id", message = "no command waits for this confirmation", id = id))
+            session.outbox.putFrame(ErrorFrame(code = "unknown_id", message = "no command waits for this confirmation", id = id))
             return
         }
         val accept = frame.get("accept")?.takeIf { it.isBoolean }?.asBoolean() ?: false
@@ -333,7 +389,7 @@ internal class ConsoleWebSocketHandler(
         }
         when (val answer = pending.prepared.executeStructured(confirmed = true)) {
             is StructuredRun -> finish(connection, session, pending.id, pending.prepared, answer.execution, confirmed = true)
-            is ConfirmationNeeded -> connection.sendJson(ErrorFrame(code = "confirmation_required", message = "the command still needs its confirmation", id = pending.id))
+            is ConfirmationNeeded -> session.outbox.putFrame(ErrorFrame(code = "confirmation_required", message = "the command still needs its confirmation", id = pending.id))
         }
     }
 
@@ -348,7 +404,7 @@ internal class ConsoleWebSocketHandler(
                 exitCode = DECLINED_EXIT_CODE,
             )
         )
-        connection.sendJson(
+        session.outbox.putFrame(
             ResultFrame(
                 id = pending.id,
                 status = CommandStatus.FAILED,
@@ -372,7 +428,7 @@ internal class ConsoleWebSocketHandler(
                 exitCode = execution.exitCode,
             )
         )
-        connection.sendJson(
+        session.outbox.putFrame(
             ResultFrame(
                 id = id,
                 status = execution.status,
