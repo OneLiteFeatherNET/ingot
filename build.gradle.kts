@@ -185,6 +185,14 @@ subprojects {
         }
     }
 
+    // Generates the POM of every publication without building or uploading anything. The release job is the only other
+    // place that does this, so a publication that cannot be written would otherwise first fail on release day.
+    tasks.register("generatePublicationPoms") {
+        group = "verification"
+        description = "Generates the POM of every Maven publication of this project."
+        dependsOn(tasks.withType<GenerateMavenPom>())
+    }
+
     tasks.withType<Test> {
         testLogging {
             events(
