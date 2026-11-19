@@ -262,6 +262,13 @@
       "states": []
     },
     {
+      "name": "second-factors-card",
+      "file": "src/components/account/SecondFactorsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "profile-card",
       "file": "src/components/account/ProfileCard.vue",
       "stability": "experimental",
