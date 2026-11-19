@@ -66,7 +66,13 @@ internal class ConsoleWebSocketHandler(
     private val audit: (AuditEvent) -> Unit,
     /** The clock, the timers and the line writer of each connection. Tests drive them by hand. */
     private val scheduler: ConsoleScheduler = SystemConsoleScheduler(),
+    /** The instance id that a version 1 result names as its node. */
+    private val nodeId: String,
 ) : Consumer<WsConfig> {
+
+    /** Starts the time a connection has to send a valid hello. Version 1 only; a stub until the protocol lands. */
+    internal fun connect(connection: ConsoleConnection) {
+    }
 
     /**
      * Written by the message and close callbacks of every connection, each on its own Jetty thread, so it is synchronized.
@@ -187,6 +193,10 @@ internal class ConsoleWebSocketHandler(
         override fun send(text: String) = ctx.send(text)
         override fun sendJson(value: Any) = ctx.send(value)
         override fun disconnect() = ctx.session.disconnect()
+        override fun close(code: Int, reason: String) {
+            ctx.closeSession(code, reason)
+        }
+
         override fun equals(other: Any?): Boolean = other is JavalinConsoleConnection && other.ctx == ctx
         override fun hashCode(): Int = ctx.hashCode()
     }

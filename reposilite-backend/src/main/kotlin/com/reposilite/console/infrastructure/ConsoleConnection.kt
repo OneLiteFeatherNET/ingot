@@ -33,4 +33,7 @@ internal interface ConsoleConnection {
     /** Drops the connection without a close handshake. */
     fun disconnect()
 
+    /** Closes the connection with the WebSocket close [code] and [reason]. */
+    fun close(code: Int, reason: String)
+
 }

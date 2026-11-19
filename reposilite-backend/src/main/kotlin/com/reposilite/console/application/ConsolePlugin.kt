@@ -109,6 +109,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
                     forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
                     trustedProxies = TrustedProxies.fromEnvironment(),
                     audit = this::emitConsoleAudit,
+                    nodeId = ClusterSettings.instanceIdOf(ClusterSources.system()),
                 )
             )
             event.config.routes.sse(

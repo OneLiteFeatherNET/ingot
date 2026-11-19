@@ -79,6 +79,7 @@ internal class ConsoleWebSocketHandlerTest : AuthenticationSpecification() {
             forwardedIp = Reference.reference("X-Forwarded-For"),
             audit = { audits += it },
             scheduler = scheduler,
+            nodeId = "node-a",
         )
     }
 

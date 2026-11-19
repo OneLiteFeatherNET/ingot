@@ -28,6 +28,10 @@ internal class FakeConsoleConnection(override val host: String = "203.0.113.7") 
     val json = mutableListOf<Any>()
     var disconnected = false
         private set
+    var closeCode: Int? = null
+        private set
+    var closeReason: String? = null
+        private set
 
     override fun send(text: String) {
         texts += text
@@ -39,6 +43,11 @@ internal class FakeConsoleConnection(override val host: String = "203.0.113.7") 
 
     override fun disconnect() {
         disconnected = true
+    }
+
+    override fun close(code: Int, reason: String) {
+        closeCode = code
+        closeReason = reason
     }
 
 }
