@@ -43,6 +43,7 @@ reposilite-test
 # plugin is built because the server jar embeds it.
 reposilite-plugins/*
 !reposilite-plugins/build.gradle.kts
+!reposilite-plugins/cleanup-plugin
 !reposilite-plugins/elasticsearch-plugin
 !reposilite-plugins/javadoc-plugin
 !reposilite-plugins/lucene-plugin

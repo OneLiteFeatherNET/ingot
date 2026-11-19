@@ -302,7 +302,8 @@ tasks.withType<ShadowJar> {
 
 // Plugin modules that the server jar embeds as embedded-plugins/<jar name>, see openspec change add-embedded-plugin-jars.
 // The javadoc viewer is embedded by default, so a server jar started outside the image keeps the viewer and its settings domain.
-val embeddedPluginProjects: List<String> = listOf(":reposilite-plugins:javadoc-plugin")
+// The cleanup policies are embedded by default, so a server jar started outside the image keeps the cleanup routes and schedule.
+val embeddedPluginProjects: List<String> = listOf(":reposilite-plugins:cleanup-plugin", ":reposilite-plugins:javadoc-plugin")
 
 // The shadow jars of those modules. The configuration is on no classpath, so the compile and runtime classpaths do not change.
 val embeddedPlugin by configurations.creating {
@@ -626,6 +627,18 @@ dependencies {
     // The unit tests of the viewer stay in the backend (design D7 of extract-javadoc-plugin). They see its classes and generated
     // resources, but not its service file, so no unit test loads the plugin from the class path.
     testImplementation(javadocPluginClasses)
+}
+
+// The cleanup plugin, compiled classes and service file. The server runs from its classes directory in the integration tests, which
+// embeds no jar, so the test server loads the plugin from the class path instead, as the server jar loads its embedded copy.
+val cleanupPlugin = project(":reposilite-plugins:cleanup-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(
+            cleanupPlugin.layout.buildDirectory.dir("classes/kotlin/main"),
+            cleanupPlugin.layout.buildDirectory.dir("resources/main"),
+        ).builtBy(":reposilite-plugins:cleanup-plugin:compileKotlin", ":reposilite-plugins:cleanup-plugin:processResources"),
+    )
 }
 
 tasks.named<Test>("integration") {
