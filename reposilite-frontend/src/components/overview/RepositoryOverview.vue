@@ -237,12 +237,12 @@ const setShowDetails = (value: boolean) => {
       class="min-w-0"
       aria-labelledby="overview-repositories-title"
     >
-      <h2
+      <h1
         id="overview-repositories-title"
         class="flex min-h-12 items-center md-title-large text-on-surface"
       >
         Repositories
-      </h2>
+      </h1>
 
       <div class="mt-4 flex flex-col gap-3">
         <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
