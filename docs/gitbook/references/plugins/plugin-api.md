@@ -45,6 +45,12 @@ On shutdown, `ReposiliteDisposeEvent` is emitted before the web server stops.
 | `dependencies` | String array | empty | Names of plugins that must initialize first. |
 | `settings` | class of `SharedSettings` | `SharedSettings` | Settings class owned by the plugin. Read it with `SharedConfigurationFacade.getDomainSettings<T>()`. |
 
+### Embedded plugins and the version rule
+
+A plugin jar that the server embeds sets `@Plugin.version` to the same value as the `Implementation-Version` of its manifest. The loader does not read the annotation for the version rule. It reads the manifest, and the default of the annotation is the server version, which would make an embedded plugin look newer than any plugin that is numbered on its own.
+
+A jar of the plugins directory with the same `name` replaces the embedded plugin only when its manifest version is higher, as described in [Update a plugin](../../manage/plugins/install-a-plugin.md#update-a-plugin). A jar that loses the comparison is still created by the server, so its constructor runs at start, but `load` and `initialize` do not run for it. Keep constructors free of side effects, because they can run for a copy that is not used.
+
 ## The ReposilitePlugin base class
 
 | Member | Purpose |
