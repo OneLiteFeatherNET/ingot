@@ -1,7 +1,7 @@
 # Release guide
 
-Releases are automated. There is no command a maintainer runs by hand, and there is no
-release branch: the version lives in the repository and
+Releases are automated. Apart from the release branches described below, there is no command
+a maintainer runs by hand: the version lives in the repository and
 [Release Please](https://github.com/googleapis/release-please) owns it.
 
 ## How a release happens
@@ -98,8 +98,11 @@ gpg --verify opensearch-plugin-<version>.jar.asc opensearch-plugin-<version>.jar
 gh attestation verify opensearch-plugin-<version>.jar \
   --repo OneLiteFeatherNET/ingot \
   --signer-workflow OneLiteFeatherNET/ingot/.github/workflows/release-please.yml \
-  --source-ref refs/heads/main
+  --source-ref <ref>
 ```
+
+`<ref>` is the ref the release was built from: `refs/heads/main` for a release from `main`, or
+`refs/heads/release/<line>.x` for a patch release from a release branch.
 
 ### Key rotation
 
@@ -119,6 +122,106 @@ gh attestation verify opensearch-plugin-<version>.jar \
   `generate_plugin_catalogue.py yank --repository DIR --plugin ID --version VERSION`. No workflow run performs a yank yet, so
   until a follow-up change wires it in, a yank is made by a maintainer through that change and not by hand. A yanked version
   stays in the catalogue, is no longer selectable, and keeps loading where it is already cached.
+
+## Release branches and backports
+
+A release line is `X.Y`, and the newest line is the one on `main`. When the next line ships, the line before it keeps
+receiving security fixes from a release branch `release/X.Y.x` (for example `release/1.1.x`) for 90 days. The window of
+each line is in [SUPPORT.md](../SUPPORT.md), and the lines themselves are in `support-lines.json`. No release branch exists
+before the next line ships, and no release branch is merged into `main`. Fixes reach `main` first.
+
+Dependency updates from Renovate target `main` only. A dependency update that an old line needs is a manual backport.
+
+### Cut a release branch
+
+Cut the branch when the first release of the next line (`X.Y.0`) is tagged on `main`. Base it on the last tag of the
+previous line, not on the tip of `main`, because `main` already holds the changes of the new line. For example, when
+`2.0.0` ships and `1.1.1` is the last `1.1` release:
+
+```sh
+git fetch origin --tags
+git push origin v1.1.1:refs/heads/release/1.1.x
+gh label create backport:1.1 --repo OneLiteFeatherNET/ingot \
+  --description "Backport a security fix to release/1.1.x" --color 0e8a16
+```
+
+Then open a pull request that adds the line to `support-lines.json`. The line gets `"status": "previous"` and an
+`end_of_life` date 90 days after the release that ships the next line. Re-render the tables and check them:
+
+```sh
+python3 .github/scripts/render_support_tables.py --mode write
+python3 .github/scripts/render_support_tables.py --mode check
+python3 .github/scripts/render_support_tables.py --mode labels
+```
+
+The check fails when a table differs from the file, when a window does not match the rule, or when a label or a release
+branch is missing. Run the cut again only if the branch is missing: a branch that already points at the last tag of the
+line stays as it is, and a branch that points anywhere else is not moved. Ask before changing it.
+
+The release branches are protected in the repository ruleset, not by this file: pull requests into `release/**` need a
+review and the passing checks, and no pull request merges from `release/**` into `main`. Only maintainers can push a cut.
+
+### Patch releases on a release branch
+
+A merged `fix` or `feat` never goes to a release branch on its own. Release Please, running on the branch, opens a release
+pull request for the next patch (`X.Y.Z+1`), and its title names the line, for example `chore(release-1.1.x): release 1.1.2`.
+Merging it tags the release on the branch. The version always keeps the line of the branch, and a backport never moves a
+line to a new minor version.
+
+Container tags follow the newest release in the repository, not the branch:
+
+| Tag | Moves when |
+|---|---|
+| `X.Y.Z` | every release |
+| `X.Y` | every release of that line |
+| `X` | the release is the highest version with major `X` |
+| `latest` | the release is the highest version across all lines |
+
+A patch release on an old line never takes the GitHub "Latest" badge. Check that the newest tag still has it:
+
+```sh
+gh release edit v2.0.0 --repo OneLiteFeatherNET/ingot --latest
+```
+
+### Backport a security fix
+
+Only a security fix goes to a previous line. Its pull request title is `fix(security): ...`, without a `!` and without a
+`BREAKING CHANGE:` footer. Every other type, including `fix` and `perf` without the security scope, reaches the line only
+through `main` and its next release. Merge the fix into `main` first, then add the label `backport:1.1` to the merged
+pull request.
+
+The backport workflow cherry-picks the squashed commit onto `release/1.1.x` with `-x -s` and opens a pull request with the
+same title. Review and merge it like any other pull request, so its checks run. The sign-off is the one of the person who
+added the label, so that person should be the one who merges it.
+
+If the cherry-pick conflicts, the workflow removes its branch and comments on the source pull request. Finish the backport
+by hand:
+
+```sh
+git fetch origin
+git switch -c backport/<pr>-1.1 origin/release/1.1.x
+git cherry-pick -x -s <merge-commit-sha>
+# resolve the conflict, then
+git add <files>
+git cherry-pick --continue
+git push -u origin backport/<pr>-1.1
+gh pr create --repo OneLiteFeatherNET/ingot --base release/1.1.x \
+  --title "fix(security): <same title as the source pull request>" \
+  --body "Backport of #<pr> to release/1.1.x."
+```
+
+### End of a window
+
+When `end_of_life` in `support-lines.json` has passed, a pull request sets the line to `"status": "archived"`, re-renders
+the tables and removes the `backport:1.1` label from open pull requests. Merge it, then archive the branch. Archiving renames
+the branch, so the history stays visible and the release workflow stops matching it:
+
+```sh
+git push origin origin/release/1.1.x:refs/heads/archive/1.1.x
+git push origin --delete release/1.1.x
+```
+
+Tags are never deleted or moved.
 
 ## Verify a release
 
@@ -153,8 +256,11 @@ cosign verify \
 gh attestation verify ingot-<version>.jar \
   --repo OneLiteFeatherNET/ingot \
   --signer-workflow OneLiteFeatherNET/ingot/.github/workflows/release-please.yml \
-  --source-ref refs/heads/main
+  --source-ref <ref>
 ```
+
+`<ref>` is the ref the release was built from, as in [Verify a published plugin](#verify-a-published-plugin):
+`refs/heads/main` for a release from `main`, `refs/heads/release/<line>.x` for a patch release from a release branch.
 
 Each command exits with an error when the signature or attestation is missing or was made by
 another workflow, branch or repository.

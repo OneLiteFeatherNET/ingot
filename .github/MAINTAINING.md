@@ -58,6 +58,9 @@ something upstream shipped in 3.5.x, the commit message may reference their issu
 release it lands in is numbered on our line. [VERSIONING.md](../VERSIONING.md) is the
 public explanation; point people at it rather than re-arguing it in an issue.
 
+How an older line gets a security fix, and how a backport is made, is in
+[Release branches and backports](RELEASE.md#release-branches-and-backports).
+
 ## Where we deliberately diverge
 
 These areas will conflict on almost every sync. That is expected, not a problem to solve
