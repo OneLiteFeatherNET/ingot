@@ -791,3 +791,22 @@ describe('RepositoryOverview details switch', () => {
     expect(rowFor('releases').find('[data-test="visibility"]').exists()).toBe(true)
   })
 })
+
+describe('RepositoryOverview page heading', () => {
+  it('names the page with exactly one level one heading, Repositories', async () => {
+    await mountAt('/')
+
+    const headings = wrapper.findAll('h1')
+    expect(headings.length, 'the overview is the page at /, so it carries the one h1').toBe(1)
+    expect(headings[0].text()).toBe('Repositories')
+  })
+
+  it('starts the outline at level one and names the repository list with the page heading', async () => {
+    await mountAt('/')
+
+    const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.element.tagName)
+    expect(levels[0], 'no lower heading comes before the page heading, so the card title (h2) sits under it').toBe('H1')
+    const list = wrapper.get('section[aria-labelledby]')
+    expect(wrapper.get(`#${list.attributes('aria-labelledby')}`).element.tagName, 'the list region is named by the page heading').toBe('H1')
+  })
+})
