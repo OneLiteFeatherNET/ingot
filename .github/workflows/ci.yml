@@ -601,6 +601,9 @@ jobs:
   #
   # Report only: a finding in the binary report and a failing canary do not fail this job. The gate becomes blocking in
   # a later change, once the first report has been triaged. The bundled plugin tests are ordinary tests and still do.
+  #
+  # The slim plugin API jar (openspec change add-plugin-api-artifact) is blocking: its closure check and the consumer
+  # fixture that compiles against it fail this job.
   plugin-api:
     name: "Plugin API"
     needs: coverage-changes
@@ -635,6 +638,12 @@ jobs:
 
       - name: "Compare the plugin API with Reposilite 3.5.28"
         run: ./gradlew --build-cache :reposilite-backend:pluginApiReport
+
+      - name: "Build the slim plugin API jar and check its closure"
+        run: ./gradlew --build-cache :reposilite-backend:pluginApiClosure
+
+      - name: "Run the consumer fixture against the slim plugin API jar"
+        run: ./gradlew --build-cache :reposilite-test:plugin-api-consumer:test
 
       - name: "Run the upstream plugin canaries"
         id: canaries
