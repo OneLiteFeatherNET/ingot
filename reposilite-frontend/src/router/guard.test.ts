@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { createManagerGuard, createPasswordChangeGuard, managerAccess } from './guard'
+import { createEnrolmentScopeGuard, createManagerGuard, createPasswordChangeGuard, managerAccess } from './guard'
 import { ADMIN_NODES, ACCESS_NODES } from '../store/nodeAccess'
 
 // The guard is handed a session it can read and a notice it can raise. Each test builds its
@@ -188,5 +188,25 @@ describe('createPasswordChangeGuard', () => {
     expect(guard({ name: 'overview' })).toEqual({ name: 'account', replace: true })
     required = false
     expect(guard({ name: 'overview' })).toBe(true)
+  })
+})
+
+describe('createEnrolmentScopeGuard', () => {
+  const guardFor = (restricted: boolean) => createEnrolmentScopeGuard({ restricted: () => restricted })
+
+  it('lets every route through when the session is not restricted', () => {
+    expect(guardFor(false)({ name: 'tokens' })).toBe(true)
+  })
+
+  it('sends every other route to the account page for a session that must enrol a factor', () => {
+    expect(guardFor(true)({ name: 'overview' })).toEqual({ name: 'account', replace: true })
+  })
+
+  it('sends a manager route to the account page as well', () => {
+    expect(guardFor(true)(managerRoute)).toEqual({ name: 'account', replace: true })
+  })
+
+  it('lets the account page open, where the factors are enrolled', () => {
+    expect(guardFor(true)({ name: 'account' })).toBe(true)
   })
 })

@@ -85,6 +85,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `file-list` | experimental | `src/components/browser/FileList.vue` | none | `error` | none |
 | `file-upload` | experimental | `src/components/browser/FileUpload.vue` | none | none | none |
 | `getting-started-card` | experimental | `src/components/dashboard/GettingStartedCard.vue` | none | `error` | none |
+| `grace-banner` | experimental | `src/components/identity/GraceBanner.vue` | none | none | none |
 | `header-hero` | stable | `src/components/header/HeaderHero.vue` | none | none | none |
 | `index-page` | experimental | `src/pages/IndexPage.vue` | none | none | none |
 | `index-panel` | experimental | `src/components/maintenance/IndexPanel.vue` | none | none | none |
@@ -225,6 +226,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `sso-providers-panel` | experimental | `src/components/access/SsoProvidersPanel.vue` | none | none | none |
 | `stat-tile` | experimental | `src/components/dashboard/StatTile.vue` | none | none | none |
 | `status-label` | experimental | `src/components/dashboard/StatusLabel.vue` | none | none | none |
+| `step-up-dialog` | experimental | `src/components/identity/StepUpDialog.vue` | none | `error` | none |
 | `storage-usage-panel` | experimental | `src/components/maintenance/StorageUsagePanel.vue` | none | none | none |
 | `switch-field` | stable | `src/components/renderers/SwitchField.vue` | none | none | none |
 | `sync-step` | experimental | `src/components/migration/SyncStep.vue` | none | none | none |

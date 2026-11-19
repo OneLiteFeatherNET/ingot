@@ -77,4 +77,16 @@ const createPasswordChangeGuard = ({ mustChangePassword }: GuardOptions & { must
   return { name: 'account', replace: true }
 }
 
-export { managerAccess, createManagerGuard, createPasswordChangeGuard }
+/*
+ * A session that must enrol a second factor (the security scope `enrol`) may open the account page only. The server refuses
+ * every other route with mfa_enrolment_required, so the dashboard sends the visitor to the enrolment page instead of a screen
+ * that cannot load.
+ */
+const createEnrolmentScopeGuard = ({ restricted }: GuardOptions & { restricted: () => boolean }) => (to: GuardRoute): true | RouteLocationRaw => {
+  if (!restricted() || to.name === 'account') {
+    return true
+  }
+  return { name: 'account', replace: true }
+}
+
+export { managerAccess, createManagerGuard, createPasswordChangeGuard, createEnrolmentScopeGuard }

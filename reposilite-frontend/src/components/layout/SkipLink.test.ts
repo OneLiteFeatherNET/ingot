@@ -96,7 +96,7 @@ describe('skip link', () => {
 describe('skip link placement in the application', () => {
   it('is the first element of the application, before the page', () => {
     const wrapper = mount(App, {
-      global: { stubs: { 'router-view': true, MdSnackbar: true } }
+      global: { stubs: { 'router-view': true, MdSnackbar: true, GraceBanner: true, StepUpDialog: true } }
     })
 
     const shell = wrapper.find('.min-h-screen').element

@@ -25,6 +25,8 @@ import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
 import { SNACKBAR_QUEUE_KEY, snackbar } from './store/snackbar'
 import SkipLink from './components/layout/SkipLink.vue'
+import GraceBanner from './components/identity/GraceBanner.vue'
+import StepUpDialog from './components/identity/StepUpDialog.vue'
 
 // The footer and the legal line are drawn by the page (see PageFooter), so they sit in the
 // content sheet when the navigation frame shows.
@@ -58,11 +60,13 @@ loadProviders().catch(() => undefined)
   >
     <div class="min-h-screen bg-surface text-on-surface">
       <SkipLink />
+      <GraceBanner />
       <router-view
         class="md-router-view"
         :qualifier="qualifier"
       />
       <MdSnackbar />
+      <StepUpDialog />
     </div>
   </div>
 </template>

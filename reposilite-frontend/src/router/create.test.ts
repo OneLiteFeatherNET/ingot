@@ -15,7 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
@@ -468,6 +469,20 @@ describe('account route', () => {
     await router.push('/browse/releases')
 
     expect(router.currentRoute.value.name).toBe('browse')
+  })
+})
+
+describe('enrolment scope', () => {
+  it('moves a session that must enrol a factor to the account page once the restriction is known', async () => {
+    const restricted = ref(false)
+    const router = makeRouter({ isLogged: () => true, restricted: () => restricted.value })
+    await router.push('/browse/releases')
+
+    restricted.value = true
+    await nextTick()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name, 'the restriction arrives after the first page opened').toBe('account')
   })
 })
 
