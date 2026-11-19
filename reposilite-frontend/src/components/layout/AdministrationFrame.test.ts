@@ -550,3 +550,86 @@ describe('AdministrationFrame header beside the side navigation', () => {
     expect(page, 'a wide page takes the page column').not.toContain('large:max-w-md-reading-page')
   })
 })
+
+// The page shell and the one trail of fix-surface-hierarchy-and-page-header (tasks 2.4 and 2.12, design D2 to D4 and D9).
+describe('AdministrationFrame page shell and trail', () => {
+  const pageFixtures = (): Array<{ name: string; props: FrameProps; url: string }> => [
+    { name: 'a group page', props: { current: 'page:audit' }, url: '/audit' },
+    { name: 'a detail page', props: { current: 'page:users', title: 'alice', detail: true }, url: '/access/users/alice' },
+    { name: 'the audit settings page', props: { current: 'settings:audit' }, url: '/settings/audit' },
+    { name: 'the settings page without an entry', props: { groups: [], current: undefined }, url: '/settings' },
+    {
+      name: 'Overview',
+      props: {
+        groups: [{ id: 'overview', label: 'Overview', links: [{ key: 'page:overview', label: 'Overview', to: { name: 'settings' } }] }, ...groups()],
+        current: 'page:overview',
+        overview: true
+      },
+      url: '/settings'
+    }
+  ]
+
+  for (const page of pageFixtures()) {
+    it(`draws exactly one h1 on ${page.name}`, async () => {
+      const wrapper = await mountFrame(page.props, page.url)
+
+      expect(wrapper.findAll('h1'), `the one heading of ${page.name}`).toHaveLength(1)
+    })
+  }
+
+  it('draws the trail as a nav that holds an ordered list', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
+
+    const nav = wrapper.get('header nav')
+    expect(nav.find('ol').exists(), 'the crumbs are the items of an ordered list').toBe(true)
+  })
+
+  it('draws no separator with an after or before class in the header', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const classes = wrapper.get('header').findAll('*').flatMap(element => element.classes())
+    expect(classes.filter(name => /^(after|before):/.test(name)), 'separators are elements, not pseudo-elements').toEqual([])
+  })
+
+  it('marks only the last crumb of a detail page trail as the current page, as text', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const current = wrapper.get('header').findAll('[aria-current="page"]')
+    expect(current.map(element => element.text()), 'exactly one current crumb, the list entry').toEqual(['Users'])
+  })
+
+  it('draws only the last crumb below 1240 pixels, with the full trail as the title of that crumb', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
+
+    expect(wrapper.get('header').findAll('li').map(crumbLabel), 'only the last crumb is drawn').toEqual(['Monitoring and support'])
+    expect(wrapper.get('header').get('[aria-current="page"]').attributes('title'), 'the full trail').toBe('Administration / Monitoring and support')
+  })
+
+  it('draws the back control outside the header text column', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    const back = wrapper.get('[aria-label="Back to Administration"]').element
+    expect(wrapper.get('header').element.contains(back), 'the back control is not inside the text column').toBe(false)
+  })
+
+  it('pulls the back control 12 pixels into the gutter with -ms-3', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    expect(wrapper.get('[aria-label="Back to Administration"]').classes(), 'the glyph starts on the title edge').toContain('-ms-3')
+  })
+
+  it('draws the back control of a detail page at every width, including from 1240 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true, narrow: false }, '/access/users/alice')
+
+    expect(wrapper.find('[aria-label="Back to Users"]').exists(), 'the way back to the list is drawn').toBe(true)
+  })
+
+  it('renders the page as the MdPage gutter, with no centring and no maximum width class', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const page = (wrapper.get('section').element.firstElementChild as Element).classList
+    expect(page, 'the page is the container of MdPage').toContain('container')
+    expect(page, 'the page is not centred').not.toContain('mx-auto')
+    expect([...page].filter(name => name.startsWith('max-w-')), 'the page takes the full width').toEqual([])
+  })
+})
