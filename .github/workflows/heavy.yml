@@ -324,8 +324,12 @@ jobs:
       - name: "Resolve the latest release"
         if: github.event_name != 'push'
         id: previous
+        env:
+          # The branch under test: the base of a pull request, or the ref of a manual run. On a release branch the
+          # previous release is the highest tag of that line; on main it is the highest tag overall.
+          BRANCH: ${{ github.base_ref || github.ref_name }}
         run: |
-          tag=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' | sort -V | tail -n 1)
+          tag=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' | python3 .github/scripts/release_tags.py previous "$BRANCH")
           test -n "$tag"
           echo "Previous release: $tag"
           echo "image=ghcr.io/onelitefeathernet/ingot:${tag#v}" >> "$GITHUB_OUTPUT"

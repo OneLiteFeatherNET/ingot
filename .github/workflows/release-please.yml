@@ -164,6 +164,10 @@ jobs:
       # Build provenance for the jar, stored as a GitHub attestation. No key and no extra asset.
       id-token: write
       attestations: write
+    env:
+      # The ref that built the jar. A release from a release branch is built from that branch, so the attestation is
+      # verified against it rather than against main.
+      SOURCE_REF: ${{ github.ref }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -267,7 +271,7 @@ jobs:
           gh attestation verify "reposilite-backend/build/libs/ingot-${VERSION}.jar" \
             --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-please.yml" \
-            --source-ref refs/heads/main
+            --source-ref "$SOURCE_REF"
 
       # The subject of both SBOM attestations is the jar, so the check runs on the jar with the CycloneDX predicate type.
       # gh has no subject for the SBOM files themselves and answers 404 for them. Exit status is the whole result.
@@ -281,7 +285,7 @@ jobs:
           gh attestation verify "reposilite-backend/build/libs/ingot-${VERSION}.jar" \
             --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-please.yml" \
-            --source-ref refs/heads/main \
+            --source-ref "$SOURCE_REF" \
             --predicate-type https://cyclonedx.org/bom
 
       # Nothing reaches the release page before every attestation above has verified.
@@ -581,8 +585,13 @@ jobs:
           needs.release-please.result == 'success'
           && (
             needs.release-please.outputs.release_created == 'true'
-            || needs.changes.outputs.image == 'true'
-            || needs.changes.result == 'failure'
+            || (
+              github.ref == 'refs/heads/main'
+              && (
+                needs.changes.outputs.image == 'true'
+                || needs.changes.result == 'failure'
+              )
+            )
           )
         )
       )
@@ -607,8 +616,9 @@ jobs:
       attestations: write
     env:
       # The only identity a release signature or attestation is accepted from: this workflow
-      # running on main. A run from another ref produces a different identity and fails below.
-      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main
+      # running on the ref that builds the image, main or a release branch. A run from another
+      # ref produces a different identity and fails below.
+      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@${{ github.ref }}
       OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
@@ -690,6 +700,27 @@ jobs:
             echo "dashboard_base_digest=${dashboard_ref#*@}"
           } >> "$GITHUB_OUTPUT"
 
+      # The tags a release moves come from .github/scripts/release_tags.py: X.Y.Z always, X.Y and X only while no higher
+      # release of that line or major exists, and latest only for the newest release across all lines. A release from
+      # a release branch therefore never takes latest. A nightly is tagged nightly and nothing else.
+      - name: "Compute the image tags"
+        id: release-tags
+        env:
+          RELEASED: ${{ steps.params.outputs.released }}
+          VERSION: ${{ steps.params.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "tags<<TAGS"
+            if [ "$RELEASED" = "true" ]; then
+              git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' \
+                | python3 .github/scripts/release_tags.py container-tags "$VERSION" | sed 's/^/type=raw,value=/'
+            else
+              echo "type=raw,value=nightly"
+            fi
+            echo "TAGS"
+          } >> "$GITHUB_OUTPUT"
+
       - name: "Compute tags and labels"
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
@@ -701,11 +732,7 @@ jobs:
           # ghcr.io requires a lowercase path; the organisation name is mixed case.
           images: ghcr.io/onelitefeathernet/ingot
           # Floating major and major.minor tags are only meaningful for real releases.
-          tags: |
-            type=raw,value=${{ steps.params.outputs.version }}
-            type=raw,value=latest,enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+          tags: ${{ steps.release-tags.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Ingot
             org.opencontainers.image.description=Repository management software for Maven artifacts in the JVM ecosystem
@@ -789,11 +816,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ghcr.io/onelitefeathernet/ingot-dashboard
-          tags: |
-            type=raw,value=${{ steps.params.outputs.version }}
-            type=raw,value=latest,enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+          tags: ${{ steps.release-tags.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Ingot Dashboard
             org.opencontainers.image.description=Web dashboard for Ingot, served separately from the repository server
@@ -862,11 +885,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ghcr.io/onelitefeathernet/ingot-cli
-          tags: |
-            type=raw,value=${{ steps.params.outputs.version }}
-            type=raw,value=latest,enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
-            type=semver,pattern={{major}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+          tags: ${{ steps.release-tags.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Ingot CLI
             org.opencontainers.image.description=Command line client for a running Ingot, for exec and the interactive console
