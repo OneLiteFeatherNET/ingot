@@ -134,6 +134,66 @@ describe('MdFieldShell', () => {
     expect(wrapper.find('[data-test="counter"]').exists(), 'the counter must be rendered by the shell').toBe(true)
   })
 
+  it('hides a decorative trailing icon from assistive technology', () => {
+    const wrapper = mount(MdFieldShell, {
+      props: { inputId: 'visibility', decorativeTrailing: true },
+      slots: {
+        trailing: () => h('svg', { 'data-test': 'trail' }),
+        default: boundInput()
+      }
+    })
+
+    expect(wrapper.find('[data-test="trail"]').element.parentElement!.getAttribute('aria-hidden'), 'a decorative trailing icon is hidden from assistive technology').toBe('true')
+  })
+
+  it('lets a decorative trailing icon pass clicks through to the field', () => {
+    const wrapper = mount(MdFieldShell, {
+      props: { inputId: 'visibility', decorativeTrailing: true },
+      slots: {
+        trailing: () => h('svg', { 'data-test': 'trail' }),
+        default: boundInput()
+      }
+    })
+
+    expect(wrapper.find('[data-test="trail"]').element.parentElement!.classList.contains('pointer-events-none'), 'the icon sits over the field, so it must not take the click').toBe(true)
+  })
+
+  it('keeps a trailing slot that holds a control reachable, when it is not decorative', () => {
+    const wrapper = mount(MdFieldShell, {
+      props: { inputId: 'secret' },
+      slots: {
+        trailing: () => h('button', { 'data-test': 'toggle' }),
+        default: boundInput()
+      }
+    })
+
+    expect(wrapper.find('[data-test="toggle"]').element.parentElement!.hasAttribute('aria-hidden'), 'a trailing button stays in the accessibility tree').toBe(false)
+  })
+
+  it('colours a decorative trailing icon in primary while the field is focused', () => {
+    const wrapper = mount(MdFieldShell, {
+      props: { inputId: 'visibility', decorativeTrailing: true },
+      slots: {
+        trailing: () => h('svg', { 'data-test': 'trail' }),
+        default: boundInput()
+      }
+    })
+
+    expect(wrapper.find('[data-test="trail"]').element.parentElement!.classList.contains('peer-focus:text-primary'), 'the decorative icon follows the focus role of the field').toBe(true)
+  })
+
+  it('keeps a decorative trailing icon in the error role when the field is invalid', () => {
+    const wrapper = mount(MdFieldShell, {
+      props: { inputId: 'visibility', decorativeTrailing: true, invalid: true, helperText: 'Pick one' },
+      slots: {
+        trailing: () => h('svg', { 'data-test': 'trail' }),
+        default: boundInput()
+      }
+    })
+
+    expect(wrapper.find('[data-test="trail"]').element.parentElement!.classList.contains('peer-focus:text-primary'), 'an invalid field keeps its icon neutral').toBe(false)
+  })
+
   it('has no style element in its own markup', () => {
     const wrapper = mount(MdFieldShell, {
       props: { inputId: 'token-name' },
