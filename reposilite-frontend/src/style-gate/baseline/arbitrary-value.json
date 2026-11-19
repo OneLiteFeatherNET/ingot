@@ -280,11 +280,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdSelect.vue",
-    "match": "[&>svg]:size-6",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdSnackbar.vue",
     "match": "[&>svg]:size-6",
     "count": 1

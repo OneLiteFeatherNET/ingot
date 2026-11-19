@@ -16,6 +16,7 @@
 
 <script setup lang="ts" generic="T extends string">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useId, watch } from 'vue'
+import MdFieldShell from './MdFieldShell.vue'
 
 /*
  * Material Design 3 outlined select. The field is a select-only combobox, the WAI-ARIA pattern:
@@ -87,9 +88,7 @@ const comboboxId = computed(() => `${baseId.value}-combobox`)
 const labelId = computed(() => `${baseId.value}-label`)
 const listboxId = computed(() => `${baseId.value}-listbox`)
 const optionId = (index: number) => `${baseId.value}-option-${index}`
-const helperId = computed(() => `${baseId.value}-helper`)
 const helperText = computed(() => (props.error ? props.errorText : props.supportingText))
-const describedBy = computed(() => (helperText.value ? helperId.value : undefined))
 
 // Menu geometry in px. A row is 48px, the touch target MD3 asks for. The menu keeps a margin from
 // the window edge and sits a gap below or above the field.
@@ -133,18 +132,6 @@ const fieldClass = computed(() => {
 const labelClass = computed(() => {
   if (props.disabled) return 'text-on-surface/38'
   return props.error ? 'text-error' : 'text-on-surface-variant peer-focus:text-primary'
-})
-
-// The trailing icon follows the focus colour, as in MD3. It sits after the field, so the peer
-// variant reaches it. An invalid field keeps the icon in the neutral role.
-const iconClass = computed(() => {
-  if (props.disabled) return 'text-on-surface/38'
-  return props.error ? 'text-on-surface-variant' : 'text-on-surface-variant peer-focus:text-primary'
-})
-
-const helperClass = computed(() => {
-  if (props.disabled) return 'text-on-surface/38'
-  return props.error ? 'text-error' : 'text-on-surface-variant'
 })
 
 // The menu is placed from the field's box on the screen. It is read once, when the menu opens, and
@@ -319,63 +306,16 @@ onBeforeUnmount(() => {
     :style="attrs.style"
     data-ingot-component="md-select"
   >
-    <div class="relative">
-      <!--
-        The native select is the form control: its value, its name and the change event that
-        forms and tests use. It is hidden from the page and from the keyboard. Its appearance is
-        reset, so no browser chevron can ever be drawn for it.
-      -->
-      <select
-        v-bind="forwardedAttrs()"
-        :id="baseId"
-        tabindex="-1"
-        aria-hidden="true"
-        class="sr-only appearance-none bg-none"
-        :value="modelValue"
-        :disabled="disabled"
-        @change="onNativeChange"
-      >
-        <option
-          v-for="option in options"
-          :key="option.value"
-          :value="option.value"
-        >
-          {{ option.label }}
-        </option>
-      </select>
-      <div
-        :id="comboboxId"
-        ref="comboboxRef"
-        role="combobox"
-        aria-haspopup="listbox"
-        :aria-expanded="isOpen ? 'true' : 'false'"
-        :aria-controls="isOpen ? listboxId : undefined"
-        :aria-activedescendant="activeDescendant"
-        :aria-labelledby="labelId"
-        :aria-describedby="describedBy"
-        :aria-invalid="error ? 'true' : undefined"
-        :aria-required="required ? 'true' : undefined"
-        :aria-readonly="readonly ? 'true' : undefined"
-        :aria-disabled="disabled ? 'true' : undefined"
-        :tabindex="disabled ? -1 : 0"
-        class="peer relative flex h-14 w-full cursor-pointer select-none items-center rounded-corner-extra-small border bg-transparent pl-4 pr-12 md-body-large outline-none"
-        :class="fieldClass"
-        @click="onClick"
-        @keydown="onKeydown"
-        @blur="closeMenu"
-      >
-        <span class="min-w-0 truncate">{{ selectedLabel }}</span>
-      </div>
-      <label
-        :id="labelId"
-        class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-md-field-container px-1 md-label-medium"
-        :class="labelClass"
-      >{{ label }}</label>
-      <span
+    <MdFieldShell
+      :input-id="baseId"
+      :helper-text="helperText"
+      :invalid="error"
+      :disabled="disabled"
+      decorative-trailing
+    >
+      <template
         v-if="!readonly"
-        class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 [&>svg]:size-6"
-        :class="iconClass"
-        aria-hidden="true"
+        #trailing
       >
         <svg
           viewBox="0 0 24 24"
@@ -383,16 +323,61 @@ onBeforeUnmount(() => {
         >
           <path d="M7 10l5 5 5-5z" />
         </svg>
-      </span>
-    </div>
-    <p
-      v-if="helperText"
-      :id="helperId"
-      class="md-body-small whitespace-pre-line px-4"
-      :class="helperClass"
-    >
-      {{ helperText }}
-    </p>
+      </template>
+      <template #default="{ describedBy }">
+        <!--
+          The native select is the form control: its value, its name and the change event that
+          forms and tests use. It is hidden from the page and from the keyboard. Its appearance is
+          reset, so no browser chevron can ever be drawn for it.
+        -->
+        <select
+          v-bind="forwardedAttrs()"
+          :id="baseId"
+          tabindex="-1"
+          aria-hidden="true"
+          class="sr-only appearance-none bg-none"
+          :value="modelValue"
+          :disabled="disabled"
+          @change="onNativeChange"
+        >
+          <option
+            v-for="option in options"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <div
+          :id="comboboxId"
+          ref="comboboxRef"
+          role="combobox"
+          aria-haspopup="listbox"
+          :aria-expanded="isOpen ? 'true' : 'false'"
+          :aria-controls="isOpen ? listboxId : undefined"
+          :aria-activedescendant="activeDescendant"
+          :aria-labelledby="labelId"
+          :aria-describedby="describedBy"
+          :aria-invalid="error ? 'true' : undefined"
+          :aria-required="required ? 'true' : undefined"
+          :aria-readonly="readonly ? 'true' : undefined"
+          :aria-disabled="disabled ? 'true' : undefined"
+          :tabindex="disabled ? -1 : 0"
+          class="peer relative flex h-14 w-full cursor-pointer select-none items-center rounded-corner-extra-small border bg-transparent pl-4 pr-12 md-body-large outline-none"
+          :class="fieldClass"
+          @click="onClick"
+          @keydown="onKeydown"
+          @blur="closeMenu"
+        >
+          <span class="min-w-0 truncate">{{ selectedLabel }}</span>
+        </div>
+        <label
+          :id="labelId"
+          class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-md-field-container px-1 md-label-medium"
+          :class="labelClass"
+        >{{ label }}</label>
+      </template>
+    </MdFieldShell>
     <Teleport to="body">
       <ul
         v-if="isOpen"
