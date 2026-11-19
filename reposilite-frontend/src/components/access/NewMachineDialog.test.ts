@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { h } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NewMachineDialog from './NewMachineDialog.vue'
 import type { PrincipalsApi } from './accessPrincipals'
@@ -112,14 +113,16 @@ describe('NewMachineDialog', () => {
     expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.getAttribute('data-tone'), 'the failure is an error tone alert').toBe('error')
   })
 
-  it('names each open dialog by its own heading', () => {
-    const second = mount(NewMachineDialog, { props: { modelValue: true, api: api as unknown as Pick<PrincipalsApi, 'create'> }, attachTo: document.body })
+  it('names each open dialog by its own heading', async () => {
+    wrapper!.unmount()
+    const props = { modelValue: true, api: api as unknown as Pick<PrincipalsApi, 'create'> }
+    wrapper = mount({ render: () => h('div', [h(NewMachineDialog, props), h(NewMachineDialog, props)]) }, { attachTo: document.body })
+    await flushPromises()
     const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'))
     const labels = dialogs.map((element) => element.getAttribute('aria-labelledby'))
 
     expect(dialogs, 'two dialogs are open').toHaveLength(2)
     expect(labels[0], 'the two dialogs do not share a heading id').not.toBe(labels[1])
     expect(labels.map((id) => document.getElementById(id!)?.textContent?.trim()), 'each label names its heading').toEqual(['New machine account', 'New machine account'])
-    second.unmount()
   })
 })

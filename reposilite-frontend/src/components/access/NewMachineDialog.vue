@@ -15,11 +15,12 @@
   -->
 
 <script setup lang="ts">
-import { computed, ref, type PropType } from 'vue'
+import { computed, ref, useId, type PropType } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdDialog from '../md/MdDialog.vue'
 import { buildCreateBody, validatePrincipalName, type PrincipalsApi } from './accessPrincipals'
 
@@ -44,6 +45,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'created'])
+
+const titleId = `new-machine-title-${useId()}`
 
 const name = ref('')
 const displayName = ref('')
@@ -90,12 +93,12 @@ const submit = async () => {
 <template>
   <MdDialog
     :model-value="modelValue"
-    labelledby="new-machine-title"
+    :labelledby="titleId"
     @update:model-value="emit('update:modelValue', $event)"
     @closed="reset"
   >
     <h2
-      id="new-machine-title"
+      :id="titleId"
       class="md-headline-small"
       data-ingot-component="new-machine-dialog"
     >
@@ -135,13 +138,12 @@ const submit = async () => {
       >
         Create it disabled
       </MdCheckbox>
-      <p
+      <MdAlert
         v-if="failure"
-        role="alert"
-        class="md-body-medium text-error"
+        tone="error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
     <div class="mt-6 flex justify-end gap-2">

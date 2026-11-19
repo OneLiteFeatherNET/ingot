@@ -18,6 +18,7 @@
 import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdDialog from '../md/MdDialog.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import { candidatePrincipals, type TeamMember } from './accessTeams'
@@ -125,13 +126,12 @@ const submit = () => {
         autocomplete="off"
       />
 
-      <p
+      <MdAlert
         v-if="loadError"
-        role="alert"
-        class="md-body-medium text-error"
+        tone="error"
       >
         Could not load the principals: {{ loadError }}
-      </p>
+      </MdAlert>
       <ul
         v-else-if="candidates.length > 0"
         class="m-0 flex max-h-72 list-none flex-col gap-1 overflow-y-auto p-0"
@@ -171,15 +171,14 @@ const submit = () => {
         {{ query.trim() === '' ? 'Everyone is a member already.' : `Nothing matches "${query.trim()}".` }}
       </p>
 
-      <p
+      <MdAlert
         v-if="failure"
+        tone="error"
         data-ingot-state="error"
-        role="alert"
         data-test="add-failure"
-        class="md-body-medium text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
     <div class="mt-6 flex justify-end gap-2">
