@@ -45,7 +45,11 @@ export interface MenuEntry {
   value: string
   label?: string
   ariaLabel?: string
+  // A second line under the label. It joins the accessible name of the item.
+  supporting?: string
   error?: boolean
+  // A disabled item reports no choice and the arrow keys skip it.
+  disabled?: boolean
   href?: string
   checked?: boolean
 }

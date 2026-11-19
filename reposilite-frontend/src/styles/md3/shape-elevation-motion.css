@@ -136,6 +136,8 @@
   /* The widest a side sheet gets: the window less the 56 pixel margin that the sheet leaves beside it. */
   --container-md-sheet-max: calc(100vw - 3.5rem);
   --container-md-snackbar: 35rem;
+  /* The widest an overflow menu gets: the window less the 16 pixel gutter on each side. */
+  --container-md-menu: calc(100vw - 2rem);
   --container-md-crumb: 10rem;
   /* The key tree of the system information page: the indent of one level, and the offset of the guide line of a level. */
   --spacing-md-tree-indent: 1.25rem;

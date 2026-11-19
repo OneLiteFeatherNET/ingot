@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MdButton from './MdButton.vue'
-import type { MenuItem } from './types'
+import type { MenuEntry, MenuItem } from './types'
 
 /*
  * A button that opens a menu of actions on what it names, such as the actions of one row of a table. The menu
@@ -25,8 +25,10 @@ import type { MenuItem } from './types'
  *
  * Props:
  *   label  the accessible name of the button, such as "Actions for releases"
- *   items  [{ value, label, ariaLabel, error, href }]: the text of each item, its accessible name, whether it is
- *          a destructive action (drawn in the error colour), and an optional address. An item with an address is a
+ *   items  [{ value, label, ariaLabel, supporting, error, disabled, href }]: the text of each item, its accessible
+ *          name, an optional second line (`supporting`, which joins the accessible name), whether it is a destructive
+ *          action (drawn in the error colour), whether it is disabled (it reports no choice and the arrow keys skip it),
+ *          and an optional address. An item with an address is a
  *          link with the menuitem role, so middle click and open in new tab work. A plain click on it is reported
  *          through `select` and not followed by the browser (the router takes it); a click with a modifier key is
  *          left to the browser, and the menu closes.
@@ -47,7 +49,7 @@ import type { MenuItem } from './types'
 withDefaults(defineProps<{
   label: string
   items: MenuItem[]
-  // Classes for the trigger button, such as the width of an account button.
+  // Deprecated, kept for one release: classes for the trigger button. Use the `trigger` slot to change the trigger.
   triggerClass?: string
   // The accessible name of the button when a trigger slot is given, such as "Account menu, Alice". Without it the
   // button is named by its content.
@@ -73,7 +75,10 @@ const placement = ref<Record<string, string>>({})
 
 const GAP = 4
 const triggerElement = () => root.value?.querySelector('button')
-const menuItems = (): HTMLElement[] => [...(menuElement.value?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ?? [])]
+// The items the arrow keys visit: the disabled ones are skipped.
+const menuItems = (): HTMLElement[] => [...(menuElement.value?.querySelectorAll<HTMLElement>(
+  '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemradio"]:not([aria-disabled="true"])'
+) ?? [])]
 
 const place = async () => {
   const trigger = triggerElement()
@@ -180,7 +185,22 @@ const onFocusout = (event: FocusEvent) => {
 
 // The one horizontal inset of the menu: the header and the items share it, so their text lines up.
 const inset = 'px-3'
-const itemClass = `md-state-layer md-focus-ring relative flex w-full items-center rounded-corner-small ${inset} py-2 text-left md-label-large text-on-surface`
+// The text colour belongs to the tone, not to the base class, so a tone replaces it and no important override is needed.
+const itemClass = `md-state-layer md-focus-ring md-touch-target relative flex w-full items-center rounded-corner-small ${inset} py-2 text-left md-label-large`
+const TONE = {
+  plain: 'text-on-surface',
+  error: 'text-error',
+  checked: 'bg-secondary-container text-on-secondary-container',
+  disabled: 'text-on-surface/md-disabled-content'
+}
+const toneOf = (item: MenuEntry): string => {
+  if (item.disabled) return TONE.disabled
+  if (item.type === 'radio' && item.checked) return TONE.checked
+  return item.error ? TONE.error : TONE.plain
+}
+// With an aria label, the supporting line joins it. Without one, the content of the item gives the name.
+const nameOf = (item: MenuEntry): string | undefined =>
+  item.ariaLabel && item.supporting ? `${item.ariaLabel}, ${item.supporting}` : item.ariaLabel
 </script>
 
 <template>
@@ -211,7 +231,7 @@ const itemClass = `md-state-layer md-focus-ring relative flex w-full items-cente
         role="menu"
         :aria-label="label"
         :style="{ position: 'fixed', ...placement }"
-        class="z-50 flex w-56 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
+        class="z-md-menu flex w-56 max-w-md-menu flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
         @keydown="onMenuKeydown"
         @focusout="onFocusout"
       >
@@ -232,35 +252,55 @@ const itemClass = `md-state-layer md-focus-ring relative flex w-full items-cente
             class="my-1 h-px bg-outline-variant"
           />
           <a
-            v-else-if="item.href"
+            v-else-if="item.href && !item.disabled"
             :href="item.href"
             role="menuitem"
-            :aria-label="item.ariaLabel"
-            :class="[itemClass, item.error ? '!text-error' : '']"
+            :aria-label="nameOf(item)"
+            :class="[itemClass, toneOf(item)]"
             @click="chooseLink($event, item.value)"
           >
-            {{ item.label }}
+            <span class="flex min-w-0 flex-col">
+              <span>{{ item.label }}</span>
+              <span
+                v-if="item.supporting"
+                class="md-body-medium text-on-surface-variant"
+              >{{ item.supporting }}</span>
+            </span>
           </a>
           <button
             v-else-if="item.type === 'radio'"
             type="button"
             role="menuitemradio"
             :aria-checked="item.checked ? 'true' : 'false'"
-            :aria-label="item.ariaLabel"
-            :class="[itemClass, item.checked ? '!bg-secondary-container !text-on-secondary-container' : '']"
-            @click="choose(item.value)"
+            :aria-disabled="item.disabled ? 'true' : undefined"
+            :aria-label="nameOf(item)"
+            :class="[itemClass, toneOf(item)]"
+            @click="item.disabled || choose(item.value)"
           >
-            {{ item.label }}
+            <span class="flex min-w-0 flex-col">
+              <span>{{ item.label }}</span>
+              <span
+                v-if="item.supporting"
+                class="md-body-medium text-on-surface-variant"
+              >{{ item.supporting }}</span>
+            </span>
           </button>
           <button
             v-else
             type="button"
             role="menuitem"
-            :aria-label="item.ariaLabel"
-            :class="[itemClass, item.error ? '!text-error' : '']"
-            @click="choose(item.value)"
+            :aria-disabled="item.disabled ? 'true' : undefined"
+            :aria-label="nameOf(item)"
+            :class="[itemClass, toneOf(item)]"
+            @click="item.disabled || choose(item.value)"
           >
-            {{ item.label }}
+            <span class="flex min-w-0 flex-col">
+              <span>{{ item.label }}</span>
+              <span
+                v-if="item.supporting"
+                class="md-body-medium text-on-surface-variant"
+              >{{ item.supporting }}</span>
+            </span>
           </button>
         </template>
       </div>
