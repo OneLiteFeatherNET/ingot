@@ -379,6 +379,13 @@ val pluginApiClosure by tasks.registering(CheckPluginApiClosureTask::class) {
     allowlist.set(layout.projectDirectory.file("plugin-api-classes.txt"))
 }
 
+// The test fixtures hold the search backend contract for the integration tests and are not published. Left in the java
+// component, their variants add a dependency of this project on itself, which Gradle cannot map to one of the
+// publications below, and no POM of this project could be written.
+val javaComponent = components["java"] as AdhocComponentWithVariants
+javaComponent.withVariantsFromConfiguration(configurations["testFixturesApiElements"]) { skip() }
+javaComponent.withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) { skip() }
+
 publishing {
     publications {
         create<MavenPublication>("bundle") {
