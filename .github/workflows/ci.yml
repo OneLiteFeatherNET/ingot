@@ -645,6 +645,16 @@ jobs:
       - name: "Run the consumer fixture against the slim plugin API jar"
         run: ./gradlew --build-cache :reposilite-test:plugin-api-consumer:test
 
+      # The releases repository asks for credentials even to read the baseline. Without them, as in a fork, the report
+      # skips itself and says so in the job log. Report-only: a finding or a failed comparison does not fail the job.
+      - name: "Compare the Ingot plugin API with the last Ingot release"
+        id: ingot
+        continue-on-error: true
+        env:
+          ONELITEFEATHER_MAVEN_USERNAME: ${{ secrets.ONELITEFEATHER_MAVEN_USERNAME }}
+          ONELITEFEATHER_MAVEN_PASSWORD: ${{ secrets.ONELITEFEATHER_MAVEN_PASSWORD }}
+        run: ./gradlew --build-cache :reposilite-backend:ingotPluginApiReport
+
       - name: "Run the upstream plugin canaries"
         id: canaries
         continue-on-error: true
@@ -709,12 +719,29 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: "Write the Ingot plugin API to the job summary"
+        if: always()
+        env:
+          INGOT_OUTCOME: ${{ steps.ingot.outcome }}
+        run: |
+          {
+            echo "## Ingot plugin API"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          report=reposilite-backend/build/reports/plugin-api/ingot-report.md
+          if [ -f "$report" ]; then
+            python3 .github/scripts/plugin_api_summary.py "$report" >> "$GITHUB_STEP_SUMMARY" || echo "The Ingot report could not be summarised. See the job log." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No Ingot report was written (step outcome: \`${INGOT_OUTCOME}\`). Without the credentials of the releases repository the step skips. See the job log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: "Publish the HTML report"
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: plugin-api-report
-          path: reposilite-backend/build/reports/plugin-api/report.html
+          path: reposilite-backend/build/reports/plugin-api/
           retention-days: 7
           if-no-files-found: ignore
 
