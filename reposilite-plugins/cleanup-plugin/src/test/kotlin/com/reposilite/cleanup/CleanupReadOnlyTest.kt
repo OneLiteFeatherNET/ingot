@@ -22,9 +22,11 @@ import com.reposilite.cleanup.infrastructure.InMemoryCleanupRunRepository
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.token.AccessTokenIdentifier
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -35,7 +37,6 @@ import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.io.path.createDirectories
 
 /** A read-only repository is skipped by every cleanup run, so the files of a frozen repository survive a policy. */
 internal class CleanupReadOnlyTest {
@@ -48,7 +49,7 @@ internal class CleanupReadOnlyTest {
     private val actor = CleanupActor(by = "manager", accessToken = AccessTokenIdentifier())
 
     private fun storage(name: String): StorageProvider =
-        FileSystemStorageProviderFactory.of(logger, workingDirectory.toPath().resolve(name).createDirectories(), "100%")
+        FileSystemStorageProviderFactory().create(logger, FailureFacade(logger), workingDirectory.toPath(), name, FileSystemStorageProviderSettings())
 
     /** Writes a version with a pom and a jar, so the inventory sees it as one version. */
     private fun StorageProvider.writeVersion(artifact: String, version: String) {

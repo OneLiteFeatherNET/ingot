@@ -27,9 +27,11 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.NOT_FOUND
@@ -44,7 +46,6 @@ import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.io.path.createDirectories
 
 internal class CleanupServiceTest {
 
@@ -61,7 +62,7 @@ internal class CleanupServiceTest {
     }
 
     private fun storage(name: String): StorageProvider =
-        FileSystemStorageProviderFactory.of(logger, workingDirectory.toPath().resolve(name).createDirectories(), "100%")
+        FileSystemStorageProviderFactory().create(logger, FailureFacade(logger), workingDirectory.toPath(), name, FileSystemStorageProviderSettings())
 
     /** Writes a version with a pom and a jar, so the inventory sees it as one version. */
     private fun StorageProvider.writeVersion(artifact: String, version: String) {

@@ -14,6 +14,7 @@ dependencies {
     compileOnly(project(":reposilite-backend"))
 
     testImplementation(project(":reposilite-backend"))
+    testImplementation(testFixtures(project(":reposilite-backend")))
 }
 
 tasks.withType<ShadowJar> {

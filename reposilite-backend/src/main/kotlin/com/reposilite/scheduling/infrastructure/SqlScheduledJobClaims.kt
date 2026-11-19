@@ -74,7 +74,7 @@ internal object ScheduledJobClaimTable : Table("scheduled_job_claim") {
  * [CLAIM_RETENTION] is deleted by the instance that makes the next claim, unless its lease is still live. Its key can no
  * longer be claimed by then, since keys are dated.
  */
-internal class SqlScheduledJobClaims(
+class SqlScheduledJobClaims(
     private val database: Database,
     private val clock: Clock,
     private val instanceId: String = UUID.randomUUID().toString(),

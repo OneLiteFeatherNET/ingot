@@ -24,9 +24,11 @@ import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.SqliteTestDatabase
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.CONFLICT
@@ -38,7 +40,6 @@ import panda.std.Result
 import java.io.File
 import java.time.Duration
 import java.time.Instant
-import kotlin.io.path.createDirectories
 
 /**
  * The cross-instance guard of a cleanup run: the lease `cleanup:<policy>:active` is held for the whole run, renewed from
@@ -253,7 +254,7 @@ internal class CleanupServiceLeaseTest {
     }
 
     private fun storage(): StorageProvider =
-        FileSystemStorageProviderFactory.of(logger, workingDirectory.toPath().resolve("releases").createDirectories(), "100%")
+        FileSystemStorageProviderFactory().create(logger, FailureFacade(logger), workingDirectory.toPath(), "releases", FileSystemStorageProviderSettings())
 
     /** Writes a version with a pom and a jar, so the inventory sees it as one version. */
     private fun StorageProvider.writeVersion(artifact: String, version: String) {

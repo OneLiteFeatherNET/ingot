@@ -548,6 +548,8 @@ dependencies {
     // The contract uses JUnit and AssertJ. The versions match the root build, which gives them to the test source sets.
     testFixturesApi("org.junit.jupiter:junit-jupiter-api:6.1.0")
     testFixturesApi("org.assertj:assertj-core:4.0.0-M1")
+    // The SQLite test database of the scheduling helpers pools its connections with Hikari.
+    testFixturesImplementation("com.zaxxer:HikariCP:7.0.2")
 }
 
 // The OpenSearch backend of the plugin, as compiled classes only. Its service file stays out, so the integration tests do not

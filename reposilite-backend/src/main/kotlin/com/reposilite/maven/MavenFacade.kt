@@ -206,7 +206,7 @@ class MavenFacade internal constructor(
             .peek { afterDelete(repository, gav) }
 
     /** The mirror copies of [repository] with their last access. Only these versions can be cleaned up as copies. */
-    internal fun mirrorCacheEntries(repository: String): Map<String, Instant> =
+    fun mirrorCacheEntries(repository: String): Map<String, Instant> =
         mirrorCache.cachedVersions(repository)
 
     /** Every delete path brings the metadata and the mirror records up to date with the removed file or directory. */
