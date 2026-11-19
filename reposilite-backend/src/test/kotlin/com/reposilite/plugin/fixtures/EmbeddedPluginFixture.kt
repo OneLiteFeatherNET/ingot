@@ -23,6 +23,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
+import java.util.jar.Manifest
 import javax.tools.ToolProvider
 import kotlin.io.path.createDirectories
 import kotlin.io.path.outputStream
@@ -35,17 +36,29 @@ import kotlin.io.path.writeText
  */
 internal object EmbeddedPluginFixture {
 
-    /** Compiles a plugin class named [className] with the id [pluginId] and packs it into the jar [directory]/[fileName]. */
-    fun compileJar(directory: Path, fileName: String, className: String, pluginId: String): Path {
+    /**
+     * Compiles a plugin class named [className] with the id [pluginId] and packs it into the jar [directory]/[fileName]. A [version]
+     * is written as `Implementation-Version` of the manifest, and a [tier] (a name of `PluginTier`) as the tier of the annotation.
+     * Without a version the jar has no manifest, as before.
+     */
+    fun compileJar(
+        directory: Path,
+        fileName: String,
+        className: String,
+        pluginId: String,
+        version: String? = null,
+        tier: String? = null,
+    ): Path {
         val packageName = className.substringBeforeLast('.')
         val simpleName = className.substringAfterLast('.')
         val source = directory.resolve("src").resolve("$simpleName.java")
         source.parent.createDirectories()
+        val tierArgument = tier?.let { ", tier = com.reposilite.plugin.api.PluginTier.$it" }.orEmpty()
         source.writeText(
             """
             package $packageName;
 
-            @com.reposilite.plugin.api.Plugin(name = "$pluginId")
+            @com.reposilite.plugin.api.Plugin(name = "$pluginId"$tierArgument)
             public class $simpleName extends com.reposilite.plugin.api.ReposilitePlugin {
                 @Override
                 public com.reposilite.plugin.api.Facade initialize() { return null; }
@@ -65,7 +78,14 @@ internal object EmbeddedPluginFixture {
         check(code == 0) { "The embedded fixture did not compile: ${errors.toString(UTF_8)}" }
 
         val jar = directory.resolve(fileName)
-        JarOutputStream(jar.outputStream()).use { out ->
+        val manifest = version?.let { value ->
+            Manifest().apply {
+                mainAttributes.putValue("Manifest-Version", "1.0")
+                mainAttributes.putValue("Implementation-Version", value)
+            }
+        }
+        val stream = if (manifest == null) JarOutputStream(jar.outputStream()) else JarOutputStream(jar.outputStream(), manifest)
+        stream.use { out ->
             out.putNextEntry(JarEntry("META-INF/services/${ReposilitePlugin::class.java.name}"))
             out.write("$className\n".toByteArray())
             out.closeEntry()
