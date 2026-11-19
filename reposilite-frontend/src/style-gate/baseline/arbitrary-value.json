@@ -280,11 +280,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdOverflowMenu.vue",
-    "match": "max-w-[calc(100vw-2rem)]",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdSelect.vue",
     "match": "[&>svg]:size-6",
     "count": 1
