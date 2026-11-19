@@ -19,6 +19,9 @@ package com.reposilite.plugin
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.PluginTier
 import com.reposilite.plugin.api.ReposilitePlugin
+import net.onelitefeather.ingot.plugin.embedded.EmbeddedPluginExtractor
+import net.onelitefeather.ingot.plugin.embedded.EmbeddedPluginSource
+import net.onelitefeather.ingot.plugin.embedded.ExtractedJar
 import net.onelitefeather.ingot.plugin.store.PluginStore
 import net.onelitefeather.ingot.plugin.store.StoreEntry
 import net.onelitefeather.ingot.plugin.store.StoreState
@@ -46,6 +49,12 @@ class PluginLoader(
     private val environment: Map<String, String> = System.getenv(),
     /** The plugin store. Its plugins load after the plugins directory and before the bundled jars. Null when no store is configured. */
     private val pluginStore: PluginStore? = null,
+    /** The jars that the running server embeds. Read from the code source of the server unless a test injects its own. */
+    private val embeddedPluginSource: EmbeddedPluginSource = EmbeddedPluginSource.ofCodeSource(PluginLoader::class.java),
+    /** The directory the embedded jars are extracted to, `<working directory>/embedded-plugins`. */
+    private val embeddedPluginsDirectory: Path = Path.of(EMBEDDED_DIRECTORY_NAME),
+    /** The temporary directory that receives the embedded jars when the extraction directory cannot be written. */
+    private val embeddedFallbackDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
 ) {
 
     private val storeStates: MutableList<StoreEntry> = mutableListOf()
@@ -135,6 +144,8 @@ class PluginLoader(
         }
 
     internal fun loadPluginsByServiceFiles() {
+        val embedded = extractEmbeddedPlugins()
+
         if (pluginsDirectory.notExists()) {
             pluginsDirectory.createDirectories()
         }
@@ -162,8 +173,36 @@ class PluginLoader(
                 }
         }
 
+        loadEmbeddedPlugins(embedded)
         loadStorePlugins()
         loadBundledPlugins()
+    }
+
+    /**
+     * Writes the jars that the server embeds to the extraction directory, replacing the copies of an earlier start. Nothing is
+     * loaded here, so a failure to write never stops the start: the jars that cannot be written are reported by the extractor.
+     */
+    private fun extractEmbeddedPlugins(): List<ExtractedJar> =
+        EmbeddedPluginExtractor(
+            embeddedPluginsDirectory = embeddedPluginsDirectory,
+            fallbackRoot = embeddedFallbackDirectory,
+            warn = { extensions.logger.warn(it) },
+            error = { extensions.logger.error(it) },
+        ).extract(embeddedPluginSource.jars())
+
+    /**
+     * Loads each extracted jar in a class loader of its own, whose parent is the class loader of the server, and registers the
+     * plugins that the jar names in its own service file with the origin [PluginOrigin.EMBEDDED]. A plugins directory jar or a
+     * built-in plugin with the same id stops the start in [Extensions.registerPlugin], as it does for two copies of one id.
+     */
+    private fun loadEmbeddedPlugins(extracted: List<ExtractedJar>) {
+        extracted.forEach { jar ->
+            val jarLoader = URLClassLoader(arrayOf(jar.path.toUri().toURL()), ReposilitePlugin::class.java.classLoader)
+            pluginClassLoaders.add(jarLoader)
+            instantiateDeclared(readServiceNames(jar.path), jarLoader).forEach { plugin ->
+                extensions.registerPlugin(plugin, PluginOrigin.EMBEDDED)
+            }
+        }
     }
 
     /**
@@ -245,15 +284,24 @@ class PluginLoader(
      * built-in plugins of the parent loader, so the names are read from the jar and each class is instantiated from it.
      */
     private fun declaredStorePlugins(jar: Path): List<ReposilitePlugin> {
-        val names = JarFile(jar.toFile()).use { jarFile ->
+        val names = readServiceNames(jar)
+        val loader = URLClassLoader(arrayOf(jar.toUri().toURL()), ReposilitePlugin::class.java.classLoader)
+        return instantiateDeclared(names, loader)
+    }
+
+    /** Instantiates the named classes through [loader], which must load the jar that declares them. */
+    private fun instantiateDeclared(names: List<String>, loader: ClassLoader): List<ReposilitePlugin> =
+        names.map { name ->
+            Class.forName(name, true, loader).getDeclaredConstructor().newInstance() as ReposilitePlugin
+        }
+
+    /** The class names of the plugin service file of [jar]. A jar without the file declares nothing. */
+    private fun readServiceNames(jar: Path): List<String> {
+        JarFile(jar.toFile()).use { jarFile ->
             val service = jarFile.getEntry("META-INF/services/${ReposilitePlugin::class.java.name}") ?: return emptyList()
-            jarFile.getInputStream(service).bufferedReader().use { reader ->
+            return jarFile.getInputStream(service).bufferedReader().use { reader ->
                 reader.readLines().map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
             }
-        }
-        val loader = URLClassLoader(arrayOf(jar.toUri().toURL()), ReposilitePlugin::class.java.classLoader)
-        return names.map { name ->
-            Class.forName(name, true, loader).getDeclaredConstructor().newInstance() as ReposilitePlugin
         }
     }
 
@@ -328,14 +376,7 @@ class PluginLoader(
 
     /** The class names of the plugin service file of [jar], or nothing when the jar has none or cannot be read. */
     private fun serviceNamesOf(jar: Path): List<String> =
-        runCatching {
-            JarFile(jar.toFile()).use { jarFile ->
-                val service = jarFile.getEntry("META-INF/services/${ReposilitePlugin::class.java.name}") ?: return@use emptyList()
-                jarFile.getInputStream(service).bufferedReader().use { reader ->
-                    reader.readLines().map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
-                }
-            }
-        }.getOrDefault(emptyList())
+        runCatching { readServiceNames(jar) }.getOrDefault(emptyList())
 
     private fun isBundledJarSwitchedOn(fileName: String): Boolean =
         (BUNDLED_SWITCHES[fileName] ?: METRICS_SWITCH_OF_JAR).isOn(environment)
@@ -368,6 +409,8 @@ class PluginLoader(
         const val LEGACY_NEXUS_IMPORT_SWITCH: String = "REPOSILITE_NEXUS_IMPORT_ENABLED"
         const val OPENSEARCH_SWITCH: String = "INGOT_OPENSEARCH_ENABLED"
         const val LEGACY_OPENSEARCH_SWITCH: String = "REPOSILITE_OPENSEARCH_ENABLED"
+        /** The directory of the working directory that holds the extracted embedded jars. */
+        const val EMBEDDED_DIRECTORY_NAME: String = "embedded-plugins"
 
         private val METRICS_SWITCH_OF_JAR = BundledSwitch(METRICS_SWITCH, LEGACY_METRICS_SWITCH)
 
