@@ -3488,6 +3488,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List background runs
+         * @description The runs of every source the caller may read, newest first, in pages of at most 100. Filters: kind, state and trigger, each may repeat. Pass the nextCursor back as cursor for the next page.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobPage"];
+                    };
+                };
+                /** @description An unknown state or trigger, or a malformed cursor */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The caller is not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The caller may read none of the sources (ingot.admin.maintenance or ingot.admin.*) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one background run
+         * @description The counts and the failures of one run. A run of a source the caller may not read answers 404, as a run that does not exist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The run id, <source>:<local id>, URL-encoded */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobRun"];
+                    };
+                };
+                /** @description The caller is not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The run does not exist or the caller may not read its source */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/maven/details": {
         parameters: {
             query?: never;
@@ -5940,6 +6056,51 @@ export interface components {
             /** Format: int64 */
             date: number;
         };
+        JobCount: {
+            key: string;
+            label: string;
+            /** Format: int64 */
+            value: number;
+        };
+        JobCursor: {
+            localId: string;
+            source: string;
+            /** Format: date-time */
+            startedAt: string;
+        };
+        JobFailure: {
+            message: string;
+        };
+        JobPage: {
+            items: components["schemas"]["JobRun"][];
+            kinds: string[];
+            nextCursor?: string | null;
+            sourceErrors: string[];
+        };
+        JobRun: {
+            counts: components["schemas"]["JobCount"][];
+            cursor: components["schemas"]["JobCursor"];
+            /** Format: int64 */
+            durationMs?: number | null;
+            failures: components["schemas"]["JobFailure"][];
+            failuresTruncated: boolean;
+            /** Format: date-time */
+            finishedAt?: string | null;
+            id: string;
+            kind: string;
+            label: string;
+            localId: string;
+            source: string;
+            /** Format: date-time */
+            startedAt: string;
+            state: components["schemas"]["JobState"];
+            trigger: components["schemas"]["JobTrigger"];
+            triggerDetail?: string | null;
+        };
+        /** @enum {string} */
+        JobState: "QUEUED" | "RUNNING" | "PAUSED" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+        /** @enum {string} */
+        JobTrigger: "MANUAL" | "SCHEDULED" | "SYSTEM";
         JsonNode: {
             ""?: components["schemas"]["JsonNode"];
             array: boolean;

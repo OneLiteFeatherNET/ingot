@@ -1060,6 +1060,142 @@
         "required" : [ "date", "count" ],
         "type" : "object"
       },
+      "JobCount" : {
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "key", "label", "value" ],
+        "type" : "object"
+      },
+      "JobCursor" : {
+        "properties" : {
+          "localId" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "startedAt", "source", "localId" ],
+        "type" : "object"
+      },
+      "JobFailure" : {
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "message" ],
+        "type" : "object"
+      },
+      "JobPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/JobRun"
+            },
+            "type" : "array"
+          },
+          "kinds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          },
+          "sourceErrors" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items", "sourceErrors", "kinds" ],
+        "type" : "object"
+      },
+      "JobRun" : {
+        "properties" : {
+          "counts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/JobCount"
+            },
+            "type" : "array"
+          },
+          "cursor" : {
+            "$ref" : "#/components/schemas/JobCursor"
+          },
+          "durationMs" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "failures" : {
+            "items" : {
+              "$ref" : "#/components/schemas/JobFailure"
+            },
+            "type" : "array"
+          },
+          "failuresTruncated" : {
+            "type" : "boolean"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "localId" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/JobState"
+          },
+          "trigger" : {
+            "$ref" : "#/components/schemas/JobTrigger"
+          },
+          "triggerDetail" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "id", "source", "kind", "label", "trigger", "state", "startedAt", "counts", "failures", "failuresTruncated", "localId", "cursor" ],
+        "type" : "object"
+      },
+      "JobState" : {
+        "enum" : [ "QUEUED", "RUNNING", "PAUSED", "SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED" ],
+        "type" : "string"
+      },
+      "JobTrigger" : {
+        "enum" : [ "MANUAL", "SCHEDULED", "SYSTEM" ],
+        "type" : "string"
+      },
       "JsonNode" : {
         "properties" : {
           "" : {
@@ -5578,6 +5714,82 @@
         } ],
         "summary" : "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires the teams area (ingot.admin.teams)",
         "tags" : [ "Identity" ]
+      }
+    },
+    "/api/jobs" : {
+      "get" : {
+        "description" : "The runs of every source the caller may read, newest first, in pages of at most 100. Filters: kind, state and trigger, each may repeat. Pass the nextCursor back as cursor for the next page.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobPage"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "description" : "An unknown state or trigger, or a malformed cursor"
+          },
+          "401" : {
+            "description" : "The caller is not authenticated"
+          },
+          "403" : {
+            "description" : "The caller may read none of the sources (ingot.admin.maintenance or ingot.admin.*)"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "List background runs",
+        "tags" : [ "Jobs" ]
+      }
+    },
+    "/api/jobs/{id}" : {
+      "get" : {
+        "description" : "The counts and the failures of one run. A run of a source the caller may not read answers 404, as a run that does not exist.",
+        "parameters" : [ {
+          "description" : "The run id, <source>:<local id>, URL-encoded",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobRun"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "The caller is not authenticated"
+          },
+          "404" : {
+            "description" : "The run does not exist or the caller may not read its source"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get one background run",
+        "tags" : [ "Jobs" ]
       }
     },
     "/api/maven/details" : {
