@@ -22,9 +22,10 @@
 
 import type { Method } from 'axios'
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core'
+import type { InjectionKey } from 'vue'
 import type { PluginPage } from '../../navigation/registry'
 
-export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link', 'list']
+export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link', 'list', 'filter']
 
 // One block of a page as the server declares it. Each kind reads only the fields it names.
 export interface PluginBlockDefinition {
@@ -42,9 +43,31 @@ export interface PluginBlockDefinition {
   href?: string
   pageSize?: number
   columns?: { key: string; label: string }[]
+  controls?: FilterControlDefinition[]
   schema?: JsonSchema
   uiSchema?: UISchemaElement
 }
+
+// One control of a filter as the server declares it. A select has options, a text field has none.
+export interface FilterControlDefinition {
+  type?: string
+  key?: string
+  label?: string
+  options?: { value: string; label: string }[]
+}
+
+export interface FacetCount {
+  value: string
+  count: number
+}
+
+// The values of the filters of a page and the counts of the list. The filter writes, the list reads.
+export interface PluginFilterScope {
+  values: Record<string, string>
+  facets: Record<string, FacetCount[]>
+}
+
+export const PLUGIN_FILTER_SCOPE: InjectionKey<PluginFilterScope> = Symbol('pluginFilterScope')
 
 // A contributed page with its blocks typed. The registry keeps the blocks as unknown until a page draws them.
 export type DrawnPage = Omit<PluginPage, 'blocks'> & { blocks?: PluginBlockDefinition[] }
@@ -139,4 +162,22 @@ export const listRows = (items: unknown[]) => {
     skipped,
     cut: rows.length > MAX_LIST_ROWS,
   }
+}
+
+const FILTER_KEY = /^[a-z][A-Za-z0-9]{0,31}$/
+
+// A filter key is a query parameter the server accepts: `cursor` is reserved for paging and is never drawn as a control.
+export const filterKeyAllowed = (key: unknown): key is string =>
+  typeof key === 'string' && key !== 'cursor' && FILTER_KEY.test(key)
+
+// The query of a list request: the filter values, and the cursor of the next page. Null when there is nothing to send.
+export const listQuery = (values: Record<string, string>, cursor?: string): Record<string, string> | undefined => {
+  const query = cursor ? { ...values, cursor } : { ...values }
+  return Object.keys(query).length > 0 ? query : undefined
+}
+
+// The count an option shows, or null when the list response has no count for that value.
+export const facetCount = (facets: Record<string, FacetCount[]>, key: string, value: string): number | null => {
+  const found = facets[key]?.find(facet => facet.value === value)
+  return found ? found.count : null
 }
