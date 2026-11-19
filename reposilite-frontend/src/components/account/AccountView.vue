@@ -22,6 +22,8 @@ import PasswordCard from './PasswordCard.vue'
 import ProfileCard from './ProfileCard.vue'
 import YourAccess from './YourAccess.vue'
 import { accessView, signInSources, type OwnAccessSummary } from './accessView'
+import MdPage from '../md/MdPage.vue'
+import MdPageHeader from '../md/MdPageHeader.vue'
 
 /*
  * "My account": four sections, each with its heading. Profile shows each value once. Sign-in and security holds the
@@ -59,93 +61,85 @@ const sources = computed<string[]>(() => (answer.value
 </script>
 
 <template>
-  <section
-    class="container max-w-none! pb-12 pt-7"
-    aria-labelledby="account-title"
-    data-ingot-component="account-view"
-  >
-    <div class="flex flex-col gap-1 pb-7">
-      <h1
-        id="account-title"
-        class="md-headline-small text-on-surface"
+  <div data-ingot-component="account-view">
+    <MdPage class="pb-12 pt-7">
+      <MdPageHeader
+        class="pb-7"
+        title="My account"
+        description="Your profile, your password, the tokens you created and what your account may do."
+      />
+
+      <p
+        v-if="mustChangePassword"
+        role="alert"
+        data-test="must-change"
+        class="mb-4 rounded-corner-large bg-tertiary-container px-4 py-3 md-title-small text-on-tertiary-container"
       >
-        My account
-      </h1>
-      <p class="md-body-large text-on-surface-variant">
-        Your profile, your password, the tokens you created and what your account may do.
+        Set a new password before you continue
       </p>
-    </div>
 
-    <p
-      v-if="mustChangePassword"
-      role="alert"
-      data-test="must-change"
-      class="mb-4 rounded-corner-large bg-tertiary-container px-4 py-3 md-title-small text-on-tertiary-container"
-    >
-      Set a new password before you continue
-    </p>
-
-    <div class="grid grid-cols-1 items-start gap-4 expanded:grid-cols-2 large:grid-cols-3">
-      <template
-        v-for="block in blocks"
-        :key="block"
-      >
-        <div
-          v-if="block === 'overview'"
-          class="flex min-w-0 flex-col gap-4 large:contents"
+      <div class="grid grid-cols-1 items-start gap-4 expanded:grid-cols-2 large:grid-cols-3">
+        <template
+          v-for="block in blocks"
+          :key="block"
         >
-          <ProfileCard
-            v-if="principal"
-            class="min-w-0"
-            :principal="principal"
-            :sources="sources"
-          />
-          <YourAccess
-            v-if="principal"
-            class="min-w-0"
-            :access="access"
-          />
-        </div>
-        <section
-          v-else
-          class="flex min-w-0 flex-col gap-4"
-          :class="mustChangePassword ? 'col-span-full' : ''"
-          aria-labelledby="security-title"
-          data-test="security-section"
-        >
-          <h3
-            id="security-title"
-            class="md-title-large text-on-surface"
+          <div
+            v-if="block === 'overview'"
+            class="flex min-w-0 flex-col gap-4 large:contents"
           >
-            Sign-in and security
-          </h3>
-          <PasswordCard
-            :api="identity"
-            :available="passwordAvailable"
-            :focus="mustChangePassword"
-            @changed="passwordChanged"
-          />
+            <ProfileCard
+              v-if="principal"
+              class="min-w-0"
+              :principal="principal"
+              :sources="sources"
+            />
+            <YourAccess
+              v-if="principal"
+              class="min-w-0"
+              :access="access"
+            />
+          </div>
           <section
-            data-test="sign-in-slot"
-            data-ingot-slot="add-multi-factor-authentication"
-            class="flex flex-col gap-2 rounded-corner-large bg-surface-container-low px-4 py-4"
-            aria-labelledby="mfa-title"
+            v-else
+            class="flex min-w-0 max-w-md-reading flex-col gap-4"
+            :class="mustChangePassword ? 'col-span-full' : ''"
+            aria-labelledby="security-title"
+            data-test="security-section"
           >
-            <h4
-              id="mfa-title"
-              class="md-title-small text-on-surface"
+            <h3
+              id="security-title"
+              class="md-title-large text-on-surface"
             >
-              Two-step sign-in
-            </h4>
-            <p class="md-body-medium text-on-surface-variant">
-              Two-step sign-in is not set up.
-            </p>
+              Sign-in and security
+            </h3>
+            <PasswordCard
+              :api="identity"
+              :available="passwordAvailable"
+              :focus="mustChangePassword"
+              @changed="passwordChanged"
+            />
+            <section
+              data-test="sign-in-slot"
+              data-ingot-slot="add-multi-factor-authentication"
+              class="flex flex-col gap-2 rounded-corner-large bg-surface-container-low px-4 py-4"
+              aria-labelledby="mfa-title"
+            >
+              <h4
+                id="mfa-title"
+                class="md-title-small text-on-surface"
+              >
+                Two-step sign-in
+              </h4>
+              <p class="md-body-medium text-on-surface-variant">
+                Two-step sign-in is not set up.
+              </p>
+            </section>
           </section>
-        </section>
-      </template>
-      <div class="col-span-full min-w-0">
-        <TokenList :api="identity.tokens" />
+        </template>
+        <div class="col-span-full min-w-0">
+          <TokenList :api="identity.tokens" />
+        </div>
       </div>
-    </div>
-  </section>
+    </MdPage>
+  </div>
 </template>
