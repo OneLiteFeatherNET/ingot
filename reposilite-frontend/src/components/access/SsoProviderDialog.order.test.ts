@@ -42,7 +42,9 @@ const KEYCLOAK: OidcProvider = {
   groupsClaim: 'groups',
   allowedEmailDomains: [],
   autoCreateUsers: true,
-  adminGroups: ['ingot-admins']
+  adminGroups: ['ingot-admins'],
+  mfaAcrValues: [],
+  mfaAmrValues: []
 }
 
 let wrapper: VueWrapper | undefined
@@ -103,6 +105,8 @@ describe('SsoProviderDialog field order', () => {
       'Display name claim',
       'Email claim',
       'Groups claim',
+      'Trusted ACR values',
+      'Trusted AMR values',
       'Enabled: offer this provider at sign in'
     ])
   })

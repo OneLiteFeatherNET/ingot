@@ -47,7 +47,9 @@ const KEYCLOAK: OidcProvider = {
   groupsClaim: 'groups',
   allowedEmailDomains: [],
   autoCreateUsers: true,
-  adminGroups: ['ingot-admins']
+  adminGroups: ['ingot-admins'],
+  mfaAcrValues: [],
+  mfaAmrValues: []
 }
 
 const GITHUB: OidcProvider = { ...KEYCLOAK, id: 'github', label: 'GitHub', icon: 'GITHUB', issuerUrl: 'https://github.example.org', adminGroups: [] }

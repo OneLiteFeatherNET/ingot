@@ -42,7 +42,9 @@ const KEYCLOAK: OidcProvider = {
   groupsClaim: 'groups',
   allowedEmailDomains: [],
   autoCreateUsers: true,
-  adminGroups: ['ingot-admins']
+  adminGroups: ['ingot-admins'],
+  mfaAcrValues: [],
+  mfaAmrValues: []
 }
 
 const CALLBACK_URL = 'http://localhost:3000/api/auth/oidc/keycloak/callback'

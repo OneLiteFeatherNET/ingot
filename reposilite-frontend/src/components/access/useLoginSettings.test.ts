@@ -110,3 +110,38 @@ describe('useLoginSettings', () => {
     expect(state.saving.value).toBe(false)
   })
 })
+
+describe('useLoginSettings second factor policy', () => {
+  it('reads an answer without a second factor policy as every switch off', async () => {
+    const settings = {
+      fetch: vi.fn().mockResolvedValue(serverAnswer({ oidcProviders: [] })),
+      update: vi.fn().mockResolvedValue({})
+    }
+    const state = useLoginSettings(() => settings)
+
+    await state.load()
+
+    expect(state.settings.value.mfa, 'the form starts with the policy off').toEqual({
+      requiredForAdmins: false,
+      requiredForTeams: [],
+      graceDays: 14,
+      stepUpMinutes: 5,
+      passkeyFirstFactor: false
+    })
+  })
+
+  it('writes the policy back with the rest of the domain, so saving another section keeps it', async () => {
+    const policy = { requiredForAdmins: true, requiredForTeams: ['developers'], graceDays: 7, stepUpMinutes: 5, passkeyFirstFactor: true }
+    const settings = {
+      fetch: vi.fn().mockResolvedValue(serverAnswer({ oidcProviders: [], mfa: policy })),
+      update: vi.fn().mockResolvedValue({})
+    }
+    const state = useLoginSettings(() => settings)
+    await state.load()
+
+    await state.save({ ...state.settings.value, maxFailedAttempts: 3 })
+
+    const written = settings.update.mock.calls[0][1] as { mfa: unknown }
+    expect(written.mfa, 'the policy is part of the written domain').toEqual(policy)
+  })
+})

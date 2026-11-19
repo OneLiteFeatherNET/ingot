@@ -51,6 +51,19 @@ export interface OidcProvider {
   allowedEmailDomains: string[]
   autoCreateUsers: boolean
   adminGroups: string[]
+  /** The `acr` values of an ID token that count as a second factor. Empty trusts nothing. */
+  mfaAcrValues: string[]
+  /** The `amr` values of an ID token that count as a second factor, as the provider sends them. Empty trusts nothing. */
+  mfaAmrValues: string[]
+}
+
+/** The second factor policy of the `login` domain (`login.mfa`). Everything is off by default, as the backend has it. */
+export interface MfaSettings {
+  requiredForAdmins: boolean
+  requiredForTeams: string[]
+  graceDays: number
+  stepUpMinutes: number
+  passkeyFirstFactor: boolean
 }
 
 /** The LDAP directory as the login domain stores it. */
@@ -78,6 +91,7 @@ export interface LoginSettings {
   publicUrl: string
   oidcProviders: OidcProvider[]
   ldap: LdapSettings
+  mfa: MfaSettings
   [key: string]: unknown
 }
 
@@ -200,8 +214,18 @@ const emptyProvider = (type: ProviderType): OidcProvider => ({
   groupsClaim: 'groups',
   allowedEmailDomains: [],
   autoCreateUsers: true,
-  adminGroups: []
+  adminGroups: [],
+  mfaAcrValues: [],
+  mfaAmrValues: []
 })
+
+const MFA_DEFAULTS: MfaSettings = {
+  requiredForAdmins: false,
+  requiredForTeams: [],
+  graceDays: 14,
+  stepUpMinutes: 5,
+  passkeyFirstFactor: false
+}
 
 const LDAP_DEFAULTS: LdapSettings = {
   enabled: false,
@@ -267,8 +291,32 @@ const validateProvider = (provider: OidcProvider, { takenIds = [] }: { takenIds?
   if (!githubEndpoints && !scopeList(provider.scopes).includes('openid')) problems.scopes = 'Include the openid scope'
   const badDomain = provider.allowedEmailDomains.find(domain => !EMAIL_DOMAIN_PATTERN.test(domain))
   if (badDomain !== undefined) problems.allowedEmailDomains = `Enter domains such as example.org, not "${badDomain}"`
+  if ((provider.mfaAcrValues ?? []).some(value => !value.trim())) problems.mfaAcrValues = 'Remove the blank value'
+  if ((provider.mfaAmrValues ?? []).some(value => !value.trim())) problems.mfaAmrValues = 'Remove the blank value'
   return problems
 }
+
+/*
+ * The problems of the second factor policy, keyed by field. The rules are the ones the backend applies. The break-glass
+ * notice is a warning and never refuses the save, see mfaWarnings.
+ */
+const validateMfa = (mfa: MfaSettings): Problems => {
+  const problems: Problems = {}
+  if (!Number.isInteger(mfa.graceDays) || mfa.graceDays < 0 || mfa.graceDays > 365) {
+    problems.graceDays = 'Enter a number of days between 0 and 365'
+  }
+  if (!Number.isInteger(mfa.stepUpMinutes) || mfa.stepUpMinutes < 1 || mfa.stepUpMinutes > 60) {
+    problems.stepUpMinutes = 'Enter a number of minutes between 1 and 60'
+  }
+  if (mfa.requiredForTeams.some(team => !team.trim())) problems.requiredForTeams = 'Team names must not be blank'
+  return problems
+}
+
+// The notice shown with the policy while the administrator requirement is on: the last administrator may be locked out.
+const BREAK_GLASS_NOTICE = 'Turning this on can lock out the last administrator. An administrator without a second factor keeps the grace period and is then restricted. If the last administrator cannot enrol, start the instance with the break-glass token (--token) and reset the factors.'
+
+/** The notices to the one who saves the policy. They never refuse the save. */
+const mfaWarnings = (mfa: MfaSettings): string[] => (mfa.requiredForAdmins ? [BREAK_GLASS_NOTICE] : [])
 
 const validateLdap = (ldap: LdapSettings): Problems => {
   if (!ldap.enabled) return {}
@@ -328,7 +376,8 @@ const normalizeLoginSettings = (data: Partial<LoginSettings> = {}): LoginSetting
   ...data,
   publicUrl: data.publicUrl ?? '',
   oidcProviders: Array.isArray(data.oidcProviders) ? data.oidcProviders : [],
-  ldap: { ...LDAP_DEFAULTS, ...(data.ldap ?? {}) }
+  ldap: { ...LDAP_DEFAULTS, ...(data.ldap ?? {}) },
+  mfa: { ...MFA_DEFAULTS, ...(data.mfa ?? {}) }
 })
 
 // Puts a provider into the list: in the place of the one with `previousId`, or at the end.
@@ -342,6 +391,7 @@ const removeProvider = (list: OidcProvider[], id: string): OidcProvider[] => lis
 
 export {
   LDAP_DEFAULTS,
+  MFA_DEFAULTS,
   OIDC_SCOPES,
   PROVIDER_ID_PATTERN,
   PROVIDER_TYPES,
@@ -349,6 +399,7 @@ export {
   callbackPatternFor,
   callbackUrlFor,
   emptyProvider,
+  mfaWarnings,
   normalizeLoginSettings,
   providerTypeOf,
   registeredBase,
@@ -357,6 +408,7 @@ export {
   scopeList,
   usesGitHub,
   validateLdap,
+  validateMfa,
   validatePublicUrl,
   validateProvider
 }

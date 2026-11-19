@@ -375,10 +375,10 @@ const validateDomain = (text: string, existing: string[]) => {
           Create an account at the first sign in
         </MdSwitch>
 
-        <!-- The claims are rarely changed, so they wait behind a disclosure. -->
+        <!-- The claims and the trusted second factor values are rarely changed, so they wait behind a disclosure. -->
         <details class="rounded-corner-medium border border-outline-variant p-4">
           <summary class="cursor-pointer md-title-small text-on-surface">
-            Advanced: claims
+            Advanced
           </summary>
           <div class="mt-4 grid gap-4 sm:grid-cols-2">
             <MdTextField
@@ -408,6 +408,27 @@ const validateDomain = (text: string, existing: string[]) => {
               label="Groups claim"
               type="text"
               autocomplete="off"
+            />
+          </div>
+          <!-- A login the provider has already verified with a second factor counts as one, so the policy does not ask again. -->
+          <div class="mt-4 flex flex-col gap-4">
+            <MdChipInput
+              id="sso-mfa-acr"
+              v-model="form.mfaAcrValues"
+              label="Trusted ACR values"
+              supporting-text="An ID token with one of these acr values counts as a second factor. Empty trusts nothing."
+              :validate="validateTextItem"
+              :error="errorOf('mfaAcrValues') !== ''"
+              :error-text="errorOf('mfaAcrValues')"
+            />
+            <MdChipInput
+              id="sso-mfa-amr"
+              v-model="form.mfaAmrValues"
+              label="Trusted AMR values"
+              supporting-text="An ID token with one of these amr values, such as mfa or otp, counts as a second factor. Empty trusts nothing."
+              :validate="validateTextItem"
+              :error="errorOf('mfaAmrValues') !== ''"
+              :error-text="errorOf('mfaAmrValues')"
             />
           </div>
         </details>

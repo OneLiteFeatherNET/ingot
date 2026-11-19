@@ -17,11 +17,13 @@
 import { describe, it, expect } from 'vitest'
 import {
   LDAP_DEFAULTS,
+  MFA_DEFAULTS,
   PROVIDER_TYPES,
   SECRET_PLACEHOLDER,
   callbackPatternFor,
   callbackUrlFor,
   emptyProvider,
+  mfaWarnings,
   normalizeLoginSettings,
   providerTypeOf,
   removeProvider,
@@ -29,6 +31,7 @@ import {
   replaceProvider,
   scopeList,
   validateLdap,
+  validateMfa,
   validatePublicUrl,
   validateProvider
 } from './loginSettings'
@@ -48,7 +51,9 @@ const KEYCLOAK = {
   groupsClaim: 'groups',
   allowedEmailDomains: [],
   autoCreateUsers: true,
-  adminGroups: []
+  adminGroups: [],
+  mfaAcrValues: [],
+  mfaAmrValues: []
 }
 
 describe('provider types', () => {
@@ -308,5 +313,87 @@ describe('provider list edits', () => {
 
   it('removes a provider by its id and leaves the others', () => {
     expect(removeProvider([KEYCLOAK, GITHUB], 'keycloak').map(provider => provider.id)).toEqual(['github'])
+  })
+})
+
+describe('second factor policy defaults', () => {
+  it('fills a server answer without a policy with every switch off, as the backend has it', () => {
+    expect(normalizeLoginSettings({}).mfa).toEqual({
+      requiredForAdmins: false,
+      requiredForTeams: [],
+      graceDays: 14,
+      stepUpMinutes: 5,
+      passkeyFirstFactor: false
+    })
+    expect(MFA_DEFAULTS.passkeyFirstFactor, 'the passkey first factor stays off until an admin turns it on').toBe(false)
+  })
+
+  it('keeps the policy the server sent', () => {
+    const settings = normalizeLoginSettings({ mfa: { ...MFA_DEFAULTS, requiredForAdmins: true, graceDays: 30 } })
+
+    expect(settings.mfa).toEqual({ ...MFA_DEFAULTS, requiredForAdmins: true, graceDays: 30 })
+  })
+})
+
+describe('second factor policy validation', () => {
+  it('accepts the defaults', () => {
+    expect(validateMfa(MFA_DEFAULTS)).toEqual({})
+  })
+
+  it('refuses grace days outside 0 to 365', () => {
+    expect(validateMfa({ ...MFA_DEFAULTS, graceDays: 366 }).graceDays, 'more than a year of grace is refused').toMatch(/0 and 365/)
+    expect(validateMfa({ ...MFA_DEFAULTS, graceDays: -1 }).graceDays, 'negative grace is refused').toMatch(/0 and 365/)
+  })
+
+  it('refuses step-up minutes outside 1 to 60', () => {
+    expect(validateMfa({ ...MFA_DEFAULTS, stepUpMinutes: 0 }).stepUpMinutes, 'zero minutes is refused').toMatch(/1 and 60/)
+    expect(validateMfa({ ...MFA_DEFAULTS, stepUpMinutes: 61 }).stepUpMinutes, 'an hour and a minute is refused').toMatch(/1 and 60/)
+  })
+
+  it('refuses a blank team name in the team list', () => {
+    expect(validateMfa({ ...MFA_DEFAULTS, requiredForTeams: ['developers', ' '] }).requiredForTeams).toMatch(/must not be blank/)
+  })
+})
+
+describe('break-glass warning of the second factor policy', () => {
+  it('warns that the last administrator may need the break-glass token when the admin requirement is turned on', () => {
+    const warnings = mfaWarnings({ ...MFA_DEFAULTS, requiredForAdmins: true })
+
+    expect(warnings, 'one warning names the break-glass token').toHaveLength(1)
+    expect(warnings[0], 'the warning names the flag of the token').toMatch(/--token/)
+    expect(warnings[0], 'the warning names the reset of the factors').toMatch(/reset/i)
+  })
+
+  it('shows no warning while the admin requirement is off', () => {
+    expect(mfaWarnings(MFA_DEFAULTS), 'nothing is turned on, so nothing to warn about').toEqual([])
+  })
+
+  it('does not refuse the save: the warning is not a problem of the policy', () => {
+    expect(validateMfa({ ...MFA_DEFAULTS, requiredForAdmins: true }), 'the save goes through with the warning').toEqual({})
+  })
+})
+
+describe('OpenID Connect trusted values of the second factor', () => {
+  it('starts a new provider with no trusted acr or amr values, which trusts nothing', () => {
+    const provider = emptyProvider(providerTypeOf('KEYCLOAK'))
+
+    expect(provider.mfaAcrValues, 'no acr value is trusted by default').toEqual([])
+    expect(provider.mfaAmrValues, 'no amr value is trusted by default').toEqual([])
+  })
+
+  it('refuses a blank trusted acr value that is stored', () => {
+    const problems = validateProvider({ ...KEYCLOAK, mfaAcrValues: ['urn:mfa', ''] })
+
+    expect(problems.mfaAcrValues, 'a blank acr value is named on its field').toMatch(/blank/)
+  })
+
+  it('refuses a blank trusted amr value that is stored', () => {
+    const problems = validateProvider({ ...KEYCLOAK, mfaAmrValues: [' '] })
+
+    expect(problems.mfaAmrValues, 'a blank amr value is named on its field').toMatch(/blank/)
+  })
+
+  it('accepts a provider with trusted values', () => {
+    expect(validateProvider({ ...KEYCLOAK, mfaAcrValues: ['urn:mfa'], mfaAmrValues: ['mfa', 'otp'] })).toEqual({})
   })
 })

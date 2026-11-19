@@ -153,7 +153,8 @@ describe('LdapPanel', () => {
       expect(settings.update).toHaveBeenCalledWith('login', {
         publicUrl: '',
         oidcProviders: OIDC,
-        ldap: { ...LDAP, userBaseDn: 'ou=staff,dc=example,dc=org' }
+        ldap: { ...LDAP, userBaseDn: 'ou=staff,dc=example,dc=org' },
+        mfa: { requiredForAdmins: false, requiredForTeams: [], graceDays: 14, stepUpMinutes: 5, passkeyFirstFactor: false }
       }, '"v1"')
     })
 
