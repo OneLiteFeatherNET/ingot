@@ -43,6 +43,12 @@ tasks.jar {
     enabled = false
 }
 
+// The root build gives every subproject a Maven publication of its plain jar, which this project does not build. The
+// cli ships as the jar above and as an image, and it was never published to a Maven repository, so it is left out.
+tasks.withType<AbstractPublishToMaven>().configureEach {
+    enabled = false
+}
+
 
 // The start scripts and the distributions copy the shaded jar, so they must run after it. Without these edges Gradle
 // reports an implicit dependency and the build fails.

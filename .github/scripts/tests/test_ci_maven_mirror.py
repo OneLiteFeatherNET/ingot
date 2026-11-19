@@ -79,8 +79,12 @@ class CiMavenMirrorTest(unittest.TestCase):
             self.assertIn(f"if: ${{{{ vars.{VARIABLE} != '' }}}}", step, job)
 
     def test_no_ci_job_publishes_artifacts(self):
-        # The init script leaves publishing alone only when no publish task runs. The light jobs never publish.
-        self.assertNotRegex(self.workflow, r"\./gradlew[^\n]*publish")
+        # The init script leaves publishing alone only when no publish task runs. The light jobs never publish to a
+        # remote repository. The Publications job only publishes into a throwaway local repository.
+        for line in re.findall(r"\./gradlew[^\n]*publish[^\n]*", self.workflow):
+            tasks = re.findall(r"\S*publish\S*", line, re.I)
+            self.assertTrue(all(re.search(r"(^|:)publishToMavenLocal$", task) for task in tasks), line)
+            self.assertIn('-Dmaven.repo.local="$RUNNER_TEMP/', line)
 
 
 if __name__ == "__main__":
