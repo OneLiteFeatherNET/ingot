@@ -159,7 +159,7 @@ Server to client:
 - `identity` is the token name or the session's user, never the secret. `node` is the instance id of `StructuredExecutionResponse.node`.
   `boot` is a random id made at process start. `seq` is the last log sequence number at the time of the welcome. `replay` is
   `resumed` or `full` (2.6).
-- A socket that sends no valid hello within 10 seconds is closed with 1008 and an `error` with code `timeout`. The test injects the clock.
+- The server sets no hello deadline. A version 1 client is announced only by the hello frame itself (2.1), and a socket that sends no hello stays open as it does on upstream, because legacy sockets keep upstream behaviour (drop-in contract, maintainer decision 104). No `timeout` error is sent for a silent socket.
 
 ### 2.3 Envelope
 
@@ -272,7 +272,7 @@ Server to client:
 
 ### 2.9 Timeouts
 
-- Handshake: 10 seconds to a valid hello (2.2).
+- Handshake: no deadline. A silent socket stays open as upstream does (2.2).
 - Liveness: the server sends a WebSocket ping every 20 seconds and closes a connection that has not answered with a pong within 60 seconds.
 - Confirmation: 120 seconds, then declined (2.3).
 - Command: no server-side timeout, because a command such as `settings-reencrypt` may run for a while. The client shows the elapsed time.
