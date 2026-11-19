@@ -185,6 +185,41 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `answers a wrong password with a challenge member byte for byte as without it`() {
+        // given: a user with a password, and no login challenge provider registered
+        loginFacade.createUser("erin-challenge", "Erin", password)
+
+        // when: the same wrong password is sent without and with a challenge member
+        val without = login("""{"provider":"local","username":"erin-challenge","password":"wrong password entirely"}""").asString()
+        val with = login("""{"provider":"local","username":"erin-challenge","password":"wrong password entirely","challenge":{"provider":"example-pow","answer":{"nonce":"42"}}}""").asString()
+
+        // then: the challenge member is ignored, so both answers are the same
+        assertThat(with.status).isEqualTo(without.status).isEqualTo(UNAUTHORIZED.code)
+        assertThat(with.body).describedAs("the body of the answer with a challenge member").isEqualTo(without.body)
+    }
+
+    @Test
+    fun `answers a locked login with a challenge member byte for byte as without it`() {
+        // given: a user name locked by five wrong passwords from this address, and no login challenge provider registered
+        loginFacade.createUser("frank-challenge", "Frank", password)
+        repeat(5) { login("""{"provider":"local","username":"frank-challenge","password":"wrong password entirely"}""").asString() }
+
+        // when: the right password is sent without a challenge member, with a valid one and with a malformed one
+        val without = login("""{"provider":"local","username":"frank-challenge","password":"$password"}""").asString()
+        val valid = login("""{"provider":"local","username":"frank-challenge","password":"$password","challenge":{"provider":"example-pow","answer":{}}}""").asString()
+        val malformed = login("""{"provider":"local","username":"frank-challenge","password":"$password","challenge":"not an object"}""").asString()
+
+        // then: all three get the same plain 429, with Retry-After and without a challenge in the body
+        assertThat(without.status).isEqualTo(TOO_MANY_REQUESTS.code)
+        assertThat(listOf(valid, malformed)).allSatisfy { response ->
+            assertThat(response.status).isEqualTo(without.status)
+            assertThat(response.body).describedAs("the body of the answer with a challenge member").isEqualTo(without.body)
+            assertThat(response.headers.getFirst("Retry-After")).isNotBlank()
+        }
+        assertThat(without.body).doesNotContain("challenge_required")
+    }
+
+    @Test
     fun `sets the session cookies HttpOnly where they must be and readable where they must be`() {
         // given: a user with a password
         loginFacade.createUser("dave-session", "Dave", password)

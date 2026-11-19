@@ -260,6 +260,42 @@
         },
         "type" : "object"
       },
+      "ChallengeRequest" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/ErrorResponse"
+        }, {
+          "properties" : {
+            "parameters" : {
+              "additionalProperties" : true,
+              "description" : "Public values the client needs to present or solve the challenge, specific to the provider. Never a secret.",
+              "type" : "object"
+            },
+            "provider" : {
+              "description" : "The id of the registered login challenge provider.",
+              "type" : "string"
+            }
+          },
+          "required" : [ "provider", "parameters" ],
+          "type" : "object"
+        } ],
+        "description" : "The 429 of a dashboard login whose name is delayed and that the registered login challenge provider wants answered first. message and detail carry the code challenge_required. Retry-After is set as on the plain 429, and waiting it out stays a way to the next password check."
+      },
+      "ChallengeResponse" : {
+        "description" : "The answer to the login challenge that a ChallengeRequest asked for, sent again with the same provider, username and password. Read only while the name is delayed and a login challenge provider is registered, ignored otherwise.",
+        "properties" : {
+          "answer" : {
+            "additionalProperties" : true,
+            "description" : "The answer, specific to the provider and handed to it unchanged.",
+            "type" : "object"
+          },
+          "provider" : {
+            "description" : "The id of the login challenge provider that the ChallengeRequest named.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "provider", "answer" ],
+        "type" : "object"
+      },
       "CleanupPreviewResponse" : {
         "properties" : {
           "count" : {
@@ -1459,6 +1495,13 @@
       },
       "LoginRequest" : {
         "properties" : {
+          "challenge" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ChallengeResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "password" : {
             "type" : [ "string", "null" ]
           },
@@ -3202,7 +3245,11 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/ErrorResponse"
+                  }, {
+                    "$ref" : "#/components/schemas/ChallengeRequest"
+                  } ]
                 }
               }
             },

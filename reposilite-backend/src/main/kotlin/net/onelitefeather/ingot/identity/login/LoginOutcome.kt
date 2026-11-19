@@ -34,6 +34,12 @@ sealed interface LoginOutcome {
     /** Too many recent failures for this user name, or for this address. The credentials were not checked. */
     data class Blocked(val retryAfterSeconds: Long) : LoginOutcome
 
+    /**
+     * The name is delayed by the account throttle, and the registered login challenge [provider] asks for a challenge with the
+     * public [parameters]. The credentials were not checked. Waiting [retryAfterSeconds] stays a way to the next check.
+     */
+    data class ChallengeRequired(val retryAfterSeconds: Long, val provider: String, val parameters: Map<String, Any?>) : LoginOutcome
+
     /** No provider with the requested id is configured. */
     data object UnknownProvider : LoginOutcome
 
