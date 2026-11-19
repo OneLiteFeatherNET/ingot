@@ -31,10 +31,10 @@ A connection whose first frame is a JSON object with the type `hello` SHALL open
 - **WHEN** the hello lists only `[2]`
 - **THEN** the server sends an `error` with the code `unsupported_protocol` and `supported` `[1]`, and closes the connection with 1002
 
-#### Scenario: No hello in time
+#### Scenario: No hello
 
-- **WHEN** a connection sends no valid hello within 10 seconds
-- **THEN** it is closed with 1008 after an `error` with the code `timeout`
+- **WHEN** a connection sends no hello
+- **THEN** the server sets no deadline for the hello and the connection stays open, as a legacy socket does today
 
 ### Requirement: Envelope and unknown frames
 

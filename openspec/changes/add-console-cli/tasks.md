@@ -41,7 +41,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   lines, a `keep-alive` is answered, a command gets no answer frame, failed authentication gets the error and a disconnect, the audit
   event has `confirmed` false and no `client`. Verify: green on `main` before any production change, and still green after 4.8.
 - [ ] 4.2 `test(console)`: failing tests for the handshake: a hello negotiates protocol 1, a list without 1 closes with 1002 and
-  `unsupported_protocol`, a socket without a valid hello closes with 1008 after 10 seconds (fake scheduler), an unknown `type` gets
+  `unsupported_protocol`, no hello deadline; a silent socket stays open as upstream, an unknown `type` gets
   `unknown_type` and keeps the connection, a frame over 4 KiB gets `too_long`, and the worker target does not upgrade the path. Verify:
   red on the missing branch.
 - [ ] 4.3 `test(console)`: failing tests for `execute`, `result` and `confirm`: the `result` has the fields of the structured HTTP answer
