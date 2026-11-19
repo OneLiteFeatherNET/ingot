@@ -54,6 +54,12 @@ internal interface ConsoleScheduler {
     /** Opens the started outbox of one connection. [send] writes a line to the client, [onFailure] reports a failed write. */
     fun openOutbox(send: (String) -> Unit, onFailure: (Exception) -> Unit): ConsoleOutbox
 
+    /**
+     * Opens the queue of one version 1 connection. [send] writes a frame, [onFailure] reports a failed write and
+     * [onSlowConsumer] runs once when frames that must arrive fill the queue.
+     */
+    fun openFrameOutbox(send: (Any) -> Unit, onFailure: (Exception) -> Unit, onSlowConsumer: () -> Unit): ConsoleV1Outbox
+
 }
 
 /** The system clock, one daemon timer thread created on first use, and a [ConsoleSocketOutbox] with its own writer per connection. */
@@ -70,5 +76,8 @@ internal class SystemConsoleScheduler(override val clock: Clock = Clock.systemUT
 
     override fun openOutbox(send: (String) -> Unit, onFailure: (Exception) -> Unit): ConsoleOutbox =
         ConsoleSocketOutbox(send = send, onFailure = onFailure).also { it.start() }
+
+    override fun openFrameOutbox(send: (Any) -> Unit, onFailure: (Exception) -> Unit, onSlowConsumer: () -> Unit): ConsoleV1Outbox =
+        ConsoleFrameOutbox(send = send, onFailure = onFailure, onSlowConsumer = onSlowConsumer, clock = clock).also { it.start() }
 
 }
