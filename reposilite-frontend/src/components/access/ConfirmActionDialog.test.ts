@@ -100,6 +100,12 @@ describe('ConfirmActionDialog', () => {
     expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The last instance admin cannot be deleted.')
   })
 
+  it('shows the failure as an error tone alert', async () => {
+    await open({ failure: 'The last instance admin cannot be deleted.' })
+
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.getAttribute('data-tone'), 'the failure is an error tone alert').toBe('error')
+  })
+
   it('disables the button while the request runs', async () => {
     await open({ busy: true })
 

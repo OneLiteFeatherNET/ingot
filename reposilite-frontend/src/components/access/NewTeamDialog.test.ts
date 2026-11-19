@@ -93,4 +93,12 @@ describe('NewTeamDialog', () => {
     expect(dialog().querySelector<HTMLElement>('[data-test="create-failure"]')!.textContent).toContain('Team qa already exists')
     expect(wrapper!.emitted('created')).toBeUndefined()
   })
+
+  it('shows the failure as an error tone alert', async () => {
+    api.create.mockRejectedValue({ response: { status: 409, data: { message: 'Team qa already exists' } } })
+    type('new-team-name', 'qa')
+    await submit()
+
+    expect(dialog().querySelector<HTMLElement>('[data-test="create-failure"]')!.getAttribute('data-tone'), 'the failure is an error tone alert').toBe('error')
+  })
 })

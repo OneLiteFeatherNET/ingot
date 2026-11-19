@@ -103,4 +103,23 @@ describe('NewMachineDialog', () => {
     expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The name ci-bot is taken')
     expect(wrapper!.emitted('created')).toBeUndefined()
   })
+
+  it('shows a failure as an error tone alert', async () => {
+    api.create.mockRejectedValue(new Error('The server is busy'))
+    type('new-machine-name', 'ci-bot')
+    await submit()
+
+    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.getAttribute('data-tone'), 'the failure is an error tone alert').toBe('error')
+  })
+
+  it('names each open dialog by its own heading', () => {
+    const second = mount(NewMachineDialog, { props: { modelValue: true, api: api as unknown as Pick<PrincipalsApi, 'create'> }, attachTo: document.body })
+    const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'))
+    const labels = dialogs.map((element) => element.getAttribute('aria-labelledby'))
+
+    expect(dialogs, 'two dialogs are open').toHaveLength(2)
+    expect(labels[0], 'the two dialogs do not share a heading id').not.toBe(labels[1])
+    expect(labels.map((id) => document.getElementById(id!)?.textContent?.trim()), 'each label names its heading').toEqual(['New machine account', 'New machine account'])
+    second.unmount()
+  })
 })
