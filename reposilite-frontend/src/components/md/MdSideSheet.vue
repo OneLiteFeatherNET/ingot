@@ -143,7 +143,7 @@ const onKeydown = (event: KeyboardEvent) => {
         @click="dismiss"
       />
       <div
-        class="absolute inset-y-0 flex max-w-md-sheet-max flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-2"
+        class="absolute inset-y-0 flex max-w-md-sheet-max flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-1"
         :class="[EDGE[side], WIDTH[width]]"
       >
         <div class="flex items-center justify-between gap-2">

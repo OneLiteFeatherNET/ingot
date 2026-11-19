@@ -184,6 +184,13 @@ describe('MdSideSheet', () => {
     expect(document.activeElement, 'focus is back on the Sections button').toBe(opener)
   })
 
+  it('draws the panel at the side sheet elevation, one step below a menu', async () => {
+    await mountSheet()
+
+    expect(panel().classList, 'the panel carries the side sheet elevation').toContain('shadow-elevation-1')
+    expect(panel().classList, 'the panel does not carry the menu elevation').not.toContain('shadow-elevation-2')
+  })
+
   it('takes the default width from the sheet width token', async () => {
     await mountSheet()
 

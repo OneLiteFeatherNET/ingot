@@ -22,6 +22,7 @@ import { ADMIN_NODES } from '../../store/nodeAccess'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdPage from '../md/MdPage.vue'
 import MdSelect from '../md/MdSelect.vue'
 import SearchBar from './SearchBar.vue'
 import SearchFilters from './SearchFilters.vue'
@@ -258,311 +259,310 @@ const toggleRow = (item: SearchItem) => {
 </script>
 
 <template>
-  <div
-    class="container mx-auto mb-12 pt-7"
-    data-ingot-component="search-view"
-  >
-    <h1 class="md-headline-small text-on-surface">
-      Search
-    </h1>
-
-    <p
-      v-if="disabled"
-      role="status"
-      class="mt-4 md-body-large text-on-surface-variant"
-      data-test="disabled"
-    >
-      Search is turned off on this instance.
-    </p>
-
-    <template v-else>
-      <SearchBar
-        ref="bar"
-        v-model="draft"
-        class="mt-4"
-        label="Search by group, artifact or version"
-        @submit="submit"
-        @keydown="onBoxKey"
-      />
-
-      <div
-        v-if="notice"
-        role="status"
-        class="mt-4 rounded-corner-medium px-4 py-3 md-body-medium"
-        :class="notice.kind === 'degraded'
-          ? 'text-on-surface-variant'
-          : 'bg-secondary-container text-on-secondary-container'"
-        :data-test="`notice-${notice.kind}`"
-      >
-        {{ notice.text }}
-        <RouterLink
-          v-if="notice.kind === 'missing' && canOpenMaintenance"
-          :to="{ name: 'maintenance' }"
-          class="md-focus-ring rounded-corner-extra-small text-primary underline"
-          data-test="maintenance-link"
-        >
-          Open maintenance
-        </RouterLink>
-      </div>
+  <MdPage class="mb-12 pt-7">
+    <div data-ingot-component="search-view">
+      <h1 class="md-headline-small text-on-surface">
+        Search
+      </h1>
 
       <p
-        v-if="!isLogged"
-        class="mt-4 md-body-medium text-on-surface-variant"
-        data-test="anonymous"
+        v-if="disabled"
+        role="status"
+        class="mt-4 md-body-large text-on-surface-variant"
+        data-test="disabled"
       >
-        Some repositories are hidden from visitors who are not signed in. Sign in to see more results.
+        Search is turned off on this instance.
       </p>
 
-      <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] lg:items-start">
-        <!-- Below 1024px the filters are a modal sheet; from there on they are a column beside the results. -->
+      <template v-else>
+        <SearchBar
+          ref="bar"
+          v-model="draft"
+          class="mt-4"
+          label="Search by group, artifact or version"
+          @submit="submit"
+          @keydown="onBoxKey"
+        />
+
         <div
-          :class="sheetOpen ? 'fixed inset-0 z-40 flex flex-col bg-surface lg:static lg:z-auto lg:bg-transparent' : 'hidden lg:block'"
-          :role="sheetOpen ? 'dialog' : undefined"
-          :aria-modal="sheetOpen ? 'true' : undefined"
-          :aria-labelledby="filtersTitleId"
-          data-test="filter-panel"
-          @keydown.esc="toggleSheet(false)"
+          v-if="notice"
+          role="status"
+          class="mt-4 rounded-corner-medium px-4 py-3 md-body-medium"
+          :class="notice.kind === 'degraded'
+            ? 'text-on-surface-variant'
+            : 'bg-secondary-container text-on-secondary-container'"
+          :data-test="`notice-${notice.kind}`"
         >
-          <div class="flex items-center justify-between px-4 pt-4 lg:hidden">
+          {{ notice.text }}
+          <RouterLink
+            v-if="notice.kind === 'missing' && canOpenMaintenance"
+            :to="{ name: 'maintenance' }"
+            class="md-focus-ring rounded-corner-extra-small text-primary underline"
+            data-test="maintenance-link"
+          >
+            Open maintenance
+          </RouterLink>
+        </div>
+
+        <p
+          v-if="!isLogged"
+          class="mt-4 md-body-medium text-on-surface-variant"
+          data-test="anonymous"
+        >
+          Some repositories are hidden from visitors who are not signed in. Sign in to see more results.
+        </p>
+
+        <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] lg:items-start">
+          <!-- Below 1024px the filters are a modal sheet; from there on they are a column beside the results. -->
+          <div
+            :class="sheetOpen ? 'fixed inset-0 z-40 flex flex-col bg-surface lg:static lg:z-auto lg:bg-transparent' : 'hidden lg:block'"
+            :role="sheetOpen ? 'dialog' : undefined"
+            :aria-modal="sheetOpen ? 'true' : undefined"
+            :aria-labelledby="filtersTitleId"
+            data-test="filter-panel"
+            @keydown.esc="toggleSheet(false)"
+          >
+            <div class="flex items-center justify-between px-4 pt-4 lg:hidden">
+              <h2
+                :id="filtersTitleId"
+                class="md-title-large text-on-surface"
+              >
+                Filters
+              </h2>
+              <MdButton
+                variant="text"
+                data-test="close-filters"
+                @click="toggleSheet(false)"
+              >
+                Close
+              </MdButton>
+            </div>
             <h2
+              v-if="!sheetOpen"
               :id="filtersTitleId"
-              class="md-title-large text-on-surface"
+              class="sr-only"
             >
               Filters
             </h2>
-            <MdButton
-              variant="text"
-              data-test="close-filters"
-              @click="toggleSheet(false)"
-            >
-              Close
-            </MdButton>
+            <div class="flex-1 overflow-y-auto p-4 lg:overflow-visible lg:p-0">
+              <SearchFilters
+                :query="query"
+                :facets="facets"
+                @change="changeFilter"
+                @reset="reset"
+              />
+            </div>
+            <div class="p-4 lg:hidden">
+              <MdButton
+                variant="filled"
+                class="w-full"
+                @click="toggleSheet(false)"
+              >
+                Show results
+              </MdButton>
+            </div>
           </div>
-          <h2
-            v-if="!sheetOpen"
-            :id="filtersTitleId"
-            class="sr-only"
-          >
-            Filters
-          </h2>
-          <div class="flex-1 overflow-y-auto p-4 lg:overflow-visible lg:p-0">
-            <SearchFilters
-              :query="query"
-              :facets="facets"
-              @change="changeFilter"
-              @reset="reset"
-            />
-          </div>
-          <div class="p-4 lg:hidden">
-            <MdButton
-              variant="filled"
-              class="w-full"
-              @click="toggleSheet(false)"
-            >
-              Show results
-            </MdButton>
-          </div>
-        </div>
 
-        <section
-          aria-labelledby="search-results-title"
-          :aria-busy="loading ? 'true' : 'false'"
-          class="min-w-0"
-        >
-          <h2
-            id="search-results-title"
-            class="sr-only"
+          <section
+            aria-labelledby="search-results-title"
+            :aria-busy="loading ? 'true' : 'false'"
+            class="min-w-0"
           >
-            Results
-          </h2>
-          <!-- Announces the count once an answer is in, and stays quiet while one is on its way. -->
-          <p
-            class="sr-only"
-            aria-live="polite"
-            data-test="live-region"
-          >
-            {{ announced }}
-          </p>
-
-          <div class="flex flex-wrap items-end gap-3">
-            <MdButton
-              ref="filterButton"
-              variant="outlined"
-              class="lg:hidden"
-              aria-haspopup="dialog"
-              :aria-expanded="String(sheetOpen)"
-              data-test="open-filters"
-              @click="toggleSheet(true)"
+            <h2
+              id="search-results-title"
+              class="sr-only"
             >
-              Filters{{ filterCount > 0 ? ` (${filterCount})` : '' }}
-            </MdButton>
+              Results
+            </h2>
+            <!-- Announces the count once an answer is in, and stays quiet while one is on its way. -->
             <p
-              v-if="result && !loading"
-              class="m-0 mr-auto md-title-medium text-on-surface"
-              data-test="count"
+              class="sr-only"
+              aria-live="polite"
+              data-test="live-region"
             >
-              {{ countText }}
+              {{ announced }}
             </p>
-            <MdSelect
-              class="w-44!"
-              label="Sort by"
-              :options="SORT_OPTIONS"
-              :model-value="query.sort"
-              data-test="sort"
-              @update:model-value="go({ sort: $event })"
-            />
-            <MdSelect
-              class="w-40!"
-              label="Order"
-              :options="ORDER_OPTIONS"
-              :model-value="query.order"
-              data-test="order"
-              @update:model-value="go({ order: $event })"
-            />
-          </div>
 
-          <MdCard
-            v-if="loading"
-            as="ul"
-            variant="low"
-            padding="none"
-            data-ingot-state="loading"
-            class="mt-4 m-0 list-none overflow-hidden"
-            data-test="skeleton"
-            aria-hidden="true"
-          >
-            <li
-              v-for="row in SKELETON_ROWS"
-              :key="row"
-              class="h-[88px] animate-pulse border-b border-outline-variant px-4 py-4 last:border-b-0"
-            >
-              <div class="h-5 w-2/3 rounded-corner-small bg-surface-container-highest" />
-              <div class="mt-3 h-4 w-1/3 rounded-corner-small bg-surface-container-highest" />
-            </li>
-          </MdCard>
+            <div class="flex flex-wrap items-end gap-3">
+              <MdButton
+                ref="filterButton"
+                variant="outlined"
+                class="lg:hidden"
+                aria-haspopup="dialog"
+                :aria-expanded="String(sheetOpen)"
+                data-test="open-filters"
+                @click="toggleSheet(true)"
+              >
+                Filters{{ filterCount > 0 ? ` (${filterCount})` : '' }}
+              </MdButton>
+              <p
+                v-if="result && !loading"
+                class="m-0 mr-auto md-title-medium text-on-surface"
+                data-test="count"
+              >
+                {{ countText }}
+              </p>
+              <MdSelect
+                class="w-44!"
+                label="Sort by"
+                :options="SORT_OPTIONS"
+                :model-value="query.sort"
+                data-test="sort"
+                @update:model-value="go({ sort: $event })"
+              />
+              <MdSelect
+                class="w-40!"
+                label="Order"
+                :options="ORDER_OPTIONS"
+                :model-value="query.order"
+                data-test="order"
+                @update:model-value="go({ order: $event })"
+              />
+            </div>
 
-          <div
-            v-else-if="failure"
-            class="mt-4 flex flex-col items-start gap-3"
-            data-test="failure"
-          >
-            <p
-              class="m-0 md-body-large text-error"
-              role="alert"
-            >
-              {{ failure }}
-            </p>
-            <MdButton
-              variant="tonal"
-              data-test="retry"
-              @click="load"
-            >
-              Retry
-            </MdButton>
-          </div>
-
-          <div
-            v-else-if="outOfRange"
-            class="mt-4 flex flex-col items-start gap-3"
-            data-test="out-of-range"
-          >
-            <p class="m-0 md-body-large text-on-surface-variant">
-              There are no results on this page.
-            </p>
-            <MdButton
-              variant="tonal"
-              @click="go({ page: 0 })"
-            >
-              Back to the first page
-            </MdButton>
-          </div>
-
-          <div
-            v-else-if="result && items.length === 0"
-            class="mt-4 flex flex-col items-start gap-3"
-            data-test="empty"
-          >
-            <p class="m-0 md-body-large text-on-surface">
-              {{ query.q ? `Nothing matches "${query.q}".` : 'Nothing matches.' }}
-            </p>
-            <p
-              v-if="filterWords.length > 0"
-              class="m-0 md-body-medium text-on-surface-variant"
-              data-test="empty-filters"
-            >
-              Active filters: {{ filterWords.join(', ') }}.
-            </p>
-            <p
-              v-if="onlyMirrors"
-              class="m-0 md-body-medium text-on-surface-variant"
-              data-test="empty-mirror"
-            >
-              Search shows what this instance holds. A proxy repository lists an artifact after it has fetched it once.
-            </p>
-            <MdButton
-              v-if="filterWords.length > 0"
-              variant="tonal"
-              data-test="reset-all"
-              @click="resetEverything"
-            >
-              Reset filters
-            </MdButton>
-          </div>
-
-          <template v-else-if="result">
             <MdCard
-              ref="list"
+              v-if="loading"
               as="ul"
               variant="low"
               padding="none"
+              data-ingot-state="loading"
               class="mt-4 m-0 list-none overflow-hidden"
-              data-test="results"
+              data-test="skeleton"
+              aria-hidden="true"
             >
-              <SearchResultRow
-                v-for="(item, index) in items"
-                :key="rowKey(item)"
-                :item="item"
-                :expanded="Boolean(expanded[rowKey(item)])"
-                :tabbable="index === activeRow"
-                :files="filesByKey[rowKey(item)]"
-                @toggle="toggleRow(item)"
-                @focus-row="activeRow = index"
-                @move="moveFrom(index, $event)"
-                @load-files="loadFiles(item, (filesByKey[rowKey(item)]?.page ?? 0) + 1)"
-                @retry-files="loadFiles(item, filesByKey[rowKey(item)]?.page ?? 0)"
-              />
+              <li
+                v-for="row in SKELETON_ROWS"
+                :key="row"
+                class="h-[88px] animate-pulse border-b border-outline-variant px-4 py-4 last:border-b-0"
+              >
+                <div class="h-5 w-2/3 rounded-corner-small bg-surface-container-highest" />
+                <div class="mt-3 h-4 w-1/3 rounded-corner-small bg-surface-container-highest" />
+              </li>
             </MdCard>
-            <nav
-              v-if="finalPage > 0 || query.page > 0"
-              aria-label="Pagination"
-              class="mt-4 flex items-center justify-between gap-3"
+
+            <div
+              v-else-if="failure"
+              class="mt-4 flex flex-col items-start gap-3"
+              data-test="failure"
             >
+              <p
+                class="m-0 md-body-large text-error"
+                role="alert"
+              >
+                {{ failure }}
+              </p>
               <MdButton
-                variant="outlined"
-                :disabled="query.page === 0"
-                data-test="previous"
-                @click="go({ page: query.page - 1 })"
+                variant="tonal"
+                data-test="retry"
+                @click="load"
               >
-                Previous
+                Retry
               </MdButton>
-              <span
-                class="md-body-medium text-on-surface-variant"
-                data-test="page-position"
-              >
-                Page {{ query.page + 1 }}{{ result.totalCapped ? '' : ` of ${finalPage + 1}` }}
-              </span>
+            </div>
+
+            <div
+              v-else-if="outOfRange"
+              class="mt-4 flex flex-col items-start gap-3"
+              data-test="out-of-range"
+            >
+              <p class="m-0 md-body-large text-on-surface-variant">
+                There are no results on this page.
+              </p>
               <MdButton
-                variant="outlined"
-                :disabled="query.page >= finalPage"
-                data-test="next"
-                @click="go({ page: query.page + 1 })"
+                variant="tonal"
+                @click="go({ page: 0 })"
               >
-                Next
+                Back to the first page
               </MdButton>
-            </nav>
-          </template>
-        </section>
-      </div>
-    </template>
-  </div>
+            </div>
+
+            <div
+              v-else-if="result && items.length === 0"
+              class="mt-4 flex flex-col items-start gap-3"
+              data-test="empty"
+            >
+              <p class="m-0 md-body-large text-on-surface">
+                {{ query.q ? `Nothing matches "${query.q}".` : 'Nothing matches.' }}
+              </p>
+              <p
+                v-if="filterWords.length > 0"
+                class="m-0 md-body-medium text-on-surface-variant"
+                data-test="empty-filters"
+              >
+                Active filters: {{ filterWords.join(', ') }}.
+              </p>
+              <p
+                v-if="onlyMirrors"
+                class="m-0 md-body-medium text-on-surface-variant"
+                data-test="empty-mirror"
+              >
+                Search shows what this instance holds. A proxy repository lists an artifact after it has fetched it once.
+              </p>
+              <MdButton
+                v-if="filterWords.length > 0"
+                variant="tonal"
+                data-test="reset-all"
+                @click="resetEverything"
+              >
+                Reset filters
+              </MdButton>
+            </div>
+
+            <template v-else-if="result">
+              <MdCard
+                ref="list"
+                as="ul"
+                variant="low"
+                padding="none"
+                class="mt-4 m-0 list-none overflow-hidden"
+                data-test="results"
+              >
+                <SearchResultRow
+                  v-for="(item, index) in items"
+                  :key="rowKey(item)"
+                  :item="item"
+                  :expanded="Boolean(expanded[rowKey(item)])"
+                  :tabbable="index === activeRow"
+                  :files="filesByKey[rowKey(item)]"
+                  @toggle="toggleRow(item)"
+                  @focus-row="activeRow = index"
+                  @move="moveFrom(index, $event)"
+                  @load-files="loadFiles(item, (filesByKey[rowKey(item)]?.page ?? 0) + 1)"
+                  @retry-files="loadFiles(item, filesByKey[rowKey(item)]?.page ?? 0)"
+                />
+              </MdCard>
+              <nav
+                v-if="finalPage > 0 || query.page > 0"
+                aria-label="Pagination"
+                class="mt-4 flex items-center justify-between gap-3"
+              >
+                <MdButton
+                  variant="outlined"
+                  :disabled="query.page === 0"
+                  data-test="previous"
+                  @click="go({ page: query.page - 1 })"
+                >
+                  Previous
+                </MdButton>
+                <span
+                  class="md-body-medium text-on-surface-variant"
+                  data-test="page-position"
+                >
+                  Page {{ query.page + 1 }}{{ result.totalCapped ? '' : ` of ${finalPage + 1}` }}
+                </span>
+                <MdButton
+                  variant="outlined"
+                  :disabled="query.page >= finalPage"
+                  data-test="next"
+                  @click="go({ page: query.page + 1 })"
+                >
+                  Next
+                </MdButton>
+              </nav>
+            </template>
+          </section>
+        </div>
+      </template>
+    </div>
+  </MdPage>
 </template>
