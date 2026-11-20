@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
+import { motionScrimTransitionName, motionTransitionName } from '../../helpers/motionPattern'
 
 /*
  * A modal dialog: a vue-final-modal teleported to the body, over a scrim, with a 24px side inset. The frame is 280px at
@@ -77,6 +78,12 @@ const SIZES = {
 const contentClass = computed(() => props.size === 'compact'
   ? 'w-full max-medium:px-0 medium:px-6'
   : 'w-full px-6')
+
+// The motion of the dialog pattern: the scrim fades, and the panel fades and scales from 0.95. The modal owns both Vue
+// <Transition> elements, so the dialog hands it the names of the pattern instead of wrapping it in MdTransition. Without
+// a name the modal falls back to the unstyled v- classes and the dialog appears at once.
+const SCRIM_TRANSITION = motionScrimTransitionName('dialog')
+const PANEL_TRANSITION = motionTransitionName('dialog')
 
 const frame = ref<HTMLElement | null>(null)
 let openerChain: HTMLElement[] = []
@@ -152,7 +159,9 @@ const onKeydown = (event: KeyboardEvent) => {
     :model-value="modelValue"
     class="z-md-dialog flex items-center justify-center"
     overlay-class="bg-scrim/md-scrim!"
+    :overlay-transition="SCRIM_TRANSITION"
     :content-class="contentClass"
+    :content-transition="PANEL_TRANSITION"
     teleport-to="body"
     :aria-labelledby="labelledby"
     :aria-describedby="describedby"

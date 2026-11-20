@@ -49,6 +49,12 @@ describe('named transition classes', () => {
     expect(css, `a .motion-${pattern}-leave-active class`).toContain(`.motion-${pattern}-leave-active`)
   })
 
+  it('declares the scrim fade of the dialog pattern, with its opacity animated in both directions', () => {
+    expect(css, 'a .motion-dialog-scrim-enter-active class').toContain('.motion-dialog-scrim-enter-active')
+    expect(css, 'a .motion-dialog-scrim-leave-active class').toContain('.motion-dialog-scrim-leave-active')
+    expect(css, 'the scrim starts and ends transparent').toMatch(/\.motion-dialog-scrim-enter-from,\s*\.motion-dialog-scrim-leave-to\s*\{\s*opacity: 0;/)
+  })
+
   it('finds a timing declaration in the file', () => {
     expect(timingOf(css).length, 'the transition declarations of the patterns').toBeGreaterThan(0)
   })

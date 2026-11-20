@@ -107,7 +107,21 @@
   opacity: 0;
 }
 
-/* Dialog: the panel. The scrim is a fade of its own, which the dialog component adds. */
+/* Dialog: the scrim fades in over 200 milliseconds and out over 150 milliseconds, under the panel. */
+.motion-dialog-scrim-enter-active {
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.motion-dialog-scrim-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
+}
+
+.motion-dialog-scrim-enter-from,
+.motion-dialog-scrim-leave-to {
+  opacity: 0;
+}
+
+/* Dialog: the panel fades and scales from 0.95. */
 .motion-dialog-enter-active {
   transition:
     opacity var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized-decelerate),
