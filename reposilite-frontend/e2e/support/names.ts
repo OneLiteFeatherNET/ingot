@@ -15,6 +15,7 @@
  */
 
 import { createHash } from 'node:crypto'
+import type { TestInfo } from '@playwright/test'
 
 /*
  * A name that belongs to one test. It is built from the worker index, a slug of the test title and a
@@ -24,7 +25,7 @@ import { createHash } from 'node:crypto'
 // The server refuses repository names longer than this, and records a failure when one is configured anyway.
 const MAX_REPOSITORY_NAME = 64
 
-const scopedName = (testInfo, label) => {
+const scopedName = (testInfo: TestInfo, label: string): string => {
   const slug = testInfo.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -40,6 +41,6 @@ const scopedName = (testInfo, label) => {
 }
 
 /* The same name without hyphens, for a test that checks where a long name breaks. */
-const unbrokenName = (testInfo, label) => scopedName(testInfo, label).replace(/-/g, '')
+const unbrokenName = (testInfo: TestInfo, label: string): string => scopedName(testInfo, label).replace(/-/g, '')
 
 export { scopedName, unbrokenName }

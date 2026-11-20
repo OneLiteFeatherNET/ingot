@@ -31,9 +31,9 @@ const here = dirname(fileURLToPath(import.meta.url))
 const FIXTURE = join(here, 'fixtures', 'e2e-style')
 const PLUGIN_NAME = 'e2e-style'
 
-const toolPath = (name) => (process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', name) : name)
+const toolPath = (name: string): string => (process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', name) : name)
 
-const run = (tool, args) => {
+const run = (tool: string, args: string[]): void => {
   const result = spawnSync(toolPath(tool), args, { encoding: 'utf8' })
   if (result.status !== 0) {
     throw new Error(`${tool} failed with ${result.status}: ${result.stderr || result.stdout}`)
@@ -41,7 +41,12 @@ const run = (tool, args) => {
 }
 
 /** Compiles the fixture against [serverJar] and returns the jar path and the function that removes its directory. */
-const buildStylePlugin = (serverJar) => {
+interface StylePlugin {
+  jar: string
+  dispose: () => void
+}
+
+const buildStylePlugin = (serverJar: string): StylePlugin => {
   const work = mkdtempSync(join(tmpdir(), 'ingot-e2e-plugin-'))
   const classes = join(work, 'classes')
   mkdirSync(classes)

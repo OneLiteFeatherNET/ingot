@@ -29,7 +29,7 @@ const repositoryRoot = resolve(here, '..', '..', '..')
 const DEFAULT_JAR = join(repositoryRoot, 'reposilite-test', 'workspace', 'plugins', 'nexus-import-plugin.jar')
 
 /** Returns the nexus-import plugin jar, or fails with the command that builds it. */
-const resolveNexusImportJar = () => {
+const resolveNexusImportJar = (): string => {
   const jar = process.env.E2E_NEXUS_IMPORT_JAR ? resolve(process.env.E2E_NEXUS_IMPORT_JAR) : DEFAULT_JAR
   if (!existsSync(jar)) {
     throw new Error(`no nexus-import-plugin.jar at ${jar}; build it first with ./gradlew :reposilite-plugins:nexus-import-plugin:shadowJar`)

@@ -15,12 +15,28 @@
  */
 
 import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
 
 // WCAG 2.0 and 2.1, level A and AA. Those are the rules the gate is written against.
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
-const GATING_IMPACTS = ['serious', 'critical']
+const GATING_IMPACTS: ReadonlyArray<Result['impact']> = ['serious', 'critical']
 
-const summarize = (violation) => ({
+// One violation as axe reports it.
+type Result = Awaited<ReturnType<AxeBuilder['analyze']>>['violations'][number]
+
+interface Finding {
+  id: string
+  impact: Result['impact']
+  help: string
+  nodes: string[]
+}
+
+interface AccessibilityReport {
+  gating: Finding[]
+  reported: Finding[]
+}
+
+const summarize = (violation: Result): Finding => ({
   id: violation.id,
   impact: violation.impact,
   help: violation.help,
@@ -31,7 +47,7 @@ const summarize = (violation) => ({
  * Runs axe on the page in its current state. Returns the gating findings (serious and critical) and
  * every other finding, so the caller can attach the lower impacts to the report without failing on them.
  */
-const analyzeAccessibility = async (page) => {
+const analyzeAccessibility = async (page: Page): Promise<AccessibilityReport> => {
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
   const findings = results.violations.map(summarize)
   return {
