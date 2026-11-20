@@ -6,7 +6,7 @@
     "vitest.config.js",
     "playwright.config.js",
     "eslint.config.js",
-    "nitro.config.mjs",
+    "nitro.config.ts",
     "scripts/**/*",
     "server/**/*",
     // The dashboard plugin imports the segment list of the router. A composite project must list every file it imports.
