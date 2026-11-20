@@ -275,15 +275,19 @@ test.describe('top bar for a visitor who is not signed in', () => {
 })
 
 test.describe('administration trail on a phone', () => {
-  test('draws the back arrow and the last crumb on one line at 320 px, with no horizontal scroll', async ({ adminPage: page }) => {
+  // The back arrow sits alone in its own row above the text column below 1240 pixels (design D3 of
+  // fix-surface-hierarchy-and-page-header), and the trail is the breadcrumb of the page header (D4, D9).
+  test('draws the back arrow in its own row above the trail at 320 px, with no horizontal scroll', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     await page.goto(siteUrl('/settings/web'))
     await expect(page.getByRole('heading', { name: 'Reverse proxy', level: 1 })).toBeVisible()
 
-    const back = await page.getByRole('link', { name: 'Back to Administration' }).boundingBox()
-    const trail = await page.getByRole('navigation', { name: 'Administration / Instance', exact: true }).boundingBox()
-    const centre = (box) => box.y + box.height / 2
-    expect(Math.abs(centre(back) - centre(trail)), 'the back arrow and the trail share one line').toBeLessThanOrEqual(8)
+    const trail = page.locator('[data-ingot-component="administration-breadcrumb"]').getByRole('navigation', { name: 'Breadcrumb', exact: true })
+    await expect(trail.getByText('Instance', { exact: true }), 'the trail shows the group of the page').toBeVisible()
+
+    const back = await page.getByRole('link', { name: 'Back to Administration', exact: true }).boundingBox()
+    const trailBox = await trail.boundingBox()
+    expect(back.y + back.height, 'the back arrow ends above the trail').toBeLessThanOrEqual(trailBox.y + 0.5)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
   })
