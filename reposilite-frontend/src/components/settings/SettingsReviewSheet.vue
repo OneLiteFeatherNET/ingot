@@ -16,16 +16,15 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
-import { SCRIM_STYLE } from './dialog'
+import MdSideSheet from '../md/MdSideSheet.vue'
 import { formatChangeValue, groupChanges } from './settingsDiff'
 import type { ChangeKind, SettingsChange } from './settingsDiff'
 
 /*
- * Every unsaved change, grouped by domain and entry, with a revert for each one. From 840px it is a
- * side sheet on the right; below that it fills the window. Nothing is written until Save is pressed,
- * and Revert only moves the draft back to the saved value of that one field.
+ * Every unsaved change, grouped by domain and entry, with a revert for each one, in the wide side sheet
+ * on the end edge. Nothing is written until Save is pressed, and Revert only moves the draft back to the
+ * saved value of that one field.
  */
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -54,8 +53,6 @@ const emit = defineEmits<{
 
 const sections = computed(() => groupChanges(props.changes))
 
-const close = () => emit('update:open', false)
-
 const BADGES: Partial<Record<ChangeKind, string>> = { added: 'Added', removed: 'Removed' }
 
 const labelOf = (change: SettingsChange): string => {
@@ -79,47 +76,27 @@ const revertLabelOf = (change: SettingsChange): string => {
 </script>
 
 <template>
-  <VueFinalModal
-    :model-value="open"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex"
-    content-class="flex min-h-full w-full justify-end"
-    @update:model-value="emit('update:open', $event)"
+  <MdSideSheet
+    :open="open"
+    :title="conflict ? 'Stored settings compared' : 'Review changes'"
+    side="end"
+    width="wide"
+    @update:open="emit('update:open', $event)"
   >
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-review-title"
-      class="flex min-h-full w-full flex-col bg-surface-container-low text-on-surface shadow-elevation-3 expanded:w-[28rem] expanded:rounded-l-corner-extra-large"
+      class="flex min-h-full flex-col"
       data-ingot-component="settings-review-sheet"
     >
-      <header
-        data-ingot-part="header"
-        class="flex items-center justify-between gap-2 border-b border-outline-variant px-4 py-4 md:px-6"
-      >
-        <h2
-          id="settings-review-title"
-          class="md-title-large text-on-surface"
-        >
-          {{ conflict ? 'Stored settings compared' : 'Review changes' }}
-        </h2>
-        <MdButton
-          variant="text"
-          type="button"
-          @click="close"
-        >
-          Close
-        </MdButton>
-      </header>
-
-      <div class="flex-1 overflow-y-auto px-4 py-4 md:px-6">
+      <!-- The title and the close button belong to the side sheet; the header part keeps the note under them. -->
+      <header data-ingot-part="header">
         <p
           v-if="conflict"
           class="pb-4 md-body-medium text-on-surface-variant"
         >
           The stored settings were saved elsewhere. Each change shows the stored value, then your draft.
         </p>
+      </header>
+      <div class="flex-1">
         <p
           v-if="changes.length === 0"
           class="md-body-large text-on-surface-variant"
@@ -189,7 +166,7 @@ const revertLabelOf = (change: SettingsChange): string => {
         </section>
       </div>
 
-      <footer class="flex flex-col gap-3 border-t border-outline-variant px-4 py-3 md:px-6">
+      <footer class="sticky bottom-0 flex flex-col gap-3 border-t border-outline-variant bg-surface-container-low pt-3">
         <p
           v-if="invalid"
           class="md-body-medium text-error"
@@ -217,5 +194,5 @@ const revertLabelOf = (change: SettingsChange): string => {
         </div>
       </footer>
     </div>
-  </VueFinalModal>
+  </MdSideSheet>
 </template>

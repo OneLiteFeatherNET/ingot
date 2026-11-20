@@ -119,10 +119,13 @@ const mountView = async () => {
   return { server, store }
 }
 
-// The dialog and the sheet are teleported to the body, so they are found there rather than inside the wrapper.
+// The dialog is teleported to the body, so it is found there rather than inside the wrapper. The review sheet is the
+// side sheet whose panel is in the document; its heading id is generated.
 const conflictDialog = () => document.querySelector('[role="alertdialog"]')
-const reviewSheet = () => document.querySelector('[role="dialog"][aria-labelledby="settings-review-title"]')
-const buttonIn = (root, label) => root && [...root.querySelectorAll('button')].find(button => button.textContent.trim() === label)
+const reviewSheet = () => document.querySelector('[data-md-sheet-part="panel"]')?.closest('[role="dialog"]') ?? null
+// A button is found by its text, or by its accessible name when it is an icon button.
+const buttonIn = (root, label) => root && [...root.querySelectorAll('button')]
+  .find(button => button.textContent.trim() === label || button.getAttribute('aria-label') === label)
 const press = async (root, label) => {
   const button = buttonIn(root, label)
   if (!button) throw new Error(`no button labelled "${label}"`)
