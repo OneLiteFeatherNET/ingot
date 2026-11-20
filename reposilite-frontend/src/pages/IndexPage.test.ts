@@ -15,6 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -25,6 +27,7 @@ import type { AppRouterOptions } from '../router/create'
 import { canUse } from '../store/nodeAccess'
 import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
+import MdTransition from '../components/md/MdTransition.vue'
 
 // The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
 interface SessionFlags {
@@ -67,6 +70,22 @@ vi.mock('../store/session', () => ({
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))
+
+// The built-in pages fit the bottom bar, so no visitor has a More item today. A test that needs the More panel moves the
+// last page of the bar under More, with the real pages of the registry. Every other test sees the registry unchanged.
+const overflow = vi.hoisted(() => ({ lastUnderMore: false }))
+vi.mock('../navigation/registry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../navigation/registry')>()
+  return {
+    ...actual,
+    barLayout: (can: Parameters<typeof actual.barLayout>[0]) => {
+      const layout = actual.barLayout(can)
+      return overflow.lastUnderMore
+        ? { bar: layout.bar.slice(0, -1), more: [{ heading: 'More', pages: layout.bar.slice(-1) }] }
+        : layout
+    }
+  }
+})
 
 // The views are heavy and talk to the server, so each one is replaced by a stub. A stub says
 // which section it is and keeps the props it was given, so the tests can check what the page
@@ -985,5 +1004,68 @@ describe('IndexPage page transition', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="section"]').attributes('data-section'), 'the page of the new section is shown').toBe('maintenance')
+  })
+})
+
+describe('IndexPage More panel motion', () => {
+  beforeEach(() => {
+    session.isManager = null
+    overflow.lastUnderMore = true
+  })
+
+  afterEach(() => {
+    overflow.lastUnderMore = false
+  })
+
+  const openMore = async (wrapper: VueWrapper) => {
+    const more = navigations(wrapper)[0].findAll('button').find(button => button.text() === 'More')
+    expect(more, 'the bottom bar has a More item').toBeDefined()
+    await more!.trigger('click')
+    await flushPromises()
+  }
+
+  // The page is typed loosely by the lint, so the wrapper is named a VueWrapper once here.
+  const mountWithMore = async (): Promise<VueWrapper> => (await mountAt('/', { manager: true })).wrapper as VueWrapper
+
+  const panelTransition = (wrapper: VueWrapper) =>
+    wrapper.findAllComponents(MdTransition).find(transition => transition.find('nav[aria-label="More sections"]').exists())
+
+  it('opens the More panel through the menu pattern of the motion primitives', async () => {
+    const wrapper = await mountWithMore()
+
+    await openMore(wrapper)
+
+    const transition = panelTransition(wrapper)
+    expect(transition, 'the More panel is wrapped by MdTransition').toBeDefined()
+    expect(transition!.props('pattern'), 'the More panel uses the menu pattern').toBe('menu')
+  })
+
+  it('marks the More panel as a panel that rises into place', async () => {
+    const wrapper = await mountWithMore()
+
+    await openMore(wrapper)
+
+    const panel = wrapper.find('nav[aria-label="More sections"]').element.parentElement!
+    expect(panel.hasAttribute('data-md-menu-rise'), 'the panel asks for the rise of the menu pattern').toBe(true)
+  })
+
+  it('declares a rise of 8 pixels for a panel of the menu pattern, in place of the scale', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'styles', 'md3', 'motion-rise.css'), 'utf8')
+    const rule = css.match(/\.motion-menu-enter-from\[data-md-menu-rise\]\s*\{([^}]*)\}/)
+
+    expect(rule, 'the stylesheet has an enter rule for the rising panel').not.toBeNull()
+    expect(rule![1], 'the panel enters 8 pixels below its place').toMatch(/transform:\s*translateY\(8px\);/)
+    const stylesheet = readFileSync(join(process.cwd(), 'src', 'style.css'), 'utf8')
+    expect(stylesheet, 'style.css imports the rise').toContain('@import "./styles/md3/motion-rise.css";')
+  })
+
+  it('closes the More panel with Escape', async () => {
+    const wrapper = await mountWithMore()
+    await openMore(wrapper)
+
+    await wrapper.find('nav[aria-label="More sections"]').trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(wrapper.find('nav[aria-label="More sections"]').exists(), 'Escape closes the panel').toBe(false)
   })
 })

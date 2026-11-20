@@ -17,13 +17,15 @@
 <script setup lang="ts" generic="T extends string">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useId, watch } from 'vue'
 import MdFieldShell from './MdFieldShell.vue'
+import MdTransition from './MdTransition.vue'
 
 /*
  * Material Design 3 outlined select. The field is a select-only combobox, the WAI-ARIA pattern:
  * it keeps the focus, and the options open in a listbox that is drawn in the body, so a dialog
  * around the field cannot clip it. The menu is an MD3 exposed menu in the surface-container role.
  * It opens below the field, or above it when there is no room below, and it scrolls when neither
- * side has room for every option.
+ * side has room for every option. It opens and closes through the menu pattern of MdTransition and
+ * scales from the edge next to the field: the top edge below the field, the bottom edge above it.
  *
  * Keyboard, as on a native select: ArrowDown and ArrowUp move through the options, Home and End
  * jump to the ends, Enter and Space choose the active option, Escape closes without choosing, Tab
@@ -159,6 +161,9 @@ function place() {
   }
   menuStyle.value = style
 }
+
+// The menu grows from the edge that touches the field.
+const menuOrigin = computed(() => ('bottom' in menuStyle.value ? 'origin-bottom' : 'origin-top'))
 
 function scrollActiveIntoView() {
   nextTick(() => listboxRef.value?.children[active.value]?.scrollIntoView?.({ block: 'nearest' }))
@@ -379,40 +384,43 @@ onBeforeUnmount(() => {
       </template>
     </MdFieldShell>
     <Teleport to="body">
-      <ul
-        v-if="isOpen"
-        :id="listboxId"
-        ref="listboxRef"
-        role="listbox"
-        :aria-labelledby="labelId"
-        class="fixed overflow-y-auto rounded-corner-extra-small bg-surface-container py-2 shadow-elevation-2"
-        :style="{ ...menuStyle, zIndex: 'calc(var(--md-sys-z-dialog) + 1)' }"
-        @mousedown.prevent
-      >
-        <li
-          v-for="(option, index) in options"
-          :id="optionId(index)"
-          :key="option.value"
-          role="option"
-          :aria-selected="index === selectedIndex ? 'true' : 'false'"
-          class="md-state-layer relative flex min-h-12 cursor-pointer items-center gap-3 px-4 md-label-large"
-          :class="[index === selectedIndex ? 'text-primary' : 'text-on-surface', index === active ? 'md-state-focus!' : '']"
-          @click="chooseIndex(index)"
+      <MdTransition pattern="menu">
+        <ul
+          v-if="isOpen"
+          :id="listboxId"
+          ref="listboxRef"
+          role="listbox"
+          :aria-labelledby="labelId"
+          class="fixed overflow-y-auto rounded-corner-extra-small bg-surface-container py-2 shadow-elevation-2"
+          :class="menuOrigin"
+          :style="{ ...menuStyle, zIndex: 'calc(var(--md-sys-z-dialog) + 1)' }"
+          @mousedown.prevent
         >
-          <span class="flex size-6 shrink-0 items-center justify-center">
-            <svg
-              v-if="index === selectedIndex"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              class="size-6"
-            >
-              <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
-            </svg>
-          </span>
-          <span class="min-w-0 truncate">{{ option.label }}</span>
-        </li>
-      </ul>
+          <li
+            v-for="(option, index) in options"
+            :id="optionId(index)"
+            :key="option.value"
+            role="option"
+            :aria-selected="index === selectedIndex ? 'true' : 'false'"
+            class="md-state-layer relative flex min-h-12 cursor-pointer items-center gap-3 px-4 md-label-large"
+            :class="[index === selectedIndex ? 'text-primary' : 'text-on-surface', index === active ? 'md-state-focus!' : '']"
+            @click="chooseIndex(index)"
+          >
+            <span class="flex size-6 shrink-0 items-center justify-center">
+              <svg
+                v-if="index === selectedIndex"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                class="size-6"
+              >
+                <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
+              </svg>
+            </span>
+            <span class="min-w-0 truncate">{{ option.label }}</span>
+          </li>
+        </ul>
+      </MdTransition>
     </Teleport>
   </div>
 </template>
