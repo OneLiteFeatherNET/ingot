@@ -20,6 +20,7 @@ package net.onelitefeather.ingot.search.enrichment
 
 import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.Provenance
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.outbox.StoredFile
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -60,8 +61,8 @@ internal class ArtifactEnrichmentPipelineTest {
         return ArtifactEnrichmentPipeline(enrichers = enrichers, call = { _, _ -> queue.removeFirst() }, warn = {})
     }
 
-    private fun ArtifactEnrichmentPipeline.enrichOnce() =
-        enrich(EnrichmentTrigger.CHANGED, jar, Provenance.HOSTED, StoredFile(0, Instant.EPOCH), null, null) { EmptyContent }
+    private fun ArtifactEnrichmentPipeline.enrichOnce(capabilities: Set<SearchCapability> = emptySet()) =
+        enrich(EnrichmentTrigger.CHANGED, jar, Provenance.HOSTED, StoredFile(0, Instant.EPOCH), null, null, capabilities) { EmptyContent }
 
     @Test
     fun `a registered enricher that was never called is counted with zeros`() {
@@ -124,6 +125,42 @@ internal class ArtifactEnrichmentPipelineTest {
         assertThat(failures).`as`("distinct reasons kept, plus other").hasSize(ArtifactEnrichmentPipeline.MAX_FAILURE_REASONS + 1)
         assertThat(failures[ArtifactEnrichmentPipeline.OTHER_FAILURE_REASON]).`as`("failures beyond the bound").isEqualTo(2L)
         assertThat(failures.values.sum()).`as`("every failure is counted once").isEqualTo(reasons.size.toLong())
+    }
+
+    @Test
+    fun `an attribute set at a backend without the attributes capability is counted as an unsupported backend skip`() {
+        val pipeline = pipeline(listOf(StaticEnricher("app-id")), listOf(EnrichmentAttributes(mapOf("app-id.loader" to listOf("paper")))))
+
+        val outcomes = pipeline.enrichOnce(capabilities = emptySet())
+
+        assertThat(outcomes).`as`("outcome of an attribute set the backend cannot store")
+            .containsExactly(EnricherOutcome("app-id", "1", EnrichmentSkipped(UNSUPPORTED_BACKEND)))
+        val tally = pipeline.counts().getValue("app-id")
+        assertThat(tally.skipped).`as`("skipped calls").isEqualTo(1L)
+        assertThat(tally.completed).`as`("completed calls").isEqualTo(0L)
+    }
+
+    @Test
+    fun `an allowed attribute set reaches the outcome at a backend with the attributes capability`() {
+        val attributes = EnrichmentAttributes(mapOf("app-id.loader" to listOf("paper")))
+        val pipeline = pipeline(listOf(StaticEnricher("app-id")), listOf(attributes))
+
+        val outcomes = pipeline.enrichOnce(capabilities = setOf(SearchCapability.ATTRIBUTES))
+
+        assertThat(outcomes).`as`("outcome of an allowed attribute set").containsExactly(EnricherOutcome("app-id", "1", attributes))
+        assertThat(pipeline.counts().getValue("app-id").completed).`as`("completed calls").isEqualTo(1L)
+    }
+
+    @Test
+    fun `an attribute set of another namespace fails with its rule and without its values`() {
+        val pipeline = pipeline(listOf(StaticEnricher("app-id")), listOf(EnrichmentAttributes(mapOf("other.loader" to listOf("secret-value")))))
+
+        val outcomes = pipeline.enrichOnce(capabilities = setOf(SearchCapability.ATTRIBUTES))
+
+        assertThat(outcomes).`as`("outcome of a refused attribute set")
+            .containsExactly(EnricherOutcome("app-id", "1", EnrichmentFailed("invalid attributes: foreign-namespace")))
+        assertThat(pipeline.counts().getValue("app-id").failures).`as`("failures per reason")
+            .isEqualTo(mapOf("invalid attributes: foreign-namespace" to 1L))
     }
 
 }

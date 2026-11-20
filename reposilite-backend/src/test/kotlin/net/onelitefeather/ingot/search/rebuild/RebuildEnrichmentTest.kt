@@ -18,12 +18,22 @@
 
 package net.onelitefeather.ingot.search.rebuild
 
+import net.onelitefeather.ingot.search.ArtifactPathParser
+import net.onelitefeather.ingot.search.ArtifactPathResult
+import net.onelitefeather.ingot.search.IndexRow
+import net.onelitefeather.ingot.search.Provenance
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.FakeArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.SearchCapability
+import net.onelitefeather.ingot.search.database.DatabaseSearchBackend
 import net.onelitefeather.ingot.search.enrichment.ARTIFACT_ENRICHER_API_VERSION
 import net.onelitefeather.ingot.search.enrichment.ArtifactContent
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnricher
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentExecutor
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentRequest
+import net.onelitefeather.ingot.search.enrichment.EnrichmentAttributes
 import net.onelitefeather.ingot.search.enrichment.EnrichmentCompleted
 import net.onelitefeather.ingot.search.enrichment.EnrichmentResult
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
@@ -39,6 +49,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
 
@@ -92,13 +103,17 @@ internal class RebuildEnrichmentTest {
         override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = true
     }
 
-    private fun RebuildHarness.enrichingService(enricher: ArtifactEnricher, warnings: MutableList<String> = mutableListOf()): RebuildService {
+    private fun RebuildHarness.enrichingService(
+        enricher: ArtifactEnricher,
+        warnings: MutableList<String> = mutableListOf(),
+        backend: ArtifactSearchBackend = DatabaseSearchBackend(database, clock),
+    ): RebuildService {
         val pipeline = ArtifactEnrichmentPipeline(
             enrichers = listOf(enricher),
             call = ArtifactEnrichmentExecutor(InlineExecutorService(), clock)::call,
             warn = { warnings += it },
         )
-        return service(enrichment = pipeline, content = { _, _, size -> EmptyContent(size) })
+        return service(backend = backend, enrichment = pipeline, content = { _, _, size -> EmptyContent(size) })
     }
 
     @Test
@@ -174,6 +189,53 @@ internal class RebuildEnrichmentTest {
             assertThat(indexedPaths("releases")).`as`("rows written despite the failing enricher").containsExactlyInAnyOrder(jar(1), jar(2))
             assertThat(run?.status).`as`("status of the run").isEqualTo(RunStatus.COMPLETED)
             assertThat(warnings).`as`("one warning per failed call").hasSize(2)
+        }
+    }
+
+    private fun loader(): RecordingEnricher =
+        RecordingEnricher("loader", setOf("jar")) { EnrichmentAttributes(mapOf("loader.name" to listOf("paper"))) }
+
+    private fun FakeArtifactSearchBackend.upserts(): List<IndexAction.Upsert> = batches.flatten().filterIsInstance<IndexAction.Upsert>()
+
+    @Test
+    fun `a new row at a backend with attributes is written with the results and the enricher version`() {
+        withHarness(directory, "attributes-new") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            entries.put("releases", jar(1), size = 2048)
+
+            enrichingService(loader(), backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(backend.upserts().single().attributes).`as`("attributes of the new row").isEqualTo(
+                mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")),
+            )
+        }
+    }
+
+    @Test
+    fun `an unchanged row keeps its stored attributes`() {
+        withHarness(directory, "attributes-unchanged") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            val parsed = ArtifactPathParser.parse("releases", jar(1)) as ArtifactPathResult.Row
+            val modified = Instant.parse("2026-10-01T00:00:00Z").toEpochMilli()
+            backend.apply(listOf(IndexAction.Upsert(IndexRow(parsed.file, Provenance.HOSTED, 1, modified, null, null, clock.millis()))))
+            entries.put("releases", jar(1), size = 1)
+            clock.advance(Duration.ofMinutes(1))
+
+            enrichingService(loader(), backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(backend.upserts().last().attributes).`as`("attributes sent for an unchanged row, null keeps the stored ones").isNull()
+        }
+    }
+
+    @Test
+    fun `a changed row at a backend without attributes is written without attributes`() {
+        withHarness(directory, "attributes-unsupported") {
+            val backend = FakeArtifactSearchBackend()
+            entries.put("releases", jar(1), size = 2048)
+
+            enrichingService(loader(), backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(backend.upserts().single().attributes).`as`("attributes sent to a backend that declares none").isNull()
         }
     }
 

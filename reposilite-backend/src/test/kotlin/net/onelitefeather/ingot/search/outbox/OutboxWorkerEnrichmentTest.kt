@@ -23,6 +23,7 @@ import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.FakeArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.database.SqliteFileDatabase
@@ -32,7 +33,9 @@ import net.onelitefeather.ingot.search.enrichment.ArtifactEnricher
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentExecutor
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentRequest
+import net.onelitefeather.ingot.search.enrichment.EnrichmentAttributes
 import net.onelitefeather.ingot.search.enrichment.EnrichmentCompleted
+import net.onelitefeather.ingot.search.enrichment.EnrichmentFailed
 import net.onelitefeather.ingot.search.enrichment.EnrichmentResult
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
 import org.assertj.core.api.Assertions.assertThat
@@ -120,8 +123,8 @@ internal class OutboxWorkerEnrichmentTest {
         override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = true
     }
 
-    private inner class Harness(database: Database, enrichers: List<ArtifactEnricher>) {
-        val backend = FakeArtifactSearchBackend()
+    private inner class Harness(database: Database, enrichers: List<ArtifactEnricher>, capabilities: Set<SearchCapability>) {
+        val backend = FakeArtifactSearchBackend(capabilities = capabilities)
         val outbox = OutboxStore(database, clock)
         val storage = FakeStorage()
         val warnings = mutableListOf<String>()
@@ -143,10 +146,14 @@ internal class OutboxWorkerEnrichmentTest {
         )
     }
 
-    private fun withWorker(enrichers: List<ArtifactEnricher>, block: Harness.() -> Unit) {
+    private fun withWorker(
+        enrichers: List<ArtifactEnricher>,
+        capabilities: Set<SearchCapability> = emptySet(),
+        block: Harness.() -> Unit,
+    ) {
         SqliteFileDatabase(directory.resolve("outbox.db")).use { sqlite ->
             SearchSchema.ensure(sqlite.database, clock)
-            Harness(sqlite.database, enrichers).block()
+            Harness(sqlite.database, enrichers, capabilities).block()
         }
     }
 
@@ -220,6 +227,58 @@ internal class OutboxWorkerEnrichmentTest {
                 .contains("app-id", "exception: IllegalStateException")
                 .`as`("warning carries no message of the failure")
                 .doesNotContain("/var/secret/path")
+        }
+    }
+
+    private fun Harness.upserted(): IndexAction.Upsert = backend.batches.single().single() as IndexAction.Upsert
+
+    @Test
+    fun `a changed file at a backend with attributes is written with the union of the results and the enricher versions`() {
+        val loader = RecordingEnricher("loader", setOf("jar")) { EnrichmentAttributes(mapOf("loader.name" to listOf("paper"))) }
+        val marker = RecordingEnricher("marker", setOf("jar"))
+        withWorker(listOf(loader, marker), setOf(SearchCapability.ATTRIBUTES)) {
+            storage.files[jar] = StoredFile(sizeBytes = 2048, lastModified = start)
+            outbox.enqueue("releases", jar, OutboxOp.CHANGED_PATH)
+
+            worker.tick()
+
+            assertThat(upserted().attributes).`as`("attributes of the changed file").isEqualTo(
+                mapOf(
+                    "loader.name" to listOf("paper"),
+                    "core.enricher.loader" to listOf("1"),
+                    "core.enricher.marker" to listOf("1"),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `a failed enricher leaves neither keys nor its version on the changed file`() {
+        val loader = RecordingEnricher("loader", setOf("jar")) { EnrichmentAttributes(mapOf("loader.name" to listOf("paper"))) }
+        val broken = RecordingEnricher("broken", setOf("jar")) { EnrichmentFailed("no manifest") }
+        withWorker(listOf(loader, broken), setOf(SearchCapability.ATTRIBUTES)) {
+            storage.files[jar] = StoredFile(sizeBytes = 2048, lastModified = start)
+            outbox.enqueue("releases", jar, OutboxOp.CHANGED_PATH)
+
+            worker.tick()
+
+            assertThat(upserted().attributes).`as`("attributes after one enricher failed").isEqualTo(
+                mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")),
+            )
+        }
+    }
+
+    @Test
+    fun `a backend without attributes gets the row without attributes and the set counts as skipped`() {
+        val loader = RecordingEnricher("loader", setOf("jar")) { EnrichmentAttributes(mapOf("loader.name" to listOf("paper"))) }
+        withWorker(listOf(loader)) {
+            storage.files[jar] = StoredFile(sizeBytes = 2048, lastModified = start)
+            outbox.enqueue("releases", jar, OutboxOp.CHANGED_PATH)
+
+            worker.tick()
+
+            assertThat(upserted().attributes).`as`("attributes sent to a backend that declares none").isNull()
+            assertThat(pipeline.counts().getValue("loader").skipped).`as`("skipped calls of the enricher").isEqualTo(1L)
         }
     }
 
