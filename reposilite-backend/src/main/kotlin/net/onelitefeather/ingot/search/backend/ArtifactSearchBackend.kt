@@ -70,6 +70,12 @@ interface ArtifactSearchBackend : ArtifactSearchEngine {
      */
     fun properties(): Map<String, String> = emptyMap()
 
+    /**
+     * What this backend can do beyond the core contract. The default is empty, so a backend that declares nothing stores no
+     * attributes and the core drops them before they reach it (search document attributes, D3).
+     */
+    val capabilities: Set<SearchCapability> get() = emptySet()
+
     /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */
     fun apply(actions: List<IndexAction>)
 
