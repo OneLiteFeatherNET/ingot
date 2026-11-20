@@ -489,8 +489,11 @@ tasks.test {
     // JavadocModuleBoundaryTest reads the backend's own compiled classes. The javadoc module's classes are on the test class
     // path as well, so a class lookup cannot tell the two apart.
     val mainClassesDirs = sourceSets.main.get().output.classesDirs
+    // CleanupEmbeddedReplacementTest embeds the shipped cleanup-plugin.jar, the jar the server jar embeds, in a server jar of its own.
+    inputs.files(embeddedPlugin)
     doFirst {
         systemProperty("ingot.backend.mainClasses", mainClassesDirs.files.joinToString(File.pathSeparator) { it.absolutePath })
+        systemProperty("ingot.cleanupPlugin.jar", embeddedPlugin.files.single { it.name == "cleanup-plugin.jar" }.absolutePath)
     }
 
     finalizedBy("jacocoTestReport")
