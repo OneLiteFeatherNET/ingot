@@ -193,6 +193,48 @@ describe('PrincipalsPanel', () => {
       expect(rowOf('alice').classes()).not.toContain('z-20')
     })
 
+    it('builds the principal rows from the shared list rows', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      expect(wrapper!.findComponent({ name: 'MdList' }).exists(), 'the rows sit in an MdList').toBe(true)
+      const items = wrapper!.findAllComponents({ name: 'MdListItem' })
+      expect(items.map(item => item.attributes('data-test')), 'every principal row is an MdListItem').toEqual(['row', 'row', 'row'])
+    })
+
+    it('puts the actions menu beside the link of a row, not inside it', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      const link = rowOf('alice').find('a')
+      expect(link.find('button[aria-haspopup="menu"]').exists(), 'a menu button inside a link is nested interactive content').toBe(false)
+      expect(rowOf('alice').find('button[aria-haspopup="menu"]').exists(), 'the row still offers its actions').toBe(true)
+    })
+
+    it('marks the link of the open user as current, and nothing else', async () => {
+      await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
+
+      const current = wrapper!.findAll('[data-test="principals-list"] [aria-current]')
+      expect(current, 'exactly one element of the list is current').toHaveLength(1)
+      expect(current[0].element.tagName, 'the link carries the state, so it is announced with the link').toBe('A')
+      expect(current[0].attributes('aria-current'), 'the open user is the current item').toBe('true')
+      expect(current[0].find('[data-test="username"]').text(), 'the current link is the open user').toBe('alice')
+    })
+
+    it('draws the selected container on the row of the open user only', async () => {
+      await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
+
+      expect(rowOf('alice').classes(), 'the open row takes the secondary container').toContain('bg-secondary-container')
+      expect(rowOf('bob').classes(), 'another row keeps the list surface').not.toContain('bg-secondary-container')
+    })
+
+    it('leaves a ctrl click on a row to the browser, so the user opens in a new tab', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      await rowOf('alice').find('a').trigger('click', { ctrlKey: true })
+      await flushPromises()
+
+      expect(router.currentRoute.value.fullPath, 'the list stays where it is').toBe('/access/users')
+    })
+
     it('filters the list by username', async () => {
       await mountPanel({ kind: 'USER' })
 
