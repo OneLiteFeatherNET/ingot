@@ -46,7 +46,8 @@ PR title: `refactor(javadoc): let the cluster reach the javadoc cache through a 
 
 PR title: `test(javadoc): guard the api document and the settings schema of the javadoc domain`
 
-Group 3 does not start before this group is merged, the gate of 2a.1 passes, and question Q112 of `design.md` is decided. See design D13.
+Group 3 does not start before this group is merged and the gate of 2a.1 passes. See design D13. Question Q112 of `design.md` is settled:
+the unit tests stay in the backend (design D7).
 
 - [ ] 2a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
   `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
@@ -55,7 +56,8 @@ Group 3 does not start before this group is merged, the gate of 2a.1 passes, and
 - [ ] 2a.2 `test(javadoc)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` that the compile-time schema
   `json-schemes/com.reposilite.javadocs.application.JavadocSettings` is readable through the class loader of `JavadocSettings` and that its
   `properties` name every property of `JavadocSettings`, each missing name in its own assertion message. Verify: it passes on main, and it
-  fails when the file is left out of the module jar, which is the failure the move has to avoid. The test moves with the code in task 3.3.
+  fails when the file is left out of the module jar, which is the failure the move has to avoid. The test stays in the backend in task 3.3
+  (design D7).
 - [ ] 2a.3 Verify that `OpenApiSnapshotIntegrationTest` holds no javadoc entry today, so the move must leave `docs/openapi/ingot-openapi.json`
   byte for byte as it is: `grep -ci javadoc docs/openapi/ingot-openapi.json` prints `0`. Record the result in the description of the pull
   request of this group.
@@ -68,7 +70,9 @@ Group 3 does not start before this group is merged, the gate of 2a.1 passes, and
 PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugin module`
 
 - [ ] 3.1 `test(javadoc)`: failing tests, both in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/`:
-  (a) no class of `com.reposilite.javadocs` is loadable from the server class loader, by `Class.forName` with `initialize = false`;
+  (a) the backend's own compiled main output holds no class of `com.reposilite.javadocs`, read from the class directory that the build
+  passes to the test as a system property. `Class.forName` cannot prove it, because the module's classes are on the backend's test
+  classpath (design D7);
   (b) the module's resources hold the service entry naming `com.reposilite.javadocs.application.JavadocPlugin`, read from
   `reposilite-plugins/javadoc-plugin/src/main/resources/META-INF/services/`. The test does not read a built jar, so it does not depend on
   the build order. Verify: (a) fails on the classes that are still in the server, and (b) fails because the module does not exist.
@@ -77,15 +81,19 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
   `Implementation-Version` in its manifest, and the Maven publication `net.onelitefeather.ingot:javadoc-plugin` as
   `reposilite-plugins/gcs-storage-plugin/build.gradle.kts` configures its own. In `reposilite-backend/build.gradle.kts` place the module's jar
   into `embedded-plugins/` of the `shadowJar` with the hook of the prerequisite change, and add the module to the integration classpath as
-  `storage-cache-plugin` is wired around line 494. Add `!reposilite-plugins/javadoc-plugin` to `.dockerignore`. Remove the run configuration
+  `storage-cache-plugin` is wired around line 494. Add the module's compiled classes and its generated `json-schemes/` and
+  `META-INF/ingot/openapi/` resources, without its service entry, to the backend's `testImplementation` in the same `files(...).builtBy(...)`
+  form, so the unit tests that stay in the backend see them (design D7). Add `!reposilite-plugins/javadoc-plugin` to `.dockerignore`. Remove the run configuration
   `.run/Build javadoc-plugin to test workspace [javadoc-plugin _ clean build].run.xml` (question 6). Verify:
   `heavy ./gradlew :reposilite-backend:shadowJar --max-workers=2` runs and the module configures.
-- [ ] 3.3 `refactor(javadoc)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/javadocs/` into the module, the unit
-  tests of `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` into the module's test source set, and the integration tests of
-  `reposilite-backend/src/integration/kotlin/com/reposilite/javadocs/` into its integration source set. Remove the service entry from
-  `reposilite-backend/src/main/resources/META-INF/services/`, and make public only the declarations that group 0.4 lists. Change imports
-  only where a declaration moved module. Verify: the tests of 3.1 pass;
-  `heavy ./gradlew :reposilite-plugins:javadoc-plugin:test --max-workers=2` passes;
+- [ ] 3.3 `refactor(javadoc)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/javadocs/` into the module and the
+  integration tests of `reposilite-backend/src/integration/kotlin/com/reposilite/javadocs/` into its integration source set. The unit tests
+  of `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` stay where they are (design D7, question Q112). Remove the service entry
+  from `reposilite-backend/src/main/resources/META-INF/services/`, and make public exactly the declarations that the exception of design D2
+  names: `JavadocContainerService` with its constructor and `unpackJavadocJar`, `JavadocContainer`, `javadocMaxEntryBytes`,
+  `DEFAULT_JAVADOC_MAX_ENTRY_BYTES`, `javadocEvictionRoot` and the constructor of `JavadocFacade`. Change imports only where a declaration
+  moved module. Verify: the tests of 3.1 pass;
+  `heavy ./gradlew :reposilite-backend:test --tests 'com.reposilite.javadocs.*' --max-workers=2` passes with no test file edited;
   `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.javadocs.*' --max-workers=2` passes, and the backend unit suite
   compiles.
 - [ ] 3.4 Verify the drop-in path. Start the built server jar with no plugins directory and with the default image layout, and check that

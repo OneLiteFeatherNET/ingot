@@ -58,6 +58,10 @@ change, but the core `JobStateMapping.cleanup` function cannot stay in the serve
 mapping, so the move pull request must either move the mapping with the module or give the enum a home in the core. This is a gap in
 `tasks.md` that the move pull request has to close.
 
+The other direction is not covered by that list: the cleanup code reaches two `internal` declarations of the core. `CleanupPlugin` calls
+`MavenFacade.mirrorCacheEntries` for the mirror copies it may evict, and builds `SqlScheduledJobClaims` for the claims of its scheduled runs.
+The draft move (pull request #895) made both public. They stay `internal`, and the cleanup plugin reaches them through the interface of D14.
+
 ### D3. The core seam for the job status lives in the core
 
 `FacadeOperationalSource` must not name a cleanup class. The core declares a public interface in `net.onelitefeather.ingot.deploy`, next to
@@ -229,10 +233,52 @@ generic to every plugin jar, so neither extraction owns it. It is a new small ch
 of `add-embedded-plugin-jars`, proposed in its own proposal pull request. Its merge on main is a gate of the move pull request (task 1a.1).
 This change owns the module side: the build step above and the guard tests of group 1a.
 
+### D14. The cleanup plugin reaches the core through one narrow interface
+
+Decided by the maintainer (question 115). The move must not make `MavenFacade.mirrorCacheEntries` or `SqlScheduledJobClaims` public. Both
+are core internals, and making them public would turn them into API by accident, since every public member of the server is something a
+plugin can compile against. Read on main and in the draft move (pull request #895), the cleanup plugin needs exactly two things from them:
+
+1. **The mirror copies of a repository for eviction.** `CleanupPlugin` builds each `CleanupTarget` with
+   `cachedVersions = mavenFacade.mirrorCacheEntries(repository.name)`: the version directories that hold mirror copies, with their last
+   access. Only these versions can be cleaned up as copies.
+2. **The claims of scheduled jobs.** `CleanupPlugin` builds one `SqlScheduledJobClaims(reposilite().database, clock)` and hands it to the
+   service and the scheduler, so the day lease and the run lease have one owner and a run is started by one instance of a cluster. The
+   interface `com.reposilite.scheduling.ScheduledJobClaims` is already public. Only the database-backed implementation is internal.
+
+The core declares one interface for these two needs, and nothing else:
+
+```kotlin
+package net.onelitefeather.ingot.cleanup
+
+@ExperimentalIngotPluginApi
+interface CleanupSupportFacade : Facade {
+    /** The version directories that hold mirror copies of [repository], with their last access. */
+    fun mirrorCacheEntries(repository: String): Map<String, Instant>
+
+    /** A claim store shared by every instance through the server's database, which reads the time from [clock]. */
+    fun scheduledJobClaims(clock: Clock): ScheduledJobClaims
+}
+```
+
+- It is in `net.onelitefeather.ingot.*`, because it is new Ingot API, and it carries `@ExperimentalIngotPluginApi`, because it exists for
+  one plugin and may change with it.
+- It is listed in `reposilite-backend/plugin-api-classes.txt`, so the slim plugin API jar holds it and the closure check guards it. The
+  types its signatures name are `com.reposilite.*` types the server provides (`Facade`, `ScheduledJobClaims`) and JDK types, so no further
+  entry is needed.
+- The core implements it with `MavenFacade.mirrorCacheEntries` and `SqlScheduledJobClaims`, which both stay `internal`, and the maven plugin
+  registers it next to `ViewerAccessFacade`. The cleanup plugin already depends on `maven`, so the load order does not change.
+- `CleanupPlugin` reads it with `facade<CleanupSupportFacade>()` and no longer names `MavenFacade.mirrorCacheEntries` or
+  `SqlScheduledJobClaims`. Run behaviour, the claim keys and the tables do not change.
+
+This interface lands in its own pull request before the move (task group 1b), with its tests first, while cleanup is still in the core, so
+the move pull request changes no visibility of the core for cleanup's main code.
+
 ## Risks
 
 - **The prerequisite is a dependency.** If it slips, this change slips. The move pull request cannot start before it merges.
 - **Internal visibility across modules.** The compiler finds each use (task 0.4). The fix stays small and is part of the move pull request.
+  The two core internals that cleanup needs are reached through D14, which lands before the move, so the move makes neither public.
 - **Load order.** The dependencies of the plugin (`shared-configuration`, `maven`, `read-only`) do not change, so the initialisation order stays.
 - **Release drift.** Until `add-cleanup-plugin-release` merges, the module's jar ships only inside the server. The update rule works for a jar
   that an operator or the follow-up places.
@@ -244,6 +290,7 @@ Each step is one pull request, buildable and passing alone:
 0. The prerequisite `add-embedded-plugin-jars` is merged (outside this change).
 1. The seam of D3 and its test. The prometheus plugin stops importing the cleanup service, which is still in the core.
 1a. The guard tests of D13, green on main and red on the draft move. The move waits for `add-plugin-api-fragments` as well.
+1b. The interface of D14 and its tests. Cleanup, still in the core, stops naming `MavenFacade.mirrorCacheEntries` and `SqlScheduledJobClaims`.
 2. The module, the move of the sources and the tests, the build wiring of D1 and the embedded jar. This pull request is the single move of D2.
 3. The docs of the module, the embedded copy and the update path.
 4. The replacement test of group 7, which is written after the prerequisite and passes against it.

@@ -128,9 +128,14 @@ header (flex column)
 ```
 
 The back control is alone in its row. Its 48 pixel target is pulled left by 12 pixels (`-ms-3`) so that its 24 pixel glyph starts at
-the container edge, which keeps the target inside the 16 pixel gutter and the glyph on the same edge as the title. A detail
-page draws its back control at every width, because it is the way to its list page; a list page draws one below 1240 pixels, as it
-does today. The text column never moves when the back control appears or disappears. `settings/EntryDetail.vue:272-295` gets the same rule:
+the container edge, which keeps the target inside the 16 pixel gutter and the glyph on the same edge as the title. The back control
+is drawn below 1240 pixels only, on a detail page and on a list page alike. From 1240 pixels a detail page reaches its list page through
+the group link of its trail (D4), and the header draws no back arrow beside it, so it never offers two ways back to the same page. The text
+column never moves when the back control appears or disappears.
+
+Decided by the maintainer (question 108): on detail pages at 1240 pixels and wider only the group link of the breadcrumb leads back, and
+there is no extra back arrow. This replaces the earlier text of this decision, which drew the back control of a detail page at every
+width. `settings/EntryDetail.vue:272-295` gets the same rule:
 its back button (hidden from 840 pixels today, which makes the `h3` jump) moves into its own row above the `h3`, with the same
 offset, so the `h3` starts at one edge at every width.
 
@@ -167,7 +172,7 @@ with an `aria-label` of "Back to repositories". Its label is no longer a visible
 title goes with it. The `heading` ref and its focus behaviour keep working on the frame's `h1`.
 
 The repository detail is a full width page like every other page, so its name starts at the page's left edge at every width, with its
-trail and its back control. Its type section and its lists take the full width too.
+trail, and below 1240 pixels with its back control (D3). Its type section and its lists take the full width too.
 
 ### D6. Detail panes share one inset
 
@@ -195,9 +200,14 @@ the seeded palette does too.
 
 ### D9. Anchors
 
-The registry gains one entry: `administration-breadcrumb`, file `src/components/layout/AdministrationFrame.vue`, stability
-`experimental`, no parts, no states. The new name is added in the same commit as the markup that carries it, and `anchors.test.js` must
-pass in that commit. No existing anchor is renamed, moved to another file or removed. The `header` part of `repository-detail` stays
+The registry gains one entry: `administration-breadcrumb`, file `src/components/layout/AdministrationTrail.vue`, stability
+`experimental`, no parts, no states. The new name is added in the same commit as the markup that carries it, and `anchors.test.ts` must
+pass in that commit.
+
+The trail has a component of its own, `src/components/layout/AdministrationTrail.vue`, which wraps `MdBreadcrumb` in the element that
+carries the anchor. The registry holds one component name per file, and `AdministrationFrame.vue` already carries `administration-frame`,
+so the trail cannot be anchored inside the frame's file. `AdministrationFrame.vue` renders `AdministrationTrail` in the text column of its
+header. No existing anchor is renamed, moved to another file or removed. The `header` part of `repository-detail` stays
 registered, and its element is the type section of D5.
 
 ### D10. Measurement
@@ -206,7 +216,8 @@ Each visual change is measured, not judged. The pull request records:
 
 - the contrast of the content sheet edge, the card edge and the page against the frame in light, dark, and both high contrast schemes,
 - the left edge of the title and of the trail at 1280 and 1920 pixels, from `getBoundingClientRect`, which must match within 0.5 pixel,
-- the position of the back control on a detail page, which must lie in the gutter and not move the title,
+- the position of the back control on a detail page below 1240 pixels, which must lie in the gutter and not move the title, and its
+  absence on the same page from 1240 pixels,
 - the screenshots of the design's pages at 320, 600, 1440 pixels (the brief's widths) and at 390, 840, 1280 and 1920 pixels, before and
   after, in light and dark.
 
