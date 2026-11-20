@@ -15,6 +15,8 @@
  */
 package net.onelitefeather.ingot.cli
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.jline.terminal.Attributes
 import org.jline.terminal.Attributes.ControlChar
@@ -25,6 +27,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.PrintStream
+import java.net.InetAddress
+import java.net.ServerSocket
 import java.net.http.HttpClient
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -36,23 +40,52 @@ private const val CTRL_D = 0x04
 private const val SCREEN_COLUMNS = 120
 private const val SCREEN_ROWS = 40
 
-private const val LISTING = """{"commands":[{"name":"status","aliases":[]},{"name":"stop","aliases":["shutdown"]}]}"""
+private val mapper = ObjectMapper()
 
-/** The console answers `stop` without `confirm=true` with 409, and runs everything else at once. */
-private fun console(request: StubIngot.Request): Pair<Int, String> =
-    if (request.body == "stop" && request.query?.contains("confirm=true") != true) {
-        409 to """{"command":"stop","reason":"stops the server"}"""
-    } else {
-        answer(0, text = "ran ${request.body}")
-    }
+private const val WELCOME = """{"type":"welcome","protocol":1,"boot":"b-1","seq":7,"replay":null}"""
+private val NAMES = listOf("status", "stop", "shutdown")
 
-private fun stubWithListing(listingStatus: Int = 200): StubIngot = StubIngot { request ->
-    if (request.method == "GET" && request.path == "/api/console/commands") {
-        listingStatus to (if (listingStatus == 200) LISTING else "")
-    } else {
-        console(request)
+private fun result(id: String, exitCode: Int, text: String, stream: String = "stdout") =
+    """{"type":"result","id":"$id","status":"${if (exitCode == 0) "SUCCEEDED" else "FAILED"}","exitCode":$exitCode,""" +
+        """"output":[{"stream":"$stream","text":"$text"}],"data":null,"node":"ingot-0","confirmed":false}"""
+
+/**
+ * A console socket in protocol 1. `stop` asks for confirmation, `fail` answers on stderr, `boom` drops the connection, and
+ * every other command runs at once after one log line. Completion answers the names that start with the line.
+ */
+private fun consoleSocket(): StubSocket = StubSocket { text, peer ->
+    val frame = mapper.readTree(text)
+    val id = frame.path("id").asText()
+    when (frame.path("type").asText()) {
+        "hello" -> peer.send(WELCOME)
+        "complete" -> {
+            val line = frame.path("line").asText()
+            val candidates = NAMES.filter { it.startsWith(line) }.joinToString(",") { "\"$it\"" }
+            peer.send("""{"type":"complete","id":"$id","replace":{"start":0,"end":${line.length}},"candidates":[$candidates]}""")
+        }
+        "execute" -> when (val command = frame.path("command").asText()) {
+            "stop" -> peer.send("""{"type":"confirm","id":"$id","command":"stop","reason":"stops the server"}""")
+            "fail" -> peer.send(result(id, 1, "it failed", stream = "stderr"))
+            "boom" -> peer.close(1011)
+            else -> {
+                peer.send("""{"type":"log","seq":8,"node":"ingot-0","level":"INFO","text":"server log line","dropped":0}""")
+                peer.send(result(id, 0, "ran $command"))
+            }
+        }
+        "confirm" -> peer.send(
+            if (frame.path("accept").asBoolean()) result(id, 0, "ran stop") else result(id, 3, "stop did not run", stream = "stderr")
+        )
     }
 }
+
+/** A server that refuses the hello the way [refusal] says and then closes the socket. */
+private fun refusingSocket(refusal: String): StubSocket = StubSocket { _, peer ->
+    peer.send(refusal)
+    peer.close(1008)
+}
+
+/** The HTTP side, used only to tell an older server from a refused token. */
+private fun httpWithListing(status: Int): StubIngot = StubIngot { status to (if (status == 200) """{"commands":[]}""" else "") }
 
 private class Session(val exit: Int, val out: String, val err: String, val terminalOutput: String)
 
@@ -94,9 +127,9 @@ private class ScriptedKeyboard(keys: ByteArray) : InputStream() {
  * Runs the REPL on a JLine terminal whose keyboard is [keys] and whose screen is a buffer. The terminal type is
  * `xterm-256color`, because JLine binds Tab to completion only for a type with key bindings; a `dumb` type has none,
  * and so no completion. Every script ends with Ctrl-D on an empty line, which is how an operator leaves, so the REPL
- * returns without waiting for more input.
+ * returns without waiting for more input. The console socket is at [socketUrl], and [http] answers the HTTP side.
  */
-private fun runScripted(stub: StubIngot, keys: String): Session {
+private fun runScripted(socketUrl: String, http: StubIngot, keys: String, yes: Boolean = false): Session {
     val out = ByteArrayOutputStream()
     val err = ByteArrayOutputStream()
     val screen = ByteArrayOutputStream()
@@ -109,13 +142,18 @@ private fun runScripted(stub: StubIngot, keys: String): Session {
     }
     terminal.size = Size(SCREEN_COLUMNS, SCREEN_ROWS)
     try {
-        val client = IngotClient(stub.url, "ci-secret", Duration.ofSeconds(5), HttpClient.newHttpClient())
+        val timeout = Duration.ofSeconds(5)
+        val client = IngotClient(http.url, "ci:ci-secret", timeout, HttpClient.newHttpClient())
+        val connector = ConsoleConnector { onLog ->
+            ConsoleSocket.open(socketUrl, "ci:ci-secret", "ingot-cli/test", HttpClient.newHttpClient(), timeout, onLog)
+        }
         val exit = runRepl(
             client = client,
+            connector = connector,
             terminal = terminal,
             context = "test",
             json = false,
-            yes = false,
+            yes = yes,
             out = PrintStream(out, true, StandardCharsets.UTF_8),
             err = PrintStream(err, true, StandardCharsets.UTF_8),
         )
@@ -131,150 +169,186 @@ private fun runScripted(stub: StubIngot, keys: String): Session {
     }
 }
 
-private fun StubIngot.executed(): List<StubIngot.Request> =
-    requests.filter { it.path == "/api/console/execute" }
+/** Runs [keys] against a protocol 1 socket and an HTTP side that records every request. */
+private fun session(keys: String, yes: Boolean = false, check: (Session, StubSocket, StubIngot) -> Unit) {
+    consoleSocket().use { socket ->
+        httpWithListing(200).use { http ->
+            check(runScripted(socket.url, http, keys, yes), socket, http)
+        }
+    }
+}
+
+private fun StubSocket.typed(type: String): List<JsonNode> =
+    frames.map { mapper.readTree(it) }.filter { it.path("type").asText() == type }
+
+private fun StubSocket.executed(): List<String> =
+    typed("execute").map { it.path("command").asText() }
+
+private fun StubSocket.accepts(): List<Boolean> =
+    typed("confirm").map { it.path("accept").asBoolean() }
 
 internal class ReplTest {
 
     @Test
-    fun `should complete a command name from the server listing when the prefix is unique`() {
-        // given: a server whose listing has `status` and `stop`
-        stubWithListing().use { stub ->
-            // when: the operator types `sta`, presses Tab and Enter
-            runScripted(stub, "sta\t\n")
-
-            // then: the completed name is the one sent to the server
-            assertThat(stub.executed().map { it.body }).containsExactly("status")
+    fun `should open the session with a hello that names protocol 1 and carries the token`() {
+        session("status\n") { _, socket, _ ->
+            val hello = mapper.readTree(socket.frames.first())
+            assertThat(hello.path("type").asText()).describedAs("first frame").isEqualTo("hello")
+            assertThat(hello.path("protocols").map { it.asInt() }).describedAs("protocols").containsExactly(1)
+            assertThat(hello.path("token").asText()).describedAs("token").isEqualTo("ci:ci-secret")
         }
     }
 
     @Test
-    fun `should complete an alias from the server listing`() {
-        // given: a server whose listing has `shutdown` as an alias of `stop`
-        stubWithListing().use { stub ->
-            // when: the operator types `shu`, presses Tab and Enter
-            runScripted(stub, "shu\t\n")
-
-            // then: the alias is completed and sent as a command line
-            assertThat(stub.executed().map { it.body }).containsExactly("shutdown")
+    fun `should run each line over the socket and send no HTTP request`() {
+        session("status\nstatus\n") { session, socket, http ->
+            assertThat(socket.executed()).describedAs("commands on the socket").containsExactly("status", "status")
+            assertThat(http.requests).describedAs("HTTP requests during a session").isEmpty()
+            assertThat(session.out.lines()).describedAs("command output").contains("ran status")
         }
     }
 
     @Test
-    fun `should send no request while a line is being typed`() {
-        // given: a server whose listing answers
-        stubWithListing().use { stub ->
-            // when: the operator types a partial line and cancels it with Ctrl-C
-            runScripted(stub, "sta\u0003")
+    fun `should print the stderr lines of a result on the error stream`() {
+        session("fail\n") { session, _, _ ->
+            assertThat(session.err).describedAs("stderr").contains("it failed")
+            assertThat(session.out).describedAs("stdout").doesNotContain("it failed")
+        }
+    }
 
-            // then: only the listing was requested, once, and no command was sent
-            assertThat(stub.requests.map { it.path }).containsExactly("/api/console/commands")
+    @Test
+    fun `should show server log lines on the terminal and not in the command output`() {
+        session("status\n") { session, _, _ ->
+            assertThat(session.terminalOutput).describedAs("terminal").contains("server log line")
+            assertThat(session.out).describedAs("command output").doesNotContain("server log line")
+        }
+    }
+
+    @Test
+    fun `should send one complete frame on Tab and run the completed name`() {
+        session("sta\t\n") { _, socket, _ ->
+            assertThat(socket.typed("complete")).describedAs("complete frames").hasSize(1)
+            assertThat(socket.executed()).describedAs("the completed name").containsExactly("status")
+        }
+    }
+
+    @Test
+    fun `should send no frame while a line is being typed`() {
+        session("sta\u0003") { _, socket, http ->
+            assertThat(socket.frames.map { mapper.readTree(it).path("type").asText() }).describedAs("frames").containsExactly("hello")
+            assertThat(http.requests).describedAs("HTTP requests").isEmpty()
         }
     }
 
     @Test
     fun `should discard the current line on Ctrl-C and run the next line only`() {
-        // given: a server that answers commands
-        stubWithListing().use { stub ->
-            // when: a line is typed, cancelled with Ctrl-C, and then another line is entered
-            runScripted(stub, "stop\u0003status\n")
-
-            // then: the cancelled line was never sent
-            assertThat(stub.executed().map { it.body }).containsExactly("status")
+        session("stop\u0003status\n") { _, socket, _ ->
+            assertThat(socket.executed()).describedAs("commands").containsExactly("status")
         }
     }
 
     @Test
     fun `should leave with exit code 0 on Ctrl-D on an empty line without running the rest of the input`() {
-        // given: a server that answers commands
-        stubWithListing().use { stub ->
-            // when: Ctrl-D is pressed on an empty line, followed by a command
-            val session = runScripted(stub, "\u0004status\n")
-
-            // then: the REPL exits with 0 and the later command never runs
-            assertThat(session.exit).isEqualTo(ExitCode.OK)
-            assertThat(stub.executed()).isEmpty()
+        session("\u0004status\n") { session, socket, _ ->
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.OK)
+            assertThat(socket.executed()).describedAs("commands").isEmpty()
         }
     }
 
     @Test
-    fun `should ask y or N on the terminal before a dangerous command`() {
-        // given: a server that asks for confirmation of `stop`
-        stubWithListing().use { stub ->
-            // when: the operator enters `stop` and then `n`
-            val session = runScripted(stub, "stop\nn\n")
-
-            // then: the question is on the terminal, not in the command output
-            assertThat(session.terminalOutput).contains("[y/N]")
-            assertThat(session.out).doesNotContain("[y/N]")
+    fun `should ask y or N on the terminal and send accept false when the answer is no`() {
+        session("stop\nn\n") { session, socket, _ ->
+            assertThat(session.terminalOutput).describedAs("terminal").contains("[y/N]")
+            assertThat(session.out).describedAs("command output").doesNotContain("[y/N]")
+            assertThat(socket.accepts()).describedAs("accept").containsExactly(false)
         }
     }
 
     @Test
-    fun `should not run a dangerous command when the confirmation is answered no`() {
-        // given: a server that asks for confirmation of `stop`
-        stubWithListing().use { stub ->
-            // when: the operator enters `stop` and answers `n`
-            runScripted(stub, "stop\nn\n")
-
-            // then: the command was sent once without confirmation and never with confirm=true
-            assertThat(stub.executed().map { it.body }).containsExactly("stop")
-            assertThat(stub.executed().none { it.query?.contains("confirm=true") == true }).isTrue()
+    fun `should send accept false when the confirmation is answered with Enter alone`() {
+        session("stop\n\n") { _, socket, _ ->
+            assertThat(socket.accepts()).describedAs("accept").containsExactly(false)
         }
     }
 
     @Test
-    fun `should run a dangerous command with confirm=true when the confirmation is answered yes`() {
-        // given: a server that asks for confirmation of `stop`
-        stubWithListing().use { stub ->
-            // when: the operator enters `stop` and answers `y`
-            runScripted(stub, "stop\ny\n")
-
-            // then: the confirmed command is sent with confirm=true
-            val confirmed = stub.executed().last()
-            assertThat(confirmed.body).isEqualTo("stop")
-            assertThat(confirmed.query).contains("confirm=true")
+    fun `should send accept true when the confirmation is answered yes`() {
+        session("stop\ny\n") { session, socket, _ ->
+            assertThat(socket.accepts()).describedAs("accept").containsExactly(true)
+            assertThat(session.out).describedAs("command output").contains("ran stop")
         }
     }
 
     @Test
-    fun `should answer no and keep the REPL running when Ctrl-C interrupts the confirmation`() {
-        // given: a server that asks for confirmation of `stop`
-        stubWithListing().use { stub ->
-            // when: the operator enters `stop` and presses Ctrl-C at the question
-            val session = runScripted(stub, "stop\n\u0003")
-
-            // then: nothing is confirmed and the REPL leaves normally at end of input
-            assertThat(stub.executed().none { it.query?.contains("confirm=true") == true }).isTrue()
-            assertThat(session.exit).isEqualTo(ExitCode.OK)
+    fun `should accept the confirmation without asking when --yes is set`() {
+        session("stop\n", yes = true) { session, socket, _ ->
+            assertThat(socket.accepts()).describedAs("accept").containsExactly(true)
+            assertThat(session.terminalOutput).describedAs("terminal").doesNotContain("[y/N]")
         }
     }
 
     @Test
-    fun `should answer no and keep the REPL running when Ctrl-D ends the confirmation`() {
-        // given: a server that asks for confirmation of `stop` and answers `status`
-        stubWithListing().use { stub ->
-            // when: the operator enters `stop`, presses Ctrl-D at the question, and then enters `status`
-            val session = runScripted(stub, "stop\n\u0004status\n")
-
-            // then: nothing is confirmed, the later command still runs, and the REPL leaves normally at end of input
-            assertThat(stub.executed().none { it.query?.contains("confirm=true") == true }).isTrue()
-            assertThat(stub.executed().map { it.body }).containsExactly("stop", "status")
-            assertThat(session.exit).isEqualTo(ExitCode.OK)
+    fun `should answer no and keep the REPL running when Ctrl-C or Ctrl-D ends the confirmation`() {
+        session("stop\n\u0003stop\n\u0004status\n") { session, socket, _ ->
+            assertThat(socket.accepts()).describedAs("accept").containsExactly(false, false)
+            assertThat(socket.executed()).describedAs("commands").containsExactly("stop", "stop", "status")
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.OK)
         }
     }
 
     @Test
-    fun `should print the older server notice once and keep running commands when the listing is absent`() {
-        // given: a server without /api/console/commands
-        stubWithListing(listingStatus = 404).use { stub ->
-            // when: two commands are entered
-            val session = runScripted(stub, "status\nstatus\n")
+    fun `should report a command as unknown when the connection drops and not send it again`() {
+        session("boom\nstatus\n") { session, socket, _ ->
+            assertThat(socket.executed()).describedAs("commands sent").containsExactly("boom")
+            assertThat(session.err).describedAs("message").contains("may or may not have run")
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.UNREACHABLE)
+        }
+    }
 
-            // then: the notice appears once, both commands run, and the REPL exits with 0
-            assertThat(session.err.lines().count { it.contains("no command listing") }).isEqualTo(1)
-            assertThat(stub.executed()).hasSize(2)
-            assertThat(session.exit).isEqualTo(ExitCode.OK)
+    @Test
+    fun `should exit with 6 and run nothing when a legacy server refuses the hello and has no command listing`() {
+        refusingSocket("""{"status":401,"message":"missing credentials"}""").use { socket ->
+            httpWithListing(404).use { http ->
+                val session = runScripted(socket.url, http, "status\n")
+
+                assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.SERVER_TOO_OLD)
+                assertThat(session.err).describedAs("message").contains("ingot exec")
+                assertThat(socket.executed()).describedAs("commands").isEmpty()
+            }
+        }
+    }
+
+    @Test
+    fun `should exit with 4 when a legacy refusal comes from a server with a command listing`() {
+        refusingSocket("""{"status":401,"message":"missing credentials"}""").use { socket ->
+            httpWithListing(200).use { http ->
+                val session = runScripted(socket.url, http, "status\n")
+
+                assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.DENIED)
+                assertThat(session.err + session.out).describedAs("no secret in a message").doesNotContain("ci-secret")
+            }
+        }
+    }
+
+    @Test
+    fun `should exit with 4 when a version 1 server refuses the token`() {
+        refusingSocket("""{"type":"error","code":"unauthorized","message":"invalid credentials"}""").use { socket ->
+            httpWithListing(200).use { http ->
+                val session = runScripted(socket.url, http, "status\n")
+
+                assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.DENIED)
+                assertThat(http.requests).describedAs("a typed refusal needs no listing").isEmpty()
+            }
+        }
+    }
+
+    @Test
+    fun `should exit with 5 when the console socket cannot be reached`() {
+        httpWithListing(200).use { http ->
+            val unused = ServerSocket(0, 0, InetAddress.getLoopbackAddress()).use { it.localPort }
+            val session = runScripted("http://127.0.0.1:$unused", http, "status\n")
+
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.UNREACHABLE)
         }
     }
 

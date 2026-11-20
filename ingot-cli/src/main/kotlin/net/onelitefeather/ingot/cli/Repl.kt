@@ -19,34 +19,26 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.jline.reader.Candidate
 import org.jline.reader.Completer
 import org.jline.reader.EndOfFileException
+import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
 import org.jline.terminal.Terminal
 import java.io.PrintStream
 
-/**
- * The names and aliases of the server's commands, for completion. A server without the listing gives none, and the REPL
- * still runs.
- */
-fun commandNames(client: IngotClient): List<String> {
-    val reply = try {
-        client.listCommands()
-    } catch (_: ServerUnreachableException) {
-        return emptyList()
-    }
-    if (reply.status != 200) return emptyList()
-    val commands = ObjectMapper().readTree(reply.body).path("commands")
-    return commands.flatMap { command ->
-        listOf(command.path("name").asText()) + command.path("aliases").map { it.asText() }
-    }.sorted()
+/** Opens one session on the console socket. Log lines reach [ConsoleConnector.open]'s callback as they arrive. */
+fun interface ConsoleConnector {
+    fun open(onLog: (ConsoleLogLine) -> Unit): ConsoleSocket
 }
 
 /**
- * The interactive mode. Each line is one command. `:quit` leaves, and Ctrl-D on an empty line leaves with exit code 0.
- * Ctrl-C discards the line. A dangerous command asks `[y/N]` on the terminal and runs only on `y`.
+ * The interactive mode, on one console socket session in protocol 1. Each line is one `execute` frame, Tab sends one
+ * `complete` frame, and no HTTP request is made while the session runs. `:quit` leaves, and Ctrl-D on an empty line
+ * leaves with exit code 0. Ctrl-C discards the line. A dangerous command asks `[y/N]` on the terminal, and only `y`
+ * accepts it.
  */
 fun runRepl(
     client: IngotClient,
+    connector: ConsoleConnector,
     terminal: Terminal,
     context: String,
     json: Boolean,
@@ -54,47 +46,107 @@ fun runRepl(
     out: PrintStream,
     err: PrintStream,
 ): Int {
-    val names = commandNames(client)
-    if (names.isEmpty()) {
-        err.println("The server gives no command listing. Completion is off.")
-    }
+    var socket: ConsoleSocket? = null
     val completer = Completer { _, line, candidates ->
-        if (line.wordIndex() == 0) names.forEach { candidates.add(Candidate(it)) }
+        val completion = runCatching { socket?.complete(line.line(), line.cursor()) }.getOrNull()
+        completion?.candidates?.forEach { candidates.add(Candidate(it)) }
     }
     val reader = LineReaderBuilder.builder().terminal(terminal).completer(completer).build()
-    val exec = Exec(
-        client = client,
-        out = out,
-        err = err,
-        options = ExecOptions(
-            json = json,
-            yes = yes,
-            keepGoing = false,
-            interactive = true,
-            confirm = { command, reason ->
-                try {
-                    reader.readLine("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ").trim().lowercase().let { it == "y" || it == "yes" }
-                } catch (_: UserInterruptException) {
-                    false
-                } catch (_: EndOfFileException) {
-                    false
-                }
-            },
-        ),
-    )
-    while (true) {
-        val line = try {
-            reader.readLine("ingot ($context)> ").trim()
-        } catch (_: UserInterruptException) {
-            continue
-        } catch (_: EndOfFileException) {
-            return ExitCode.OK
-        }
-        when {
-            line.isEmpty() -> continue
-            line == ":quit" -> return ExitCode.OK
-            line.startsWith(":") -> err.println("Unknown builtin ${line.substringBefore(' ')}. Builtins: :quit")
-            else -> exec.runCommand(line)
+    val session = try {
+        connector.open { log -> showLog(reader, log) }
+    } catch (_: ServerUnreachableException) {
+        err.println("The server could not be reached. Check INGOT_URL and the network.")
+        return ExitCode.UNREACHABLE
+    } catch (refused: ConsoleSocketRefusedException) {
+        return refusedHello(client, refused, err)
+    } catch (lost: ConsoleSocketLostException) {
+        if (listingMissing(client)) return tooOld(err)
+        err.println("${lost.message}. Nothing ran.")
+        return ExitCode.UNREACHABLE
+    }
+    socket = session
+    session.use {
+        while (true) {
+            val line = try {
+                reader.readLine("ingot ($context)> ").trim()
+            } catch (_: UserInterruptException) {
+                continue
+            } catch (_: EndOfFileException) {
+                return ExitCode.OK
+            }
+            when {
+                line.isEmpty() -> continue
+                line == ":quit" -> return ExitCode.OK
+                line.startsWith(":") -> err.println("Unknown builtin ${line.substringBefore(' ')}. Builtins: :quit")
+                else -> runLine(session, reader, line, json, yes, out, err)?.let { return it }
+            }
         }
     }
 }
+
+/** Runs one line. Returns an exit code when the session has to end, and null when the REPL goes on. */
+private fun runLine(socket: ConsoleSocket, reader: LineReader, line: String, json: Boolean, yes: Boolean, out: PrintStream, err: PrintStream): Int? {
+    val result = try {
+        socket.execute(line) { command, reason -> yes || askYesNo(reader, command, reason) }
+    } catch (_: ConsoleSocketLostException) {
+        err.println("The connection to the server was lost. '$line' may or may not have run, and it is not sent again.")
+        return ExitCode.UNREACHABLE
+    } catch (refused: ConsoleSocketRefusedException) {
+        err.println(refused.message)
+        return if (refused.code == "unauthorized") ExitCode.DENIED else null
+    }
+    if (json) {
+        val answer = mapOf(
+            "command" to line,
+            "status" to result.status,
+            "exitCode" to result.exitCode,
+            "output" to result.output.map { mapOf("stream" to it.stream, "text" to it.text) },
+            "data" to result.data,
+            "node" to result.node,
+            "confirmed" to result.confirmed,
+        )
+        out.println(MAPPER.writeValueAsString(answer))
+    } else {
+        result.output.forEach { if (it.stream == "stderr") err.println(it.text) else out.println(it.text) }
+    }
+    return null
+}
+
+private fun askYesNo(reader: LineReader, command: String, reason: String): Boolean =
+    try {
+        reader.readLine("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ").trim().lowercase().let { it == "y" || it == "yes" }
+    } catch (_: UserInterruptException) {
+        false
+    } catch (_: EndOfFileException) {
+        false
+    }
+
+/** Log lines go to the terminal above the prompt, never into the command output. */
+private fun showLog(reader: LineReader, log: ConsoleLogLine) {
+    if (log.dropped > 0) reader.printAbove("(${log.dropped} log lines were dropped)")
+    reader.printAbove(log.text)
+}
+
+/**
+ * A refused hello. A version 1 server names the reason. A legacy server refuses a hello the same way it refuses a wrong
+ * token, so the command listing tells the two apart: an older server has none.
+ */
+private fun refusedHello(client: IngotClient, refused: ConsoleSocketRefusedException, err: PrintStream): Int {
+    if (refused.code == "unsupported_protocol" || (refused.code == null && listingMissing(client))) return tooOld(err)
+    err.println("The token is not accepted, or it has no console area (ingot.admin.console).")
+    return ExitCode.DENIED
+}
+
+private fun tooOld(err: PrintStream): Int {
+    err.println("The server does not speak version 1 of the console protocol. Upgrade the server, or use 'ingot exec'.")
+    return ExitCode.SERVER_TOO_OLD
+}
+
+private fun listingMissing(client: IngotClient): Boolean =
+    try {
+        client.listCommands().status == 404
+    } catch (_: ServerUnreachableException) {
+        false
+    }
+
+private val MAPPER = ObjectMapper()
