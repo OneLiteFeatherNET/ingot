@@ -22,6 +22,7 @@ import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import MdSection from '../md/MdSection.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { hasQuota, normalizeStorage, quotaFraction, quotaNote, usageLine } from './storage'
@@ -117,13 +118,12 @@ onBeforeUnmount(stopPolling)
       </MdSection>
     </div>
 
-    <p
+    <MdStatePanel
       v-if="loadError"
-      class="md-body-medium text-error"
-      role="alert"
-    >
-      {{ loadError }}
-    </p>
+      state="error"
+      :description="loadError"
+      @retry="load"
+    />
 
     <div
       v-if="computing"
@@ -137,12 +137,12 @@ onBeforeUnmount(stopPolling)
       <span class="md-body-medium text-on-surface-variant">Computing storage figures…</span>
     </div>
 
-    <p
+    <MdStatePanel
       v-if="storage && !storage.computedAt && !computing"
-      class="md-body-large text-on-surface-variant"
-    >
-      The figures have not been computed yet. Refresh to compute them.
-    </p>
+      data-test="not-computed"
+      state="empty"
+      description="The figures have not been computed yet. Refresh to compute them."
+    />
 
     <!-- While the server computes, the zero totals of the response are not results: only the progress is shown. -->
     <template v-else-if="storage && !computing">
@@ -151,12 +151,12 @@ onBeforeUnmount(stopPolling)
         across {{ countLabel(rows.length, 'repository', 'repositories') }}
       </p>
 
-      <p
+      <MdStatePanel
         v-if="!rows.length"
-        class="md-body-medium text-on-surface-variant"
-      >
-        No repository has been measured yet.
-      </p>
+        data-test="no-repositories"
+        state="empty"
+        description="No repository has been measured yet."
+      />
 
       <ul
         v-else
