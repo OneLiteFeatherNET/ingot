@@ -320,6 +320,78 @@ describe('CleanupPoliciesPanel preview', () => {
   })
 })
 
+describe('CleanupPoliciesPanel preview dialog', () => {
+  const previewDialog = () => [...document.querySelectorAll<HTMLElement>('[role="dialog"]')]
+    .find(dialog => document.getElementById(dialog.getAttribute('aria-labelledby') ?? '')?.textContent?.includes('Preview')) ?? null
+
+  const openFromButton = async () => {
+    const opener = buttonLabelled('Preview snapshots-weekly')
+    opener.focus()
+    await clickIn(opener)
+    return opener
+  }
+
+  it('names the preview dialog by its heading', async () => {
+    await mountPanel()
+    await openFromButton()
+
+    const dialog = previewDialog()
+    const heading = document.getElementById(dialog?.getAttribute('aria-labelledby') ?? '')
+
+    expect(heading?.textContent?.trim(), 'aria-labelledby resolves to the heading text').toBe('Preview snapshots-weekly')
+  })
+
+  it('draws the preview in the shared dialog frame at the 560px cap', async () => {
+    await mountPanel()
+    await openFromButton()
+
+    const frame = previewDialog()?.querySelector('.vfm__content > div')
+
+    expect(frame, 'the preview uses the shared MdDialog frame').not.toBeNull()
+    expect(frame?.classList.contains('max-w-140'), 'the frame keeps the 560px cap of the default size').toBe(true)
+    expect(document.body.innerHTML, 'the old 768px frame is gone').not.toContain('max-w-3xl')
+  })
+
+  it('moves the focus into the preview dialog when it opens', async () => {
+    await mountPanel()
+    await openFromButton()
+
+    expect(previewDialog()?.contains(document.activeElement), 'the focus is inside the dialog').toBe(true)
+  })
+
+  it('closes the preview on Escape and returns the focus to the Preview button', async () => {
+    await mountPanel()
+    const opener = await openFromButton()
+
+    previewDialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(previewDialog(), 'Escape closes the preview').toBeNull()
+    expect(document.activeElement, 'the focus is back on the Preview button').toBe(opener)
+  })
+
+  it('returns the focus to the Preview button after Close', async () => {
+    await mountPanel()
+    const opener = await openFromButton()
+
+    await clickIn([...previewDialog()!.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Close')!)
+
+    expect(document.activeElement, 'the focus is back on the Preview button').toBe(opener)
+  })
+
+  it('shows a failed preview as an error alert inside the dialog', async () => {
+    session.client = fakeClient({ dryRun: () => Promise.reject(new Error('the policy is gone')) })
+    await mountPanel()
+    await openFromButton()
+
+    const alert = previewDialog()?.querySelector('[role="alert"]')
+
+    expect(alert?.getAttribute('data-ingot-component'), 'the failure is an MdAlert').toBe('md-alert')
+    expect(alert?.getAttribute('data-ingot-state'), 'the alert is in the error state').toBe('error')
+    expect(alert?.textContent, 'the alert carries the server message').toContain('the policy is gone')
+  })
+})
+
 describe('CleanupPoliciesPanel run now', () => {
   it('keeps the run button disabled until the policy id is typed exactly', async () => {
     await mountPanel()
