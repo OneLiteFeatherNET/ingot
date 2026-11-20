@@ -64,7 +64,7 @@ Rules for the "Who can open it" column:
 
 ### Administration tree
 
-**Administration** groups its pages under four headings: **Artifacts**, **Access**, **Instance** and **Monitoring and support**. Every Administration page names itself in its heading. A breadcrumb above the heading reads **Administration**, then the group of the page, and a line under the heading describes the page. Every Administration page shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
+**Administration** groups its pages under four headings: **Artifacts**, **Access**, **Instance** and **Monitoring and support**. Every Administration page names itself in its heading, and a line under the heading describes the page. A breadcrumb above the heading reads **Administration**, then the group of the page (see [Page header and breadcrumb](#page-header-and-breadcrumb)). Every Administration page shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
 
 **Overview** is the first entry of the tree, above the first group, for every visitor who may edit the settings. It is the page `/settings` without a domain (see [Overview](#overview)).
 
@@ -79,6 +79,18 @@ The Administration pages use one layout at four widths. Below 600 pixels the nav
 The pages are of two kinds. A **wide** page is a list or a table, such as Repositories, Access, Audit and the file browser listing. It takes the full width after the side navigation at every width, and the table shows more columns as the window grows: Version policy and Visibility from 1920 pixels, and Storage from 2560 pixels. A **reading** page is text or a form, such as the settings domains, Maintenance, Account, the migration steps and the system information. It keeps a measure of at most 960 pixels, at the start of the content column, so a long line does not stretch across a large monitor. Overview is a wide page: its instance status lays the two resource charts out side by side from 1024 pixels, its getting started checklist takes the full width of the content column, and the status meters fill each row. The repository overview puts the browse list beside the snippet card, the list taking two thirds of the width, from 1920 pixels.
 
 The heading and the page actions form one row above the columns from 600 pixels. The row is not sticky: it scrolls away with the page, and the top bar stays at the top of the window.
+
+### Page header and breadcrumb
+
+Every Administration page opens with the same header. From top to bottom:
+
+* **Back arrow.** Below 1240 pixels, on every page with an entry except Overview, a back arrow stands alone in a row above the header. On a detail page (one repository, one settings entry) it leads to the list the entry belongs to, everywhere else to the Administration index. Its name for a screen reader is "Back to" and the page it leads to, for example "Back to Repositories". The arrow sits in the page gutter, so its glyph starts at the same left edge as the heading, and the heading does not move when the arrow appears or disappears. From 1240 pixels no page draws a back arrow: the tree is beside the page, and a detail page leads back through its breadcrumb.
+* **Breadcrumb.** A navigation landmark named **Breadcrumb** with a list of crumbs. On a list or settings page it reads **Administration**, a link to the index, then the group of the page as text. On a detail page the group is a link to the list page, and the list page follows as text, for example **Administration** / **Artifacts** / **Repositories** on the page of one repository, whose name is the heading. Overview, and a page whose entry has no group, draws **Administration** alone. The last crumb carries `aria-current="page"`. The slashes between the crumbs are hidden from screen readers. Below 1240 pixels the breadcrumb shows its last crumb only, and the full trail is the tooltip of that crumb. The element carries the dashboard anchor `administration-breadcrumb` (see [Dashboard anchors](../plugins/dashboard-anchors.md)).
+* **Heading.** The one level one heading of the page. It names the page, or on a detail page the item it opens: the repository page shows the repository name as its heading, and the repository type section below it is a level two heading.
+* **Description.** One line that describes the page. A detail page shows no list description.
+* **Actions.** Beside the heading, at its right: the **Sections** button (600 to 1239 pixels, see below), the links to related pages, and the buttons of the page.
+
+The heading, the breadcrumb and the description start at one left edge at every width.
 
 | Heading | Pages and addresses |
 | --- | --- |
