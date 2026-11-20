@@ -568,7 +568,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
     <template v-if="hasNavigation">
       <div
         v-if="moreOpen"
-        class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 medium:hidden"
+        class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 shadow-elevation-2 medium:hidden"
         @keydown.esc="moreOpen = false"
       >
         <nav aria-label="More sections">
