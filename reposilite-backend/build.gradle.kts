@@ -24,6 +24,7 @@ import com.github.jk1.license.render.JsonReportRenderer
 import ingot.plugin.CheckPluginApiClosureTask
 import ingot.plugin.EmbeddedPluginJars
 import ingot.plugin.IngotBaselineRepository
+import ingot.plugin.IngotInternalClassesTask
 import ingot.plugin.IngotPluginApiReportTask
 import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
@@ -756,6 +757,16 @@ val ingotBaselineCoordinate = "net.onelitefeather.ingot:ingot:$ingotBaseline"
 val ingotBaselineArchive = configurations.detachedConfiguration(dependencies.create(ingotBaselineCoordinate))
     .apply { isTransitive = false }
 
+// The Kotlin internal classes of the Ingot plugin API packages in the jar of this build, which the comparison leaves out (design D4
+// of extend-plugin-abi-gate). japicmp sees them as public.
+val ingotInternalClasses = tasks.register<IngotInternalClassesTask>("ingotInternalClasses") {
+    group = "verification"
+    description = "Writes the Kotlin internal classes of the Ingot plugin API packages to build/plugin-api/ingot-internal.txt"
+    archive.set(tasks.named<Jar>("jar").flatMap { it.archiveFile })
+    packages.set(ingotPluginApiPackages)
+    internalClasses.set(layout.buildDirectory.file("plugin-api/ingot-internal.txt"))
+}
+
 // Compares the Ingot plugin API packages of this build with the last Ingot release. Report-only, like pluginApiReport.
 // ingotPluginApiReport below groups the findings it writes.
 val ingotPluginApiCompare = tasks.register<JapicmpTask>("ingotPluginApiCompare") {
@@ -774,6 +785,7 @@ val ingotPluginApiCompare = tasks.register<JapicmpTask>("ingotPluginApiCompare")
     newClasspath.from(configurations.named("runtimeClasspath"))
 
     packageIncludes.set(ingotPluginApiPackages)
+    classExcludes.set(ingotInternalClasses.flatMap { it.internalClasses }.map { it.asFile.readLines().filter(String::isNotBlank) })
     onlyBinaryIncompatibleModified.set(true)
     failOnModification.set(false)
     ignoreMissingClasses.set(true)

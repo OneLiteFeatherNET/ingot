@@ -117,6 +117,17 @@ class IngotPluginApiReportTest {
     }
 
     @Test
+    fun memberWithAMangledInternalNameIsDropped() {
+        val xml = comparison.replace("name=\"preview\"", "name=\"preview\$reposilite_backend\"")
+
+        val registrar = JapicmpComparison.parse(xml.byteInputStream()).first()
+
+        assertThat(registrar.members.map { it.name })
+            .describedAs("Kotlin gives an internal member a name with a '$', and an internal member is no plugin API")
+            .containsExactlyInAnyOrder("LIMIT", "register")
+    }
+
+    @Test
     fun unmarkedFindingsArePromisedAndCounted() {
         val report = render(newMarkers = emptyMap(), oldMarkers = emptyMap())
 

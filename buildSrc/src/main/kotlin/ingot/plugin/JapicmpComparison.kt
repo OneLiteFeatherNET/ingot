@@ -29,7 +29,8 @@ data class JapicmpClassChanges(val className: String, val typeChanges: List<Stri
 data class JapicmpMemberChanges(val name: String, val label: String, val changes: List<String>)
 
 // Reads the XML report of japicmp. Only changes that are binary incompatible are kept, because those are the ones that break
-// a compiled plugin. A removed class is reported with its removal alone, since its members add nothing to it.
+// a compiled plugin. A removed class is reported with its removal alone, since its members add nothing to it. A member with a
+// mangled internal name is dropped (design D4).
 object JapicmpComparison {
 
     private val memberElements = setOf("method", "constructor", "field")
@@ -50,6 +51,8 @@ object JapicmpComparison {
         val members = if ("CLASS_REMOVED" in typeChanges) emptyList() else memberElements
             .flatMap { name -> type.elements(name) }
             .filter { owner(it) === type && it.getAttribute("binaryCompatible") == "false" }
+            // A constructor carries the binary name of its class, so only methods and fields are filtered by name.
+            .filter { it.tagName == "constructor" || !InternalClassFilter.isExcludedMember(it.getAttribute("name")) }
             .map(::memberChanges)
             .filter { it.changes.isNotEmpty() }
         return JapicmpClassChanges(type.getAttribute("fullyQualifiedName"), typeChanges, members)

@@ -27,6 +27,9 @@ dependencies {
     // Reads the class files of the slim plugin API jar, see ingot.plugin.PluginApiClosure.
     implementation("org.ow2.asm:asm:9.9.1")
     implementation("org.ow2.asm:asm-tree:9.9.1")
+    // Reads the Kotlin visibility of the Ingot plugin API classes, see ingot.plugin.InternalClassFilter. It matches the Kotlin
+    // version Gradle embeds and reads newer metadata leniently.
+    implementation("org.jetbrains.kotlin:kotlin-metadata-jvm:2.3.20")
 
     // The versions match the test dependencies of the project modules.
     testImplementation("org.assertj:assertj-core:4.0.0-M1")
