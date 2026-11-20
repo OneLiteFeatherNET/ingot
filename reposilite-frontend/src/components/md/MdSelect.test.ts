@@ -19,6 +19,8 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import MdSelect from './MdSelect.vue'
 import MdFieldShell from './MdFieldShell.vue'
+import type { Component } from 'vue'
+import MdTransition from './MdTransition.vue'
 
 const options = [
   { value: 'PUBLIC', label: 'Public' },
@@ -33,11 +35,14 @@ const CHEVRON_PATH = 'path[d="M7 10l5 5 5-5z"]'
 
 // Every wrapper is mounted in the document and unmounted after its test, so the listbox,
 // which is teleported to the body, never outlives the test that opened it.
+// The test utilities stub Vue <Transition> with an element of its own, so a test of where the menu is drawn asks for the
+// real Transition, which adds no element, as in the browser.
 const mounted: Wrapper[] = []
-const mountSelect = (props = {}) => {
+const mountSelect = (props = {}, realTransition = false) => {
   const wrapper = mount(MdSelect, {
     props: { label: 'Visibility', options, ...props },
-    attachTo: document.body
+    attachTo: document.body,
+    global: realTransition ? { stubs: { transition: false } } : {}
   })
   mounted.push(wrapper)
   return wrapper
@@ -191,7 +196,7 @@ describe('MdSelect', () => {
     })
 
     it('is drawn in the body, so that a dialog around the field cannot clip it', async () => {
-      const wrapper = mountSelect()
+      const wrapper = mountSelect({}, true)
 
       await open(wrapper)
 
@@ -588,6 +593,42 @@ describe('MdSelect', () => {
       expect(listbox(wrapper)!.style.bottom).toBe('104px')
       expect(listbox(wrapper)!.style.maxHeight).toBe('292px')
     })
+  })
+})
+
+describe('MdSelect motion', () => {
+  it('opens and closes the menu through the menu pattern of the motion primitives', async () => {
+    const wrapper = mountSelect()
+
+    await open(wrapper)
+
+    const transition = wrapper.findComponent(MdTransition as Component) as unknown as { exists: () => boolean, props: (key: 'pattern') => unknown }
+    expect(transition.exists(), 'the menu is wrapped by MdTransition').toBe(true)
+    expect(transition.props('pattern'), 'the menu uses the menu pattern, not a transition name of its own').toBe('menu')
+  })
+
+  it('scales from the top edge when the menu opens below the field', async () => {
+    vi.stubGlobal('innerHeight', 700)
+    const wrapper = mountSelect()
+    stubRect(combobox(wrapper).element, { top: 100, bottom: 156 })
+
+    await open(wrapper)
+
+    expect(listbox(wrapper)!.style.top, 'the menu opens below the field').toBe('160px')
+    expect(listbox(wrapper)!.classList.contains('origin-top'), 'the menu grows from the edge next to the field').toBe(true)
+    expect(listbox(wrapper)!.classList.contains('origin-bottom'), 'no origin of the other placement').toBe(false)
+  })
+
+  it('scales from the bottom edge when the menu opens above the field', async () => {
+    vi.stubGlobal('innerHeight', 700)
+    const wrapper = mountSelect()
+    stubRect(combobox(wrapper).element, { top: 600, bottom: 656 })
+
+    await open(wrapper)
+
+    expect(listbox(wrapper)!.style.bottom, 'the menu opens above the field').toBe('104px')
+    expect(listbox(wrapper)!.classList.contains('origin-bottom'), 'the menu grows from the edge next to the field').toBe(true)
+    expect(listbox(wrapper)!.classList.contains('origin-top'), 'no origin of the other placement').toBe(false)
   })
 })
 

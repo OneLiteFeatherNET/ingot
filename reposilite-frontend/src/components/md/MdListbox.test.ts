@@ -17,12 +17,19 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MdListbox from './MdListbox.vue'
+import type { Component } from 'vue'
+import MdTransition from './MdTransition.vue'
 import { optionId } from '../../helpers/useCombobox'
 
 const options = [{ value: 'alpha' }, { value: 'beta', description: 'the second' }, { value: 'gamma', disabled: true }]
 
+// The test utilities stub Vue <Transition> with an element of its own, so the list is mounted with the real Transition,
+// which adds no element, as in the browser.
 const mountListbox = (props: Record<string, unknown> = {}) =>
-  mount(MdListbox, { props: { id: 'nodes', label: 'Nodes', options, active: -1, open: true, ...props } })
+  mount(MdListbox, {
+    props: { id: 'nodes', label: 'Nodes', options, active: -1, open: true, ...props },
+    global: { stubs: { transition: false } }
+  })
 
 const optionsOf = (wrapper: ReturnType<typeof mountListbox>) => wrapper.findAll('[role="option"]')
 
@@ -157,5 +164,36 @@ describe('MdListbox', () => {
 
       expect(wrapper.emitted('choose'), 'a click in a group chooses the option').toEqual([['ingot.repository.releases']])
     })
+  })
+})
+
+describe('MdListbox motion', () => {
+  it('opens and closes the list through the menu pattern of the motion primitives', () => {
+    const wrapper = mountListbox()
+
+    const transition = wrapper.findComponent(MdTransition as Component) as unknown as { exists: () => boolean, props: (key: 'pattern') => unknown }
+    expect(transition.exists(), 'the list is wrapped by MdTransition').toBe(true)
+    expect(transition.props('pattern'), 'the list uses the menu pattern, not a transition name of its own').toBe('menu')
+  })
+
+  it('keeps the list in the DOM while it is closed, so aria-controls still names it', () => {
+    const wrapper = mountListbox({ open: false })
+
+    const list = wrapper.find('[role="listbox"]')
+    expect(list.exists(), 'the closed list stays in the DOM under v-show').toBe(true)
+    expect((list.element as HTMLElement).style.display, 'the closed list is hidden by v-show').toBe('none')
+  })
+
+  it('scales from the top edge, where the input sits above the list', () => {
+    const wrapper = mountListbox()
+
+    expect(wrapper.find('[role="listbox"]').classes(), 'the list grows from the edge next to the input').toContain('origin-top')
+  })
+
+  it('keeps its registered anchor on the list, with no element of the transition around it', () => {
+    const wrapper = mountListbox()
+
+    expect(wrapper.attributes('role'), 'the root is still the listbox').toBe('listbox')
+    expect(wrapper.attributes('data-ingot-component'), 'the root carries the registered name').toBe('md-listbox')
   })
 })
