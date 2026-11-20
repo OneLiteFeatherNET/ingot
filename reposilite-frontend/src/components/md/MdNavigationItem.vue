@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import { isModifiedClick } from '../../helpers/modifiedClick'
 import type { RouterNavigate } from './types'
@@ -25,20 +25,24 @@ import type { RouterNavigate } from './types'
  * link or a button. The bar and the rail share this item and pass only their variant.
  *
  * Props:
- *   label    the visible text, which is also the accessible name
- *   to       a route location. The item is then a router link, and a plain click goes through the router's navigate,
- *            so the page is not reloaded.
- *   href     a plain link outside the router, followed by the browser. Without `to` or `href` the item is a button.
- *   active   whether this is the current destination. Without it, a router link is current when its route is the
- *            exact current route. The current destination carries aria-current="page" and the indicator.
- *   variant  bar (a 64px indicator, the item takes an equal share of the bar) or rail (a 56px indicator, the full
- *            width of the rail)
+ *   label        the visible text, which is also the accessible name
+ *   to           a route location. The item is then a router link, and a plain click goes through the router's
+ *                navigate, so the page is not reloaded.
+ *   href         a plain link outside the router, followed by the browser. Without `to` or `href` the item is a button.
+ *   active       whether this is the current destination. Without it, a router link is current when its route is the
+ *                exact current route. The current destination carries aria-current="page" and the indicator.
+ *   variant      bar (a 64px indicator, the item takes an equal share of the bar, the state layer covers the whole
+ *                destination) or rail (a 56px indicator, the full width of the rail, the state layer on the indicator)
+ *   description  a title on the link or the button, such as the full name of a destination shown by a short label
+ *   labelTitle   a title on the label, such as the full text of a label that is cut with an ellipsis
  * Slots: leading (the icon, decorative, drawn in the indicator).
- * Emits select with the click event for a plain primary click. A modified click (Ctrl, Shift, Meta, Alt or a
- * button other than the primary one) is left to the browser: it is not prevented and it does not emit.
+ * Emits select with the click event. On a link, a modified click (Ctrl, Shift, Meta, Alt or a button other than the
+ * primary one) is left to the browser, which opens it in a new tab or window: it is not prevented and it does not
+ * emit. A button has no browser default to leave such a click to, so it always emits.
  *
  * The root is a wrapper with display: contents that carries the anchor, so the item has one named root whatever
- * its link kind is. The link or the button inside takes the layout of the item.
+ * its link kind is. The link or the button inside takes the layout of the item. The label element is exposed as
+ * labelElement, so a rail can measure whether its text is cut.
  */
 const props = withDefaults(defineProps<{
   label: string
@@ -46,11 +50,15 @@ const props = withDefaults(defineProps<{
   href?: string
   active?: boolean
   variant?: 'bar' | 'rail'
+  description?: string
+  labelTitle?: string
 }>(), {
   to: undefined,
   href: undefined,
   active: undefined,
-  variant: 'bar'
+  variant: 'bar',
+  description: undefined,
+  labelTitle: undefined
 })
 
 defineSlots<{
@@ -61,21 +69,35 @@ const emit = defineEmits<{
   select: [event: MouseEvent]
 }>()
 
-// The bar and the rail differ in the width of the indicator and in how the item fills its row.
+const labelElement = ref<HTMLElement | null>(null)
+defineExpose({ labelElement })
+
+// The bar and the rail differ in the width of the indicator, in how the item fills its row, in where the state
+// layer is drawn and in the weight of the active label.
 const VARIANTS = Object.freeze({
-  bar: { root: 'h-14 min-w-0 flex-1 md-focus-ring', indicator: 'w-16' },
-  rail: { root: 'min-h-14 w-full md-focus-ring-inset', indicator: 'w-14' }
+  bar: {
+    root: 'md-state-layer md-focus-ring h-14 min-w-0 flex-1',
+    indicator: 'w-16',
+    label: '',
+    activeLabel: ''
+  },
+  rail: {
+    root: 'group md-focus-ring-inset min-h-14 w-full px-1',
+    indicator: 'md-state-layer w-14 group-hover:md-state-hover',
+    label: 'text-center',
+    activeLabel: 'md-label-medium-prominent text-on-surface'
+  }
 })
 
 const layout = computed(() => VARIANTS[props.variant])
 
-const ROOT = 'group relative flex flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-md-short3 ease-md-standard motion-reduce:transition-none'
-const INDICATOR = 'md-state-layer flex h-8 items-center justify-center rounded-corner-full transition-colors duration-md-medium2 ease-md-standard group-hover:md-state-hover motion-reduce:transition-none'
-const LABEL = 'md-label-medium block max-w-full truncate whitespace-nowrap text-center'
+const ROOT = 'relative flex flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-md-short3 ease-md-standard motion-reduce:transition-none'
+const INDICATOR = 'flex h-8 items-center justify-center rounded-corner-full transition-colors duration-md-medium2 ease-md-standard motion-reduce:transition-none [&>svg]:size-6'
+const LABEL = 'md-label-medium block max-w-full truncate whitespace-nowrap'
 
-// A plain click is handled here. The router link passes its navigate function, which prevents the default
-// action and moves the router; a plain link and a button leave the browser to their own default.
-const select = (event: MouseEvent, navigate?: RouterNavigate) => {
+// A plain click on a link is handled here. The router link passes its navigate function, which prevents the
+// default action and moves the router; a plain link leaves the browser to follow its href.
+const followLink = (event: MouseEvent, navigate?: RouterNavigate) => {
   if (isModifiedClick(event)) {
     return
   }
@@ -99,9 +121,10 @@ const select = (event: MouseEvent, navigate?: RouterNavigate) => {
     >
       <a
         :href="routeHref"
+        :title="description"
         :aria-current="(active ?? isExactActive) ? 'page' : undefined"
         :class="[ROOT, layout.root, (active ?? isExactActive) ? 'text-on-surface' : 'text-on-surface-variant']"
-        @click="select($event, navigate)"
+        @click="followLink($event, navigate)"
       >
         <span
           data-test="indicator"
@@ -110,15 +133,21 @@ const select = (event: MouseEvent, navigate?: RouterNavigate) => {
         >
           <slot name="leading" />
         </span>
-        <span :class="[LABEL, (active ?? isExactActive) ? 'md-label-medium-prominent text-on-surface' : '']">{{ label }}</span>
+        <span
+          ref="labelElement"
+          data-test="label"
+          :class="[LABEL, layout.label, (active ?? isExactActive) ? layout.activeLabel : '']"
+          :title="labelTitle"
+        >{{ label }}</span>
       </a>
     </RouterLink>
     <a
       v-else-if="href !== undefined"
       :href="href"
+      :title="description"
       :aria-current="active ? 'page' : undefined"
       :class="[ROOT, layout.root, active ? 'text-on-surface' : 'text-on-surface-variant']"
-      @click="select($event)"
+      @click="followLink($event)"
     >
       <span
         data-test="indicator"
@@ -127,14 +156,20 @@ const select = (event: MouseEvent, navigate?: RouterNavigate) => {
       >
         <slot name="leading" />
       </span>
-      <span :class="[LABEL, active ? 'md-label-medium-prominent text-on-surface' : '']">{{ label }}</span>
+      <span
+        ref="labelElement"
+        data-test="label"
+        :class="[LABEL, layout.label, active ? layout.activeLabel : '']"
+        :title="labelTitle"
+      >{{ label }}</span>
     </a>
     <button
       v-else
       type="button"
+      :title="description"
       :aria-current="active ? 'page' : undefined"
       :class="[ROOT, layout.root, active ? 'text-on-surface' : 'text-on-surface-variant']"
-      @click="select($event)"
+      @click="emit('select', $event)"
     >
       <span
         data-test="indicator"
@@ -143,7 +178,12 @@ const select = (event: MouseEvent, navigate?: RouterNavigate) => {
       >
         <slot name="leading" />
       </span>
-      <span :class="[LABEL, active ? 'md-label-medium-prominent text-on-surface' : '']">{{ label }}</span>
+      <span
+        ref="labelElement"
+        data-test="label"
+        :class="[LABEL, layout.label, active ? layout.activeLabel : '']"
+        :title="labelTitle"
+      >{{ label }}</span>
     </button>
   </span>
 </template>

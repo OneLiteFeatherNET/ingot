@@ -260,16 +260,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdNavigationBar.vue",
-    "match": "[&>svg]:size-6",
-    "count": 1
-  },
-  {
-    "file": "src/components/md/MdNavigationRail.vue",
-    "match": "[&>svg]:size-6",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdSnackbar.vue",
     "match": "[&>svg]:size-6",
     "count": 1

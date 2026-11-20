@@ -15,6 +15,7 @@
   -->
 
 <script setup lang="ts">
+import MdNavigationItem from './MdNavigationItem.vue'
 import type { NavIconSlot, NavItem } from './types'
 /*
  * Material Design 3 navigation bar: three to five destinations with an icon and a label.
@@ -28,7 +29,8 @@ import type { NavIconSlot, NavItem } from './types'
  * to the browser, so the link can open in a new tab without also switching this page.
  * Without `href` the item is a button and always emits.
  *
- * The icon slot receives { item, active } for each destination.
+ * The icon slot receives { item, active } for each destination. Each destination is an MdNavigationItem with the
+ * bar variant.
  */
 const props = withDefaults(defineProps<{
   items: NavItem[]
@@ -49,14 +51,10 @@ const emit = defineEmits<{
 
 const isActive = (item: NavItem) => item.key === props.modelValue
 
-const isPlainLeftClick = (event: MouseEvent) =>
-  event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
-
+// MdNavigationItem leaves a modified click on a link to the browser and reports every other click. A reported
+// click on a link keeps the page in place, so the parent switches the section through the router.
 const select = (item: NavItem, event: MouseEvent) => {
   if (item.href) {
-    if (!isPlainLeftClick(event)) {
-      return
-    }
     event.preventDefault()
   }
   emit('update:modelValue', item.key)
@@ -80,34 +78,25 @@ const select = (item: NavItem, event: MouseEvent) => {
         :key="item.key"
         class="flex h-full min-w-0 flex-1 basis-0"
       >
-        <component
-          :is="item.href ? 'a' : 'button'"
+        <!-- The label is cut with an ellipsis when its item is narrower than the text (a 320 px window with a wide
+             fallback font), so the text never runs past the edge of the window. The full name stays in the title. -->
+        <MdNavigationItem
+          variant="bar"
+          :label="item.shortLabel ?? item.label"
           :href="item.href"
-          :type="item.href ? undefined : 'button'"
-          :aria-current="isActive(item) ? 'page' : undefined"
-          :title="item.shortLabel ? item.label : undefined"
-          class="md-state-layer md-focus-ring relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
-          :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
-          @click="select(item, $event)"
+          :active="isActive(item)"
+          :description="item.shortLabel ? item.label : undefined"
+          :label-title="item.label"
+          @select="select(item, $event)"
         >
-          <span
-            class="flex h-8 w-16 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard motion-reduce:transition-none [&>svg]:size-6"
-            :class="isActive(item) ? 'bg-secondary-container text-on-secondary-container' : ''"
-            aria-hidden="true"
-          >
+          <template #leading>
             <slot
               name="icon"
               :item="item"
               :active="isActive(item)"
             />
-          </span>
-          <!-- The label is cut with an ellipsis when its item is narrower than the text (a 320 px window with a wide
-               fallback font), so the text never runs past the edge of the window. The full name stays in the title. -->
-          <span
-            class="md-label-medium block max-w-full truncate whitespace-nowrap"
-            :title="item.label"
-          >{{ item.shortLabel ?? item.label }}</span>
-        </component>
+          </template>
+        </MdNavigationItem>
       </li>
     </ul>
   </nav>
