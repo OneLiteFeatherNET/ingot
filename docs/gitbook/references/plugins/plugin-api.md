@@ -314,7 +314,7 @@ A plugin built for Reposilite 3.5.28 is expected to keep running on Ingot, and a
 | Item | Value |
 | --- | --- |
 | Baseline | `com.reposilite:reposilite:3.5.28`, the release Ingot forked from, for the Reposilite packages. `net.onelitefeather.ingot:ingot:1.1.1`, the last Ingot release, for the Ingot packages. The release process raises the Ingot baseline with every release. |
-| Packages compared | `com.reposilite.plugin`, `com.reposilite.maven`, `com.reposilite.storage`, `com.reposilite.token`, `com.reposilite.shared`, `com.reposilite.web.api`, `com.reposilite.status` and their `api` and `application` subpackages, against 3.5.28. Against the last Ingot release: `net.onelitefeather.ingot.repository` and `com.reposilite.frontend.api`, which are promised, and `net.onelitefeather.ingot.format`, `net.onelitefeather.ingot.plugin.ui`, `net.onelitefeather.ingot.search.backend` and `net.onelitefeather.ingot.storage.capability`, which are experimental. Both lists are in `reposilite-backend/build.gradle.kts`. |
+| Packages compared | `com.reposilite.plugin`, `com.reposilite.maven`, `com.reposilite.storage`, `com.reposilite.token`, `com.reposilite.shared`, `com.reposilite.web.api`, `com.reposilite.status` and their `api` and `application` subpackages, against 3.5.28. Against the last Ingot release: `net.onelitefeather.ingot.repository` and `com.reposilite.frontend.api`, which are promised, and `net.onelitefeather.ingot.access`, `net.onelitefeather.ingot.format`, `net.onelitefeather.ingot.plugin.ui`, `net.onelitefeather.ingot.search.backend` and `net.onelitefeather.ingot.storage.capability`, which are experimental. Both lists are in `reposilite-backend/build.gradle.kts`. |
 | Not compared | `com.reposilite.journalist`, a separate library. |
 
 The checks:
