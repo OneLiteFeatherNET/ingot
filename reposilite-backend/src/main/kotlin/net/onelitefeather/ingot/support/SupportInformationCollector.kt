@@ -90,7 +90,11 @@ class SupportInformationCollector(private val sources: SupportSources) {
             database = DatabaseInformation(kind = database.kind, endpoint = database.endpoint),
             storage = sources.repositoryStorage().map { StorageInformation(it.repository, it.kind, it.region, sources.repositoryDetails()[it.repository].orEmpty()) },
             cluster = sources.cluster(),
-            plugins = sources.plugins().map { PluginInformation(it.name, it.version, it.dependencies, it.tier, it.origin, it.settingsDomain) },
+            plugins = sources.plugins().map {
+                // A description is masked like a log line, so a secret in it is counted and never refuses the bundle
+                val description = it.description.takeIf { text -> text.isNotEmpty() }?.let { text -> scrubber.scrub(text, tally) }
+                PluginInformation(it.name, it.version, it.dependencies, it.tier, it.origin, it.settingsDomain, description)
+            },
             environment = environmentRedacted,
             systemProperties = propertiesRedacted,
             configuration = ConfigurationInformation(local = local, shared = shared),

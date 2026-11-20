@@ -39,6 +39,7 @@ import net.onelitefeather.ingot.storage.capability.SupportDetails
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.cluster.ClusterSettings
 import net.onelitefeather.ingot.cluster.ClusterSources
+import net.onelitefeather.ingot.plugin.description.PluginDescriptionNormaliser
 import net.onelitefeather.ingot.plugin.tier.PluginOrigin
 import panda.std.reactive.Reference
 import java.io.File
@@ -73,6 +74,7 @@ internal fun pluginFact(metadata: Plugin, tier: PluginTier, origin: PluginOrigin
         tier = tier.name.lowercase(),
         origin = origin.name.lowercase().replace('_', '-'),
         settingsDomain = metadata.settings.java.takeUnless { it == SharedSettings::class.java }?.let { settingsName(it) },
+        description = PluginDescriptionNormaliser.normalise(metadata.description).text,
     )
 
 @Plugin(name = "support", dependencies = ["local-configuration", "shared-configuration", "status", "audit"])

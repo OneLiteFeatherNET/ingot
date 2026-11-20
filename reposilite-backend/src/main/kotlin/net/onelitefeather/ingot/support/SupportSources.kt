@@ -69,7 +69,10 @@ data class OperatingSystemFacts(
     val container: Boolean,
 )
 
-/** A loaded plugin. The tier is the effective one, in lower case, and a plugin fact without one reads as community. */
+/**
+ * A loaded plugin. The tier is the effective one, in lower case, and a plugin fact without one reads as community. The
+ * [description] is the normalised text, and the empty text means the plugin has none.
+ */
 data class PluginFact(
     val name: String,
     val version: String,
@@ -77,6 +80,7 @@ data class PluginFact(
     val tier: String = "community",
     val origin: String = "plugins-directory",
     val settingsDomain: String? = null,
+    val description: String = "",
 )
 
 /** The storage of one repository: its kind, and the region for an S3 bucket. Keys are never part of it. */

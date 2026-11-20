@@ -17,7 +17,7 @@ Open the page under **Administration**, in the group **Monitoring and support**,
 | `configuration-local.json` | The local configuration (the file the instance reads at start), one value per key. |
 | `configuration-shared.json` | Every shared settings domain, with its secrets masked. |
 | `cluster.json` | The cluster section: the bus state and transport, the redacted bus URL and the members. `{"enabled": false}` on an instance without a bus. |
-| `plugins.json` | The plugins with their version, dependencies and tier. The tier is the effective one that the start log shows, for example `official` or `experimental`. |
+| `plugins.json` | The plugins with their version, dependencies and tier. The tier is the effective one that the start log shows, for example `official` or `experimental`. A plugin that sets a description also carries `description`, the one-line text from its `@Plugin` annotation. A plugin without one has no `description` field. |
 | `logs/<instance>.log` | The cached log lines of the instance that answered, scrubbed as described below. |
 
 The bundle describes one instance, the one that answers the request. The cluster members appear in it, but the logs of the other members do not. The log holds the most recent lines kept in memory, 64 by default, set by `cachedLogSize` in the local configuration. Raise that value when a ticket needs more history.
@@ -32,6 +32,7 @@ The bundle is built from an allowlist, not from a list of secret names. A value 
 - **JVM arguments.** Memory and option flags keep their values. A `-D` property keeps its value only under the `ingot.` or `reposilite.` prefix and only when its name does not look like a secret. Other arguments, such as the class path or an agent, show their name and `[withheld]`.
 - **Shared settings.** Every secret of every settings domain is masked with `********`, whether or not **Hide settings secrets** is on. A secret reference such as `${env:NAME}` is masked too. A domain of unknown type is withheld entirely.
 - **Cluster bus.** The URL is written without its user and password.
+- **Plugin descriptions.** A description is scrubbed with the same rules as a log line. A match is replaced by `[redacted]` and counted, and the bundle is still served.
 - **Log lines.** Every known secret of four or more characters is replaced by `[redacted]`. Authorization headers, bearer and basic tokens, credentials in URLs and assignments such as `password=`, `secret:` or `token=` are replaced too, in plain text and in JSON lines.
 - **Never read.** Access tokens, sessions, refresh material, password hashes, the contents of any table, artifact files, request bodies and the audit log are not read by the bundle code at all.
 
