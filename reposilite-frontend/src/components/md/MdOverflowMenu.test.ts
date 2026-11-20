@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { computeAccessibleName } from 'dom-accessibility-api'
 import MdOverflowMenu from './MdOverflowMenu.vue'
+import MdTransition from './MdTransition.vue'
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper!.
 const menu = () => document.querySelector<HTMLElement>('[role="menu"]')!
@@ -522,5 +523,51 @@ describe('MdOverflowMenu catalogue features', () => {
     await mountMenu({ triggerClass: 'w-10' })
 
     expect(trigger().classes(), 'the class string keeps working for one release').toContain('w-10')
+  })
+})
+
+describe('MdOverflowMenu motion', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  // The button sits at a fixed box, and the menu has a fixed layout height, so a test decides where the menu opens.
+  // The height is read from offsetHeight, which the scale of the enter transition does not change.
+  const placeButton = (top: number, menuHeight: number) => {
+    const rect = { top, bottom: top + 40, left: 0, right: 100, width: 100, height: 40 }
+    trigger().element.getBoundingClientRect = () => rect as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(menuHeight)
+  }
+
+  it('opens and closes the menu through the menu pattern of the motion primitives', async () => {
+    await mountMenu()
+    await trigger().trigger('click')
+    await flushPromises()
+
+    const transition = wrapper!.findComponent(MdTransition) as VueWrapper
+    expect(transition.exists(), 'the menu is wrapped by MdTransition').toBe(true)
+    expect(transition.props('pattern'), 'the menu uses the menu pattern, not a transition name of its own').toBe('menu')
+  })
+
+  it('scales from the top edge when the menu opens below its button', async () => {
+    await mountMenu()
+    placeButton(100, 200)
+    await trigger().trigger('click')
+    await flushPromises()
+
+    expect(menu().style.top, 'the menu opens below the button').toBe('144px')
+    expect(menu().classList.contains('origin-top-right'), 'the menu grows from the corner next to the button').toBe(true)
+    expect(menu().classList.contains('origin-bottom-right'), 'no origin of the other placement').toBe(false)
+  })
+
+  it('scales from the bottom edge when the menu opens above its button', async () => {
+    await mountMenu()
+    placeButton(window.innerHeight - 60, 200)
+    await trigger().trigger('click')
+    await flushPromises()
+
+    expect(menu().style.bottom, 'the menu opens above the button when there is no room below').not.toBe('')
+    expect(menu().classList.contains('origin-bottom-right'), 'the menu grows from the corner next to the button').toBe(true)
+    expect(menu().classList.contains('origin-top-right'), 'no origin of the other placement').toBe(false)
   })
 })
