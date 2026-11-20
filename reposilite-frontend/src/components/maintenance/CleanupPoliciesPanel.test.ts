@@ -117,6 +117,9 @@ const mountPanel = async () => {
   return wrapper
 }
 
+// The props of a shared component, read as a record.
+const propsOf = (component: VueWrapper) => component.props() as Record<string, unknown>
+
 const buttonLabelled = (label: string) => document.querySelector(`[aria-label="${label}"]`) as HTMLElement
 const pageButton = (text: string) => wrapper.findAll('button').find(button => button.text() === text)?.element as HTMLElement
 
@@ -183,6 +186,36 @@ describe('CleanupPoliciesPanel list', () => {
 
     expect(policy.classes(), 'a block nested in a card is surface-container').toContain('bg-surface-container')
     expect(policy.classes(), 'not the role of its card').not.toContain('bg-surface-container-low')
+  })
+
+  it('draws each policy as a shared card list item on the container tone', async () => {
+    await mountPanel()
+
+    const policy = (wrapper.findAllComponents({ name: 'MdCard' }) as VueWrapper[])
+      .find(card => card.attributes('data-policy') === 'snapshots-weekly')
+
+    expect((policy?.element as HTMLElement | undefined)?.tagName,'the policy is a list item drawn by MdCard').toBe('LI')
+    expect(policy && propsOf(policy).tone,'the policy steps one surface role above its card').toBe('container')
+  })
+})
+
+describe('CleanupPoliciesPanel section', () => {
+  it('titles the card with a level 3 MdSection that keeps the heading id of the panel', async () => {
+    await mountPanel()
+
+    const section = wrapper.findComponent({ name: 'MdSection' }) as VueWrapper
+    const heading = wrapper.get('#cleanup-policies-title')
+
+    expect(section.exists(), 'the card holds the shared section').toBe(true)
+    expect(propsOf(section).level,'the panel sits inside the page, so its section is level 3').toBe(3)
+    expect(heading.element.tagName, 'the title is a level 3 heading').toBe('H3')
+    expect(heading.classes(), 'a level 3 title takes the title-small role').toContain('md-title-small')
+  })
+
+  it('puts the new policy action in the section header', async () => {
+    await mountPanel()
+
+    expect(wrapper.get('[data-test="section-header"]').text(), 'the new policy action sits beside the title').toContain('New policy')
   })
 })
 

@@ -23,6 +23,7 @@ import type { JobRun } from '../jobs/jobs'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdSection from '../md/MdSection.vue'
 import RebuildIndexDialog from './RebuildIndexDialog.vue'
 import { countLabel, formatDateTime } from './format'
 import {
@@ -208,22 +209,15 @@ onBeforeUnmount(stopPolling)
       variant="filled"
       class="flex flex-col gap-4"
     >
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="flex min-w-0 flex-col gap-1">
-          <h3
-            id="search-index-title"
-            class="md-title-large text-on-surface"
-          >
-            Search index
-          </h3>
-          <p class="md-body-medium text-on-surface-variant">
-            The index behind artifact search. The outbox keeps it current; a rebuild reads storage again, and a
-            verify compares a sample of rows with storage.
-          </p>
-        </div>
-        <div
+      <MdSection
+        :level="3"
+        title="Search index"
+        description="The index behind artifact search. The outbox keeps it current; a rebuild reads storage again, and a verify compares a sample of rows with storage."
+        heading-id="search-index-title"
+      >
+        <template
           v-if="index"
-          class="flex flex-wrap gap-2"
+          #actions
         >
           <MdButton
             variant="tonal"
@@ -239,8 +233,8 @@ onBeforeUnmount(stopPolling)
           >
             Verify sample
           </MdButton>
-        </div>
-      </div>
+        </template>
+      </MdSection>
 
       <p
         v-if="notAvailable"
@@ -351,9 +345,11 @@ onBeforeUnmount(stopPolling)
           </dl>
         </div>
 
-        <div
+        <MdCard
           v-if="index.activeRun && live"
-          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
+          variant="low"
+          tone="container"
+          class="flex flex-col gap-3"
           data-live-run
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -394,7 +390,7 @@ onBeforeUnmount(stopPolling)
               >{{ PROGRESS_LABELS[entry.state] }}</span>
             </li>
           </ul>
-        </div>
+        </MdCard>
 
         <div
           v-if="index.lastVerify"
@@ -432,11 +428,14 @@ onBeforeUnmount(stopPolling)
             class="grid gap-3 sm:grid-cols-2"
             aria-label="Latest index runs"
           >
-            <li
+            <MdCard
               v-for="card in latestCards"
               :key="card.kind"
+              as="li"
+              variant="low"
+              tone="container"
               :data-latest-run="card.kind"
-              class="flex flex-col gap-1 rounded-corner-medium bg-surface-container px-4 py-3"
+              class="flex flex-col gap-1"
             >
               <span class="md-title-small text-on-surface">{{ card.label }}</span>
               <template v-if="card.run">
@@ -451,7 +450,7 @@ onBeforeUnmount(stopPolling)
                 v-else
                 class="md-body-small text-on-surface-variant"
               >No run has been started yet.</span>
-            </li>
+            </MdCard>
           </ul>
           <RouterLink
             :to="{ name: 'jobs', query: { kind: 'index' } }"
