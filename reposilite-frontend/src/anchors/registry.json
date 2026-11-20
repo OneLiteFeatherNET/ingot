@@ -97,6 +97,13 @@
       ]
     },
     {
+      "name": "principal-factors-card",
+      "file": "src/components/access/PrincipalFactorsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "principals-panel",
       "file": "src/components/access/PrincipalsPanel.vue",
       "stability": "experimental",
