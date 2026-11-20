@@ -209,6 +209,24 @@ describe('IndexPage footer and content sheet', () => {
   })
 })
 
+describe('IndexPage More panel', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  // No core page is left over for More today, so the panel is opened through its state, as the bar item does.
+  it('lifts the More panel above the page with the floating panel elevation', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+    ;(wrapper.vm as unknown as { moreOpen: boolean }).moreOpen = true
+    await flushPromises()
+
+    const panel = wrapper.find('nav[aria-label="More sections"]').element.parentElement!
+
+    expect(panel.classList.contains('shadow-elevation-2'), 'a floating panel carries elevation 2').toBe(true)
+    expect(panel.classList.contains('bg-surface-container-high'), 'the panel keeps its surface role').toBe(true)
+  })
+})
+
 describe('IndexPage section from the route', () => {
   beforeEach(() => {
     session.isManager = null
