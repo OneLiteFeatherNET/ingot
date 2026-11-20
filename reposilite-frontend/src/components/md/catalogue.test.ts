@@ -40,8 +40,7 @@ const primitivesNamedBy = (text: string) =>
   primitives.filter((name) => new RegExp(`\\b${name}\\b`).test(text))
 
 describe("catalogue of the md primitives", () => {
-  // Red until task 4.2 writes one entry per primitive. Remove the .fails marker when the entries land.
-  it.fails("every primitive has a heading in DESIGN.md", () => {
+  it("every primitive has a heading in DESIGN.md", () => {
     const named = new Set(
       headings.flatMap((heading) => primitivesNamedBy(heading.text)),
     )
@@ -67,8 +66,7 @@ describe("catalogue of the md primitives", () => {
     ).toEqual([])
   })
 
-  // Red until task 4.3 replaces the Known gaps list with a pointer to the catalogue. Remove the .fails marker then.
-  it.fails("DESIGN.md has no Known gaps heading", () => {
+  it("DESIGN.md has no Known gaps heading", () => {
     const gaps = headings.filter((heading) =>
       /^Known gaps$/i.test(heading.text),
     )

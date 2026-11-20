@@ -820,6 +820,327 @@ Props:
 
 All three options are opt-in. With the defaults the table renders as it did before they existed. The table scrolls sideways inside a named region when the page is narrow, and the cell slot `cell` takes `{ row, column, value }`.
 
+### MdAlert
+
+An inline notice inside a view: a title, a body and an optional action. An error is announced at once, and every other tone is a polite status update. The rules are in "Status messages" above.
+
+- Props: `tone` (`error`, `warning`, `tertiary` or `info`, default `info`), `title` (optional).
+- Slots: `default` (the body), `action` (one action, for example a tonal `MdButton`).
+- Events: none.
+- Anchor: `md-alert`.
+- Do: put it next to the control that failed, or use it for a notice that stays on the page.
+- Don't: use it for a panel whose load failed with a Retry action (use `MdStatePanel`), or put `role="alert"` on static copy.
+
+### MdAvatar
+
+A circle that holds an initial, such as the first letter of an account name.
+
+- Props: `size` (`sm` 24px or `md` 32px, the default), `label` (the accessible name, optional).
+- Slots: `default` (the initial).
+- Events: none.
+- Anchor: `md-avatar`.
+- Do: give a `label` only when the avatar is the only content that names the account.
+- Don't: pass a label when the name is written next to the avatar. Without a label the avatar is hidden from assistive technology.
+
+### MdBadge
+
+A static label for a kind or a state, such as a repository type or a token scope. It is not an action, so it is not a chip.
+
+- Props: `tone` (`neutral` by default, `accent`, `success`, `error`, `hosted`, `proxy`, `group` or `mixed`). Each tone draws one role, and the outlined tones draw a border too.
+- Slots: `leading` (a decorative icon before the label), `default` (the label).
+- Events: none.
+- Anchor: `md-badge`.
+- Do: put the meaning in the words of the label.
+- Don't: let the tone be the only signal of a state.
+
+### MdChipInput
+
+An input chip field: a list of values, each shown as a chip with a close button, and a text field at the end that turns typed text into a new chip.
+
+- Props: `modelValue` (string array), `label` (required), `id`, `supportingText`, `error`, `errorText`, `suggestions` (string array), `validate` (`(text, existing) => string`, an empty string when the value is valid), `maxItems`, `disabled`.
+- Slots: none.
+- Events: `update:modelValue`.
+- Anchor: `md-chip-input`.
+- Do: return the problem text from `validate`, and keep the rejected value in the field so that it can be fixed.
+- Don't: put tags or other domain logic into the field. The renderer that uses it supplies the suggestions.
+
+### MdCode
+
+Inline code: a short piece of text in the monospace role on a surface tint, such as a command, a path or the name of a key. It takes the size of the line around it.
+
+- Props: none.
+- Slots: `default` (the code text).
+- Events: none.
+- Anchor: `md-code`.
+- Do: use it inside a sentence.
+- Don't: use it for a block of lines. Use `MdCodeBlock` or `MdCopyableCode`.
+
+### MdCodeBlock
+
+A block of code of one or more lines, in the monospace role on a surface tint. Long lines scroll sideways inside the block, and the page does not scroll.
+
+- Props: `label` (required, the accessible name of the scroll area, for example "Maven snippet").
+- Slots: `default` (the code text), `actions` (buttons in the top right corner, outside the scroll area).
+- Events: none. It exposes `codeElement`, so that a caller can select the text.
+- Anchor: `md-code-block`.
+- Do: name the snippet in `label`, because the area is focusable.
+- Don't: wrap the lines. The lines keep their spacing.
+
+### MdCopyableCode
+
+A block of code with a copy action in its top right corner. When the clipboard refuses the copy, the code is selected instead. The result is written to a polite live region under the code.
+
+- Props: `text` (the shown and copied text), `label` (required, the accessible name of the code area), `copyLabel` (the name of the copy button, default "Copy code").
+- Slots: none.
+- Events: none.
+- Anchor: `md-copyable-code`.
+- Do: use it for a snippet that a reader is likely to copy.
+- Don't: use it for a block that the reader only reads. Use `MdCodeBlock`.
+
+### MdDialog
+
+A modal dialog: a vue-final-modal teleported to the body, over the scrim, with a 24px side inset. The rules of sizes, focus, the confirm button and Escape are in "Dialogs, menus and status messages" above.
+
+- Props: `modelValue` (v-model), `labelledby` (required, the id of the heading in the `header` slot), `describedby` (optional), `role` (`dialog` or `alertdialog`, default `dialog`), `size` (`sm`, `md`, `lg` by default, or `compact`), `dismissable` (default `true`).
+- Slots: `header` (the heading, with its own id), `default` (the body), `actions` (normally an `MdDialogActions`).
+- Events: `update:modelValue`, `opened`, `closed`.
+- Anchor: `dialog-shell` (the frame; the name is kept from `DialogShell`).
+- Do: give each dialog its own heading id, and put `data-autofocus` on the cancel button of a decision dialog.
+- Don't: draw a frame, a scrim or an overlay style of your own.
+
+### MdDialogActions
+
+The action row of a dialog: the buttons sit at the end of the row, with one gap between them, and the row wraps when the dialog is narrow.
+
+- Props: none.
+- Slots: `default` (the buttons, in the order given).
+- Events: none.
+- Anchor: `md-dialog-actions`.
+- Do: put the confirming button last, after the cancel button.
+- Don't: place a dialog button outside the row.
+
+### MdDisclosure
+
+A summary and the body under it, on the native details element, so that the browser keeps the open state, the keyboard and the disclosure role.
+
+- Props: `open` (v-model:open, starts closed).
+- Slots: `summary` (the label of the disclosure), `default` (the body).
+- Events: `update:open`, when the browser opens or closes the body.
+- Anchor: `md-disclosure`.
+- Do: use it for detail that a reader does not need at first sight.
+- Don't: hide the only way to a required action inside it.
+
+### MdDivider
+
+A horizontal rule that separates content, in the MD3 divider style.
+
+- Props: `inset` (`none`, `16` or `72`, in pixels; 72 clears a leading avatar), `label` (text set into the rule, such as "or").
+- Slots: none.
+- Events: none.
+- Anchor: `md-divider`.
+- Do: use it between two groups of content, or between two ways to sign in, with a label.
+- Don't: use it to decorate a page.
+
+### MdFieldShell
+
+The chrome that the field primitives share: the leading and trailing slots at one inset, the input and its label, and one helper row under the field.
+
+- Props: `inputId` (required), `helperText`, `invalid`, `disabled`.
+- Slots: `default` (the input; it receives `describedBy` and `invalid`), `leading`, `trailing`, `counter` (beside the helper line), `below` (under the helper row).
+- Events: none.
+- Anchor: `md-field-shell`.
+- Do: bind `aria-describedby` and `aria-invalid` on the input from the slot props.
+- Don't: give the shell a box of its own. Its root takes no box, so the wrapping primitive keeps its layout.
+
+### MdIcon
+
+One icon of the dashboard, drawn from a path or from a glyph of the registry in `icons.js`. It is decorative unless it has a label.
+
+- Props: `name` (a glyph of the registry: `sheet-close`, `shield-check` or `open-in-new`), `path` (the `d` string of a 24 by 24 viewBox, used when no name is given), `size` (`sm` 16px, `md` 20px or `lg` 24px, the default), `label` (the accessible name).
+- Slots: none.
+- Events: none.
+- Anchor: `md-icon`.
+- Do: add a glyph to the registry in `icons.js` when a second view needs the same icon.
+- Don't: paste an inline `<svg>` into a view.
+
+### MdKeyValueList
+
+Rows of a label and its value, as the details of a record. Every row sits on the one grid of the list, so that the labels line up.
+
+- Props: `items` (`{ label, value }` rows).
+- Slots: `default` (more rows, as a term and a description each).
+- Events: none.
+- Anchor: `md-key-value-list`.
+- Do: use it for a record with a fixed set of fields.
+- Don't: use it for a table of many rows. Use `MdDataTable`.
+
+### MdLink
+
+An inline link in the primary colour role, with a focus ring and a state layer.
+
+- Props: `to` (a route location for a link inside the dashboard, navigated without a reload), `href` (a plain link), `external` (opens in a new tab with `rel="noopener noreferrer"`, shows an icon and says so in its name; it always uses `href`).
+- Slots: `default` (the link text).
+- Events: none.
+- Anchor: `md-link`.
+- Do: use `external` for a page outside the dashboard.
+- Don't: pass `to` for a page outside the router.
+
+### MdList
+
+A list of `MdListItem` rows. `divided` draws a rule between the rows, starting at the `inset`. `selectable` makes the list a listbox of options.
+
+- Props: `divided`, `inset` (`none`, `16` or `72`), `selectable`.
+- Slots: `default` (the rows).
+- Events: none. Each row reports its selection through its own `select` event.
+- Anchor: `md-list`.
+- Do: set the divider and the selectable mode on the list, not on each row.
+- Don't: set `selectable` on a list whose rows are links or buttons. A selectable row is an option, and only an option takes the keys.
+
+### MdListDetail
+
+A list beside the detail of the selected item. The two stack in one column below the breakpoint and sit side by side from it, with the list at two fifths of the width.
+
+- Props: `breakpoint` (`medium`, 600px, or `expanded`, 840px).
+- Slots: `list`, `detail`, `default`.
+- Events: none.
+- Anchor: `md-list-detail`.
+- Do: give the breakpoint the window class that the detail needs room for.
+- Don't: use it for a page that has no list to choose from.
+
+### MdListItem
+
+A row of a list. Inside a plain `MdList` the row is a link (`to`), a button (`button`) or plain text. Inside a selectable `MdList` the row is an option.
+
+- Props: `to` (a route location, routed through the router so that the dashboard base is kept), `button` (a button row), `selected` (the row is the current option).
+- Slots: `leading` and `trailing` (icons or an avatar), `default` (the text).
+- Events: `select`, on a click, or on Enter and Space when the row is an option.
+- Anchor: `md-list-item`.
+- Do: put the icon or avatar in `leading` and the action in `trailing`.
+- Don't: nest a button inside a row that is already a button.
+
+### MdListbox
+
+The popup list of a combobox. The input, its text and its keys belong to the consumer, which runs them through `useCombobox`. The list is shown with `v-show`, so that its id stays in the DOM for `aria-controls` while it is hidden.
+
+- Props: `id` (required, the options take their ids from it), `label` (required, the accessible name), `options` (`{ value, description, disabled }`, already filtered by the parent), `active` (the index of the active option, or -1), `open` (whether the list is shown), `mono` (the values in the monospace).
+- Slots: none.
+- Events: `choose` (the value of the chosen option).
+- Anchor: `md-listbox`.
+- Do: bind `aria-activedescendant` on the input to the id of the active option, and use `useCombobox` for the keys.
+- Don't: use a native `datalist` for a choice. Its options cannot be styled.
+
+### MdNavigationItem
+
+One destination of the navigation bar and the navigation rail: an active indicator, the label and a link or a button. The bar and the rail share this item and pass only their variant.
+
+- Props: `label` (required, also the accessible name), `to` (a route location; a plain click goes through the router, so the page is not reloaded), `href` (a plain link), `active` (the current destination), `variant` (`bar` or `rail`).
+- Slots: `default`, `leading` (the icon).
+- Events: `select` with the mouse event. A modified click (Ctrl, Shift, Meta, Alt, or a middle click) is left to the browser and emits nothing.
+- Anchor: `md-navigation-item`.
+- Do: use `MdNavigationBar` or `MdNavigationRail` for a set of destinations.
+- Don't: mark more than one item as the current destination.
+
+### MdOverflowMenu
+
+A button that opens a menu of actions on what it names, such as the actions of one row of a table. The menu is teleported to the body and placed from the button, so that a scrolling table cannot clip it.
+
+- Props: `label` (required, the accessible name of the button), `items` (entries, or separators with `type: 'separator'`), `triggerLabel` (the visible text of the default button, optional), `triggerClass` (deprecated, see the aliases table; use the `trigger` slot).
+- Item fields: `value` (required), `label`, `ariaLabel`, `supporting` (a second line, which joins the accessible name), `error` (the error colour, through the item's own class), `disabled` (drawn disabled, `aria-disabled="true"`, skipped by the arrow keys), `href` (a link with the menuitem role), `type: 'radio'` with `checked` (the choice in use).
+- Slots: `trigger` (a custom trigger), `header` (above the items), `default`.
+- Events: `select` with the chosen `value`.
+- Anchor: `md-overflow-menu`.
+- Do: keep the destructive item last, after a separator, and mark it with `error`.
+- Don't: use `!` modifiers on an item. They override the focus ring.
+
+### MdSection
+
+A titled group of content on a page. The title is a heading at level 2 for a section of a page, or level 3 for a section inside another one.
+
+- Props: `title` (required), `description` (optional), `level` (`2` or `3`, default `2`), `headingId` (the id of the title, for `aria-labelledby`).
+- Slots: `actions` (beside the title), `default` (the content).
+- Events: none.
+- Anchor: `md-section`.
+- Do: use `level` 3 for a section inside another section.
+- Don't: skip a level in the heading order of a page.
+
+### MdSegmentedButton
+
+A single-choice group drawn as one outlined track: an MD3 segmented button. The track is a radiogroup, so that a screen reader announces the choice and the position of each option.
+
+- Props: `label` (required, the accessible name of the group).
+- Slots: `default` (the `MdSegmentedOption` segments).
+- Events: none. A segment is a plain button, so the parent's click handler runs as it does for a pointer.
+- Anchor: `segmented-control` (the name is kept from `SegmentedControl`).
+- Keys: the arrow keys move the selection and wrap at the ends, and Home and End go to the first and the last segment.
+- Do: give the group a `label`, because a screen reader otherwise sees only the option labels.
+- Don't: use it for an action. Use `MdButton` for one.
+
+### MdSegmentedOption
+
+One segment of an `MdSegmentedButton`.
+
+- Props: `on` (Boolean, the segment is the current choice).
+- Slots: `default` (the label).
+- Events: none. Its click is the parent's click.
+- Anchor: `segmented-option` (the name is kept from `SegmentedOption`).
+- Do: keep the labels short, because a row of segments splits the track evenly.
+- Don't: put a second control inside a segment.
+
+### MdSkeleton
+
+A loading placeholder for text lines (`bar`) and avatars (`circle`). It carries no text, so it is hidden from assistive technology.
+
+- Props: `shape` (`bar` by default, or `circle`), `width` (`sm`, `md` or `full`).
+- Slots: none.
+- Events: none.
+- Anchor: `md-skeleton`.
+- Do: use the size of the content that it stands in for, and put `aria-busy` on the element that wraps it.
+- Don't: animate it without the motion allowance. The fade runs only when the visitor allows motion.
+
+### MdStatePanel
+
+The state of a list, a table or a page that has no content to show: `empty`, `loading` or `error`.
+
+- Props: `state` (`empty` by default, `loading` or `error`), `title`, `description`, `retryLabel` (the Retry label, default "Retry").
+- Slots: `actions` (replaces the default Retry in the error state, and is drawn in the empty state too), `default` (extra content).
+- Events: `retry`, when the Retry button is chosen.
+- Anchor: `md-state-panel`.
+- Do: in the loading state, let the panel set `aria-busy` and draw skeleton lines rather than a spinner.
+- Don't: show an error without a way to retry when the request can be retried.
+
+### MdTabs
+
+A tab strip that follows the WAI-ARIA tabs pattern: a tablist with one tab per entry, `aria-selected` on the current tab, and Left, Right, Home and End to move between the tabs.
+
+- Props: `tabs` (`{ key, label }` in order), `label` (required, the accessible name of the tablist), `modelValue` (the key of the selected tab, v-model; without it the first tab is selected), `queryParam` (the query parameter that holds the selected key; off by default).
+- Slots: `default` (the panels, scoped by the tab).
+- Events: `update:modelValue`, with the key of the chosen tab.
+- Anchor: `md-tabs`.
+- Do: keep the panel of each tab inside the slot, so that each tab names its own panel.
+- Don't: use tabs for the steps of a process. Use a list or a stepper.
+
+### MdTextArea
+
+A multi-line outlined text field, drawn as the MD3 outlined field of `MdTextField`. The field grows with its text from `rows` lines up to a maximum, then scrolls.
+
+- Props: `modelValue`, `label` (required), `id`, `rows`, `maxLength` (the counter is shown against it), `supportingText`, `error`, `errorText`, `disabled`, `required`.
+- Slots: none.
+- Events: `update:modelValue`.
+- Anchor: `md-text-area`.
+- Do: set `maxLength` when the server has a limit, so that the counter tells the user before the save fails.
+- Don't: add a resize handle. The field has none on purpose.
+
+### MdTransition
+
+The wrapper of a dashboard transition. A component names its pattern, and the wrapper hands the Vue transition the class prefix of that pattern, the mode and the appear flag.
+
+- Props: `pattern` (required: `fade-through`, `shared-x`, `shared-y`, `menu`, `dialog`, `sheet`, `snackbar`, `expand` or `fade`), `direction` (`-1`, `0` or `1`), `mode` (`in-out`, `out-in` or `default`), `appear`.
+- Slots: `default` (the child that transitions).
+- Events: none.
+- Anchor: none. The wrapper adds no element, so no anchor of a child changes.
+- Do: use the pattern that matches the motion of the change, such as a page, a tab or a snackbar.
+- Don't: write a transition in a `<style>` block. Reduced motion is handled by the global rule of the stylesheet.
+
 ## Administration information architecture
 
 The Administration tree is the one navigation of the operator area. These rules hold for every page in it:
@@ -926,11 +1247,14 @@ Each situation has one primitive:
 not change, such as a one-time secret, is a notice and carries no `role="alert"`. A skeleton fades in only when the visitor
 allows motion.
 
-## Known gaps
+## Gaps and follow-up changes
 
-Gaps that are deliberately left for the views that own them are listed here:
+The primitives under `src/components/md/` are catalogued above, one entry each, and the rules that span them are in
+"Dialogs, menus and status messages". What is not in the catalogue is adopted by the views, not by this file:
 
-- The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries) has no rules in this document until `rework-administration-information-architecture` adds them.
+- The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries)
+  has no rules in this document until `rework-administration-information-architecture` adds them.
+
 ## Page shell, header and trail
 
 ### Page shell: `MdPage`
