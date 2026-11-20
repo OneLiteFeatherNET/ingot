@@ -9,28 +9,28 @@ through `heavy` with `--max-workers=2`, targeted with `--tests`, and never as th
 
 ## 0. Gate and verification (results recorded in `design.md` and `proposal.md`)
 
-- [ ] 0.1 Gate: the prerequisite change `add-embedded-plugin-jars` (`feat(plugin)`) is merged on main. Verify: its pull request is linked in
+- [x] 0.1 Gate: the prerequisite change `add-embedded-plugin-jars` (`feat(plugin)`) is merged on main. Verify: its pull request is linked in
   the description of the move pull request (group 2), and the loader there reads `embedded-plugins/*.jar` and the version rule of design D9.
   No move pull request starts before this gate passes. The seam of group 1 does not need it.
-- [ ] 0.2 Verify that the shared configuration keeps stored domains that no loaded plugin claims. Read the loader of
+- [x] 0.2 Verify that the shared configuration keeps stored domains that no loaded plugin claims. Read the loader of
   `configuration.shared.json` and cite the line that keeps them. Record the result in design D5. If the loader drops them, the stored-domain
   requirement of the spec changes before group 2 starts.
-- [ ] 0.3 Verify what the dashboard shows for `/settings/cleanup` when the server does not list the domain. Read the settings route and the
+- [x] 0.3 Verify what the dashboard shows for `/settings/cleanup` when the server does not list the domain. Read the settings route and the
   settings view, and record the result in design D4.
-- [ ] 0.4 Verify the uses of backend `internal` declarations by the cleanup code. Run `grep -rn "internal" reposilite-backend/src/main/kotlin/com/reposilite/cleanup`
+- [x] 0.4 Verify the uses of backend `internal` declarations by the cleanup code. Run `grep -rn "internal" reposilite-backend/src/main/kotlin/com/reposilite/cleanup`
   and list every declaration that the backend or the prometheus plugin reaches. Record the list in the commit body of group 2. The list decides
   whether a declaration is made public (design D2).
-- [ ] 0.5 Verify where the server's working directory is in the image, because the prerequisite extracts into `<workingDirectory>/embedded-plugins/`.
+- [x] 0.5 Verify where the server's working directory is in the image, because the prerequisite extracts into `<workingDirectory>/embedded-plugins/`.
   Read the entrypoint and the loader's default. Record the path in the operator notes of group 3.
 
 ## 1. Core seam for the job status (red, then green)
 
 PR title: `refactor(cleanup): report the last scheduled run through a core interface`
 
-- [ ] 1.1 `test(cleanup)`: failing test in `reposilite-backend/src/test/kotlin/com/reposilite/` that `FacadeOperationalSource` reports the job
+- [x] 1.1 `test(cleanup)`: failing test in `reposilite-backend/src/test/kotlin/com/reposilite/` that `FacadeOperationalSource` reports the job
   `cleanup` from a registered `JobLastSuccessSource` facade, omits it when no such facade is registered, and leaves the `audit-purge` entry as
   before. Verify: it fails because the interface does not exist.
-- [ ] 1.2 `refactor(cleanup)`: add `JobLastSuccessSource` in `net.onelitefeather.ingot.deploy`, let `CleanupService` implement it and register
+- [x] 1.2 `refactor(cleanup)`: add `JobLastSuccessSource` in `net.onelitefeather.ingot.deploy`, let `CleanupService` implement it and register
   it, switch `FacadeOperationalSource` to the interface, and remove the import of `com.reposilite.cleanup.CleanupService` from
   `reposilite-plugins/prometheus-plugin`. Verify: the test of 1.1 passes, `OperationalMetricsTest` passes unedited, and the prometheus module
   compiles without any class of `com.reposilite.cleanup`.
@@ -41,20 +41,20 @@ PR title: `test(cleanup): guard the api document and the settings schema of the 
 
 Group 2 does not start before this group is merged, the gate of 1a.1 passes, and group 1b is merged. See design D13.
 
-- [ ] 1a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
+- [x] 1a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
   `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
   a plugin's own class loader before the runtime generator. Verify: its pull requests are linked in the description of the move pull request
   (group 2). The tests of this group do not need it; the move does.
-- [ ] 1a.2 `test(cleanup)`: integration test `CleanupApiDocumentIntegrationTest` in `reposilite-backend/src/integration/kotlin/com/reposilite/cleanup/`
+- [x] 1a.2 `test(cleanup)`: integration test `CleanupApiDocumentIntegrationTest` in `reposilite-backend/src/integration/kotlin/com/reposilite/cleanup/`
   that the served `/openapi` document holds the paths `/api/cleanup/runs`, `/api/cleanup/policies/{id}/run` and
   `/api/cleanup/policies/{id}/dry-run` and the schemas they reference, each named in its own assertion message, so a failure names the missing
   entry rather than a whole-file diff. Verify: it passes on main, and it fails on the branch of draft pull request #895, which is the failure
   the move has to avoid. `OpenApiSnapshotIntegrationTest` stays as it is and passes without `-PrefreshOpenApiSnapshot`.
-- [ ] 1a.3 `test(cleanup)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/cleanup/` that the compile-time schema
+- [x] 1a.3 `test(cleanup)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/cleanup/` that the compile-time schema
   `json-schemes/com.reposilite.cleanup.application.CleanupSettings` is readable through the class loader of `CleanupSettings` and that its
   `properties` name every property of `CleanupSettings`, each missing name in its own assertion message. Verify: it passes on main, and it fails on the
   branch of draft pull request #895, because the module does not generate the file there. The test moves with the code in task 2.3.
-- [ ] 1a.4 Open the code pull request of this group under
+- [x] 1a.4 Open the code pull request of this group under
   `test(cleanup): guard the api document and the settings schema of the cleanup domain`, branched from the remote main branch, after its
   tests pass on main. Verify: the title is a valid Conventional Commit, `gh pr view` shows only the two test files, and no file under
   `openspec/`.

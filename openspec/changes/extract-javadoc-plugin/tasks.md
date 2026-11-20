@@ -10,36 +10,36 @@ request stays near 400 changed lines; renames of a move count little, and the mo
 
 ## 0. Gate and verification (results recorded in `design.md` and `proposal.md`)
 
-- [ ] 0.1 Gate: the prerequisite change `add-embedded-plugin-jars` (`feat(plugin)`) is merged on main. Verify: its pull request is linked in
+- [x] 0.1 Gate: the prerequisite change `add-embedded-plugin-jars` (`feat(plugin)`) is merged on main. Verify: its pull request is linked in
   the description of the move pull request (group 3), and the loader there reads `embedded-plugins/*.jar` and the version rule of design D9.
   No code pull request of this change starts before this gate passes.
-- [ ] 0.2 Verify that the shared configuration keeps stored domains that no loaded plugin claims. Read the loader of
+- [x] 0.2 Verify that the shared configuration keeps stored domains that no loaded plugin claims. Read the loader of
   `configuration.shared.json` and cite the line that keeps them. Record the result in design D5. If the loader drops them, question 3 of
   `proposal.md` changes before group 3 starts.
-- [ ] 0.3 Verify what the dashboard shows for `/settings/<domain>` when the server does not list the domain. Read the settings route and
+- [x] 0.3 Verify what the dashboard shows for `/settings/<domain>` when the server does not list the domain. Read the settings route and
   the settings view, and record the result in design D4. If the page shows an error, the redirect to `/settings` of group 3 is required,
   and its test is part of that group (question 4).
-- [ ] 0.4 Verify the uses of backend `internal` declarations by the viewer code. Run `grep -rn "internal" reposilite-backend/src/main/kotlin`
+- [x] 0.4 Verify the uses of backend `internal` declarations by the viewer code. Run `grep -rn "internal" reposilite-backend/src/main/kotlin`
   for each class the viewer reaches, and list the names in the commit body of group 3. The list decides whether a class is made public
   (design D2).
-- [ ] 0.5 Verify where the plugins directory of the image is, and that the working directory is the one the entrypoint sets. Read the
+- [x] 0.5 Verify where the plugins directory of the image is, and that the working directory is the one the entrypoint sets. Read the
   entrypoint and the loader's default. Record the path in design D10, so that the operator guide names it.
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose extract-javadoc-plugin`: this change and nothing else, branched from the remote main branch. Verify:
+- [x] 1.1 `docs(openspec): propose extract-javadoc-plugin`: this change and nothing else, branched from the remote main branch. Verify:
   `npx -y @fission-ai/openspec@latest validate extract-javadoc-plugin --strict` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Core seam (red, then green)
 
 PR title: `refactor(javadoc): let the cluster reach the javadoc cache through a core interface`
 
-- [ ] 2.1 `test(javadoc)`: failing architecture test in `reposilite-backend/src/test/kotlin/net/onelitefeather/ingot/architecture/DependencyRulesTest.kt`:
+- [x] 2.1 `test(javadoc)`: failing architecture test in `reposilite-backend/src/test/kotlin/net/onelitefeather/ingot/architecture/DependencyRulesTest.kt`:
   no class outside `com.reposilite.javadocs` depends on that package. Verify: it fails on `FacadeCacheHooks`, which imports `JavadocFacade`.
-- [ ] 2.2 `test(javadoc)`: failing tests in `ClusterJavadocEventsTest.kt`: a received `javadoc.invalidated` calls the public
+- [x] 2.2 `test(javadoc)`: failing tests in `ClusterJavadocEventsTest.kt`: a received `javadoc.invalidated` calls the public
   `JavadocCacheReceiver.evictReceived` of a fake once with the repository and the path; with no receiver the event is logged at debug level
   and nothing is deleted; the publishing tests are unchanged. Verify: they fail on the missing interface.
-- [ ] 2.3 `refactor(javadoc)`: add `JavadocCacheReceiver` in `net.onelitefeather.ingot.cluster`, make `JavadocFacade` implement it, and let
+- [x] 2.3 `refactor(javadoc)`: add `JavadocCacheReceiver` in `net.onelitefeather.ingot.cluster`, make `JavadocFacade` implement it, and let
   `FacadeCacheHooks` find it among the facades. Verify: the tests of 2.1 and 2.2 pass, and the tests of `javadocs` pass unedited.
 
 ## 2a. API document and settings schema of the embedded plugin (prerequisite of group 3, red, then green)
@@ -49,19 +49,19 @@ PR title: `test(javadoc): guard the api document and the settings schema of the 
 Group 3 does not start before this group is merged and the gate of 2a.1 passes. See design D13. Question Q112 of `design.md` is settled:
 the unit tests stay in the backend (design D7).
 
-- [ ] 2a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
+- [x] 2a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
   `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
   a plugin's own class loader before the runtime generator. Verify: its pull requests are linked in the description of the move pull request
   (group 3). The tests of this group do not need it; the move does.
-- [ ] 2a.2 `test(javadoc)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` that the compile-time schema
+- [x] 2a.2 `test(javadoc)`: unit test in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` that the compile-time schema
   `json-schemes/com.reposilite.javadocs.application.JavadocSettings` is readable through the class loader of `JavadocSettings` and that its
   `properties` name every property of `JavadocSettings`, each missing name in its own assertion message. Verify: it passes on main, and it
   fails when the file is left out of the module jar, which is the failure the move has to avoid. The test stays in the backend in task 3.3
   (design D7).
-- [ ] 2a.3 Verify that `OpenApiSnapshotIntegrationTest` holds no javadoc entry today, so the move must leave `docs/openapi/ingot-openapi.json`
+- [x] 2a.3 Verify that `OpenApiSnapshotIntegrationTest` holds no javadoc entry today, so the move must leave `docs/openapi/ingot-openapi.json`
   byte for byte as it is: `grep -ci javadoc docs/openapi/ingot-openapi.json` prints `0`. Record the result in the description of the pull
   request of this group.
-- [ ] 2a.4 Open the code pull request of this group under
+- [x] 2a.4 Open the code pull request of this group under
   `test(javadoc): guard the api document and the settings schema of the javadoc domain`, branched from the remote main branch, after its
   test passes on main. Verify: the title is a valid Conventional Commit, `gh pr view` shows only the test file, and no file under `openspec/`.
 
@@ -112,10 +112,10 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
 
 PR title: `refactor(javadoc): stop falling back to default javadoc suffixes in the dashboard`
 
-- [ ] 4.1 `test(javadoc)`: failing tests in `reposilite-frontend/src/store/` and `reposilite-frontend/src/components/browser/rowActions.test.js`:
+- [x] 4.1 `test(javadoc)`: failing tests in `reposilite-frontend/src/store/` and `reposilite-frontend/src/components/browser/rowActions.test.js`:
   with no placeholder for `{{REPOSILITE.JAVADOC_SUFFIXES}}` the suffixes are empty, and no row offers the Javadoc action for
   `demo-1.0-javadoc.jar`; with the placeholder sent, the action is offered as before. Verify: the first assertion fails on the fallback.
-- [ ] 4.2 `refactor(javadoc)`: remove the `REPOSILITE.JAVADOC_SUFFIXES` entry of `FALLBACKS` in `reposilite-frontend/src/store/placeholders.ts`.
+- [x] 4.2 `refactor(javadoc)`: remove the `REPOSILITE.JAVADOC_SUFFIXES` entry of `FALLBACKS` in `reposilite-frontend/src/store/placeholders.ts`.
   Verify: the tests of 4.1 pass, the unit tests of the dashboard pass, and the browse and navigation end-to-end tests pass against the fake
   API, which sends the placeholder.
 
