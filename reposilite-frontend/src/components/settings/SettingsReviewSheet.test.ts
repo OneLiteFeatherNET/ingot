@@ -90,15 +90,16 @@ const mountSheet = (props: Record<string, unknown> = {}) => {
   return wrapper
 }
 
-// The sheet is teleported to the body, so it is read from the document. The modal's own wrapper also
-// has role="dialog", so the sheet is the one that is labelled.
+// The sheet is read from the document, where it is attached, by its dialog role and its name.
 const sheet = (): HTMLElement => {
   const element = document.querySelector<HTMLElement>('[role="dialog"][aria-labelledby]')
   if (!element) throw new Error('no review sheet is shown')
   return element
 }
+// A button is found by its text, or by its accessible name when it is an icon button.
 const buttonIn = (name: string): HTMLButtonElement => {
-  const button = [...sheet().querySelectorAll('button')].find(item => item.textContent.trim() === name)
+  const button = [...sheet().querySelectorAll('button')]
+    .find(item => item.textContent.trim() === name || item.getAttribute('aria-label') === name)
   if (!button) throw new Error(`no ${name} button in the review sheet`)
   return button
 }
@@ -198,5 +199,50 @@ describe('SettingsReviewSheet', () => {
     buttonIn('Close').click()
 
     expect(wrapper.emitted('update:open')).toEqual([[false]])
+  })
+
+  it('is the shared side sheet, pinned to the end edge at the wide width', async () => {
+    mountSheet()
+    await flushPromises()
+
+    const panel = sheet().querySelector('[data-md-sheet-part="panel"]')
+    expect(panel?.getAttribute('data-md-sheet-side'), 'the panel is pinned to the end edge').toBe('end')
+    expect(panel?.classList.contains('w-md-sheet-wide'), 'the panel takes the wide sheet width').toBe(true)
+  })
+
+  it('draws the scrim with the scrim role, not as an inline style', async () => {
+    mountSheet()
+    await flushPromises()
+
+    expect(document.querySelector('[style*="color-mix"]'), 'no element carries an inline scrim colour').toBeNull()
+  })
+
+  it('moves the focus into the sheet when it opens', async () => {
+    wrapper = mount(SettingsReviewSheet, {
+      props: { open: false, changes: CHANGES, invalid: false, saving: false },
+      attachTo: document.body
+    }) as VueWrapper
+    await wrapper.setProps({ open: true })
+    await flushPromises()
+
+    expect(sheet().contains(document.activeElement), 'the focus is inside the sheet').toBe(true)
+  })
+
+  it('asks to close on Escape and returns the focus to the control that opened it', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    wrapper = mount(SettingsReviewSheet, {
+      props: { open: false, changes: CHANGES, invalid: false, saving: false },
+      attachTo: document.body
+    }) as VueWrapper
+    await wrapper.setProps({ open: true })
+    await flushPromises()
+
+    sheet().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper.emitted('update:open'), 'Escape asks to close').toEqual([[false]])
+    expect(document.activeElement, 'the focus is back on the opener').toBe(opener)
   })
 })
