@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
+import { computed, type PropType } from 'vue'
 import { optionId, type ComboboxOption } from '../../helpers/useCombobox'
 
 /*
@@ -26,13 +26,15 @@ import { optionId, type ComboboxOption } from '../../helpers/useCombobox'
  * Props:
  *   id       the id of the list; the options take their ids from it
  *   label    the accessible name of the list
- *   options  [{ value, description, disabled }]; the parent has already filtered them
+ *   options  [{ value, description, disabled, group }]; the parent has already filtered them. Consecutive options that
+ *            name the same group are listed in one group (role="group") under a heading that names it; the option ids
+ *            and the active index still count through the whole list
  *   active   the index of the active option, or -1
  *   open     whether the list is shown
  *   mono     shows the option values in the monospace face (nodes, paths)
  * Emits choose(value) for a click on an enabled option.
  */
-defineProps({
+const props = defineProps({
   id: {
     type: String,
     required: true
@@ -60,6 +62,26 @@ defineProps({
 })
 
 const emit = defineEmits<{ choose: [value: string] }>()
+
+interface IndexedOption {
+  option: ComboboxOption
+  index: number
+}
+
+// Runs of consecutive options with the same group. A list without groups is one run with no heading, and its wrappers are
+// presentational, so the options stay the direct items of the listbox in the accessibility tree.
+const sections = computed(() => {
+  const runs: { group?: string; entries: IndexedOption[] }[] = []
+  props.options.forEach((option, index) => {
+    const last = runs[runs.length - 1]
+    if (last && last.group === option.group) last.entries.push({ option, index })
+    else runs.push({ group: option.group, entries: [{ option, index }] })
+  })
+  return runs
+})
+
+const grouped = computed(() => props.options.some((option) => option.group !== undefined))
+const groupId = (run: number): string => `${props.id}-group-${run}`
 </script>
 
 <template>
@@ -73,28 +95,45 @@ const emit = defineEmits<{ choose: [value: string] }>()
     @mousedown.prevent
   >
     <li
-      v-for="(option, index) in options"
-      :id="optionId(id, index)"
-      :key="option.value"
-      role="option"
-      :aria-selected="index === active ? 'true' : 'false'"
-      :aria-disabled="option.disabled ? 'true' : undefined"
-      class="md-state-layer relative flex flex-col px-4 py-2"
-      :class="[
-        option.disabled ? 'cursor-default text-on-surface/38' : 'cursor-pointer',
-        index === active ? 'bg-secondary-container text-on-secondary-container' : option.disabled ? '' : 'text-on-surface'
-      ]"
-      data-test="option"
-      @click="!option.disabled && emit('choose', option.value)"
+      v-for="({ group, entries }, run) in sections"
+      :key="group ?? run"
+      role="presentation"
     >
       <span
-        class="break-all md-body-medium"
-        :class="mono ? 'font-mono' : ''"
-      >{{ option.value }}</span>
-      <span
-        v-if="option.description"
-        class="md-body-small text-on-surface-variant"
-      >{{ option.description }}</span>
+        v-if="grouped"
+        :id="groupId(run)"
+        class="block px-4 pb-1 pt-3 md-label-medium text-on-surface-variant"
+        data-test="option-group"
+      >{{ group }}</span>
+      <ul
+        :role="grouped ? 'group' : 'presentation'"
+        :aria-labelledby="grouped ? groupId(run) : undefined"
+      >
+        <li
+          v-for="{ option, index } in entries"
+          :id="optionId(id, index)"
+          :key="option.value"
+          role="option"
+          :aria-selected="index === active ? 'true' : 'false'"
+          :aria-disabled="option.disabled ? 'true' : undefined"
+          class="md-state-layer relative flex flex-col px-4 py-2"
+          :class="[
+            option.disabled ? 'cursor-default text-on-surface/38' : 'cursor-pointer',
+            index === active ? 'bg-secondary-container text-on-secondary-container' : option.disabled ? '' : 'text-on-surface'
+          ]"
+          data-test="option"
+          @click="!option.disabled && emit('choose', option.value)"
+        >
+          <span
+            class="break-all md-body-medium"
+            :class="mono ? 'font-mono' : ''"
+          >{{ option.value }}</span>
+          <span
+            v-if="option.description"
+            class="md-body-small text-on-surface-variant"
+          >{{ option.description }}</span>
+        </li>
+      </ul>
     </li>
   </ul>
 </template>
