@@ -17,7 +17,7 @@
 // @vitest-environment node
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 /*
@@ -68,5 +68,38 @@ describe('views use the shared window margins', () => {
     for (const classes of containerClasses) {
       expect(classes, 'a px-* utility would override the shared margins').not.toMatch(/(^|[\s:])(?:[\w-]+:)*px-\d+/)
     }
+  })
+})
+
+/*
+ * The page shell owns the page container (design D2): no view writes the container class itself,
+ * so no view can give its page container a width, a centring or a spacing that differs from
+ * MdPage. The test reads every view source under src and mounts nothing.
+ */
+describe('only MdPage writes the container class', () => {
+  const sourceRoot = fileURLToPath(new URL('../../', import.meta.url))
+  const pageShell = 'components/md/MdPage.vue'
+  // Views that pull request #997 moves onto MdPage. Each entry is removed once that change is on main.
+  const pendingViews = new Set([
+    'components/browser/FileBrowserView.vue',
+    'components/footer/SiteFooter.vue',
+    'components/util/NotFoundView.vue',
+    'components/util/ViewLoadError.vue',
+    'components/util/ViewLoading.vue',
+    'pages/IndexPage.vue'
+  ])
+  const views = readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
+    .map(file => file.split('\\').join('/'))
+    .filter(file => file.endsWith('.vue') && file !== pageShell && !pendingViews.has(file))
+    .sort()
+
+  it('finds the views it scans', () => {
+    expect(views, 'the scan must read the view sources').toContain('components/overview/RepositoryOverview.vue')
+  })
+
+  it.each(views)('%s does not write the container class', (file) => {
+    const source = readFileSync(`${sourceRoot}${file}`, 'utf8')
+
+    expect(source, 'the page container is MdPage, not a container class in the view').not.toMatch(/(?<![:\w-])class="[^"]*(?<![-\w])container(?![-\w])/)
   })
 })
