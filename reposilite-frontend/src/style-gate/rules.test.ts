@@ -43,6 +43,15 @@ describe('the rule table', () => {
     expect(findingsOf('src/components/card/Other.css', '.motion-menu-enter-active { opacity: 1; }'), 'a transition class outside the documented sheets').toEqual(['.motion-menu-enter-active'])
   })
 
+  it('accepts the scrim transition classes of the dialog pattern, and no scrim of another pattern', () => {
+    const classSelector = RULES.find((rule) => rule.id === 'class-selector')!
+    const findingsOf = (file: string, text: string) => classSelector.match({ file, text } as never)
+
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-dialog-scrim-enter-active { opacity: 1; }'), 'the scrim of a dialog').toEqual([])
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-dialog-scrim-leave-to { opacity: 0; }'), 'the scrim of a dialog').toEqual([])
+    expect(findingsOf('src/styles/md3/motion-transitions.css', '.motion-menu-scrim-enter-active { opacity: 1; }'), 'a menu has no scrim').toEqual(['.motion-menu-scrim-enter-active'])
+  })
+
   it('gives each rule a scope and an allowlist file named after its id', () => {
     for (const rule of RULES) {
       expect(rule.scope, `the scope of ${rule.id}`).toBeInstanceOf(Array)

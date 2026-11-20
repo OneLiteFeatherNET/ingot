@@ -19,6 +19,10 @@ import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, reactive } from 'vue'
 import type { VNode } from 'vue'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { VueFinalModal } from 'vue-final-modal'
+import { motionScrimTransitionName, motionTransitionName } from '../../helpers/motionPattern'
 import MdDialog from './MdDialog.vue'
 
 // The dialog is teleported to the body and attached to the document, so focus can move into it and be read back. Each
@@ -277,5 +281,46 @@ describe('MdDialog', () => {
     const overlay = document.querySelector<HTMLElement>('.vfm__overlay')
     expect(overlay?.classList.contains('bg-scrim/md-scrim!'), 'the overlay carries the important bg-scrim/md-scrim utility').toBe(true)
     expect(overlay!.getAttribute('style') ?? '', 'the overlay has no color-mix inline style').not.toContain('color-mix')
+  })
+})
+
+/*
+ * The motion of the dialog. The default it replaces, read from vue-final-modal 4.5.5: the overlayTransition and
+ * contentTransition props default to undefined, so the modal hands its two Vue <Transition> elements no name, and Vue
+ * falls back to the v- prefix (v-enter-from, v-enter-active, v-leave-active, v-leave-to). No stylesheet of the dashboard
+ * styles those classes, so the scrim and the panel appeared and vanished at once. The vfm-fade-enter-active and
+ * vfm-fade-leave-active classes of vue-final-modal/style.css (a 0.3s ease fade) apply only to a modal that names them,
+ * and no dialog did.
+ *
+ * The test utilities stub Vue <Transition>, so the transitions are asserted through the props the dialog passes to the
+ * modal, and the names are checked against the classes of motion-transitions.css.
+ */
+describe('MdDialog motion', () => {
+  const transitions = readFileSync(join(process.cwd(), 'src', 'styles', 'md3', 'motion-transitions.css'), 'utf8')
+  const modal = (wrapper: VueWrapper) => wrapper.findComponent(VueFinalModal)
+
+  it('passes the dialog pattern to the panel transition of the modal', async () => {
+    const { wrapper } = await mountDialog()
+
+    expect(modal(wrapper).props('contentTransition'), 'the panel takes the name of the dialog pattern')
+      .toBe(motionTransitionName('dialog'))
+  })
+
+  it('passes the scrim fade of the dialog pattern to the overlay transition of the modal', async () => {
+    const { wrapper } = await mountDialog()
+
+    expect(modal(wrapper).props('overlayTransition'), 'the scrim takes the scrim name of the dialog pattern')
+      .toBe(motionScrimTransitionName('dialog'))
+  })
+
+  it('names transitions whose enter and leave classes motion-transitions.css declares', async () => {
+    const { wrapper } = await mountDialog()
+
+    for (const prop of ['contentTransition', 'overlayTransition'] as const) {
+      const name = modal(wrapper).props(prop) as string
+      expect(transitions, `${prop} ${name} has an enter class`).toContain(`.${name}-enter-active`)
+      expect(transitions, `${prop} ${name} has a leave class`).toContain(`.${name}-leave-active`)
+      expect(name, `${prop} is not the unstyled v- default of the modal`).not.toBe('v')
+    }
   })
 })

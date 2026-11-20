@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motionTransitionName } from '../../helpers/motionPattern'
+import type { MotionPattern } from '../../helpers/motionPattern'
 
 /*
  * The wrapper of a dashboard transition. A component names its pattern, and the wrapper hands the Vue <Transition> the
@@ -8,7 +10,6 @@ import { computed } from 'vue'
  * matches. Reduced motion is not read here. The single rule of src/style.css makes every transition an instant swap.
  */
 
-type MotionPattern = 'fade-through' | 'shared-x' | 'shared-y' | 'menu' | 'dialog' | 'sheet' | 'snackbar' | 'expand' | 'fade'
 type TransitionMode = 'in-out' | 'out-in' | 'default'
 
 // The mode each pattern uses by default: a page, a tab or a snackbar leaves before the next one enters, the others run
@@ -46,11 +47,7 @@ const known = computed(() => {
   return true
 })
 
-// A sibling that comes earlier in the list moves the page the other way, so shared-x has a class for each direction.
-const transitionName = computed(() => {
-  const base = `motion-${props.pattern}`
-  return props.pattern === 'shared-x' && props.direction === -1 ? `${base}-back` : base
-})
+const transitionName = computed(() => motionTransitionName(props.pattern, props.direction))
 
 const transitionMode = computed(() => props.mode ?? (isKnown(props.pattern) ? DEFAULT_MODE[props.pattern] : 'default'))
 </script>
