@@ -18,6 +18,7 @@
 import { computed, ref, useId } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdDialog from '../md/MdDialog.vue'
 
 /*
@@ -117,14 +118,13 @@ const submit = () => {
         type="text"
         autocomplete="off"
       />
-      <p
+      <MdAlert
         v-if="failure"
-        role="alert"
+        tone="error"
         data-test="confirm-failure"
-        class="md-body-medium text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
     <div class="mt-6 flex justify-end gap-2">

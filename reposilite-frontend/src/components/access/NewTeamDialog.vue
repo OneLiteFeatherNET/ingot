@@ -19,6 +19,7 @@ import { computed, ref, type PropType } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdDialog from '../md/MdDialog.vue'
 import { buildTeamCreateBody, validateTeamName, type TeamsApi } from './accessTeams'
 
@@ -134,14 +135,13 @@ const submit = async () => {
         autocomplete="off"
         supporting-text="The group of your identity provider this team stands for."
       />
-      <p
+      <MdAlert
         v-if="failure"
-        role="alert"
+        tone="error"
         data-test="create-failure"
-        class="md-body-medium text-error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
     <div class="mt-6 flex justify-end gap-2">
