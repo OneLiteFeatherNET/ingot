@@ -87,6 +87,29 @@ There is no automatic downgrade path back to Reposilite once you have run a newe
 against your data. That is the normal situation for any repository manager upgrade: take a
 backup first.
 
+## Release lines and tags
+
+A release line is a minor version, such as `1.1`. [support-lines.json](https://github.com/OneLiteFeatherNET/ingot/blob/main/support-lines.json)
+lists the lines, and [SUPPORT.md](https://github.com/OneLiteFeatherNET/ingot/blob/main/SUPPORT.md) states which of them still receive
+fixes. The newest line receives every fix. The previous line receives security fixes for 90 days after the next line ships, and
+older lines receive no fixes.
+
+Every release is tagged `vX.Y.Z` on the commit that built it. The container image of a release carries these tags:
+
+| Tag | Moves when |
+|-----|------------|
+| `X.Y.Z` | Every release. It never moves. |
+| `X.Y` | Every release of that line. It points at the newest patch of the line. |
+| `X` | The release is the highest version with major `X`. It points at the newest patch of the newest minor of that major. |
+| `latest` | The release is the highest version across all lines. |
+
+The `latest` tag and the release marked Latest on GitHub always stay on the highest version across all lines. A patch on an old
+line does not move them. Git tags are never deleted or moved.
+
+A release branch `release/X.Y.x` exists only once the next line has shipped. It starts from the last tag of the old line, so a
+patch on the old line is cut from there and never from the tip of `main`. The steps are in the
+[release runbook](https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/RELEASE.md#release-branches-and-backports).
+
 ## Why you can check this yourself
 
 Nothing above requires trusting us. The fork point is in the git history, the changes since

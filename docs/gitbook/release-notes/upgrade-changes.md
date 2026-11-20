@@ -13,6 +13,8 @@ description: Lookup tables for the upgrade to Ingot. Lists the supported upgrade
 | Ingot 1.1.0 | First Ingot release with the identity model | SQLite (default) | `PreviousIngotMigrationTest`, with switch and rollback |
 | Reposilite 2.x | Ingot, tokens only, through `migration-plugin` and `token-import` | 2.x data files | None |
 
+A release line is a minor version, such as `1.1`. A patch release upgrades in place from an earlier release of the same line, and the data stays as it is. Moving to a newer line follows a row of the table above. A move without a row there has no tested path, so back up the data first. The line `1.0` ended its support window on 2026-11-07 and receives no fixes any more. The lines and their windows are listed in [SUPPORT.md](https://github.com/OneLiteFeatherNET/ingot/blob/main/SUPPORT.md).
+
 ## What the first start changes
 
 Settings encryption adds one configuration row, `settings-key`, which holds the key identifier and a check value and no key. It is written only when a settings key is configured. Without a key, the default `INGOT_SETTINGS_ENCRYPTION=optional` keeps every stored value, the start and the settings API as they were. With a key, the first start writes the stored secrets sealed once. See [Settings encryption](../references/settings/settings-encryption.md).
