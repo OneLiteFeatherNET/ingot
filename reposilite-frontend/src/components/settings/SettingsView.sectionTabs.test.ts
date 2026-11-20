@@ -17,7 +17,7 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
@@ -25,11 +25,13 @@ import { sectionTabsOf } from '../../navigation/registry'
 import search from './fixtures/search.schema.json'
 import frontend from './fixtures/frontend.schema.json'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMAS = { frontend, search }
@@ -42,16 +44,19 @@ const SAVED = {
   gapRebuild: true
 }
 
+// The search settings as a test edits them: any field can be set to any value, valid or not.
+type Draft = Record<string, unknown> & { rebuildSchedule: Record<string, unknown> }
+
 // The server answers with a fresh copy of the saved settings. `update` records every write.
 const fakeClient = () => {
-  const update = vi.fn(async () => ({ data: {} }))
+  const update = vi.fn<(domain: string, body: Draft) => Promise<{ data: object }>>(() => Promise.resolve({ data: {} }))
   return {
     update,
     client: {
       settings: {
-        domains: async () => ({ data: Object.keys(SCHEMAS) }),
-        schema: async (domain) => ({ data: SCHEMAS[domain] }),
-        fetch: async (domain) => ({ data: domain === 'search' ? structuredClone(SAVED) : {} }),
+        domains: () => Promise.resolve({ data: Object.keys(SCHEMAS) }),
+        schema: (domain: keyof typeof SCHEMAS) => Promise.resolve({ data: SCHEMAS[domain] }),
+        fetch: (domain: string) => Promise.resolve({ data: domain === 'search' ? structuredClone(SAVED) : {} }),
         update
       }
     }
@@ -63,7 +68,7 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -71,9 +76,9 @@ afterEach(() => {
 })
 
 // Mounts the settings page on one domain, with the address `?tab=` when one is given.
-const setup = async ({ domain = 'search', tab } = {}) => {
+const setup = async ({ domain = 'search', tab }: { domain?: string; tab?: string } = {}) => {
   const fake = fakeClient()
-  const store = createConfigurationStore(ref(fake.client))
+  const store = createConfigurationStore(ref(fake.client) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   const router = namedRouter()
   await router.push({ name: 'settings', params: { domain }, query: tab === undefined ? {} : { tab } })
@@ -90,18 +95,18 @@ const setup = async ({ domain = 'search', tab } = {}) => {
   return { store, router, update: fake.update }
 }
 
-const tabsOf = () => wrapper.findAll('[role="tablist"] [role="tab"]')
-const tabLabelled = (label) => tabsOf().find(tab => tab.text() === label)
+const tabsOf = () => wrapper!.findAll('[role="tablist"] [role="tab"]')
+const tabLabelled = (label: string) => tabsOf().find(tab => tab.text() === label)
 // The text of the panel of the selected tab. Panels of other tabs are hidden and their content is not drawn.
 const shownPanel = () => {
   const selected = tabsOf().find(tab => tab.attributes('aria-selected') === 'true')
-  return document.getElementById(selected.attributes('aria-controls')).textContent
+  return document.getElementById(selected!.attributes('aria-controls')!)!.textContent
 }
-const buttonLabelled = (label) => wrapper.findAll('button').find(button => button.text() === label)
+const buttonLabelled = (label: string) => wrapper!.findAll('button').find(button => button.text() === label)
 
 // Writes a draft the way an edit does: the domain's data is replaced, then validated as the page does.
-const editDraft = (store, change) => {
-  const draft = JSON.parse(JSON.stringify(store.configurations.value.search))
+const editDraft = (store: ReturnType<typeof createConfigurationStore>, change: (draft: Draft) => void) => {
+  const draft = JSON.parse(JSON.stringify(store.configurations.value.search)) as Draft
   change(draft)
   store.setDomainData('search', draft)
   store.validateDomain('search')
@@ -133,21 +138,21 @@ describe('the sections of a settings page as tabs', () => {
   it('selects the section named by the tab parameter of the address', async () => {
     await setup({ tab: 'rebuild-schedule' })
 
-    expect(tabLabelled('Rebuild schedule').attributes('aria-selected')).toBe('true')
+    expect(tabLabelled('Rebuild schedule')!.attributes('aria-selected')).toBe('true')
     expect(shownPanel()).toContain('Every days')
   })
 
   it('falls back to General when the tab parameter names no section', async () => {
     await setup({ tab: 'no-such-section' })
 
-    expect(tabLabelled('General').attributes('aria-selected')).toBe('true')
+    expect(tabLabelled('General')!.attributes('aria-selected')).toBe('true')
     expect(shownPanel()).toContain('Verify sample size')
   })
 
   it('writes the chosen section into the address', async () => {
     const { router } = await setup()
 
-    await tabLabelled('Rebuild schedule').trigger('click')
+    await tabLabelled('Rebuild schedule')!.trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.query.tab).toBe('rebuild-schedule')
@@ -160,7 +165,7 @@ describe('the sections of a settings page as tabs', () => {
     await flushPromises()
 
     expect(tabLabelled('Rebuild schedule (1 error)'), 'the label names the error count').toBeDefined()
-    expect(tabLabelled('General').text(), 'General has no error').toBe('General')
+    expect(tabLabelled('General')!.text(), 'General has no error').toBe('General')
   })
 
   it('keeps Save disabled while a section has an error', async () => {
@@ -169,7 +174,7 @@ describe('the sections of a settings page as tabs', () => {
     editDraft(store, draft => { draft.rebuildSchedule.everyDays = 'often' })
     await flushPromises()
 
-    expect(buttonLabelled('Save').attributes('disabled')).toBeDefined()
+    expect(buttonLabelled('Save')!.attributes('disabled')).toBeDefined()
   })
 
   it('switches to the first tab with an error when the save is refused', async () => {
@@ -177,11 +182,11 @@ describe('the sections of a settings page as tabs', () => {
 
     editDraft(store, draft => { draft.rebuildSchedule.everyDays = 'often' })
     await flushPromises()
-    await wrapper.get('[data-test="first-error-link"]').trigger('click')
+    await wrapper!.get('[data-test="first-error-link"]').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.query.tab).toBe('rebuild-schedule')
-    expect(tabLabelled('Rebuild schedule (1 error)').attributes('aria-selected')).toBe('true')
+    expect(tabLabelled('Rebuild schedule (1 error)')!.attributes('aria-selected')).toBe('true')
   })
 
   it('names the first tab with an error in the save bar, and links to its address', async () => {
@@ -189,7 +194,7 @@ describe('the sections of a settings page as tabs', () => {
 
     editDraft(store, draft => { draft.rebuildSchedule.everyDays = 'often' })
     await flushPromises()
-    const link = wrapper.get('[data-test="first-error-link"]')
+    const link = wrapper!.get('[data-test="first-error-link"]')
 
     expect(link.text()).toBe('Show the first error: Rebuild schedule')
     expect(link.attributes('href'), 'the link names the tab in the address').toContain('tab=rebuild-schedule')
@@ -203,9 +208,9 @@ describe('the sections of a settings page as tabs', () => {
       draft.rebuildSchedule.enabled = true
     })
     await flushPromises()
-    await tabLabelled('Rebuild schedule').trigger('click')
+    await tabLabelled('Rebuild schedule')!.trigger('click')
     await flushPromises()
-    await buttonLabelled('Save').trigger('click')
+    await buttonLabelled('Save')!.trigger('click')
     await flushPromises()
 
     expect(update).toHaveBeenCalledTimes(1)
@@ -223,10 +228,10 @@ describe('the sections of a settings page as tabs', () => {
       draft.rebuildSchedule.enabled = true
     })
     await flushPromises()
-    await buttonLabelled('Discard').trigger('click')
+    await buttonLabelled('Discard')!.trigger('click')
     await flushPromises()
 
     expect(store.configurations.value.search.verifySampleSize).toBe(2000)
-    expect(store.configurations.value.search.rebuildSchedule.enabled).toBe(false)
+    expect((store.configurations.value.search as Draft).rebuildSchedule.enabled).toBe(false)
   })
 })

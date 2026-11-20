@@ -17,16 +17,18 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 // The authentication domain is edited under Access, so the settings tabs must leave it out.
@@ -44,10 +46,10 @@ const SCHEMAS = {
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: Object.keys(SERVER) }),
-    schema: async (domain) => ({ data: SCHEMAS[domain] }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: Object.keys(SERVER) }),
+    schema: (domain: keyof typeof SCHEMAS) => Promise.resolve({ data: SCHEMAS[domain] }),
+    fetch: (domain: keyof typeof SERVER) => Promise.resolve({ data: JSON.parse(JSON.stringify(SERVER[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
@@ -56,7 +58,7 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -64,7 +66,7 @@ afterEach(() => {
 })
 
 const mountSettings = async (domain = 'maven') => {
-  const store = createConfigurationStore(ref(fakeClient()))
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   store.selectedDomain.value = domain
   wrapper = mount(SettingsView, {
@@ -83,7 +85,7 @@ describe('settings tabs without authentication', () => {
   it('does not offer an Authentication tab, because the domain is edited under Access', async () => {
     await mountSettings('ingot')
 
-    const links = wrapper.findAll('[aria-label="Administration"] a').map(link => link.text())
+    const links = wrapper!.findAll('[aria-label="Administration"] a').map(link => link.text())
     expect(links, 'the domains are in the Administration tree').toEqual(expect.arrayContaining(['Ingot']))
     expect(links, 'no Authentication link, the domain is edited under Access').not.toContain('Authentication')
     expect(links, 'no Maven link, the domain is edited on the Repositories page').not.toContain('Maven')
@@ -92,6 +94,6 @@ describe('settings tabs without authentication', () => {
   it('does not render a danger zone below the page', async () => {
     await mountSettings('maven')
 
-    expect(wrapper.find('#settings-danger-title').exists()).toBe(false)
+    expect(wrapper!.find('#settings-danger-title').exists()).toBe(false)
   })
 })

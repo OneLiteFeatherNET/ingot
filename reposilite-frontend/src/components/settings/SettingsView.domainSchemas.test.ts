@@ -17,7 +17,7 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
@@ -33,18 +33,23 @@ import maven from './fixtures/maven.schema.json'
 import statistics from './fixtures/statistics.schema.json'
 import web from './fixtures/web.schema.json'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMAS = { audit, authentication, cleanup, frontend, javadoc, maven, statistics, web }
 
+// The part of a schema the titles are read from. The fixtures are JSON, so only these keys are named.
+interface TitledSchema { title?: string; type?: unknown; properties?: Record<string, TitledSchema> }
+
 // The titles a user must find on the page for a domain: every field, every group heading and every list heading.
 // Only the defaults are stored, so the form fills in the rest, as it does for a domain that was never edited.
-const titlesOf = (schema) => Object.entries(schema.properties ?? {}).flatMap(([name, property]) => {
+const titlesOf = (schema: TitledSchema): string[] => Object.entries(schema.properties ?? {}).flatMap(([name, property]) => {
   const title = property.title ?? name
   const nested = property.type === 'object' && property.properties ? titlesOf(property) : []
   return [title, ...nested]
@@ -52,10 +57,10 @@ const titlesOf = (schema) => Object.entries(schema.properties ?? {}).flatMap(([n
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: Object.keys(SCHEMAS) }),
-    schema: async (domain) => ({ data: SCHEMAS[domain] }),
-    fetch: async () => ({ data: {} }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: Object.keys(SCHEMAS) }),
+    schema: (domain: keyof typeof SCHEMAS) => Promise.resolve({ data: SCHEMAS[domain] }),
+    fetch: () => Promise.resolve({ data: {} }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
@@ -64,15 +69,15 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
 })
 
-const mountDomain = async (domain) => {
-  const store = createConfigurationStore(ref(fakeClient()))
+const mountDomain = async (domain: string) => {
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings', domain },
@@ -90,9 +95,9 @@ const mountDomain = async (domain) => {
 describe.each(Object.keys(SCHEMAS).filter(domain => !isAccessDomain(domain)))('the %s domain form', (domain) => {
   it('renders every field, group and list title of its schema', async () => {
     await mountDomain(domain)
-    const panel = wrapper.get('[role="tabpanel"]').text()
+    const panel = wrapper!.get('[role="tabpanel"]').text()
 
-    for (const title of titlesOf(SCHEMAS[domain])) {
+    for (const title of titlesOf(SCHEMAS[domain as keyof typeof SCHEMAS])) {
       expect(panel, `the title "${title}" of the ${domain} schema`).toContain(title)
     }
   })
@@ -102,14 +107,14 @@ describe('the width of the administration forms', () => {
   it('lifts the reading measure from the Cleanup policies page, so its list and editor take the full width', async () => {
     await mountDomain('cleanup')
 
-    expect(wrapper.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
+    expect(wrapper!.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
   })
 })
 
 describe.each(Object.keys(SCHEMAS))('the %s schema', (domain) => {
   // A fresh validator per test: a compiled schema is cached by its validator, so the shared one can hide a failure.
   it('compiles with a fresh validator, as the forms compile it', async () => {
-    const store = createConfigurationStore(ref(fakeClient()))
+    const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
     await store.fetchConfiguration()
 
     expect(() => createAjv({ useDefaults: true }).compile(store.schemas.value[domain])).not.toThrow()

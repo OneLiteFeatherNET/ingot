@@ -17,17 +17,19 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
 import search from './fixtures/search.schema.json'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 // The dashboard is served below a sub-path, so the router is built with the same base (see MdBreadcrumb.test.ts).
@@ -43,14 +45,14 @@ const SAVED = {
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: ['search'] }),
-    schema: async () => ({ data: search }),
-    fetch: async () => ({ data: structuredClone(SAVED) }),
-    update: vi.fn(async () => ({ data: {} }))
+    domains: () => Promise.resolve({ data: ['search'] }),
+    schema: () => Promise.resolve({ data: search }),
+    fetch: () => Promise.resolve({ data: structuredClone(SAVED) }),
+    update: vi.fn(() => Promise.resolve({ data: {} }))
   }
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -61,7 +63,7 @@ afterEach(() => {
 
 // Mounts the Search index page with its configuration loaded, below the base of the dashboard.
 const setup = async () => {
-  const store = createConfigurationStore(ref(fakeClient()))
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   const router = createRouter({ history: createWebHistory(BASE), routes: stubRoutes() })
   await router.push({ name: 'settings', params: { domain: 'search' } })
@@ -81,9 +83,9 @@ const setup = async () => {
 const REBUILD_TEXT = 'Full rebuild. Rebuilding drops and refills the whole index from storage. It runs on the Maintenance page, where running jobs are shown.'
 
 // The panel of the General section: the tab that holds the rebuild note and the loose fields of the page.
-const generalPanel = (page) => {
+const generalPanel = (page: VueWrapper) => {
   const general = page.findAll('[role="tab"]').find(tab => tab.text() === 'General')
-  return document.getElementById(general.attributes('aria-controls'))
+  return document.getElementById(general!.attributes('aria-controls')!)!
 }
 
 describe('the rebuild of the search index on the Search index page', () => {

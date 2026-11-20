@@ -17,17 +17,19 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMA = {
@@ -60,18 +62,22 @@ const initialServer = () => ({
   }
 })
 
-let server
-let writes
+// The saved maven domain, and one repository of it, as the fake server holds them.
+type Domain = ReturnType<typeof initialServer>['maven']
+type Repository = Domain['repositories'][number]
+
+let server: Record<string, Domain>
+let writes: { domain: string; content: Domain }[]
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: Object.keys(server) }),
-    schema: async () => ({ data: SCHEMA }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async (domain, content) => {
-      writes.push({ domain, content: JSON.parse(JSON.stringify(content)) })
-      server[domain] = JSON.parse(JSON.stringify(content))
-      return { data: {} }
+    domains: () => Promise.resolve({ data: Object.keys(server) }),
+    schema: () => Promise.resolve({ data: SCHEMA }),
+    fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(server[domain])) as unknown }),
+    update: (domain: string, content: Domain) => {
+      writes.push({ domain, content: JSON.parse(JSON.stringify(content)) as Domain })
+      server[domain] = JSON.parse(JSON.stringify(content)) as Domain
+      return Promise.resolve({ data: {} })
     }
   }
 })
@@ -81,12 +87,12 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountView = async () => {
   server = initialServer()
   writes = []
-  const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => false })
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef, { secretsHidden: () => false })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings' },
@@ -100,11 +106,11 @@ const mountView = async () => {
   return store
 }
 
-const countButton = () => wrapper.findAll('button').find(button => button.text().includes('unsaved change'))
+const countButton = () => wrapper!.findAll('button').find(button => button.text().includes('unsaved change'))
 const sheet = () => document.querySelector('[role="dialog"][aria-labelledby]')
-const sheetButton = (name) => [...sheet().querySelectorAll('button')].find(button => button.textContent.trim() === name)
+const sheetButton = (name: string) => [...sheet()!.querySelectorAll('button')].find(button => button.textContent.trim() === name)
 
-const editBothRepositories = (store) => {
+const editBothRepositories = (store: ReturnType<typeof createConfigurationStore>) => {
   store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE', redeployment: false })
   store.setEntry('maven', 'repositories', 1, { id: 'snapshots', visibility: 'PUBLIC', redeployment: true })
 }
@@ -127,27 +133,27 @@ describe('SettingsView review', () => {
     editBothRepositories(store)
     await flushPromises()
 
-    await countButton().trigger('click')
+    await countButton()!.trigger('click')
     await flushPromises()
 
     expect(sheet(), 'the review sheet is open').not.toBeNull()
-    expect(sheet().textContent).toContain('Repositories: releases')
-    expect(sheet().textContent).toContain('Repositories: snapshots')
+    expect(sheet()!.textContent).toContain('Repositories: releases')
+    expect(sheet()!.textContent).toContain('Repositories: snapshots')
   })
 
   it('reverts one change in the draft and keeps the other edits', async () => {
     const store = await mountView()
     editBothRepositories(store)
     await flushPromises()
-    await countButton().trigger('click')
+    await countButton()!.trigger('click')
     await flushPromises()
 
-    sheet().querySelector('[aria-label="Revert Visibility"]').click()
+    sheet()!.querySelector<HTMLElement>('[aria-label="Revert Visibility"]')!.click()
     await flushPromises()
 
-    const repositories = store.configurations.value.maven.repositories
-    expect(repositories.find(entry => entry.id === 'releases').visibility, 'the reverted field is back to its saved value').toBe('PUBLIC')
-    expect(repositories.find(entry => entry.id === 'snapshots').visibility, 'the other edits remain in the draft').toBe('PUBLIC')
+    const repositories = store.configurations.value.maven.repositories as Repository[]
+    expect(repositories.find(entry => entry.id === 'releases')!.visibility, 'the reverted field is back to its saved value').toBe('PUBLIC')
+    expect(repositories.find(entry => entry.id === 'snapshots')!.visibility, 'the other edits remain in the draft').toBe('PUBLIC')
     expect(writes, 'the revert writes nothing to the server').toEqual([])
   })
 
@@ -155,10 +161,10 @@ describe('SettingsView review', () => {
     const store = await mountView()
     store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE', redeployment: false })
     await flushPromises()
-    await countButton().trigger('click')
+    await countButton()!.trigger('click')
     await flushPromises()
 
-    sheet().querySelector('[aria-label="Revert Visibility"]').click()
+    sheet()!.querySelector<HTMLElement>('[aria-label="Revert Visibility"]')!.click()
     await flushPromises()
 
     expect(sheet(), 'nothing is left to review, so the sheet is closed').toBeNull()
@@ -168,10 +174,10 @@ describe('SettingsView review', () => {
     const store = await mountView()
     editBothRepositories(store)
     await flushPromises()
-    await countButton().trigger('click')
+    await countButton()!.trigger('click')
     await flushPromises()
 
-    sheetButton('Discard all').click()
+    sheetButton('Discard all')!.click()
     await flushPromises()
 
     expect(store.hasUnsavedChanges.value).toBe(false)
@@ -182,10 +188,10 @@ describe('SettingsView review', () => {
     const store = await mountView()
     editBothRepositories(store)
     await flushPromises()
-    await countButton().trigger('click')
+    await countButton()!.trigger('click')
     await flushPromises()
 
-    sheetButton('Save').click()
+    sheetButton('Save')!.click()
     await flushPromises()
 
     expect(writes).toHaveLength(1)

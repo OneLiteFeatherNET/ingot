@@ -17,10 +17,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { stubRoutes } from './fixtures/routes'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 // The dialog of the one-of renderer is a <dialog>, which jsdom does not implement.
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
@@ -31,7 +33,7 @@ vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: nu
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 // A repository whose storage provider is one of two branches, as in the real maven schema.
@@ -80,12 +82,12 @@ const SERVER = {
   }
 }
 
-const fakeClient = (server) => ({
+const fakeClient = (server: Record<string, unknown>) => ({
   settings: {
-    domains: async () => ({ data: Object.keys(server) }),
-    schema: async () => ({ data: MAVEN_SCHEMA }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: Object.keys(server) }),
+    schema: () => Promise.resolve({ data: MAVEN_SCHEMA }),
+    fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(server[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
@@ -95,15 +97,19 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-const loadedStore = async (server = SERVER) => {
-  const store = createConfigurationStore(ref(fakeClient(server)))
+const loadedStore = async (server: Record<string, unknown> = SERVER) => {
+  const store = createConfigurationStore(ref(fakeClient(server)) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
 
-let wrapper
+type Store = Awaited<ReturnType<typeof loadedStore>>
+// A repository of the domain, as the draft holds it.
+type Repository = { id?: string; visibility: string }
 
-const mountEntries = async ({ props = {}, store } = {}) => {
+let wrapper: VueWrapper | undefined
+
+const mountEntries = async ({ props = {}, store }: { props?: { domain?: string; entry?: string }; store?: Store } = {}) => {
   const router = namedRouter()
   const viewProps = { selectedTab: 'Settings', domain: 'ingot', collection: 'repositories', entry: 'releases', ...props }
   // The address the view is mounted with is the one the router is on, as it is in the app.
@@ -124,26 +130,26 @@ const mountEntries = async ({ props = {}, store } = {}) => {
 }
 
 // The router hands the address back to the view as props. The tests do the same after each navigation.
-const followAddress = async (router) => {
-  await wrapper.setProps({ entry: router.currentRoute.value.params.entry })
+const followAddress = async (router: Router) => {
+  await wrapper!.setProps({ entry: router.currentRoute.value.params.entry as string })
   await flushPromises()
 }
 
-const itemButtons = () => wrapper.findAll('li button')
+const itemButtons = () => wrapper!.findAll('li button')
 const itemTitles = () => itemButtons().map(button => button.find('span').text())
-const idField = () => document.querySelector('#entry-detail-id')
-const typeInto = async (input, value) => {
+const idField = () => document.querySelector<HTMLInputElement>('#entry-detail-id')!
+const typeInto = async (input: HTMLInputElement, value: string) => {
   input.value = value
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
-const variantSelect = () => wrapper.find('select[id="#/properties/storageProvider-variant"]')
+const variantSelect = () => wrapper!.find('select[id="#/properties/storageProvider-variant"]')
 const confirmVariantSwitch = async () => {
   const yes = [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Switch')
-  yes.click()
+  yes!.click()
   await flushPromises()
 }
-const repositoryIds = (store) => store.configurations.value.ingot.repositories.map(entry => entry.id)
+const repositoryIds = (store: Store) => (store.configurations.value.ingot.repositories as Repository[]).map(entry => entry.id)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -166,7 +172,7 @@ describe('SettingsView storage variant', () => {
     await variantSelect().setValue('0')
     await confirmVariantSwitch()
 
-    expect(store.configurations.value.ingot.repositories[0].visibility).toBe('PUBLIC')
+    expect((store.configurations.value.ingot.repositories as Repository[])[0].visibility).toBe('PUBLIC')
   })
 })
 
@@ -189,7 +195,7 @@ describe('SettingsView rename', () => {
 
     expect(itemButtons()[0].element, 'the item is the same element').toBe(item)
     expect(itemButtons()[0].attributes('aria-current')).toBe('true')
-    expect(wrapper.get('h1').text()).toBe('mirror')
+    expect(wrapper!.get('h1').text()).toBe('mirror')
   })
 
   it('does not move the address while the new id is taken, and says why on the field', async () => {
@@ -198,8 +204,8 @@ describe('SettingsView rename', () => {
     await typeInto(idField(), 'snapshots')
 
     expect(router.currentRoute.value.params.entry).toBe('releases')
-    expect(wrapper.get('h1').text(), 'the page heading keeps the address it opens, not the id that is not usable yet').toBe('releases')
-    expect(wrapper.text()).toContain('A repository with this id already exists.')
+    expect(wrapper!.get('h1').text(), 'the page heading keeps the address it opens, not the id that is not usable yet').toBe('releases')
+    expect(wrapper!.text()).toContain('A repository with this id already exists.')
     expect(store.invalidDomains.value).toEqual(['ingot'])
   })
 
@@ -208,8 +214,8 @@ describe('SettingsView rename', () => {
 
     await typeInto(idField(), '')
 
-    expect(wrapper.text()).toContain('Fix the errors before saving.')
-    expect(wrapper.findAll('button').find(button => button.text() === 'Save').attributes('disabled')).toBeDefined()
+    expect(wrapper!.text()).toContain('Fix the errors before saving.')
+    expect(wrapper!.findAll('button').find(button => button.text() === 'Save')!.attributes('disabled')).toBeDefined()
   })
 })
 
@@ -230,15 +236,15 @@ describe('SettingsView entries without a usable id', () => {
     await flushPromises()
     await followAddress(router)
 
-    expect(router.currentRoute.value.params.entry.startsWith('~'), 'the unnamed entry is addressed by its key').toBe(true)
-    expect(wrapper.get('h1').text()).toBe('Unnamed repository')
+    expect((router.currentRoute.value.params.entry as string).startsWith('~'), 'the unnamed entry is addressed by its key').toBe(true)
+    expect(wrapper!.get('h1').text()).toBe('Unnamed repository')
 
     await typeInto(idField(), 'named')
     await followAddress(router)
 
     expect(repositoryIds(store)).toEqual(['named', 'snapshots'])
     expect(router.currentRoute.value.params.entry).toBe('named')
-    expect(wrapper.get('h1').text()).toBe('named')
+    expect(wrapper!.get('h1').text()).toBe('named')
   })
 })
 
@@ -247,16 +253,16 @@ describe('SettingsView action bar', () => {
     // Outside the maven domain a collection has no guided flow, so "New entry" opens the id dialog.
     const server = { ingot: { repositories: [{ id: 'releases', visibility: 'PUBLIC', storageProvider: { type: 'fs' } }] } }
     await mountEntries({ props: { domain: 'ingot', entry: undefined }, store: await loadedStore(server) })
-    await wrapper.find('[data-test="new-entry"]').trigger('click')
+    await wrapper!.find('[data-test="new-entry"]').trigger('click')
     await flushPromises()
 
-    document.querySelector('#new-entry-id').value = 'mirror'
-    document.querySelector('#new-entry-id').dispatchEvent(new Event('input'))
+    document.querySelector<HTMLInputElement>('#new-entry-id')!.value = 'mirror'
+    document.querySelector('#new-entry-id')!.dispatchEvent(new Event('input'))
     await flushPromises()
-    document.getElementById('new-entry-form').dispatchEvent(new Event('submit', { cancelable: true }))
+    document.getElementById('new-entry-form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(wrapper.text()).toContain('1 unsaved change')
-    expect(wrapper.findAll('[role="status"]').some(status => status.text().includes('Save'))).toBe(true)
+    expect(wrapper!.text()).toContain('1 unsaved change')
+    expect(wrapper!.findAll('[role="status"]').some(status => status.text().includes('Save'))).toBe(true)
   })
 })

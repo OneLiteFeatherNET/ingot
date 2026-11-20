@@ -38,7 +38,7 @@ const ACCESS_DOMAINS = {
   }
 }
 
-const isAccessDomain = (domain: string): boolean => Object.prototype.hasOwnProperty.call(ACCESS_DOMAINS, domain)
+const isAccessDomain = (domain: string): domain is keyof typeof ACCESS_DOMAINS => Object.prototype.hasOwnProperty.call(ACCESS_DOMAINS, domain)
 
 // The domains the settings tabs offer, in the order the server lists them. Neither the domains edited under Access nor
 // the domains that have a page of their own (the maven domain, on the Repositories page) are tabs.

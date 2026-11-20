@@ -16,13 +16,13 @@
 
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { defineComponent, h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h, type Component } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, useRoute } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
 import { createAppRouter } from '../../router/create'
 import SettingsView from './SettingsView.vue'
-import { loadedStore, repositorySchema } from '../repositories/fixtures/repositories'
+import { loadedStore, repositorySchema, type ServerState } from '../repositories/fixtures/repositories'
 
 // Session and toasts are replaced, so the page touches neither the network nor the DOM outside the view.
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null }, isManager: { value: true } }) }))
@@ -30,7 +30,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -40,7 +40,7 @@ vi.mock('../../store/placeholders', () => ({
 HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -48,7 +48,7 @@ afterEach(() => {
 })
 
 // The page is mounted at the address the router holds, with the route params the app passes in.
-const mountSettings = async ({ address, props = {}, server }) => {
+const mountSettings = async ({ address, props = {}, server }: { address: string; props?: Record<string, unknown>; server?: ServerState }) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: stubRoutes()
@@ -71,9 +71,9 @@ describe('the Repositories page inside Settings', () => {
   it('shows the Repositories page in place of the generic domain form', async () => {
     const { router } = await mountSettings({ address: '/settings/repositories' })
 
-    expect(wrapper.find('h2').text(), 'the page heading is Repositories').toBe('Repositories')
-    expect(wrapper.find('table').exists(), 'the table of the repositories is shown').toBe(true)
-    expect(wrapper.find('#repositories-title').exists(), 'the generic collection editor is not drawn').toBe(false)
+    expect(wrapper!.find('h2').text(), 'the page heading is Repositories').toBe('Repositories')
+    expect(wrapper!.find('table').exists(), 'the table of the repositories is shown').toBe(true)
+    expect(wrapper!.find('#repositories-title').exists(), 'the generic collection editor is not drawn').toBe(false)
     expect(router.currentRoute.value.name, 'the address stays on the Repositories page').toBe('settings-repositories')
   })
 
@@ -86,45 +86,45 @@ describe('the Repositories page inside Settings', () => {
   it('shows the detail of one repository at its own address', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.get('h1').text(), 'the page heading names the repository').toBe('releases')
-    expect(wrapper.findAll('h2').filter(heading => heading.text() === 'releases').length, 'no second level heading repeats the name').toBe(0)
+    expect(wrapper!.get('h1').text(), 'the page heading names the repository').toBe('releases')
+    expect(wrapper!.findAll('h2').filter(heading => heading.text() === 'releases').length, 'no second level heading repeats the name').toBe(0)
   })
 
   it('lifts the reading measure from the page of one repository, so its frame takes the full width', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
+    expect(wrapper!.get('.settings-view').html(), 'no 960 pixel measure on the frame of the page').not.toContain('max-w-md-reading')
   })
 
   it('leaves the root of the repository detail without a max width class', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
     // The root is the block that holds the type section, the tabs and the danger zone.
-    const root = wrapper.get('#repository-type-title').element.closest('.gap-6')
-    expect(root.className.split(' ').filter(name => name.startsWith('max-w')), 'no width cap on the detail root').toEqual([])
+    const root = wrapper!.get('#repository-type-title').element.closest('.gap-6')
+    expect(root!.className.split(' ').filter(name => name.startsWith('max-w')), 'no width cap on the detail root').toEqual([])
   })
 
   it('keeps the instance-wide factory reset off the detail of one repository', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.find('#settings-danger-title').exists(), 'the settings danger zone is the page of the whole domain, not of one repository').toBe(false)
-    expect(wrapper.text(), 'a repository page must not offer a reset of every setting').not.toContain('Factory reset')
+    expect(wrapper!.find('#settings-danger-title').exists(), 'the settings danger zone is the page of the whole domain, not of one repository').toBe(false)
+    expect(wrapper!.text(), 'a repository page must not offer a reset of every setting').not.toContain('Factory reset')
   })
 
   it('shows one Danger zone on the detail of one repository, the one that deletes it', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    const zones = wrapper.findAll('h2, h3, h4').filter(heading => heading.text() === 'Danger zone')
+    const zones = wrapper!.findAll('h2, h3, h4').filter(heading => heading.text() === 'Danger zone')
     expect(zones, 'the repository page has one danger zone').toHaveLength(1)
-    expect(wrapper.get('[data-test="danger-zone"]').text()).toContain('Delete repository')
+    expect(wrapper!.get('[data-test="danger-zone"]').text()).toContain('Delete repository')
   })
 
   it('draws no tab panel around the detail of one repository, the tab list of the page names its own panels', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.get('[role="tablist"]').exists(), 'the repository page has its tab list').toBe(true)
-    expect(wrapper.findAll('[role="tabpanel"]').every(panel => panel.attributes('aria-labelledby')), 'no panel without its tab').toBe(true)
-    expect(wrapper.find('[role="tabpanel"]:not([aria-labelledby])').exists(), 'the outer panel of the page is gone').toBe(false)
+    expect(wrapper!.find('[role="tablist"]').exists(), 'the repository page has its tab list').toBe(true)
+    expect(wrapper!.findAll('[role="tabpanel"]').every(panel => panel.attributes('aria-labelledby')), 'no panel without its tab').toBe(true)
+    expect(wrapper!.find('[role="tabpanel"]:not([aria-labelledby])').exists(), 'the outer panel of the page is gone').toBe(false)
   })
 
   it('lists a repository without an id as Unnamed repository, and its Edit item opens its detail', async () => {
@@ -138,11 +138,11 @@ describe('the Repositories page inside Settings', () => {
     }
     const { router } = await mountSettings({ address: '/settings/repositories', server })
 
-    expect(wrapper.text(), 'the unnamed repository is listed').toContain('Unnamed repository')
+    expect(wrapper!.text(), 'the unnamed repository is listed').toContain('Unnamed repository')
     // The Actions button is an icon: its accessible name is its visually hidden text, so the button is found by that text.
-    wrapper.findAll('button').find(button => button.text() === 'Actions for Unnamed repository').trigger('click')
+    void wrapper!.findAll('button').find(button => button.text() === 'Actions for Unnamed repository')!.trigger('click')
     await flushPromises()
-    document.querySelector('[role="menu"] [aria-label="Edit Unnamed repository"]').click()
+    document.querySelector<HTMLElement>('[role="menu"] [aria-label="Edit Unnamed repository"]')!.click()
     await flushPromises()
     expect(router.currentRoute.value.name, 'the Edit item opens the repository detail').toBe('settings-repository')
   })
@@ -154,13 +154,13 @@ describe('the Maven page address', () => {
   const AppHost = defineComponent({
     setup() {
       const route = useRoute()
-      return () => (route.name?.startsWith('settings')
-        ? h(SettingsView, { selectedTab: 'Settings', domain: route.params.domain, collection: route.params.collection, entry: route.params.entry })
+      return () => ((route.name as string | undefined)?.startsWith('settings')
+        ? h(SettingsView as Component, { selectedTab: 'Settings', domain: route.params.domain, collection: route.params.collection, entry: route.params.entry })
         : null)
     }
   })
 
-  const mountAppAt = async (address) => {
+  const mountAppAt = async (address: string) => {
     const router = createAppRouter({
       history: createMemoryHistory(),
       component: AppHost,
@@ -187,14 +187,14 @@ describe('the Maven page address', () => {
     const { router } = await mountAppAt('/settings/maven')
 
     expect(router.currentRoute.value.name).toBe('settings-repositories')
-    expect(wrapper.find('h2').text()).toBe('Repositories')
-    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the card that linked to the page is gone').toBe(false)
+    expect(wrapper!.find('h2').text()).toBe('Repositories')
+    expect(wrapper!.find('#maven-repositories-link-title').exists(), 'the card that linked to the page is gone').toBe(false)
   })
 
   it('shows the Maven options once, on the Repositories page', async () => {
     await mountAppAt('/settings/maven')
 
-    const headings = wrapper.findAll('h2').map(heading => heading.text())
+    const headings = wrapper!.findAll('h2').map(heading => heading.text())
     expect(headings.filter(text => text === 'Maven options'), 'one section of Maven options').toHaveLength(1)
   })
 })

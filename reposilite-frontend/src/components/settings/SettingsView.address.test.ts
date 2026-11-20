@@ -16,7 +16,8 @@
 
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import type { Component } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 // Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
 // view's whole module graph on first use, which under load can outlast the test timeout. Each
 // test still loads its own copy below, after vi.resetModules().
@@ -25,12 +26,12 @@ import './SettingsView.vue'
 // The configuration store is a module singleton, so each test loads a fresh copy. The server
 // is replaced by a client that knows two domains with empty settings: the tests are about
 // which domain the view shows and reports, not about the forms.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted((): { client: unknown } => ({ client: null }))
 vi.mock('../../store/session', () => ({
   useSession: () => ({ client: { get value() { return session.client } } })
 }))
 
-const serverWithDomains = (...domains) => ({
+const serverWithDomains = (...domains: string[]) => ({
   settings: {
     domains: vi.fn(() => Promise.resolve({ data: domains })),
     schema: vi.fn(() => Promise.resolve({ data: { type: 'object', properties: {} } })),
@@ -40,8 +41,8 @@ const serverWithDomains = (...domains) => ({
 })
 
 // The router is imported after the module reset, like the view, so both share one copy of vue-router.
-const mountSettings = async (props) => {
-  const { default: SettingsView } = await import('./SettingsView.vue')
+const mountSettings = async (props: { domain?: string }) => {
+  const { default: SettingsView } = await import('./SettingsView.vue') as { default: Component }
   const { createMemoryHistory, createRouter } = await import('vue-router')
   const router = createRouter({
     history: createMemoryHistory(),
@@ -54,7 +55,7 @@ const mountSettings = async (props) => {
 }
 
 describe('SettingsView address', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
   beforeEach(() => {
     vi.resetModules()
