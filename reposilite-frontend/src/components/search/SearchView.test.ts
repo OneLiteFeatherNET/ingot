@@ -532,6 +532,30 @@ describe('SearchView states', () => {
     expect(box().attributes('disabled')).toBeUndefined()
   })
 
+  it('draws the skeleton rows from shared skeleton bars, without a pulsing box', async () => {
+    const client = clientAnswering({ search: () => new Promise(() => {}) })
+    await mountAt('/search', { client })
+
+    const skeleton = wrapper.find('[data-test="skeleton"]')
+    expect(skeleton.findAll('[data-shape="bar"]').length, 'each skeleton row is drawn with shared bars').toBeGreaterThan(0)
+    expect(skeleton.find('.animate-pulse').exists(), 'the skeleton does not pulse on its own').toBe(false)
+  })
+
+  it('shows a failed answer as an error state panel with a tonal retry', async () => {
+    const client = clientAnswering({ search: () => Promise.reject(failing(500, 'boom')) })
+    await mountAt('/search', { client })
+
+    expect(wrapper.find('[data-test="failure"]').attributes('role'), 'the failure is announced as an error panel').toBe('alert')
+    expect(wrapper.find('[data-test="retry"]').attributes('data-variant'), 'the retry is a tonal button').toBe('tonal')
+  })
+
+  it('shows an answer without results as an empty state panel', async () => {
+    const client = clientAnswering({ search: () => Promise.resolve({ data: answerPage({ items: [], total: 0 }) }) })
+    await mountAt('/search', { client })
+
+    expect(wrapper.find('[data-test="empty"] > div').text(), 'the empty state is the state panel and names the query').toBe('Nothing matches.')
+  })
+
   it('says why nothing was found and which filters were active', async () => {
     const client = clientAnswering({ search: () => Promise.resolve({ data: answerPage({ items: [], total: 0 }) }) })
     await mountAt('/search?q=zzz&extension=war&snapshot=true', { client })

@@ -207,4 +207,64 @@ describe('FailuresSheet', () => {
     expect(failures, 'retry sends a second request').toHaveBeenCalledTimes(2)
     expect(dialogText()).toContain('repository is broken')
   })
+
+  it('draws the sheet from the trailing edge at the wide sheet width', async () => {
+    session.client = ref(clientWith({}))
+    mountSheet()
+    await flushPromises()
+
+    const panel = dialog()?.querySelector<HTMLElement>('.inset-y-0')
+    expect(panel?.classList, 'the sheet is pinned to the trailing edge').toContain('end-0')
+    expect(panel?.classList, 'the width comes from the wide sheet token, not a literal').toContain('w-md-sheet-wide')
+  })
+
+  it('is named by its heading', async () => {
+    session.client = ref(clientWith({}))
+    mountSheet()
+    await flushPromises()
+
+    const labelledBy = dialog()?.getAttribute('aria-labelledby') ?? ''
+    expect(document.getElementById(labelledBy)?.textContent.trim(), 'the dialog name is the heading of the sheet').toBe('Recorded failures')
+  })
+
+  it('asks to close when Escape is pressed in the sheet', async () => {
+    session.client = ref(clientWith({}))
+    mountSheet()
+    await flushPromises()
+
+    dialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper?.emitted('update:modelValue'), 'Escape reports the close to the owner').toEqual([[false]])
+  })
+
+  it('moves focus into the sheet on open and returns it to the opener on close', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    session.client = ref(clientWith({}))
+    wrapper = mount(FailuresSheet, {
+      props: { modelValue: false, 'onUpdate:modelValue': () => {} },
+      attachTo: document.body
+    })
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    expect(dialog()?.contains(document.activeElement), 'focus is inside the sheet while it is open').toBe(true)
+
+    dialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(document.activeElement, 'focus returns to the element that opened the sheet').toBe(opener)
+    opener.remove()
+  })
+
+  it('draws the retry of a failed load as a tonal button inside the error state', async () => {
+    session.client = ref(clientWith({ failures: vi.fn().mockRejectedValue(new Error('unreachable')) }))
+    mountSheet()
+    await flushPromises()
+
+    const retry = buttonNamed('Retry')
+    expect(retry?.getAttribute('data-variant'), 'the retry is a tonal button').toBe('tonal')
+    expect(retry?.closest('[role="alert"]'), 'the retry sits in the error state panel').not.toBeNull()
+  })
 })

@@ -29,6 +29,7 @@ import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
@@ -383,26 +384,29 @@ const setShowDetails = (value: boolean) => {
       <div
         v-if="loading"
         data-ingot-state="loading"
-        class="mt-4 md-body-large text-on-surface-variant"
       >
-        Loading repositories
+        <MdStatePanel
+          state="loading"
+          title="Loading repositories"
+        />
       </div>
 
-      <div
+      <MdStatePanel
         v-else-if="failure"
-        class="mt-4 flex flex-col items-start gap-3"
+        state="error"
+        class="mt-4"
+        :description="failure"
       >
-        <p class="md-body-large text-error">
-          {{ failure }}
-        </p>
-        <MdButton
-          variant="tonal"
-          type="button"
-          @click="load"
-        >
-          Retry
-        </MdButton>
-      </div>
+        <template #actions>
+          <MdButton
+            variant="tonal"
+            type="button"
+            @click="load"
+          >
+            Retry
+          </MdButton>
+        </template>
+      </MdStatePanel>
 
       <!--
         The list is one surface-container-low block. Each row is a link over its whole width: a 40px tonal

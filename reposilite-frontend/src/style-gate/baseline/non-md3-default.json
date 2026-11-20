@@ -191,11 +191,6 @@
   },
   {
     "file": "src/components/search/SearchView.vue",
-    "match": "animate-pulse",
-    "count": 1
-  },
-  {
-    "file": "src/components/search/SearchView.vue",
     "match": "z-40",
     "count": 1
   },
