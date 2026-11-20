@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import ProviderIcon from '../icons/ProviderIcon.vue'
@@ -200,49 +201,50 @@ onMounted(load)
       </MdButton>
     </div>
 
-    <section
-      v-if="loaded && !loadError"
-      aria-labelledby="sso-public-title"
-      class="flex flex-col gap-3 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4"
-      data-test="sso-public-url"
-    >
-      <h3
-        id="sso-public-title"
-        class="md-title-small text-on-surface"
+    <MdCard v-if="loaded && !loadError">
+      <section
+        aria-labelledby="sso-public-title"
+        class="flex flex-col gap-3"
+        data-test="sso-public-url"
       >
-        Public address
-      </h3>
-      <p class="md-body-medium text-on-surface-variant">
-        The callback URLs are built from this address, so a provider keeps the same callback when the dashboard is
-        reached through another name. Leave it empty to build them from the address the dashboard is opened at.
-      </p>
-      <MdTextField
-        id="sso-public-url"
-        v-model="publicUrlDraft"
-        label="Public URL"
-        type="url"
-        autocomplete="off"
-        placeholder="https://repo.example.org/"
-        supporting-text="An absolute https:// address. http:// is accepted for localhost only."
-        :error="publicUrlProblem !== ''"
-        :error-text="publicUrlProblem"
-      />
-      <p
-        class="md-body-medium text-on-surface-variant"
-        data-test="callback-preview"
-      >
-        Callback URL: <code class="break-all">{{ callbackPreview }}</code>
-      </p>
-      <div class="flex justify-end">
-        <MdButton
-          variant="outlined"
-          :disabled="!publicUrlDirty || publicUrlProblem !== '' || saving"
-          @click="savePublicUrl"
+        <h3
+          id="sso-public-title"
+          class="md-title-small text-on-surface"
         >
-          {{ saving ? 'Saving...' : 'Save public address' }}
-        </MdButton>
-      </div>
-    </section>
+          Public address
+        </h3>
+        <p class="md-body-medium text-on-surface-variant">
+          The callback URLs are built from this address, so a provider keeps the same callback when the dashboard is
+          reached through another name. Leave it empty to build them from the address the dashboard is opened at.
+        </p>
+        <MdTextField
+          id="sso-public-url"
+          v-model="publicUrlDraft"
+          label="Public URL"
+          type="url"
+          autocomplete="off"
+          placeholder="https://repo.example.org/"
+          supporting-text="An absolute https:// address. http:// is accepted for localhost only."
+          :error="publicUrlProblem !== ''"
+          :error-text="publicUrlProblem"
+        />
+        <p
+          class="md-body-medium text-on-surface-variant"
+          data-test="callback-preview"
+        >
+          Callback URL: <code class="break-all">{{ callbackPreview }}</code>
+        </p>
+        <div class="flex justify-end">
+          <MdButton
+            variant="outlined"
+            :disabled="!publicUrlDirty || publicUrlProblem !== '' || saving"
+            @click="savePublicUrl"
+          >
+            {{ saving ? 'Saving...' : 'Save public address' }}
+          </MdButton>
+        </div>
+      </section>
+    </MdCard>
 
     <p
       v-if="!loaded"

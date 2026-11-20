@@ -21,6 +21,7 @@ import { createErrorToast, errorMessage } from '../../../helpers/toast'
 import { textFromParam, textParam } from '../../../router/url-state'
 import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
+import MdCard from '../../md/MdCard.vue'
 import MdIcon from '../../md/MdIcon.vue'
 import MdSelect from '../../md/MdSelect.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
@@ -430,118 +431,120 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       </p>
     </div>
 
-    <form
-      class="grid grid-cols-1 gap-4 rounded-corner-large bg-surface-container-low px-4 py-4 expanded:grid-cols-2"
-      novalidate
-      data-test="check-form"
-      @submit.prevent="submit"
-    >
-      <ComboboxField
-        :model-value="principal"
-        label="Principal"
-        :options="principalOptions"
-        listbox-label="Principal suggestions"
-        supporting-text="A user or a machine account"
-        :error="principalError !== ''"
-        :error-text="principalError"
-        data-test="principal-field"
-        @update:model-value="onPrincipal"
-      />
-      <div data-test="token-field">
-        <MdSelect
-          :model-value="token"
-          label="Token"
-          :options="tokenOptions"
-          supporting-text="Optional. A token can only narrow what its principal may do"
-          :error="tokenError !== ''"
-          :error-text="tokenError"
-          :disabled="tokenNames.length === 0 && token === ''"
-          data-test="token-select"
-          @update:model-value="onToken"
-        />
-      </div>
-      <div
-        class="w-fit expanded:col-span-2"
-        data-test="check-mode"
+    <MdCard variant="low">
+      <form
+        class="grid grid-cols-1 gap-4 expanded:grid-cols-2"
+        novalidate
+        data-test="check-form"
+        @submit.prevent="submit"
       >
-        <SegmentedControl label="Check by">
-          <SegmentedOption
-            :on="mode === 'node'"
-            data-test="mode-node"
-            @click="chooseMode('node')"
-          >
-            Node
-          </SegmentedOption>
-          <SegmentedOption
-            :on="mode === 'path'"
-            data-test="mode-path"
-            @click="chooseMode('path')"
-          >
-            Artifact path
-          </SegmentedOption>
-        </SegmentedControl>
-      </div>
-      <ComboboxField
-        v-if="mode === 'node'"
-        :model-value="node"
-        label="Node"
-        mono
-        :options="nodeOptions"
-        listbox-label="Node suggestions"
-        supporting-text="Type a node or choose one from the list"
-        :error="nodeError !== ''"
-        :error-text="nodeError"
-        data-test="node-field"
-        @update:model-value="onNode"
-      />
-      <template v-else>
-        <div data-test="artifact-repository">
-          <ComboboxField
-            :model-value="repositoryText"
-            label="Repository"
-            mono
-            :options="repositoryOptions"
-            listbox-label="Repository suggestions"
-            supporting-text="The repository the path is in"
-            :error="repositoryError !== ''"
-            :error-text="repositoryError"
-            @update:model-value="onRepository"
-          />
-        </div>
-        <div data-test="artifact-path">
-          <ComboboxField
-            :model-value="pathText"
-            label="Path"
-            mono
-            :disabled="repositoryText.trim() === ''"
-            :options="pathOptions"
-            listbox-label="Path suggestions"
-            supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
-            :error="pathError !== ''"
-            :error-text="pathError"
-            @update:model-value="onPath"
-          />
-        </div>
-        <div data-test="artifact-action">
+        <ComboboxField
+          :model-value="principal"
+          label="Principal"
+          :options="principalOptions"
+          listbox-label="Principal suggestions"
+          supporting-text="A user or a machine account"
+          :error="principalError !== ''"
+          :error-text="principalError"
+          data-test="principal-field"
+          @update:model-value="onPrincipal"
+        />
+        <div data-test="token-field">
           <MdSelect
-            v-model="actionText"
-            label="Action"
-            :options="ACTION_OPTIONS"
-            supporting-text="Read, deploy or delete"
+            :model-value="token"
+            label="Token"
+            :options="tokenOptions"
+            supporting-text="Optional. A token can only narrow what its principal may do"
+            :error="tokenError !== ''"
+            :error-text="tokenError"
+            :disabled="tokenNames.length === 0 && token === ''"
+            data-test="token-select"
+            @update:model-value="onToken"
           />
         </div>
-      </template>
-      <div class="flex items-start expanded:col-span-2">
-        <MdButton
-          type="submit"
-          variant="filled"
-          :disabled="!canCheck"
-          data-test="check"
+        <div
+          class="w-fit expanded:col-span-2"
+          data-test="check-mode"
         >
-          Check
-        </MdButton>
-      </div>
-    </form>
+          <SegmentedControl label="Check by">
+            <SegmentedOption
+              :on="mode === 'node'"
+              data-test="mode-node"
+              @click="chooseMode('node')"
+            >
+              Node
+            </SegmentedOption>
+            <SegmentedOption
+              :on="mode === 'path'"
+              data-test="mode-path"
+              @click="chooseMode('path')"
+            >
+              Artifact path
+            </SegmentedOption>
+          </SegmentedControl>
+        </div>
+        <ComboboxField
+          v-if="mode === 'node'"
+          :model-value="node"
+          label="Node"
+          mono
+          :options="nodeOptions"
+          listbox-label="Node suggestions"
+          supporting-text="Type a node or choose one from the list"
+          :error="nodeError !== ''"
+          :error-text="nodeError"
+          data-test="node-field"
+          @update:model-value="onNode"
+        />
+        <template v-else>
+          <div data-test="artifact-repository">
+            <ComboboxField
+              :model-value="repositoryText"
+              label="Repository"
+              mono
+              :options="repositoryOptions"
+              listbox-label="Repository suggestions"
+              supporting-text="The repository the path is in"
+              :error="repositoryError !== ''"
+              :error-text="repositoryError"
+              @update:model-value="onRepository"
+            />
+          </div>
+          <div data-test="artifact-path">
+            <ComboboxField
+              :model-value="pathText"
+              label="Path"
+              mono
+              :disabled="repositoryText.trim() === ''"
+              :options="pathOptions"
+              listbox-label="Path suggestions"
+              supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+              :error="pathError !== ''"
+              :error-text="pathError"
+              @update:model-value="onPath"
+            />
+          </div>
+          <div data-test="artifact-action">
+            <MdSelect
+              v-model="actionText"
+              label="Action"
+              :options="ACTION_OPTIONS"
+              supporting-text="Read, deploy or delete"
+            />
+          </div>
+        </template>
+        <div class="flex items-start expanded:col-span-2">
+          <MdButton
+            type="submit"
+            variant="filled"
+            :disabled="!canCheck"
+            data-test="check"
+          >
+            Check
+          </MdButton>
+        </div>
+      </form>
+    </MdCard>
 
     <p
       v-if="status === 'loading'"
@@ -738,17 +741,21 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       </div>
     </div>
 
-    <div
+    <MdCard
       v-else
-      class="flex flex-col gap-1 rounded-corner-large bg-surface-container-low px-4 py-6"
-      data-test="empty"
+      variant="low"
     >
-      <p class="md-title-medium text-on-surface">
-        Pick a principal and a node
-      </p>
-      <p class="md-body-medium text-on-surface-variant">
-        The answer and the steps behind it appear here.
-      </p>
-    </div>
+      <div
+        class="flex flex-col gap-1"
+        data-test="empty"
+      >
+        <p class="md-title-medium text-on-surface">
+          Pick a principal and a node
+        </p>
+        <p class="md-body-medium text-on-surface-variant">
+          The answer and the steps behind it appear here.
+        </p>
+      </div>
+    </MdCard>
   </section>
 </template>

@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PrincipalFactorsCard from './PrincipalFactorsCard.vue'
+import MdCard from '../md/MdCard.vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 
 type ErrorLike = { message?: string; response?: { data?: { message?: string } } }
@@ -72,6 +73,15 @@ describe('PrincipalFactorsCard', () => {
     wrapper?.unmount()
     wrapper = undefined as unknown as VueWrapper
     document.body.innerHTML = ''
+  })
+
+  it('draws the second factors on the shared outlined card', async () => {
+    await mountCard()
+
+    const target = wrapper.get('#principal-factors-title').element
+    const card = wrapper.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(target)).at(-1)
+    expect(card, 'the factors sit on the card primitive, not on a hand-built container').toBeDefined()
+    expect(card!.props('variant'), 'the card keeps the outlined filled surface').toBe('filled')
   })
 
   it('counts the authenticator apps and the passkeys of the user', async () => {

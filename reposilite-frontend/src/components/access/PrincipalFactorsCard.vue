@@ -20,6 +20,7 @@ import type { AxiosResponse } from 'axios'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 
 /*
@@ -116,82 +117,84 @@ const reset = async () => {
 </script>
 
 <template>
-  <section
-    class="flex min-w-0 flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4"
-    aria-labelledby="principal-factors-title"
-    data-ingot-component="principal-factors-card"
-  >
-    <div class="flex flex-col gap-1">
-      <h2
-        id="principal-factors-title"
-        class="m-0 md-title-medium text-on-surface"
-      >
-        Second factors
-      </h2>
-      <p class="m-0 md-body-medium text-on-surface-variant">
-        Authenticator apps and passkeys of this user. Only the kinds and the counts are shown.
-      </p>
-    </div>
+  <MdCard class="min-w-0">
+    <section
+      class="flex min-w-0 flex-col gap-4"
+      aria-labelledby="principal-factors-title"
+      data-ingot-component="principal-factors-card"
+    >
+      <div class="flex flex-col gap-1">
+        <h2
+          id="principal-factors-title"
+          class="m-0 md-title-medium text-on-surface"
+        >
+          Second factors
+        </h2>
+        <p class="m-0 md-body-medium text-on-surface-variant">
+          Authenticator apps and passkeys of this user. Only the kinds and the counts are shown.
+        </p>
+      </div>
 
-    <p
-      v-if="status === 'loading'"
-      role="status"
-      class="m-0 md-body-medium text-on-surface-variant"
-    >
-      Loading...
-    </p>
-    <MdAlert
-      v-else-if="status === 'error'"
-      tone="error"
-    >
-      {{ failure }}
-    </MdAlert>
-    <template v-else>
       <p
-        v-if="counts.length === 0"
-        data-test="no-factors"
+        v-if="status === 'loading'"
+        role="status"
         class="m-0 md-body-medium text-on-surface-variant"
       >
-        No second factors
+        Loading...
       </p>
-      <ul
-        v-else
-        class="m-0 flex list-none flex-col gap-2 p-0"
+      <MdAlert
+        v-else-if="status === 'error'"
+        tone="error"
       >
-        <li
-          v-for="row in counts"
-          :key="row.kind"
-          data-test="factor-count"
-          class="md-body-medium text-on-surface"
+        {{ failure }}
+      </MdAlert>
+      <template v-else>
+        <p
+          v-if="counts.length === 0"
+          data-test="no-factors"
+          class="m-0 md-body-medium text-on-surface-variant"
         >
-          {{ row.label }}: {{ row.count }}
-        </li>
-      </ul>
-    </template>
+          No second factors
+        </p>
+        <ul
+          v-else
+          class="m-0 flex list-none flex-col gap-2 p-0"
+        >
+          <li
+            v-for="row in counts"
+            :key="row.kind"
+            data-test="factor-count"
+            class="md-body-medium text-on-surface"
+          >
+            {{ row.label }}: {{ row.count }}
+          </li>
+        </ul>
+      </template>
 
-    <div class="flex justify-end">
-      <MdButton
-        variant="outlined"
-        error
-        data-test="reset-factors"
-        :disabled="status !== 'ready'"
-        @click="confirmOpen = true"
+      <div class="flex justify-end">
+        <MdButton
+          variant="outlined"
+          error
+          data-test="reset-factors"
+          :disabled="status !== 'ready'"
+          @click="confirmOpen = true"
+        >
+          Reset second factors
+        </MdButton>
+      </div>
+
+      <ConfirmActionDialog
+        v-model="confirmOpen"
+        title="Reset second factors"
+        confirm-label="Reset second factors"
+        danger
+        :busy="busy"
+        :failure="resetFailure"
+        @confirm="reset()"
       >
-        Reset second factors
-      </MdButton>
-    </div>
-
-    <ConfirmActionDialog
-      v-model="confirmOpen"
-      title="Reset second factors"
-      confirm-label="Reset second factors"
-      danger
-      :busy="busy"
-      :failure="resetFailure"
-      @confirm="reset()"
-    >
-      All authenticator apps, passkeys and recovery codes of {{ name }} are removed. All sessions of {{ name }} end, and
-      {{ name }} has to sign in again.
-    </ConfirmActionDialog>
-  </section>
+        All authenticator apps, passkeys and recovery codes of {{ name }} are removed. All sessions of {{ name }} end, and
+        {{ name }} has to sign in again.
+      </ConfirmActionDialog>
+    </section>
+  </MdCard>
 </template>

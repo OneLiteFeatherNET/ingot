@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
+import MdCard from '../md/MdCard.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import type { LegacyGrant } from './accessPrincipals'
 
@@ -35,44 +36,45 @@ defineProps({
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-3 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4"
-    aria-labelledby="legacy-routes-title"
-    data-test="legacy-grants"
-    data-ingot-component="legacy-grants-panel"
-  >
-    <h2
-      id="legacy-routes-title"
-      class="md-title-large text-on-surface"
+  <MdCard data-test="legacy-grants">
+    <section
+      class="flex flex-col gap-3"
+      aria-labelledby="legacy-routes-title"
+      data-ingot-component="legacy-grants-panel"
     >
-      Legacy routes
-    </h2>
-    <p class="md-body-medium text-on-surface-variant">
-      These routes come from a migrated access token and still apply. They are read only here.
-      Grant permission nodes to replace them.
-    </p>
-    <ul
-      v-if="grants.length > 0"
-      class="flex flex-col divide-y divide-outline-variant"
-    >
-      <li
-        v-for="grant in grants"
-        :key="grant.path"
-        data-test="legacy-grant"
-        class="flex flex-wrap items-center justify-between gap-2 py-2"
+      <h2
+        id="legacy-routes-title"
+        class="md-title-large text-on-surface"
       >
-        <span class="min-w-0 break-all md-body-medium text-on-surface">{{ grant.path }}</span>
-        <span class="flex gap-2">
-          <TokenTag v-if="grant.read">Read</TokenTag>
-          <TokenTag v-if="grant.write">Write</TokenTag>
-        </span>
-      </li>
-    </ul>
-    <p
-      v-else
-      class="md-body-medium text-on-surface-variant"
-    >
-      The token had no routes.
-    </p>
-  </section>
+        Legacy routes
+      </h2>
+      <p class="md-body-medium text-on-surface-variant">
+        These routes come from a migrated access token and still apply. They are read only here.
+        Grant permission nodes to replace them.
+      </p>
+      <ul
+        v-if="grants.length > 0"
+        class="flex flex-col divide-y divide-outline-variant"
+      >
+        <li
+          v-for="grant in grants"
+          :key="grant.path"
+          data-test="legacy-grant"
+          class="flex flex-wrap items-center justify-between gap-2 py-2"
+        >
+          <span class="min-w-0 break-all md-body-medium text-on-surface">{{ grant.path }}</span>
+          <span class="flex gap-2">
+            <TokenTag v-if="grant.read">Read</TokenTag>
+            <TokenTag v-if="grant.write">Write</TokenTag>
+          </span>
+        </li>
+      </ul>
+      <p
+        v-else
+        class="md-body-medium text-on-surface-variant"
+      >
+        The token had no routes.
+      </p>
+    </section>
+  </MdCard>
 </template>

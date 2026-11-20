@@ -23,6 +23,7 @@ import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } f
 import { ROUTES } from '../../../router/routes'
 import { createErrorToast } from '../../../helpers/toast'
 import CheckPermissionView from './CheckPermissionView.vue'
+import MdCard from '../../md/MdCard.vue'
 
 const holder: { session: unknown } = vi.hoisted(() => ({ session: null }))
 
@@ -180,6 +181,24 @@ describe('CheckPermissionView', () => {
       await mountView()
 
       expect(text('empty')).toContain('Pick a principal and a node')
+    })
+
+    it('draws the question form on the shared low card', async () => {
+      await mountView()
+
+      const target = wrapper.get('[data-test="check-form"]').element
+      const card = wrapper.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(target)).at(-1)
+      expect(card, 'the form sits on the card primitive, not on a hand-built container').toBeDefined()
+      expect(card!.props('variant'), 'the form keeps the tinted low surface').toBe('low')
+    })
+
+    it('draws the empty answer on the shared low card', async () => {
+      await mountView()
+
+      const target = wrapper.get('[data-test="empty"]').element
+      const card = wrapper.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(target)).at(-1)
+      expect(card, 'the empty answer sits on the card primitive, not on a hand-built container').toBeDefined()
+      expect(card!.props('variant'), 'the empty answer keeps the tinted low surface').toBe('low')
     })
 
     it('sends no request while the address has no question', async () => {

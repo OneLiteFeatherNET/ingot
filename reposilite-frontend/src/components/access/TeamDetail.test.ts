@@ -31,6 +31,7 @@ import {
   mountTeamDetail,
   typeInto
 } from './teamTestKit'
+import MdCard from '../md/MdCard.vue'
 
 type Fake = Mock<(...args: string[]) => Promise<unknown>>
 type TeamsFake = Record<'get' | 'update' | 'remove' | 'setMembers' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'parents' | 'setParents', Fake>
@@ -81,8 +82,18 @@ describe('TeamDetail', () => {
     it('draws the detail card with the outline edge', async () => {
       await mountDetail('developers')
 
-      const card = wrapper!.get('h2').element.closest<HTMLElement>('.rounded-corner-large')!
-      expect(card.classList.contains('border-outline'), 'detail card should carry the outline edge').toBe(true)
+      const heading = wrapper!.get('h2').element
+      const card = wrapper!.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(heading)).at(-1)!
+      expect(card.classes(), 'detail card should carry the outline edge').toContain('border-outline')
+    })
+
+    it('draws the detail header on the shared outlined card', async () => {
+      await mountDetail('developers')
+
+      const heading = wrapper!.get('h2').element
+      const card = wrapper!.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(heading)).at(-1)
+      expect(card, 'the header card is the card primitive, not a hand-built container').toBeDefined()
+      expect(card!.props('variant'), 'the header card keeps the outlined filled surface').toBe('filled')
     })
   })
 

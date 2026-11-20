@@ -20,6 +20,7 @@ import type { AxiosError, AxiosResponse } from 'axios'
 import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdChip from '../md/MdChip.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import TokenList from '../identity/TokenList.vue'
@@ -166,7 +167,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
     />
 
     <template v-else-if="detail">
-      <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">
+      <MdCard class="flex flex-col gap-4">
         <div
           class="flex flex-wrap items-start justify-between gap-2"
           data-test="heading-row"
@@ -307,7 +308,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
             </span>
           </dd>
         </dl>
-      </div>
+      </MdCard>
 
       <PrincipalFactorsCard
         v-if="!isMachine && canSeeFactors"
@@ -328,13 +329,17 @@ const admin = computed(() => isInstanceAdmin(detail.value))
           v-if="legacy"
           :grants="legacy"
         />
-        <p
+        <MdCard
           v-else-if="legacy === null"
-          data-test="team-rights-hint"
-          class="rounded-corner-large bg-surface-container-low px-4 py-3 md-body-medium text-on-surface-variant"
+          variant="low"
         >
-          This token's rights come from the teams of this machine account.
-        </p>
+          <p
+            data-test="team-rights-hint"
+            class="md-body-medium text-on-surface-variant"
+          >
+            This token's rights come from the teams of this machine account.
+          </p>
+        </MdCard>
         <TokenList
           :key="name"
           :api="tokensApi"

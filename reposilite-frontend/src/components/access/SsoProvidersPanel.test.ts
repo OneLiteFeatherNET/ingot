@@ -19,6 +19,7 @@ import { ref, type Ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { siGithub, siKeycloak } from 'simple-icons'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
+import MdCard from '../md/MdCard.vue'
 import { SECRET_PLACEHOLDER, type LdapSettings, type OidcProvider } from './loginSettings'
 
 const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<unknown> } }))
@@ -134,6 +135,15 @@ describe('SsoProvidersPanel', () => {
       expect(title, 'the public address is a level 3 heading').toBeDefined()
       expect(title!.classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
       expect(wrapper.find('h4').exists(), 'the panel has no level 4 heading').toBe(false)
+    })
+
+    it('draws the public address on the shared outlined card', async () => {
+      await mountPanel()
+
+      const target = wrapper.get('[data-test="sso-public-url"]').element
+      const card = wrapper.findAllComponents(MdCard).filter(candidate => (candidate.element as Element).contains(target)).at(-1)
+      expect(card, 'the public address sits on the card primitive, not on a hand-built container').toBeDefined()
+      expect(card!.props('variant'), 'the card keeps the tinted surface with its edge').toBe('filled')
     })
 
     it('titles the kind picker of the add dialog in the title-small role of its other level 3 headings', async () => {
