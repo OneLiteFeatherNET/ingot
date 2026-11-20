@@ -10,3 +10,4 @@ These pages install plugins and write your own. For the API, see [Plugin API](..
 * [Write a plugin](write-a-plugin.md)
 * [Write a search backend plugin](write-a-search-backend-plugin.md)
 * [Extend the dashboard from a plugin](extend-the-dashboard-from-a-plugin.md)
+* [Add a login challenge from a plugin](add-a-login-challenge-from-a-plugin.md)
