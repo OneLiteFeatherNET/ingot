@@ -19,6 +19,7 @@
 
 import type { Scenario, Topology } from '../lib/config.ts';
 import { sizeByName, type ReferenceSize } from '../lib/sizes.ts';
+import type { RunResult } from './steps.ts';
 
 /** The folder the records are checked in under, relative to the repository root. */
 export const RESULTS_DIR = 'loadtest/results';
@@ -104,6 +105,30 @@ export async function writeResultRecord(record: ResultRecord, write: RecordWrite
   const { path, ...body } = record;
   await write(path, `${JSON.stringify(body, null, 2)}\n`);
   return path;
+}
+
+export interface RecordStepContext {
+  /** Every field of the record except the outcome, known before the run starts. */
+  readonly base: Omit<RecordInput, 'outcome'>;
+  /** Reads the outcome of a completed run: the maximum with its p95, or oom-killed with its step. Undefined when none was read. */
+  readonly measure: () => Promise<Outcome | undefined>;
+  readonly write: RecordWriter;
+}
+
+/**
+ * The record step of the runner (design D6 and D13). A deployment that never became ready is recorded as `not-ready` at
+ * step 0, since no load step ever ran. A completed run is recorded with its measured outcome, and nothing is written
+ * when no outcome was measured.
+ */
+export function recordStep(context: RecordStepContext): (result: RunResult) => Promise<void> {
+  return async (result) => {
+    const outcome: Outcome | undefined =
+      result.kind === 'not-ready' ? { kind: 'not-ready', step: 0 } : await context.measure();
+    if (outcome === undefined) {
+      return;
+    }
+    await writeResultRecord(createRecord({ ...context.base, outcome }), context.write);
+  };
 }
 
 function assertNodeType(nodeType: NodeType): void {

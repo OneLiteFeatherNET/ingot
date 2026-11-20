@@ -45,8 +45,8 @@ function fakeWorld(overrides: Partial<RunnerPorts> = {}) {
       log.push('finished');
       return true;
     },
-    record: async () => {
-      log.push('record');
+    record: async (result) => {
+      log.push(`record ${result.kind}`);
     },
     uninstall: async () => {
       log.push('uninstall');
@@ -73,7 +73,7 @@ test('the steps run install, readiness, archive, apply, completion, record and u
 
   await runSteps(world.ports, world.clock, plan);
 
-  assert.deepEqual(world.log, ['install', 'ready', 'archive', 'apply', 'finished', 'record', 'uninstall']);
+  assert.deepEqual(world.log, ['install', 'ready', 'archive', 'apply', 'finished', 'record completed', 'uninstall']);
 });
 
 test('a reference run checks the labelled nodes before the install', async () => {
@@ -102,7 +102,7 @@ test('a failed apply still uninstalls the release and rethrows the failure', asy
   await assert.rejects(runSteps(world.ports, world.clock, plan), /apply rejected/);
 
   assert.equal(world.log.at(-1), 'uninstall');
-  assert.ok(!world.log.includes('record'), 'no record is written for a failed run');
+  assert.ok(!world.log.some((entry) => entry.startsWith('record')), 'no record is written for a failed run');
 });
 
 test('a pod that never becomes ready fails the run once the readiness deadline has passed', async () => {
@@ -130,4 +130,38 @@ test('a run in a namespace other than the load test namespace is refused before 
   await assert.rejects(runSteps(world.ports, world.clock, { ...plan, namespace: 'ingot-staging' }), /ingot-staging/);
 
   assert.deepEqual(world.log, []);
+});
+
+test('a pod that never becomes ready is recorded as not-ready before the uninstall', async () => {
+  const world = fakeWorld({ ready: async () => false });
+
+  await assert.rejects(runSteps(world.ports, world.clock, plan));
+
+  assert.deepEqual(world.log.slice(-2), ['record not-ready', 'uninstall']);
+});
+
+test('a failed not-ready record still uninstalls the release', async () => {
+  const world = fakeWorld({
+    ready: async () => false,
+    record: async () => {
+      throw new Error('disk full');
+    },
+  });
+
+  await assert.rejects(runSteps(world.ports, world.clock, plan), /disk full/);
+
+  assert.equal(world.log.at(-1), 'uninstall');
+});
+
+test('a readiness check that fails with an error is not recorded as not-ready', async () => {
+  const world = fakeWorld({
+    ready: async () => {
+      throw new Error('kubectl unreachable');
+    },
+  });
+
+  await assert.rejects(runSteps(world.ports, world.clock, plan), /kubectl unreachable/);
+
+  assert.ok(!world.log.some((entry) => entry.startsWith('record')), 'only a passed deadline means not-ready');
+  assert.equal(world.log.at(-1), 'uninstall');
 });

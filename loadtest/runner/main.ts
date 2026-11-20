@@ -122,7 +122,8 @@ async function main(argv: readonly string[]): Promise<void> {
       }
       return stage === 'finished';
     },
-    // The record step is the result record of group 8 of the change. Until it lands, a run writes nothing.
+    // The record step is `recordStep` of record.ts. The runner does not yet apply a pod size or read the measured outcome,
+    // so a run writes no record until both are wired, rather than a record with a size that was never applied.
     record: async () => {},
     uninstall: async () => {
       await exec('helm', ['uninstall', INGOT_RELEASE, '--namespace', LOAD_NAMESPACE]);
