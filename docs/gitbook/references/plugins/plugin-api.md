@@ -185,6 +185,17 @@ Set `response` to a `Result<R, ErrorResponse>`. Use `notFoundError(message)` fro
 
 If two routes have the same method and path, the first one registered wins.
 
+## API document fragments (experimental)
+
+A plugin documents its routes and settings with files in its own jar. The server reads them through the class loader of the plugin class, by plugin id:
+
+* `META-INF/ingot/openapi/<plugin id>.json` is merged into the document served at `/openapi`. The server's entries win, and between plugins the lower id wins.
+* `json-schemes/<class name>` is the JSON schema of a settings class, named after `Class.name`.
+
+A plugin jar must not hold `openapi-plugin/.index` or `json-schemes/index`. How to produce the files, and the merge rules in full: [Write a plugin, Document routes and settings](../../manage/plugins/write-a-plugin.md#document-routes-and-settings).
+
+The layout is experimental and may change until it is declared stable. No type of the plugin API is involved, so the compatibility checks do not cover it.
+
 ## Repository formats (experimental)
 
 A repository format is the part of Ingot that knows one layout, such as Maven. The format SPI lives in `net.onelitefeather.ingot.format`, and it is experimental:

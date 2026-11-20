@@ -180,6 +180,59 @@ The jar is written to `build/libs/my-plugin.jar`. Copy it to the plugin director
 
 The startup log lists your plugin. The route answers `hello`. Deploying a file writes a `Deployed` line to the log.
 
+## Document routes and settings
+
+Routes annotated with `@OpenApi` and settings classes annotated with `@JsonSchema` can appear in the server's API document and settings forms. The plugin jar carries them as files, and the server reads them through the class loader of the plugin class. The file layout is experimental, see [Plugin API, API document fragments](../../references/plugins/plugin-api.md#api-document-fragments-experimental).
+
+| File in the plugin jar | Content |
+| --- | --- |
+| `META-INF/ingot/openapi/<plugin id>.json` | The OpenAPI document of the plugin's routes. `<plugin id>` is the `name` of `@Plugin`. |
+| `json-schemes/<class name>` | The JSON schema of one settings class, named after the fully qualified class name. |
+
+The jar must not hold `openapi-plugin/.index` or `json-schemes/index`. Those are the indexes of the server's own document and schemas, and a copy in a plugin jar would hide the server's.
+
+**A module of this repository** calls the build step in its `build.gradle.kts`:
+
+```kotlin
+ingot.plugin.PluginApiFragments.apply(project, "example")
+```
+
+The step adds the OpenAPI annotation processor in the server's version, renames the generated document to `META-INF/ingot/openapi/example.json`, removes both indexes and adds the task `verifyPluginApiFragments` to `check`. That task fails when the jar holds an index or a fragment under another id.
+
+**A plugin built elsewhere** gets the same result with these lines in `build.gradle.kts`. Use the version of `io.javalin.community.openapi:javalin-openapi-plugin` that your Ingot release depends on:
+
+```kotlin
+plugins {
+    kotlin("kapt")
+}
+
+dependencies {
+    kapt("io.javalin.community.openapi:openapi-annotation-processor:<version>")
+}
+
+val pluginId = "example"
+val kaptClasses = layout.buildDirectory.dir("tmp/kapt3/classes/main")
+
+tasks.named("kaptKotlin") {
+    doLast {
+        val output = kaptClasses.get().asFile
+        val document = output.resolve("openapi-plugin/openapi-default.json")
+        if (document.isFile) {
+            document.copyTo(output.resolve("META-INF/ingot/openapi/$pluginId.json"), overwrite = true)
+        }
+        output.resolve("openapi-plugin").deleteRecursively()
+        output.resolve("json-schemes/index").delete()
+    }
+}
+```
+
+The server merges the fragments into its document when the document is first built, on the first request to `/openapi`:
+
+* Only `paths` and `components.schemas` are copied. An entry is added when its key is not in the document yet.
+* The server wins. A path or schema the server already documents is kept, and the server log gets one WARN line naming the plugin and the key.
+* Between two plugins, the lower plugin id wins, whatever the load order.
+* A broken fragment, one that is not a JSON object or whose `paths` or `components.schemas` is not an object, is skipped whole with one WARN line naming the plugin.
+
 ## Next steps
 
 * `load()`, lifecycle order, and the list of events: [Plugin API](../../references/plugins/plugin-api.md).
