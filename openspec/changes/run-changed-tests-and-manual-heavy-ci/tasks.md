@@ -84,12 +84,12 @@ Each is opened against `main` after its predecessors merge, with the sections of
 - [x] 8.7 Open `ci(heavy): decide which heavy jobs a pull request asks for` (4.1).
 - [x] 8.8 Open `ci(heavy): add the heavy workflow and its aggregate` (4.2).
 - [x] 8.9 Open `ci(heavy): start the container images job from a label` (4.3).
-- [ ] 8.10 Open `ci(heavy): start the ha smoke test from a label` (4.4).
+- [x] 8.10 Open `ci(heavy): start the ha smoke test from a label` (4.4).
 - [x] 8.11 Open `ci(heavy): start the dashboard end-to-end tests from a label` (4.5).
-- [ ] 8.12 Open `ci(heavy): start the helm chart job from a label` (4.6).
+- [x] 8.12 Open `ci(heavy): start the helm chart job from a label` (4.6).
 - [x] 8.13 Open `ci(heavy): run the integration suite from a label` (4.7).
 - [x] 8.14 Open `ci(heavy): start the search backends and codeql jobs from a label` (4.8).
-- [ ] 8.15 Open `ci(heavy): require a full heavy run on the release pull request` (4.9).
+- [x] 8.15 Open `ci(heavy): require a full heavy run on the release pull request` (4.9).
 - [x] 8.16 Open `ci(heavy): allow an on-demand heavy run on main` (4.10).
 - [ ] 8.17 Open `ci(heavy): smoke start the image and lint the chart` (5.1), if built.
 - [x] 8.18 Open `docs(contributing): explain how to run the heavy tests` (6.1).

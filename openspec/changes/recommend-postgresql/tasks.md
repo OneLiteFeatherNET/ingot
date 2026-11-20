@@ -18,7 +18,7 @@ Heavy jobs go through `HEAVY_SLOTS=1 heavy`, one at a time, and Gradle runs with
 Type and scope: `fix(database)`. Prerequisite: `test-server-database-matrix` is on main (#121). Its proposal orders the label
 removal after the pool change, so the pull request description of 2.4 names that deviation for the maintainer to confirm.
 
-- [ ] 2.1 `fix(database)`: search the documentation, the chart comments and the code comments for the stale sentences and
+- [x] 2.1 `fix(database)`: search the documentation, the chart comments and the code comments for the stale sentences and
   record the lines. Verify: the search finds `DatabaseConnection.kt` (the comment above the `postgresql` branch),
   `LocalConfiguration.kt` (the "Experimental providers" comment that lists `postgresql`), `high-availability-support.md`
   (the row "PostgreSQL with several replicas" and the Coverage sentence), `run-on-kubernetes.md` (the lock hint and the

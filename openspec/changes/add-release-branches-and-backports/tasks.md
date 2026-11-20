@@ -8,7 +8,7 @@ builds and passes on its own.
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose add-release-branches-and-backports`: this change and nothing else, branched from the remote
+- [x] 1.1 `docs(openspec): propose add-release-branches-and-backports`: this change and nothing else, branched from the remote
   main. Verify: `openspec validate add-release-branches-and-backports --strict --no-interactive` passes and the dash grep from
   the proposal prints nothing. The proposal pull request is merged before the first code pull request is opened.
 
@@ -19,7 +19,7 @@ builds and passes on its own.
   `versioning` key in the config file or not, and the release pull request title pattern for a branch. Record the answers in the
   first code pull request description. Verify: each claim in the design, section "Facts checked", is either confirmed or
   corrected in the design before group 6 starts.
-- [ ] 2.2 The maintainer confirmed the open questions of the design (1 to 9) on 2026-11-17, in particular the window, cutting on a
+- [x] 2.2 The maintainer confirmed the open questions of the design (1 to 9) on 2026-11-17, in particular the window, cutting on a
   major, the meaning of tag `X`, the label name and the archive method. Verify: the answers are recorded in design.md, section
   "Open questions, settled 2026-11-17".
 - [ ] 2.3 Sequencing: the maintainer decided on 2026-11-17 that pull request #22 (release 2.0.0) waits until groups 3 to 9 and
@@ -27,27 +27,27 @@ builds and passes on its own.
 
 ## 3. Support lines
 
-- [ ] 3.1 `ci(release)`: add `.github/scripts/render_support_tables.py` and its tests. The script reads `support-lines.json` and
+- [x] 3.1 `ci(release)`: add `.github/scripts/render_support_tables.py` and its tests. The script reads `support-lines.json` and
   renders the support table and the label set; the tests cover a regular line, an LTS line with a later end of life date, and a
   regular line whose end of life date is wrong. Add `support-lines.json` with the lines as they are today. Verify: the tests pass
   and the script output is deterministic.
-- [ ] 3.2 `docs(support)`: render the support table of `SUPPORT.md` and the `Supported Versions` table of `.github/SECURITY.md`
+- [x] 3.2 `docs(support)`: render the support table of `SUPPORT.md` and the `Supported Versions` table of `.github/SECURITY.md`
   from the script, between marker comments, and state the window in `SUPPORT.md` as confirmed in 2.2. Do not touch the contact
   section of `.github/SECURITY.md`. Verify: running the script changes nothing in the two files.
-- [ ] 3.3 `ci(release)`: add a `support-lines` job to `ci.yml` that runs the renderer in check mode, verifies the `backport:<line>`
+- [x] 3.3 `ci(release)`: add a `support-lines` job to `ci.yml` that runs the renderer in check mode, verifies the `backport:<line>`
   labels and the existence of `release/<line>.x` for each open non-latest line. Verify: the job fails on a deliberately wrong
   date in a test fixture and passes on the repository.
 
 ## 4. Release tags
 
-- [ ] 4.1 `ci(release)`: add `.github/scripts/release_tags.py` and its tests. Pure functions: the newest tag across lines, the
+- [x] 4.1 `ci(release)`: add `.github/scripts/release_tags.py` and its tests. Pure functions: the newest tag across lines, the
   highest version with a given major, the tag set for a release (`X.Y.Z`, `X.Y`, `X` and `latest` as decided in the design), and
   the refusal of a version outside the branch's line. Verify: the tests cover `1.1.2` on `release/1.1.x` with `2.0.0` present,
   and `2.0.0` on `main`, and pass without a network.
 
 ## 5. Workflow triggers on release branches
 
-- [ ] 5.1 `ci(release)`: add `release/**` to the base or push branches of `ci.yml`, `heavy.yml`, `dco.yml`, `openapi-diff.yml`
+- [x] 5.1 `ci(release)`: add `release/**` to the base or push branches of `ci.yml`, `heavy.yml`, `dco.yml`, `openapi-diff.yml`
   and `codeql.yml`. Verify: the workflows parse, and a pull request into a test release branch runs the checks of `main`.
 
 ## 6. Release Please on release branches
@@ -59,10 +59,10 @@ builds and passes on its own.
 
 ## 7. Container images and jars
 
-- [ ] 7.1 `ci(release)`: the image job takes its tags from `release_tags.py`, builds `nightly` only on `main`, and keeps SBOM and
+- [x] 7.1 `ci(release)`: the image job takes its tags from `release_tags.py`, builds `nightly` only on `main`, and keeps SBOM and
   provenance for every release. Verify: the tags for a `1.1.2` release on a branch are `1.1.2`, `1.1` and `1` while no higher
   major exists, and no `latest`.
-- [ ] 7.2 `ci(release)`: the `jar` job verifies its attestations with `--source-ref` set to the ref that built the jar, and
+- [x] 7.2 `ci(release)`: the `jar` job verifies its attestations with `--source-ref` set to the ref that built the jar, and
   `heavy.yml` resolves the previous release of the same line on a branch. `.github/RELEASE.md` is updated in group 13, not here.
   Verify: the workflow parses and the heavy previous-release rule has a test in `release_tags.py`.
 
@@ -80,7 +80,7 @@ builds and passes on its own.
 
 ## 10. Backport decisions
 
-- [ ] 10.1 `ci(release)`: add `.github/scripts/backport_decision.py` and its tests: label parsing, the security-only rule (`fix(security)`
+- [x] 10.1 `ci(release)`: add `.github/scripts/backport_decision.py` and its tests: label parsing, the security-only rule (`fix(security)`
   accepted, every other type refused, the breaking marker), and the refusal of a label for a line without a branch. Verify: each rule in the backports spec has a
   failing test first.
 
@@ -100,14 +100,14 @@ builds and passes on its own.
 
 ## 13. Maintainer runbook
 
-- [ ] 13.1 `docs(release)`: add a section "Release branches and backports" to `.github/RELEASE.md`, covering the cut, the manual cut
+- [x] 13.1 `docs(release)`: add a section "Release branches and backports" to `.github/RELEASE.md`, covering the cut, the manual cut
   from the last tag, the backport label and the conflict steps, the window end, the branch protection and the rule that no release
   branch merges into `main`. Replace `--source-ref refs/heads/main` in `.github/RELEASE.md` with the ref that built the jar. Link the
   section from `.github/MAINTAINING.md` under "Versions". Verify: every command in the section runs on the throwaway repository.
 
 ## 14. Public documentation
 
-- [ ] 14.1 `docs(support)`: update `docs/gitbook/release-notes/upgrade-changes.md` (supported upgrade paths for the lines),
+- [x] 14.1 `docs(support)`: update `docs/gitbook/release-notes/upgrade-changes.md` (supported upgrade paths for the lines),
   `docs/gitbook/release-notes/release-notes.md` (how a release line and a backport appear in the changelog) and `VERSIONING.md`
   (the lines and the tags). The table in `SUPPORT.md` already comes from group 3. Verify: every link resolves and the pages agree
   with `support-lines.json`.

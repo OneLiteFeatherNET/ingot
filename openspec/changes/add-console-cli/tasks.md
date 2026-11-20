@@ -16,7 +16,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): run the console repl over a shared websocket`: this revision and nothing else, under
+- [x] 1.1 `docs(openspec): run the console repl over a shared websocket`: this revision and nothing else, under
   `openspec/changes/add-console-cli/`. Verify: `openspec validate add-console-cli --strict` passes, and a grep for em and en dashes over the
   change prints nothing.
 
@@ -37,7 +37,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 4. Server protocol (`feat(console)`, `test(console)`)
 
-- [ ] 4.1 `test(console)`: golden tests of the legacy text protocol on `/api/console/sock`. A first frame `Authorization:...` gets raw log
+- [x] 4.1 `test(console)`: golden tests of the legacy text protocol on `/api/console/sock`. A first frame `Authorization:...` gets raw log
   lines, a `keep-alive` is answered, a command gets no answer frame, failed authentication gets the error and a disconnect, the audit
   event has `confirmed` false and no `client`. Verify: green on `main` before any production change, and still green after 4.8.
 - [ ] 4.2 `test(console)`: failing tests for the handshake: a hello negotiates protocol 1, a list without 1 closes with 1002 and
@@ -48,11 +48,11 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   plus `confirmed`; a second `execute` gets `busy`; `complete` is answered while an `execute` runs; a dangerous command waits for an accepted
   `confirm`; a declined or unanswered one (120 seconds, fake scheduler) runs nothing and answers exit code `3`; the `confirm` frame of
   `token-regenerate ci s3cr3t` does not contain the secret. Verify: red before 4.8.
-- [ ] 4.4 `test(console)`: failing tests for the log frames: `seq` is unique within a boot, the cached lines keep the `seq` they were
+- [x] 4.4 `test(console)`: failing tests for the log frames: `seq` is unique within a boot, the cached lines keep the `seq` they were
   stamped with, `logLevel` can be raised and not lowered below the visible threshold, a line from another replica carries its `node`,
   a `resume` for the same boot replays after its `seq` and says `resumed`, a `resume` for another boot replays the cache and says `full`.
   Verify: red before 4.8.
-- [ ] 4.5 `test(console)`: failing tests for backpressure: a writer that never reads does not block the thread that logs; a full queue of
+- [x] 4.5 `test(console)`: failing tests for backpressure: a writer that never reads does not block the thread that logs; a full queue of
   log frames drops and counts them, and the next delivered frame states `dropped`; a `result` is never dropped; a queue full of results
   closes with 1013 and `slow_consumer`; 1000 lines in the same instant deliver at most 500. Verify: red before 4.8, and each test waits on a
   latch, never on time.
@@ -146,7 +146,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 The reference pages exist on `main` (#454) under `docs/gitbook/references/` and `docs/gitbook/manage/operate/`, not under
 `docs/gitbook/reference/` as first planned.
 
-- [ ] 9.1 `test(docs)`: failing check that every `INGOT_` name in the CLI source appears in `docs/gitbook/references/environment-variables.md`
+- [x] 9.1 `test(docs)`: failing check that every `INGOT_` name in the CLI source appears in `docs/gitbook/references/environment-variables.md`
   or in the CLI reference, and that every link in the changed pages resolves. Verify: red on the names that are not documented yet.
 - [ ] 9.2 `docs(console)`: update `docs/gitbook/references/console-commands.md` with the version 1 protocol (frames, authentication, limits,
   close codes, reconnect), correct its authorization wording to what the code checks (open question 16), and update the row of

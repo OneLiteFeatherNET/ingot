@@ -12,7 +12,7 @@ is an injected `java.time.Clock`, a temporary directory per test, and no shared 
 
 Depends on pull request 1 of `add-login-protection` (per-account throttle), merged into the remote main branch.
 
-- [ ] 1.1 `test(identity)`: failing tests: with no provider registered, a delayed dashboard login is answered `429` with no
+- [x] 1.1 `test(identity)`: failing tests: with no provider registered, a delayed dashboard login is answered `429` with no
   challenge; with a provider registered, it is asked only for a delayed dashboard login and never for Basic or Bearer; a
   verified challenge lets one password check through, and a wrong password continues the delay; a plugin compiled against the
   previous plugin API still loads (the default methods); a login request without `challenge` is answered as before; a
@@ -20,7 +20,7 @@ Depends on pull request 1 of `add-login-protection` (per-account throttle), merg
   `challenge` sent for a name that is not delayed is ignored; a failing provider falls back to the plain `429`; a verified
   challenge with the right password of a user with a second factor gets `SecondFactorRequiredResponse`. Verify: the tests
   fail before 1.2.
-- [ ] 1.2 `feat(identity)`: add `LoginChallengeProvider` to the plugin API with default methods, the selection in `PluginLoader`
+- [x] 1.2 `feat(identity)`: add `LoginChallengeProvider` to the plugin API with default methods, the selection in `PluginLoader`
   (at most one, the first by load order, with a warning when several are registered), the branch in `LoginService.login`,
   the optional `challenge` member (`ChallengeResponse`) of `LoginRequest`, and the `ChallengeRequest` answer of the login `429`.
   Verify: 1.1 passes, `gate-plugin-abi` reports only additive changes, and the OpenAPI snapshot changes only by the optional
@@ -30,6 +30,6 @@ Depends on pull request 1 of `add-login-protection` (per-account throttle), merg
 
 ## 2. Open the pull request
 
-- [ ] 2.1 Open the code pull request against `main` with the title `feat(identity): add a login challenge extension point for plugins`,
+- [x] 2.1 Open the code pull request against `main` with the title `feat(identity): add a login challenge extension point for plugins`,
   after pull request 1 of `add-login-protection` is merged, with the sections of `.github/PULL_REQUEST_TEMPLATE.md` filled in.
   Verify: `gh pr view` shows the title and the base is `main`.
