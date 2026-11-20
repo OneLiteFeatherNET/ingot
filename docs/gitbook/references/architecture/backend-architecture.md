@@ -36,7 +36,7 @@ The layer view shows the intended dependency direction: transport calls applicat
 flowchart TB
   subgraph WEB["Transport and web"]
     W1["web/infrastructure: HttpServer, JavalinConfiguration, ReposiliteRouting"]
-    W2["Endpoints: maven/infrastructure, identity/api, token/infrastructure, search/api, javadocs/infrastructure"]
+    W2["Endpoints: maven/infrastructure, identity/api, token/infrastructure, search/api"]
     W3["console/infrastructure: REST, SSE live log, WebSocket"]
     W4["frontend/infrastructure: FrontendHandler, NotFoundHandler"]
   end
@@ -90,7 +90,7 @@ A plugin is a class annotated with `@Plugin` that implements `ReposilitePlugin`.
 
 The lifecycle runs in four steps, as set up by `ReposiliteFactory` and `PluginLoader`:
 
-1. **Discovery.** Built-in plugins are listed in `META-INF/services/com.reposilite.plugin.api.ReposilitePlugin`. Jars in the plugins directory are loaded with a `URLClassLoader` and `ServiceLoader`. The `Reposilite` instance is registered as a facade before any plugin initialises.
+1. **Discovery.** Built-in plugins are listed in `META-INF/services/com.reposilite.plugin.api.ReposilitePlugin`. Embedded plugin jars and the jars in the plugins directory are loaded with a `URLClassLoader` and `ServiceLoader`, each jar in its own class loader (see [Embedded plugins](#embedded-plugins)). The `Reposilite` instance is registered as a facade before any plugin initialises.
 2. **Load.** Every plugin's `load()` runs. No plugin in the repository overrides it.
 3. **Ordering.** Plugins are sorted by name, then topologically by their declared `dependencies`. An unknown dependency or a cycle stops startup.
 4. **Initialise.** Each plugin's `initialize()` runs in that order and returns a facade, which is registered for lookup.
@@ -101,6 +101,16 @@ Plugins talk to each other in two ways:
 - **Events.** `event<E>(listener)` subscribes to an event type. Events are emitted through `Extensions.emitEvent`, which calls the listeners synchronously, sorted by priority.
 
 The declared `dependencies` decide startup order, but the code does not check them against the `facade<F>()` calls. A plugin that looks up a facade eagerly in `initialize()` must declare that dependency, or startup fails. A lookup inside a route or event lambda runs later, after every plugin has initialised, so it works without a declaration. Several plugins rely on that, as the component views and deviations section show.
+
+### Embedded plugins
+
+A plugin can live in its own Gradle module under `reposilite-plugins/` and still ship with the server. The server jar then carries the module's jar under `embedded-plugins/`, and it is loaded like a jar of the plugins directory, in a class loader of its own. The modules that the server embeds are named in `embeddedPluginProjects` in `reposilite-backend/build.gradle.kts`.
+
+The Javadoc viewer is such a module. Its sources are in `reposilite-plugins/javadoc-plugin`, still in the package `com.reposilite.javadocs`, and its jar `javadoc-plugin.jar` is published as `net.onelitefeather.ingot:javadoc-plugin` with a version of its own. The plugin id `javadoc`, its routes, the `javadoc` settings domain and the `javadocs` cache directory are the same as when the viewer was part of the server. The core reaches the viewer's cache only through the `JavadocCacheReceiver` interface in `net.onelitefeather.ingot.cluster`, so no class of the server depends on `com.reposilite.javadocs`.
+
+At each start the embedded jars are written to `<working directory>/embedded-plugins/`. The plugins directory is `<working directory>/plugins/` unless the `--plugin-directory` parameter names another one. In the container image the working directory is `/app/data`, so the plugins directory is `/app/data/plugins` and the embedded jars land in `/app/data/embedded-plugins`. The image has no extra copy of the viewer: it comes only from `ingot.jar`.
+
+The update path of an embedded plugin is a newer jar in the plugins directory. A jar there with the same plugin id replaces the embedded copy only when the `Implementation-Version` in its manifest is strictly higher. With the same, a lower or no version the embedded copy stays in use. Either way one `INFO` line names both versions and the copy in use, and the two copies are never registered together. [Install a plugin](../../manage/plugins/install-a-plugin.md#update-a-plugin) describes the steps for operators.
 
 ## UML component view
 
@@ -159,7 +169,7 @@ flowchart TB
   frontend["frontend"]
   maven["maven"]
   redirect["redirect"]
-  javadoc["javadoc"]
+  javadoc["javadoc (embedded module)"]
   cleanup["cleanup"]
   search["search"]
   failure["failure (stub)"]
@@ -509,7 +519,7 @@ Reading the sequence:
 
 - Authentication and authorization happen before any storage write. A token without write access to the path never reaches `RepositoryService`.
 - The file is stored before `DeployEvent` is emitted. Listeners therefore see a file that exists, and a listener that throws after the write leaves the file stored.
-- `DeployEvent` also reaches `PreservedBuildsListener`, `AuditPlugin` and `JavadocPlugin`. Only the search listeners wrap their call in `guarded`. The event bus does not isolate listeners, so the other listeners can fail the request after the write.
+- `DeployEvent` also reaches `PreservedBuildsListener`, `AuditPlugin` and `JavadocPlugin`, which comes from the embedded `javadoc-plugin` module. Only the search listeners wrap their call in `guarded`. The event bus does not isolate listeners, so the other listeners can fail the request after the write.
 - With checksums requested, the same path is queued twice. The worker collapses duplicate rows, so the second queue entry is harmless.
 - Search is eventually consistent. A deploy returns before the index row exists, and the worker fills in the index on its next tick.
 
