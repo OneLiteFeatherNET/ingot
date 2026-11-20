@@ -134,7 +134,7 @@ const submit = () => {
       </MdAlert>
       <ul
         v-else-if="candidates.length > 0"
-        class="m-0 flex max-h-72 list-none flex-col gap-1 overflow-y-auto p-0"
+        class="flex max-h-72 flex-col gap-1 overflow-y-auto"
         aria-label="Principals that can be added"
       >
         <li
@@ -153,8 +153,8 @@ const submit = () => {
               @change="toggle(principal.name)"
             >
             <span class="flex min-w-0 flex-1 flex-col gap-1">
-              <span class="md-title-small [overflow-wrap:anywhere]">{{ principal.displayName || principal.name }}</span>
-              <span class="md-body-small text-on-surface-variant [overflow-wrap:anywhere]">{{ principal.name }}</span>
+              <span class="md-title-small break-words">{{ principal.displayName || principal.name }}</span>
+              <span class="md-body-small text-on-surface-variant break-all">{{ principal.name }}</span>
               <span class="flex flex-wrap gap-2">
                 <TokenTag data-test="kind-chip">{{ principal.kind === 'MACHINE' ? 'Machine' : 'User' }}</TokenTag>
                 <TokenTag v-if="principal.disabled">Disabled</TokenTag>

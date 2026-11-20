@@ -169,7 +169,7 @@ const isSelected = (item: ListItem) => item.key === props.selectedKey
           @click="emit('select', item.address)"
         >
           <span
-            class="md-title-small [overflow-wrap:anywhere]"
+            class="md-title-small break-all"
             :class="item.unnamed ? 'italic' : ''"
           >{{ item.title }}</span>
           <span

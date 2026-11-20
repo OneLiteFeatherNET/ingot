@@ -1066,7 +1066,7 @@ const onModalUpdate = (open) => {
                 </div>
                 <pre
                   :data-snippet="snippet.key"
-                  class="whitespace-pre-wrap [overflow-wrap:anywhere] rounded-corner-small bg-surface-container-lowest p-3 font-mono md-body-small text-on-surface"
+                  class="whitespace-pre-wrap break-words rounded-corner-small bg-surface-container-lowest p-3 font-mono md-body-small text-on-surface"
                 >{{ snippet.text(snippets) }}</pre>
               </div>
             </section>

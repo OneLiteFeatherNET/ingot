@@ -266,7 +266,7 @@ onMounted(load)
     </div>
     <ul
       v-else-if="providers.length > 0"
-      class="flex list-none flex-col gap-2 p-0"
+      class="flex flex-col gap-2"
       data-test="sso-list"
     >
       <li
