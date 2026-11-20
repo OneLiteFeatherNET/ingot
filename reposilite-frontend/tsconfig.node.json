@@ -2,8 +2,9 @@
   // @vue/tsconfig 0.9.1 ships no tsconfig.node.json, so its base file is extended and the library set is chosen here.
   "extends": "@vue/tsconfig/tsconfig.json",
   "include": [
-    "vite.config.js",
-    "vitest.config.js",
+    "vite.config.ts",
+    "vite.config.test.ts",
+    "vitest.config.ts",
     "playwright.config.js",
     "eslint.config.js",
     "nitro.config.mjs",

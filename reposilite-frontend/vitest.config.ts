@@ -17,13 +17,13 @@
 import { defineConfig } from "vitest/config"
 import vue from "@vitejs/plugin-vue"
 
-// Kept apart from vite.config.js on purpose: the build config carries the production
+// Kept apart from vite.config.ts on purpose: the build config carries the production
 // placeholders and plugins that a unit test has no use for.
 export default defineConfig({
   plugins: [vue()],
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.{js,ts}", "server/**/*.test.{js,ts}", "vite.config.test.js"],
+    include: ["src/**/*.test.{js,ts}", "server/**/*.test.{js,ts}", "vite.config.test.ts"],
     // Only read when the coverage script runs. The report lands in reposilite-frontend/coverage, which CI uploads.
     coverage: {
       provider: "v8",
