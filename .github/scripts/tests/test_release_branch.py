@@ -120,5 +120,114 @@ class CutDecisionTest(unittest.TestCase):
             release_branch.decide_cut("2.0", {"v1.1.1": OLD_LAST_TAG_SHA}, None)
 
 
+class LsRemoteTest(unittest.TestCase):
+
+    def test_annotated_tag_resolves_to_its_commit(self):
+        listing = f"9999\trefs/tags/v1.1.1\n{OLD_LAST_TAG_SHA}\trefs/tags/v1.1.1^{{}}\n"
+
+        tags, _ = release_branch.parse_ls_remote(listing)
+
+        self.assertEqual({"v1.1.1": OLD_LAST_TAG_SHA}, tags, "the peeled entry names the commit, not the tag object")
+
+    def test_heads_are_read_by_branch_name(self):
+        listing = f"{OLD_TIP}\trefs/heads/release/1.1.x\n"
+
+        _, heads = release_branch.parse_ls_remote(listing)
+
+        self.assertEqual({"release/1.1.x": OLD_TIP}, heads, "a head is keyed by the branch name without refs/heads/")
+
+
+class AddLineTest(unittest.TestCase):
+
+    def lines(self):
+        return [{"line": "1.1", "kind": "regular", "status": "latest", "released": "2026-08-09"}]
+
+    def test_new_line_becomes_the_latest_line_on_top(self):
+        updated = release_branch.add_line(self.lines(), "2.0", "2026-12-01")
+
+        self.assertEqual({"line": "2.0", "kind": "regular", "status": "latest", "released": "2026-12-01"}, updated[0],
+                         "the line that just shipped is listed first as latest")
+
+    def test_old_latest_line_opens_its_window_of_ninety_days(self):
+        updated = release_branch.add_line(self.lines(), "2.0", "2026-12-01")
+
+        self.assertEqual("previous", updated[1]["status"], "the superseded line receives security fixes")
+        self.assertEqual("2027-03-01", updated[1]["end_of_life"], "the window ends 90 days after the ship date")
+
+    def test_adding_a_listed_line_changes_nothing(self):
+        once = release_branch.add_line(self.lines(), "2.0", "2026-12-01")
+
+        self.assertEqual(once, release_branch.add_line(once, "2.0", "2026-12-02"), "a rerun never shifts the window")
+
+    def test_input_is_not_modified(self):
+        lines = self.lines()
+        release_branch.add_line(lines, "2.0", "2026-12-01")
+
+        self.assertEqual(self.lines(), lines, "the caller keeps its own list")
+
+
+class CommandLineTest(unittest.TestCase):
+
+    def run_cli(self, argv, stdin_text=""):
+        import io
+
+        stdout = io.StringIO()
+        code = release_branch.main(argv, stdin=io.StringIO(stdin_text), stdout=stdout)
+        return code, stdout.getvalue()
+
+    def test_cut_command_prints_the_outputs_of_a_create(self):
+        listing = f"{OLD_LAST_TAG_SHA}\trefs/tags/v1.1.1\n{MAIN_TIP}\trefs/tags/v2.0.0\n"
+
+        code, out = self.run_cli(["cut", "2.0.0"], listing)
+
+        self.assertEqual(0, code, "a cut is not a failure")
+        self.assertIn("action=create\n", out, "the job reads the action")
+        self.assertIn("branch=release/1.1.x\n", out, "the job reads the branch")
+        self.assertIn(f"base_sha={OLD_LAST_TAG_SHA}\n", out, "the job creates the branch at the old tag")
+        self.assertIn("line=1.1\n", out, "the job names the label and the issue after the old line")
+        self.assertIn("new_line=2.0\n", out, "the job adds the new line to support-lines.json")
+
+    def test_cut_command_reads_the_existing_branch(self):
+        listing = f"{OLD_LAST_TAG_SHA}\trefs/tags/v1.1.1\n{OLD_LAST_TAG_SHA}\trefs/heads/release/1.1.x\n"
+
+        code, out = self.run_cli(["cut", "2.0.0"], listing)
+
+        self.assertEqual(0, code, "a rerun is not a failure")
+        self.assertIn("action=exists\n", out, "a branch at the old tag is left alone")
+
+    def test_cut_command_fails_on_a_refusal(self):
+        listing = f"{OLD_LAST_TAG_SHA}\trefs/tags/v1.1.1\n{OLD_TIP}\trefs/heads/release/1.1.x\n"
+
+        code, out = self.run_cli(["cut", "2.0.0"], listing)
+
+        self.assertEqual(1, code, "a branch that points elsewhere stops the job")
+        self.assertIn("action=refuse\n", out, "the refusal is still reported")
+
+    def test_add_line_command_rewrites_the_file_in_its_own_layout(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, "support-lines.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write('{\n  "lines": [\n'
+                             '    { "line": "1.1", "kind": "regular", "status": "latest", "released": "2026-08-09" }\n'
+                             '  ]\n}\n')
+
+            code, _ = self.run_cli(["add-line", "2.0", "2026-12-01", "--file", path])
+
+            with open(path, encoding="utf-8") as handle:
+                written = handle.read()
+
+        self.assertEqual(0, code, "adding a line succeeds")
+        self.assertEqual(
+            '{\n  "lines": [\n'
+            '    { "line": "2.0", "kind": "regular", "status": "latest", "released": "2026-12-01" },\n'
+            '    { "line": "1.1", "kind": "regular", "status": "previous", "released": "2026-08-09", "end_of_life": "2027-03-01" }\n'
+            '  ]\n}\n',
+            written,
+            "one line per entry, as the file is written by hand",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

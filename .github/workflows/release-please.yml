@@ -1064,3 +1064,111 @@ jobs:
             "ghcr.io/onelitefeathernet/ingot@$SERVER_DIGEST"
           cosign verify --certificate-identity "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" \
             "ghcr.io/onelitefeathernet/ingot-dashboard@$DASHBOARD_DIGEST"
+
+  # A release with patch 0 on main ships a new line, and the line before it keeps receiving
+  # security fixes for its window. This job cuts `release/<previous line>.x` from the last
+  # tag of that line, never from main, which already holds the new line. It also creates the
+  # backport label and a tracking issue, and opens the pull request that lists the new line in
+  # support-lines.json, so main only changes through review. The decision lives in
+  # .github/scripts/release_branch.py and its tests. A rerun finds everything in place and
+  # does nothing; a branch that points elsewhere fails the job and is never moved.
+  cut-release-branch:
+    name: "Cut the release branch of the previous line"
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # The release bot pushes the branch past a protection rule that allows only that actor,
+      # and opens the pull request so its checks run.
+      - name: "Create release bot token"
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: "Decide the cut"
+        id: cut
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          released="$(date -u +%F)"
+          {
+            echo "released=${released}"
+            echo "end_of_life=$(date -u -d "${released} + 90 days" +%F)"
+          } >> "$GITHUB_OUTPUT"
+          git ls-remote --tags --heads origin \
+            | python3 .github/scripts/release_branch.py cut "$VERSION" | tee -a "$GITHUB_OUTPUT"
+
+      - name: "Create the release branch"
+        if: steps.cut.outputs.action == 'create'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.cut.outputs.branch }}
+          BASE_SHA: ${{ steps.cut.outputs.base_sha }}
+          BASE_TAG: ${{ steps.cut.outputs.base_tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/heads/${BRANCH}" -f sha="$BASE_SHA" > /dev/null
+          echo "Created ${BRANCH} at ${BASE_TAG}."
+
+      - name: "Create the backport label and the tracking issue"
+        if: steps.cut.outputs.action == 'create' || steps.cut.outputs.action == 'exists'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LINE: ${{ steps.cut.outputs.line }}
+          BRANCH: ${{ steps.cut.outputs.branch }}
+          END_OF_LIFE: ${{ steps.cut.outputs.end_of_life }}
+        run: |
+          set -euo pipefail
+          label="backport:${LINE}"
+          if ! gh label list --repo "$GITHUB_REPOSITORY" --limit 500 --json name --jq '.[].name' | grep -qxF "$label"; then
+            gh label create "$label" --repo "$GITHUB_REPOSITORY" --color "d93f0b" \
+              --description "Backport a security fix to ${BRANCH}"
+          fi
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --limit 100 --search "Window for ${LINE} ends on in:title" \
+               --json title --jq '.[].title' | grep -qF "Window for ${LINE} ends on "; then
+            echo "A tracking issue for ${LINE} exists."
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Window for ${LINE} ends on ${END_OF_LIFE}" \
+              --body "The ${LINE} line receives security fixes on \`${BRANCH}\` until ${END_OF_LIFE}. Label a merged \`fix(security)\` pull request into main with \`${label}\` to backport it."
+          fi
+
+      - name: "Open the pull request that lists the new line"
+        if: steps.cut.outputs.action == 'create' || steps.cut.outputs.action == 'exists'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          NEW_LINE: ${{ steps.cut.outputs.new_line }}
+          RELEASED: ${{ steps.cut.outputs.released }}
+        run: |
+          set -euo pipefail
+          work="release-lines/${NEW_LINE}"
+          if git ls-remote --exit-code --heads origin "refs/heads/${work}" > /dev/null; then
+            echo "${work} already exists, nothing to do."
+            exit 0
+          fi
+          python3 .github/scripts/release_branch.py add-line "$NEW_LINE" "$RELEASED" --file support-lines.json
+          python3 .github/scripts/render_support_tables.py --mode write
+          if git diff --quiet; then
+            echo "support-lines.json already lists ${NEW_LINE}."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$work"
+          git commit -s -am "docs(support): list the ${NEW_LINE} line in the support tables"
+          git push origin "$work"
+          gh pr create --base main --head "$work" \
+            --title "docs(support): list the ${NEW_LINE} line in the support tables" \
+            --body "The ${NEW_LINE} line shipped on ${RELEASED}. This lists it as the latest line in \`support-lines.json\`, opens the 90 day security window of the line before it and renders the tables of \`SUPPORT.md\` and \`.github/SECURITY.md\`."
