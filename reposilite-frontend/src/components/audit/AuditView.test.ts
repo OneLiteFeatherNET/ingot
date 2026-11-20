@@ -296,4 +296,13 @@ describe('AuditView card', () => {
     const card = wrapper.get('form[role="search"]').element.parentElement as HTMLElement
     expect(card.classList.contains('border-outline'), 'card should carry the outline edge').toBe(true)
   })
+
+  it('draws the filters and the events in one MdCard without its own inset', async () => {
+    const wrapper = await mountView()
+
+    const card = wrapper.findComponent({ name: 'MdCard' })
+    expect(card.exists(), 'the audit log is drawn in the shared card').toBe(true)
+    expect(card.props('padding'), 'the rows draw their own inset').toBe('none')
+    expect(card.find('form[role="search"]').exists(), 'the filter form sits in the card').toBe(true)
+  })
 })
