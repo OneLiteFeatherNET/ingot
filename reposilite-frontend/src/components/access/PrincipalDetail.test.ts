@@ -148,6 +148,18 @@ describe('PrincipalDetail', () => {
     resetClock()
   })
 
+  describe('loading', () => {
+    it('shows the loading principal as a loading state panel', async () => {
+      principals.get.mockReturnValue(new Promise(() => {}))
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const panel = wrapper.find('[aria-busy="true"]')
+      expect(panel.exists(), 'a busy panel stands in for the detail').toBe(true)
+      expect(panel.attributes('data-ingot-component'), 'the loading line is an MdStatePanel').toBe('md-state-panel')
+      expect(panel.attributes('data-ingot-state'), 'the panel is in the loading state').toBe('loading')
+    })
+  })
+
   describe('a user', () => {
     it('shows the second factor summary to an instance admin', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })

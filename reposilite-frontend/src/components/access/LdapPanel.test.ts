@@ -72,8 +72,8 @@ describe('LdapPanel', () => {
   let auth: Record<string, Mock>
   let authUpdate: Mock
 
-  const mountPanel = async () => {
-    const store = authenticationStore(authenticationClient({ update: authUpdate }))
+  const mountPanel = async (client = authenticationClient({ update: authUpdate })) => {
+    const store = authenticationStore(client)
     wrapper = mount(LdapPanel, {
       attachTo: document.body,
       global: { provide: { [configurationStoreKey]: store } }
@@ -295,6 +295,78 @@ describe('LdapPanel', () => {
       expect(authUpdate.mock.calls[0][0]).toBe('authentication')
       expect(authUpdate.mock.calls[0][1].ldap.hostname).toBe('ldap2.domain.com')
       expect(settings.update, 'the dashboard settings are not written').not.toHaveBeenCalled()
+    })
+  })
+
+  describe('state panels', () => {
+    const signIn = () => wrapper.get('[aria-labelledby="ldap-title"]')
+    const clients = () => wrapper.get('[data-test="ldap-clients"]')
+
+    it('shows the loading sign in settings as a loading state panel', async () => {
+      settings.fetch.mockReturnValue(new Promise(() => {}))
+      await mountPanel()
+
+      const panel = signIn().find('[aria-busy="true"]')
+      expect(panel.exists(), 'a busy panel stands in for the form').toBe(true)
+      expect(panel.attributes('data-ingot-component'), 'the loading line is an MdStatePanel').toBe('md-state-panel')
+      expect(panel.attributes('data-ingot-state'), 'the panel is in the loading state').toBe('loading')
+    })
+
+    it('shows a failed load of the sign in settings as an error state panel with a tonal Retry', async () => {
+      settings.fetch.mockRejectedValue(rejection(503))
+      await mountPanel()
+
+      const panel = signIn().get('[role="alert"]')
+      expect(panel.attributes('data-ingot-component'), 'the failure is an MdStatePanel').toBe('md-state-panel')
+      expect(panel.attributes('data-ingot-state'), 'the panel is in the error state').toBe('error')
+      expect(panel.text(), 'the panel says what failed').toContain('Could not load the LDAP settings')
+      const retry = panel.findAll('button').find(button => button.text() === 'Retry')!
+      expect(retry.classes(), 'Retry is a tonal button').toContain('bg-secondary-container')
+    })
+
+    it('loads the sign in settings again on Retry', async () => {
+      settings.fetch.mockRejectedValueOnce(rejection(503))
+      await mountPanel()
+
+      await signIn().get('[role="alert"]').findAll('button').find(button => button.text() === 'Retry')!.trigger('click')
+      await flushPromises()
+
+      expect(settings.fetch, 'Retry asks the server again').toHaveBeenCalledTimes(2)
+      expect(field('ldap-user-base').value, 'the form is shown after the retry').toBe('ou=people,dc=example,dc=org')
+    })
+
+    it('shows a refused save of the sign in settings as an error alert', async () => {
+      settings.update.mockRejectedValue(rejection(400))
+      await mountPanel()
+      type('ldap-user-base', 'ou=staff,dc=example,dc=org')
+
+      await save()
+
+      const alert = signIn().get('[role="alert"]')
+      expect(alert.attributes('data-ingot-component'), 'the save failure is an MdAlert').toBe('md-alert')
+      expect(alert.attributes('data-tone'), 'the alert is in the error tone').toBe('error')
+    })
+
+    it('shows a failed load of the Maven and Gradle settings as an error state panel', async () => {
+      const client = authenticationClient()
+      client.settings.domains = () => Promise.reject(new Error('unreachable'))
+      await mountPanel(client)
+
+      const panel = clients().get('[role="alert"]')
+      expect(panel.attributes('data-ingot-component'), 'the failure is an MdStatePanel').toBe('md-state-panel')
+      expect(panel.text(), 'the panel says what failed').toContain('Could not load the authentication settings')
+    })
+
+    it('shows a refused save of the Maven and Gradle settings as an error alert', async () => {
+      authUpdate.mockRejectedValue(rejection(400))
+      await mountPanel()
+      await wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')!.setValue('ldap2.domain.com')
+
+      await wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP')!.trigger('click')
+      await flushPromises()
+
+      const alert = clients().get('[role="alert"]')
+      expect(alert.attributes('data-ingot-component'), 'the save failure is an MdAlert').toBe('md-alert')
     })
   })
 
