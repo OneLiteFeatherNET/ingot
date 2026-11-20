@@ -49,6 +49,11 @@ const signInWithAccessToken = async (page) => {
   await dialog.getByLabel('Name', { exact: true }).fill(process.env.E2E_TOKEN_NAME)
   await dialog.getByLabel('Secret', { exact: true }).fill(process.env.E2E_TOKEN_SECRET)
   await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
+  // The token is only kept once the server has answered the sign in, so a navigation before the account button
+  // shows would cancel that request. Waiting for network idle does not cover it: the page can already have been
+  // idle before the click.
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('button', { name: /^Account menu, / })).toBeVisible()
 }
 
 const signOut = async (page) => {
