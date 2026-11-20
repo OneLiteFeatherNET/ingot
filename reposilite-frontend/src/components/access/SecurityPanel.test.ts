@@ -40,14 +40,14 @@ describe('SecurityPanel', () => {
   let update: Mock
 
   // Mounts the panel at an address, with a router of its own, so the tab in the address is read per test.
-  const mountPanel = async (address = '/access/security') => {
+  const mountPanel = async (address = '/access/security', login: Record<string, unknown> = {}) => {
     const router: Router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/access/security', name: 'access-security', component: BLANK }]
     })
     await router.push(address)
     await router.isReady()
-    const store = signInStore(signInClient({ update }))
+    const store = signInStore(signInClient({ update, login }))
     wrapper = mount(SecurityPanel, {
       attachTo: document.body,
       global: {
@@ -92,10 +92,10 @@ describe('SecurityPanel', () => {
   })
 
   describe('tabs', () => {
-    it('shows the four tabs in order: IP addresses, Accounts, Passwords and Sessions', async () => {
+    it('shows the five tabs in order: IP addresses, Accounts, Passwords, Sessions and Second factors', async () => {
       await mountPanel()
 
-      expect(tabLabels()).toEqual(['IP addresses', 'Accounts', 'Passwords', 'Sessions'])
+      expect(tabLabels()).toEqual(['IP addresses', 'Accounts', 'Passwords', 'Sessions', 'Second factors'])
     })
 
     it('opens the IP addresses tab when the address names no tab', async () => {
@@ -173,6 +173,60 @@ describe('SecurityPanel', () => {
     })
   })
 
+  describe('second factors tab', () => {
+    it('opens the Second factors tab named by the tab query parameter', async () => {
+      await mountPanel('/access/security?tab=second-factors')
+
+      expect(selectedTab()).toBe('Second factors')
+      expect(wrapper!.text(), 'the grace period is drawn').toContain('Grace Days')
+    })
+
+    it('the Second factors tab draws the login policy fields and none of the sign-in limits', async () => {
+      await mountPanel('/access/security?tab=second-factors')
+
+      const text = wrapper!.text()
+      for (const label of ['Required For Administrators', 'Required For Teams', 'Grace Days', 'Step-Up Minutes', 'Passkey First Factor']) {
+        expect(text, `the field "${label}"`).toContain(label)
+      }
+      expect(text, 'the sign-in limits belong to the Accounts tab').not.toContain('Maximum Failed Attempts')
+      expect(text, 'the password rules belong to the Passwords tab').not.toContain('Minimum Length')
+    })
+
+    it('the Second factors save names the policy and writes the login domain with only the policy changed', async () => {
+      await mountPanel('/access/security?tab=second-factors')
+      await inputWithValue('14')!.setValue('30')
+
+      await buttonNamed('Save second factor policy')!.trigger('click')
+      await flushPromises()
+
+      expect(update).toHaveBeenCalledTimes(1)
+      const [domain, body] = update.mock.calls[0] as unknown as [string, { mfa: unknown, passwordPolicy: { minLength: number } }]
+      expect(domain, 'the write goes to the login domain').toBe('login')
+      expect(body.mfa, 'the policy is sent with the grace period changed').toEqual({
+        requiredForAdmins: false,
+        requiredForTeams: [],
+        graceDays: 30,
+        stepUpMinutes: 5,
+        passkeyFirstFactor: false,
+      })
+      expect(body.passwordPolicy.minLength, 'the password rules are sent back as they were read').toBe(12)
+    })
+
+    it('shows the break-glass notice while the administrators must hold a second factor', async () => {
+      await mountPanel('/access/security?tab=second-factors', { mfa: { requiredForAdmins: true, requiredForTeams: [], graceDays: 14, stepUpMinutes: 5, passkeyFirstFactor: false } })
+
+      const notice = wrapper!.find('[data-test="mfa-break-glass-notice"]')
+      expect(notice.exists(), 'the break-glass notice is shown').toBe(true)
+      expect(notice.text(), 'the notice names the break-glass token').toContain('break-glass token')
+    })
+
+    it('shows no break-glass notice while the policy does not require the administrators', async () => {
+      await mountPanel('/access/security?tab=second-factors')
+
+      expect(wrapper!.find('[data-test="mfa-break-glass-notice"]').exists(), 'no notice without the requirement').toBe(false)
+    })
+  })
+
   describe('saving', () => {
     it('each tab names the settings domain its save button writes', async () => {
       await mountPanel()
@@ -186,6 +240,9 @@ describe('SecurityPanel', () => {
 
       await openTab('Sessions')
       expect(buttonNamed('Save session limits'), 'Sessions').toBeDefined()
+
+      await openTab('Second factors')
+      expect(buttonNamed('Save second factor policy'), 'Second factors').toBeDefined()
     })
 
     it('the IP addresses save writes the authentication domain with the LDAP group unchanged', async () => {

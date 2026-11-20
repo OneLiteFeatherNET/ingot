@@ -93,6 +93,43 @@
       "format" : "int64",
       "description" : "Minutes a browser session may stay idle before its refresh token expires. 0 keeps the refresh lifetime as the only idle limit. Otherwise at least 5, and at most the refresh lifetime in minutes",
       "title" : "Idle Timeout Minutes"
+    },
+    "mfa" : {
+      "type" : "object",
+      "description" : "Browser sessions that must hold a second factor. A covered user without a factor keeps the grace period, then gets a restricted session until a factor is enrolled. The covered user is recorded at the first sign-in after the policy covers them, so the grace is per user",
+      "title" : "Second Factor Policy",
+      "properties" : {
+        "requiredForAdmins" : {
+          "type" : "boolean",
+          "description" : "Instance administrators, directly or through a team, must hold a second factor. Access tokens are not covered",
+          "title" : "Required For Administrators"
+        },
+        "requiredForTeams" : {
+          "type" : "array",
+          "description" : "Members of these teams must hold a second factor. Names are team names, and direct membership counts",
+          "title" : "Required For Teams",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "graceDays" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Days after a policy first covers a user during which that user may sign in without a second factor. Between 0 and 365",
+          "title" : "Grace Days"
+        },
+        "stepUpMinutes" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Minutes a second factor stays recent for sensitive actions. Between 1 and 60. The default is 5",
+          "title" : "Step-Up Minutes"
+        },
+        "passkeyFirstFactor" : {
+          "type" : "boolean",
+          "description" : "Lets a passkey sign a user in without a password. Off by default; the passkey routes answer 404 while it is off",
+          "title" : "Passkey First Factor"
+        }
+      }
     }
   }
 }
