@@ -51,6 +51,18 @@ internal class ConsoleAuthenticator(
         return requireConsoleArea(identity, ip)
     }
 
+    /**
+     * Whether [identity], authenticated earlier, may still use the console: the token still exists and still has the console
+     * area, and [sessionJwt], when it came from a browser login, is still a valid session.
+     */
+    fun isStillAuthorized(identity: AccessTokenDto, sessionJwt: String?): Boolean {
+        if (sessionJwt != null && loginFacade.authenticateSession(sessionJwt) == null) {
+            return false
+        }
+        val current = accessTokenFacade.getAccessTokenById(identity.identifier) ?: return false
+        return accessTokenFacade.hasAdminArea(current.identifier, CONSOLE_AREA)
+    }
+
     /** The console is open to the principals that may administer the console area, the node `ingot.admin.console`. */
     private fun requireConsoleArea(identity: AccessTokenDto, ip: String): Result<AccessTokenDto, ErrorResponse> =
         if (accessTokenFacade.hasAdminArea(identity.identifier, CONSOLE_AREA)) {

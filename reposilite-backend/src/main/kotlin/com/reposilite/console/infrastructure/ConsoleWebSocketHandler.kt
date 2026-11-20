@@ -63,8 +63,16 @@ private data class WsSession(
     val outbox: ConsoleOutbox,
 )
 
-/** The identity of an authenticated connection: the token name, and the host it connected from. */
-private data class WsIdentity(val tokenName: String, val address: String) {
+/**
+ * The identity of an authenticated connection: the token name, and the host it connected from. [token] and [sessionJwt]
+ * let a version 1 connection check again that the principal may still use the console.
+ */
+private data class WsIdentity(
+    val tokenName: String,
+    val address: String,
+    val token: AccessTokenDto? = null,
+    val sessionJwt: String? = null,
+) {
     val identifier: String get() = "$tokenName@$address"
 }
 
@@ -81,6 +89,7 @@ private const val MAX_FRAME_BYTES = 4096
 /** The exit code of a declined or unanswered confirmation. Nothing runs. It is the code of the HTTP 409 answer. */
 private const val DECLINED_EXIT_CODE = 3
 
+private const val CLOSE_GOING_AWAY = 1001
 private const val CLOSE_PROTOCOL_ERROR = 1002
 private const val CLOSE_POLICY_VIOLATION = 1008
 private const val CLOSE_SLOW_CONSUMER = 1013
@@ -242,6 +251,39 @@ internal class ConsoleWebSocketHandler(
         }
     }
 
+    /** Stops the version 1 connections when the server stops: each gets an error with the code `shutdown` and is closed with 1001. */
+    internal fun shutdown() {
+        val connections = synchronized(v1Sessions) { v1Sessions.toMap() }
+        connections.forEach { (connection, session) ->
+            closeSession(connection, session, CLOSE_GOING_AWAY, ErrorFrame(code = "shutdown", message = "the server is stopping"))
+        }
+    }
+
+    /**
+     * Stops the queue of [session] so nothing follows [error], sends the error and closes with [code]. The close callback
+     * releases the subscription.
+     */
+    private fun closeSession(connection: ConsoleConnection, session: V1Session, code: Int, error: ErrorFrame) {
+        session.dropAll()
+        session.outbox.close()
+        runCatching { connection.sendJson(error) }
+        runCatching { connection.close(code, error.code) }
+    }
+
+    /**
+     * Checks before an execute or an accepted confirm that the principal may still use the console. A revoked token, a removed
+     * console area or a session that is no longer valid closes the connection with 1008.
+     */
+    private fun stillAuthorized(connection: ConsoleConnection, session: V1Session): Boolean {
+        val token = session.identity.token ?: return true
+        if (consoleAuthenticator.isStillAuthorized(token, session.identity.sessionJwt)) {
+            return true
+        }
+        journalist.logger.info("CLI | ${session.identity.identifier} is no longer authorized for the remote console")
+        closeSession(connection, session, CLOSE_POLICY_VIOLATION, ErrorFrame(code = "unauthorized", message = "the credentials are no longer valid"))
+        return false
+    }
+
     /** Releases the writer and the subscription of a connection. Both close callbacks may run, and only the first one finds the session. */
     internal fun release(connection: ConsoleConnection) {
         v1Sessions.remove(connection)?.let { session ->
@@ -352,6 +394,9 @@ internal class ConsoleWebSocketHandler(
             session.outbox.putFrame(ErrorFrame(code = "bad_frame", message = "an execute needs an id"))
             return
         }
+        if (!stillAuthorized(connection, session)) {
+            return
+        }
         if (session.isBusy()) {
             session.outbox.putFrame(ErrorFrame(code = "busy", message = "a command waits for its confirmation", id = id, retryable = true))
             return
@@ -385,6 +430,9 @@ internal class ConsoleWebSocketHandler(
         val accept = frame.get("accept")?.takeIf { it.isBoolean }?.asBoolean() ?: false
         if (!accept) {
             decline(connection, session, pending)
+            return
+        }
+        if (!stillAuthorized(connection, session)) {
             return
         }
         when (val answer = pending.prepared.executeStructured(confirmed = true)) {
@@ -455,15 +503,16 @@ internal class ConsoleWebSocketHandler(
 
         val credentials = authMessage.removePrefix(AUTHORIZATION_PREFIX)
         val host = connection.host
+        val sessionJwt = credentials.takeIf { it.startsWith(SESSION_PREFIX) }?.removePrefix(SESSION_PREFIX)?.trim()
         val identity: Result<out AccessTokenDto, ErrorResponse> =
-            if (credentials.startsWith(SESSION_PREFIX)) {
-                consoleAuthenticator.authenticateSession(credentials.removePrefix(SESSION_PREFIX).trim(), host)
+            if (sessionJwt != null) {
+                consoleAuthenticator.authenticateSession(sessionJwt, host)
             } else {
                 extractFromString(credentials)
                     .map { (name, secret) -> Credentials(ip = host, name = name, secret = secret) }
                     .flatMap { consoleAuthenticator.authenticate(it) }
             }
-        return identity.map { WsIdentity(tokenName = it.name, address = host) }
+        return identity.map { WsIdentity(tokenName = it.name, address = host, token = it, sessionJwt = sessionJwt) }
     }
 
     private fun WsContext.getHost(): String {

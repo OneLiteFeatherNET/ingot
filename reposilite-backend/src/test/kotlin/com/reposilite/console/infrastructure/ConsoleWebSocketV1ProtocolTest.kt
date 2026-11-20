@@ -243,6 +243,65 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
         assertThat(connection.json.toString()).`as`("frames").doesNotContain("s3cr3t")
     }
 
+    @Test
+    fun `refuses the next execute of a revoked token and closes with 1008`() {
+        // given: a welcomed connection whose token is revoked afterwards
+        welcome()
+        accessTokenFacade.deleteToken(accessTokenFacade.getAccessToken("deploy-bot")!!.identifier)
+
+        // when: the client executes a command
+        handler.handleMessage(connection, execute(id = "e1", command = "probe"))
+
+        // then: the error is unauthorized, the connection closes with 1008 and nothing runs or is audited
+        assertThat((connection.json.last() as ErrorFrame).code).`as`("error code").isEqualTo("unauthorized")
+        assertThat(connection.closeCode).`as`("close code").isEqualTo(1008)
+        assertThat(executions).`as`("executions").isEmpty()
+        assertThat(audits).`as`("audit events").isEmpty()
+    }
+
+    @Test
+    fun `refuses an accepted confirm of a token revoked while it waited and closes with 1008`() {
+        // given: a dangerous execute that waits for its confirmation, and a token revoked meanwhile
+        welcome()
+        handler.handleMessage(connection, execute(id = "e1", command = "danger-probe"))
+        accessTokenFacade.deleteToken(accessTokenFacade.getAccessToken("deploy-bot")!!.identifier)
+
+        // when: the client accepts
+        handler.handleMessage(connection, confirm(id = "e1", accept = true))
+
+        // then: the error is unauthorized, the connection closes with 1008 and nothing runs
+        assertThat((connection.json.last() as ErrorFrame).code).`as`("error code").isEqualTo("unauthorized")
+        assertThat(connection.closeCode).`as`("close code").isEqualTo(1008)
+        assertThat(executions).`as`("executions").isEmpty()
+    }
+
+    @Test
+    fun `sends shutdown and then closes with 1001 when the server stops`() {
+        // given: a welcomed connection
+        welcome()
+
+        // when: the server stops
+        handler.shutdown()
+
+        // then: the last frame is the shutdown error, and the connection closes with 1001
+        assertThat((connection.json.last() as ErrorFrame).code).`as`("error code").isEqualTo("shutdown")
+        assertThat(connection.closeCode).`as`("close code").isEqualTo(1001)
+        assertThat(connection.closeReason).`as`("close reason").isEqualTo("shutdown")
+    }
+
+    @Test
+    fun `leaves a legacy connection to the server when it stops`() {
+        // given: a legacy connection
+        handler.handleMessage(connection, "Authorization:deploy-bot:s3cret")
+
+        // when: the server stops
+        handler.shutdown()
+
+        // then: no frame and no close code come from the handler
+        assertThat(connection.json).`as`("json frames").isEmpty()
+        assertThat(connection.closeCode).`as`("close code").isNull()
+    }
+
     private fun welcome() {
         handler.handleMessage(connection, hello(protocols = "[1]"))
         connection.json.clear()
