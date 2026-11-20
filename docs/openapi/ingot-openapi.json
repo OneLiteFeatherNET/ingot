@@ -2004,6 +2004,46 @@
         "required" : [ "plugin", "path", "sha256" ],
         "type" : "object"
       },
+      "PluginUiReaderManifest" : {
+        "properties" : {
+          "pages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginUiReaderManifestPage"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version", "pages" ],
+        "type" : "object"
+      },
+      "PluginUiReaderManifestPage" : {
+        "properties" : {
+          "blocks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginUiBlock"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "plugin" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "plugin", "id", "title", "blocks" ],
+        "type" : "object"
+      },
       "PolicyStatusDto" : {
         "properties" : {
           "covered" : {
@@ -4209,6 +4249,25 @@
           }
         },
         "summary" : "Fetch the dashboard pages and settings sections contributed by plugins",
+        "tags" : [ "Frontend" ]
+      }
+    },
+    "/api/frontend/plugin-ui/readers" : {
+      "get" : {
+        "description" : "Returns the reader pages of every enabled plugin, for anonymous and signed in callers alike. The list is empty while INGOT_LOCAL_PLUGINREADERS is false.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PluginUiReaderManifest"
+                }
+              }
+            },
+            "description" : "The reader manifest of version 1"
+          }
+        },
+        "summary" : "Fetch the reader pages contributed by plugins",
         "tags" : [ "Frontend" ]
       }
     },

@@ -110,6 +110,41 @@ class PluginUiFacade internal constructor(
         return synchronized(lock) { readerPagesByPlugin.values.flatten() }
     }
 
+    /**
+     * The reader manifest of every plugin, in registration order. Empty while either switch is off. The reader pages are
+     * the same for an anonymous and a signed in caller, so the manifest takes no caller.
+     */
+    internal fun readerManifest(): PluginUiReaderManifest {
+        if (!enabled() || !readersSwitchOn()) return PluginUiReaderManifest(pages = emptyList())
+        val pages = synchronized(lock) {
+            readerPagesByPlugin.flatMap { (plugin, list) ->
+                list.map { PluginUiReaderManifestPage(plugin, it.id, it.title, it.description, it.blocks) }
+            }
+        }
+        return PluginUiReaderManifest(pages = pages)
+    }
+
+    /**
+     * The addresses of the source routes that the reader pages of [plugin] declared, as full paths. Read by the guard,
+     * which needs them while the readers switch is off too, so that it can answer 404 for them.
+     */
+    internal fun readerSources(plugin: String): Set<String> = synchronized(lock) {
+        readerPagesByPlugin[plugin].orEmpty()
+            .flatMap { page ->
+                page.blocks.mapNotNull { block ->
+                    when (block) {
+                        is PluginUiBlock.KeyValue -> block.source
+                        is PluginUiBlock.Table -> block.source
+                        else -> null
+                    }
+                }
+            }
+            .toSet()
+    }
+
+    /** Whether the reader switch is on. The manifest and the sources answer for it, and the guard reads it per request. */
+    internal fun readersSwitchOn(): Boolean = readersEnabled()
+
     internal fun addSection(plugin: String, ownDomain: String?, section: PluginUiSection): Boolean = synchronized(lock) {
         val problems = buildList {
             if (section.domain != ownDomain) {
