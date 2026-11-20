@@ -134,6 +134,7 @@
   * [Write a plugin](manage/plugins/write-a-plugin.md)
   * [Write a search backend plugin](manage/plugins/write-a-search-backend-plugin.md)
   * [Extend the dashboard from a plugin](manage/plugins/extend-the-dashboard-from-a-plugin.md)
+  * [Add a login challenge from a plugin](manage/plugins/add-a-login-challenge-from-a-plugin.md)
 
 ## References
 
