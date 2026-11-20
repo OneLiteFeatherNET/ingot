@@ -22,8 +22,11 @@ import { siteUrl } from './support/api'
 // crumb of the trail. The page content draws no second title and no second back control.
 const WIDTHS = [320, 600, 1440]
 
+// The header of the frame: the back row (below 1240 pixels) and the page header with its trail, in one block (design D3
+// of fix-surface-hierarchy-and-page-header).
 const headerLinksTo = (page, path) => page
-  .locator('section[data-ingot-component="administration-frame"] > header')
+  .locator('section[data-ingot-component="administration-frame"]')
+  .locator('div:has(> [data-ingot-component="md-page-header"])')
   .locator(`a[href="${path}"]`)
 
 // Every control named "Back to ..." on the page, as a link or a button. Below 1240 pixels the frame draws one (its arrow);
