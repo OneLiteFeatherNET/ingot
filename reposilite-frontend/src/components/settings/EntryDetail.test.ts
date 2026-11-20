@@ -16,7 +16,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { markRaw } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
@@ -26,6 +26,7 @@ import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
 import { tester as tagsTester } from '../renderers/TagsFieldRenderer.vue'
 import TagsFieldRenderer from '../renderers/TagsFieldRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
+import type { Entry } from '../../store/maven/repositoryTypes'
 import mavenSchema from './fixtures/maven.schema.json'
 
 const renderers = markRaw([
@@ -54,7 +55,7 @@ const collection = {
 
 const releases = { id: 'releases', visibility: 'PUBLIC', limits: { maxSize: 10 } }
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountDetail = (props = {}) => {
   wrapper = mount(EntryDetail, {
@@ -68,7 +69,7 @@ const mountDetail = (props = {}) => {
     },
     global: { provide: { styles: defaultStyles } },
     attachTo: document.body
-  })
+  }) as VueWrapper
   return wrapper
 }
 
@@ -76,7 +77,6 @@ const labels = () => wrapper.findAll('label').map(label => label.text())
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('EntryDetail', () => {
@@ -121,7 +121,7 @@ describe('EntryDetail', () => {
 
     await wrapper.find('select').setValue('PRIVATE')
 
-    const latest = wrapper.emitted('change').at(-1)[0]
+    const latest = wrapper.emitted<[Entry]>('change')!.at(-1)![0]
     expect(latest.visibility).toBe('PRIVATE')
     expect(latest.id).toBe('releases')
   })
@@ -156,7 +156,7 @@ describe('EntryDetail', () => {
   it('opens the delete confirmation without deleting anything yet', async () => {
     mountDetail()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Delete repository').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Delete repository')!.trigger('click')
     await flushPromises()
 
     const root = document.querySelector('[role="alertdialog"]')
@@ -166,14 +166,14 @@ describe('EntryDetail', () => {
 
   it('deletes the entry once the confirmation has the exact id', async () => {
     mountDetail()
-    await wrapper.findAll('button').find(button => button.text() === 'Delete repository').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Delete repository')!.trigger('click')
     await flushPromises()
-    const input = document.getElementById('delete-entry-confirm-input')
+    const input = document.getElementById('delete-entry-confirm-input') as HTMLInputElement
     input.value = 'releases'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
 
-    document.getElementById('delete-entry-confirm').click()
+    document.getElementById('delete-entry-confirm')!.click()
     await flushPromises()
 
     expect(wrapper.emitted('delete')).toEqual([[]])
@@ -204,9 +204,9 @@ describe('EntryDetail tag suggestions', () => {
       },
       global: { provide: { styles: defaultStyles } },
       attachTo: document.body
-    })
+    }) as VueWrapper
 
-    await wrapper.findAll('input').at(-1).trigger('focus')
+    await wrapper.findAll('input').at(-1)!.trigger('focus')
 
     const suggestions = wrapper.findAll('[data-test="suggestion"]').map(button => button.text())
     expect(suggestions).toEqual(['ci', 'internal'])
