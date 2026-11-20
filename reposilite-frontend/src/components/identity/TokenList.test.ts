@@ -296,6 +296,30 @@ describe('TokenList', () => {
   it('draws the list with the 1 pixel outline edge of the surface table', async () => {
     await mountList()
 
-    expect(wrapper.classes(), 'the list card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+    const card = wrapper.findComponent({ name: 'MdCard' })
+    expect(card.classes(), 'the list card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
+  })
+
+  it('draws the card through MdCard holding a level 3 MdSection titled with the list title', async () => {
+    await mountList({ title: 'Tokens of alice' })
+
+    const section = wrapper.findComponent({ name: 'MdCard' }).findComponent({ name: 'MdSection' })
+    expect(section.exists(), 'the heading belongs to an MdSection inside the card').toBe(true)
+    expect(section.props('level'), 'a section inside a page section is level 3').toBe(3)
+    expect(section.find('h3').text()).toBe('Tokens of alice')
+  })
+
+  it('keeps the token list labelled by its section heading', async () => {
+    await mountList()
+
+    const id = wrapper.attributes('aria-labelledby')
+    expect(wrapper.findComponent({ name: 'MdSection' }).find('h3').attributes('id'), 'the label points at the section heading').toBe(id)
+  })
+
+  it('offers the create action in the section header', async () => {
+    await mountList()
+
+    const header = wrapper.findComponent({ name: 'MdSection' }).find('[data-test="section-header"]')
+    expect(header.findAll('button').map(button => button.text()), 'the create button sits beside the title').toContain('Create token')
   })
 })
