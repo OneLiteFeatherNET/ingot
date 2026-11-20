@@ -27,7 +27,7 @@ import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
 const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
-const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<{ identity: Record<string, unknown>; tokens: Record<string, unknown> }> } }))
+const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<{ identity: Record<string, unknown>; tokens: Record<string, unknown> }>; instanceAdmin: Ref<boolean> } }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
@@ -116,7 +116,8 @@ describe('PrincipalDetail', () => {
       setPassword: vi.fn(),
       grantInstanceAdmin: vi.fn(),
       revokeInstanceAdmin: vi.fn(),
-      remove: vi.fn()
+      remove: vi.fn(),
+      factors: vi.fn(() => ({ list: vi.fn().mockResolvedValue({ data: [] }), resetAll: vi.fn() }))
     }
     tokensApi = {
       list: vi.fn().mockResolvedValue({ data: CI.tokens }),
@@ -135,7 +136,8 @@ describe('PrincipalDetail', () => {
       client: ref({
         identity: { principals, principalTokens: vi.fn(() => tokensApi), nodes, teams },
         tokens: { get: legacyGet }
-      })
+      }),
+      instanceAdmin: ref(true)
     }
   })
 
@@ -147,6 +149,19 @@ describe('PrincipalDetail', () => {
   })
 
   describe('a user', () => {
+    it('shows the second factor summary to an instance admin', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.text(), 'an administrator sees the factor summary').toContain('Second factors')
+    })
+
+    it('hides the second factor summary from a viewer who is no instance admin', async () => {
+      holder.session!.instanceAdmin.value = false
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.text(), 'no factor summary or reset without instance admin rights').not.toContain('Second factors')
+    })
+
     it('shows the username in the username row and the display name in its own row', async () => {
       principals.get.mockResolvedValueOnce({
         data: { ...ALICE, name: 'sdsdfsdf', displayName: 'sdfsdfsdf' },
