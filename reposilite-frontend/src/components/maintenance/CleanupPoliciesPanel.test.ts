@@ -174,6 +174,16 @@ describe('CleanupPoliciesPanel list', () => {
 
     expect(wrapper.text()).toContain('Never run')
   })
+
+  // The panel is a filled card on surface-container-low, so a policy block steps one role up, never the same role.
+  it('draws each policy one surface step above its card', async () => {
+    await mountPanel()
+
+    const policy = wrapper.find('[data-policy="snapshots-weekly"]')
+
+    expect(policy.classes(), 'a block nested in a card is surface-container').toContain('bg-surface-container')
+    expect(policy.classes(), 'not the role of its card').not.toContain('bg-surface-container-low')
+  })
 })
 
 describe('CleanupPoliciesPanel save', () => {
