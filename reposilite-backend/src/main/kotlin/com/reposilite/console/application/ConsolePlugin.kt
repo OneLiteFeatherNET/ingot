@@ -100,18 +100,18 @@ internal class ConsolePlugin : ReposilitePlugin() {
         event { event: HttpServerInitializationEvent ->
             // The worker serves no console, so its socket and log stream are not registered there
             if (parameters().deployTarget == DeployTarget.WORKER) return@event
-            event.config.routes.ws(
-                "/api/console/sock",
-                ConsoleWebSocketHandler(
-                    journalist = reposilite().journalist,
-                    consoleAuthenticator = consoleAuthenticator,
-                    consoleFacade = consoleFacade,
-                    forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
-                    trustedProxies = TrustedProxies.fromEnvironment(),
-                    audit = this::emitConsoleAudit,
-                    nodeId = ClusterSettings.instanceIdOf(ClusterSources.system()),
-                )
+            val socketHandler = ConsoleWebSocketHandler(
+                journalist = reposilite().journalist,
+                consoleAuthenticator = consoleAuthenticator,
+                consoleFacade = consoleFacade,
+                forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
+                trustedProxies = TrustedProxies.fromEnvironment(),
+                audit = this::emitConsoleAudit,
+                nodeId = ClusterSettings.instanceIdOf(ClusterSources.system()),
             )
+            event.config.routes.ws("/api/console/sock", socketHandler)
+            // Before the web server closes the sockets, so a version 1 client reads why it was disconnected
+            event.config.events.serverStopping { socketHandler.shutdown() }
             event.config.routes.sse(
                 "/api/console/log",
                 client::handleSseLiveLog
