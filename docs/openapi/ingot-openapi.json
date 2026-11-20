@@ -513,6 +513,9 @@
             },
             "type" : "array"
           },
+          "scope" : {
+            "type" : "string"
+          },
           "sensitive" : {
             "type" : "boolean"
           },
@@ -523,7 +526,7 @@
             "type" : "array"
           }
         },
-        "required" : [ "name", "aliases", "description", "dangerous", "sensitive", "parameters", "options", "subcommands" ],
+        "required" : [ "name", "aliases", "description", "dangerous", "sensitive", "parameters", "options", "subcommands", "scope" ],
         "type" : "object"
       },
       "CommandListing" : {

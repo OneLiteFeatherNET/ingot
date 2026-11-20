@@ -17,6 +17,7 @@ package com.reposilite.statistics
 
 import com.reposilite.console.CommandContext
 import com.reposilite.console.CommandStatus.FAILED
+import com.reposilite.console.NodeScopedCommand
 import com.reposilite.console.api.ReposiliteCommand
 import panda.std.Option.supplyThrowing
 import panda.std.take
@@ -26,7 +27,7 @@ import picocli.CommandLine.Parameters
 private const val DEFAULT_TOP_LIMIT = 20
 
 @Command(name = "stats", description = ["Display collected metrics"])
-internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : ReposiliteCommand {
+internal class StatsCommand(private val statisticsFacade: StatisticsFacade) : ReposiliteCommand, NodeScopedCommand {
 
     @Parameters(index = "0", paramLabel = "[<repository>]", description = ["Repository to search in.", "By default it aggregates results from all repositories."], defaultValue = "")
     private lateinit var repository: String

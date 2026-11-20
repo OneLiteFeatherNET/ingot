@@ -5902,6 +5902,7 @@ export interface components {
             name: string;
             options: components["schemas"]["OptionDescriptor"][];
             parameters: components["schemas"]["ParameterDescriptor"][];
+            scope: string;
             sensitive: boolean;
             subcommands: string[];
         };

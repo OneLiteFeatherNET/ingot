@@ -24,8 +24,12 @@ import com.reposilite.console.CommandStatus.SUCCEEDED
 import com.reposilite.console.api.ReposiliteCommand
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.status.FailureFacade
+import com.reposilite.status.FailuresCommand
+import com.reposilite.status.StatusCommand
+import com.reposilite.status.StatusFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import panda.std.reactive.Reference
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 import picocli.CommandLine.Parameters
@@ -92,6 +96,48 @@ internal class StructuredConsoleExecutionTest {
         // then: both flags are false
         assertThat(probe.dangerous).`as`("dangerous flag of probe").isFalse
         assertThat(probe.sensitive).`as`("sensitive flag of probe").isFalse
+    }
+
+    @Test
+    fun `should list a plugin command with the cluster scope by default`() {
+        // given: a console with a command that declares no scope
+        val executor = commandExecutor()
+        executor.registerCommand(StructuredProbeCommand(mutableListOf()))
+
+        // when: the command listing is requested
+        val probe = executor.listCommands().commands.single { it.name == "probe" }
+
+        // then: the command acts on the whole cluster
+        assertThat(probe.scope).`as`("scope of probe").isEqualTo("cluster")
+    }
+
+    @Test
+    fun `should list the per-replica commands with the node scope`() {
+        // given: a console with the built-in commands that act on the replica they reach
+        val executor = commandExecutor()
+        val failureFacade = FailureFacade(InMemoryLogger(), Clock.fixed(Instant.EPOCH, ZoneOffset.UTC))
+        executor.registerCommand(LevelCommand(ReposiliteJournalist(InMemoryLogger(), 0, testEnv = true, noColor = true)))
+        executor.registerCommand(FailuresCommand(failureFacade))
+        executor.registerCommand(
+            StatusCommand(
+                StatusFacade(
+                    testEnv = true,
+                    startTime = 0L,
+                    maxThreads = Reference.reference(40),
+                    status = { true },
+                    remoteVersionUrl = "",
+                    failureFacade = failureFacade,
+                    clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC),
+                    remoteVersionCheck = { false },
+                )
+            )
+        )
+
+        // when: the command listing is requested
+        val scopes = executor.listCommands().commands.associate { it.name to it.scope }
+
+        // then: each of them is listed with the node scope
+        assertThat(scopes).`as`("scopes by command").containsEntry("level", "node").containsEntry("failures", "node").containsEntry("status", "node")
     }
 
     @Test

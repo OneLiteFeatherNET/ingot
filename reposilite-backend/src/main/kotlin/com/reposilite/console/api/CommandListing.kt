@@ -32,6 +32,8 @@ data class CommandDescriptor(
     val parameters: List<ParameterDescriptor>,
     val options: List<OptionDescriptor>,
     val subcommands: List<String>,
+    /** `node` when the command acts on the replica that runs it, `cluster` when it acts on every replica alike. */
+    val scope: String,
 )
 
 data class ParameterDescriptor(

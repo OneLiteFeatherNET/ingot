@@ -302,6 +302,50 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
         assertThat(connection.closeCode).`as`("close code").isNull()
     }
 
+    @Test
+    fun `answers a complete with its id, the replaced range and the matching command names`() {
+        // given: a welcomed connection
+        welcome()
+
+        // when: the client asks to complete "pro"
+        handler.handleMessage(connection, """{"type":"complete","id":"c1","line":"pro"}""")
+
+        // then: the answer replaces the whole word with the one matching name and runs nothing
+        assertThat(connection.json.last()).`as`("complete frame")
+            .isEqualTo(CompleteFrame(id = "c1", replace = ReplaceRange(start = 0, end = 3), candidates = listOf("probe")))
+        assertThat(executions).`as`("executions").isEmpty()
+    }
+
+    @Test
+    fun `completes the word before the cursor of a complete`() {
+        // given: a welcomed connection
+        welcome()
+
+        // when: the cursor stands after "dan" in a longer line
+        handler.handleMessage(connection, """{"type":"complete","id":"c1","line":"dan rest","cursor":3}""")
+
+        // then: the range ends at the cursor and the matching name is offered
+        val complete = connection.json.last() as CompleteFrame
+        assertThat(complete.replace).`as`("replaced range").isEqualTo(ReplaceRange(start = 0, end = 3))
+        assertThat(complete.candidates).`as`("candidates").containsExactly("danger-probe")
+    }
+
+    @Test
+    fun `answers a complete while a confirmation is pending instead of busy`() {
+        // given: a dangerous execute that waits for its confirmation
+        welcome()
+        handler.handleMessage(connection, execute(id = "e1", command = "danger-probe"))
+
+        // when: the client asks for a completion
+        handler.handleMessage(connection, """{"type":"complete","id":"c1","line":"tok"}""")
+
+        // then: the completion is answered, and the pending command is not touched
+        val complete = connection.json.last() as CompleteFrame
+        assertThat(complete.id).`as`("request id").isEqualTo("c1")
+        assertThat(complete.candidates).`as`("candidates").containsExactly("token-regenerate")
+        assertThat(executions).`as`("executions").isEmpty()
+    }
+
     private fun welcome() {
         handler.handleMessage(connection, hello(protocols = "[1]"))
         connection.json.clear()
