@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import { mount } from '@vue/test-utils'
 import MdDataTable from './MdDataTable.vue'
+import { sortRows } from './MdDataTable.sort'
 
 // Every test mounts its own table with its own rows, so no test depends on another.
 const COLUMNS = [
@@ -162,6 +163,45 @@ describe('MdDataTable priority', () => {
 
     expect(classes[0], 'a high-priority column is always shown').not.toContain('hidden')
     expect(classes[2], 'a low-priority column is hidden on narrow widths').toContain('hidden')
+  })
+
+  it.each([
+    ['medium', 'medium:table-cell'],
+    ['expanded', 'expanded:table-cell'],
+    ['large', 'large:table-cell'],
+    ['xlarge', 'xlarge:table-cell'],
+  ] as const)('hides a column with the priority %s below that window class, in its header and its body cells', (priority, shown) => {
+    const wrapper = mountTable({ columns: [COLUMNS[0], COLUMNS[1], { ...COLUMNS[2], priority }] })
+
+    const cells = [headers(wrapper)[2], ...wrapper.findAll('tbody tr').map((row) => row.findAll('td')[1])]
+
+    expect(cells.map((cell) => cell.classes().includes('hidden') && cell.classes().includes(shown))).toEqual([true, true, true, true])
+  })
+
+  it('shows a column with the priority base at every width', () => {
+    const wrapper = mountTable({ columns: [COLUMNS[0], { ...COLUMNS[1], priority: 'base' as const }, COLUMNS[2]] })
+
+    expect(headers(wrapper)[1].classes()).not.toContain('hidden')
+  })
+})
+
+describe('MdDataTable sortable header', () => {
+  it('holds a button in every sortable header and none in the others', () => {
+    const wrapper = mountTable()
+
+    expect(headers(wrapper).map((header) => header.find('button').exists())).toEqual([true, false, true])
+  })
+
+  it('reverses the order on a second activation, as sortRows does', async () => {
+    const wrapper = mountTable()
+    const button = headers(wrapper)[2].find('button')
+
+    await button.trigger('click')
+    const ascending = bodyNames(wrapper)
+    await button.trigger('click')
+
+    expect(bodyNames(wrapper)).toEqual(sortRows(ROWS, 'size', 'descending').map((row) => row.name))
+    expect(bodyNames(wrapper), 'the second order is the first one reversed').toEqual([...ascending].reverse())
   })
 })
 
