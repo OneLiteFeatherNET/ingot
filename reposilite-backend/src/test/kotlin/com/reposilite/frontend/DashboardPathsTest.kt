@@ -16,6 +16,8 @@
 
 package com.reposilite.frontend
 
+import com.reposilite.journalist.Channel
+import com.reposilite.journalist.backend.InMemoryLogger
 import java.nio.file.Files
 import java.nio.file.Path
 import org.assertj.core.api.Assertions.assertThat
@@ -206,6 +208,47 @@ internal class DashboardPathsTest {
             .describedAs("warning text for the API segment")
             .contains("'/api/'")
             .contains("renaming the repository avoids this")
+    }
+
+    @Test
+    fun `should claim the reader address only while a reader page is registered`() {
+        // when / then: without a reader page no route is claimed, with one the whole segment is
+        assertThat(DashboardPaths.readerRoutes(readerPagesRegistered = false)).describedAs("routes without a reader page").isEmpty()
+        assertThat(DashboardPaths.readerRoutes(readerPagesRegistered = true)).describedAs("routes with a reader page").containsExactly("/plugins/<path>")
+    }
+
+    @Test
+    fun `should not reserve the reader segment for every instance`() {
+        // then: a repository named plugins gets no reserved segment warning on an instance without reader pages
+        assertThat(DashboardPaths.reservedRepositoryWarnings(listOf("plugins"))).describedAs("reserved segment warnings").isEmpty()
+    }
+
+    @Test
+    fun `should warn about a repository named plugins while a reader page exists`() {
+        // given: a captured log
+        val logger = InMemoryLogger()
+
+        // when: reader pages claim the segment that a repository also uses
+        DashboardPaths.warnAboutReaderSegment(logger, readerPagesRegistered = true, readerSegmentRepositoryExists = true)
+
+        // then: one warning names the repository and says that only browser navigation shows the dashboard
+        val lines = logger.messages.map { it.value }
+        assertThat(lines).describedAs("captured log lines").hasSize(1)
+        assertThat(lines.single()).describedAs("the warning text").contains("Repository 'plugins'").contains("browser navigation to '/plugins'")
+        assertThat(logger.messages.single().key).describedAs("the channel of the line").isEqualTo(Channel.WARN)
+    }
+
+    @Test
+    fun `should not warn about the reader segment without a reader page or without such a repository`() {
+        // given: a captured log
+        val logger = InMemoryLogger()
+
+        // when: either the reader pages or the repository are missing
+        DashboardPaths.warnAboutReaderSegment(logger, readerPagesRegistered = false, readerSegmentRepositoryExists = true)
+        DashboardPaths.warnAboutReaderSegment(logger, readerPagesRegistered = true, readerSegmentRepositoryExists = false)
+
+        // then: nothing is logged
+        assertThat(logger.messages).describedAs("captured log lines").isEmpty()
     }
 
     private companion object {
