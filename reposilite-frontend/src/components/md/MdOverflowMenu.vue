@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { isModifiedClick } from '../../helpers/modifiedClick'
 import MdButton from './MdButton.vue'
 import MdTransition from './MdTransition.vue'
 import type { MenuEntry, MenuItem } from './types'
@@ -157,7 +158,7 @@ const choose = (value: string) => {
 // A link item is followed by the router on a plain click. With a modifier key, or a button other than the primary
 // one, the browser opens the address itself, so the menu only closes.
 const chooseLink = (event: MouseEvent, value: string) => {
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+  if (isModifiedClick(event)) {
     closeMenu()
     return
   }
