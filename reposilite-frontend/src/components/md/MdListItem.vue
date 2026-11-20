@@ -22,7 +22,8 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
  * Material Design 3 list item. Inside a plain MdList the row is a link (`to`, routed through the
  * router so the dashboard base is kept), a button (`button`), or plain text. Inside a selectable
  * MdList the row is an option: it is focusable, reports `aria-selected`, and emits `select` on a
- * click or on Enter and Space. The leading and trailing slots hold icons or an avatar.
+ * click or on Enter and Space. A selected row, an option or a link, takes the secondary container.
+ * The leading and trailing slots hold icons or an avatar.
  */
 const props = withDefaults(defineProps<{
   to?: RouteLocationRaw
@@ -70,9 +71,13 @@ const contentTag = computed(() => {
   return props.button ? 'button' : 'div'
 })
 
+// A selected link row carries aria-current on its link, so it is announced with the link. Every other
+// selected row carries it on the row. An unselected link keeps the router's own aria-current.
+const isLink = computed(() => !isOption.value && props.to !== undefined)
+
 const contentAttrs = computed(() => {
   if (isOption.value) return {}
-  if (props.to !== undefined) return { to: props.to }
+  if (props.to !== undefined) return props.selected ? { to: props.to, 'aria-current': 'true' } : { to: props.to }
   return props.button ? { type: 'button' } : {}
 })
 
@@ -92,10 +97,10 @@ const select = (event?: Event) => {
     :role="isOption ? 'option' : undefined"
     :aria-selected="isOption ? (selected ? 'true' : 'false') : undefined"
     :tabindex="isOption ? 0 : undefined"
-    :aria-current="selected ? 'true' : undefined"
+    :aria-current="selected && !isLink ? 'true' : undefined"
     :class="[
       'group relative',
-      isOption && selected ? 'bg-secondary-container text-on-secondary-container' : ''
+      selected ? 'bg-secondary-container text-on-secondary-container' : ''
     ]"
     data-ingot-component="md-list-item"
     @click="select"
