@@ -8,7 +8,7 @@ Gradle `--no-daemon --max-workers=2` where Gradle is involved, and kind or Testc
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose add-chart-upgrade-rehearsal`: this change and nothing else. Verify:
+- [x] 1.1 `docs(openspec): propose add-chart-upgrade-rehearsal`: this change and nothing else. Verify:
   `openspec validate add-chart-upgrade-rehearsal --strict` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Spike: does the upgrade keep the data without the overrides
@@ -31,7 +31,7 @@ Gradle `--no-daemon --max-workers=2` where Gradle is involved, and kind or Testc
   on kind.
 - [ ] 3.2 `ci(chart)`: add the rehearsal to the `chart` job of `.github/workflows/ci.yml` after `ct install`, and set
   `upgrade: true` in `ct.yaml`. Verify: the workflow lints, and the job runs green on the pull request.
-- [ ] 3.3 `test(chart)`: write failing tests for the render of the test hook, one for the default render (no test pod)
+- [x] 3.3 `test(chart)`: write failing tests for the render of the test hook, one for the default render (no test pod)
   and one for `tests.enabled=true` (one pod with `helm.sh/hook: test`), in `charts/ingot/tests/test_chart.py`. Verify: they
   fail before 3.4.
 - [ ] 3.4 `ci(chart)`: add `charts/ingot/templates/tests/` with the test pod that calls the API with a token, and the value
