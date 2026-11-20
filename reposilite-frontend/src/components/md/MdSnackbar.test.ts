@@ -16,10 +16,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import MdSnackbar from './MdSnackbar.vue'
 import source from './MdSnackbar.vue?raw'
 import { createSnackbarQueue, snackbar as sharedQueue, SNACKBAR_QUEUE_KEY } from '../../store/snackbar'
+
+// The transition the notice is wrapped in. Its props are read through the wrapper, not through the stub of the test utilities.
+type TransitionWrapper = VueWrapper<{ $props: Record<string, unknown> }>
 
 // Each test provides a queue of its own, so nothing is shared between tests. The one test that reads the
 // shared queue empties it again afterwards.
@@ -161,6 +164,35 @@ describe('MdSnackbar', () => {
 
     expect(host, 'the layer comes from the z-md-snackbar token').toContain('z-md-snackbar')
     expect(host.some(name => name.startsWith('z-[')), 'no arbitrary z index may remain').toBe(false)
+  })
+
+  it('passes the snackbar pattern to the transition of the notice', async () => {
+    const wrapper = mountSnackbar()
+    queue.enqueue({ message: 'Saved', tone: 'success' })
+    await nextTick()
+
+    expect((wrapper.findComponent({ name: 'MdTransition' }) as TransitionWrapper).props('pattern'), 'the notice must enter and leave with the snackbar pattern').toBe('snackbar')
+  })
+
+  it('replaces a notice out-in, so the second notice is drawn only after the first has left', () => {
+    const wrapper = mountSnackbar()
+    expect((wrapper.findComponent({ name: 'MdTransition' }) as TransitionWrapper).props('mode'), 'the replacement of a notice must be out-in').toBe('out-in')
+  })
+
+  it('keeps the leaving notice on screen while the next one waits to enter', async () => {
+    const wrapper = mount(MdSnackbar, {
+      global: { provide: { [SNACKBAR_QUEUE_KEY]: queue }, stubs: { transition: false } }
+    })
+    const firstId = queue.enqueue({ message: 'First', tone: 'success' })
+    queue.enqueue({ message: 'Second', tone: 'success' })
+    await nextTick()
+    queue.dismiss(firstId!)
+    await nextTick()
+
+    expect(wrapper.findAll('[data-tone]'), 'only one notice may be drawn while the first one leaves').toHaveLength(1)
+    expect(wrapper.text(), 'the notice that waits must not be drawn before the first has left').toContain('First')
+    expect(wrapper.text(), 'the notice that waits must not be drawn before the first has left').not.toContain('Second')
+    expect(wrapper.find('.motion-snackbar-leave-active').exists(), 'the first notice must carry the leave class').toBe(true)
   })
 
   it('has no style element in its source', () => {
