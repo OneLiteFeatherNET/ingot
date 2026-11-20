@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, provide, ref, watch } from 'vue'
 import type { JsonFormsRendererRegistryEntry, createAjv } from '@jsonforms/core'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import EntryList from './EntryList.vue'
 import EntryDetail from './EntryDetail.vue'
 import { entryAddresses, idText } from './collections'
@@ -163,12 +164,13 @@ watch([addresses, () => props.keys], () => {
           @change="emit('change', { index: selectedIndex, entry: $event })"
           @delete="emit('delete', selectedIndex)"
         />
-        <p
+        <MdStatePanel
           v-else
-          class="md-body-large text-on-surface-variant max-expanded:hidden"
-        >
-          Select a {{ collection.noun }} to edit its settings.
-        </p>
+          data-test="no-selection"
+          state="empty"
+          :description="`Select a ${collection.noun} to edit its settings.`"
+          class="max-expanded:hidden"
+        />
       </div>
     </div>
   </section>

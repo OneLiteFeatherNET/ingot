@@ -19,6 +19,7 @@ import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import NewEntryDialog from './NewEntryDialog.vue'
 import { entryAddresses, filterEntries, idText, summaryOf, validateNewId } from './collections'
 import type { CollectionEntry, SettingsSchema } from './collections'
@@ -203,12 +204,12 @@ const isSelected = (item: ListItem) => item.key === props.selectedKey
         </div>
       </li>
     </ul>
-    <p
+    <MdStatePanel
       v-else
-      class="px-4 py-6 md-body-medium text-on-surface-variant"
-    >
-      {{ emptyText }}
-    </p>
+      data-test="empty"
+      state="empty"
+      :description="emptyText"
+    />
 
     <NewEntryDialog
       v-model="dialogOpen"

@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
@@ -253,12 +254,11 @@ const setCredential = (index: number, field: string, value: unknown) => {
       </MdButton>
     </div>
 
-    <p
+    <MdAlert
       v-if="error"
-      role="alert"
-      class="md-body-medium text-error"
+      tone="error"
     >
       {{ error }}
-    </p>
+    </MdAlert>
   </div>
 </template>
