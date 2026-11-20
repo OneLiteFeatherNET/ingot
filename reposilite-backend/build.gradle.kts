@@ -24,6 +24,7 @@ import com.github.jk1.license.render.JsonReportRenderer
 import ingot.plugin.CheckPluginApiClosureTask
 import ingot.plugin.EmbeddedPluginJars
 import ingot.plugin.IngotBaselineRepository
+import ingot.plugin.IngotPluginApiReportTask
 import ingot.plugin.PluginApiAllowlist
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
@@ -749,10 +750,17 @@ val ingotBaselineCredentials = IngotBaselineRepository.credentials(
 ingotBaselineCredentials?.let { IngotBaselineRepository.register(repositories, it) }
 val ingotBaselineSkipReason = IngotBaselineRepository.skipReason(ingotBaselineCredentials)
 
+// The coordinate of the baseline release. The archive is the released jar alone. Its dependencies only serve as the classpath, so
+// japicmp can follow supertypes.
+val ingotBaselineCoordinate = "net.onelitefeather.ingot:ingot:$ingotBaseline"
+val ingotBaselineArchive = configurations.detachedConfiguration(dependencies.create(ingotBaselineCoordinate))
+    .apply { isTransitive = false }
+
 // Compares the Ingot plugin API packages of this build with the last Ingot release. Report-only, like pluginApiReport.
-tasks.register<JapicmpTask>("ingotPluginApiReport") {
+// ingotPluginApiReport below groups the findings it writes.
+val ingotPluginApiCompare = tasks.register<JapicmpTask>("ingotPluginApiCompare") {
     group = "verification"
-    description = "Compares the Ingot plugin API with the last Ingot release and writes HTML and Markdown reports under build/reports/plugin-api"
+    description = "Compares the Ingot plugin API with the last Ingot release and writes an HTML report under build/reports/plugin-api"
 
     val skipReason = ingotBaselineSkipReason
     onlyIf("credentials for the Ingot releases repository are set") {
@@ -760,14 +768,8 @@ tasks.register<JapicmpTask>("ingotPluginApiReport") {
         skipReason == null
     }
 
-    val baseline = "net.onelitefeather.ingot:ingot:$ingotBaseline"
-    // The archive is the released jar alone. Its dependencies only serve as the classpath, so japicmp can follow supertypes.
-    val baselineArchive = configurations.detachedConfiguration(dependencies.create(baseline))
-        .apply { isTransitive = false }
-    val baselineClasspath = configurations.detachedConfiguration(dependencies.create(baseline))
-
-    oldArchives.from(baselineArchive)
-    oldClasspath.from(baselineClasspath)
+    oldArchives.from(ingotBaselineArchive)
+    oldClasspath.from(configurations.detachedConfiguration(dependencies.create(ingotBaselineCoordinate)))
     newArchives.from(tasks.named("jar"))
     newClasspath.from(configurations.named("runtimeClasspath"))
 
@@ -776,7 +778,24 @@ tasks.register<JapicmpTask>("ingotPluginApiReport") {
     failOnModification.set(false)
     ignoreMissingClasses.set(true)
     htmlOutputFile.set(layout.buildDirectory.file("reports/plugin-api/ingot-report.html"))
-    mdOutputFile.set(layout.buildDirectory.file("reports/plugin-api/ingot-report.md"))
+    xmlOutputFile.set(layout.buildDirectory.file("plugin-api/ingot-comparison.xml"))
+}
+
+// Groups the findings of ingotPluginApiCompare into promised and experimental (design D3 of extend-plugin-abi-gate) and writes
+// build/reports/plugin-api/ingot-report.md, which the job summary counts. Report-only.
+tasks.register<IngotPluginApiReportTask>("ingotPluginApiReport") {
+    group = "verification"
+    description = "Compares the Ingot plugin API with the last Ingot release and writes HTML and Markdown reports under build/reports/plugin-api"
+
+    val skipReason = ingotBaselineSkipReason
+    onlyIf("credentials for the Ingot releases repository are set") { skipReason == null }
+
+    comparison.set(ingotPluginApiCompare.flatMap { it.xmlOutputFile })
+    newArchives.from(tasks.named("jar"))
+    oldArchives.from(ingotBaselineArchive)
+    experimentalPackages.set(ingotExperimentalPackages)
+    baseline.set(ingotBaselineCoordinate)
+    report.set(layout.buildDirectory.file("reports/plugin-api/ingot-report.md"))
 }
 
 // The OpenAPI annotation processor writes an index into the output of every source set it runs on. The test source sets
