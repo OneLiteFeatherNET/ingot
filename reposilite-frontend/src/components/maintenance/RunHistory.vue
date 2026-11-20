@@ -22,6 +22,7 @@ import type { CleanupRun } from './cleanup'
 import MdDisclosure from '../md/MdDisclosure.vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 
 /*
  * The latest run of each policy. The full history is on the Jobs page, which the "All runs" link opens
@@ -72,12 +73,12 @@ const latestRuns = computed((): CleanupRun[] => {
       </RouterLink>
     </div>
 
-    <p
+    <MdStatePanel
       v-if="!latestRuns.length"
-      class="md-body-medium text-on-surface-variant"
-    >
-      No runs yet.
-    </p>
+      data-test="no-runs"
+      state="empty"
+      description="No runs yet."
+    />
 
     <MdList
       v-else

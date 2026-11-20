@@ -240,4 +240,56 @@ describe('StorageUsagePanel', () => {
 
     expect(wrapper.text()).toContain('Storage is unavailable')
   })
+
+  it('shows the load failure as the shared error state with a Retry', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.reject(new Error('Storage is unavailable')))
+    })
+    await mountPanel()
+
+    const failure = wrapper.get('[role="alert"]')
+    expect(failure.attributes('data-ingot-component'), 'the failure is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(failure.attributes('data-ingot-state'), 'the panel is in the error state').toBe('error')
+    expect(failure.text(), 'the failure names the cause').toContain('Storage is unavailable')
+    expect(buttonNamed('Retry').exists(), 'the failure offers a Retry').toBe(true)
+  })
+
+  it('loads the figures again from the Retry of the failure', async () => {
+    const storage = vi.fn()
+      .mockImplementationOnce(() => Promise.reject(new Error('Storage is unavailable')))
+      .mockImplementation(() => Promise.resolve({ data: storageBody() }))
+    session.client = fakeClient({ storage })
+    await mountPanel()
+
+    await buttonNamed('Retry').trigger('click')
+    await flushPromises()
+
+    expect(storage, 'the Retry asks for the figures again').toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[role="alert"]').exists(), 'the failure is gone once the figures arrived').toBe(false)
+    expect(wrapper.text(), 'the figures are shown').toContain('across 2 repositories')
+  })
+
+  it('draws the figures that are not computed yet as the shared empty state', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.resolve({ data: storageBody({ computedAt: null, totalBytes: 0, repositories: [] }) }))
+    })
+    await mountPanel()
+
+    const empty = wrapper.get('[data-test="not-computed"]')
+    expect(empty.attributes('data-ingot-component'), 'the missing figures are drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text()).toBe('The figures have not been computed yet. Refresh to compute them.')
+  })
+
+  it('draws the figures without a measured repository as the shared empty state', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.resolve({ data: storageBody({ totalBytes: 0, repositories: [] }) }))
+    })
+    await mountPanel()
+
+    const empty = wrapper.get('[data-test="no-repositories"]')
+    expect(empty.attributes('data-ingot-component'), 'the empty list is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text()).toBe('No repository has been measured yet.')
+  })
 })
