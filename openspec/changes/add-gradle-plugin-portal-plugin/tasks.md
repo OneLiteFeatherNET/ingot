@@ -7,14 +7,14 @@ follow F.I.R.S.T.: no sleeps, injected `Clock`, a temporary directory per test, 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: this proposal, together with `add-minecraft-plugin-portal-plugin`, in one pull request.
+- [x] 1.1 `docs(openspec)`: this proposal, together with `add-minecraft-plugin-portal-plugin`, in one pull request.
 
 ## 2. Core prerequisites (each its own proposal and code pull request, each additive)
 
-- [ ] 2.1 `add-plugin-api-artifact`: `feat(plugin): publish a slim plugin api artifact` (shared with the Minecraft portal).
+- [x] 2.1 `add-plugin-api-artifact`: `feat(plugin): publish a slim plugin api artifact` (shared with the Minecraft portal).
 - [ ] 2.2 `add-artifact-enrichment-hook`: `feat(search): let plugins enrich artifacts when they are indexed` (shared).
 - [ ] 2.3 `add-search-document-attributes`: `feat(search): store plugin attributes with indexed artifacts` (shared).
-- [ ] 2.4 `expose-plugin-access-checks`: `feat(maven): expose viewer aware access checks to plugins`.
+- [x] 2.4 `expose-plugin-access-checks`: `feat(maven): expose viewer aware access checks to plugins`.
 - [ ] 2.5 `add-plugin-reader-pages`: `feat(frontend): let plugins contribute pages for readers`.
 - [ ] 2.6 `add-plugin-ui-browse-blocks`: `feat(frontend): add list, code and filter blocks to plugin pages`.
 - [ ] 2.7 `extend-plugin-abi-gate`: `ci(plugin): cover the ingot plugin api packages in the abi gate` (shared).
@@ -33,7 +33,7 @@ follow F.I.R.S.T.: no sleeps, injected `Clock`, a temporary directory per test, 
 
 ## 4. Pull requests
 
-- [ ] 4.1 Open the proposal pull request under the title `docs(openspec): propose add-gradle-plugin-portal-plugin and
+- [x] 4.1 Open the proposal pull request under the title `docs(openspec): propose add-gradle-plugin-portal-plugin and
   add-minecraft-plugin-portal-plugin`, from a branch of the remote main branch, with only the two change directories.
 - [ ] 4.2 Open each core prerequisite pull request under the title given in group 2, from a branch of the remote main branch that
   contains the merged proposal, with no file under `openspec/`.

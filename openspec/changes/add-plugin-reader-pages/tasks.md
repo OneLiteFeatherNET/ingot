@@ -13,18 +13,18 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose add-plugin-reader-pages. Verify: `openspec validate add-plugin-reader-pages --strict --no-interactive`
+- [x] 1.1 `docs(openspec)`: propose add-plugin-reader-pages. Verify: `openspec validate add-plugin-reader-pages --strict --no-interactive`
   passes and the dash grep from the proposal prints nothing.
 
 ## 2. Code pull request 1: model and registration (`feat(frontend)`, `test(frontend)`, `docs(frontend)`)
 
-- [ ] 2.1 `test(frontend)`: `PluginUiReaderPageValidatorTest`, one test per refusal (form, action and status blocks, a source outside the
+- [x] 2.1 `test(frontend)`: `PluginUiReaderPageValidatorTest`, one test per refusal (form, action and status blocks, a source outside the
   prefix, 21 pages, 31 blocks, an id that does not match) and one for a valid page. Fails before 2.2.
-- [ ] 2.2 `feat(frontend)`: add `PluginUiReaderPage`, `PluginUiValidator.readerPageProblems`, `PluginUiRegistrar.registerReaderPage`
+- [x] 2.2 `feat(frontend)`: add `PluginUiReaderPage`, `PluginUiValidator.readerPageProblems`, `PluginUiRegistrar.registerReaderPage`
   and the per-plugin limits. Dropped pages log a warning that names the plugin and the problem.
-- [ ] 2.3 `test(frontend)` and `feat(frontend)`: the switch `INGOT_LOCAL_PLUGINREADERS` with the fallback `REPOSILITE_LOCAL_PLUGINREADERS`,
+- [x] 2.3 `test(frontend)` and `feat(frontend)`: the switch `INGOT_LOCAL_PLUGINREADERS` with the fallback `REPOSILITE_LOCAL_PLUGINREADERS`,
   default `true`, read through `LocalConfiguration` the way `pluginUi` is read. A unit test covers the default and the fallback.
-- [ ] 2.4 `docs(frontend)`: the switch in `docs/gitbook/references/configuration/configuration-and-startup.md` and the registration rules
+- [x] 2.4 `docs(frontend)`: the switch in `docs/gitbook/references/configuration/configuration-and-startup.md` and the registration rules
   in `docs/gitbook/references/plugins/plugin-api.md`.
 
 ## 3. Code pull request 2: serving readers (`feat(frontend)`, `test(frontend)`, `docs(frontend)`)
