@@ -25,10 +25,15 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Proxy
 import java.nio.file.Path
+import java.sql.Connection
+import java.sql.DriverManager
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.Executors
 
 internal class SearchSchemaTest {
 
@@ -93,6 +98,60 @@ internal class SearchSchemaTest {
         } finally {
             first.close()
             second.close()
+        }
+    }
+
+    @Test
+    fun `leaves the token index alone when a second start sees the tables while the first is still creating them`() {
+        val file = directory.resolve("interleaved.db")
+        SqliteFileDatabase(file).use { second ->
+            var secondStart: Result<SearchSchema.Outcome>? = null
+            val first = databaseObservingCommits(file) {
+                if (secondStart == null && markerCommitted(file)) {
+                    secondStart = onOtherThread { SearchSchema.ensure(second.database, clock) }
+                }
+            }
+
+            val firstStart = SearchSchema.ensure(first, clock)
+
+            assertThat(firstStart).`as`("first start").isEqualTo(SearchSchema.Outcome.CREATED)
+            assertThat(secondStart?.getOrThrow())
+                .`as`("second start, run right after the first start committed its marker")
+                .isEqualTo(SearchSchema.Outcome.ALREADY_CREATED)
+        }
+    }
+
+    /** A database on [file] that calls [afterCommit] each time one of its connections has committed. */
+    private fun databaseObservingCommits(file: Path, afterCommit: () -> Unit): Database =
+        Database.connect({
+            val connection = DriverManager.getConnection("jdbc:sqlite:${file.toAbsolutePath()}")
+            Proxy.newProxyInstance(Connection::class.java.classLoader, arrayOf(Connection::class.java)) { _, method, arguments ->
+                val result = try {
+                    method.invoke(connection, *(arguments ?: emptyArray()))
+                } catch (failure: InvocationTargetException) {
+                    throw failure.targetException
+                }
+                if (method.name == "commit") afterCommit()
+                result
+            } as Connection
+        })
+
+    /** Whether the marker of the first schema is visible to a connection of its own. */
+    private fun markerCommitted(file: Path): Boolean =
+        DriverManager.getConnection("jdbc:sqlite:${file.toAbsolutePath()}").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT count(*) FROM sqlite_master WHERE name = 'search_state'").use { it.next(); it.getInt(1) } == 1 &&
+                    statement.executeQuery("SELECT count(*) FROM search_state WHERE \"key\" = '${SearchSchema.MARKER_KEY}'").use { it.next(); it.getInt(1) } == 1
+            }
+        }
+
+    /** Runs [action] on a thread with no Exposed transaction of its own and waits for it. */
+    private fun <T> onOtherThread(action: () -> T): Result<T> {
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            return executor.submit<Result<T>> { runCatching(action) }.get()
+        } finally {
+            executor.shutdown()
         }
     }
 

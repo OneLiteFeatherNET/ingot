@@ -66,8 +66,10 @@ internal object SearchSchema {
                 return@transaction Outcome.ALREADY_CREATED
             }
 
-            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun, tables.token)
+            // SchemaUtils.create commits, so the token marker has to be written before it: another instance that sees
+            // the schema-1 marker must also see schema-2, or it would add the key column a second time.
             markTokenIndex(tables, clock)
+            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun, tables.token)
             Outcome.CREATED
         }
         if (outcome == Outcome.ALREADY_CREATED) upgradeToTokenIndex(database, tables, clock)
