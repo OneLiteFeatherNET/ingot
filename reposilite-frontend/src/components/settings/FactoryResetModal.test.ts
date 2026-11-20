@@ -21,19 +21,27 @@ import FactoryResetModal from './FactoryResetModal.vue'
 
 let wrapper: VueWrapper | undefined
 
-const openDialog = async () => {
+const openDialog = async (callback = vi.fn()) => {
   wrapper = mount(FactoryResetModal, {
-    props: { callback: vi.fn() },
+    props: { callback },
     slots: { button: () => h('button', { type: 'button' }, 'Reset') },
     attachTo: document.body
   })
-  await wrapper.find('button').trigger('click')
+  const opener = wrapper.find('button')
+  ;(opener.element as HTMLElement).focus()
+  await opener.trigger('click')
   await flushPromises()
+  return opener.element as HTMLElement
 }
+
+const modalRoot = () => document.querySelector('.vfm')
+const dialogButton = (label: string) =>
+  [...(modalRoot()?.querySelectorAll('button') ?? [])].find(button => button.textContent?.trim() === label)
 
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  document.querySelectorAll('.vfm').forEach(element => element.remove())
 })
 
 describe('FactoryResetModal', () => {
@@ -45,19 +53,65 @@ describe('FactoryResetModal', () => {
     expect((wrapper?.element as HTMLElement | undefined)?.contains(title), 'the dialog is teleported out of the page').toBe(false)
   })
 
-  it('announces the open dialog as an alert dialog', async () => {
+  it('announces the open dialog as an alert dialog named by its heading', async () => {
     await openDialog()
 
-    const alert = document.querySelector('[role="alertdialog"]')
-    expect(alert, 'an element with role alertdialog is in the document').not.toBeNull()
-    expect(alert?.contains(document.getElementById('factory-reset-title'))).toBe(true)
+    const root = modalRoot()
+    expect(root?.getAttribute('role'), 'the modal root carries the alertdialog role').toBe('alertdialog')
+    const name = document.getElementById(root?.getAttribute('aria-labelledby') ?? '')
+    expect(name?.textContent?.trim(), 'the accessible name is the heading').toBe('Reset all to defaults?')
   })
 
-  it('paints the scrim with the md3 scrim colour at 32% opacity', async () => {
+  it('opens in the shared dialog frame', async () => {
+    await openDialog()
+
+    const frame = document.querySelector('.vfm__content > div')
+    expect(frame?.contains(document.getElementById('factory-reset-title')), 'the heading is inside the frame').toBe(true)
+    expect(frame?.classList.contains('max-w-140'), 'the frame caps the width at the 560px of the shared frame').toBe(true)
+  })
+
+  it('draws the scrim through the dialog frame, not as an inline style', async () => {
     await openDialog()
 
     const overlay = document.querySelector('.vfm__overlay')
     expect(overlay, 'the modal overlay is in the document').not.toBeNull()
-    expect(overlay?.getAttribute('style')).toContain('color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)')
+    expect(overlay?.getAttribute('style') ?? '', 'the overlay has no inline colour').not.toContain('color-mix')
+  })
+
+  it('puts the focus on Cancel when it opens, so that Enter does not reset', async () => {
+    await openDialog()
+
+    expect(document.activeElement, 'Cancel has the focus').toBe(dialogButton('Cancel'))
+  })
+
+  it('closes on Escape and returns the focus to the button that opened it', async () => {
+    const opener = await openDialog()
+
+    modalRoot()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(document.getElementById('factory-reset-title'), 'Escape closes the dialog').toBeNull()
+    expect(document.activeElement, 'the focus is back on the opener').toBe(opener)
+  })
+
+  it('confirms with one filled error button and cancels with a text button', async () => {
+    await openDialog()
+
+    const buttons = [...(modalRoot()?.querySelectorAll('button[data-variant]') ?? [])]
+    const filled = buttons.filter(button => button.getAttribute('data-variant') === 'filled')
+    expect(filled.map(button => button.textContent?.trim()), 'one filled button, the reset').toEqual(['Reset all to defaults'])
+    expect(filled[0]?.className, 'the reset carries the error role').toContain('bg-error')
+    expect(dialogButton('Cancel')?.getAttribute('data-variant'), 'Cancel is a text button').toBe('text')
+  })
+
+  it('runs the reset and closes when the reset is confirmed', async () => {
+    const callback = vi.fn()
+    await openDialog(callback)
+
+    dialogButton('Reset all to defaults')?.click()
+    await flushPromises()
+
+    expect(callback, 'the reset runs once').toHaveBeenCalledTimes(1)
+    expect(document.getElementById('factory-reset-title'), 'the dialog closes').toBeNull()
   })
 })

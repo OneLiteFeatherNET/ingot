@@ -51,9 +51,15 @@ const submit = async () => {
   await flushPromises()
 }
 
+const extraElements: Element[] = []
+
+const modalRoot = () => document.querySelector('.vfm')
+
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  extraElements.splice(0).forEach(element => element.remove())
+  document.querySelectorAll('.vfm').forEach(element => element.remove())
 })
 
 describe('NewEntryDialog', () => {
@@ -129,5 +135,61 @@ describe('NewEntryDialog', () => {
 
     expect(idInput().value).toBe('')
     expect(errorText()).toBe('')
+  })
+
+  it('is announced as a dialog named by its heading', async () => {
+    await openDialog()
+
+    const root = modalRoot()
+    expect(root?.getAttribute('role'), 'the modal root carries the dialog role').toBe('dialog')
+    const name = document.getElementById(root?.getAttribute('aria-labelledby') ?? '')
+    expect(name?.textContent?.trim(), 'the accessible name is the heading').toBe('New repository')
+  })
+
+  it('opens in the shared dialog frame, without a field colour of its own', async () => {
+    await openDialog()
+
+    const frame = document.querySelector('.vfm__content > div')
+    expect(frame?.contains(form()), 'the form is inside the frame').toBe(true)
+    expect(frame?.classList.contains('max-w-140'), 'the frame caps the width at the 560px of the shared frame').toBe(true)
+    expect(form().className, 'the form sets no field container colour').not.toContain('--md-field-container')
+  })
+
+  it('draws the scrim through the dialog frame, not as an inline style', async () => {
+    await openDialog()
+
+    const overlay = document.querySelector('.vfm__overlay')
+    expect(overlay?.getAttribute('style') ?? '', 'the overlay has no inline colour').not.toContain('color-mix')
+  })
+
+  it('puts the focus on the id field when it opens', async () => {
+    await openDialog()
+
+    expect(document.activeElement, 'the id field has the focus').toBe(idInput())
+  })
+
+  it('closes on Escape and returns the focus to the control that opened it', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    extraElements.push(opener)
+    opener.focus()
+    await openDialog()
+
+    modalRoot()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+    expect(wrapper?.emitted('update:modelValue'), 'Escape asks to close').toEqual([[false]])
+    await wrapper?.setProps({ modelValue: false })
+    await flushPromises()
+
+    expect(document.activeElement, 'the focus is back on the opener').toBe(opener)
+  })
+
+  it('confirms with one filled button and cancels with a text button', async () => {
+    await openDialog()
+
+    const buttons = [...form().querySelectorAll('button[data-variant]')]
+    const filled = buttons.filter(button => button.getAttribute('data-variant') === 'filled')
+    expect(filled.map(button => button.textContent?.trim()), 'one filled button, Create').toEqual(['Create'])
+    expect(document.getElementById('new-entry-cancel')?.getAttribute('data-variant'), 'Cancel is a text button').toBe('text')
   })
 })
