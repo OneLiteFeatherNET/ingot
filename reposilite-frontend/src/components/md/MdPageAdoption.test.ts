@@ -49,3 +49,37 @@ describe('page containers render through MdPage', () => {
     expect(readSource(file), 'the gutter belongs to MdPage, not to the view').not.toMatch(/class="[^"]*(?<![-\w])container(?![-\w])/)
   })
 })
+
+/*
+ * The views below wrote `container mx-auto` themselves, so they kept the width steps of the
+ * container and drifted from the full width pages. They render MdPage now and take the full
+ * width after the side navigation, so their left edge matches the other pages.
+ */
+const fullWidthViews = [
+  '../util/NotFoundView.vue',
+  '../util/ViewLoadError.vue',
+  '../util/ViewLoading.vue',
+  '../footer/SiteFooter.vue',
+  '../browser/FileBrowserView.vue',
+  '../../pages/IndexPage.vue'
+]
+
+describe('full width views render through MdPage', () => {
+  it.each(fullWidthViews)('%s imports MdPage from the md components', (file) => {
+    expect(readSource(file), 'the view must import MdPage').toMatch(/import MdPage from '(?:\.\.\/)+(?:components\/)?md\/MdPage\.vue'/)
+  })
+
+  it.each(fullWidthViews)('%s renders MdPage without centring or a width of its own', (file) => {
+    const pages = [...readSource(file).matchAll(/<MdPage\b[^>]*>/g)].map(match => match[0])
+
+    expect(pages.length, 'the view must render an MdPage element').toBeGreaterThan(0)
+    for (const page of pages) {
+      expect(page, 'a full width page is not centred').not.toMatch(/\bcentred\b|\bmx-auto\b/)
+      expect(page, 'the page container takes no max-w-* class').not.toMatch(/\bmax-w-/)
+    }
+  })
+
+  it.each(fullWidthViews)('%s no longer writes the container class itself', (file) => {
+    expect(readSource(file), 'the gutter belongs to MdPage, not to the view').not.toMatch(/(?<![:\w-])class="[^"]*(?<![-\w])container(?![-\w])/)
+  })
+})

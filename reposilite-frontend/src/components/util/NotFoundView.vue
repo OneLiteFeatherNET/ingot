@@ -16,35 +16,38 @@
 
 <script setup lang="ts">
 import MdButton from '../md/MdButton.vue'
+import MdPage from '../md/MdPage.vue'
 </script>
 
 <template>
-  <section
-    class="container mx-auto flex flex-col items-start gap-4 py-12"
-    aria-labelledby="not-found-title"
-    data-ingot-component="not-found-view"
-  >
-    <h1
-      id="not-found-title"
-      class="md-headline-small text-on-surface"
+  <MdPage>
+    <section
+      class="flex flex-col items-start gap-4 py-12"
+      aria-labelledby="not-found-title"
+      data-ingot-component="not-found-view"
     >
-      Page not found
-    </h1>
-    <p class="md-body-large text-on-surface-variant">
-      Nothing lives at this address. It may have moved, or the link may be mistyped.
-    </p>
-    <router-link
-      v-slot="{ href, navigate }"
-      :to="{ name: 'overview' }"
-      custom
-    >
-      <MdButton
-        variant="tonal"
-        :href="href"
-        @click="navigate"
+      <h1
+        id="not-found-title"
+        class="md-headline-small text-on-surface"
       >
-        Back to overview
-      </MdButton>
-    </router-link>
-  </section>
+        Page not found
+      </h1>
+      <p class="md-body-large text-on-surface-variant">
+        Nothing lives at this address. It may have moved, or the link may be mistyped.
+      </p>
+      <router-link
+        v-slot="{ href, navigate }"
+        :to="{ name: 'overview' }"
+        custom
+      >
+        <MdButton
+          variant="tonal"
+          :href="href"
+          @click="navigate"
+        >
+          Back to overview
+        </MdButton>
+      </router-link>
+    </section>
+  </MdPage>
 </template>

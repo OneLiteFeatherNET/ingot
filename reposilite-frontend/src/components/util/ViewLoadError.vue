@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import MdButton from '../md/MdButton.vue'
+import MdPage from '../md/MdPage.vue'
 
 // A failed chunk stays failed for the life of the page, so the only way to retry it is to
 // load the page again.
@@ -23,20 +24,22 @@ const reload = () => window.location.reload()
 </script>
 
 <template>
-  <div
-    class="container mx-auto flex flex-col items-start gap-4 py-8"
-    role="alert"
-    data-ingot-component="view-load-error"
-    data-ingot-state="error"
-  >
-    <p class="md-body-large text-on-surface">
-      This view could not be loaded.
-    </p>
-    <MdButton
-      variant="tonal"
-      @click="reload()"
+  <MdPage>
+    <div
+      class="flex flex-col items-start gap-4 py-8"
+      role="alert"
+      data-ingot-component="view-load-error"
+      data-ingot-state="error"
     >
-      Reload
-    </MdButton>
-  </div>
+      <p class="md-body-large text-on-surface">
+        This view could not be loaded.
+      </p>
+      <MdButton
+        variant="tonal"
+        @click="reload()"
+      >
+        Reload
+      </MdButton>
+    </div>
+  </MdPage>
 </template>
