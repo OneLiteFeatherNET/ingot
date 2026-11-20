@@ -225,16 +225,6 @@
     "count": 1
   },
   {
-    "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
-    "match": "max-h-[90dvh]",
-    "count": 1
-  },
-  {
-    "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
-    "match": "w-[calc(100vw-2rem)]",
-    "count": 1
-  },
-  {
     "file": "src/components/maintenance/DryRunResult.vue",
     "match": "max-h-[60dvh]",
     "count": 1

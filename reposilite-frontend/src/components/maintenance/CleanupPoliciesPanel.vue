@@ -15,17 +15,18 @@
   -->
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
+import { ref, useId } from 'vue'
 import { useSession } from '../../store/session'
 import { errorMessage, createErrorToast } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import PencilIcon from '../icons/PencilIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
 import DeletePolicyDialog from './DeletePolicyDialog.vue'
 import DryRunResult from './DryRunResult.vue'
 import PolicyDialog from './PolicyDialog.vue'
@@ -91,6 +92,8 @@ const editor = ref<EditorState>({ open: false, policy: null })
 // The policy whose delete is being confirmed, or null.
 const deleting = ref<string | null>(null)
 const preview = ref<PreviewState>({ open: false, policyId: '', result: null, error: '' })
+// Each mounted panel names its preview dialog by a heading id of its own.
+const previewTitleId = `cleanup-preview-title-${useId()}`
 const runDialog = ref<RunDialogState>({ open: false, policyId: '', running: false, result: null, error: '' })
 
 async function loadRuns() {
@@ -370,20 +373,13 @@ load()
       @confirm="runNow"
     />
 
-    <VueFinalModal
+    <MdDialog
       v-model="preview.open"
-      teleport-to="body"
-      :overlay-style="SCRIM_STYLE"
-      class="flex min-h-full items-center justify-center p-4"
+      :labelledby="previewTitleId"
     >
-      <div
-        class="w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="preview-title"
-      >
+      <template #header>
         <h2
-          id="preview-title"
+          :id="previewTitleId"
           class="md-headline-small text-on-surface"
         >
           Preview {{ preview.policyId }}
@@ -391,27 +387,29 @@ load()
         <p class="mt-2 md-body-medium text-on-surface-variant">
           A preview deletes nothing. It lists what a run of this policy would delete now.
         </p>
-        <div class="mt-5">
-          <p
-            v-if="preview.error"
-            data-ingot-state="error"
-            class="md-body-medium text-error"
-            role="alert"
-          >
-            {{ preview.error }}
-          </p>
-          <p
-            v-else-if="!preview.result"
-            class="md-body-medium text-on-surface-variant"
-          >
-            Computing the preview…
-          </p>
-          <DryRunResult
-            v-else
-            :preview="preview.result"
-          />
-        </div>
-        <div class="mt-6 flex justify-end">
+      </template>
+      <!-- The 560px frame is narrower than the table, so the table scrolls sideways inside the dialog body. -->
+      <div class="mt-5">
+        <MdAlert
+          v-if="preview.error"
+          data-ingot-state="error"
+          tone="error"
+        >
+          {{ preview.error }}
+        </MdAlert>
+        <p
+          v-else-if="!preview.result"
+          class="md-body-medium text-on-surface-variant"
+        >
+          Computing the preview…
+        </p>
+        <DryRunResult
+          v-else
+          :preview="preview.result"
+        />
+      </div>
+      <template #actions>
+        <MdDialogActions class="mt-6">
           <MdButton
             variant="text"
             type="button"
@@ -419,8 +417,8 @@ load()
           >
             Close
           </MdButton>
-        </div>
-      </div>
-    </VueFinalModal>
+        </MdDialogActions>
+      </template>
+    </MdDialog>
   </section>
 </template>
