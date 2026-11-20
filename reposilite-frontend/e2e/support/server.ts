@@ -15,6 +15,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import type { AddressInfo } from 'node:net'
 import { openSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { basename } from 'node:path'
@@ -37,9 +38,9 @@ const READY_ATTEMPTS = 300
 const READY_INTERVAL_MS = 200
 const STOP_GRACE_MS = 15_000
 
-const pause = (ms) => new Promise(resolvePause => setTimeout(resolvePause, ms))
+const pause = (ms: number): Promise<void> => new Promise(resolvePause => setTimeout(resolvePause, ms))
 
-const resolveJar = () => {
+const resolveJar = (): string => {
   if (process.env.E2E_JAR) {
     return resolve(process.env.E2E_JAR)
   }
@@ -53,16 +54,16 @@ const resolveJar = () => {
   return candidates[0]
 }
 
-const freePort = () => new Promise((resolvePort, reject) => {
+const freePort = (): Promise<number> => new Promise((resolvePort, reject) => {
   const probe = createServer()
   probe.once('error', reject)
   probe.listen(0, '127.0.0.1', () => {
-    const { port } = probe.address()
+    const { port } = probe.address() as AddressInfo
     probe.close(() => resolvePort(port))
   })
 })
 
-const tailOf = (file, lines = 40) => {
+const tailOf = (file: string, lines = 40): string => {
   try {
     return readFileSync(file, 'utf8').split('\n').slice(-lines).join('\n')
   } catch {
@@ -74,7 +75,22 @@ const tailOf = (file, lines = 40) => {
  * Starts the server and waits until its readiness answer is UP. The returned stop() ends the process and removes
  * the data directory. `setupCodeFrom()` reads the one-time setup code the server writes to its log.
  */
-const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }) => {
+interface ServerOptions {
+  tokenName: string
+  tokenSecret: string
+  plugins?: string[]
+  env?: Record<string, string>
+}
+
+interface RunningServer {
+  baseUrl: string
+  port: number
+  dataDirectory: string
+  setupCodeFrom: () => Promise<string>
+  stop: () => Promise<void>
+}
+
+const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }: ServerOptions): Promise<RunningServer> => {
   const jar = resolveJar()
   const dataDirectory = await mkdtemp(join(tmpdir(), 'ingot-e2e-'))
   // Plugin jars are copied into the plugins directory of the data directory, where the server looks for them.
@@ -96,9 +112,9 @@ const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }) =
     '--token', `${tokenName}:${tokenSecret}`,
   ], { stdio: ['ignore', log, log], env: { ...process.env, ...env } })
 
-  const stop = async () => {
+  const stop = async (): Promise<void> => {
     if (child.exitCode === null && child.signalCode === null) {
-      await new Promise((resolveExit) => {
+      await new Promise<void>((resolveExit) => {
         const kill = setTimeout(() => child.kill('SIGKILL'), STOP_GRACE_MS)
         child.once('exit', () => {
           clearTimeout(kill)
@@ -110,7 +126,7 @@ const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }) =
     await rm(dataDirectory, { recursive: true, force: true })
   }
 
-  const failStart = async (reason) => {
+  const failStart = async (reason: string): Promise<never> => {
     await stop()
     throw new Error(`${reason}\n--- server log tail ---\n${tailOf(logPath)}`)
   }
@@ -122,7 +138,7 @@ const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }) =
     try {
       const ready = await fetch(`${baseUrl}/api/status/ready`)
       if (ready.ok) {
-        const setupCodeFrom = async () => {
+        const setupCodeFrom = async (): Promise<string> => {
           for (let search = 0; search < READY_ATTEMPTS; search++) {
             const match = /setup code: (\S+)/.exec(readFileSync(logPath, 'utf8'))
             if (match) {

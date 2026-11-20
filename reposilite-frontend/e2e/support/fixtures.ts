@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test as base, expect } from '@playwright/test'
-import { createRepository, deleteRepository, uploadFile } from './api'
+import { test as base, expect, type Page } from '@playwright/test'
+import { createRepository, deleteRepository, uploadFile, type RepositoryOptions } from './api'
 import { scopedName } from './names'
 import { signInAsAdmin } from './session'
 
@@ -28,10 +28,25 @@ import { signInAsAdmin } from './session'
  * - `adminPage`: a page signed in as the instance admin of this run, with the password account of
  *   the setup (see session.js).
  */
-const test = base.extend({
+interface Seed {
+  name: (label: string) => string
+  create: (id: string, options?: RepositoryOptions) => Promise<string>
+  repository: (label: string, options?: RepositoryOptions) => Promise<string>
+  track: (id: string) => void
+  upload: (id: string, path: string, body: string) => Promise<void>
+}
+
+interface SuiteFixtures {
+  seed: Seed
+  adminPage: Page
+}
+
+const test = base.extend<SuiteFixtures>({
+  // Playwright reads the fixtures a function uses from its first parameter, so it has to be a destructuring pattern.
+  // eslint-disable-next-line no-empty-pattern
   seed: async ({}, use, testInfo) => {
-    const created = new Set()
-    const create = async (id, options) => {
+    const created = new Set<string>()
+    const create = async (id: string, options?: RepositoryOptions): Promise<string> => {
       created.add(id)
       await createRepository(id, options)
       return id
@@ -40,7 +55,9 @@ const test = base.extend({
       name: (label) => scopedName(testInfo, label),
       create,
       repository: (label, options) => create(scopedName(testInfo, label), options),
-      track: (id) => created.add(id),
+      track: (id) => {
+        created.add(id)
+      },
       upload: (id, path, body) => uploadFile(id, path, body),
     })
     for (const id of created) {
