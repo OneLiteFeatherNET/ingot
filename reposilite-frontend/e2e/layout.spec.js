@@ -495,4 +495,30 @@ test.describe('the administration header beside the side navigation', () => {
     const animation = await content.evaluate(element => getComputedStyle(element).animationName)
     expect(animation, 'the page column has no animation under reduced motion').toBe('none')
   })
+
+  test('swaps the sibling page under reduced motion with no transform, and keeps the side navigation still', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(siteUrl('/access/users'))
+    const tree = page.locator('[data-ingot-component="side-nav-tree"]')
+    const content = page.locator('[data-ingot-part="page"]')
+    await expect(content).toBeVisible()
+    const navigationBefore = await boxOf(tree)
+
+    await tree.getByRole('link', { name: 'Machine accounts', exact: true }).click()
+    await expect(page, 'the sibling page is open').toHaveURL(/\/access\/machines$/)
+    await expect(content, 'the old page column has left, so one is drawn').toHaveCount(1)
+    await expect(content, 'the page column is drawn for the new entry').toBeVisible()
+
+    // Reduced motion shortens the transition to 0.01ms rather than dropping it, so the enter classes still hold their
+    // start transform for one frame. The column has to come to rest without it, so the check waits for that frame.
+    // A computed transform is 'none' or an identity matrix at rest, so the translation is what is compared.
+    await expect.poll(() => content.evaluate(element => {
+      const { transform } = getComputedStyle(element)
+      return transform === 'none' ? { x: 0, y: 0 } : { x: new DOMMatrix(transform).e, y: new DOMMatrix(transform).f }
+    }), { message: 'the page column has no translation under reduced motion', timeout: 1000 }).toEqual({ x: 0, y: 0 })
+    const navigationAfter = await boxOf(tree)
+    expect(Math.abs(navigationAfter.top - navigationBefore.top), 'the side navigation keeps its top edge, in px').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(navigationAfter.left - navigationBefore.left), 'the side navigation keeps its left edge, in px').toBeLessThanOrEqual(0.5)
+  })
 })

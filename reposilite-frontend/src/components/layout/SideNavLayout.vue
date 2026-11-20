@@ -19,6 +19,8 @@ import { computed, nextTick, ref, watch, type PropType } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import SideNavTree from './SideNavTree.vue'
 import { useTreeFits } from '../../helpers/useTreeFits'
+import { entryDirection, type MotionDirection } from '../../helpers/motionDirection'
+import MdTransition from '../md/MdTransition.vue'
 
 interface NavLink {
   key: string | undefined
@@ -79,10 +81,16 @@ const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow ||
 // The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
 const leadAbove = computed(() => props.narrow && props.overview)
 
-// The page column is keyed by the route name and the open entry: an entry change draws it again, so it plays its enter
-// animation. A query change (the tab of a repository, for one) keeps it, so a typed value keeps its focus.
+// The page column is keyed by the route name and the open entry: an entry change draws it again, so the transition plays.
+// A query change (the tab of a repository, for one) keeps it, so a typed value keeps its focus.
 const route = useRoute()
 const pageKey = computed(() => `${String(route.name)}:${props.current ?? ''}`)
+// A change between two entries of the tree moves the page forward or backward by their order (shared axis X). The
+// direction is taken again only when the open entry changes, so a query change passes none.
+const pageDirection = ref<MotionDirection>(0)
+watch(() => props.current, (next, previous) => {
+  pageDirection.value = entryDirection(props.groups, previous, next)
+})
 
 const navTree = ref<InstanceType<typeof SideNavTree> | null>(null)
 const { fits, measure } = useTreeFits(() => navTree.value?.$el)
@@ -119,22 +127,27 @@ const navClasses = computed(() => (props.narrow
       :described="narrow"
     />
 
-    <div
+    <MdTransition
       v-if="showsPage"
-      :key="pageKey"
-      data-ingot-part="page"
-      data-test="page-column"
-      class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2 animate-md-page-enter motion-reduce:animate-none"
-      :class="reading ? 'large:max-w-md-reading-page' : ''"
+      pattern="shared-x"
+      :direction="pageDirection"
     >
       <div
-        v-if="!leadAbove && $slots.lead"
-        data-ingot-part="lead"
-        class="flex min-w-0 flex-col gap-4"
+        :key="pageKey"
+        data-ingot-part="page"
+        data-test="page-column"
+        class="flex min-w-0 flex-1 flex-col gap-4 large:col-start-2 large:row-start-2"
+        :class="reading ? 'large:max-w-md-reading-page' : ''"
       >
-        <slot name="lead" />
+        <div
+          v-if="!leadAbove && $slots.lead"
+          data-ingot-part="lead"
+          class="flex min-w-0 flex-col gap-4"
+        >
+          <slot name="lead" />
+        </div>
+        <slot />
       </div>
-      <slot />
-    </div>
+    </MdTransition>
   </div>
 </template>

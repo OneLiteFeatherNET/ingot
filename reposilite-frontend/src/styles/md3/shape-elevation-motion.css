@@ -153,7 +153,6 @@
   --animate-md-snackbar-leave: md-snackbar-leave var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard) both;
   /* A node that was just added or found again: its row flashes once. Reduced motion turns it off in the view. */
   --animate-md-node-highlight: md-node-highlight var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) both;
-  --animate-md-page-enter: md-page-enter var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) both;
   --animate-skeleton-fade-in: skeleton-fade-in var(--md-sys-motion-duration-extra-long2) ease-out var(--md-sys-motion-duration-short4) both;
 }
 
@@ -194,18 +193,6 @@
   to {
     opacity: 0;
     transform: translateY(8px);
-  }
-}
-
-@keyframes md-page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
