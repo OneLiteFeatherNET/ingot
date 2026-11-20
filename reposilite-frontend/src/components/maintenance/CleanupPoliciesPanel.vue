@@ -24,6 +24,7 @@ import MdCard from '../md/MdCard.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdSection from '../md/MdSection.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import PencilIcon from '../icons/PencilIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
@@ -217,25 +218,21 @@ load()
       variant="filled"
       class="flex flex-col gap-4"
     >
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="flex min-w-0 flex-col gap-1">
-          <h3
-            id="cleanup-policies-title"
-            class="md-title-large text-on-surface"
+      <MdSection
+        :level="3"
+        title="Cleanup policies"
+        description="A policy deletes artifacts only when it runs, by hand or on its schedule."
+        heading-id="cleanup-policies-title"
+      >
+        <template #actions>
+          <MdButton
+            variant="filled"
+            @click="openEditor(null)"
           >
-            Cleanup policies
-          </h3>
-          <p class="md-body-medium text-on-surface-variant">
-            A policy deletes artifacts only when it runs, by hand or on its schedule.
-          </p>
-        </div>
-        <MdButton
-          variant="filled"
-          @click="openEditor(null)"
-        >
-          New policy
-        </MdButton>
-      </div>
+            New policy
+          </MdButton>
+        </template>
+      </MdSection>
 
       <p
         v-if="loadError"
@@ -262,11 +259,14 @@ load()
         class="flex flex-col gap-3"
         aria-label="Cleanup policies"
       >
-        <li
+        <MdCard
           v-for="policy in policies"
           :key="policy.id"
+          as="li"
+          variant="low"
+          tone="container"
           :data-policy="policy.id"
-          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
+          class="flex flex-col gap-3"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex min-w-0 flex-col gap-1">
@@ -334,7 +334,7 @@ load()
               <TrashIcon />
             </MdIconButton>
           </div>
-        </li>
+        </MdCard>
       </ul>
     </MdCard>
 
