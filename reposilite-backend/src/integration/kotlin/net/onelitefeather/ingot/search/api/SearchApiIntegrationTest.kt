@@ -137,6 +137,16 @@ internal class SearchApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `shows an empty enrichers block when no enricher is registered`() {
+        val response = get(index()).basicAuth(manager.first, manager.second).asJacksonObject(JsonNode::class)
+
+        assertThat(response.status).isEqualTo(200)
+        val enrichers = response.body.get("enrichers")
+        assertThat(enrichers).`as`("enrichers block of the index status").isNotNull
+        assertThat(enrichers.isObject && enrichers.isEmpty).`as`("enrichers block without a registered enricher").isTrue
+    }
+
+    @Test
     fun `refuses the index status to a token without manager rights`() {
         assertManagerOnlyGetEndpoint("/api/maven/search/index")
     }
