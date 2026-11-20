@@ -3,12 +3,15 @@
 # Every push to main lets Release Please open or update the release pull request.
 # Merging that pull request tags the release, which in the same run publishes the
 # Maven artifacts and the container image. Pushes that change something the image
-# contains refresh the rolling nightly container image instead.
+# contains refresh the rolling nightly container image instead. A daily schedule
+# only runs the end-of-life job; every release job is gated on a push.
 name: "Release Please"
 
 on:
   push:
     branches: [ "main" ]
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
     inputs:
       container_version:
@@ -1172,3 +1175,76 @@ jobs:
           gh pr create --base main --head "$work" \
             --title "docs(support): list the ${NEW_LINE} line in the support tables" \
             --body "The ${NEW_LINE} line shipped on ${RELEASED}. This lists it as the latest line in \`support-lines.json\`, opens the 90 day security window of the line before it and renders the tables of \`SUPPORT.md\` and \`.github/SECURITY.md\`."
+
+  # The window of a previous line ends on its end_of_life date in support-lines.json. Each
+  # day this job asks .github/scripts/support_window.py, with the date passed in, which lines
+  # are due. For each it removes the backport label from open pull requests and opens the
+  # pull request that archives the line, so main only changes through review. Once that pull
+  # request is merged, the next run renames `release/<line>.x` to `archive/<line>.x`: the
+  # commits and tags stay, and the release workflow stops matching the branch. Before an end
+  # of life date the job changes nothing.
+  end-of-life:
+    name: "End the window of a release line"
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Create release bot token"
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: "Rename the branches of archived lines"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          for line in $(python3 .github/scripts/support_window.py archived --file support-lines.json); do
+            if git ls-remote --exit-code --heads origin "refs/heads/release/${line}.x" > /dev/null; then
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/branches/release%2F${line}.x/rename" \
+                -f new_name="archive/${line}.x" > /dev/null
+              echo "Renamed release/${line}.x to archive/${line}.x."
+            fi
+          done
+
+      - name: "Open the archiving pull requests"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          today="$(date -u +%F)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for line in $(python3 .github/scripts/support_window.py due --today "$today" --file support-lines.json); do
+            label="backport:${line}"
+            for pr in $(gh pr list --repo "$GITHUB_REPOSITORY" --state open --label "$label" --json number --jq '.[].number'); do
+              gh pr edit "$pr" --repo "$GITHUB_REPOSITORY" --remove-label "$label"
+              gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" \
+                --body "The security window of the ${line} line has ended, so \`${label}\` was removed."
+            done
+
+            work="end-of-life/${line}"
+            if git ls-remote --exit-code --heads origin "refs/heads/${work}" > /dev/null; then
+              echo "${work} already exists, nothing to do."
+              continue
+            fi
+            git switch --quiet -c "$work" origin/main
+            python3 .github/scripts/support_window.py archive "$line" --file support-lines.json
+            python3 .github/scripts/render_support_tables.py --mode write
+            git commit --quiet -s -am "docs(support): archive the ${line} line"
+            git push origin "$work"
+            gh pr create --base main --head "$work" \
+              --title "docs(support): archive the ${line} line" \
+              --body "The security window of the ${line} line ended on its end of life date. This sets the line to \`archived\` in \`support-lines.json\` and renders the tables of \`SUPPORT.md\` and \`.github/SECURITY.md\`. Once merged, the next daily run renames \`release/${line}.x\` to \`archive/${line}.x\`."
+            git switch --quiet --detach origin/main
+          done
