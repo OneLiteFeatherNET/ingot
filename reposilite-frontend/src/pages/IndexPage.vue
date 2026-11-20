@@ -566,50 +566,54 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
       :class="hasNavigation ? 'max-medium:pt-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom))] medium:hidden' : ''"
     />
     <template v-if="hasNavigation">
-      <div
-        v-if="moreOpen"
-        class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 shadow-elevation-2 medium:hidden"
-        @keydown.esc="moreOpen = false"
-      >
-        <nav aria-label="More sections">
-          <div
-            v-for="group in moreGroups"
-            :key="group.heading"
-            role="group"
-            :aria-label="group.heading"
-          >
-            <p
-              class="md-label-medium px-4 py-2 text-on-surface-variant"
-              aria-hidden="true"
+      <!-- The More panel rises 8 pixels into place and fades, through the menu pattern (src/styles/md3/motion-rise.css). -->
+      <MdTransition pattern="menu">
+        <div
+          v-if="moreOpen"
+          class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 shadow-elevation-2 medium:hidden"
+          data-md-menu-rise
+          @keydown.esc="moreOpen = false"
+        >
+          <nav aria-label="More sections">
+            <div
+              v-for="group in moreGroups"
+              :key="group.heading"
+              role="group"
+              :aria-label="group.heading"
             >
-              {{ group.heading }}
-            </p>
-            <ul
-              role="list"
-              class="flex list-none flex-col gap-1"
-            >
-              <li
-                v-for="item in group.items"
-                :key="item.key"
+              <p
+                class="md-label-medium px-4 py-2 text-on-surface-variant"
+                aria-hidden="true"
               >
-                <a
-                  :href="item.href"
-                  :aria-current="section === item.key ? 'page' : undefined"
-                  class="md-state-layer md-focus-ring flex items-center gap-3 rounded-corner-medium px-4 py-3 no-underline"
-                  :class="section === item.key ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
-                  @click="openOverflowItem($event, item.key)"
+                {{ group.heading }}
+              </p>
+              <ul
+                role="list"
+                class="flex list-none flex-col gap-1"
+              >
+                <li
+                  v-for="item in group.items"
+                  :key="item.key"
                 >
-                  <component
-                    :is="SECTION_ICONS[item.key]"
-                    :filled="section === item.key"
-                  />
-                  <span class="md-label-large">{{ item.label }}</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </nav>
-      </div>
+                  <a
+                    :href="item.href"
+                    :aria-current="section === item.key ? 'page' : undefined"
+                    class="md-state-layer md-focus-ring flex items-center gap-3 rounded-corner-medium px-4 py-3 no-underline"
+                    :class="section === item.key ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+                    @click="openOverflowItem($event, item.key)"
+                  >
+                    <component
+                      :is="SECTION_ICONS[item.key]"
+                      :filled="section === item.key"
+                    />
+                    <span class="md-label-large">{{ item.label }}</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </MdTransition>
       <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden">
         <MdNavigationBar
           :items="barItems"
