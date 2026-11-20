@@ -28,7 +28,11 @@ import {
   setContributions,
   setSupportBundleOffered,
   shortcutsOf,
-  indexRebuildLinkOf
+  indexRebuildLinkOf,
+  setReaderPages,
+  readerPages,
+  readerPageByRoute,
+  unlistedRoutes
 } from './registry'
 import { ROUTES } from '../router/routes'
 import { ACCESS_NODES, ADMIN_NODES, canUse } from '../store/nodeAccess'
@@ -398,5 +402,40 @@ describe('the Jobs page entry', () => {
 
     expect(route?.path).toBe('/settings/jobs/:id')
     expect(route?.meta?.anyNode).toEqual(['ingot.admin.maintenance', 'ingot.admin.*'])
+  })
+})
+
+describe('reader pages', () => {
+  const readerManifest = {
+    version: 1,
+    pages: [
+      { plugin: 'docs', id: 'guides', title: 'Guides', blocks: [] },
+      { plugin: 'alpha', id: 'notes', title: 'Notes', description: 'Release notes', blocks: [] },
+    ],
+  }
+
+  // Every test starts without reader pages, so the order of the tests does not change the result.
+  beforeEach(() => setReaderPages(null))
+
+  it('lists the reader pages in the order of the manifest', () => {
+    setReaderPages(readerManifest)
+
+    expect(readerPages().map(page => `${page.plugin}/${page.id}`), 'the manifest order, not sorted by plugin')
+      .toEqual(['docs/guides', 'alpha/notes'])
+  })
+
+  it('lists no reader page without a manifest', () => {
+    expect(readerPages(), 'no manifest means no reader page').toEqual([])
+  })
+
+  it('finds a reader page by its plugin and id', () => {
+    setReaderPages(readerManifest)
+
+    expect(readerPageByRoute('alpha', 'notes')?.title, 'the page the route names').toBe('Notes')
+    expect(readerPageByRoute('alpha', 'guides'), 'a page id of another plugin').toBeUndefined()
+  })
+
+  it('accepts the plugin-reader route as one that has no entry of its own', () => {
+    expect(unlistedRoutes(['plugin-reader']), 'the reader route is exempt like settings-plugin').toEqual([])
   })
 })

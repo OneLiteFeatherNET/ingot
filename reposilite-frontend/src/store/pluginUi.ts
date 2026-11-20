@@ -17,12 +17,15 @@
 /*
  * Loads the manifest of the plugin pages once a visitor is signed in. An anonymous visitor gets no
  * manifest: the pages are for signed in callers, and the server answers 401 to anyone else.
+ *
+ * The reader pages come from a manifest of their own, which the server answers for every visitor. It carries no
+ * stylesheet and no list of enabled plugins.
  */
 
 import axios, { type AxiosRequestConfig, type AxiosRequestHeaders } from 'axios'
 import { ref } from 'vue'
 import { createURL, handleRequest } from './client'
-import { setContributions } from '../navigation/registry'
+import { setContributions, setReaderPages } from '../navigation/registry'
 import { applyPluginStyles } from './pluginStyles'
 import type { components } from '../types/api'
 
@@ -43,10 +46,25 @@ const loadPluginUi = async (credentials: Pick<AxiosRequestConfig, 'headers'> = {
   }
 }
 
+// False until the reader manifest is known, so a reader page that is waiting for it is not judged.
+const readerPagesReady = ref(false)
+
+const loadReaderPages = async () => {
+  readerPagesReady.value = false
+  try {
+    const { data } = await axios.get<components['schemas']['PluginUiReaderManifest']>(createURL('/api/frontend/plugin-ui/readers'))
+    setReaderPages(data)
+  } catch {
+    setReaderPages(null)
+  } finally {
+    readerPagesReady.value = true
+  }
+}
+
 const clearPluginUi = () => {
   setContributions(null)
   applyPluginStyles([])
   pluginUiReady.value = true
 }
 
-export { pluginUiReady, loadPluginUi, clearPluginUi }
+export { pluginUiReady, loadPluginUi, clearPluginUi, readerPagesReady, loadReaderPages }

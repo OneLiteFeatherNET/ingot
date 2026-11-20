@@ -64,6 +64,8 @@
  *                               their group headings as [{ area, heading, pages }]
  * - pageByKey(key), pageLabel(key)
  * - routeMeta(key, childKey?)    the `meta` of a route: section, manager, node or anyNode, signedIn
+ * - readerPages()               the plugin pages for readers, in manifest order (see setReaderPages)
+ * - readerPageByRoute(plugin, id) the reader page a /plugins/<plugin>/<page> address names, or undefined
  * - unlistedRoutes(names)        the route names that no entry, child, detail or exempt name covers;
  *                                a route added to the route table without one of these fails the suite
  *
@@ -217,6 +219,21 @@ interface Contributions {
 
 export type ContributedPage = PluginPage & { key: string; heading: string }
 
+// A page a server plugin contributes for every visitor, as GET /api/frontend/plugin-ui/readers names it. It has no
+// area: anyone who may open the dashboard may open it, and the plugin's source filters its rows by the viewer.
+export interface ReaderPage {
+  plugin: string
+  id: string
+  title: string
+  description?: string | null
+  blocks?: unknown[]
+}
+
+export interface ReaderManifest {
+  version?: number
+  pages?: ReaderPage[]
+}
+
 const MORE_KEY = 'more'
 
 // The server plugin whose enabled state shows the nexus import wizard. The name is the plugin's id.
@@ -249,6 +266,21 @@ const setContributions = (manifest: PluginManifest | null | undefined) => {
     ? { pages: manifest.pages ?? [], sections: manifest.sections ?? [], enabledPlugins: manifest.enabledPlugins ?? [] }
     : NO_CONTRIBUTIONS
 }
+
+/*
+ * The reader pages, from GET /api/frontend/plugin-ui/readers. The manifest is read for every visitor, signed in or
+ * not (src/store/pluginUi.ts), and replaces the previous one. It is separate from the signed-in contributions.
+ */
+const readers = shallowRef<ReaderPage[]>([])
+
+const setReaderPages = (manifest: ReaderManifest | null | undefined) => {
+  readers.value = manifest?.pages ?? []
+}
+
+const readerPages = (): ReaderPage[] => readers.value
+
+const readerPageByRoute = (plugin: string, id: string): ReaderPage | undefined =>
+  readers.value.find(page => page.plugin === plugin && page.id === id)
 
 // The permission node that opens a contributed page: the node of its admin area, or the instance admin node for `*`.
 const pageNodeOf = (area: string) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.${area}`)
@@ -446,9 +478,10 @@ const PAGES: Page[] = [
 
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
-// the not found page, and the old support address, which redirects to the system information page. The detail routes
+// the not found page, the reader pages of plugins (open to everyone, listed from the reader manifest), and the old
+// support address, which redirects to the system information page. The detail routes
 // of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'support', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-statistics', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
+const EXEMPT_ROUTES: readonly string[] = ['browse', 'dashboard', 'support', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-statistics', 'settings-entry', 'settings-plugin', 'plugin-reader', 'settings-maven-repositories', 'not-found']
 
 const pageByKey = (key: string): Page | undefined => PAGES.find(page => page.key === key)
 
@@ -676,6 +709,9 @@ export {
   ADMIN_TREE,
   MORE_KEY,
   setContributions,
+  setReaderPages,
+  readerPages,
+  readerPageByRoute,
   contributedPages,
   contributedPageByRoute,
   contributedPageNode,
