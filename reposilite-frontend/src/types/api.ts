@@ -4257,7 +4257,7 @@ export interface paths {
         };
         /**
          * Get the state of the search index
-         * @description The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Requires the maintenance area.
+         * @description The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs, the last verify report and the counters of the registered artifact enrichers. Requires the maintenance area.
          */
         get: {
             parameters: {
@@ -5989,6 +5989,21 @@ export interface components {
             name: string;
             type: components["schemas"]["FileType"];
         };
+        EnricherStatusResponse: {
+            /** Format: int64 */
+            busy: number;
+            /** Format: int64 */
+            calls: number;
+            /** Format: int64 */
+            completed: number;
+            /** Format: int64 */
+            failed: number;
+            failures: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            skipped: number;
+        };
         ErrorProblem: {
             message: string;
             node: string;
@@ -6561,6 +6576,9 @@ export interface components {
             activeRun?: components["schemas"]["SearchRunResponse"] | null;
             backend: components["schemas"]["SearchBackendResponse"];
             engine: string;
+            enrichers: {
+                [key: string]: components["schemas"]["EnricherStatusResponse"];
+            };
             /** Format: int64 */
             lagSeconds: number;
             /** Format: date-time */
