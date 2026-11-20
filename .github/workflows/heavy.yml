@@ -29,11 +29,16 @@ permissions:
   contents: read
 
 # A label that does not start with "ci:" gets a group of its own, so adding "bug" cancels no heavy run in progress.
-# Adding or removing a "ci:" label lands in the shared group, cancels the running one and starts a fresh decision.
+# Adding or removing a "ci:" label lands in the shared group and queues a fresh decision behind the running one.
+# Only a new commit (synchronize) cancels the running run: that run tested a commit that is no longer the head, so its
+# cancelled checks land on the old commit. A run cancelled on the head commit would leave a red "Heavy tests" and
+# cancelled required checks beside the green ones of the run that replaced it. Opening a pull request with a label
+# fires opened and labeled at the same moment, and cancelling one of the two did exactly that. A queued run that is
+# replaced before it starts has no jobs and leaves no check behind, so a burst of label changes still runs once more.
 # A merge group falls back to its ref, which is unique per queue entry, and is never cancelled.
 concurrency:
   group: "heavy-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && (github.event.action == 'labeled' || github.event.action == 'unlabeled') && !startsWith(github.event.label.name, 'ci:')) && github.run_id || 'run' }}"
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 jobs:
   gate:
