@@ -22,12 +22,12 @@ import { stripHtmlComments } from './vite.config'
 
 const indexHtml = readFileSync(fileURLToPath(new URL('./index.html', import.meta.url)), 'utf8')
 
-const transform = (html) => stripHtmlComments().transformIndexHtml.handler(html)
+const transform = (html: string): string => stripHtmlComments().transformIndexHtml.handler(html)
 
-const withoutComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '')
-const normalizeWhitespace = (html) => html.replace(/\s+/g, ' ').trim()
-const placeholdersOf = (html) => html.match(/\{\{REPOSILITE\.[A-Z_.]+\}\}/g) ?? []
-const tagsOf = (html) => html.match(/<[^>]+>/g) ?? []
+const withoutComments = (html: string): string => html.replace(/<!--[\s\S]*?-->/g, '')
+const normalizeWhitespace = (html: string): string => html.replace(/\s+/g, ' ').trim()
+const placeholdersOf = (html: string): string[] => html.match(/\{\{REPOSILITE\.[A-Z_.]+\}\}/g) ?? []
+const tagsOf = (html: string): string[] => html.match(/<[^>]+>/g) ?? []
 
 describe('served index.html', () => {
   it('does not carry the license comment of the source file', () => {

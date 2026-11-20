@@ -24,7 +24,7 @@ import { createVitest } from 'vitest/node'
 // is read from the repository's own sources, and each test gets a tree of its own.
 const CONFIG = join(process.cwd(), 'vitest.config.ts')
 
-let root
+let root: string
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'vitest-include-'))
@@ -34,7 +34,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
-const collected = async (files) => {
+const collected = async (files: string[]): Promise<string[]> => {
   for (const file of files) {
     mkdirSync(join(root, file, '..'), { recursive: true })
     writeFileSync(join(root, file), "import { it } from 'vitest'\nit('runs', () => {})\n")
