@@ -16,7 +16,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
-import { loadPluginUi } from './pluginUi'
+import { loadPluginUi, loadReaderPages, readerPagesReady } from './pluginUi'
+import { readerPages, setReaderPages } from '../navigation/registry'
 
 // The manifest request is checked at the call it makes; axios itself is never reached.
 vi.mock('axios', () => ({
@@ -39,5 +40,34 @@ describe('plugin manifest request', () => {
 
     const [, config] = vi.mocked(axios).get.mock.calls[0] as [string, { headers: Record<string, string> }]
     expect(config.headers.Authorization, 'the Authorization header of the manifest request').toBe(TOKEN_AUTHORIZATION)
+  })
+})
+
+describe('reader manifest request', () => {
+  beforeEach(() => {
+    vi.mocked(axios).get.mockReset()
+    setReaderPages(null)
+  })
+
+  it('loads the reader pages for an anonymous visitor', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { version: 1, pages: [{ plugin: 'docs', id: 'guides', title: 'Guides', blocks: [] }] } })
+
+    await loadReaderPages()
+
+    const [url, config] = vi.mocked(axios).get.mock.calls[0] as [string, { headers?: Record<string, string> }]
+    expect(url, 'the reader manifest address').toMatch(/\/api\/frontend\/plugin-ui\/readers$/)
+    expect(config?.headers?.Authorization, 'no credentials are needed for the reader manifest').toBeUndefined()
+    expect(readerPages().map(page => page.id), 'the pages of the reader manifest').toEqual(['guides'])
+    expect(readerPagesReady.value, 'the reader manifest is known').toBe(true)
+  })
+
+  it('shows no reader page when the reader manifest cannot be read', async () => {
+    setReaderPages({ pages: [{ plugin: 'docs', id: 'old', title: 'Old', blocks: [] }] })
+    vi.mocked(axios).get.mockRejectedValue(new Error('offline'))
+
+    await loadReaderPages()
+
+    expect(readerPages(), 'a failed request leaves no stale page').toEqual([])
+    expect(readerPagesReady.value, 'a page waiting for the manifest is judged after a failure too').toBe(true)
   })
 })
