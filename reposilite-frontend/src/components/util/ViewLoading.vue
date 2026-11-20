@@ -16,17 +16,20 @@
 
 <script setup lang="ts">
 import MdLinearProgress from '../md/MdLinearProgress.vue'
+import MdPage from '../md/MdPage.vue'
 </script>
 
 <template>
-  <div
-    class="container mx-auto py-8"
-    data-ingot-component="view-loading"
-    data-ingot-state="loading"
-  >
-    <MdLinearProgress
-      indeterminate
-      label="Loading view"
-    />
-  </div>
+  <MdPage>
+    <div
+      class="py-8"
+      data-ingot-component="view-loading"
+      data-ingot-state="loading"
+    >
+      <MdLinearProgress
+        indeterminate
+        label="Loading view"
+      />
+    </div>
+  </MdPage>
 </template>

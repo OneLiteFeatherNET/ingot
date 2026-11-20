@@ -30,6 +30,7 @@ import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import { typeBadgeOf } from '../../store/maven/repositoryTypes'
 import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdPage from '../md/MdPage.vue'
 import { errorMessage } from '../../helpers/toast'
 import { classifyListingError } from './listingError'
 import type { BrowserFile, BrowserQualifier, Listing } from './listing'
@@ -202,81 +203,83 @@ const toggleCompactMode = () => {
 
 <template>
   <!--
-    The same container as the header and the start page, so all share one content width. Below lg the details
+    The page container is MdPage, as for the header and the start page, so all share one content width. Below lg the details
     card stacks above the listing, folded or open alike. From lg the card is always the sidebar on the right, in the
     same column whether it is folded or not, so the listing keeps its width and the toggle keeps its place.
   -->
-  <div
-    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
-    data-ingot-component="file-browser-view"
-  >
-    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
-      <Card
-        :qualifier="qualifier"
-        :listing="listedNames"
-      />
-    </div>
-    <div class="min-w-0">
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <Breadcrumb :path="qualifier.path" />
-          <RepositoryTypeBadge
-            v-if="repositoryEntry"
-            data-test="browse-type"
-            :repository="repositoryEntry"
-          />
-        </div>
-        <div class="flex shrink-0 items-center gap-1">
-          <MdIconButton
-            toggle
-            aria-label="Compact list"
-            title="Compact list"
-            :selected="fileBrowserCompactMode"
-            @click="toggleCompactMode()"
-          >
-            <BrowserIcon name="list" />
-          </MdIconButton>
-          <AdjustmentsModal />
-        </div>
-      </div>
-      <FileList
-        :qualifier="qualifier"
-        :files="processedFiles"
-        :compact-mode="fileBrowserCompactMode"
-        :loading="loading"
-        :hidden-count="hiddenCount"
-        :members="members"
-        :can-edit-members="isManager === true"
-        @retry="retry"
-      />
-      <MdCard
-        v-if="readOnlyType !== ''"
-        as="section"
-        variant="low"
-        data-test="read-only-explanation"
-        aria-labelledby="browser-read-only-title"
-        class="mt-8 flex items-start gap-3"
-      >
-        <BrowserIcon
-          name="lock"
-          class="mt-0.5 shrink-0 text-on-surface-variant"
+  <MdPage class="mb-12">
+    <div
+      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+      data-ingot-component="file-browser-view"
+    >
+      <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+        <Card
+          :qualifier="qualifier"
+          :listing="listedNames"
         />
-        <div class="flex min-w-0 flex-col gap-1">
-          <h2
-            id="browser-read-only-title"
-            class="md-title-small text-on-surface"
-          >
-            Nothing can be uploaded here
-          </h2>
-          <p class="md-body-medium text-on-surface-variant">
-            {{ READ_ONLY_TEXT[readOnlyType] }}
-          </p>
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <Breadcrumb :path="qualifier.path" />
+            <RepositoryTypeBadge
+              v-if="repositoryEntry"
+              data-test="browse-type"
+              :repository="repositoryEntry"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <MdIconButton
+              toggle
+              aria-label="Compact list"
+              title="Compact list"
+              :selected="fileBrowserCompactMode"
+              @click="toggleCompactMode()"
+            >
+              <BrowserIcon name="list" />
+            </MdIconButton>
+            <AdjustmentsModal />
+          </div>
         </div>
-      </MdCard>
-      <BrowserUpload
-        v-else-if="canUpload"
-        :qualifier="qualifier"
-      />
+        <FileList
+          :qualifier="qualifier"
+          :files="processedFiles"
+          :compact-mode="fileBrowserCompactMode"
+          :loading="loading"
+          :hidden-count="hiddenCount"
+          :members="members"
+          :can-edit-members="isManager === true"
+          @retry="retry"
+        />
+        <MdCard
+          v-if="readOnlyType !== ''"
+          as="section"
+          variant="low"
+          data-test="read-only-explanation"
+          aria-labelledby="browser-read-only-title"
+          class="mt-8 flex items-start gap-3"
+        >
+          <BrowserIcon
+            name="lock"
+            class="mt-0.5 shrink-0 text-on-surface-variant"
+          />
+          <div class="flex min-w-0 flex-col gap-1">
+            <h2
+              id="browser-read-only-title"
+              class="md-title-small text-on-surface"
+            >
+              Nothing can be uploaded here
+            </h2>
+            <p class="md-body-medium text-on-surface-variant">
+              {{ READ_ONLY_TEXT[readOnlyType] }}
+            </p>
+          </div>
+        </MdCard>
+        <BrowserUpload
+          v-else-if="canUpload"
+          :qualifier="qualifier"
+        />
+      </div>
     </div>
-  </div>
+  </MdPage>
 </template>

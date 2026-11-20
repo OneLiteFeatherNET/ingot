@@ -400,9 +400,9 @@ describe('FileBrowserView details layout', () => {
   // The side-by-side grid of the wide layout, as the view class names it.
   const SIDE_BY_SIDE = 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
 
-  // The view starts with a comment, so its root is a fragment: the grid is found by its class.
+  // The view starts with a comment, so its root is a fragment: the grid is found inside the page container of MdPage.
   const layoutGrid = (wrapper: VueWrapper) => {
-    const grid = wrapper.find('.container.grid')
+    const grid = wrapper.find('.container > .grid')
     expect(grid.exists(), 'the details and listing share one grid').toBe(true)
     return grid
   }
@@ -438,8 +438,11 @@ describe('FileBrowserView details layout', () => {
     localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
 
     const wrapper = mountView()
+    const page = layoutGrid(wrapper).element.parentElement!
 
-    expect(layoutGrid(wrapper).classes(), 'a wide page is not capped at the container width').toContain('max-w-none')
+    expect(page.classList.contains('container'), 'the grid sits in the page container of MdPage').toBe(true)
+    expect(page.style.maxWidth, 'a wide page is not capped at the container width').toBe('none')
+    expect([...page.classList].filter(name => name.startsWith('max-w-')), 'the view sets no width on the page container').toEqual([])
   })
 
   it('keeps the layout when the card is folded from the page, so the listing does not jump', async () => {

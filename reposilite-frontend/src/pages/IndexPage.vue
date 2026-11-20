@@ -29,6 +29,7 @@ import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import RepositoryOverview from '../components/overview/RepositoryOverview.vue'
 import MdButton from '../components/md/MdButton.vue'
+import MdPage from '../components/md/MdPage.vue'
 import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
@@ -418,59 +419,61 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
           <NotFoundView v-else-if="pluginPageMissing" />
           <ViewLoading v-else-if="supportPageWaiting" />
           <NotFoundView v-else-if="supportPageAbsent" />
-          <section
-            v-else-if="!sectionAllowed && isLogged"
-            data-test="no-access"
-            class="container mx-auto flex flex-col items-start gap-4 py-12"
-            aria-labelledby="no-access-title"
-          >
-            <h1
-              id="no-access-title"
-              class="md-headline-small text-on-surface"
+          <MdPage v-else-if="!sectionAllowed && isLogged">
+            <section
+              data-test="no-access"
+              class="flex flex-col items-start gap-4 py-12"
+              aria-labelledby="no-access-title"
             >
-              {{ activeLabel }}
-            </h1>
-            <p class="md-body-large text-on-surface-variant">
-              You do not have access to this page.
-            </p>
-            <RouterLink
-              :to="{ name: 'overview' }"
-              class="md-focus-ring md-label-large text-primary"
+              <h1
+                id="no-access-title"
+                class="md-headline-small text-on-surface"
+              >
+                {{ activeLabel }}
+              </h1>
+              <p class="md-body-large text-on-surface-variant">
+                You do not have access to this page.
+              </p>
+              <RouterLink
+                :to="{ name: 'overview' }"
+                class="md-focus-ring md-label-large text-primary"
+              >
+                {{ pageLabel('overview') }}
+              </RouterLink>
+            </section>
+          </MdPage>
+          <MdPage v-else-if="!sectionAllowed">
+            <section
+              class="flex flex-col items-start gap-4 py-12"
+              aria-labelledby="sign-in-title"
             >
-              {{ pageLabel('overview') }}
-            </RouterLink>
-          </section>
-          <section
-            v-else-if="!sectionAllowed"
-            class="container mx-auto flex flex-col items-start gap-4 py-12"
-            aria-labelledby="sign-in-title"
-          >
-            <h2
-              id="sign-in-title"
-              class="md-headline-small text-on-surface"
-            >
-              Sign in to open {{ activeLabel }}
-            </h2>
-            <p
-              v-if="route.meta.manager"
-              class="md-body-large text-on-surface-variant"
-            >
-              This section needs a sign in with the right permission nodes. Sign in with an account
-              or token that holds them, and you stay on this page.
-            </p>
-            <p
-              v-else
-              class="md-body-large text-on-surface-variant"
-            >
-              Sign in to see your profile, change your password and manage your tokens.
-            </p>
-            <MdButton
-              variant="filled"
-              @click="openLogin"
-            >
-              Sign in
-            </MdButton>
-          </section>
+              <h2
+                id="sign-in-title"
+                class="md-headline-small text-on-surface"
+              >
+                Sign in to open {{ activeLabel }}
+              </h2>
+              <p
+                v-if="route.meta.manager"
+                class="md-body-large text-on-surface-variant"
+              >
+                This section needs a sign in with the right permission nodes. Sign in with an account
+                or token that holds them, and you stay on this page.
+              </p>
+              <p
+                v-else
+                class="md-body-large text-on-surface-variant"
+              >
+                Sign in to see your profile, change your password and manage your tokens.
+              </p>
+              <MdButton
+                variant="filled"
+                @click="openLogin"
+              >
+                Sign in
+              </MdButton>
+            </section>
+          </MdPage>
           <!-- The hero and the listing are one element, so the page transition has one child to animate. -->
           <div
             v-else-if="section === 'overview'"

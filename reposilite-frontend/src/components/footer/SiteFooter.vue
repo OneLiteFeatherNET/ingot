@@ -16,7 +16,10 @@
 
 <script setup lang="ts">
 // The operator's footer line. It is plain text: interpolation escapes it, and it is never
-// rendered as HTML. Nothing is drawn when the operator set no text.
+// rendered as HTML. Nothing is drawn when the operator set no text. The line takes the page
+// gutter of MdPage and is centred across the full width, as the legal line below it.
+import MdPage from '../md/MdPage.vue'
+
 withDefaults(defineProps<{
   text?: string
 }>(), {
@@ -27,9 +30,9 @@ withDefaults(defineProps<{
 <template>
   <footer
     v-if="text"
-    class="container pt-6 pb-10 text-center md-label-medium text-on-surface-variant"
+    class="pt-6 pb-10 text-center md-label-medium text-on-surface-variant"
     data-ingot-component="site-footer"
   >
-    {{ text }}
+    <MdPage>{{ text }}</MdPage>
   </footer>
 </template>
