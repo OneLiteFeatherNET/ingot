@@ -63,8 +63,14 @@ describe('PrincipalActionsMenu', () => {
   const trigger = (): HTMLElement => wrapper.find<HTMLButtonElement>('button').element
   let api: Record<'get' | 'update' | 'setPassword' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'remove', Mock>
 
-  const mountMenu = async (props: { principal?: Principal; instanceAdmin?: boolean } = {}) => {
-    wrapper = mount(PrincipalActionsMenu, { props: { principal: ALICE, api, ...props }, attachTo: document.body })
+  // The test utilities stub Vue <Transition> with an element of its own, so a test of where the menu is mounted asks for
+  // the real Transition, which adds no element, as in the browser.
+  const mountMenu = async (props: { principal?: Principal; instanceAdmin?: boolean } = {}, realTransition = false) => {
+    wrapper = mount(PrincipalActionsMenu, {
+      props: { principal: ALICE, api, ...props },
+      attachTo: document.body,
+      global: realTransition ? { stubs: { transition: false } } : {}
+    })
     await flushPromises()
   }
 
@@ -128,7 +134,7 @@ describe('PrincipalActionsMenu', () => {
     }
 
     it('mounts the open menu directly under the body so no card can clip it', async () => {
-      await mountMenu()
+      await mountMenu({}, true)
 
       await openMenu()
 
@@ -160,11 +166,9 @@ describe('PrincipalActionsMenu', () => {
       const button = trigger()
       vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
       vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(768)
-      const original = Element.prototype.getBoundingClientRect
-      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
-        return this.getAttribute?.('role') === 'menu'
-          ? { top: 0, bottom: 200, left: 0, right: 224, width: 224, height: 200 } as DOMRect
-          : original.call(this)
+      // The menu is measured by its layout height, which the scale of its enter transition does not shrink.
+      vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.getAttribute('role') === 'menu' ? 200 : 0
       })
 
       await openMenu()
