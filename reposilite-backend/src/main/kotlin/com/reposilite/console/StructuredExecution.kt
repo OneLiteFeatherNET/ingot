@@ -25,6 +25,15 @@ import picocli.CommandLine
 /** The version of the command listing format. A client refuses a version it does not know. */
 const val COMMAND_LISTING_VERSION = 1
 
+/** The scope of a command that acts on the replica that runs it, such as its log level or its in-memory state. */
+private const val COMMAND_SCOPE_NODE = "node"
+
+/** The scope of a command that acts alike on every replica. A command that does not say otherwise has it. */
+private const val COMMAND_SCOPE_CLUSTER = "cluster"
+
+/** Marks a built-in command that acts on the replica that runs it. The listing names it with [COMMAND_SCOPE_NODE]. */
+internal interface NodeScopedCommand
+
 /** A line of structured output. [stream] is `stdout` for output and `stderr` for the lines of a failed command. */
 data class OutputLine(val stream: String, val text: String)
 
@@ -77,5 +86,6 @@ private fun describeCommand(commandLine: CommandLine): CommandDescriptor {
             )
         },
         subcommands = spec.subcommands().keys.toList(),
+        scope = if (command is NodeScopedCommand) COMMAND_SCOPE_NODE else COMMAND_SCOPE_CLUSTER,
     )
 }

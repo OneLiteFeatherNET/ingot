@@ -61,3 +61,9 @@ internal data class ResultFrame(
 )
 
 internal data class ConfirmFrame(val id: String, val command: String, val reason: String, val type: String = "confirm")
+
+/** The characters from [start] to [end] of the completed line that a candidate replaces. */
+internal data class ReplaceRange(val start: Int, val end: Int)
+
+/** The answer to a `complete`: the range of the line to replace and the words that may stand there. */
+internal data class CompleteFrame(val id: String, val replace: ReplaceRange, val candidates: List<String>, val type: String = "complete")

@@ -63,6 +63,10 @@ class ConsoleFacade internal constructor(
     internal fun listCommands(): CommandListing =
         commandExecutor.listCommands()
 
+    /** Completes the word before [cursor] in [line] from the same commands the listing describes. */
+    internal fun completeCommand(line: String, cursor: Int): Completion =
+        completeCommand(commandExecutor.getCommands().values, line, cursor)
+
     override fun getLogger(): Logger =
         journalist.logger
 

@@ -58,7 +58,7 @@ internal class StopCommand(private val reposilite: Reposilite) : ReposiliteComma
 }
 
 @Command(name = "level", description = ["Change current level of visible logging"])
-internal class LevelCommand(private val journalist: ReposiliteJournalist) : ReposiliteCommand {
+internal class LevelCommand(private val journalist: ReposiliteJournalist) : ReposiliteCommand, NodeScopedCommand {
 
     @Parameters(index = "0", paramLabel = "<level>", description = ["The new threshold"], defaultValue = "info")
     private lateinit var level: String

@@ -18,6 +18,7 @@ package com.reposilite.maven.infrastructure
 
 import com.reposilite.console.CommandContext
 import com.reposilite.console.CommandStatus.FAILED
+import com.reposilite.console.NodeScopedCommand
 import com.reposilite.console.api.ReposiliteCommand
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.Repository
@@ -29,7 +30,7 @@ import picocli.CommandLine.Parameters
 private const val DEFAULT_TOP = 20
 
 @Command(name = "cache", description = ["Inspect or purge an Ingot cache. Usage: cache <target> <action> [<repository>]. Targets: resolution. Actions: stats, purge."])
-internal class CacheCommand(private val mavenFacade: MavenFacade) : ReposiliteCommand {
+internal class CacheCommand(private val mavenFacade: MavenFacade) : ReposiliteCommand, NodeScopedCommand {
 
     /** Listed as dangerous because of its purge action, which is the only dangerous form of this command. */
     override val dangerous: Boolean

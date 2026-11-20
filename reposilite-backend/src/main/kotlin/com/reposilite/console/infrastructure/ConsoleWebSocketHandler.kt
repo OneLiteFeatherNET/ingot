@@ -370,7 +370,7 @@ internal class ConsoleWebSocketHandler(
         connection.close(CLOSE_SLOW_CONSUMER, "slow_consumer")
     }
 
-    /** Handles one frame of a version 1 session: an execute or a confirm, and an error for anything else. */
+    /** Handles one frame of a version 1 session: an execute, a confirm or a complete, and an error for anything else. */
     private fun handleVersionOneFrame(connection: ConsoleConnection, session: V1Session, message: String) {
         if (message.toByteArray(StandardCharsets.UTF_8).size > MAX_FRAME_BYTES) {
             session.outbox.putFrame(ErrorFrame(code = "too_long", message = "a frame may hold $MAX_FRAME_BYTES bytes at most"))
@@ -385,6 +385,7 @@ internal class ConsoleWebSocketHandler(
         when (val type = frame.text("type")) {
             "execute" -> handleExecute(connection, session, id, frame)
             "confirm" -> handleConfirm(connection, session, id, frame)
+            "complete" -> handleComplete(session, id, frame)
             else -> session.outbox.putFrame(ErrorFrame(code = "unknown_type", message = "unknown frame type ${type ?: "none"}", id = id))
         }
     }
@@ -405,6 +406,23 @@ internal class ConsoleWebSocketHandler(
         consoleFacade.prepareCommand(frame.text("command").orEmpty())
             .peek { prepared -> runPrepared(connection, session, id, prepared, confirmed) }
             .onError { session.outbox.putFrame(ErrorFrame(code = "bad_command", message = it.message, id = id)) }
+    }
+
+    /**
+     * Answers a complete at once from the registered commands. It does not wait for a pending confirmation and is never
+     * answered busy, because it runs nothing.
+     */
+    private fun handleComplete(session: V1Session, id: String?, frame: JsonNode) {
+        if (id == null) {
+            session.outbox.putFrame(ErrorFrame(code = "bad_frame", message = "a complete needs an id"))
+            return
+        }
+        val line = frame.text("line").orEmpty()
+        val cursor = frame.get("cursor")?.takeIf { it.isInt }?.asInt() ?: line.length
+        val completion = consoleFacade.completeCommand(line, cursor)
+        session.outbox.putFrame(
+            CompleteFrame(id = id, replace = ReplaceRange(start = completion.start, end = completion.end), candidates = completion.candidates)
+        )
     }
 
     /** Runs the command, or holds a dangerous one until its confirm arrives or its deadline passes. */

@@ -16,11 +16,12 @@
 package com.reposilite.status
 
 import com.reposilite.console.CommandContext
+import com.reposilite.console.NodeScopedCommand
 import com.reposilite.console.api.ReposiliteCommand
 import picocli.CommandLine.Command
 
 @Command(name = "failures", description = ["Display all recorded exceptions"])
-internal class FailuresCommand(private val failureFacade: FailureFacade) : ReposiliteCommand {
+internal class FailuresCommand(private val failureFacade: FailureFacade) : ReposiliteCommand, NodeScopedCommand {
 
     override fun execute(context: CommandContext) {
         if (!failureFacade.hasFailures()) {

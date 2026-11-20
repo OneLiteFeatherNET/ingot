@@ -18,12 +18,13 @@ package com.reposilite.status
 
 import com.reposilite.VERSION
 import com.reposilite.console.CommandContext
+import com.reposilite.console.NodeScopedCommand
 import com.reposilite.console.api.ReposiliteCommand
 import com.reposilite.shared.extensions.TimeUtils
 import picocli.CommandLine.Command
 
 @Command(name = "status", description = ["Display summary status of app health"])
-internal class StatusCommand(private val statusFacade: StatusFacade) : ReposiliteCommand {
+internal class StatusCommand(private val statusFacade: StatusFacade) : ReposiliteCommand, NodeScopedCommand {
 
     override fun execute(context: CommandContext) {
         statusFacade.fetchInstanceStatus().apply {
