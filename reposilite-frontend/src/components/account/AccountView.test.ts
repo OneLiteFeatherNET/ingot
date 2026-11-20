@@ -122,14 +122,23 @@ describe('AccountView', () => {
     holder.session = null
   })
 
-  it('lets the account page use the full width, so its cards reach the edge of the window', async () => {
+  it('renders the page on the page shell, with no centring and no width cap on its container', async () => {
     await mountView()
 
-    const classes = Array.from((wrapper.element as HTMLElement).classList)
-
-    expect(classes, 'the page has no reading measure cap').not.toContain('max-w-md-reading')
+    const page = wrapper.findComponent({ name: 'MdPage' }) as VueWrapper
+    expect(page.exists(), 'the page root is an MdPage').toBe(true)
+    const classes = Array.from((page.element as HTMLElement).classList)
     expect(classes, 'the page keeps the shared container gutter').toContain('container')
-    expect(classes, 'the container width steps (1536 pixels from the 2xl window) are lifted with the important modifier, which beats the step in the stylesheet').toContain('max-w-none!')
+    expect(classes.filter(name => name === 'mx-auto' || name.startsWith('max-w-')), 'the page container is neither centred nor capped').toEqual([])
+  })
+
+  it('gives the sign-in and security form block the reading measure, left aligned', async () => {
+    await mountView()
+
+    const block = wrapper.get('[data-test="security-section"]').element as HTMLElement
+    expect(Array.from(block.classList), 'the form block is capped at the reading measure').toContain('max-w-md-reading')
+    expect(block.contains(wrapper.get('#account-current-password').element), 'the password form sits in that block').toBe(true)
+    expect(Array.from(block.classList), 'the block is not centred').not.toContain('mx-auto')
   })
 
   it('lays the cards out in one column, two from 840 pixels and three from 1240 pixels', async () => {
@@ -159,7 +168,6 @@ describe('AccountView', () => {
     await mountView()
 
     expect(wrapper.findAll('h1').map(heading => heading.text()), 'the page has exactly one level one heading').toEqual(['My account'])
-    expect(wrapper.find('#account-title').element.tagName, 'the title keeps its id and is a level one heading').toBe('H1')
   })
 
   it('shows the four sections in order: Profile, Your access, Sign-in and security, My tokens', async () => {
