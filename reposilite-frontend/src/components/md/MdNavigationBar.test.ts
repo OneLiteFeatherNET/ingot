@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MdNavigationBar from './MdNavigationBar.vue'
+import MdNavigationItem from './MdNavigationItem.vue'
 
 // The five dashboard tabs, as the navigation bar is meant to show them.
 const TABS = [
@@ -64,6 +65,38 @@ describe('MdNavigationBar', () => {
 
     expect(wrapper.find('a').attributes('href')).toBe('/docs')
     expect(wrapper.find('button').exists()).toBe(false)
+  })
+})
+
+describe('MdNavigationBar items', () => {
+  it('draws every destination with MdNavigationItem, one item per entry', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    for (const entry of wrapper.findAll('li')) {
+      expect(entry.findAllComponents(MdNavigationItem), `${entry.text()} is a navigation item`).toHaveLength(1)
+    }
+  })
+
+  it('keeps its own md-navigation-bar anchor on the landmark', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    expect(wrapper.attributes('data-ingot-component'), 'the landmark is the root').toBe('md-navigation-bar')
+  })
+
+  it('draws the state layer on the whole destination, not only on the indicator', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    for (const entry of wrapper.findAll('button')) {
+      expect(entry.classes(), `${entry.text()} has its hover layer on the destination`).toEqual(expect.arrayContaining(['md-state-layer', 'md-focus-ring']))
+    }
+  })
+
+  it('emits for a plain click on a button destination even when it carries a modifier key', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    wrapper.findAll('button')[2].element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, shiftKey: true }))
+
+    expect(wrapper.emitted('update:modelValue'), 'a button has no browser default to leave the click to').toEqual([['Tokens']])
   })
 })
 
