@@ -237,3 +237,22 @@ describe('inverse corners of the content sheet', () => {
     })
   }
 })
+
+describe('md-scrollbar utility', () => {
+  const start = stylesheet.indexOf('@utility md-scrollbar')
+  const block = blockAt(stylesheet, start)
+
+  it('is defined in the stylesheet', () => {
+    expect(start, 'an @utility md-scrollbar block in src/style.css').toBeGreaterThanOrEqual(0)
+  })
+
+  it('draws a thin bar in the outline variant colour on a transparent track', () => {
+    expect(block, 'the standard property for Firefox and Chromium').toContain('scrollbar-width: thin')
+    expect(block, 'the thumb and track colour come from the colour tokens').toContain('scrollbar-color: var(--md-sys-color-outline-variant) transparent')
+  })
+
+  it('keeps the six pixel bar of the old rule for WebKit, scoped to the element that opts in', () => {
+    expect(block, 'the WebKit bar is nested under the utility, not app-wide').toMatch(/&::-webkit-scrollbar\s*\{[^}]*height: 6px/)
+    expect(block, 'the WebKit thumb takes the outline variant colour').toMatch(/&::-webkit-scrollbar-thumb\s*\{[^}]*var\(--md-sys-color-outline-variant\)/)
+  })
+})
