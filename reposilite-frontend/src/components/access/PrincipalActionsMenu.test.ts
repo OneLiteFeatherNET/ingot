@@ -17,7 +17,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
-import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import type { PrincipalSummary } from './accessPrincipals'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 
@@ -61,7 +60,7 @@ const typeInDialog = async (value: string) => {
 describe('PrincipalActionsMenu', () => {
   let wrapper: VueWrapper
   // The trigger is the first button of the component, the button of the actions menu.
-  const trigger = (): HTMLElement => wrapper.find('button').element as HTMLElement
+  const trigger = (): HTMLElement => wrapper.find<HTMLButtonElement>('button').element
   let api: Record<'get' | 'update' | 'setPassword' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'remove', Mock>
 
   const mountMenu = async (props: { principal?: Principal; instanceAdmin?: boolean } = {}) => {
@@ -279,16 +278,15 @@ describe('PrincipalActionsMenu', () => {
       expect(menu(), 'a menu without its trigger on screen closes').toBeNull()
     })
 
-    it('follows its trigger when the window is resized', async () => {
+    it('closes when the window is resized, as the shared menu does', async () => {
       await mountMenu()
       moveTrigger(200)
       await openMenu()
 
-      moveTrigger(120)
       window.dispatchEvent(new Event('resize'))
-      await nextFrame()
+      await flushPromises()
 
-      expect(menu().style.top).toBe('164px')
+      expect(menu(), 'a resize closes the menu').toBeNull()
     })
   })
 
@@ -334,7 +332,7 @@ describe('PrincipalActionsMenu', () => {
     it('draws the actions with the shared overflow menu', async () => {
       await mountMenu()
 
-      expect(wrapper.findComponent(MdOverflowMenu).exists(), 'the actions are the shared menu of the md primitives').toBe(true)
+      expect(wrapper.findComponent({ name: 'MdOverflowMenu' }).exists(), 'the actions are the shared menu of the md primitives').toBe(true)
     })
 
     it('disables the change item while the change is still running', async () => {
@@ -342,7 +340,7 @@ describe('PrincipalActionsMenu', () => {
       await mountMenu()
       await chooseItem('Disable')
 
-      await trigger().click()
+      await wrapper.find('button').trigger('click')
       await flushPromises()
 
       expect(item('Disable').getAttribute('aria-disabled'), 'the item is announced as disabled until the answer comes').toBe('true')
@@ -350,7 +348,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('draws the destructive item in the error role and keeps its focus ring', async () => {
       await mountMenu()
-      await trigger().click()
+      await wrapper.find('button').trigger('click')
       await flushPromises()
 
       const classes = item('Delete').className

@@ -297,7 +297,7 @@ describe('PrincipalDetail', () => {
       it('keeps the actions menu next to the card', async () => {
         await mountDetail({ name: 'alice', kind: 'USER' })
 
-        expect(wrapper.find('[data-test="actions"]').exists()).toBe(true)
+        expect(wrapper.find('button[aria-haspopup="menu"]').exists()).toBe(true)
       })
 
       it('has no role or grant editor', async () => {
@@ -312,7 +312,7 @@ describe('PrincipalDetail', () => {
     it('has the actions of a user and no token section', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 
-      expect(wrapper.find('[data-test="actions"]').exists()).toBe(true)
+      expect(wrapper.find('button[aria-haspopup="menu"]').exists()).toBe(true)
       expect(wrapper.text()).not.toContain('Create token')
       expect(legacyGet, 'a user has no migrated access token').not.toHaveBeenCalled()
     })
