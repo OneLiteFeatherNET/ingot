@@ -30,6 +30,7 @@ import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.KeyBatch
 import net.onelitefeather.ingot.search.backend.SamplePage
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.backend.StoredRow
 import org.jetbrains.exposed.v1.jdbc.Database
 import java.time.Clock
@@ -53,6 +54,9 @@ internal class DatabaseSearchBackend(
 
     /** The database commits the rows, the cursor and the counters of a rebuild page together. */
     override val joinsDatabaseTransaction: Boolean = true
+
+    /** The attributes of a row live in `search_attribute` and leave with the row (search document attributes, D6). */
+    override val capabilities: Set<SearchCapability> = setOf(SearchCapability.ATTRIBUTES)
 
     /** The database is the server's own and is open before any plugin runs, so there is nothing to open. */
     override fun open() = Unit

@@ -60,6 +60,7 @@ internal class DatabaseArtifactIndex(private val database: Database) {
     private val tables = SearchTables(dialect)
     private val rows = tables.artifact
     private val tokens = tables.token
+    private val attributes = tables.attribute
 
     fun apply(actions: List<IndexAction>) {
         if (actions.isEmpty()) return
@@ -70,9 +71,12 @@ internal class DatabaseArtifactIndex(private val database: Database) {
                         val file = action.row.file
                         upsert(action.row)
                         insertTokens(file.groupId, file.artifactId, file.version)
+                        action.attributes?.let { replaceAttributes(file.repository, file.path, it) }
                     }
-                    is IndexAction.RemovePath -> rows.deleteWhere {
-                        (rows.repository eq action.repository) and (rows.pathHash eq pathHash(action.repository, action.path))
+                    is IndexAction.RemovePath -> {
+                        val hash = pathHash(action.repository, action.path)
+                        rows.deleteWhere { (rows.repository eq action.repository) and (rows.pathHash eq hash) }
+                        attributes.deleteOf(action.repository, listOf(hash))
                     }
                     is IndexAction.RemovePrefix -> removePrefix(action.repository, action.prefix, action.notAfter.toEpochMilli())
                     is IndexAction.Reorigin -> rows.update(where = { below(action.repository, action.directory) }, body = {
@@ -185,17 +189,39 @@ internal class DatabaseArtifactIndex(private val database: Database) {
     }
 
     /**
-     * Deletes the rows at [prefix] and below it that were indexed at or before [notAfter], 1000 ids per statement. A row
-     * indexed later, by a concurrent deployment, is kept.
+     * Replaces the attributes of the row at [path] with [values], one child row per value in the order of its list (search
+     * document attributes, D6). An empty map leaves the row without attributes. Runs in the transaction of the upsert.
+     */
+    private fun replaceAttributes(repository: String, path: String, values: Map<String, List<String>>) {
+        val hash = pathHash(repository, path)
+        attributes.deleteOf(repository, listOf(hash))
+        val children = values.flatMap { (key, list) -> list.mapIndexed { index, value -> Triple(key, index, value) } }
+        if (children.isEmpty()) return
+        attributes.batchInsert(children) { (key, index, value) ->
+            this[attributes.repository] = repository
+            this[attributes.path] = path
+            this[attributes.pathHash] = hash
+            this[attributes.key] = key
+            this[attributes.valueIndex] = index
+            this[attributes.value] = value
+            this[attributes.valueLc] = value.lowercase(Locale.ROOT)
+        }
+    }
+
+    /**
+     * Deletes the rows at [prefix] and below it that were indexed at or before [notAfter], 1000 ids per statement, and their
+     * attributes. A row indexed later, by a concurrent deployment, is kept.
      */
     private fun removePrefix(repository: String, prefix: String, notAfter: Long) {
         while (true) {
-            val ids = rows.selectAll()
+            val found = rows.select(rows.id, rows.pathHash)
                 .where { at(repository, prefix) and (rows.indexedAt lessEq notAfter) }
                 .limit(DELETE_BATCH)
-                .map { it[rows.id] }
-            if (ids.isEmpty()) return
+                .map { it[rows.id] to it[rows.pathHash] }
+            if (found.isEmpty()) return
+            val ids = found.map { it.first }
             rows.deleteWhere { rows.id inList ids }
+            attributes.deleteOf(repository, found.map { it.second })
         }
     }
 
@@ -218,3 +244,15 @@ fun pathHash(repository: String, path: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest("$repository\u0000$path".toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+/**
+ * Deletes the attributes of the rows of [repository] whose path hashes are [hashes], in the caller's transaction. A delete path
+ * of `search_artifact` calls it in the same transaction as its own delete, so a row never loses only half of its data.
+ */
+internal fun SearchAttributeTable.deleteOf(repository: String, hashes: List<String>) {
+    hashes.chunked(ATTRIBUTE_DELETE_CHUNK).forEach { chunk ->
+        deleteWhere { (this.repository eq repository) and (pathHash inList chunk) }
+    }
+}
+
+private const val ATTRIBUTE_DELETE_CHUNK = 500
