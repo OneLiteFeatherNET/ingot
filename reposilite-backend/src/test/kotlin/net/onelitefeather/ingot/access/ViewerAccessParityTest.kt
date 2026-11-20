@@ -61,7 +61,7 @@ internal class ViewerAccessParityTest : MavenSpecification() {
     )
 
     private fun viewerOf(token: AccessTokenIdentifier?): Viewer =
-        ViewerAccessFacadeImpl(mavenFacade).viewerOf(token?.let { AccessTokenDto(it, "token", LocalDate.of(2026, 1, 1), "") })
+        ViewerAccessFacadeImpl(mavenFacade, accessTokenFacade).viewerOf(token?.let { AccessTokenDto(it, "token", LocalDate.of(2026, 1, 1), "") })
 
     @Test
     fun `should answer canReadRepository as the root listing decides`() {
