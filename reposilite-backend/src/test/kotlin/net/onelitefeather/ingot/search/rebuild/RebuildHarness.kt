@@ -32,6 +32,8 @@ import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.database.SearchTables
 import net.onelitefeather.ingot.search.database.SqliteFileDatabase
+import net.onelitefeather.ingot.search.enrichment.ArtifactContent
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.runs.FakeRepositoryEntries
 import net.onelitefeather.ingot.search.runs.RunStore
@@ -55,7 +57,12 @@ internal class RebuildHarness(val database: Database, val clock: MutableClock, p
     val runs = RunStore(database, clock)
     val state = SearchStateStore(database, clock)
 
-    fun service(owner: String = "instance-a", backend: ArtifactSearchBackend = DatabaseSearchBackend(database, clock)): RebuildService = RebuildService(
+    fun service(
+        owner: String = "instance-a",
+        backend: ArtifactSearchBackend = DatabaseSearchBackend(database, clock),
+        enrichment: ArtifactEnrichmentPipeline? = null,
+        content: (String, String, Long) -> ArtifactContent? = { _, _, _ -> null },
+    ): RebuildService = RebuildService(
         owner = owner,
         runs = runs,
         backend = backend,
@@ -65,6 +72,8 @@ internal class RebuildHarness(val database: Database, val clock: MutableClock, p
         state = state,
         clock = clock,
         pageSize = pageSize,
+        enrichment = enrichment,
+        content = content,
     )
 
     fun indexRows(): List<ResultRow> = transaction(database) { tables.artifact.selectAll().toList() }

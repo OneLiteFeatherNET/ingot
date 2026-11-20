@@ -235,11 +235,12 @@ internal class SearchPlugin : ReposilitePlugin() {
             call = ArtifactEnrichmentExecutor(enrichmentPool, clock)::call,
             warn = { logger.warn(it) },
         )
+        val storage = MavenIndexStorage(repositoryRegistry, clock)
         val worker = OutboxWorker(
             owner = wiring.instanceId,
             outbox = outbox,
             index = backend,
-            storage = MavenIndexStorage(repositoryRegistry, clock),
+            storage = storage,
             origins = LedgerOriginLookup(ledger),
             state = state,
             clock = clock,
@@ -257,6 +258,8 @@ internal class SearchPlugin : ReposilitePlugin() {
             ledger = ledger,
             state = state,
             clock = clock,
+            enrichment = enrichment,
+            content = storage::content,
         )
         val verify = VerifyService(
             owner = wiring.instanceId,

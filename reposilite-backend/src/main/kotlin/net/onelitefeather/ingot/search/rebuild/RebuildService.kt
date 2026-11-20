@@ -35,7 +35,11 @@ import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.SearchColumn
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
+import net.onelitefeather.ingot.search.enrichment.ArtifactContent
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
+import net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
 import net.onelitefeather.ingot.search.outbox.OutboxStore
+import net.onelitefeather.ingot.search.outbox.StoredFile
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 import net.onelitefeather.ingot.search.runs.RepositoryEntries
 import net.onelitefeather.ingot.search.runs.RunCounters
@@ -76,6 +80,8 @@ internal class RebuildService(
     private val state: SearchStateStore,
     private val clock: Clock,
     private val pageSize: Int = PAGE_SIZE,
+    private val enrichment: ArtifactEnrichmentPipeline? = null,
+    private val content: (repository: String, path: String, sizeBytes: Long) -> ArtifactContent? = { _, _, _ -> null },
 ) {
 
     private val tokens = AtomicLong()
@@ -260,10 +266,27 @@ internal class RebuildService(
         backend.touch(name, held.map { it.first.path }, now)
 
         val existing = backend.existing(name, writable.map { it.first.path })
-        val actions = writable.map { (file, entry) -> IndexAction.Upsert(rowOf(file, entry, existing[file.path], directories, now)) }
+        val actions = writable.map { (file, entry) ->
+            val stored = existing[file.path]
+            val row = rowOf(file, entry, stored, directories, now)
+            if (!unchanged(stored, entry)) enrich(row, entry)
+            IndexAction.Upsert(row)
+        }
         backend.apply(actions)
         return actions.size
     }
+
+    /** Hands a new or changed file to the enrichers that match it (artifact enrichment, D3). Unchanged files were enriched before. */
+    private fun enrich(row: IndexRow, entry: StorageEntry) {
+        val pipeline = enrichment ?: return
+        val stored = StoredFile(sizeBytes = entry.size, lastModified = entry.lastModified)
+        pipeline.enrich(EnrichmentTrigger.REBUILD, row.file, row.provenance, stored, row.sha1, row.sha256) {
+            content(row.file.repository, row.file.path, entry.size)
+        }
+    }
+
+    private fun unchanged(existing: StoredRow?, entry: StorageEntry): Boolean =
+        existing != null && existing.sizeBytes == entry.size && existing.lastModified == entry.lastModified.toEpochMilli()
 
     private fun rowOf(
         file: ArtifactFileRecord,
@@ -275,7 +298,7 @@ internal class RebuildService(
         val directory = file.path.substringBeforeLast('/')
         val provenance = if (directories.containsKey(directory)) Provenance(Origin.MIRROR, directories[directory]) else Provenance.HOSTED
         val lastModified = entry.lastModified.toEpochMilli()
-        val unchanged = existing != null && existing.sizeBytes == entry.size && existing.lastModified == lastModified
+        val unchanged = unchanged(existing, entry)
         return IndexRow(
             file = file,
             provenance = provenance,
