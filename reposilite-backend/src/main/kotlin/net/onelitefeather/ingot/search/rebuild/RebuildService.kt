@@ -38,6 +38,7 @@ import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.enrichment.ArtifactContent
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
+import net.onelitefeather.ingot.search.enrichment.attributesOfChangedFile
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.outbox.StoredFile
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
@@ -269,20 +270,23 @@ internal class RebuildService(
         val actions = writable.map { (file, entry) ->
             val stored = existing[file.path]
             val row = rowOf(file, entry, stored, directories, now)
-            if (!unchanged(stored, entry)) enrich(row, entry)
-            IndexAction.Upsert(row)
+            if (unchanged(stored, entry)) IndexAction.Upsert(row) else IndexAction.Upsert(row, enrich(row, entry))
         }
         backend.apply(actions)
         return actions.size
     }
 
-    /** Hands a new or changed file to the enrichers that match it (artifact enrichment, D3). Unchanged files were enriched before. */
-    private fun enrich(row: IndexRow, entry: StorageEntry) {
-        val pipeline = enrichment ?: return
+    /**
+     * Hands a new or changed file to the enrichers that match it (artifact enrichment, D3) and returns the attributes the row holds
+     * afterwards, or null at a backend without attributes (search document attributes, D4). Unchanged files were enriched before.
+     */
+    private fun enrich(row: IndexRow, entry: StorageEntry): Map<String, List<String>>? {
+        val capabilities = backend.capabilities
         val stored = StoredFile(sizeBytes = entry.size, lastModified = entry.lastModified)
-        pipeline.enrich(EnrichmentTrigger.REBUILD, row.file, row.provenance, stored, row.sha1, row.sha256) {
+        val outcomes = enrichment?.enrich(EnrichmentTrigger.REBUILD, row.file, row.provenance, stored, row.sha1, row.sha256, capabilities) {
             content(row.file.repository, row.file.path, entry.size)
-        }
+        }.orEmpty()
+        return attributesOfChangedFile(capabilities, outcomes)
     }
 
     private fun unchanged(existing: StoredRow?, entry: StorageEntry): Boolean =

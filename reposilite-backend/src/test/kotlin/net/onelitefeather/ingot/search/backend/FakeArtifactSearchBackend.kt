@@ -42,10 +42,12 @@ import kotlin.random.Random
  * ignores the text and range filters of [ArtifactSearchQuery]: the contract never asks for them.
  *
  * [joinsDatabaseTransaction] is a constructor flag so a test can pick the rebuild branch it exercises. [failApply] makes
- * the next calls of [apply] throw, and [onApply] sees every batch before it is applied.
+ * the next calls of [apply] throw, and [onApply] sees every batch before it is applied. [capabilities] is what the backend
+ * declares, empty by default like a backend that declares nothing.
  */
 internal class FakeArtifactSearchBackend(
     override val joinsDatabaseTransaction: Boolean = true,
+    override val capabilities: Set<SearchCapability> = emptySet(),
 ) : ArtifactSearchBackend {
 
     override val id: String = "fake"

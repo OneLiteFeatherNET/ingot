@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTrigger
+import net.onelitefeather.ingot.search.enrichment.attributesOfChangedFile
 import net.onelitefeather.ingot.search.backend.IndexAction.Reorigin
 import net.onelitefeather.ingot.search.backend.IndexAction.RemovePath
 import net.onelitefeather.ingot.search.backend.IndexAction.RemovePrefix
@@ -131,10 +132,11 @@ internal class OutboxWorker(
             sha256 = checksum(storage.head(repository, "$path.sha256", CHECKSUM_HEAD_BYTES), SHA256_HEX_LENGTH),
             indexedAt = clock.millis(),
         )
-        enrichment?.enrich(EnrichmentTrigger.CHANGED, parsed.file, provenance, file, row.sha1, row.sha256) {
+        val capabilities = index.capabilities
+        val outcomes = enrichment?.enrich(EnrichmentTrigger.CHANGED, parsed.file, provenance, file, row.sha1, row.sha256, capabilities) {
             storage.content(repository, path, file.sizeBytes)
-        }
-        return listOf(Upsert(row))
+        }.orEmpty()
+        return listOf(Upsert(row, attributesOfChangedFile(capabilities, outcomes)))
     }
 
     /**

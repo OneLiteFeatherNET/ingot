@@ -132,7 +132,11 @@ sealed interface BackendHealth {
 @ExperimentalIngotSearchApi
 sealed interface IndexAction {
 
-    data class Upsert(val row: IndexRow) : IndexAction
+    /**
+     * Writes [row]. [attributes] replaces the stored attributes of the row when it is set, and keeps them when it is null. The core
+     * sets it only at a backend that declares [SearchCapability.ATTRIBUTES] (search document attributes, D4).
+     */
+    data class Upsert @JvmOverloads constructor(val row: IndexRow, val attributes: Map<String, List<String>>? = null) : IndexAction
 
     data class RemovePath(val repository: String, val path: String) : IndexAction
 

@@ -40,6 +40,13 @@ internal fun EnrichmentResult.atBoundary(capabilities: Set<SearchCapability>): E
 internal data class EnricherOutcome(val id: String, val version: String, val result: EnrichmentResult)
 
 /**
+ * The attributes a changed file holds after its enrichers ran (search document attributes, D4), or null at a backend without
+ * [SearchCapability.ATTRIBUTES], which then gets the row exactly as before.
+ */
+internal fun attributesOfChangedFile(capabilities: Set<SearchCapability>, outcomes: List<EnricherOutcome>): Map<String, List<String>>? =
+    if (SearchCapability.ATTRIBUTES in capabilities) attributesOfChangedFile(outcomes) else null
+
+/**
  * The attributes a changed file holds after its enrichers ran (search document attributes, D4). The stored set is replaced by the
  * union of the attribute sets of this call plus `core.enricher.<id>` with the version of each enricher that completed. A failed or
  * skipped enricher contributes nothing, so its earlier keys and its version are gone and a stale result cannot survive.
