@@ -49,3 +49,20 @@ describe('the write policy help text', () => {
     expect(readOnly, 'the global read-only mode answers 503 first').toContain('503')
   })
 })
+
+describe('the write policy card', () => {
+  it('draws the choices inside a low MdCard that holds the fieldset', () => {
+    wrapper = mount(WritePolicyField, { props: { modelValue: 'allow' } }) as VueWrapper
+    const card = wrapper.findComponent({ name: 'MdCard' }) as VueWrapper
+    expect(card.exists(), 'the field is drawn on the shared card').toBe(true)
+    expect(card.attributes('data-variant'),'the card keeps the flat low surface of the field').toBe('low')
+    expect(card.find('fieldset[data-test="write-policy"]').exists(), 'the fieldset sits inside the card').toBe(true)
+  })
+
+  it('leaves the radius, the surface and the inset to the card', () => {
+    wrapper = mount(WritePolicyField, { props: { modelValue: 'allow' } }) as VueWrapper
+    const fieldset = wrapper.get('fieldset').classes()
+    expect(fieldset.filter(name => name.startsWith('rounded-') || name.startsWith('bg-') || /^p-\d/.test(name)),
+      'the fieldset draws no card of its own').toEqual([])
+  })
+})
