@@ -24,6 +24,9 @@ export interface Clock {
   now(): number;
 }
 
+/** How a run ended, as the record step sees it: the TestRun completed, or the Ingot pods never became ready. */
+export type RunResult = { readonly kind: 'completed' } | { readonly kind: 'not-ready' };
+
 export interface RunnerPorts {
   /** The number of nodes that carry the load test label. */
   labelledNodes(): Promise<number>;
@@ -35,8 +38,8 @@ export interface RunnerPorts {
   apply(): Promise<void>;
   /** True when the TestRun has finished. */
   finished(): Promise<boolean>;
-  /** The record step, implemented by the result records of group 8. */
-  record(): Promise<void>;
+  /** The record step, implemented by `recordStep` in record.ts. */
+  record(result: RunResult): Promise<void>;
   uninstall(): Promise<void>;
   pause(ms: number): Promise<void>;
 }
@@ -59,11 +62,17 @@ export async function runSteps(ports: RunnerPorts, clock: Clock, plan: StepPlan)
   try {
     installStarted = true;
     await ports.install();
-    await waitUntil(ports.ready, 'the Ingot pods to become ready', plan.readyTimeoutMs, plan.pollMs, ports, clock);
+    if (!(await waitUntil(ports.ready, plan.readyTimeoutMs, plan.pollMs, ports, clock))) {
+      // A deployment that never came up is a valid result at this size (design D11), so it is recorded before the run fails.
+      await ports.record({ kind: 'not-ready' });
+      throw new Error(`the Ingot pods did not become ready within ${plan.readyTimeoutMs} ms`);
+    }
     await ports.archive();
     await ports.apply();
-    await waitUntil(ports.finished, 'the TestRun to finish', plan.completionTimeoutMs, plan.pollMs, ports, clock);
-    await ports.record();
+    if (!(await waitUntil(ports.finished, plan.completionTimeoutMs, plan.pollMs, ports, clock))) {
+      throw new Error(`the TestRun did not finish within ${plan.completionTimeoutMs} ms`);
+    }
+    await ports.record({ kind: 'completed' });
   } finally {
     if (installStarted) {
       await ports.uninstall();
@@ -71,21 +80,21 @@ export async function runSteps(ports: RunnerPorts, clock: Clock, plan: StepPlan)
   }
 }
 
+/** Polls until the check holds, and answers false once the deadline has passed. An error of the check propagates. */
 async function waitUntil(
   check: () => Promise<boolean>,
-  what: string,
   timeoutMs: number,
   pollMs: number,
   ports: RunnerPorts,
   clock: Clock,
-): Promise<void> {
+): Promise<boolean> {
   const deadline = clock.now() + timeoutMs;
   for (;;) {
     if (await check()) {
-      return;
+      return true;
     }
     if (clock.now() >= deadline) {
-      throw new Error(`${what} did not happen within ${timeoutMs} ms`);
+      return false;
     }
     await ports.pause(pollMs);
   }

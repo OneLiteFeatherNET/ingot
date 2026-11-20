@@ -15,7 +15,7 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createRecord, writeResultRecord, type RecordInput } from './record.ts';
+import { createRecord, recordStep, writeResultRecord, type RecordInput } from './record.ts';
 
 const input: RecordInput = {
   ingotVersion: '2.0.0',
@@ -121,4 +121,53 @@ test('a date that is not a real calendar day is refused', () => {
 
 test('a record without a Ingot version is refused', () => {
   assert.throws(() => createRecord({ ...input, ingotVersion: '' }), /ingot version/);
+});
+
+const { outcome: _measured, ...base } = input;
+
+test('the record step writes the measured outcome of a completed run', async () => {
+  const writer = fakeWriter();
+  const step = recordStep({ base, measure: async () => ({ kind: 'rate', rate: 120, p95Ms: 340 }), write: writer.write });
+
+  await step({ kind: 'completed' });
+
+  assert.equal(writer.calls.length, 1);
+  assert.equal(writer.calls[0]?.path, 'loadtest/results/2.0.0/monolith-S-resolve.json');
+  assert.deepEqual(JSON.parse(writer.calls[0]?.content ?? '').outcome, { kind: 'rate', rate: 120, p95Ms: 340 });
+});
+
+test('the record step writes an oom-killed outcome that the measurement reports', async () => {
+  const writer = fakeWriter();
+  const step = recordStep({ base, measure: async () => ({ kind: 'oom-killed', step: 90 }), write: writer.write });
+
+  await step({ kind: 'completed' });
+
+  assert.deepEqual(JSON.parse(writer.calls[0]?.content ?? '').outcome, { kind: 'oom-killed', step: 90 });
+});
+
+test('the record step writes not-ready at step 0 without measuring when the pods never became ready', async () => {
+  const writer = fakeWriter();
+  let measured = false;
+  const step = recordStep({
+    base,
+    measure: async () => {
+      measured = true;
+      return { kind: 'rate', rate: 1, p95Ms: 1 };
+    },
+    write: writer.write,
+  });
+
+  await step({ kind: 'not-ready' });
+
+  assert.equal(measured, false, 'a deployment that never came up has nothing to measure');
+  assert.deepEqual(JSON.parse(writer.calls[0]?.content ?? '').outcome, { kind: 'not-ready', step: 0 });
+});
+
+test('the record step writes nothing when a completed run has no measurement', async () => {
+  const writer = fakeWriter();
+  const step = recordStep({ base, measure: async () => undefined, write: writer.write });
+
+  await step({ kind: 'completed' });
+
+  assert.deepEqual(writer.calls, []);
 });
