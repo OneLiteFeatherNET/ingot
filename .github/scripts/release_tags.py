@@ -14,7 +14,7 @@ Container tag rules (see openspec/changes/add-release-branches-and-backports/des
 
 The standard library only. Imported by the workflows and by `tests/test_release_tags.py`. The command line runs the
 same rules for the workflows: `container-tags VERSION`, `previous BRANCH` and `newest`, all reading the version tags on
-stdin.
+stdin, and `check-line VERSION BRANCH`, which reads nothing from stdin.
 """
 
 import argparse
@@ -116,6 +116,10 @@ def previous_release(tags: Iterable[str], line: Optional[str]) -> Optional[str]:
     return max(pairs)[1]
 
 
+def _strip_heads(branch: str) -> str:
+    return branch[len("refs/heads/"):] if branch.startswith("refs/heads/") else branch
+
+
 def _read_tags(stream: IO[str]) -> List[str]:
     return [line.strip() for line in stream if line.strip()]
 
@@ -125,7 +129,8 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
 
     `container-tags VERSION` prints the container tags of a release. `previous BRANCH` prints the previous release of
     the branch's line, or of all lines for any other branch, and exits 1 when there is none. `newest` prints the highest
-    tag across all lines, the release that keeps the GitHub Latest flag, and exits 1 when there is none.
+    tag across all lines, the release that keeps the GitHub Latest flag, and exits 1 when there is none. `check-line
+    VERSION BRANCH` exits 1 when a release branch would release a version outside its line, and 0 on any other branch.
     """
     parser = argparse.ArgumentParser(prog="release_tags.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -134,10 +139,25 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
     previous = commands.add_parser("previous", help="print the previous release of a branch line")
     previous.add_argument("branch")
     commands.add_parser("newest", help="print the highest release tag across all lines")
+    check = commands.add_parser("check-line", help="refuse a version outside the line of a release branch")
+    check.add_argument("version")
+    check.add_argument("branch")
     args = parser.parse_args(argv)
 
     stdin = stdin if stdin is not None else sys.stdin
     stdout = stdout if stdout is not None else sys.stdout
+
+    if args.command == "check-line":
+        line = branch_line(_strip_heads(args.branch))
+        if line is None:
+            return 0
+        try:
+            require_version_on_line(args.version, line)
+        except ValueError as refusal:
+            sys.stderr.write(f"refused: {refusal}\n")
+            return 1
+        return 0
+
     tags = _read_tags(stdin)
 
     if args.command == "container-tags":
@@ -152,8 +172,7 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
         stdout.write(newest + "\n")
         return 0
 
-    branch = args.branch[len("refs/heads/"):] if args.branch.startswith("refs/heads/") else args.branch
-    tag = previous_release(tags, branch_line(branch))
+    tag = previous_release(tags, branch_line(_strip_heads(args.branch)))
     if tag is None:
         return 1
     stdout.write(tag + "\n")
