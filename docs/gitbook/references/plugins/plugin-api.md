@@ -308,27 +308,28 @@ The service file is the same: `META-INF/services/com.reposilite.plugin.api.Repos
 
 ## Compatibility checks
 
-A plugin built for Reposilite 3.5.28 is expected to keep running on Ingot. The build checks that in two ways. Both are report-only for now: a finding does not fail the build or the pull request check.
+A plugin built for Reposilite 3.5.28 is expected to keep running on Ingot, and a plugin built against an Ingot release is expected to keep running on the next one. The build checks both. All checks are report-only for now: a finding does not fail the build or the pull request check.
 
 | Item | Value |
 | --- | --- |
-| Baseline | `com.reposilite:reposilite:3.5.28`, the release Ingot forked from. |
-| Packages compared | `com.reposilite.plugin`, `com.reposilite.maven`, `com.reposilite.storage`, `com.reposilite.token`, `com.reposilite.shared`, `com.reposilite.web.api`, `com.reposilite.status` and their `api` and `application` subpackages, as listed in `reposilite-backend/build.gradle.kts`. |
-| Not compared | Ingot's own packages (`net.onelitefeather.ingot.*`) and `com.reposilite.journalist`. |
+| Baseline | `com.reposilite:reposilite:3.5.28`, the release Ingot forked from, for the Reposilite packages. `net.onelitefeather.ingot:ingot:1.1.1`, the last Ingot release, for the Ingot packages. The release process raises the Ingot baseline with every release. |
+| Packages compared | `com.reposilite.plugin`, `com.reposilite.maven`, `com.reposilite.storage`, `com.reposilite.token`, `com.reposilite.shared`, `com.reposilite.web.api`, `com.reposilite.status` and their `api` and `application` subpackages, against 3.5.28. Against the last Ingot release: `net.onelitefeather.ingot.repository` and `com.reposilite.frontend.api`, which are promised, and `net.onelitefeather.ingot.format`, `net.onelitefeather.ingot.plugin.ui`, `net.onelitefeather.ingot.search.backend` and `net.onelitefeather.ingot.storage.capability`, which are experimental. Both lists are in `reposilite-backend/build.gradle.kts`. |
+| Not compared | `com.reposilite.journalist`, a separate library. |
 
-The two checks:
+The checks:
 
-- **Binary report.** `./gradlew :reposilite-backend:pluginApiReport` compares the 3.5.28 jar with the jar of the current build, at bytecode level, and lists every incompatible change in the packages above.
+- **Binary report.** `./gradlew :reposilite-backend:pluginApiReport` compares the 3.5.28 jar with the jar of the current build, at bytecode level, and lists every incompatible change in the Reposilite packages above.
+- **Ingot report.** `./gradlew :reposilite-backend:ingotPluginApiReport` compares the last Ingot release with the jar of the current build in the Ingot packages, and sorts each binary incompatible change into one of two sections. **Experimental** holds the changes to a type or member that carries an `ExperimentalIngot*` annotation, or that sits in a package listed as experimental above. These are reported for information and never block, which is what the marker promises. **Promised** holds every other change, and only this section can become blocking. Kotlin `internal` declarations are left out, because they are no plugin API even though the bytecode makes them public. The baseline is read from the OneLiteFeather releases repository, which asks for credentials: without `ONELITEFEATHER_MAVEN_USERNAME` and `ONELITEFEATHER_MAVEN_PASSWORD` (or the Gradle properties `mavenUser` and `mavenPassword`) the report skips itself and says so.
 - **Binary canaries.** The `checksum-plugin` and `migration-plugin` jars that upstream published for 3.5.28 are loaded unchanged into a fresh server. Run them with `./gradlew :reposilite-backend:integration --tests '*UpstreamPluginCanary*'`.
 
 The bundled plugins in `reposilite-plugins/checksum-plugin` and `reposilite-plugins/migration-plugin` are compiled and tested against the current backend as well. A pull request that edits their `src/main` is flagged in the job summary, because such an edit can hide a break of the plugin API.
 
 Where the results are:
 
-- Locally, the report is written to `reposilite-backend/build/reports/plugin-api/report.html` and `report.md`.
-- On a pull request, the **Plugin API** job writes the Markdown report and the canary results to its job summary, and uploads the HTML report as the `plugin-api-report` artifact.
+- Locally, the reports are written to `reposilite-backend/build/reports/plugin-api/`: `report.html` and `report.md` for the 3.5.28 comparison, `ingot-report.html` and `ingot-report.md` for the Ingot comparison.
+- On a pull request, the **Plugin API** job writes the 3.5.28 report and the canary results to its job summary, adds an **Ingot plugin API** section with the number of promised and experimental findings, and uploads all HTML and Markdown reports as the `plugin-api-report` artifact.
 
-The gate becomes blocking in a later change, once the first report has been reviewed and each accepted difference is recorded with a reason.
+The gate becomes blocking in a later change, once the first reports have been reviewed and each accepted difference is recorded with a reason.
 
 ## Dashboard pages
 
