@@ -20,6 +20,7 @@ import type { AxiosResponse } from 'axios'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextArea from '../md/MdTextArea.vue'
@@ -233,7 +234,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
     />
 
     <template v-else-if="detail">
-      <div class="flex flex-col gap-4 rounded-corner-large border border-outline bg-surface-container-low px-4 py-4">
+      <MdCard class="flex flex-col gap-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
             <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">
@@ -365,7 +366,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
             Members of an instance admin team can do every action on every repository, and manage users, teams and settings.
           </p>
         </div>
-      </div>
+      </MdCard>
 
       <TeamMembersCard
         :team="detail"
