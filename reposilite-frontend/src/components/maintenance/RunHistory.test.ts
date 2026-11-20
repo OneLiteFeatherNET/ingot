@@ -111,6 +111,35 @@ describe('RunHistory rows', () => {
   })
 })
 
+describe('RunHistory shared components', () => {
+  it('draws the runs as a divided md-list with one md-list-item per policy', () => {
+    mountHistory({
+      runs: [
+        run(3, 'snapshots-weekly', '2026-10-03T10:00:00Z'),
+        run(2, 'mirror-cache-nightly', '2026-10-02T10:00:00Z')
+      ]
+    })
+
+    const items = wrapper.findAll('ul > li[data-run-id]')
+
+    expect(items.map(item => item.attributes('data-run-id')), 'one row per policy').toEqual(['3', '2'])
+    expect(items.every(item => item.find('[data-test="list-item-row"]').exists()), 'each run is an md-list-item row').toBe(true)
+    expect(items.every(item => item.find('[data-test="item-rule"]').exists()), 'the md-list draws the rule between the rows').toBe(true)
+  })
+
+  it('folds the failures into an md-disclosure', () => {
+    mountHistory({
+      runs: [run(7, 'snapshots-weekly', '2026-10-14T16:00:00Z', { status: 'PARTIAL', failures: ['net/x/app/0.9-SNAPSHOT: locked'] })]
+    })
+
+    const summary = wrapper.find('details > summary')
+
+    expect(summary.find('svg[aria-hidden="true"]').exists(), 'the failures sit in the shared disclosure, with its chevron').toBe(true)
+    expect(summary.classes(), 'the summary carries the state layer of the shared disclosure').toContain('md-state-layer')
+    expect(summary.text(), 'the summary counts the failures').toContain('1 failure')
+  })
+})
+
 describe('RunHistory link to all runs', () => {
   it('links "All runs" to the Jobs page filtered to the cleanup source', () => {
     mountHistory({ runs: [] })

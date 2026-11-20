@@ -94,6 +94,27 @@ describe('MdDisclosure value', () => {
   })
 })
 
+describe('MdDisclosure focus', () => {
+  it('keeps the focus on the summary when the body opens and closes', async () => {
+    const wrapper = mount(MdDisclosure, {
+      attachTo: document.body,
+      slots: { summary: () => 'Advanced options', default: () => h('p', 'Retention and quotas') },
+    })
+    const summary = wrapper.find('summary').element as HTMLElement
+    const details = wrapper.find('details')
+
+    summary.focus()
+    details.element.open = true
+    await details.trigger('toggle')
+    expect(document.activeElement, 'opening keeps the focus on the control').toBe(summary)
+
+    details.element.open = false
+    await details.trigger('toggle')
+    expect(document.activeElement, 'closing keeps the focus on the control').toBe(summary)
+    wrapper.unmount()
+  })
+})
+
 describe('MdDisclosure anchors', () => {
   it('carries the md-disclosure anchor on the root element', () => {
     const wrapper = mountDisclosure()

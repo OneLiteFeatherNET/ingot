@@ -67,3 +67,30 @@ describe('MdListItem row geometry', () => {
     expect(row, 'a one-line row is not the two-line height').not.toContain('min-h-14')
   })
 })
+
+describe('MdListItem state layer', () => {
+  it('draws no state layer on a plain text row, since nothing happens on a click', () => {
+    const wrapper = mount(MdList, {
+      slots: { default: () => h(MdListItem, () => 'Read only') }
+    })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a plain row does not react to hover').not.toContain('md-state-layer')
+  })
+
+  it('draws the state layer on a button row', () => {
+    const wrapper = mount(MdList, {
+      slots: { default: () => h(MdListItem, { button: true }, () => 'Open') }
+    })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a button row shows hover, focus and press').toContain('md-state-layer')
+  })
+
+  it('draws the state layer on an option of a selectable list', () => {
+    const wrapper = mount(MdList, {
+      props: { selectable: true },
+      slots: { default: () => h(MdListItem, () => 'Maven') }
+    })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'an option shows hover, focus and press').toContain('md-state-layer')
+  })
+})
