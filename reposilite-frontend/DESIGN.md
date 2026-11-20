@@ -1022,7 +1022,7 @@ A row of a list. Inside a plain `MdList` the row is a link (`to`), a button (`bu
 
 The popup list of a combobox. The input, its text and its keys belong to the consumer, which runs them through `useCombobox`. The list is shown with `v-show`, so that its id stays in the DOM for `aria-controls` while it is hidden.
 
-- Props: `id` (required, the options take their ids from it), `label` (required, the accessible name), `options` (`{ value, description, disabled }`, already filtered by the parent), `active` (the index of the active option, or -1), `open` (whether the list is shown), `mono` (the values in the monospace).
+- Props: `id` (required, the options take their ids from it), `label` (required, the accessible name), `options` (`{ value, description, disabled, group }`, already filtered by the parent; consecutive options with the same `group` are listed in one `role="group"` under a heading that names it, and the option ids count through the whole list), `active` (the index of the active option, or -1), `open` (whether the list is shown), `mono` (the values in the monospace).
 - Slots: none.
 - Events: `choose` (the value of the chosen option).
 - Anchor: `md-listbox`.

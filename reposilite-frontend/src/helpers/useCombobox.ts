@@ -30,6 +30,8 @@ export interface ComboboxOption {
   value: string
   description?: string
   disabled?: boolean
+  // The heading the option is listed under. Consecutive options with the same group form one group of the listbox.
+  group?: string
 }
 
 export interface ComboboxState {
