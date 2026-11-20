@@ -18,8 +18,9 @@
 // `node .output/server/index.mjs`. The assets are bundled into the output, so the image has no other files to
 // read and nothing it has to write.
 import { fileURLToPath } from 'node:url'
+import { defineNitroConfig } from 'nitropack/config'
 
-export default {
+export default defineNitroConfig({
   preset: 'node-server',
   compatibilityDate: '2026-11-08',
   srcDir: 'server',
@@ -28,4 +29,4 @@ export default {
   // The console socket is relayed through the upgrade hooks of the catch-all route.
   experimental: { websocket: true },
   output: { dir: '.output' },
-}
+})
