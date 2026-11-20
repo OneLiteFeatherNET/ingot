@@ -22,7 +22,9 @@ import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
 import com.reposilite.Reposilite
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.FrontendFacade
+import com.reposilite.frontend.api.PluginUiFacade
 import com.reposilite.frontend.infrastructure.CustomFrontendHandler
 import com.reposilite.frontend.infrastructure.FrontendSettingsEndpoint
 import com.reposilite.frontend.infrastructure.NotFoundHandler
@@ -94,6 +96,15 @@ internal class FrontendPlugin : ReposilitePlugin() {
             override fun onCall(event: RoutingSetupEvent) {
                 val routes = mutableSetOf<ReposiliteRoutes>()
 
+                // Plugins register their reader pages while they initialise, so the answer is final here. Without a reader
+                // page the segment stays with a repository of that name, as it always was.
+                val readerPagesRegistered = facade<PluginUiFacade>().hasReaderPages()
+                DashboardPaths.warnAboutReaderSegment(
+                    logger = logger,
+                    readerPagesRegistered = readerPagesRegistered,
+                    readerSegmentRepositoryExists = facade<RepositoryRegistry>().repository(DashboardPaths.READER_SEGMENT) != null,
+                )
+
                 // Registered whether or not this instance serves the dashboard itself: a
                 // detached dashboard needs it precisely when the deploy target is server.
                 routes.add(FrontendSettingsEndpoint(frontendFacade, localConfiguration.hideSettingsSecrets))
@@ -109,6 +120,7 @@ internal class FrontendPlugin : ReposilitePlugin() {
                             resourcesDirectory = FRONTEND_DIRECTORY,
                             repositoryRegistry = facade<RepositoryRegistry>(),
                             repositoryRouteDispatcher = facade<RepositoryRouteDispatcher>(),
+                            claimedRoutes = DashboardPaths.readerRoutes(readerPagesRegistered),
                         )
                     )
                 }

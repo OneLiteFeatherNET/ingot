@@ -16,6 +16,8 @@
 
 package com.reposilite.frontend
 
+import com.reposilite.journalist.Logger
+
 /**
  * The one place that names the paths the server reserves for itself.
  *
@@ -54,6 +56,32 @@ internal object DashboardPaths {
      */
     val RESERVED_SEGMENTS: Set<String> =
         APP_ROUTES.map { it.removePrefix("/").substringBefore('/') }.toSet() + SERVER_SEGMENTS
+
+    /** The top-level segment of the plugin reader pages, `/plugins/<plugin>/<page>`. */
+    const val READER_SEGMENT: String = "plugins"
+
+    /**
+     * The routes of the plugin reader pages. They are claimed only while a reader page is registered when the routes are
+     * set up, so an instance without such a plugin leaves the segment to a repository of that name. The segment is not
+     * part of [RESERVED_SEGMENTS] for the same reason.
+     */
+    fun readerRoutes(readerPagesRegistered: Boolean): List<String> =
+        if (readerPagesRegistered) listOf("/$READER_SEGMENT/<path>") else emptyList()
+
+    /**
+     * Warns at start about a repository named like [READER_SEGMENT] while reader pages claim that segment. Nothing is
+     * logged when the routes do not claim it or no repository has that id.
+     */
+    fun warnAboutReaderSegment(logger: Logger, readerPagesRegistered: Boolean, readerSegmentRepositoryExists: Boolean) {
+        if (readerPagesRegistered && readerSegmentRepositoryExists) {
+            logger.warn(
+                "Repository '$READER_SEGMENT' shares its path segment with the plugin reader pages under '/$READER_SEGMENT'. " +
+                    "The repository keeps answering Maven, Gradle and other non-browser clients, including HEAD requests. " +
+                    "Only a top-level browser navigation to '/$READER_SEGMENT' shows the dashboard, and the contents of the " +
+                    "repository stay reachable in the dashboard under '/browse/$READER_SEGMENT'. The configuration is not rejected."
+            )
+        }
+    }
 
     /**
      * Returns one warning per configured repository id that equals a reserved segment. Ids are compared
