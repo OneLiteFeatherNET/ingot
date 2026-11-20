@@ -10,11 +10,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/FactoryResetModal.vue",
-    "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/PasswordDialog.vue",
     "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
     "count": 1

@@ -16,11 +16,11 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, watch, type Ref } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { validateNewId } from './collections'
-import { SCRIM_STYLE } from './dialog'
 import { guidedCreateKey } from './guidedCreate'
 
 /*
@@ -82,21 +82,15 @@ const submit = () => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue && !guided"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
+    labelledby="new-entry-title"
+    describedby="new-entry-body"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form
       id="new-entry-form"
-      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3 [--md-field-container:var(--md-sys-color-surface-container-high)]"
-      aria-labelledby="new-entry-title"
-      aria-describedby="new-entry-body"
       novalidate
-      role="alertdialog"
-      aria-modal="true"
       data-ingot-component="new-entry-dialog"
       @submit.prevent="submit"
     >
@@ -126,7 +120,7 @@ const submit = () => {
           @update:model-value="onInput"
         />
       </div>
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
+      <MdDialogActions class="mt-6">
         <MdButton
           id="new-entry-cancel"
           variant="text"
@@ -142,7 +136,7 @@ const submit = () => {
         >
           Create
         </MdButton>
-      </div>
+      </MdDialogActions>
     </form>
-  </VueFinalModal>
+  </MdDialog>
 </template>

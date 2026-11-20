@@ -295,11 +295,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/NewEntryDialog.vue",
-    "match": "[--md-field-container:var(--md-sys-color-surface-container-high)]",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/RepositoryWizard.vue",
     "match": "medium:max-h-[min(44rem,90dvh)]",
     "count": 1
