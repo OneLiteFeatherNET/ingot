@@ -21,6 +21,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw, type Router } f
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalDetail from './PrincipalDetail.vue'
+import MdCard from '../md/MdCard.vue'
 import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
@@ -219,6 +220,15 @@ describe('PrincipalDetail', () => {
 
       const card = wrapper.find('[data-test="heading-row"]').element.parentElement!
       expect(card.classList.contains('border-outline'), 'the card has the outline edge').toBe(true)
+    })
+
+    it('draws the detail header on the shared outlined card', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const row = wrapper.get('[data-test="heading-row"]').element
+      const card = wrapper.findAllComponents(MdCard).find(candidate => candidate.element === row.parentElement)
+      expect(card, 'the header card is the card primitive, not a hand-built container').toBeDefined()
+      expect(card!.props('variant'), 'the header card keeps the outlined filled surface').toBe('filled')
     })
 
     it('keeps the actions in the row of the heading', async () => {
@@ -440,6 +450,15 @@ describe('PrincipalDetail', () => {
     })
 
     describe('legacy routes', () => {
+      it('draws the legacy routes on the shared card', async () => {
+        await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+        const panel = wrapper.get('[data-test="legacy-grants"]').element
+        const card = wrapper.findAllComponents(MdCard).find(candidate => candidate.element === panel)
+        expect(card, 'the panel is the card primitive, not a hand-built container').toBeDefined()
+        expect(card!.find('h2').text(), 'the panel title sits inside the card').toBe('Legacy routes')
+      })
+
       it('reads the routes of the migrated token by the machine name', async () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
@@ -493,6 +512,16 @@ describe('PrincipalDetail', () => {
         expect(wrapper.find('[data-test="team-rights-hint"]').text())
           .toBe("This token's rights come from the teams of this machine account.")
         expect(wrapper.find('[data-test="legacy-grants"]').exists()).toBe(false)
+      })
+
+      it('draws the team hint on the shared low card', async () => {
+        legacyGet.mockRejectedValue(Object.assign(new Error('missing'), { response: { status: 404 } }))
+        await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+        const hint = wrapper.get('[data-test="team-rights-hint"]').element
+        const card = wrapper.findAllComponents(MdCard).find(candidate => candidate.element === hint.parentElement)
+        expect(card, 'the hint sits on the card primitive').toBeDefined()
+        expect(card!.props('variant'), 'the hint keeps the tinted low surface').toBe('low')
       })
     })
   })
