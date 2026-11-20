@@ -10,12 +10,12 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose migrate-content-to-components`: this change only, tasks unchecked, branched from the remote main
+- [x] 1.1 `docs(openspec): propose migrate-content-to-components`: this change only, tasks unchecked, branched from the remote main
   branch. Verify: `openspec validate migrate-content-to-components --strict` passes and the dash grep prints nothing.
 
 ## 2. Preconditions and inventory (no commit)
 
-- [ ] 2.1 Check that `add-md3-component-catalogue`, `fix-surface-hierarchy-and-page-header`, `add-ui-style-gate` and
+- [x] 2.1 Check that `add-md3-component-catalogue`, `fix-surface-hierarchy-and-page-header`, `add-ui-style-gate` and
   `refactor-md3-token-utilities` are merged. Verify: `src/components/md/` holds `MdSection`, `MdList`, `MdListItem`, `MdListDetail`,
   `MdKeyValueList`, `MdDisclosure`, `MdBadge`, `MdDataTable`, `MdTabs`, `MdCodeBlock`, `MdCopyableCode`, `MdCode` and
   `MdNavigationItem`, and `src/style.css` declares the named breakpoints of `refactor-md3-token-utilities`. If one is missing,
@@ -29,16 +29,16 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 3. Wave 1: cards and sections
 
-- [ ] 3.1 `test(ui)`: in `src/components/md/MdCard.test.js`, assert that `padding="none"` removes the padding and keeps the radius; in
+- [x] 3.1 `test(ui)`: in `src/components/md/MdCard.test.js`, assert that `padding="none"` removes the padding and keeps the radius; in
   `src/components/md/MdSection.test.js` (added by the catalogue change), assert the `md-title-medium` class at `level` 2 and
   `md-title-small` at `level` 3. Verify: they fail, because `none` and the level type classes do not exist yet.
 - [ ] 3.2 `test(ui)`: in the existing tests of `LdapPanel`, `PermissionNodesCard`, `TeamMembersCard`, `TeamDetail`, `PasswordCard`,
   `ProfileCard`, `AuditView`, `FileList`, `SettingsView` and `TokenList`, assert that the card is an `md-card` anchor element and that its
   section heading is an `md-section` (level 2 or 3). Select by anchor or `data-test`, never by a utility. Verify: they fail on the
   hand-built containers.
-- [ ] 3.3 `test(ui)`: in `src/components/renderers/SectionRenderer.test.js`, assert that nested sections clamp at level 3 and that no
+- [x] 3.3 `test(ui)`: in `src/components/renderers/SectionRenderer.test.js`, assert that nested sections clamp at level 3 and that no
   heading is level 4. Verify: it fails, because the renderer emits a fixed level 3 at every depth.
-- [ ] 3.4 `fix(ui)`: add the `none` value to the `padding` prop of `MdCard.vue` and the level type classes to the `level` prop
+- [x] 3.4 `fix(ui)`: add the `none` value to the `padding` prop of `MdCard.vue` and the level type classes to the `level` prop
   of `MdSection.vue` (`src/components/md/`). Verify: 3.1 passes.
 - [ ] 3.5 `fix(ui)`: replace hand-built card containers with `MdCard` in `src/components/access/` (LdapPanel, LegacyGrantsPanel,
   PrincipalDetail, PermissionNodesCard, TeamMembersCard, TeamDetail, TeamParentsCard, TeamLegacyGrants, SsoProvidersPanel,
