@@ -73,7 +73,7 @@ watch(
 
 const {
   onOpen, onMessage, onClose, onError,
-  connect,
+  open,
   close,
   status,
   failure,
@@ -108,11 +108,11 @@ const setupConnection = () => {
   onOpen.value = () => {
     if (hasLines.value) addSeparator('Reconnected')
   }
-  onMessage.value = message => {
+  onMessage.value = (message, level) => {
     // Decided before the line lands: the scroll event for the new line has not fired yet, so
     // the flag still says where the reader was.
     const following = atBottom.value
-    logMessage(message)
+    logMessage(message, level)
     nextTick(() => {
       if (following) scrollToEnd()
     })
@@ -123,7 +123,7 @@ const setupConnection = () => {
   onError.value = error => console.error(error)
   onClose.value = () => {}
   const { token } = useSession()
-  connect(token.value)
+  open(token.value)
 }
 
 // This view is mounted only while its tab is open, so the stream follows the same life.

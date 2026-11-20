@@ -20,6 +20,7 @@ import { createURL } from '../client'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session"
+import { ConsoleSocket, type ResultFrame, type SocketState } from './socket'
 
 const { client, authMode } = useSession()
 
@@ -48,6 +49,11 @@ const sessionExpired = ref(false)
 const history = ref<string[]>([''])
 const historyIdx = ref(0)
 
+// The socket of protocol 1, from the hello on. Commands use it once the server has welcomed it. Against a server without
+// protocol 1 it is dropped, and the console runs over the event stream and the HTTP execute as before.
+let socket: ConsoleSocket | undefined
+let welcomed = false
+
 export default function useConsole() {
   const consoleAddress = createURL("/api/console/log")
 
@@ -58,6 +64,9 @@ export default function useConsole() {
   }
 
   const close = () => {
+    const current = socket
+    socket = undefined
+    current?.close()
     // Not gated on isConnected: a stream still opening has a readyState of CONNECTING and
     // would slip through, which is how leaving the tab mid-handshake used to leave the
     // request running.
@@ -77,6 +86,15 @@ export default function useConsole() {
     const sent = command.value
     addCommandToHistory(sent)
     command.value = ''
+
+    if (socket && welcomed) {
+      // A command is never queued while the socket reconnects, so it goes back into the input instead.
+      if (socket.execute(sent) === null) {
+        if (command.value === '') command.value = sent
+        createErrorToast('Command not sent: the console is reconnecting.')
+      }
+      return Promise.resolve()
+    }
 
     return client.value.console.execute(sent)
       .catch(error => {
@@ -107,7 +125,8 @@ export default function useConsole() {
   }
 
   const onOpen = ref<(() => void) | undefined>()
-  const onMessage = ref<((data: string) => void) | undefined>()
+  // The level is given for the lines of the socket, which name it in the frame. A line of the stream carries it in its text.
+  const onMessage = ref<((data: string, level?: string) => void) | undefined>()
   const onError = ref<((error: unknown) => void) | undefined>()
   const onClose = ref<(() => void) | undefined>()
 
@@ -179,8 +198,77 @@ export default function useConsole() {
     }
   }
 
+  const printResult = (result: ResultFrame) => {
+    const output = (result.output as { stream: string; text: string }[] | undefined) ?? []
+    output.forEach(line => onMessage.value?.(line.text, line.stream === 'stderr' ? 'ERROR' : 'INFO'))
+    const exitCode = result.exitCode as number | undefined
+    if (exitCode !== undefined && exitCode !== 0) onMessage.value?.(`Exit code ${exitCode}`, 'ERROR')
+  }
+
+  /**
+   * Opens the console over the socket of protocol 1 when the server offers it, and over the event stream otherwise. A
+   * server without protocol 1 answers the hello as a first message without credentials and hangs up, and anything else
+   * that ends the socket before its welcome falls back the same way. A cookie session has no token for the hello, so it
+   * stays on the event stream.
+   */
+  const open = (token: { name: string; secret: string }) => {
+    if (authMode?.value === 'cookie') return connect(token)
+    status.value = 'connecting'
+    failure.value = null
+    sessionExpired.value = false
+
+    welcomed = false
+    const candidate: ConsoleSocket = new ConsoleSocket({
+      url: createURL('/api/console/sock').replace(/^http/, 'ws'),
+      client: 'ingot-dashboard',
+      token: `${token.name}:${token.secret}`,
+      listener: {
+        onState: (state: SocketState) => {
+          if (socket !== candidate) return
+          if (welcomed) {
+            if (state === 'waiting' || state === 'connecting') status.value = 'connecting'
+            if (state === 'refused') {
+              socket = undefined
+              status.value = 'error'
+              failure.value = 'The server ended the console session.'
+              void checkSession()
+            }
+          } else if (state === 'waiting' || state === 'refused') {
+            socket = undefined
+            // Closed once the client has finished with the drop, so the retry it schedules is cancelled too.
+            queueMicrotask(() => candidate.close())
+            connect(token)
+          }
+        },
+        onWelcome: () => {
+          if (socket !== candidate) return
+          welcomed = true
+          status.value = 'open'
+          onOpen.value?.()
+        },
+        onLog: frame => {
+          if (socket === candidate) onMessage.value?.(frame.text, frame.level)
+        },
+        onResult: frame => {
+          if (socket === candidate) printResult(frame)
+        },
+        onError: frame => {
+          if (socket !== candidate) return
+          if (frame.code === 'busy') createErrorToast('Command not sent: another command is still running.')
+          else if (frame.id !== undefined) onMessage.value?.(frame.message, 'ERROR')
+        },
+        onUnknown: (_id, sent) => {
+          if (socket === candidate) onMessage.value?.(`The connection dropped before "${sent}" answered. It may or may not have run.`, 'WARN')
+        }
+      }
+    })
+    socket = candidate
+    candidate.connect()
+  }
+
   return {
     connection,
+    open,
     connect,
     close,
     status,
