@@ -110,4 +110,52 @@ describe('MdListbox', () => {
 
     expect(wrapper.isVisible(), 'an empty list is not shown').toBe(false)
   })
+
+  describe('groups', () => {
+    const grouped = [
+      { value: 'ingot.read', group: 'Static' },
+      { value: 'ingot.write', group: 'Static' },
+      { value: 'ingot.repository.releases', group: 'Repository' }
+    ]
+
+    it('renders no group when no option names one', () => {
+      const wrapper = mountListbox()
+
+      expect(wrapper.findAll('[role="group"]').length, 'a flat list has no groups').toBe(0)
+    })
+
+    it('puts consecutive options of one group into one group under a heading', () => {
+      const wrapper = mountListbox({ options: grouped })
+      const groups = wrapper.findAll('[role="group"]')
+
+      expect(groups.length, 'one group per run of the same name').toBe(2)
+      expect(groups[0].findAll('[role="option"]').length, 'the first group holds both Static options').toBe(2)
+      expect(wrapper.findAll('[data-test="option-group"]').map((heading) => heading.text()), 'the headings name the groups')
+        .toEqual(['Static', 'Repository'])
+    })
+
+    it('names each group by its heading', () => {
+      const wrapper = mountListbox({ options: grouped })
+      const group = wrapper.findAll('[role="group"]')[1]
+      const heading = wrapper.find(`#${group.attributes('aria-labelledby')}`)
+
+      expect(heading.text(), 'aria-labelledby resolves to the heading text').toBe('Repository')
+    })
+
+    it('keeps the option ids in list order across groups', () => {
+      const wrapper = mountListbox({ options: grouped, active: 2 })
+      const third = optionsOf(wrapper)[2]
+
+      expect(third.attributes('id'), 'the id counts across the groups').toBe(optionId('nodes', 2))
+      expect(third.attributes('aria-selected'), 'the active index counts across the groups').toBe('true')
+    })
+
+    it('emits the value of a grouped option that was clicked', async () => {
+      const wrapper = mountListbox({ options: grouped })
+
+      await optionsOf(wrapper)[2].trigger('click')
+
+      expect(wrapper.emitted('choose'), 'a click in a group chooses the option').toEqual([['ingot.repository.releases']])
+    })
+  })
 })
