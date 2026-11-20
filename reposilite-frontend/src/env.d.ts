@@ -20,5 +20,5 @@
 // server substitutes, not identifiers, so they need no declaration. Vitest runs without globals, so tests import
 // their helpers.
 
-// Development only: the port of the fake backend, defined by vite.config.js. Absent under the test runner.
+// Development only: the port of the fake backend, defined by vite.config.ts. Absent under the test runner.
 declare const __INGOT_FAKE_API_PORT__: string | undefined

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { defineConfig } from "vite"
+import { defineConfig, type Plugin } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import tailwindcss from "@tailwindcss/vite"
@@ -35,7 +35,7 @@ const mountPoint = () => ({
     order: 'pre',
     handler: (html) => html.replace('<head>', '<head>\n    <base href="{{REPOSILITE.BASE_PATH}}" />'),
   },
-})
+}) satisfies Plugin
 
 /*
  * The dashboard image build (INGOT_DASHBOARD_BUILD=1). Its assets are relative, so the document's base
@@ -54,7 +54,7 @@ const dashboardText = () => ({
       .replaceAll('{{REPOSILITE.DESCRIPTION}}', 'Maven repository powered by Ingot')
       .replaceAll('{{REPOSILITE.FAVICON}}', 'favicon.png'),
   },
-})
+}) satisfies Plugin
 
 /*
  * The comments of the source document are for the people who edit it: the license notice of the file and the
@@ -64,17 +64,21 @@ const dashboardText = () => ({
 const COMMENT_OR_RAW_TEXT = /(<(script|style)\b[\s\S]*?<\/\2\s*>)|(<!--[\s\S]*?-->)/gi
 const CONDITIONAL_COMMENT = /^<!--(\[if\b|<!\[endif\])/
 
+// A plain function rather than an inline handler, so that its type carries no plugin `this` and a test can call it.
+const withoutHtmlComments = (html: string): string =>
+  html.replace(COMMENT_OR_RAW_TEXT, (match, rawText: string | undefined, _tag, comment: string | undefined) => {
+    if (rawText !== undefined || comment === undefined) return match
+    return CONDITIONAL_COMMENT.test(comment) ? match : ''
+  })
+
 export const stripHtmlComments = () => ({
   name: 'ingot-strip-html-comments',
   apply: 'build',
   transformIndexHtml: {
     order: 'post',
-    handler: (html) => html.replace(COMMENT_OR_RAW_TEXT, (match, rawText, _tag, comment) => {
-      if (rawText !== undefined || comment === undefined) return match
-      return CONDITIONAL_COMMENT.test(comment) ? match : ''
-    }),
+    handler: withoutHtmlComments,
   },
-})
+}) satisfies Plugin
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -113,11 +117,6 @@ export default defineConfig({
     chunkSizeWarningLimit: 768,
   },
   css: {
-    preprocessorOptions: {
-      css: {
-        charset: false,
-      },
-    },
     postcss: {
       plugins: [
         {

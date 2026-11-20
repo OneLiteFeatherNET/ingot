@@ -22,9 +22,9 @@ import { createVitest } from 'vitest/node'
 
 // The configuration of the real test run, applied to a project tree that is built in a temporary directory. Nothing
 // is read from the repository's own sources, and each test gets a tree of its own.
-const CONFIG = join(process.cwd(), 'vitest.config.js')
+const CONFIG = join(process.cwd(), 'vitest.config.ts')
 
-let root
+let root: string
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'vitest-include-'))
@@ -34,7 +34,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
-const collected = async (files) => {
+const collected = async (files: string[]): Promise<string[]> => {
   for (const file of files) {
     mkdirSync(join(root, file, '..'), { recursive: true })
     writeFileSync(join(root, file), "import { it } from 'vitest'\nit('runs', () => {})\n")
@@ -59,6 +59,10 @@ describe('which files the unit run collects', () => {
 
   it('still collects a JavaScript test under src', async () => {
     expect(await collected(['src/sample.test.js']), 'the .test.js file under src').toEqual(['src/sample.test.js'])
+  })
+
+  it('collects the TypeScript test of the build config', async () => {
+    expect(await collected(['vite.config.test.ts']), 'the test of vite.config.ts').toEqual(['vite.config.test.ts'])
   })
 
   it('does not collect a test outside src and server', async () => {
