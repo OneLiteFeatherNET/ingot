@@ -522,3 +522,102 @@ test.describe('the administration header beside the side navigation', () => {
     expect(Math.abs(navigationAfter.left - navigationBefore.left), 'the side navigation keeps its left edge, in px').toBeLessThanOrEqual(0.5)
   })
 })
+
+// A sibling page slides in beside the side navigation, and the Sections sheet is a window-wide layer. While a page
+// transitions, the side navigation and the frame header keep their boxes, and a sheet opened during the transition still
+// covers the window from its corner. Both are read in the browser, once per animation frame, so no wait is a fixed time.
+test.describe('the frame while a page transitions', () => {
+  // The top app bar is the first header of the document, the frame header is the one that labels the administration title,
+  // and the side navigation is the navigation named Administration that holds links.
+  const STILL_PARTS = Object.freeze({
+    banner: 'header',
+    sideNavigation: 'nav[aria-label="Administration"]',
+    frameHeader: '#administration-title',
+  })
+  const sheet = (page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
+
+  // Starts one recorder per page: each animation frame stores the top and left edges of the still parts, and whether a
+  // sibling page transition (the shared axis X classes of the page column) is running. The frame header is found through
+  // the title it labels, and the header of the document is the top app bar.
+  const startFrameRecorder = (page) => page.evaluate((parts) => {
+    const samples = []
+    window.__frameSamples = samples
+    window.__frameRecording = true
+    const sample = () => {
+      if (!window.__frameRecording) {
+        return
+      }
+      const entry = {
+        transitioning: document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length > 0,
+      }
+      for (const [name, selector] of Object.entries(parts)) {
+        const element = name === 'frameHeader' ? document.querySelector(selector)?.closest('header') : document.querySelector(selector)
+        const { top, left } = element ? element.getBoundingClientRect() : { top: Number.NaN, left: Number.NaN }
+        entry[name] = { top, left }
+      }
+      samples.push(entry)
+      requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
+  }, STILL_PARTS)
+
+  const stopFrameRecorder = (page) => page.evaluate(() => {
+    window.__frameRecording = false
+    return window.__frameSamples
+  })
+
+  const sliding = (page) => page.evaluate(() => document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length)
+
+  test('keeps the side navigation and the frame header in place while a sibling page slides in at 1440 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/access/users'))
+    await expect(page.locator('[data-test="page-column"]')).toBeVisible()
+
+    await startFrameRecorder(page)
+    await page.getByRole('navigation', { name: 'Administration', exact: true }).getByRole('link', { name: 'Machine accounts', exact: true }).click()
+    await expect(page, 'the sibling page is open').toHaveURL(/\/access\/machines$/)
+    await expect(page.getByRole('heading', { level: 1 }), 'the sibling page is drawn').toBeVisible()
+    await expect.poll(() => sliding(page), 'the slide has ended').toBe(0)
+    const samples = await stopFrameRecorder(page)
+
+    expect(samples.some(sample => sample.transitioning), 'the slide was seen in at least one frame').toBe(true)
+    for (const part of Object.keys(STILL_PARTS)) {
+      const first = samples[0][part]
+      for (const axis of ['top', 'left']) {
+        const drift = Math.max(...samples.map(sample => Math.abs(sample[part][axis] - first[axis])))
+        expect(drift, `the ${part} keeps its ${axis} edge during the slide, in px`).toBeLessThanOrEqual(0.5)
+      }
+    }
+  })
+
+  test('covers the window from its corner with a sheet opened during a sibling slide at 900 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await page.goto(siteUrl('/access/machines'))
+    await page.getByRole('button', { name: 'Sections', exact: true }).click()
+    await expect(sheet(page), 'the sheet is open').toBeVisible()
+    await sheet(page).getByRole('link', { name: 'Users', exact: true }).click()
+    await expect(page, 'the sibling page is open').toHaveURL(/\/access\/users$/)
+
+    // The choice closes the sheet and starts the slide of the page column. The sheet is opened again only while that
+    // slide is running, so the check reads the sheet inside a transition and not after it.
+    const openWhileSliding = () => page.evaluate(() => {
+      if (document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length === 0) {
+        return false
+      }
+      const button = [...document.querySelectorAll('button')].find(element => element.textContent.trim() === 'Sections')
+      button.click()
+      return true
+    })
+    await expect.poll(openWhileSliding, 'the sheet is opened while the page slides in').toBe(true)
+    await expect(sheet(page), 'the sheet is open again').toBeVisible()
+
+    const overlay = await sheet(page).evaluate(element => {
+      const { left, top, width, height } = element.getBoundingClientRect()
+      return { left, top, width, height, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight }
+    })
+    expect(Math.abs(overlay.left), 'the sheet starts at the left edge of the window, in px').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(overlay.top), 'the sheet starts at the top edge of the window, in px').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(overlay.width - overlay.viewportWidth), 'the sheet is as wide as the window, in px').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(overlay.height - overlay.viewportHeight), 'the sheet is as high as the window, in px').toBeLessThanOrEqual(0.5)
+  })
+})
