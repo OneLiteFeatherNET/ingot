@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, useId } from 'vue'
+import MdCard from '../md/MdCard.vue'
 import MdRadio from '../md/MdRadio.vue'
 import { WRITE_CHOICES, type WriteChoice } from './writePolicy'
 
@@ -50,34 +51,36 @@ const choices = computed(() => WRITE_CHOICES
 </script>
 
 <template>
-  <fieldset
-    class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
-    data-test="write-policy"
-    data-ingot-component="write-policy-field"
-  >
-    <legend class="md-title-medium text-on-surface">
-      Write policy
-    </legend>
-    <div
-      v-for="choice in choices"
-      :key="choice.value"
-      class="flex flex-col gap-1"
+  <MdCard variant="low">
+    <fieldset
+      class="flex flex-col gap-4"
+      data-test="write-policy"
+      data-ingot-component="write-policy-field"
     >
-      <MdRadio
-        :model-value="modelValue"
-        :value="choice.value"
-        :name="name"
-        :aria-describedby="choice.helpId"
-        @update:model-value="emit('update:modelValue', $event)"
+      <legend class="md-title-medium text-on-surface">
+        Write policy
+      </legend>
+      <div
+        v-for="choice in choices"
+        :key="choice.value"
+        class="flex flex-col gap-1"
       >
-        {{ choice.label }}
-      </MdRadio>
-      <p
-        :id="choice.helpId"
-        class="ml-12 md-body-medium text-on-surface-variant"
-      >
-        {{ choice.help }}
-      </p>
-    </div>
-  </fieldset>
+        <MdRadio
+          :model-value="modelValue"
+          :value="choice.value"
+          :name="name"
+          :aria-describedby="choice.helpId"
+          @update:model-value="emit('update:modelValue', $event)"
+        >
+          {{ choice.label }}
+        </MdRadio>
+        <p
+          :id="choice.helpId"
+          class="ml-12 md-body-medium text-on-surface-variant"
+        >
+          {{ choice.help }}
+        </p>
+      </div>
+    </fieldset>
+  </MdCard>
 </template>
