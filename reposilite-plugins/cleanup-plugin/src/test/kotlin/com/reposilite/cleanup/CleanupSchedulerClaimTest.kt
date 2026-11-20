@@ -22,8 +22,8 @@ import com.reposilite.cleanup.application.CleanupScope
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.SqliteTestDatabase
-import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.scheduling.runAtOnce
+import com.reposilite.scheduling.sqlScheduledJobClaims
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
@@ -52,7 +52,7 @@ internal class CleanupSchedulerClaimTest {
         SqliteTestDatabase().use { shared ->
             val started = ConcurrentLinkedQueue<String>()
             val schedulers = listOf("instance-a", "instance-b").map { instanceId ->
-                scheduler(SqlScheduledJobClaims(shared.database, clock, instanceId), started)
+                scheduler(sqlScheduledJobClaims(shared.database, clock, instanceId), started)
             }
 
             runAtOnce(schedulers.map { scheduler -> { scheduler.tick() } })
@@ -66,7 +66,7 @@ internal class CleanupSchedulerClaimTest {
         SqliteTestDatabase().use { shared ->
             val started = ConcurrentLinkedQueue<String>()
             val schedulers = listOf("instance-a", "instance-b").map { instanceId ->
-                scheduler(SqlScheduledJobClaims(shared.database, clock, instanceId), started)
+                scheduler(sqlScheduledJobClaims(shared.database, clock, instanceId), started)
             }
             runAtOnce(schedulers.map { scheduler -> { scheduler.tick() } })
 
@@ -92,14 +92,14 @@ internal class CleanupSchedulerClaimTest {
         SqliteTestDatabase().use { shared ->
             val started = ConcurrentLinkedQueue<String>()
             // given: instance A starts the day's run and stops in the middle of it, so the day is never completed
-            val stopped = StoppedClaims(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"))
+            val stopped = StoppedClaims(sqlScheduledJobClaims(shared.database, clock, "instance-a"))
             assertThrows(SimulatedStop::class.java) { instanceScheduler(stopped, started, "instance-a", stopsInRun = true).tick() }
 
             // when: instance B ticks after the lease of that run expired, and then instance C ticks later the same day
             clock.advance(Duration.ofMinutes(5))
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"), started, "instance-b").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-b"), started, "instance-b").tick()
             clock.advance(Duration.ofMinutes(5))
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-c"), started, "instance-c").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-c"), started, "instance-c").tick()
 
             // then: B takes the run over, and no run starts after it on that day
             assertThat(started.toList()).`as`("runs of the policy: the stopped run and one takeover").containsExactly("instance-a", "instance-b")
@@ -112,12 +112,12 @@ internal class CleanupSchedulerClaimTest {
             val started = ConcurrentLinkedQueue<String>()
             // given: instance A starts the run at the last second of the scheduled minute and stops, so its lease runs to 02:01:59
             clock.advance(Duration.ofSeconds(59))
-            val stopped = StoppedClaims(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"))
+            val stopped = StoppedClaims(sqlScheduledJobClaims(shared.database, clock, "instance-a"))
             assertThrows(SimulatedStop::class.java) { instanceScheduler(stopped, started, "instance-a", stopsInRun = true).tick() }
 
             // when: instance B ticks at 02:01:30, while the lease of A is still live
             clock.advance(Duration.ofSeconds(31))
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"), started, "instance-b").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-b"), started, "instance-b").tick()
 
             // then: B does not take the run over
             assertThat(started.toList()).`as`("runs of the policy while the lease of the stopped instance is live").containsExactly("instance-a")
@@ -129,11 +129,11 @@ internal class CleanupSchedulerClaimTest {
         SqliteTestDatabase().use { shared ->
             val started = ConcurrentLinkedQueue<String>()
             // given: instance A completes the day's run at the scheduled minute
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"), started, "instance-a").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-a"), started, "instance-a").tick()
 
             // when: instance B ticks five minutes later the same day
             clock.advance(Duration.ofMinutes(5))
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"), started, "instance-b").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-b"), started, "instance-b").tick()
 
             // then: B starts no run
             assertThat(started.toList()).`as`("runs of the policy after the day was completed").containsExactly("instance-a")
@@ -147,7 +147,7 @@ internal class CleanupSchedulerClaimTest {
             // given: no instance was up at 02:00, and both instances have catch-up on
             clock.advance(Duration.ofMinutes(40))
             val schedulers = listOf("instance-a", "instance-b").map { instanceId ->
-                scheduler(SqlScheduledJobClaims(shared.database, clock, instanceId), started, catchUp = true)
+                scheduler(sqlScheduledJobClaims(shared.database, clock, instanceId), started, catchUp = true)
             }
 
             // when: both instances tick at the first tick after the scheduled time, and again five minutes later
@@ -168,7 +168,7 @@ internal class CleanupSchedulerClaimTest {
 
             // when: instance A ticks at 02:01
             clock.advance(Duration.ofMinutes(1))
-            instanceScheduler(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"), started, "instance-a").tick()
+            instanceScheduler(sqlScheduledJobClaims(shared.database, clock, "instance-a"), started, "instance-a").tick()
 
             // then: the run is not started, because a later tick takes over only a run that was already started
             assertThat(started.toList()).`as`("runs of the policy that were never started at the scheduled minute").isEmpty()

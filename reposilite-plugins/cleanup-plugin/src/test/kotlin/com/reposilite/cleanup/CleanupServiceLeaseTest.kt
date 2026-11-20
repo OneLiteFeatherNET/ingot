@@ -23,7 +23,7 @@ import com.reposilite.cleanup.infrastructure.InMemoryCleanupRunRepository
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.SqliteTestDatabase
-import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import com.reposilite.scheduling.sqlScheduledJobClaims
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
@@ -75,7 +75,7 @@ internal class CleanupServiceLeaseTest {
 
             val first = service(
                 clock = clock,
-                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"),
+                claims = sqlScheduledJobClaims(shared.database, clock, "instance-a"),
                 storage = storage,
                 deleter = VersionDeleter { _, path, _, _ ->
                     calls += "first:$path"
@@ -88,7 +88,7 @@ internal class CleanupServiceLeaseTest {
             )
             second = service(
                 clock = clock,
-                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"),
+                claims = sqlScheduledJobClaims(shared.database, clock, "instance-b"),
                 storage = storage,
                 deleter = VersionDeleter { _, path, _, _ -> calls += "second:$path"; Result.ok(Unit) },
             )
@@ -196,7 +196,7 @@ internal class CleanupServiceLeaseTest {
 
             val manual = service(
                 clock = clock,
-                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"),
+                claims = sqlScheduledJobClaims(shared.database, clock, "instance-a"),
                 storage = storage,
                 deleter = VersionDeleter { _, path, _, _ ->
                     calls += "manual:$path"
@@ -209,7 +209,7 @@ internal class CleanupServiceLeaseTest {
             )
             scheduler = service(
                 clock = clock,
-                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"),
+                claims = sqlScheduledJobClaims(shared.database, clock, "instance-b"),
                 storage = storage,
                 deleter = VersionDeleter { _, path, _, _ -> calls += "scheduled:$path"; Result.ok(Unit) },
             )
