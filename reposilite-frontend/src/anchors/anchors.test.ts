@@ -435,3 +435,71 @@ describe("the dialog anchors kept through the dialog migration", () => {
     },
   )
 })
+
+// The primitives of the md catalogue, each registered under its md- name at its file in components/md. Design decision
+// D1 of add-md3-component-catalogue lists them.
+const MD_PRIMITIVES: Array<[name: string, file: string]> = [
+  ["md-dialog-actions", "MdDialogActions"],
+  ["md-alert", "MdAlert"],
+  ["md-state-panel", "MdStatePanel"],
+  ["md-skeleton", "MdSkeleton"],
+  ["md-page", "MdPage"],
+  ["md-page-header", "MdPageHeader"],
+  ["md-breadcrumb", "MdBreadcrumb"],
+  ["md-section", "MdSection"],
+  ["md-list-detail", "MdListDetail"],
+  ["md-list", "MdList"],
+  ["md-list-item", "MdListItem"],
+  ["md-divider", "MdDivider"],
+  ["md-key-value-list", "MdKeyValueList"],
+  ["md-data-table", "MdDataTable"],
+  ["md-tabs", "MdTabs"],
+  ["md-disclosure", "MdDisclosure"],
+  ["md-badge", "MdBadge"],
+  ["md-avatar", "MdAvatar"],
+  ["md-icon", "MdIcon"],
+  ["md-link", "MdLink"],
+  ["md-code", "MdCode"],
+  ["md-code-block", "MdCodeBlock"],
+  ["md-copyable-code", "MdCopyableCode"],
+  ["md-listbox", "MdListbox"],
+  ["md-field-shell", "MdFieldShell"],
+  ["md-navigation-item", "MdNavigationItem"],
+]
+
+describe("the registry entries of the md catalogue primitives", () => {
+  it.each(MD_PRIMITIVES)("registers %s at src/components/md/%s.vue", (name, file) => {
+    const entry = registry.components.find(component => component.name === name)
+
+    expect(entry, `${name} is registered in registry.json`).toBeDefined()
+    expect(entry?.file, `${name} points at its primitive file`).toBe(`src/components/md/${file}.vue`)
+  })
+
+  it.each(MD_PRIMITIVES)("names the root element of %s with its registered name", (name) => {
+    const entry = registry.components.find(component => component.name === name)
+
+    if (!entry) expect.fail(`${name} is not registered in registry.json`)
+    const problems = nameProblems(entry.file, read(entry.file), entry, registry)
+
+    expect(problems, problems.join("\n")).toEqual([])
+  })
+})
+
+// The segmented control moved from components/tokens to components/md. Its two names stay as they were, so a plugin or a
+// test that selects on them keeps working, and a name that did not change needs no alias.
+describe("the segmented control names kept through the move", () => {
+  it.each([
+    ["segmented-control", "src/components/md/MdSegmentedButton.vue"],
+    ["segmented-option", "src/components/md/MdSegmentedOption.vue"],
+  ])("keeps %s registered at the moved file %s", (name, file) => {
+    const entry = registry.components.find(component => component.name === name)
+
+    expect(entry?.file, `${name} keeps its name and points at the moved file`).toBe(file)
+  })
+
+  it.each(["segmented-control", "segmented-option"])("declares no alias for %s", (name) => {
+    const aliases = registry.aliases.filter(alias => alias.name === name || alias.replacedBy === name)
+
+    expect(aliases, `${name} kept its name, so no alias replaces it`).toEqual([])
+  })
+})
