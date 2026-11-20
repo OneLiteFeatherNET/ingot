@@ -373,7 +373,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
       device's safe area above the footer. From 600px the rail sits at the left and the page moves
       right by its 96px width, the header included. From 600px the frame (rail and top bar) is
       surface-container, and the content is a surface sheet with rounded corners where it meets
-      them. The sheet is at least as tall as the window below the top bar, so its footer sits at
+      them, edged by a 1px outline line. The sheet is at least as tall as the window below the top bar, so its footer sits at
       the bottom of the window. From 1600px the sheet also rounds its top right corner and keeps
       a 16px gap to the window edge.
     -->
@@ -399,7 +399,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
     -->
     <div
       class="overflow-x-clip bg-surface"
-      :class="hasNavigation ? 'medium:flex medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))] medium:flex-col medium:rounded-tl-corner-extra-large xlarge:mr-4 xlarge:rounded-tr-corner-extra-large' : ''"
+      :class="hasNavigation ? 'medium:flex medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))] medium:flex-col medium:rounded-tl-corner-extra-large medium:border-t medium:border-l medium:border-outline xlarge:mr-4 xlarge:rounded-tr-corner-extra-large xlarge:border-r' : ''"
     >
       <main
         id="main"

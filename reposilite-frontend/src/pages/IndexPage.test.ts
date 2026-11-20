@@ -207,6 +207,18 @@ describe('IndexPage footer and content sheet', () => {
     expect(wrapper.find(SHEET).classes(), 'the sheet fills the window below the 4rem top bar')
       .toContain('medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))]')
   })
+
+  it('draws a 1 pixel outline edge where the sheet meets the frame, from 600 pixels', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const classes = wrapper.find(SHEET).classes()
+
+    expect(classes, 'the top edge meets the top bar').toContain('medium:border-t')
+    expect(classes, 'the start edge meets the rail').toContain('medium:border-l')
+    expect(classes, 'the end edge meets the frame once the sheet keeps its gap').toContain('xlarge:border-r')
+    expect(classes, 'the edge carries meaning, so it takes the outline role').toContain('medium:border-outline')
+    expect(classes.filter(name => !name.includes(':') && name.startsWith('border')), 'no edge below 600 pixels').toEqual([])
+  })
 })
 
 describe('IndexPage section from the route', () => {
