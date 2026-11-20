@@ -39,6 +39,7 @@ import com.reposilite.status.FailureFacade
 import com.reposilite.storage.PluginStorageSecretGuard
 import com.reposilite.storage.StorageProviderVariants
 import com.reposilite.storage.secretVariants
+import net.onelitefeather.ingot.plugin.schema.PluginSettingsSchemas
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
@@ -152,6 +153,9 @@ class SharedConfigurationFacade(
             val written = AtomicReference<SharedSettings?>(null)
             val generated: Supplier<InputStream> = knownSchemes[type.name]
                 ?.let { Supplier { it.getContent() } }
+                // A plugin's settings class may carry its compile-time schema in the plugin's own jar.
+                ?: PluginSettingsSchemas.find(type, SharedConfigurationFacade::class.java.classLoader)
+                    ?.let { bytes -> Supplier { bytes.inputStream() } }
                 ?: run {
                     journalist.logger.warn("[SharedConfigurationFacade] Cannot find scheme for $type, scheme has to be generated at runtime")
                     val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
