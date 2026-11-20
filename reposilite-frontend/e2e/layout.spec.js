@@ -322,7 +322,7 @@ test.describe('the administration page header', () => {
     await page.goto(siteUrl('/maintenance?tab=backup'))
     await expect(page.getByRole('button', { name: 'Download as JSON', exact: true })).toBeVisible()
 
-    const text = page.locator('section[data-ingot-component="administration-frame"] > header > div').first()
+    const text = page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"] [data-test="page-header-title"]').first()
     const box = await text.boundingBox()
     expect(box.width, 'the text column of the header in px').toBeGreaterThanOrEqual(300)
   })
@@ -385,13 +385,16 @@ test.describe('the bottom navigation bar at phone width', () => {
 // The header of the administration pages keeps its height and the frame keeps its left edge when the page changes, so
 // the side navigation and the heading do not jump between an Overview, an entry page, a list and a detail page.
 test.describe('the administration header does not move between pages', () => {
-  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] > header')
+  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
   const boxOf = (locator) => locator.evaluate(element => {
     const { top, left, height } = element.getBoundingClientRect()
     return { top, left, height }
   })
 
-  for (const width of [600, 1440]) {
+  // Wide widths only. Below 1240 pixels the back arrow stands in its own row on every page but Overview, and the heading
+  // and the description may wrap beside the actions (fix-surface-hierarchy-and-page-header, D3), so the height follows
+  // the page there.
+  for (const width of [1440]) {
     test(`keeps the header the same height on Overview, an entry, a list and a detail page at ${width} pixels`, async ({ adminPage: page, seed }) => {
       const detail = await seed.repository('header-detail')
       await page.setViewportSize({ width, height: 900 })
@@ -453,7 +456,7 @@ test.describe('the administration header does not move between pages', () => {
 
 // From 1240 pixels the header sits beside the side navigation, in the page column. Below it the header stays above the index.
 test.describe('the administration header beside the side navigation', () => {
-  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] > header')
+  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
   const boxOf = (locator) => locator.evaluate(element => {
     const { top, left, bottom } = element.getBoundingClientRect()
     return { top, left, bottom }
