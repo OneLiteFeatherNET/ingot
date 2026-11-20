@@ -177,6 +177,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `policy-dialog` | experimental | `src/components/maintenance/PolicyDialog.vue` | none | none | none |
 | `principal-actions-menu` | experimental | `src/components/access/PrincipalActionsMenu.vue` | none | none | none |
 | `principal-detail` | experimental | `src/components/access/PrincipalDetail.vue` | none | `loading` | none |
+| `principal-factors-card` | experimental | `src/components/access/PrincipalFactorsCard.vue` | none | none | none |
 | `principals-panel` | experimental | `src/components/access/PrincipalsPanel.vue` | none | none | none |
 | `problem-alert` | experimental | `src/components/migration/ProblemAlert.vue` | none | `error` | none |
 | `profile-card` | experimental | `src/components/account/ProfileCard.vue` | none | none | none |

@@ -29,6 +29,7 @@ import TokenTag from '../tokens/TokenTag.vue'
 import LegacyGrantsPanel from './LegacyGrantsPanel.vue'
 import PermissionNodesCard from './PermissionNodesCard.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
+import PrincipalFactorsCard from './PrincipalFactorsCard.vue'
 import {
   detailOf,
   isInstanceAdmin,
@@ -68,11 +69,14 @@ const props = defineProps({
 
 const emit = defineEmits(['changed', 'deleted'])
 
-const { client } = useSession()
+const { client, instanceAdmin: viewerIsAdmin } = useSession()
 const api = computed(() => client.value.identity.principals)
 const tokensApi = computed(() => client.value.identity.principalTokens(props.name))
 
 const isMachine = computed(() => props.kind === 'MACHINE')
+// The second factors of a user are shown to an instance administrator only, and only for a user.
+const factorsApi = computed(() => client.value.identity.principals.factors(props.name))
+const canSeeFactors = computed(() => viewerIsAdmin?.value === true)
 
 const detail = ref<PrincipalDetail | null>(null)
 const status = ref<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -307,6 +311,12 @@ const admin = computed(() => isInstanceAdmin(detail.value))
           </dd>
         </dl>
       </div>
+
+      <PrincipalFactorsCard
+        v-if="!isMachine && canSeeFactors"
+        :name="name"
+        :api="factorsApi"
+      />
 
       <PermissionNodesCard
         subject-kind="principal"
