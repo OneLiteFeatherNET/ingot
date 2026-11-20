@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.search.outbox
 
 import net.onelitefeather.ingot.search.Provenance
+import net.onelitefeather.ingot.search.enrichment.ArtifactContent
 import java.time.Instant
 
 /** What storage reports about one file now. Directories and missing paths have no [StoredFile]. */
@@ -36,6 +37,9 @@ internal interface IndexStorage {
 
     /** The first [maxBytes] of the file at [path], or null when it is missing. Used for checksum sidecars. */
     fun head(repository: String, path: String, maxBytes: Int): String?
+
+    /** The ranged content of the file at [path] for one enrichment call, or null. Reads nothing by itself. */
+    fun content(repository: String, path: String, sizeBytes: Long): ArtifactContent? = null
 
 }
 

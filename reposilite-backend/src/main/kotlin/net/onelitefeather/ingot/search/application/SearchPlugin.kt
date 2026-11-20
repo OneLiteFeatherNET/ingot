@@ -52,6 +52,11 @@ import net.onelitefeather.ingot.search.backend.DatabaseSearchBackendFactory
 import net.onelitefeather.ingot.search.backend.SearchBackendHolder
 import net.onelitefeather.ingot.search.backend.SearchBackendState
 import net.onelitefeather.ingot.search.database.SearchSchema
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistrationEvent
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistry
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentExecutor
+import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
+import net.onelitefeather.ingot.search.enrichment.artifactEnrichmentPool
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.outbox.OutboxArtifactIndexSink
@@ -149,6 +154,8 @@ internal class SearchPlugin : ReposilitePlugin() {
      */
     private fun startBackend(wiring: SearchWiring): Started {
         reposilite().extensions.emitEvent(ArtifactSearchBackendRegistrationEvent(wiring.registry))
+        val enrichers = ArtifactEnricherRegistry { logger.warn(it) }
+        reposilite().extensions.emitEvent(ArtifactEnricherRegistrationEvent(enrichers))
         // The search lease has its own owner, kept with the data directory, so that a restart keeps the epoch of the index.
         val leaseOwner = SearchLeaseOwner.of(reposilite().parameters.workingDirectory)
         val leases = SqlScheduledJobClaims(wiring.database, wiring.clock, leaseOwner)
@@ -167,7 +174,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val runtime = SearchBackendRuntime(holder, cluster, wiring.clock, wiring.engine, context::redact) {
             wiring.state.get(SearchStateKey.ACCESS_MISMATCHES)?.toLongOrNull() ?: 0L
         }
-        val live = backend?.let { startLive(wiring, it, runtime) }
+        val live = backend?.let { startLive(wiring, it, runtime, enrichers) }
 
         reposilite().ioService.submit(Runnable { runtime.tick() }).let { first ->
             runCatching { first.get(FIRST_TICK_WAIT_SECONDS, SECONDS) }.onFailure {
@@ -206,7 +213,12 @@ internal class SearchPlugin : ReposilitePlugin() {
     }
 
     /** Everything that only an installed backend can run: the engine and administration, the outbox worker and the schedulers. */
-    private fun startLive(wiring: SearchWiring, backend: ArtifactSearchBackend, runtime: SearchBackendRuntime): LiveParts {
+    private fun startLive(
+        wiring: SearchWiring,
+        backend: ArtifactSearchBackend,
+        runtime: SearchBackendRuntime,
+        enrichers: ArtifactEnricherRegistry,
+    ): LiveParts {
         val clock = wiring.clock
         val state = wiring.state
         val outbox = wiring.outbox
@@ -215,6 +227,14 @@ internal class SearchPlugin : ReposilitePlugin() {
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(wiring.database)
         val statusReader = IndexStatusReader(wiring.database, clock)
+        // The enrichers accepted at registration are read once per pipeline start, as the backends are (artifact enrichment, D2).
+        val enrichmentPool = artifactEnrichmentPool()
+        event { _: ReposiliteDisposeEvent -> enrichmentPool.shutdownNow() }
+        val enrichment = ArtifactEnrichmentPipeline(
+            enrichers = enrichers.accepted(),
+            call = ArtifactEnrichmentExecutor(enrichmentPool, clock)::call,
+            warn = { logger.warn(it) },
+        )
         val worker = OutboxWorker(
             owner = wiring.instanceId,
             outbox = outbox,
@@ -223,6 +243,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             origins = LedgerOriginLookup(ledger),
             state = state,
             clock = clock,
+            enrichment = enrichment,
         )
         val repositories = MavenRepositoryEntries(repositoryRegistry, facade<FailureFacade>())
         val claims = SqlScheduledJobClaims(wiring.database, clock, wiring.instanceId)

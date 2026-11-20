@@ -24,6 +24,8 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
+import net.onelitefeather.ingot.search.enrichment.ArtifactContent
+import net.onelitefeather.ingot.search.enrichment.StoredArtifactContent
 import net.onelitefeather.ingot.search.outbox.IndexStorage
 import com.reposilite.storage.entrySource
 import net.onelitefeather.ingot.search.outbox.OriginLookup
@@ -64,6 +66,12 @@ internal class MavenIndexStorage(
         val stream = provider.getFile(location)
         if (stream.isErr) return null
         return stream.get().use { String(it.readNBytes(maxBytes), StandardCharsets.UTF_8) }
+    }
+
+    override fun content(repository: String, path: String, sizeBytes: Long): ArtifactContent? {
+        val provider = repositories.repository(repository)?.storageProvider ?: return null
+        val location = location(path) ?: return null
+        return StoredArtifactContent(provider, location, sizeBytes)
     }
 
     /** A path that storage cannot address is not stored, so it reads as missing. */
