@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
@@ -42,31 +42,60 @@ import { ROLES, pathPrefixLabel } from '../access/accessTeams'
  * Props:
  *   repository  the id of the repository
  */
-const props = defineProps({
-  repository: {
-    type: String,
-    required: true
-  }
-})
+const props = defineProps<{
+  repository: string
+}>()
+
+// One grant of a principal: the team it comes through, the role there and the path it covers.
+interface AccessVia {
+  source?: string
+  team?: string | null
+  role?: string
+  pathPrefix?: string | null
+}
+
+// One principal of the answer, with what it may do on the repository and why.
+interface AccessEntry {
+  principal: string
+  kind?: string
+  disabled?: boolean
+  instanceAdmin?: boolean
+  effective?: string[]
+  via?: AccessVia[]
+}
+
+interface RepositoryAccess {
+  repository?: string
+  visibility?: string
+  entries?: AccessEntry[]
+}
+
+// One line of a principal under "Granted through" and "Scope": a linked team with its role, or a text.
+interface GrantLine {
+  team: string | null
+  role?: string
+  text?: string
+  scope: string
+}
 
 const { client, isManager } = useSession()
 const allowed = computed(() => isManager?.value === true)
 
-const VISIBILITY_LABELS = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
-const KIND_LABELS = { USER: 'User', MACHINE: 'Machine' }
+const VISIBILITY_LABELS: Record<string, string> = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
+const KIND_LABELS: Record<string, string> = { USER: 'User', MACHINE: 'Machine' }
 // The effective actions come as backend names, in the order the table shows them. An unknown one
 // is shown as it is, after the known ones.
 const ACTION_ORDER = ['READ', 'WRITE', 'DELETE', 'MANAGE_REPOSITORY']
-const ACTION_LABELS = {
+const ACTION_LABELS: Record<string, string> = {
   READ: 'Read',
   WRITE: 'Write',
   DELETE: 'Delete',
   MANAGE_REPOSITORY: 'Manage',
   INSTANCE_ADMIN: 'Instance admin (all)'
 }
-const actionLabel = (action) => ACTION_LABELS[action] ?? action
+const actionLabel = (action: string): string => ACTION_LABELS[action] ?? action
 // A migrated access token's route, in plain words; the role names themselves are internal.
-const LEGACY_ROUTE_LABELS = { LEGACY_READ: 'Token route, read', LEGACY_WRITE: 'Token route, write' }
+const LEGACY_ROUTE_LABELS: Record<string, string> = { LEGACY_READ: 'Token route, read', LEGACY_WRITE: 'Token route, write' }
 const FILTER_THRESHOLD = 10
 const COLUMNS = [
   { key: 'principal', label: 'Principal' },
@@ -75,8 +104,8 @@ const COLUMNS = [
   { key: 'scope', label: 'Scope' }
 ]
 
-const access = ref(null)
-const status = ref('loading')
+const access = ref<RepositoryAccess | null>(null)
+const status = ref<'loading' | 'ready' | 'error'>('loading')
 const failure = ref('')
 const query = ref('')
 
@@ -89,7 +118,7 @@ const load = async () => {
   try {
     const response = await client.value.identity.repositoryAccess(props.repository)
     if (request !== latest) return
-    access.value = response.data
+    access.value = response.data as RepositoryAccess
     status.value = 'ready'
   } catch (error) {
     if (request !== latest) return
@@ -111,36 +140,36 @@ watch(
   { immediate: true }
 )
 
-const isMachineTeam = (team) => String(team).startsWith('machine:')
-const hasTeam = (via) => via?.team != null && via.team !== ''
-const teamlessLabel = (via) => (via?.source === 'INSTANCE_ROLE' ? 'Instance role' : 'Instance admin')
-const viaOf = (entry) => (Array.isArray(entry?.via) ? entry.via : [])
-const hasTeamlessVia = (entry) => viaOf(entry).some(via => !hasTeam(via))
-const roleLabel = (role) => ROLES.find(entry => entry.value === role)?.label ?? role
-const isLegacy = (via) => via?.source === 'LEGACY' || String(via?.role ?? '').startsWith('LEGACY_')
+const isMachineTeam = (team: unknown) => String(team).startsWith('machine:')
+const hasTeam = (via: AccessVia | undefined) => via?.team != null && via.team !== ''
+const teamlessLabel = (via: AccessVia | undefined) => (via?.source === 'INSTANCE_ROLE' ? 'Instance role' : 'Instance admin')
+const viaOf = (entry: AccessEntry | undefined): AccessVia[] => (Array.isArray(entry?.via) ? entry.via : [])
+const hasTeamlessVia = (entry: AccessEntry) => viaOf(entry).some(via => !hasTeam(via))
+const roleLabel = (role: string | undefined) => ROLES.find(entry => entry.value === role)?.label ?? role
+const isLegacy = (via: AccessVia | undefined) => via?.source === 'LEGACY' || String(via?.role ?? '').startsWith('LEGACY_')
 
-const visibility = computed(() => VISIBILITY_LABELS[access.value?.visibility] ?? access.value?.visibility ?? '')
+const visibility = computed(() => VISIBILITY_LABELS[access.value?.visibility ?? ''] ?? access.value?.visibility ?? '')
 const entries = computed(() => access.value?.entries ?? [])
 const caption = computed(() => `Principals with access to ${props.repository}`)
 const showFilter = computed(() => entries.value.length > FILTER_THRESHOLD)
 
 // The path of a legacy route starts with the repository name; the scope is the rest of it.
-const legacyPath = (pathPrefix, repository) => {
+const legacyPath = (pathPrefix: string | null | undefined, repository: string) => {
   const text = String(pathPrefix ?? '').replace(/^\/+|\/+$/g, '')
   if (text === repository) return ''
   return text.startsWith(`${repository}/`) ? text.slice(repository.length + 1) : text
 }
 
-const scopeOf = (via, repository) =>
+const scopeOf = (via: AccessVia, repository: string) =>
   pathPrefixLabel(isLegacy(via) ? legacyPath(via.pathPrefix, repository) : via.pathPrefix)
 
 // The lines of one principal: one per grant, and the instance admin when it has no grant of its own.
-const grantsOf = (entry, repository) => {
-  const lines = viaOf(entry).map(via => {
+const grantsOf = (entry: AccessEntry, repository: string): GrantLine[] => {
+  const lines = viaOf(entry).map((via): GrantLine => {
     if (!hasTeam(via)) return { team: null, text: teamlessLabel(via), scope: 'Whole repository' }
-    if (isLegacy(via)) return { team: null, text: LEGACY_ROUTE_LABELS[via.role] ?? 'Token route', scope: scopeOf(via, repository) }
+    if (isLegacy(via)) return { team: null, text: LEGACY_ROUTE_LABELS[via.role ?? ''] ?? 'Token route', scope: scopeOf(via, repository) }
     if (isMachineTeam(via.team)) return { team: null, text: `Direct grant (${roleLabel(via.role)})`, scope: scopeOf(via, repository) }
-    return { team: via.team, role: roleLabel(via.role), scope: scopeOf(via, repository) }
+    return { team: via.team ?? null, role: roleLabel(via.role), scope: scopeOf(via, repository) }
   })
   if (entry.instanceAdmin === true && !hasTeamlessVia(entry)) {
     lines.unshift({ team: null, text: 'Instance admin', scope: 'Whole repository' })
@@ -149,7 +178,7 @@ const grantsOf = (entry, repository) => {
 }
 
 // Instance admin is shown once, as all actions; otherwise the known actions in their order.
-const accessOf = (entry) => {
+const accessOf = (entry: AccessEntry): string[] => {
   if (entry.instanceAdmin === true) return [actionLabel('INSTANCE_ADMIN')]
   const actions = Array.isArray(entry.effective) ? entry.effective : []
   const known = ACTION_ORDER.filter(action => actions.includes(action))
@@ -157,10 +186,13 @@ const accessOf = (entry) => {
   return [...known, ...unknown].map(actionLabel)
 }
 
-const byAdminThenName = (a, b) => {
+const byAdminThenName = (a: AccessEntry, b: AccessEntry) => {
   const admins = Number(b.instanceAdmin === true) - Number(a.instanceAdmin === true)
   return admins || String(a.principal).localeCompare(String(b.principal), undefined, { numeric: true })
 }
+
+// The grant lines of a table row; the table hands its rows back untyped.
+const grantLinesOf = (row: Record<string, unknown>) => row.grants as GrantLine[]
 
 const rows = computed(() => {
   const repository = props.repository
@@ -170,7 +202,7 @@ const rows = computed(() => {
     .filter(entry => !showFilter.value || needle === '' || String(entry.principal).toLowerCase().includes(needle))
     .map(entry => ({
       principal: entry.principal,
-      kind: KIND_LABELS[entry.kind] ?? entry.kind,
+      kind: KIND_LABELS[entry.kind ?? ''] ?? entry.kind,
       disabled: entry.disabled === true,
       access: accessOf(entry),
       grants: grantsOf(entry, repository)
@@ -290,7 +322,7 @@ const rows = computed(() => {
               class="m-0 flex list-none flex-col gap-1 p-0"
             >
               <li
-                v-for="(grant, index) in row.grants"
+                v-for="(grant, index) in grantLinesOf(row)"
                 :key="index"
                 data-test="via"
               >
@@ -316,7 +348,7 @@ const rows = computed(() => {
               class="m-0 flex list-none flex-col gap-1 p-0"
             >
               <li
-                v-for="(grant, index) in row.grants"
+                v-for="(grant, index) in grantLinesOf(row)"
                 :key="index"
                 data-test="via-prefix"
                 class="break-all"
