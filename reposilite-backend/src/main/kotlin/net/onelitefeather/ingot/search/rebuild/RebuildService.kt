@@ -31,6 +31,7 @@ import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.SearchColumn
 import net.onelitefeather.ingot.search.database.SearchStateKey
@@ -270,7 +271,7 @@ internal class RebuildService(
         val actions = writable.map { (file, entry) ->
             val stored = existing[file.path]
             val row = rowOf(file, entry, stored, directories, now)
-            if (unchanged(stored, entry)) IndexAction.Upsert(row) else IndexAction.Upsert(row, enrich(row, entry))
+            if (unchanged(stored, entry) && enriched(file, stored)) IndexAction.Upsert(row) else IndexAction.Upsert(row, enrich(row, entry))
         }
         backend.apply(actions)
         return actions.size
@@ -278,7 +279,8 @@ internal class RebuildService(
 
     /**
      * Hands a new or changed file to the enrichers that match it (artifact enrichment, D3) and returns the attributes the row holds
-     * afterwards, or null at a backend without attributes (search document attributes, D4). Unchanged files were enriched before.
+     * afterwards, or null at a backend without attributes (search document attributes, D4). An unchanged file comes here only when
+     * a matching enricher has no or another stored version (D5).
      */
     private fun enrich(row: IndexRow, entry: StorageEntry): Map<String, List<String>>? {
         val capabilities = backend.capabilities
@@ -287,6 +289,16 @@ internal class RebuildService(
             content(row.file.repository, row.file.path, entry.size)
         }.orEmpty()
         return attributesOfChangedFile(capabilities, outcomes)
+    }
+
+    /**
+     * Whether every enricher that matches [file] has its current version stored on the row (search document attributes, D5). A
+     * backend without attributes stores no versions, so there an unchanged row always counts as enriched, as before.
+     */
+    private fun enriched(file: ArtifactFileRecord, stored: StoredRow?): Boolean {
+        if (SearchCapability.ATTRIBUTES !in backend.capabilities) return true
+        val versions = enrichment?.matchingVersions(file) ?: return true
+        return versions.all { (id, version) -> stored?.enricherVersions?.get(id) == version }
     }
 
     private fun unchanged(existing: StoredRow?, entry: StorageEntry): Boolean =

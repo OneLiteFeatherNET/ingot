@@ -147,13 +147,19 @@ sealed interface IndexAction {
 
 }
 
-/** What a rebuild needs to know about a stored row: enough to tell whether the file changed, and the checksums to keep. */
+/**
+ * What a rebuild needs to know about a stored row: enough to tell whether the file changed, the checksums to keep, and the
+ * version of each enricher that completed on it. [enricherVersions] maps the id of an enricher to the single value of its
+ * stored `core.enricher.<id>` key. A backend without [SearchCapability.ATTRIBUTES] leaves it empty (search document
+ * attributes, D5).
+ */
 @ExperimentalIngotSearchApi
-data class StoredRow(
+data class StoredRow @JvmOverloads constructor(
     val sizeBytes: Long,
     val lastModified: Long,
     val sha1: String?,
     val sha256: String?,
+    val enricherVersions: Map<String, String> = emptyMap(),
 )
 
 /** A row as a verify run reads it: what storage and the mirror ledger are compared with. */

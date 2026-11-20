@@ -111,6 +111,12 @@ internal class ArtifactEnrichmentPipeline(
         return outcomes
     }
 
+    /** The id and version of every enricher whose extensions contain the extension of [file]. */
+    fun matchingVersions(file: ArtifactFileRecord): Map<String, String> {
+        val extension = file.extension.lowercase()
+        return enrichers.filter { extension in it.extensions }.associate { it.id to it.version }
+    }
+
     /** An attribute set that breaks a rule of D1 becomes a failure that names the rule and never a value. */
     private fun EnrichmentResult.validated(enricherId: String): EnrichmentResult =
         if (this is EnrichmentAttributes) validateAttributes(enricherId, values)?.let { EnrichmentFailed(it.reason) } ?: this else this
