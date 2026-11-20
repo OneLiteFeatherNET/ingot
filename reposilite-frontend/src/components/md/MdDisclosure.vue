@@ -58,7 +58,7 @@ const chevronClass = () => (isOpen.value ? 'rotate-180' : '')
     data-ingot-component="md-disclosure"
     @toggle="onToggle"
   >
-    <summary class="md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary">
+    <summary class="md-state-layer md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary">
       <span><slot name="summary" /></span>
       <MdIcon
         :path="CHEVRON"
