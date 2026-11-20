@@ -15,7 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.cleanup.CleanupRunStatus
 import net.onelitefeather.ingot.search.runs.RunStatus
 import net.onelitefeather.ingot.search.runs.RunTrigger
 
@@ -27,12 +26,6 @@ object JobStateMapping {
         RunStatus.COMPLETED -> JobState.SUCCEEDED
         RunStatus.FAILED -> JobState.FAILED
         RunStatus.CANCELLED -> JobState.CANCELLED
-    }
-
-    fun cleanup(status: CleanupRunStatus): JobState = when (status) {
-        CleanupRunStatus.SUCCEEDED -> JobState.SUCCEEDED
-        CleanupRunStatus.PARTIAL -> JobState.PARTIAL
-        CleanupRunStatus.FAILED -> JobState.FAILED
     }
 
     /**

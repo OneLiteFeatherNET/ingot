@@ -33,7 +33,7 @@ import kotlin.reflect.full.declaredMemberFunctions
 internal class CleanupSupportBoundaryTest {
 
     private companion object {
-        const val CLEANUP_SOURCES = "src/main/kotlin/com/reposilite/cleanup"
+        const val CLEANUP_SOURCES = "../reposilite-plugins/cleanup-plugin/src/main/kotlin/com/reposilite/cleanup"
         const val PLUGIN_API_CLASSES = "plugin-api-classes.txt"
         val MAVEN_FACADE_MIRROR_CALL = Regex("""\b\w*[mM]aven\w*\.mirrorCacheEntries\(""")
     }

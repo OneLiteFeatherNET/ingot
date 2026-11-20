@@ -15,7 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.cleanup.CleanupRunStatus
 import net.onelitefeather.ingot.search.runs.RunStatus
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import org.assertj.core.api.Assertions.assertThat
@@ -35,21 +34,6 @@ class JobStateMappingTest {
                     RunStatus.COMPLETED to JobState.SUCCEEDED,
                     RunStatus.FAILED to JobState.FAILED,
                     RunStatus.CANCELLED to JobState.CANCELLED,
-                )
-            )
-    }
-
-    @Test
-    fun `cleanup run statuses map to the state of the same name`() {
-        val mapped = CleanupRunStatus.entries.associateWith { JobStateMapping.cleanup(it) }
-
-        assertThat(mapped)
-            .describedAs("cleanup statuses must keep their own state")
-            .isEqualTo(
-                mapOf(
-                    CleanupRunStatus.SUCCEEDED to JobState.SUCCEEDED,
-                    CleanupRunStatus.PARTIAL to JobState.PARTIAL,
-                    CleanupRunStatus.FAILED to JobState.FAILED,
                 )
             )
     }

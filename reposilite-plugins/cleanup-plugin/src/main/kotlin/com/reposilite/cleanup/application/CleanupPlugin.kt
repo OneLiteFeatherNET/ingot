@@ -36,6 +36,8 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import net.onelitefeather.ingot.deploy.BackgroundJobGate
+import net.onelitefeather.ingot.jobs.CleanupJobSource
+import net.onelitefeather.ingot.jobs.JobRegistrationEvent
 import net.onelitefeather.ingot.deploy.SingletonJob
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import net.onelitefeather.ingot.cleanup.CleanupSupportFacade
@@ -114,6 +116,10 @@ internal class CleanupPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             event.registerRoutes(CleanupEndpoints(service))
+        }
+
+        event { event: JobRegistrationEvent ->
+            event.registry.register(CleanupJobSource(service))
         }
 
         return service

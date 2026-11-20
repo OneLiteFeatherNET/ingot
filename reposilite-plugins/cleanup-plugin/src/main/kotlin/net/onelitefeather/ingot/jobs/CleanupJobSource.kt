@@ -16,12 +16,20 @@
 package net.onelitefeather.ingot.jobs
 
 import com.reposilite.cleanup.CleanupRun
+import com.reposilite.cleanup.CleanupRunStatus
 import com.reposilite.cleanup.CleanupService
 import java.time.Duration
 
 private const val CLEANUP_SOURCE = "cleanup"
 private const val CLEANUP_KIND = "cleanup.policy"
 private const val CLEANUP_NODE = "ingot.admin.maintenance"
+
+/** Maps the status of a cleanup run to the shared state of the Jobs page. */
+internal fun cleanupJobState(status: CleanupRunStatus): JobState = when (status) {
+    CleanupRunStatus.SUCCEEDED -> JobState.SUCCEEDED
+    CleanupRunStatus.PARTIAL -> JobState.PARTIAL
+    CleanupRunStatus.FAILED -> JobState.FAILED
+}
 
 /**
  * The cleanup runs on the Jobs page. The cleanup service keeps the newest 20 runs of each policy, so the list is bounded and
@@ -53,7 +61,7 @@ internal class CleanupJobSource(private val cleanup: CleanupService) : JobSource
             "SCHEDULED" -> JobTrigger.SCHEDULED
             else -> JobTrigger.MANUAL
         },
-        state = JobStateMapping.cleanup(run.status),
+        state = cleanupJobState(run.status),
         startedAt = run.startedAt,
         finishedAt = run.finishedAt,
         durationMs = Duration.between(run.startedAt, run.finishedAt).toMillis(),

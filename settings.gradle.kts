@@ -44,7 +44,7 @@ if (rootDir.resolve("reposilite-test/plugin-api-consumer").isDirectory) {
 // The image keeps only the bundled metrics plugin, so each plugin is included when its directory is present.
 if (rootDir.resolve("reposilite-plugins").isDirectory) {
     include("reposilite-plugins")
-    listOf("azure-storage-plugin", "cdn-purge-plugin", "checksum-plugin", "elasticsearch-plugin", "example-plugin", "gcs-storage-plugin", "groovy-plugin", "javadoc-plugin", "lucene-plugin", "meilisearch-plugin", "migration-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "storage-cache-plugin", "swagger-plugin")
+    listOf("azure-storage-plugin", "cdn-purge-plugin", "checksum-plugin", "cleanup-plugin", "elasticsearch-plugin", "example-plugin", "gcs-storage-plugin", "groovy-plugin", "javadoc-plugin", "lucene-plugin", "meilisearch-plugin", "migration-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "storage-cache-plugin", "swagger-plugin")
         .filter { rootDir.resolve("reposilite-plugins/$it").isDirectory }
         .forEach { include("reposilite-plugins:$it") }
 }

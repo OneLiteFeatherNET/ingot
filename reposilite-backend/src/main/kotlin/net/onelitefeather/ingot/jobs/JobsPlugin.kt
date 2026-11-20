@@ -15,7 +15,6 @@
  */
 package net.onelitefeather.ingot.jobs
 
-import com.reposilite.cleanup.CleanupService
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -33,10 +32,10 @@ import java.time.Clock
 class JobsFacade internal constructor(val aggregator: JobAggregator) : Facade
 
 /**
- * Wires the Jobs page. The core sources (the search index and the cleanup policies) register at once. After every plugin has
- * initialised, the registration event lets the plugins add their sources, and the registry is then sealed.
+ * Wires the Jobs page. The core source (the search index) registers at once. After every plugin has initialised, the
+ * registration event lets the plugins add their sources, such as the cleanup policies, and the registry is then sealed.
  */
-@Plugin(name = "jobs", dependencies = ["search", "cleanup"])
+@Plugin(name = "jobs", dependencies = ["search"])
 internal class JobsPlugin : ReposilitePlugin() {
 
     override fun initialize(): JobsFacade {
@@ -45,7 +44,6 @@ internal class JobsPlugin : ReposilitePlugin() {
             logger.warn("JOBS | The job source $source registered after the registration event and is not listed")
         }
         registry.register(IndexJobSource(RunStore(reposilite().database, clock)))
-        registry.register(CleanupJobSource(facade<CleanupService>()))
         val aggregator = JobAggregator(registry)
         val accessTokens = facade<AccessTokenFacade>()
 

@@ -31,7 +31,7 @@ private const val BOUND_SECONDS = 10L
  * which stands in for the database that several Ingot instances share. A single pooled connection keeps the database
  * alive between transactions, and the data source is closed with [close].
  */
-internal class SqliteTestDatabase : AutoCloseable {
+class SqliteTestDatabase : AutoCloseable {
 
     private val dataSource = HikariDataSource(
         HikariConfig().apply {
@@ -52,7 +52,7 @@ internal class SqliteTestDatabase : AutoCloseable {
  * Runs every task on its own thread and releases them together, so that they hit the shared state at the same
  * instant. Every wait is bounded, so a stuck task fails the test instead of hanging it.
  */
-internal fun <T> runAtOnce(tasks: List<() -> T>): List<T> {
+fun <T> runAtOnce(tasks: List<() -> T>): List<T> {
     val executor = Executors.newFixedThreadPool(tasks.size)
     try {
         val gate = CountDownLatch(1)
