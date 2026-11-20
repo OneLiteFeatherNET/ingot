@@ -94,7 +94,7 @@ The heading, the breadcrumb and the description start at one left edge at every 
 
 | Heading | Pages and addresses |
 | --- | --- |
-| **Artifacts** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`), **Javadoc** (`/settings/javadoc`, the domain of the embedded `javadoc` plugin), **Search index** (`/settings/search`) |
+| **Artifacts** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`, the domain of the embedded `cleanup` plugin), **Javadoc** (`/settings/javadoc`, the domain of the embedded `javadoc` plugin), **Search index** (`/settings/search`) |
 | **Access** | **Users** (`/access/users`), **Machine accounts** (`/access/machines`), **Teams** (`/access/teams`), **Single sign-on** (`/access/sso`), **LDAP directory** (`/access/ldap`), **Sign-in protection** (`/access/security`), **Permission check** (`/access/check`) |
 | **Instance** | **Branding** (`/settings/frontend`), **Reverse proxy** (`/settings/web`), **Migration** (`/settings/migration`, while the Nexus import plugin is enabled), and every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
 | **Monitoring and support** | **Audit log** (`/audit`), **Audit settings** (`/settings/audit`), **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`, which also holds the usage statistics settings), **System and support** (`/settings/system-info`), while the instance offers the support bundle |

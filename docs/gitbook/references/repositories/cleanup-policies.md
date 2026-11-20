@@ -165,6 +165,23 @@ A preview has these fields:
 
 A run is not a snapshot of the preview. A run plans again at the moment it starts, so the deletions can differ if files changed in between.
 
+## Plugin and updates
+
+The cleanup policies are the plugin `cleanup`. It lives in its own module, `cleanup-plugin`, and the server jar embeds it, so every build of the server and of the container image has cleanup without any setting. At each start the server writes the embedded jar to `<working directory>/embedded-plugins/cleanup-plugin.jar`. In the container image that is `/app/data/embedded-plugins/cleanup-plugin.jar`. The file is rewritten on every start, so do not edit or replace it there.
+
+A newer release of the plugin can be taken without a new server version. It is published as `net.onelitefeather.ingot:cleanup-plugin`:
+
+1. Copy the newer `cleanup-plugin.jar` into the plugins directory. That is `<working directory>/plugins/` unless `--plugin-directory` names another one, and `/app/data/plugins` in the container image.
+2. Restart the server.
+
+The jar replaces the embedded copy only when the `Implementation-Version` in its manifest is strictly higher than the version of the embedded copy. With the same, a lower or no version, the embedded copy stays in use. Either way the start log has one `INFO` line that names both versions and the copy in use, for example:
+
+```
+Plugin cleanup: embedded version 1.0.0, plugins directory version 1.1.0, the plugins directory copy is used
+```
+
+The two copies are never loaded together. To go back to the embedded copy, remove the jar from the plugins directory and restart. [Install a plugin](../../manage/plugins/install-a-plugin.md#update-a-plugin) describes the same rule for every embedded plugin.
+
 ## Related
 
 * [Set cleanup policies](../../configure/repositories/set-cleanup-policies.md) walks through creating, previewing and running a policy.
