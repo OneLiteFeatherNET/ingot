@@ -298,6 +298,37 @@ describe('LdapPanel', () => {
     })
   })
 
+  describe('shared section and card components', () => {
+    it.each([
+      ['ldap-title', 'Dashboard sign in'],
+      ['ldap-clients-title', 'Maven and Gradle clients'],
+      ['ldap-connection-title', 'Connection'],
+      ['ldap-users-title', 'User search'],
+      ['ldap-groups-title', 'Groups']
+    ])('draws the heading "%s" as the title of an md-section', async (id, title) => {
+      await mountPanel()
+
+      const heading = document.getElementById(id)
+      expect(heading?.textContent?.trim(), `the heading with id ${id}`).toBe(title)
+      expect(heading?.closest('[data-test="section-header"]'), `the title "${title}" belongs to an md-section`).not.toBeNull()
+    })
+
+    it('draws the test connection block as an md-card', async () => {
+      await mountPanel()
+
+      const card = wrapper.get('[data-test="ldap-test"]')
+      expect(card.attributes('data-variant'), 'the test connection block is drawn by md-card').toBe('low')
+    })
+
+    it('draws the test connection title as an md-section inside that md-card', async () => {
+      await mountPanel()
+
+      const card = wrapper.get('[data-test="ldap-test"]')
+      const header = card.get('[data-test="section-header"]')
+      expect(header.element.contains(document.getElementById('ldap-test-title')), 'the test connection title is the header of an md-section inside the md-card').toBe(true)
+    })
+  })
+
   describe('the connection section', () => {
     it('asks whether to offer LDAP, then the server address, then StartTLS, then the label', async () => {
       await mountPanel()
