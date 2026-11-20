@@ -76,6 +76,15 @@ describe('RunHistory latest run per policy', () => {
 
     expect(wrapper.text()).toContain('No runs yet.')
   })
+
+  it('draws the history without a run as the shared empty state', () => {
+    mountHistory({ runs: [] })
+
+    const empty = wrapper.get('[data-test="no-runs"]')
+    expect(empty.attributes('data-ingot-component'), 'the empty history is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text()).toBe('No runs yet.')
+  })
 })
 
 describe('RunHistory rows', () => {
