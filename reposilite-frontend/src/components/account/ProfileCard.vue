@@ -18,6 +18,7 @@
 import { computed } from 'vue'
 import type { Principal } from '../../store/session'
 import MdCard from '../md/MdCard.vue'
+import MdSection from '../md/MdSection.vue'
 
 /*
  * The read-only profile of the signed in principal. The server offers no self service profile
@@ -50,53 +51,53 @@ const username = computed(() => (props.principal.name === displayName.value ? ''
   >
     <MdCard
       variant="low"
-      class="flex flex-col gap-4 border border-outline"
+      class="border border-outline"
     >
-      <h3
-        id="profile-title"
-        class="md-title-large text-on-surface"
+      <MdSection
+        title="Profile"
+        :level="3"
+        heading-id="profile-title"
       >
-        Profile
-      </h3>
-      <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">
-        <dt class="text-on-surface-variant">
-          Display name
-        </dt>
-        <dd
-          class="m-0 min-w-0 break-words text-on-surface"
-          data-test="display-name"
-        >
-          {{ displayName }}
-        </dd>
-        <template v-if="username">
+        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">
           <dt class="text-on-surface-variant">
-            Username
+            Display name
           </dt>
           <dd
             class="m-0 min-w-0 break-words text-on-surface"
-            data-test="username"
+            data-test="display-name"
           >
-            {{ username }}
+            {{ displayName }}
           </dd>
-        </template>
-        <dt class="text-on-surface-variant">
-          Kind
-        </dt>
-        <dd class="m-0 text-on-surface">
-          {{ kind }}
-        </dd>
-        <template v-if="sources.length > 0">
+          <template v-if="username">
+            <dt class="text-on-surface-variant">
+              Username
+            </dt>
+            <dd
+              class="m-0 min-w-0 break-words text-on-surface"
+              data-test="username"
+            >
+              {{ username }}
+            </dd>
+          </template>
           <dt class="text-on-surface-variant">
-            Sign-in
+            Kind
           </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="sign-in-sources"
-          >
-            {{ sources.join(', ') }}
+          <dd class="m-0 text-on-surface">
+            {{ kind }}
           </dd>
-        </template>
-      </dl>
+          <template v-if="sources.length > 0">
+            <dt class="text-on-surface-variant">
+              Sign-in
+            </dt>
+            <dd
+              class="m-0 min-w-0 break-words text-on-surface"
+              data-test="sign-in-sources"
+            >
+              {{ sources.join(', ') }}
+            </dd>
+          </template>
+        </dl>
+      </MdSection>
     </MdCard>
   </section>
 </template>

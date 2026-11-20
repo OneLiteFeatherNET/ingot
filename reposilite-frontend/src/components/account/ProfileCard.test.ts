@@ -89,6 +89,21 @@ describe('ProfileCard', () => {
     expect(card.classes(), 'the corner is the medium one').toContain('rounded-corner-medium')
     expect(card.classes()).not.toContain('rounded-corner-large')
   })
+
+  it('draws the card through MdCard holding a level 3 MdSection titled Profile', () => {
+    const section = render().findComponent({ name: 'MdCard' }).findComponent({ name: 'MdSection' })
+
+    expect(section.exists(), 'the heading belongs to an MdSection inside the card').toBe(true)
+    expect(section.props('level'), 'a section inside the account page is level 3').toBe(3)
+    expect(section.find('h3').text()).toBe('Profile')
+  })
+
+  it('keeps the profile card labelled by its section heading', () => {
+    const wrapper = render()
+    const id = wrapper.attributes('aria-labelledby')
+
+    expect(wrapper.findComponent({ name: 'MdSection' }).find('h3').attributes('id'), 'the label points at the section heading').toBe(id)
+  })
 })
 
 describe('ProfileCard card edge', () => {
