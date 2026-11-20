@@ -14,11 +14,14 @@
   - limitations under the License.
   -->
 
-<script>
-import { computed, ref, watch } from 'vue'
+<script lang="ts">
+import { computed, defineComponent, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 import { COLOUR_PROPERTIES, isColour } from '../../theme/settings'
+import type { RawAppearance } from '../../theme/settings'
+import type { PreviewRoles } from '../../theme/runtime'
 
-const ROLES = [
+const ROLES: readonly { key: keyof PreviewRoles; label: string }[] = [
   { key: 'primary', label: 'Primary' },
   { key: 'secondary', label: 'Secondary' },
   { key: 'tertiary', label: 'Tertiary' },
@@ -30,7 +33,7 @@ const ROLES = [
  * The colours of the form that the generator may use. A value that is not #RRGGBB is left out here,
  * because the field already reports it, and the generator would only warn about it on every key press.
  */
-const usableColours = (appearance) => ({
+const usableColours = (appearance: Record<string, unknown>): RawAppearance => ({
   ...appearance,
   ...Object.fromEntries(COLOUR_PROPERTIES.map(key => [key, isColour(appearance[key]) ? appearance[key] : '']))
 })
@@ -39,17 +42,17 @@ const usableColours = (appearance) => ({
  * A strip of the colours the generated scheme gives for the seed, computed from the current form
  * values. The colour generator is loaded when the preview is first shown, like the dashboard does.
  */
-export default {
+export default defineComponent({
   name: 'AppearancePreview',
   props: {
     appearance: {
-      type: Object,
+      type: Object as PropType<RawAppearance>,
       default: () => ({})
     }
   },
   setup(props) {
     // Undefined until the first answer, then the five roles, or null when no seed is set.
-    const roles = ref(undefined)
+    const roles = ref<PreviewRoles | null | undefined>(undefined)
     const failed = ref(false)
     let latest = 0
 
@@ -70,12 +73,12 @@ export default {
     watch(() => props.appearance, refresh, { deep: true, immediate: true })
 
     const swatches = computed(() => (roles.value
-      ? ROLES.map(({ key, label }) => ({ key, label, colour: roles.value[key] }))
+      ? ROLES.map(({ key, label }) => ({ key, label, colour: roles.value?.[key] }))
       : []))
 
     return { failed, roles, swatches }
   }
-}
+})
 </script>
 
 <template>

@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
+import type { createAjv } from '@jsonforms/core'
 import CollectionEditor from './CollectionEditor.vue'
 
 const EntryDetailStub = {
@@ -41,7 +42,7 @@ describe('CollectionEditor detail pane', () => {
         keys: ['hook'],
         selectedId: selectedId ?? undefined,
         renderers: [],
-        validator: {}
+        validator: {} as ReturnType<typeof createAjv>
       },
       attachTo: document.body,
       global: { stubs: { EntryDetail: EntryDetailStub, EntryList: true } }

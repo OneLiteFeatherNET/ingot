@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import AccessDomainCard from './AccessDomainCard.vue'
 
@@ -25,20 +25,20 @@ const shell = { render: () => null }
 const makeRouter = async () => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
   })
   await router.push('/settings/maven')
   await router.isReady()
   return router
 }
 
-const mountCard = async (props = { domain: 'login', title: 'Sign in' }) => {
+const mountCard = async (props: { domain: 'login' | 'authentication', title: string } = { domain: 'login', title: 'Sign in' }) => {
   const router = await makeRouter()
   return mount(AccessDomainCard, { props, global: { plugins: [router] } })
 }
 
 describe('AccessDomainCard', () => {
-  let wrapper
+  let wrapper: VueWrapper | undefined
 
   beforeEach(async () => {
     wrapper = await mountCard()
@@ -49,24 +49,24 @@ describe('AccessDomainCard', () => {
     wrapper = undefined
   })
 
-  const card = () => wrapper.get('[data-test="access-domain"]')
+  const card = () => wrapper!.get('[data-test="access-domain"]')
 
   it('titles the card with the given title as managed under Access', () => {
-    expect(wrapper.get('h3').text()).toBe('Sign in is managed under Access')
+    expect(wrapper!.get('h3').text()).toBe('Sign in is managed under Access')
   })
 
   it('names the pages of the domain as the text of the card', () => {
-    expect(wrapper.get('p').text()).toContain('managed under Access')
+    expect(wrapper!.get('p').text()).toContain('managed under Access')
   })
 
   it('links to each page of the domain by its label', () => {
-    const labels = wrapper.findAll('li a').map(link => link.text())
+    const labels = wrapper!.findAll('li a').map(link => link.text())
 
     expect(labels).toEqual(['Single sign on', 'LDAP'])
   })
 
   it('keeps the access-domain-card anchor on the plain root element of the component', () => {
-    expect(wrapper.attributes('data-ingot-component')).toBe('access-domain-card')
+    expect(wrapper!.attributes('data-ingot-component')).toBe('access-domain-card')
   })
 
   it('is drawn as the low variant of the card, a flat tinted panel on the page', () => {

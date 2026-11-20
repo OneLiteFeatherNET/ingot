@@ -18,6 +18,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import AppearancePreview from './AppearancePreview.vue'
 import { buildThemeCss } from '../../theme/runtime'
+import type { RawAppearance } from '../../theme/settings'
 
 // The preview loads the colour generator with a dynamic import, which flushPromises does not wait for.
 const settle = async () => {
@@ -25,18 +26,18 @@ const settle = async () => {
   await flushPromises()
 }
 
-const mountPreview = async (appearance) => {
+const mountPreview = async (appearance: RawAppearance) => {
   const wrapper = mount(AppearancePreview, { props: { appearance } })
   await settle()
   return wrapper
 }
 
-const swatch = (wrapper, role) => wrapper.find(`[data-role="${role}"]`).attributes('data-colour')
+const swatch = (wrapper: Awaited<ReturnType<typeof mountPreview>>, role: string) => wrapper.find(`[data-role="${role}"]`).attributes('data-colour')
 
 // The first declaration of a role in the generated light scheme, which is what the preview shows.
-const generatedLight = (seedColor, role) => {
+const generatedLight = (seedColor: string, role: string) => {
   const match = new RegExp(`--md-sys-color-${role}: (#[0-9a-f]{6});`).exec(buildThemeCss({ seedColor }))
-  return match[1]
+  return match![1]
 }
 
 afterEach(() => {

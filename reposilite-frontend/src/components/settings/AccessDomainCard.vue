@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import MdCard from '../md/MdCard.vue'
 import { ACCESS_DOMAINS } from './accessDomains'
@@ -23,10 +23,10 @@ import { ACCESS_DOMAINS } from './accessDomains'
  * What the Settings page shows for a domain that is edited under Access: a short card with the links to
  * those pages, in place of the generic form. `domain` names the entry of ACCESS_DOMAINS, `title` its heading.
  */
-const props = defineProps({
-  domain: { type: String, required: true },
-  title: { type: String, required: true }
-})
+const props = defineProps<{
+  domain: keyof typeof ACCESS_DOMAINS
+  title: string
+}>()
 
 const entry = () => ACCESS_DOMAINS[props.domain]
 </script>

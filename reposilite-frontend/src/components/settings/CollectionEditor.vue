@@ -14,13 +14,23 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, provide, ref, watch } from 'vue'
+import type { JsonFormsRendererRegistryEntry, createAjv } from '@jsonforms/core'
 import EntryList from './EntryList.vue'
 import EntryDetail from './EntryDetail.vue'
 import { entryAddresses, idText } from './collections'
+import type { CollectionEntry, collectionsOf } from './collections'
 import { tagsInUse } from '../../store/maven/repositories'
+import type { Searchable } from '../../store/maven/repositories'
 import { guidedCreateKey } from './guidedCreate'
+
+/* A collection as collectionsOf lists it: its key, title, description, item schema and noun. */
+type Collection = ReturnType<typeof collectionsOf>[number]
+/* An entry as the list and the detail read it: its fields are free, and the tags are a list of names when present. */
+type EditorEntry = CollectionEntry & Searchable & { tags?: string[] }
+/* The ajv instance the generated forms validate with. */
+type Ajv = ReturnType<typeof createAjv>
 
 /*
  * One collection as a list-detail layout. From 840px the list and the detail sit side by side, the
@@ -36,60 +46,42 @@ import { guidedCreateKey } from './guidedCreate'
  * The component does not change the configuration itself. It reports the selection, creation,
  * edits and deletion, and the settings view decides how each one is stored and addressed.
  */
-const props = defineProps({
-  collection: {
-    type: Object,
-    required: true
-  },
-  entries: {
-    type: Array,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  collection: Collection
+  entries: EditorEntry[]
   // The stable key of each entry, by position. See the store's entryKeysOf.
-  keys: {
-    type: Array,
-    default: () => []
-  },
+  keys?: string[]
   // The address in the route: an entry's id, or "~" and its key while it has no usable id.
-  selectedId: {
-    type: String,
-    default: null
-  },
-  renderers: {
-    type: Array,
-    required: true
-  },
-  validator: {
-    type: Object,
-    required: true
-  },
+  selectedId?: string | null
+  renderers: JsonFormsRendererRegistryEntry[]
+  validator: Ajv
   // True for the repositories: the detail then shows who has access to the selected one.
-  showAccess: {
-    type: Boolean,
-    default: false
-  },
+  showAccess?: boolean
   // True for the repositories: the detail then shows the type of the repository and the fields it takes.
-  typed: {
-    type: Boolean,
-    default: false
-  },
+  typed?: boolean
   // The message of a refused save, which the detail shows next to the type.
-  serverError: {
-    type: String,
-    default: ''
-  },
-  // A guided flow that replaces the id dialog of "New entry", or null for the plain dialog. See guidedCreate.js.
-  guidedCreate: {
-    type: Function,
-    default: null
-  }
+  serverError?: string
+  // A guided flow that replaces the id dialog of "New entry", or null for the plain dialog. See guidedCreate.ts.
+  guidedCreate?: (() => void) | null
+}>(), {
+  keys: () => [],
+  selectedId: null,
+  showAccess: false,
+  typed: false,
+  serverError: '',
+  guidedCreate: null
 })
 
-const emit = defineEmits(['select', 'create', 'change', 'delete'])
+const emit = defineEmits<{
+  select: [address: string]
+  create: [id: string]
+  change: [change: { index: number; entry: CollectionEntry }]
+  delete: [index: number]
+}>()
 
 provide(guidedCreateKey, computed(() => props.guidedCreate))
 
-const selectedKey = ref(null)
+const selectedKey = ref<string | null>(null)
 const addresses = computed(() => entryAddresses(props.entries, props.keys))
 const selectedIndex = computed(() => (selectedKey.value === null ? -1 : props.keys.indexOf(selectedKey.value)))
 const selectedEntry = computed(() => (selectedIndex.value >= 0 ? props.entries[selectedIndex.value] : null))
@@ -156,7 +148,7 @@ watch([addresses, () => props.keys], () => {
 
       <div class="min-w-0 p-4 expanded:p-6">
         <EntryDetail
-          v-if="hasSelection"
+          v-if="selectedId !== null"
           :id="selectedId"
           :key="selectedKey ?? `missing:${selectedId}`"
           :collection="collection"
