@@ -18,10 +18,10 @@
 
 import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { renderAnchorsDoc } from "../src/anchors/render"
+import { renderAnchorsDoc, type AnchorRegistry } from "../src/anchors/render"
 
 const frontendRoot = fileURLToPath(new URL("..", import.meta.url))
-const registry = JSON.parse(readFileSync(`${frontendRoot}/src/anchors/registry.json`, "utf8"))
+const registry = JSON.parse(readFileSync(`${frontendRoot}/src/anchors/registry.json`, "utf8")) as AnchorRegistry
 const target = fileURLToPath(new URL("../../docs/gitbook/references/plugins/dashboard-anchors.md", import.meta.url))
 
 writeFileSync(target, renderAnchorsDoc(registry))

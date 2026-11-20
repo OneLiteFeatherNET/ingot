@@ -15,7 +15,7 @@
  */
 
 // Static checks for the data-ingot-* anchors. They read Vue templates with the SFC compiler and never mount a component,
-// so they need no DOM, no clock and no network. Used by anchors.test.js and by the generator in scripts/anchors-doc.mjs.
+// so they need no DOM, no clock and no network. Used by anchors.test.js and by the generator in scripts/anchors-doc.ts.
 
 /// <reference types="node" />
 import { parse } from "@vue/compiler-sfc"

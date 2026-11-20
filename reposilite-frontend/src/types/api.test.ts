@@ -26,7 +26,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
  */
 
 const frontendDir = resolve(import.meta.dirname, '../..')
-const generator = join(frontendDir, 'scripts/generate-api-types.mjs')
+const generator = join(frontendDir, 'scripts/generate-api-types.ts')
 const committed = join(frontendDir, 'src/types/api.ts')
 
 describe('generated api types', () => {
@@ -43,7 +43,8 @@ describe('generated api types', () => {
   it('match the committed src/types/api.ts', () => {
     const output = join(workDir, 'api.ts')
 
-    execFileSync(process.execPath, [generator, '--output', output], { cwd: frontendDir, stdio: 'pipe' })
+    // The generator is TypeScript, so node loads it through tsx, as `npm run types:api` does.
+    execFileSync(process.execPath, ['--import', 'tsx', generator, '--output', output], { cwd: frontendDir, stdio: 'pipe' })
 
     expect(readFileSync(output, 'utf8'), 'src/types/api.ts is stale: run npm run types:api and commit the result').toBe(
       readFileSync(committed, 'utf8'),
