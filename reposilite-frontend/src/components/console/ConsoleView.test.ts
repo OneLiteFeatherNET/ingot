@@ -303,6 +303,67 @@ describe('ConsoleView', () => {
     })
   })
 
+  describe('disconnected banner', () => {
+    const drop = async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, 'hello')
+      await flushPromises()
+      stream.onerror(new Event('error'))
+      await flushPromises()
+    }
+
+    it('draws the disconnected banner as a state panel', async () => {
+      await drop()
+
+      expect(wrapper.findComponent({ name: 'MdStatePanel' }).exists(), 'the disconnected banner must be the shared state panel').toBe(true)
+      expect(wrapper.findComponent({ name: 'MdStatePanel' }).text(), 'the panel must name the disconnection').toContain('Not connected to the remote console')
+    })
+
+    it('draws the banner on the error container with the matching text colour', async () => {
+      await drop()
+
+      const banner = wrapper.findComponent({ name: 'MdStatePanel' }).element as HTMLElement
+      expect(banner.className, 'the banner must sit on the error container').toContain('bg-error-container')
+      expect(banner.className, 'the banner text must pair with the error container').toContain('text-on-error-container')
+      expect(banner.className, 'the surface text colour must not win over the container').not.toContain('text-on-surface')
+    })
+
+    it('announces the disconnect through exactly one live region', async () => {
+      await drop()
+
+      const liveRegions = wrapper.findAll('[role="alert"], [role="status"], [aria-live]')
+        .filter(region => region.text().includes('Not connected to the remote console'))
+      expect(liveRegions, 'the disconnect must be announced once, not by the status line and the banner together').toHaveLength(1)
+    })
+
+    it('offers Reconnect in the banner after a plain stream failure', async () => {
+      await drop()
+
+      expect(buttonLabelled(wrapper, 'Reconnect'), 'a dropped stream must offer Reconnect').toBeDefined()
+    })
+
+    it('offers no default Retry button in the banner', async () => {
+      await drop()
+
+      expect(wrapper.findAll('button').map(button => button.text()), 'the banner must offer its own actions, not the default Retry').not.toContain('Retry')
+    })
+
+    it('keeps the log below the banner visible after a drop', async () => {
+      await drop()
+
+      expect(wrapper.find('#console').text(), 'lines printed before the drop must stay in the log').toContain('hello')
+    })
+
+    it('shows the connecting line instead of the banner while connecting', async () => {
+      await mountView()
+
+      expect(wrapper.text(), 'a connecting console must not claim it is disconnected').not.toContain('Not connected to the remote console')
+      expect(wrapper.text(), 'a connecting console must say so').toContain('Connecting to the remote console...')
+    })
+  })
+
   describe('expired session', () => {
     const unauthorized = () => Promise.reject(Object.assign(new Error('Unauthorized'), { response: { status: 401 } }))
 

@@ -140,6 +140,10 @@ const awaitingFirstLine = computed(() => status.value === 'open' && !hasLines.va
 const noLinesMatch = computed(() =>
   status.value === 'open' && hasLines.value && !log.value.some(entry => entry.kind !== 'separator'))
 
+const disconnectedReason = computed(() =>
+  `${failure.value || 'The stream was closed.'} Log output stops until the connection is restored. Anything already printed stays visible below.`
+)
+
 const announcement = computed(() => {
   switch (status.value) {
     case 'connecting': return 'Connecting to the remote console.'
@@ -230,24 +234,21 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
       </p>
 
       <div
-        v-if="connecting || disconnected"
-        class="flex flex-wrap items-center gap-3 px-4 py-3 md-body-medium"
-        :class="disconnected ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-on-surface-variant'"
+        v-if="connecting"
+        class="flex flex-wrap items-center gap-3 px-4 py-3 md-body-medium bg-surface-container-high text-on-surface-variant"
       >
-        <template v-if="connecting">
-          <span>Connecting to the remote console...</span>
-        </template>
-        <template v-else>
-          <div class="min-w-0 flex-1">
-            <p class="md-title-small">
-              Not connected to the remote console
-            </p>
-            <p class="pt-0.5">
-              {{ failure || 'The stream was closed.' }}
-              Log output stops until the connection is restored. Anything already printed
-              stays visible below.
-            </p>
-          </div>
+        <span>Connecting to the remote console...</span>
+      </div>
+
+      <MdStatePanel
+        v-else-if="disconnected"
+        state="error"
+        title="Not connected to the remote console"
+        :description="disconnectedReason"
+        tone="container"
+        :announce="false"
+      >
+        <template #actions>
           <MdButton
             v-if="sessionExpired"
             variant="filled"
@@ -262,7 +263,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
             Reconnect
           </MdButton>
         </template>
-      </div>
+      </MdStatePanel>
 
       <div class="relative flex min-h-0 flex-1 flex-col">
         <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->

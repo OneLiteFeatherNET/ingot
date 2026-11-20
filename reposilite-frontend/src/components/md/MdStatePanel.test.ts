@@ -50,6 +50,27 @@ describe('MdStatePanel', () => {
     expect(wrapper.attributes('role'), 'the error state must be announced at once').toBe('alert')
   })
 
+  it('draws the container tone on the error container with its on-container text colour', () => {
+    const wrapper = mount(MdStatePanel, { props: { state: 'error', title: 'Not connected', tone: 'container' } })
+
+    expect(wrapper.classes(), 'the container tone must fill the panel with the error container').toContain('bg-error-container')
+    expect(wrapper.classes(), 'the text must pair with the error container, not the surface').toContain('text-on-error-container')
+    expect(wrapper.classes(), 'the surface text colour must not stay on a container panel').not.toContain('text-on-surface')
+  })
+
+  it('keeps the surface tone when no tone is given', () => {
+    const wrapper = mount(MdStatePanel, { props: { state: 'error', title: 'Could not load' } })
+
+    expect(wrapper.classes(), 'the default panel must not take the error container').not.toContain('bg-error-container')
+    expect(wrapper.classes(), 'the default panel keeps the surface text colour').toContain('text-on-surface')
+  })
+
+  it('leaves role alert off the error state when announce is false', () => {
+    const wrapper = mount(MdStatePanel, { props: { state: 'error', title: 'Not connected', announce: false } })
+
+    expect(wrapper.attributes('role'), 'a caller that announces the state itself must not get a second live region').toBeUndefined()
+  })
+
   it('sets aria-busy while loading and shows skeleton lines instead of a spinner', () => {
     const wrapper = mount(MdStatePanel, { props: { state: 'loading', title: 'Loading members' } })
 
