@@ -38,7 +38,8 @@ interface TestClient {
 // stream is a fake the test drives event by event: nothing here opens a socket or waits.
 const session = vi.hoisted(() => ({
   client: null as Ref<TestClient> | null,
-  token: null as Ref<Credentials> | null
+  token: null as Ref<Credentials> | null,
+  authMode: null as Ref<string | undefined> | null
 }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
@@ -94,6 +95,55 @@ const { FakeEventSource } = vi.hoisted(() => {
 })
 vi.mock('extended-eventsource', () => ({ EventSource: FakeEventSource }))
 
+// The console socket, driven by the test frame by frame. By default it plays a server without protocol 1: that server
+// reads the hello as a first message without credentials, answers with its error and hangs up, as upstream does.
+const { FakeWebSocket } = vi.hoisted(() => {
+  class FakeWebSocket {
+    static instances: FakeWebSocket[] = []
+    static speaksVersion1 = false
+
+    readyState = 0
+    sent: string[] = []
+    onopen: (() => void) | null = null
+    onmessage: ((event: { data: unknown }) => void) | null = null
+    onclose: ((event: { code: number }) => void) | null = null
+
+    constructor(readonly url: string) {
+      FakeWebSocket.instances.push(this)
+      queueMicrotask(() => {
+        this.readyState = 1
+        this.onopen?.()
+      })
+    }
+
+    send(data: string) {
+      this.sent.push(data)
+      if (!FakeWebSocket.speaksVersion1 && (JSON.parse(data) as { type?: string }).type === 'hello') {
+        this.onmessage?.({ data: '{"status":401,"message":"Unauthorized CLI access request (missing credentials)"}' })
+        this.drop(1000)
+      }
+    }
+
+    close() {
+      this.readyState = 3
+    }
+
+    receive(frame: object) {
+      this.onmessage?.({ data: JSON.stringify(frame) })
+    }
+
+    drop(code: number) {
+      this.readyState = 3
+      this.onclose?.({ code })
+    }
+
+    frames(): Record<string, unknown>[] {
+      return this.sent.map(frame => JSON.parse(frame) as Record<string, unknown>)
+    }
+  }
+  return { FakeWebSocket }
+})
+
 const emitLine = (stream: FakeStream, text: string) => {
   const handler = stream.listeners.get('log')
   if (!handler) throw new Error('the view did not listen for log lines')
@@ -114,6 +164,10 @@ describe('ConsoleView', () => {
     // view and its stores. Otherwise the lines of one test would show up in the next.
     vi.resetModules()
     FakeEventSource.instances.length = 0
+    FakeWebSocket.instances.length = 0
+    FakeWebSocket.speaksVersion1 = false
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    session.authMode = null
     session.token = ref({ name: 'ops', secret: 'secret' })
     session.client = ref({ auth: { me: vi.fn(() => Promise.resolve()) }, console: { execute: vi.fn() } })
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -122,13 +176,119 @@ describe('ConsoleView', () => {
   afterEach(() => {
     wrapper?.unmount()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
+  // Settles the hello before the test goes on: a server without protocol 1 has refused it by then, and the view has
+  // opened the event stream in its place.
   const mountView = async () => {
     const { default: ConsoleView } = await import('./ConsoleView.vue')
     wrapper = mount(ConsoleView, { attachTo: document.body })
+    await flushPromises()
     return wrapper
   }
+
+  const levelCount = (view: VueWrapper, level: string) =>
+    view.findAll('button').find(button => button.attributes('aria-checked') !== undefined && button.text().startsWith(level))!
+      .text().replace(level, '').trim()
+
+  const sendCommand = async (view: VueWrapper, line: string) => {
+    const input = view.find('#consoleInput')
+    await input.setValue(line)
+    await input.trigger('keyup.enter')
+    await flushPromises()
+  }
+
+  describe('console socket', () => {
+    const welcomed = async () => {
+      FakeWebSocket.speaksVersion1 = true
+      await mountView()
+      const socket = FakeWebSocket.instances[0]
+      socket.receive({ type: 'welcome', protocol: 1, boot: 'boot-1', node: 'node-a', seq: 0, replay: null })
+      await flushPromises()
+      return socket
+    }
+
+    it('runs the console over the socket and opens no event stream when the server offers protocol 1', async () => {
+      await welcomed()
+
+      expect(FakeEventSource.instances, 'a server that speaks protocol 1 needs no event stream').toHaveLength(0)
+      expect(wrapper.find('[role="status"]').text(), 'the welcome connects the console').toContain('Connected')
+    })
+
+    it('sends the token of the session in the hello', async () => {
+      const socket = await welcomed()
+
+      expect(socket.frames()[0], 'the hello carries protocol 1 and the token').toMatchObject({ type: 'hello', protocols: [1], token: 'ops:secret' })
+    })
+
+    it('counts a log frame under the level the frame names and filters it in the client', async () => {
+      const socket = await welcomed()
+      socket.receive({ type: 'log', seq: 1, node: 'node-a', level: 'WARN', text: 'disk almost full', dropped: 0 })
+      await flushPromises()
+
+      expect(levelCount(wrapper, 'Warn'), 'the level comes from the frame, not from the text').toBe('1')
+      await wrapper.findAll('button').find(button => button.text().startsWith('Warn'))!.trigger('click')
+      expect(wrapper.find('#console').text(), 'a switched off level hides its lines without asking the server').not.toContain('disk almost full')
+    })
+
+    it('sends an execute frame on Enter and no HTTP request', async () => {
+      const socket = await welcomed()
+
+      await sendCommand(wrapper, 'status')
+
+      expect(socket.frames().at(-1), 'the command goes over the socket').toMatchObject({ type: 'execute', command: 'status' })
+      expect(session.client!.value.console.execute, 'no HTTP request runs a command on the socket').not.toHaveBeenCalled()
+    })
+
+    it('shows the stderr lines of a failed result as errors together with its exit code', async () => {
+      const socket = await welcomed()
+      await sendCommand(wrapper, 'status')
+      const id = socket.frames().at(-1)!.id
+      socket.receive({
+        type: 'result', id, status: 'FAILED', exitCode: 1, data: null, node: 'node-a', confirmed: false,
+        output: [{ stream: 'stdout', text: 'checking' }, { stream: 'stderr', text: 'boom' }]
+      })
+      await flushPromises()
+
+      const output = wrapper.find('#console').text()
+      expect(output, 'the output of the command is shown').toContain('checking')
+      expect(output, 'the failure names its exit code').toContain('Exit code 1')
+      expect(levelCount(wrapper, 'Error'), 'the stderr line and the exit code count as errors').toBe('2')
+    })
+
+    it('reports a command that had no result when the socket dropped as unknown', async () => {
+      const socket = await welcomed()
+      await sendCommand(wrapper, 'status')
+
+      socket.drop(1006)
+      await flushPromises()
+
+      expect(wrapper.find('#console').text(), 'the reader must learn the command may have run').toContain('may or may not have run')
+    })
+  })
+
+  describe('server without protocol 1', () => {
+    it('falls back to the event stream and sends commands over HTTP', async () => {
+      session.client!.value.console.execute = vi.fn(() => Promise.resolve())
+      await mountView()
+      FakeEventSource.instances[0].onopen()
+      await flushPromises()
+
+      await sendCommand(wrapper, 'status')
+
+      expect(FakeEventSource.instances, 'the log arrives over the event stream as before').toHaveLength(1)
+      expect(session.client!.value.console.execute, 'the command is sent over HTTP as before').toHaveBeenCalledWith('status')
+    })
+
+    it('keeps a cookie session on the event stream', async () => {
+      session.authMode = ref('cookie')
+      await mountView()
+
+      expect(FakeWebSocket.instances, 'a cookie session has no token to send in a hello').toHaveLength(0)
+      expect(FakeEventSource.instances, 'the log arrives over the event stream as before').toHaveLength(1)
+    })
+  })
 
   it('keeps the lines printed before a reconnect and marks where the connection came back', async () => {
     await mountView()
