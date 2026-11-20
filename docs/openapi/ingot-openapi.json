@@ -758,6 +758,39 @@
         "required" : [ "type", "name", "files" ],
         "type" : "object"
       },
+      "EnricherStatusResponse" : {
+        "properties" : {
+          "busy" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "calls" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "completed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "failed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "failures" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "skipped" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "calls", "completed", "skipped", "failed", "busy", "failures" ],
+        "type" : "object"
+      },
       "ErrorProblem" : {
         "properties" : {
           "message" : {
@@ -2459,6 +2492,12 @@
           "engine" : {
             "type" : "string"
           },
+          "enrichers" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/EnricherStatusResponse"
+            },
+            "type" : "object"
+          },
           "lagSeconds" : {
             "format" : "int64",
             "type" : "integer"
@@ -2497,7 +2536,7 @@
             "$ref" : "#/components/schemas/IndexState"
           }
         },
-        "required" : [ "state", "lagSeconds", "rows", "outbox", "repositories", "engine", "runs", "backend" ],
+        "required" : [ "state", "lagSeconds", "rows", "outbox", "repositories", "engine", "runs", "backend", "enrichers" ],
         "type" : "object"
       },
       "SearchRunResponse" : {
@@ -6558,7 +6597,7 @@
     },
     "/api/maven/search/index" : {
       "get" : {
-        "description" : "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Requires the maintenance area.",
+        "description" : "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs, the last verify report and the counters of the registered artifact enrichers. Requires the maintenance area.",
         "responses" : {
           "200" : {
             "content" : {

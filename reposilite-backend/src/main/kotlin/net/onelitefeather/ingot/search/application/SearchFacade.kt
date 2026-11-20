@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.repository.index.ArtifactIndexSinkProvider
 import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.backend.SearchBackendState
+import net.onelitefeather.ingot.search.enrichment.EnrichmentTally
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 
 /**
@@ -60,6 +61,8 @@ internal class LiveSearchBackend(
     val admin: SearchIndexAdmin,
     /** The index status of the backend, given whether its index holds rows (4.8). */
     val indexStatus: (rowsExist: Boolean) -> IndexStatus,
+    /** The outcomes of the registered enrichers so far, by id (artifact enrichment, D7). */
+    val enrichers: () -> Map<String, EnrichmentTally> = { emptyMap() },
 )
 
 /**

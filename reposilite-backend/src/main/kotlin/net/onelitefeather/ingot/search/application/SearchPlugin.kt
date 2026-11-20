@@ -328,7 +328,12 @@ internal class SearchPlugin : ReposilitePlugin() {
             paused = paused,
         )
         return LiveParts(
-            handle = LiveSearchBackend(checked, admin, indexStatus = { rowsExist -> statusReader.statusOf(backend, rowsExist) }),
+            handle = LiveSearchBackend(
+                checked,
+                admin,
+                indexStatus = { rowsExist -> statusReader.statusOf(backend, rowsExist) },
+                enrichers = enrichment::counts,
+            ),
             worker = worker,
             rebuild = rebuildScheduler,
             verify = verifyScheduler,
