@@ -27,13 +27,13 @@ import { createPrincipal, siteUrl } from './api'
 const STEP_SECONDS = 30
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
-const tokenAuthorization = () =>
+const tokenAuthorization = (): string =>
   `Basic ${Buffer.from(`${process.env.E2E_TOKEN_NAME}:${process.env.E2E_TOKEN_SECRET}`).toString('base64')}`
 
-const decodeBase32 = (text) => {
+const decodeBase32 = (text: string): Buffer => {
   let buffer = 0
   let bits = 0
-  const bytes = []
+  const bytes: number[] = []
   for (const character of text.replace(/=+$/, '').toUpperCase()) {
     buffer = (buffer << 5) | BASE32.indexOf(character)
     bits += 5
@@ -46,7 +46,7 @@ const decodeBase32 = (text) => {
 }
 
 // RFC 6238 with HMAC-SHA1, six digits and a thirty second step, as TotpAlgorithm.kt computes it.
-const totpCode = (secret, step) => {
+const totpCode = (secret: string, step: number): string => {
   const counter = Buffer.alloc(8)
   counter.writeBigUInt64BE(BigInt(step))
   const hash = createHmac('sha1', decodeBase32(secret)).update(counter).digest()
@@ -55,10 +55,10 @@ const totpCode = (secret, step) => {
   return String(binary % 1000000).padStart(6, '0')
 }
 
-const currentStep = () => Math.floor(Date.now() / 1000 / STEP_SECONDS)
+const currentStep = (): number => Math.floor(Date.now() / 1000 / STEP_SECONDS)
 
 // The base32 secret in the otpauth address the server hands out once.
-const secretOf = (otpauthUri) => {
+const secretOf = (otpauthUri: string): string => {
   const secret = new URL(otpauthUri).searchParams.get('secret')
   if (!secret) {
     throw new Error(`the address ${otpauthUri} names no secret`)
@@ -66,9 +66,9 @@ const secretOf = (otpauthUri) => {
   return secret
 }
 
-const password = () => randomBytes(18).toString('base64url')
+const password = (): string => randomBytes(18).toString('base64url')
 
-const expectOk = async (response, action) => {
+const expectOk = async (response: Response, action: string): Promise<Response> => {
   if (!response.ok) {
     throw new Error(`${action} answered ${response.status}: ${await response.text()}`)
   }
@@ -79,7 +79,9 @@ const expectOk = async (response, action) => {
  * A browser session of one user, held outside the browser: the cookies of the login answer, and the csrf cookie
  * repeated in its header as the dashboard does it.
  */
-const signInOverApi = async (username, secret) => {
+type SessionPost = (path: string, body: unknown) => Promise<Response>
+
+const signInOverApi = async (username: string, secret: string): Promise<SessionPost> => {
   const login = await expectOk(await fetch(siteUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,7 +89,7 @@ const signInOverApi = async (username, secret) => {
   }), `signing ${username} in`)
   const cookies = login.headers.getSetCookie().map(cookie => cookie.split(';')[0])
   const csrf = cookies.find(cookie => cookie.startsWith('ingot_csrf='))?.slice('ingot_csrf='.length) ?? ''
-  return (path, body) => fetch(siteUrl(path), {
+  return (path: string, body: unknown) => fetch(siteUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cookies.join('; '), 'X-CSRF-Token': csrf },
     body: JSON.stringify(body),
@@ -98,7 +100,7 @@ const signInOverApi = async (username, secret) => {
  * A user with a password of its own. An administrator's reset makes the password temporary, so the user replaces it
  * once, here, and the browser sign-in of the test is an ordinary one.
  */
-const createPasswordUser = async (username) => {
+const createPasswordUser = async (username: string): Promise<string> => {
   await createPrincipal({ kind: 'USER', name: username })
   const temporary = password()
   await expectOk(await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(username)}/password`), {
@@ -116,22 +118,30 @@ const createPasswordUser = async (username) => {
  * Enrols an authenticator for the user and returns its secret, the step of the code that confirmed it, and the
  * recovery codes the first factor brings.
  */
-const enrolAuthenticator = async (username, secret) => {
+interface EnrolledAuthenticator {
+  secret: string
+  step: number
+  recoveryCodes: string[]
+}
+
+const enrolAuthenticator = async (username: string, secret: string): Promise<EnrolledAuthenticator> => {
   const post = await signInOverApi(username, secret)
   const started = await expectOk(await post('/api/identity/me/factors/totp', {}), `starting the enrolment of ${username}`)
-  const authenticator = secretOf((await started.json()).otpauthUri)
+  const { otpauthUri } = await started.json() as { otpauthUri: string }
+  const authenticator = secretOf(otpauthUri)
   const step = currentStep()
   const confirmed = await expectOk(
     await post('/api/identity/me/factors/totp/confirm', { code: totpCode(authenticator, step) }),
     `confirming the enrolment of ${username}`,
   )
-  return { secret: authenticator, step, recoveryCodes: (await confirmed.json()).recoveryCodes }
+  const { recoveryCodes } = await confirmed.json() as { recoveryCodes: string[] }
+  return { secret: authenticator, step, recoveryCodes }
 }
 
 /*
  * The code of the step after [usedStep]. The server accepts one step either side of its own, and only a step later
  * than the last one it accepted, so this code is good for the next minute after the used one.
  */
-const nextCode = (secret, usedStep) => totpCode(secret, usedStep + 1)
+const nextCode = (secret: string, usedStep: number): string => totpCode(secret, usedStep + 1)
 
 export { createPasswordUser, enrolAuthenticator, nextCode, secretOf, totpCode, currentStep }
