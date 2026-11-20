@@ -124,7 +124,7 @@ internal abstract class MavenSpecification {
         journalist = logger
     ).failureFacade()
 
-    private val accessTokenFacade = AccessTokenComponents(
+    protected val accessTokenFacade = AccessTokenComponents(
         journalist = logger,
         database = null
     ).accessTokenFacade(bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH)

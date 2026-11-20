@@ -22,7 +22,8 @@ object PluginApiAllowlist {
 
     const val NAMESPACE = "net.onelitefeather.ingot."
 
-    private val className = Regex("""[a-z][a-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+""")
+    // A nested type is listed by its binary name, with a dollar sign before the nested name (net.a.Outer$Inner).
+    private val className = Regex("""[a-z][a-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+(\$[A-Za-z_][A-Za-z0-9_]*)*""")
 
     fun parse(text: String): List<String> {
         val names = text.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }

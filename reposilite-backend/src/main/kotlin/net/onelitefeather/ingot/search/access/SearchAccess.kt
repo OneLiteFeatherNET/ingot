@@ -16,18 +16,21 @@
 package net.onelitefeather.ingot.search.access
 
 import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 
 /**
  * What one caller may see in the artifact search index (artifact search spec, 5.2). The value holds no evaluator types, so
  * an external engine can translate it without depending on the identity model. A caller gets one value per request,
  * compiled by [SearchAccessCompiler]; a repository missing from [repositories] is not visible at all.
  */
+@ExperimentalIngotPluginApi
 data class SearchAccess(val repositories: List<RepositoryAccess>) {
 
     /** The in-memory form of the row filter: whether a row of [repository] at [path] is returned. */
     fun matches(repository: String, path: String): Boolean =
         repositories.any { it.repository == repository && it.path.matches(path) }
 
+    @ExperimentalIngotPluginApi
     companion object {
         /** The value of a caller that sees nothing. */
         val NONE: SearchAccess = SearchAccess(emptyList())
@@ -35,30 +38,38 @@ data class SearchAccess(val repositories: List<RepositoryAccess>) {
 }
 
 /** The rows of one repository the caller may see, as a predicate over the path inside that repository. */
+@ExperimentalIngotPluginApi
 data class RepositoryAccess(val repository: String, val path: PathPredicate)
 
 /**
  * A condition on the path inside a repository. Every variant names how it is rendered to SQL and how it is evaluated in
  * memory, and the two agree on normalised paths, which is all the index stores.
  */
+@ExperimentalIngotPluginApi
 sealed interface PathPredicate {
 
     /** Every path. */
+    @ExperimentalIngotPluginApi
     data object All : PathPredicate
 
     /** No path. */
+    @ExperimentalIngotPluginApi
     data object Never : PathPredicate
 
     /** The path equals [prefix] or lies below it. Case-sensitive and segment-aware, as a new-model path grant. */
+    @ExperimentalIngotPluginApi
     data class Exact(val prefix: String) : PathPredicate
 
     /** The normalised path starts with [segments]: an artifact subtree (groupId and artifactId). Empty matches every path. */
+    @ExperimentalIngotPluginApi
     data class Subtree(val segments: List<String>) : PathPredicate
 
     /** The path starts with [prefix] ignoring case, with no segment boundary: a legacy route, kept on purpose (2.10). */
+    @ExperimentalIngotPluginApi
     data class Legacy(val prefix: String) : PathPredicate
 
     /** Every part holds. */
+    @ExperimentalIngotPluginApi
     data class Conjunction(val parts: List<PathPredicate>) : PathPredicate
 
     /**
@@ -66,10 +77,12 @@ sealed interface PathPredicate {
      * are ordered by the precedence of the evaluator: the most specific rule first, a denial before an allow of the same
      * specificity, and the closest precedence level before the farther ones.
      */
+    @ExperimentalIngotPluginApi
     data class Precedence(val rules: List<PrecedenceRule>) : PathPredicate
 }
 
 /** One step of [PathPredicate.Precedence]: when [condition] holds for the path, the path is [allowed] or denied. */
+@ExperimentalIngotPluginApi
 data class PrecedenceRule(val condition: PathPredicate, val allowed: Boolean)
 
 /**

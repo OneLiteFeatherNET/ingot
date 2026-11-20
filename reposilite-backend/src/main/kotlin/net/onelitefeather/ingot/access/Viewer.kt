@@ -18,9 +18,12 @@ package net.onelitefeather.ingot.access
 
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
 import net.onelitefeather.ingot.format.RepositoryPath
 import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.search.access.SearchAccess
+import net.onelitefeather.ingot.search.access.SearchAccessCompiler
 
 /**
  * The access decisions of one viewer. Every answer is the answer of the route for the same token and input. A repository
@@ -31,6 +34,7 @@ import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 class Viewer internal constructor(
     private val token: AccessTokenIdentifier?,
     private val maven: MavenFacade,
+    private val accessTokens: AccessTokenFacade,
 ) {
 
     /** Whether the viewer may read the repository, as the root listing decides. */
@@ -51,6 +55,16 @@ class Viewer internal constructor(
     /** Whether the repository appears in the repository list for this viewer. */
     fun canListRepository(repository: String): Boolean =
         maven.getRepository(repository)?.let { maven.canListRepository(token, it) } ?: false
+
+    /**
+     * The search access value of this viewer: the rows of the artifact search index it may read. It is compiled from the same
+     * subject and visibilities as the search routes use, so a search with it returns the rows a search route returns.
+     */
+    fun searchAccess(): SearchAccess {
+        val subject = token?.let { accessTokens.subjectOf(it) }
+        val visibilities = maven.getRepositories().associate { it.name to it.visibility }
+        return SearchAccessCompiler.compile(subject, visibilities)
+    }
 
     private fun canonicalPathOf(repository: String, path: String): RepositoryPath? {
         if (path.startsWith('/') || path.split('/').any { it.isEmpty() }) return null

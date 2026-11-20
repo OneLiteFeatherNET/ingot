@@ -37,6 +37,16 @@ class PluginApiAllowlistTest {
             .containsExactly("net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi")
     }
 
+    // A nested type of the API, such as the variants of a sealed hierarchy, is listed by its binary name with a dollar sign.
+    @Test
+    fun parseAcceptsNestedClassNames() {
+        val names = PluginApiAllowlist.parse("net.onelitefeather.ingot.search.access.PathPredicate\$All")
+
+        assertThat(names)
+            .describedAs("a binary name of a nested class is a valid entry")
+            .containsExactly("net.onelitefeather.ingot.search.access.PathPredicate\$All")
+    }
+
     // Legacy com.reposilite types are provided by the server and never listed, so a name outside the ingot namespace is refused.
     @Test
     fun parseRejectsNameOutsideIngotNamespace() {

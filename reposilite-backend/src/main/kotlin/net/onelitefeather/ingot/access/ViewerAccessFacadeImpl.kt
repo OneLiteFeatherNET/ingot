@@ -17,13 +17,17 @@
 package net.onelitefeather.ingot.access
 
 import com.reposilite.maven.MavenFacade
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.api.AccessTokenDto
 import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 
 @ExperimentalIngotPluginApi
-internal class ViewerAccessFacadeImpl(private val maven: MavenFacade) : ViewerAccessFacade {
+internal class ViewerAccessFacadeImpl(
+    private val maven: MavenFacade,
+    private val accessTokens: AccessTokenFacade,
+) : ViewerAccessFacade {
 
     override fun viewerOf(token: AccessTokenDto?): Viewer =
-        Viewer(token?.identifier, maven)
+        Viewer(token?.identifier, maven, accessTokens)
 
 }

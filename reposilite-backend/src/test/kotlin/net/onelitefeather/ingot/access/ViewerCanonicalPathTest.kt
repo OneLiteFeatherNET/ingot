@@ -46,7 +46,7 @@ internal class ViewerCanonicalPathTest : MavenSpecification() {
     private fun anonymous(): Viewer = viewerOf(UNAUTHORIZED)
 
     private fun viewerOf(token: AccessTokenIdentifier?): Viewer =
-        ViewerAccessFacadeImpl(mavenFacade).viewerOf(token?.let { AccessTokenDto(it, "token", LocalDate.of(2026, 1, 1), "") })
+        ViewerAccessFacadeImpl(mavenFacade, accessTokenFacade).viewerOf(token?.let { AccessTokenDto(it, "token", LocalDate.of(2026, 1, 1), "") })
 
     @Test
     fun `should answer the canonical path of a public repository as the route does`() {
