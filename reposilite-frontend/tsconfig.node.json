@@ -11,6 +11,8 @@
     "server/**/*",
     // The dashboard plugin imports the segment list of the router. A composite project must list every file it imports.
     "src/router/dashboard-segments.json",
+    // The anchors reference generator (scripts/anchors-doc.ts) renders the page with this module.
+    "src/anchors/render.ts",
     "fake-api/**/*"
   ],
   "compilerOptions": {
