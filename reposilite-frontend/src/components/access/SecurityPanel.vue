@@ -15,11 +15,13 @@
   -->
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
 import SignInSwitchNotice from './SignInSwitchNotice.vue'
 import AppTabs from '../tabs/AppTabs.vue'
+import { mfaWarnings, type MfaSettings } from './loginSettings'
+import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 
 // The tabs in order. The tab in the address (?tab=) opens one; an unknown or missing one opens the first.
 // Each tab draws part of one settings domain. Its save writes that whole domain, and its button names it.
@@ -28,11 +30,21 @@ const TABS = [
   { key: 'accounts', label: 'Accounts' },
   { key: 'passwords', label: 'Passwords' },
   { key: 'sessions', label: 'Sessions' },
+  { key: 'second-factors', label: 'Second factors' },
 ]
 
 const ACCOUNT_FIELDS = ['maxFailedAttempts', 'lockoutMinutes', 'accountThrottle']
 const PASSWORD_FIELDS = ['passwordPolicy']
 const SESSION_FIELDS = ['idleTimeoutMinutes']
+const MFA_FIELDS = ['mfa']
+
+// The notices of the second factor policy follow the draft in the form, so they change before the save.
+const { store: sharedStore } = useConfiguration()
+const store = inject(configurationStoreKey, null) ?? sharedStore
+const breakGlassNotices = computed(() => {
+  const mfa = store.configurations.value.login?.mfa as MfaSettings | undefined
+  return mfa ? mfaWarnings(mfa) : []
+})
 
 // Only the open tab draws its form. AppTabs keeps every panel in the page, so the others would be drawn hidden.
 // A draft of a tab stays in the shared store, so switching tabs does not lose it.
@@ -58,7 +70,7 @@ const selected = computed(() => {
         Security
       </h2>
       <p class="md-body-medium text-on-surface-variant">
-        Limits on repeated failed sign-ins, the rules for new passwords and the length of browser sessions.
+        Limits on repeated failed sign-ins, the rules for new passwords, the length of browser sessions and the second factors that signing in requires.
       </p>
     </div>
 
@@ -93,6 +105,22 @@ const selected = computed(() => {
             :fields="SESSION_FIELDS"
             save-label="Save session limits"
           />
+          <template v-else-if="tab === 'second-factors'">
+            <p
+              v-for="notice in breakGlassNotices"
+              :key="notice"
+              role="note"
+              data-test="mfa-break-glass-notice"
+              class="md-body-medium text-on-surface-variant"
+            >
+              {{ notice }}
+            </p>
+            <AuthenticationGroupForm
+              domain="login"
+              :fields="MFA_FIELDS"
+              save-label="Save second factor policy"
+            />
+          </template>
         </template>
       </template>
     </AppTabs>
