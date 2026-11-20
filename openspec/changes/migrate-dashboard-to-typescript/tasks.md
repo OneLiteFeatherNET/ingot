@@ -8,19 +8,19 @@ Before any slice starts, check `git diff --name-only origin/main...<pr>` for eac
 
 Group type: `build(ui)`, except 0.10 which is `ci(ui)`. Pull request: `build(ui): add typescript tooling to the dashboard`.
 
-- [ ] 0.1 Re-check the pins in `design.md` with `npm view <package> time --json`. Each pin must be at least 14 days old on the day of the pull request; if one is not, take the newest release that is. Record the chosen versions and dates in the pull request description.
-- [ ] 0.2 Add `typescript` 6.0.3, `vue-tsc`, `@vue/tsconfig` and `typescript-eslint` as exact devDependencies of `reposilite-frontend/package.json`, and update `package-lock.json`. Run `npm ci` and the license check. Record the peer ranges (question 2). The peer cap of `typescript-eslint` is handled with an npm `overrides` entry in `package.json`
+- [x] 0.1 Re-check the pins in `design.md` with `npm view <package> time --json`. Each pin must be at least 14 days old on the day of the pull request; if one is not, take the newest release that is. Record the chosen versions and dates in the pull request description.
+- [x] 0.2 Add `typescript` 6.0.3, `vue-tsc`, `@vue/tsconfig` and `typescript-eslint` as exact devDependencies of `reposilite-frontend/package.json`, and update `package-lock.json`. Run `npm ci` and the license check. Record the peer ranges (question 2). The peer cap of `typescript-eslint` is handled with an npm `overrides` entry in `package.json`
   (decided 2026-11-18), named in this pull request and removed with task 5.2. If #214 changes `package.json`, rebase onto it first.
-- [ ] 0.3 Add `tsconfig.json` (solution file), `tsconfig.app.json`, `tsconfig.tests.json` and `tsconfig.node.json` as in `design.md` D2: `allowJs: true`, `checkJs: false`, `strict: true`, `moduleResolution: "bundler"`. Confirm the `@vue/tsconfig` export names it extends.
-- [ ] 0.4 Add `npm run typecheck` (`vue-tsc --build --noEmit`). With no `.ts` source yet, the check passes only because of 0.7. Add a red test first that Vitest collects a `.test.ts` file under `src/` (a fixture file in the test's own temporary directory, not a committed one), then change `vitest.config.js` `include` to `src/**/*.test.{js,ts}` and `server/**/*.test.{js,ts}`.
-- [ ] 0.5 Add the `any` budget (question 7). Write `src/types/any-budget.test.ts` first, with fixtures built in a temporary directory: it must fail for a file over its entry, for a file without an entry, and for an entry above the count. Then add `src/types/any-budget.json` with an empty object and make the test pass.
-- [ ] 0.6 ESLint: add the `typescript-eslint` configuration for `**/*.ts` and for `*.vue` files with `<script lang="ts">`, with `@typescript-eslint/no-explicit-any` as an error. Keep the warning-to-error wrapper. Check that `npm run eslint` still reports the current code clean, and that the `eslint "src/**"` glob matches `.ts` files.
-- [ ] 0.7 Add `src/env.d.ts` for the Vite client types, the global test helpers and the `{{REPOSILITE.*}}` placeholders that plugins also use (declared as string constants, not as runtime values). Confirm the declarations do not change the production bundle.
-- [ ] 0.8 Style gate and anchors: write a failing test first in `src/style-gate/scan.test.js` (or a new `.test.js` beside it, the file is not converted yet) that a `.ts` file with a raw colour is reported. Then add `.ts` to `SCANNED_EXTENSIONS` in `src/style-gate/sources.js`, exclude `.test.ts` next to `.test.js`, and add `.ts` to the filter in `src/anchors/checks.js` (line 315). The baseline and allowlist files are not changed.
-- [ ] 0.9 Classify the 22 SFCs that contain neither `<script setup>` nor `export default {` and list them in the pull request. The template-only icons among them are converted in 2.C02 (decided 2026-11-18); the others get no edits. Confirm the count of 179 and 17.
-- [ ] 0.10 CI: add a `npm run typecheck` step to the frontend job in `.github/workflows/ci.yml`, after `npm ci` and before the build, in the job that runs `npm run eslint`. Group type `ci(ui)`.
-- [ ] 0.11 Record the baseline for D9 in the pull request description: the CSS file of `npm run build` (name without its hash, byte size and SHA-256), and the size of every JavaScript chunk.
-- [ ] 0.12 Run `npm run typecheck`, `npm run eslint`, `npx vitest run --maxWorkers=2`, `npm run build`, and `npm run e2e -- --workers=2` with the baseline set. Use `heavy` for the e2e run. Open the pull request `build(ui): add typescript tooling to the dashboard`.
+- [x] 0.3 Add `tsconfig.json` (solution file), `tsconfig.app.json`, `tsconfig.tests.json` and `tsconfig.node.json` as in `design.md` D2: `allowJs: true`, `checkJs: false`, `strict: true`, `moduleResolution: "bundler"`. Confirm the `@vue/tsconfig` export names it extends.
+- [x] 0.4 Add `npm run typecheck` (`vue-tsc --build --noEmit`). With no `.ts` source yet, the check passes only because of 0.7. Add a red test first that Vitest collects a `.test.ts` file under `src/` (a fixture file in the test's own temporary directory, not a committed one), then change `vitest.config.js` `include` to `src/**/*.test.{js,ts}` and `server/**/*.test.{js,ts}`.
+- [x] 0.5 Add the `any` budget (question 7). Write `src/types/any-budget.test.ts` first, with fixtures built in a temporary directory: it must fail for a file over its entry, for a file without an entry, and for an entry above the count. Then add `src/types/any-budget.json` with an empty object and make the test pass.
+- [x] 0.6 ESLint: add the `typescript-eslint` configuration for `**/*.ts` and for `*.vue` files with `<script lang="ts">`, with `@typescript-eslint/no-explicit-any` as an error. Keep the warning-to-error wrapper. Check that `npm run eslint` still reports the current code clean, and that the `eslint "src/**"` glob matches `.ts` files.
+- [x] 0.7 Add `src/env.d.ts` for the Vite client types, the global test helpers and the `{{REPOSILITE.*}}` placeholders that plugins also use (declared as string constants, not as runtime values). Confirm the declarations do not change the production bundle.
+- [x] 0.8 Style gate and anchors: write a failing test first in `src/style-gate/scan.test.js` (or a new `.test.js` beside it, the file is not converted yet) that a `.ts` file with a raw colour is reported. Then add `.ts` to `SCANNED_EXTENSIONS` in `src/style-gate/sources.js`, exclude `.test.ts` next to `.test.js`, and add `.ts` to the filter in `src/anchors/checks.js` (line 315). The baseline and allowlist files are not changed.
+- [x] 0.9 Classify the 22 SFCs that contain neither `<script setup>` nor `export default {` and list them in the pull request. The template-only icons among them are converted in 2.C02 (decided 2026-11-18); the others get no edits. Confirm the count of 179 and 17.
+- [x] 0.10 CI: add a `npm run typecheck` step to the frontend job in `.github/workflows/ci.yml`, after `npm ci` and before the build, in the job that runs `npm run eslint`. Group type `ci(ui)`.
+- [x] 0.11 Record the baseline for D9 in the pull request description: the CSS file of `npm run build` (name without its hash, byte size and SHA-256), and the size of every JavaScript chunk.
+- [x] 0.12 Run `npm run typecheck`, `npm run eslint`, `npx vitest run --maxWorkers=2`, `npm run build`, and `npm run e2e -- --workers=2` with the baseline set. Use `heavy` for the e2e run. Open the pull request `build(ui): add typescript tooling to the dashboard`.
 
 ## 1. Phase 1: shared API types and modules
 
@@ -28,38 +28,38 @@ Each group is one pull request. Group type: `refactor(ui)`. Phase 1 starts after
 
 ### 1.A `P1-0` API types and import spelling
 
-- [ ] 1.A.1 Remove the explicit `.js` extension from the 88 relative imports in 44 files (D6). One commit, no rename, no other change. Run the unit suite.
-- [ ] 1.A.2 Write `src/types/api.test.ts` first: it regenerates the types from `docs/openapi/ingot-openapi.json` into a temporary directory and expects the committed `src/types/api.ts` to match. Watch it fail (the generator and the file do not exist yet).
-- [ ] 1.A.3 Add `scripts/generate-api-types.mjs` (`openapi-typescript` 7.13.0, exact devDependency, added in this group) and generate `src/types/api.ts`. Commit the generated file unchanged. Add an `npm run types:api` script. Make the freshness test pass.
-- [ ] 1.A.4 Open the pull request `refactor(ui): type the api response shapes`.
+- [x] 1.A.1 Remove the explicit `.js` extension from the 88 relative imports in 44 files (D6). One commit, no rename, no other change. Run the unit suite.
+- [x] 1.A.2 Write `src/types/api.test.ts` first: it regenerates the types from `docs/openapi/ingot-openapi.json` into a temporary directory and expects the committed `src/types/api.ts` to match. Watch it fail (the generator and the file do not exist yet).
+- [x] 1.A.3 Add `scripts/generate-api-types.mjs` (`openapi-typescript` 7.13.0, exact devDependency, added in this group) and generate `src/types/api.ts`. Commit the generated file unchanged. Add an `npm run types:api` script. Make the freshness test pass.
+- [x] 1.A.4 Open the pull request `refactor(ui): type the api response shapes`.
 
 ### 1.B `P1-1` store core
 
-- [ ] 1.B.1 Rename `src/store/*.js` and `src/store/console/` with `git mv`, including their `.test.js` files (21 modules, 31 tests). Commit only the renames.
-- [ ] 1.B.2 Add types (store state, action signatures, exported names) that use `src/types/api.ts`. Convert the tests to `.test.ts`. Keep test bodies unchanged (rule 2).
-- [ ] 1.B.3 Run the gates, including `src/anchors` (the anchor test runs against the renamed registry `file` fields).
-- [ ] 1.B.4 Open the pull request `refactor(ui): type the store core modules`.
+- [x] 1.B.1 Rename `src/store/*.js` and `src/store/console/` with `git mv`, including their `.test.js` files (21 modules, 31 tests). Commit only the renames.
+- [x] 1.B.2 Add types (store state, action signatures, exported names) that use `src/types/api.ts`. Convert the tests to `.test.ts`. Keep test bodies unchanged (rule 2).
+- [x] 1.B.3 Run the gates, including `src/anchors` (the anchor test runs against the renamed registry `file` fields).
+- [x] 1.B.4 Open the pull request `refactor(ui): type the store core modules`.
 
 ### 1.C `P1-2` store migration and Maven
 
-- [ ] 1.C.1 Rename `src/store/migration/` and `src/store/maven/` with `git mv` (14 modules, 9 tests). Commit the renames only.
-- [ ] 1.C.2 Add types and convert the tests as in 1.B.2.
-- [ ] 1.C.3 Run the gates.
-- [ ] 1.C.4 Open the pull request `refactor(ui): type the migration and maven store modules`.
+- [x] 1.C.1 Rename `src/store/migration/` and `src/store/maven/` with `git mv` (14 modules, 9 tests). Commit the renames only.
+- [x] 1.C.2 Add types and convert the tests as in 1.B.2.
+- [x] 1.C.3 Run the gates.
+- [x] 1.C.4 Open the pull request `refactor(ui): type the migration and maven store modules`.
 
 ### 1.D `P1-3` router, navigation, theme and anchors
 
-- [ ] 1.D.1 Wait for #214 and #219 to merge (both edit `src/navigation/registry.js`). Rename `src/router/`, `src/navigation/`, `src/theme/` and `src/anchors/` (14 modules, 20 tests). `src/router/dashboard-segments.json` stays JSON and byte-identical (CI compares it with the chart copy).
-- [ ] 1.D.2 Add types. The route names and paths are not changed.
-- [ ] 1.D.3 Run the gates, plus `cmp` of `src/router/dashboard-segments.json` against `charts/ingot/files/dashboard-segments.json`.
-- [ ] 1.D.4 Open the pull request `refactor(ui): type the router, navigation, theme and anchor modules`.
+- [x] 1.D.1 Wait for #214 and #219 to merge (both edit `src/navigation/registry.js`). Rename `src/router/`, `src/navigation/`, `src/theme/` and `src/anchors/` (14 modules, 20 tests). `src/router/dashboard-segments.json` stays JSON and byte-identical (CI compares it with the chart copy).
+- [x] 1.D.2 Add types. The route names and paths are not changed.
+- [x] 1.D.3 Run the gates, plus `cmp` of `src/router/dashboard-segments.json` against `charts/ingot/files/dashboard-segments.json`.
+- [x] 1.D.4 Open the pull request `refactor(ui): type the router, navigation, theme and anchor modules`.
 
 ### 1.E `P1-4` helpers, style gate and styles
 
-- [ ] 1.E.1 Rename `src/helpers/`, `src/style-gate/` and `src/styles/` (14 modules, 19 tests). `src/style-gate/baseline` and `allowlist` JSON stay as they are, except for path keys that change (none expected).
-- [ ] 1.E.2 Add types and convert the tests.
-- [ ] 1.E.3 Run the gates, plus the style gate test, which must still report the same findings as the baseline.
-- [ ] 1.E.4 Open the pull request `refactor(ui): type the helpers and style gate`.
+- [x] 1.E.1 Rename `src/helpers/`, `src/style-gate/` and `src/styles/` (14 modules, 19 tests). `src/style-gate/baseline` and `allowlist` JSON stay as they are, except for path keys that change (none expected).
+- [x] 1.E.2 Add types and convert the tests.
+- [x] 1.E.3 Run the gates, plus the style gate test, which must still report the same findings as the baseline.
+- [x] 1.E.4 Open the pull request `refactor(ui): type the helpers and style gate`.
 
 ## 2. Phase 2: component slices
 
@@ -71,81 +71,81 @@ Each slice starts only after the Phase 1 pull requests are merged and after any 
 
 Starts after #238 (md3 tokens), #214 and #219 are merged.
 
-- [ ] 2.C01.1 Rename `src/components/md/` (17 `.vue`, 17 `.test.js`). Commit the renames only.
-- [ ] 2.C01.2 Add `defineProps<...>()` and `defineEmits<...>()` to each primitive, types for its slots, and convert the tests. Keep each primitive's prop names and defaults (the catalogue change owns the API).
-- [ ] 2.C01.3 Update `src/anchors/registry.json` `file` fields and run `npm run anchors:doc`. Run the gates, plus the md and menu specs of the e2e baseline, with the md screenshot tests from #238 if they are on `main`.
-- [ ] 2.C01.4 Open the pull request `refactor(ui): type the md primitives`.
+- [x] 2.C01.1 Rename `src/components/md/` (17 `.vue`, 17 `.test.js`). Commit the renames only.
+- [x] 2.C01.2 Add `defineProps<...>()` and `defineEmits<...>()` to each primitive, types for its slots, and convert the tests. Keep each primitive's prop names and defaults (the catalogue change owns the API).
+- [x] 2.C01.3 Update `src/anchors/registry.json` `file` fields and run `npm run anchors:doc`. Run the gates, plus the md and menu specs of the e2e baseline, with the md screenshot tests from #238 if they are on `main`.
+- [x] 2.C01.4 Open the pull request `refactor(ui): type the md primitives`.
 
 ### 2.C02 icons (36 files) - `refactor(ui): type the icon components`
 
-- [ ] 2.C02.1 Rename `src/components/icons/` (33 `.vue`, 1 `.js`, 2 `.test.js`). Commit the renames only.
-- [ ] 2.C02.2 Add `defineProps<...>()` for the icon size and colour props, and convert the tests and the one module. Convert the
+- [x] 2.C02.1 Rename `src/components/icons/` (33 `.vue`, 1 `.js`, 2 `.test.js`). Commit the renames only.
+- [x] 2.C02.2 Add `defineProps<...>()` for the icon size and colour props, and convert the tests and the one module. Convert the
   template-only icons (23 by the maintainer's count, decided 2026-11-18): each gets `<script setup lang="ts">`, with a props type only
   where its template reads a prop, and its template and rendered markup do not change.
-- [ ] 2.C02.3 Run the gates. The CSS comparison must be byte-identical (icons carry no CSS).
-- [ ] 2.C02.4 Open the pull request `refactor(ui): type the icon components`.
+- [x] 2.C02.3 Run the gates. The CSS comparison must be byte-identical (icons carry no CSS).
+- [x] 2.C02.4 Open the pull request `refactor(ui): type the icon components`.
 
 ### 2.C03 layout, header, page shell (40 files) - `refactor(ui): type the layout and page shell components`
 
 Starts after #238 (`layout`, `IndexPage.vue`) and #214 (`MenuPanel.vue`) are merged, and after #219 (`IndexPage.vue`).
 
-- [ ] 2.C03.1 Rename `src/components/layout/`, `header/`, `footer/`, `overview/`, `console/`, `src/pages/`, `src/App.vue`, `src/main.js` and `src/style.test.js`. Commit the renames only.
-- [ ] 2.C03.2 Add types and convert the tests. `src/style.test.js` reads `src/style.css` by path, which stays where it is, so its body does not change.
-- [ ] 2.C03.3 Keep `IndexPage.vue`'s `useMediaQuery` literal exactly as it is (no change of breakpoints).
-- [ ] 2.C03.4 Run the gates, including the layout, navigation and accessibility e2e specs.
-- [ ] 2.C03.5 Open the pull request `refactor(ui): type the layout and page shell components`.
+- [x] 2.C03.1 Rename `src/components/layout/`, `header/`, `footer/`, `overview/`, `console/`, `src/pages/`, `src/App.vue`, `src/main.js` and `src/style.test.js`. Commit the renames only.
+- [x] 2.C03.2 Add types and convert the tests. `src/style.test.js` reads `src/style.css` by path, which stays where it is, so its body does not change.
+- [x] 2.C03.3 Keep `IndexPage.vue`'s `useMediaQuery` literal exactly as it is (no change of breakpoints).
+- [x] 2.C03.4 Run the gates, including the layout, navigation and accessibility e2e specs.
+- [x] 2.C03.5 Open the pull request `refactor(ui): type the layout and page shell components`.
 
 ### 2.C04 shared leaves (40 files) - `refactor(ui): type the shared leaf components`
 
 Starts after #238 (`tokens`) is merged.
 
-- [ ] 2.C04.1 Rename `src/components/util/`, `tokens/`, `card/`, `support/` and `plugins/`. Commit the renames only.
-- [ ] 2.C04.2 Add types and convert the tests. `plugins/` is the plugin UI host: its props and emits do not change, and the extension point names it reads stay as strings.
-- [ ] 2.C04.3 Run the gates, plus the plugin stylesheet e2e spec.
-- [ ] 2.C04.4 Open the pull request `refactor(ui): type the shared leaf components`.
+- [x] 2.C04.1 Rename `src/components/util/`, `tokens/`, `card/`, `support/` and `plugins/`. Commit the renames only.
+- [x] 2.C04.2 Add types and convert the tests. `plugins/` is the plugin UI host: its props and emits do not change, and the extension point names it reads stay as strings.
+- [x] 2.C04.3 Run the gates, plus the plugin stylesheet e2e spec.
+- [x] 2.C04.4 Open the pull request `refactor(ui): type the shared leaf components`.
 
 ### 2.C05 search (10 files) - `refactor(ui): type the search components`
 
 Starts after #238 (1 file) is merged.
 
-- [ ] 2.C05.1 Rename `src/components/search/`. Commit the renames only.
-- [ ] 2.C05.2 Add types and convert the tests and the two modules.
-- [ ] 2.C05.3 Run the gates.
-- [ ] 2.C05.4 Open the pull request `refactor(ui): type the search components`.
+- [x] 2.C05.1 Rename `src/components/search/`. Commit the renames only.
+- [x] 2.C05.2 Add types and convert the tests and the two modules.
+- [x] 2.C05.3 Run the gates.
+- [x] 2.C05.4 Open the pull request `refactor(ui): type the search components`.
 
 ### 2.C06 dashboard (40 files) - `refactor(ui): type the dashboard components`
 
 Starts after #238 (2 files) is merged.
 
-- [ ] 2.C06.1 Rename `src/components/dashboard/`. Commit the renames only.
-- [ ] 2.C06.2 Add types, including the statistics and cluster status shapes from `src/types/api.ts`, and convert the tests.
-- [ ] 2.C06.3 Run the gates, plus the dashboard e2e spec.
-- [ ] 2.C06.4 Open the pull request `refactor(ui): type the dashboard components`.
+- [x] 2.C06.1 Rename `src/components/dashboard/`. Commit the renames only.
+- [x] 2.C06.2 Add types, including the statistics and cluster status shapes from `src/types/api.ts`, and convert the tests.
+- [x] 2.C06.3 Run the gates, plus the dashboard e2e spec.
+- [x] 2.C06.4 Open the pull request `refactor(ui): type the dashboard components`.
 
 ### 2.C07 access panels and dialogs (53 files) - `refactor(ui): type the access panels and dialogs`
 
 Starts after #238 (1 file) is merged. Covers `src/components/access/` top level only (`check/` and `nodes/` belong to C08).
 
-- [ ] 2.C07.1 Rename the top-level files of `src/components/access/`. Commit the renames only.
-- [ ] 2.C07.2 Add types, including principal and team shapes from `src/types/api.ts`, and convert the tests.
-- [ ] 2.C07.3 Run the gates, plus the access e2e specs present in the baseline.
-- [ ] 2.C07.4 Open the pull request `refactor(ui): type the access panels and dialogs`.
+- [x] 2.C07.1 Rename the top-level files of `src/components/access/`. Commit the renames only.
+- [x] 2.C07.2 Add types, including principal and team shapes from `src/types/api.ts`, and convert the tests.
+- [x] 2.C07.3 Run the gates, plus the access e2e specs present in the baseline.
+- [x] 2.C07.4 Open the pull request `refactor(ui): type the access panels and dialogs`.
 
 ### 2.C08 access check and node editor (34 files) - `refactor(ui): type the access check and node editor components`
 
-- [ ] 2.C08.1 Rename `src/components/access/check/` and `src/components/access/nodes/`. Commit the renames only.
-- [ ] 2.C08.2 Add types to the 12 modules (node grammar, tree and templates) first, then the 8 components, and convert the 14 tests. The node grammar is a parser: its tests must pass unchanged.
-- [ ] 2.C08.3 Run the gates.
-- [ ] 2.C08.4 Open the pull request `refactor(ui): type the access check and node editor components`.
+- [x] 2.C08.1 Rename `src/components/access/check/` and `src/components/access/nodes/`. Commit the renames only.
+- [x] 2.C08.2 Add types to the 12 modules (node grammar, tree and templates) first, then the 8 components, and convert the 14 tests. The node grammar is a parser: its tests must pass unchanged.
+- [x] 2.C08.3 Run the gates.
+- [x] 2.C08.4 Open the pull request `refactor(ui): type the access check and node editor components`.
 
 ### 2.C09 identity and account (19 files) - `refactor(ui): type the identity and account components`
 
 Starts after #238 (`account`, 2 files) is merged.
 
-- [ ] 2.C09.1 Rename `src/components/identity/` and `account/`. Commit the renames only.
-- [ ] 2.C09.2 Add types and convert the tests.
-- [ ] 2.C09.3 Run the gates, plus the sign-in and account specs.
-- [ ] 2.C09.4 Open the pull request `refactor(ui): type the identity and account components`.
+- [x] 2.C09.1 Rename `src/components/identity/` and `account/`. Commit the renames only.
+- [x] 2.C09.2 Add types and convert the tests.
+- [x] 2.C09.3 Run the gates, plus the sign-in and account specs.
+- [x] 2.C09.4 Open the pull request `refactor(ui): type the identity and account components`.
 
 ### 2.C10 settings (83 files) - `refactor(ui): type the settings components`
 
@@ -158,42 +158,42 @@ Largest slice. At start, split by file list if it exceeds two working days (rule
 
 ### 2.C11 schema renderers (35 files) - `refactor(ui): type the schema renderers`
 
-- [ ] 2.C11.1 Rename `src/components/renderers/`. Commit the renames only.
-- [ ] 2.C11.2 Add types to the renderer props (the JSON Forms renderer contract, typed with the `@jsonforms/core` types). The `any` values that the JSON Forms API forces are kept with a `// any:` reason and budgeted per file (D5).
-- [ ] 2.C11.3 Run the gates, plus the settings e2e specs that use the renderers.
-- [ ] 2.C11.4 Open the pull request `refactor(ui): type the schema renderers`.
+- [x] 2.C11.1 Rename `src/components/renderers/`. Commit the renames only.
+- [x] 2.C11.2 Add types to the renderer props (the JSON Forms renderer contract, typed with the `@jsonforms/core` types). The `any` values that the JSON Forms API forces are kept with a `// any:` reason and budgeted per file (D5).
+- [x] 2.C11.3 Run the gates, plus the settings e2e specs that use the renderers.
+- [x] 2.C11.4 Open the pull request `refactor(ui): type the schema renderers`.
 
 ### 2.C12 maintenance and audit (34 files) - `refactor(ui): type the maintenance and audit components`
 
-- [ ] 2.C12.1 Rename `src/components/maintenance/` and `audit/`. Commit the renames only.
-- [ ] 2.C12.2 Add types and convert the tests.
-- [ ] 2.C12.3 Run the gates.
-- [ ] 2.C12.4 Open the pull request `refactor(ui): type the maintenance and audit components`.
+- [x] 2.C12.1 Rename `src/components/maintenance/` and `audit/`. Commit the renames only.
+- [x] 2.C12.2 Add types and convert the tests.
+- [x] 2.C12.3 Run the gates.
+- [x] 2.C12.4 Open the pull request `refactor(ui): type the maintenance and audit components`.
 
 ### 2.C13 repositories (21 files) - `refactor(ui): type the repository components`
 
-- [ ] 2.C13.1 Rename `src/components/repositories/`, including `fixtures/repositories.js`. Commit the renames only.
-- [ ] 2.C13.2 Add types and convert the tests.
-- [ ] 2.C13.3 Run the gates, plus the repositories and repositories-crud e2e specs.
-- [ ] 2.C13.4 Open the pull request `refactor(ui): type the repository components`.
+- [x] 2.C13.1 Rename `src/components/repositories/`, including `fixtures/repositories.js`. Commit the renames only.
+- [x] 2.C13.2 Add types and convert the tests.
+- [x] 2.C13.3 Run the gates, plus the repositories and repositories-crud e2e specs.
+- [x] 2.C13.4 Open the pull request `refactor(ui): type the repository components`.
 
 ### 2.C14 browser (21 files) - `refactor(ui): type the browser components`
 
 Starts after #238 (3 files) is merged.
 
-- [ ] 2.C14.1 Rename `src/components/browser/`. Commit the renames only.
-- [ ] 2.C14.2 Add types and convert the tests. Upload queue and listing error modules keep their behaviour.
-- [ ] 2.C14.3 Run the gates, plus the browse and browse-overview e2e specs.
-- [ ] 2.C14.4 Open the pull request `refactor(ui): type the browser components`.
+- [x] 2.C14.1 Rename `src/components/browser/`. Commit the renames only.
+- [x] 2.C14.2 Add types and convert the tests. Upload queue and listing error modules keep their behaviour.
+- [x] 2.C14.3 Run the gates, plus the browse and browse-overview e2e specs.
+- [x] 2.C14.4 Open the pull request `refactor(ui): type the browser components`.
 
 ### 2.C15 migration (25 files) - `refactor(ui): type the migration components`
 
 Starts after #238 (1 file) is merged. The store half of the migration is typed in 1.C.
 
-- [ ] 2.C15.1 Rename `src/components/migration/`. Commit the renames only.
-- [ ] 2.C15.2 Add types and convert the tests. `MigrationDialog.vue` keeps its scrim value and its markup.
-- [ ] 2.C15.3 Run the gates.
-- [ ] 2.C15.4 Open the pull request `refactor(ui): type the migration components`.
+- [x] 2.C15.1 Rename `src/components/migration/`. Commit the renames only.
+- [x] 2.C15.2 Add types and convert the tests. `MigrationDialog.vue` keeps its scrim value and its markup.
+- [x] 2.C15.3 Run the gates.
+- [x] 2.C15.4 Open the pull request `refactor(ui): type the migration components`.
 
 ## 3. Phase 3: server, fake API, e2e and configuration
 
@@ -201,17 +201,17 @@ Starts after all Phase 2 pull requests are merged, except e2e specs that a Phase
 
 ### 3.S01 server (16 files) - `refactor(ui): type the nitro server`
 
-- [ ] 3.S01.1 Rename `server/lib/`, `server/routes/[...].js` and `server/plugins/dashboard.js`, and their five tests. Commit the renames only. Nitro loads `.ts` natively; keep the route file name pattern `[...].ts`.
-- [ ] 3.S01.2 Add types. The security headers and the placeholder handling in `index-html.js` do not change their output: the test for each stays unchanged.
-- [ ] 3.S01.3 Run the gates, plus `npm run build:dashboard` and compare the built server output with the baseline.
-- [ ] 3.S01.4 Open the pull request `refactor(ui): type the nitro server`.
+- [x] 3.S01.1 Rename `server/lib/`, `server/routes/[...].js` and `server/plugins/dashboard.js`, and their five tests. Commit the renames only. Nitro loads `.ts` natively; keep the route file name pattern `[...].ts`.
+- [x] 3.S01.2 Add types. The security headers and the placeholder handling in `index-html.js` do not change their output: the test for each stays unchanged.
+- [x] 3.S01.3 Run the gates, plus `npm run build:dashboard` and compare the built server output with the baseline.
+- [x] 3.S01.4 Open the pull request `refactor(ui): type the nitro server`.
 
 ### 3.S02 fake API (15 files) - `refactor(ui): type the fake api`
 
-- [ ] 3.S02.1 Rename `fake-api/fake-ingot-backend.js` to `.ts`, and the 14 `.cjs` fixtures to `.ts` modules if they are imported, otherwise to `.json` if they are data. Commit the renames only.
-- [ ] 3.S02.2 Add `tsx` (4.23.15, exact devDependency) and change the `fake-api` npm script to run the `.ts` file through it. Add types.
-- [ ] 3.S02.3 Run the e2e baseline against the fake API started by `npm run fake-api`. Stop the server afterwards.
-- [ ] 3.S02.4 Open the pull request `refactor(ui): type the fake api`.
+- [x] 3.S02.1 Rename `fake-api/fake-ingot-backend.js` to `.ts`, and the 14 `.cjs` fixtures to `.ts` modules if they are imported, otherwise to `.json` if they are data. Commit the renames only.
+- [x] 3.S02.2 Add `tsx` (4.23.15, exact devDependency) and change the `fake-api` npm script to run the `.ts` file through it. Add types.
+- [x] 3.S02.3 Run the e2e baseline against the fake API started by `npm run fake-api`. Stop the server afterwards.
+- [x] 3.S02.4 Open the pull request `refactor(ui): type the fake api`.
 
 ### 3.S03 e2e suite (21 files) - `refactor(ui): type the e2e suite`
 
