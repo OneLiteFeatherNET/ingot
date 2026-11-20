@@ -37,9 +37,6 @@
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 1
     }
   },
   "src/components/access/PrincipalDetail.test.ts": {

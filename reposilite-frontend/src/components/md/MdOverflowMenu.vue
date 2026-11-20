@@ -15,8 +15,9 @@
   -->
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MdButton from './MdButton.vue'
+import MdTransition from './MdTransition.vue'
 import type { MenuEntry, MenuItem } from './types'
 
 /*
@@ -46,6 +47,9 @@ import type { MenuEntry, MenuItem } from './types'
  * Keyboard: Enter or Space open the menu through the click of the native button, and ArrowDown opens it too. The
  * first item then has the focus. Arrow keys move between the items and wrap at the ends. Escape closes the menu
  * and returns the focus to the button. A focus that leaves the menu closes it, so Tab leaves the menu as well.
+ *
+ * Motion: the menu opens and closes through the menu pattern of MdTransition. It scales from the corner next to the
+ * button, the top corner when it opens below the button and the bottom corner when it opens above it.
  */
 withDefaults(defineProps<{
   label: string
@@ -89,11 +93,15 @@ const place = async () => {
   const right = `${window.innerWidth - rect.right}px`
   placement.value = { top: `${rect.bottom + GAP}px`, right }
   await nextTick()
-  const height = menuElement.value?.getBoundingClientRect().height ?? 0
+  // The layout height, which the scale of the enter transition does not shrink, so the menu flips at the same point.
+  const height = menuElement.value?.offsetHeight ?? 0
   if (rect.bottom + GAP + height > window.innerHeight && rect.top - GAP - height >= 0) {
     placement.value = { bottom: `${window.innerHeight - rect.top + GAP}px`, right }
   }
 }
+
+// The menu grows from the edge that touches its button.
+const origin = computed(() => ('bottom' in placement.value ? 'origin-bottom-right' : 'origin-top-right'))
 
 const closeMenu = () => {
   menuOpen.value = false
@@ -228,85 +236,88 @@ const nameOf = (item: MenuEntry): string | undefined =>
       </slot>
     </MdButton>
     <Teleport to="body">
-      <div
-        v-if="menuOpen"
-        ref="menuElement"
-        role="menu"
-        :aria-label="label"
-        :style="{ position: 'fixed', ...placement }"
-        class="z-md-menu flex w-56 max-w-md-menu flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
-        @keydown="onMenuKeydown"
-        @focusout="onFocusout"
-      >
+      <MdTransition pattern="menu">
         <div
-          v-if="$slots.header"
-          role="none"
-          :class="[inset, 'pb-2 pt-1']"
-        >
-          <slot name="header" />
-        </div>
-        <template
-          v-for="(item, index) in items"
-          :key="item.type === 'separator' ? `separator-${index}` : item.value"
+          v-if="menuOpen"
+          ref="menuElement"
+          role="menu"
+          :aria-label="label"
+          :style="{ position: 'fixed', ...placement }"
+          class="z-md-menu flex w-56 max-w-md-menu flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
+          :class="origin"
+          @keydown="onMenuKeydown"
+          @focusout="onFocusout"
         >
           <div
-            v-if="item.type === 'separator'"
-            role="separator"
-            class="my-1 h-px bg-outline-variant"
-          />
-          <a
-            v-else-if="item.href && !item.disabled"
-            :href="item.href"
-            role="menuitem"
-            :aria-label="nameOf(item)"
-            :class="[itemClass, toneOf(item)]"
-            @click="chooseLink($event, item.value)"
+            v-if="$slots.header"
+            role="none"
+            :class="[inset, 'pb-2 pt-1']"
           >
-            <span class="flex min-w-0 flex-col">
-              <span>{{ item.label }}</span>
-              <span
-                v-if="item.supporting"
-                class="md-body-medium text-on-surface-variant"
-              >{{ item.supporting }}</span>
-            </span>
-          </a>
-          <button
-            v-else-if="item.type === 'radio'"
-            type="button"
-            role="menuitemradio"
-            :aria-checked="item.checked ? 'true' : 'false'"
-            :aria-disabled="item.disabled ? 'true' : undefined"
-            :aria-label="nameOf(item)"
-            :class="[itemClass, toneOf(item)]"
-            @click="item.disabled || choose(item.value)"
+            <slot name="header" />
+          </div>
+          <template
+            v-for="(item, index) in items"
+            :key="item.type === 'separator' ? `separator-${index}` : item.value"
           >
-            <span class="flex min-w-0 flex-col">
-              <span>{{ item.label }}</span>
-              <span
-                v-if="item.supporting"
-                class="md-body-medium text-on-surface-variant"
-              >{{ item.supporting }}</span>
-            </span>
-          </button>
-          <button
-            v-else
-            type="button"
-            role="menuitem"
-            :aria-disabled="item.disabled ? 'true' : undefined"
-            :aria-label="nameOf(item)"
-            :class="[itemClass, toneOf(item)]"
-            @click="item.disabled || choose(item.value)"
-          >
-            <span class="flex min-w-0 flex-col">
-              <span>{{ item.label }}</span>
-              <span
-                v-if="item.supporting"
-                class="md-body-medium text-on-surface-variant"
-              >{{ item.supporting }}</span>
-            </span>
-          </button>
-        </template>
-      </div>
+            <div
+              v-if="item.type === 'separator'"
+              role="separator"
+              class="my-1 h-px bg-outline-variant"
+            />
+            <a
+              v-else-if="item.href && !item.disabled"
+              :href="item.href"
+              role="menuitem"
+              :aria-label="nameOf(item)"
+              :class="[itemClass, toneOf(item)]"
+              @click="chooseLink($event, item.value)"
+            >
+              <span class="flex min-w-0 flex-col">
+                <span>{{ item.label }}</span>
+                <span
+                  v-if="item.supporting"
+                  class="md-body-medium text-on-surface-variant"
+                >{{ item.supporting }}</span>
+              </span>
+            </a>
+            <button
+              v-else-if="item.type === 'radio'"
+              type="button"
+              role="menuitemradio"
+              :aria-checked="item.checked ? 'true' : 'false'"
+              :aria-disabled="item.disabled ? 'true' : undefined"
+              :aria-label="nameOf(item)"
+              :class="[itemClass, toneOf(item)]"
+              @click="item.disabled || choose(item.value)"
+            >
+              <span class="flex min-w-0 flex-col">
+                <span>{{ item.label }}</span>
+                <span
+                  v-if="item.supporting"
+                  class="md-body-medium text-on-surface-variant"
+                >{{ item.supporting }}</span>
+              </span>
+            </button>
+            <button
+              v-else
+              type="button"
+              role="menuitem"
+              :aria-disabled="item.disabled ? 'true' : undefined"
+              :aria-label="nameOf(item)"
+              :class="[itemClass, toneOf(item)]"
+              @click="item.disabled || choose(item.value)"
+            >
+              <span class="flex min-w-0 flex-col">
+                <span>{{ item.label }}</span>
+                <span
+                  v-if="item.supporting"
+                  class="md-body-medium text-on-surface-variant"
+                >{{ item.supporting }}</span>
+              </span>
+            </button>
+          </template>
+        </div>
+      </MdTransition>
     </Teleport>
   </div>
 </template>
