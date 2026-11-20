@@ -15,20 +15,28 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { ref, type Ref } from 'vue'
+import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import RepositoryAccessCard from './RepositoryAccessCard.vue'
 
-const holder = vi.hoisted(() => ({ session: null }))
+// The fake session: whether the viewer is an instance admin, and a client with the access request only.
+type FakeSession = {
+  isManager: Ref<boolean>
+  client: Ref<{ identity: { repositoryAccess: (repository: string) => Promise<unknown> } }>
+}
+
+type ErrorLike = { message?: string; response?: { data?: { message?: string } } } | null | undefined
+
+const holder = vi.hoisted(() => ({ session: null as FakeSession | null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as ErrorLike)?.response?.data?.message ?? (error as ErrorLike)?.message ?? `${String(error)}`
 }))
 
 const ACCESS = {
@@ -70,8 +78,8 @@ const ACCESS = {
 
 const shell = { render: () => null }
 
-const install = ({ admin = true, access = ACCESS } = {}) => {
-  const repositoryAccess = vi.fn(async () => ({ data: access }))
+const install = ({ admin = true, access = ACCESS }: { admin?: boolean, access?: unknown } = {}) => {
+  const repositoryAccess = vi.fn(() => Promise.resolve({ data: access }))
   holder.session = {
     isManager: ref(admin),
     client: ref({ identity: { repositoryAccess } })
@@ -82,7 +90,7 @@ const install = ({ admin = true, access = ACCESS } = {}) => {
 const makeRouter = async () => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell }))
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: shell })) as RouteRecordRaw[]
   })
   await router.push('/settings/maven')
   await router.isReady()
@@ -91,14 +99,14 @@ const makeRouter = async () => {
 
 const mountCard = async (repository = 'releases') => {
   const router = await makeRouter()
-  const wrapper = mount(RepositoryAccessCard, { props: { repository }, attachTo: document.body, global: { plugins: [router] } })
+  const wrapper = mount(RepositoryAccessCard, { props: { repository }, attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
   await flushPromises()
   return wrapper
 }
 
-const entryWith = (entries) => ({ repository: 'releases', visibility: 'PRIVATE', entries })
+const entryWith = (entries: Record<string, unknown>[]) => ({ repository: 'releases', visibility: 'PRIVATE', entries })
 
-const principalOf = (overrides) => ({
+const principalOf = (overrides: Record<string, unknown>) => ({
   principal: 'alice',
   kind: 'USER',
   disabled: false,
@@ -109,24 +117,23 @@ const principalOf = (overrides) => ({
 })
 
 describe('RepositoryAccessCard', () => {
-  let wrapper
+  let wrapper: VueWrapper
 
   const rows = () => wrapper.findAll('tbody tr')
-  const row = (principal) => {
+  const row = (principal: string) => {
     const match = rows().find(entry => entry.get('[data-test="principal"]').text() === principal)
     if (!match) throw new Error(`no row for the principal ${principal}`)
     return match
   }
-  const texts = (scope, selector) => scope.findAll(selector).map(node => node.text())
+  const texts = (scope: { findAll: (selector: string) => DOMWrapper<Element>[] }, selector: string) => scope.findAll(selector).map(node => node.text())
 
   afterEach(() => {
     wrapper?.unmount()
-    wrapper = undefined
     document.body.innerHTML = ''
   })
 
   describe('as an instance admin', () => {
-    let repositoryAccess
+    let repositoryAccess: ReturnType<typeof install>
 
     beforeEach(async () => {
       repositoryAccess = install()
@@ -356,7 +363,7 @@ describe('RepositoryAccessCard', () => {
 
   it('shows a loading state while the answer is on its way', async () => {
     install()
-    holder.session.client.value.identity.repositoryAccess = vi.fn(() => new Promise(() => {}))
+    holder.session!.client.value.identity.repositoryAccess = vi.fn(() => new Promise(() => {}))
     wrapper = await mountCard()
 
     expect(wrapper.get('[data-test="loading"]').text()).toContain('Loading')
