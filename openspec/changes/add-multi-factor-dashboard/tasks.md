@@ -6,29 +6,29 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose multi-factor authentication`: this change ships in the same proposal pull request as
+- [x] 1.1 `docs(openspec): propose multi-factor authentication`: this change ships in the same proposal pull request as
   `add-multi-factor-authentication`. Verify: `openspec validate add-multi-factor-dashboard --strict` passes.
 
 ## 2. Client and WebAuthn helper
 
-- [ ] 2.1 `test(ui)`: failing tests for the new client calls in `store/client.js` (routes and bodies of the contract in
+- [x] 2.1 `test(ui)`: failing tests for the new client calls in `store/client.js` (routes and bodies of the contract in
   section 15 of the identity model), and for `store/webauthn.js` (base64url to `ArrayBuffer` and back with fixed bytes, the
   browser-support check). Verify: the tests fail before 2.2.
-- [ ] 2.2 `feat(ui)`: add the calls to `store/client.js` and the helper `store/webauthn.js`. Verify: 2.1 passes and the
+- [x] 2.2 `feat(ui)`: add the calls to `store/client.js` and the helper `store/webauthn.js`. Verify: 2.1 passes and the
   existing client tests still pass.
 
 ## 3. Sign-in second step
 
-- [ ] 3.1 `test(ui)`: failing tests for `LoginModal.vue`: the second step appears on `mfaRequired` with the listed methods,
+- [x] 3.1 `test(ui)`: failing tests for `LoginModal.vue`: the second step appears on `mfaRequired` with the listed methods,
   the recovery option swaps the field, the passkey action appears only when `passkeyFirstFactor` is set in the providers answer and WebAuthn is supported (first step),
   the second step offers the passkey next to the code field, and a wrong code keeps
   the step open. Verify: the tests fail before 3.2.
-- [ ] 3.2 `feat(ui)`: add the second step and the passkey action to `LoginModal.vue`. Verify: 3.1 passes and the existing
+- [x] 3.2 `feat(ui)`: add the second step and the passkey action to `LoginModal.vue`. Verify: 3.1 passes and the existing
   `LoginModal` behaviour tests still pass.
 
 ## 4. Account page section
 
-- [ ] 4.1 `test(ui)`: failing tests for `SecondFactorsCard` (list, rename, remove, the authenticator enrolment with the seed
+- [x] 4.1 `test(ui)`: failing tests for `SecondFactorsCard` (list, rename, remove, the authenticator enrolment with the seed
   shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with copy and download actions and the confirmation check box, and
   no seed after the dialog closes), built with an injected `api` object like `PasswordCard`. Verify: the tests fail before 4.2.
 - [ ] 4.2 `feat(ui)`: add `SecondFactorsCard` into the `Sign-in and security` section of the account page. Depends on
@@ -37,11 +37,11 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 ## 5. Step-up and restricted screen
 
-- [ ] 5.1 `test(ui)`: failing tests for `withStepUp` in `store/session.js` (the action runs once, a `step_up_required` opens
+- [x] 5.1 `test(ui)`: failing tests for `withStepUp` in `store/session.js` (the action runs once, a `step_up_required` opens
   the dialog, the retry happens once, a second `step_up_required` closes the dialog with the error), for the step-up passkey option (offered next to the code field, never instead of it), for the grace banner
   (shown on every page with `graceUntil`, not dismissible), and for the restricted navigation with scope `enrol`. Verify: the
   tests fail before 5.2.
-- [ ] 5.2 `feat(ui)`: add the step-up dialog, `withStepUp`, the grace banner and the restricted navigation. Verify: 5.1 passes.
+- [x] 5.2 `feat(ui)`: add the step-up dialog, `withStepUp`, the grace banner and the restricted navigation. Verify: 5.1 passes.
 
 ## 6. Administration controls
 
@@ -53,9 +53,9 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 ## 7. Errors and end-to-end
 
-- [ ] 7.1 `test(ui)`: failing tests that map `step_up_required`, `mfa_enrolment_required` and the `409` enrolment answer to
+- [x] 7.1 `test(ui)`: failing tests that map `step_up_required`, `mfa_enrolment_required` and the `409` enrolment answer to
   their messages. Verify: the tests fail before 7.2.
-- [ ] 7.2 `feat(ui)`: add the error mapping. Verify: 7.1 passes.
+- [x] 7.2 `feat(ui)`: add the error mapping. Verify: 7.1 passes.
 - [ ] 7.3 `test(e2e)`: end-to-end scenario in the existing dashboard end-to-end suite: sign in with an authenticator code and
   enrol a recovery code set. The end-to-end server starts with `INGOT_SETTINGS_KEY` set, so that enrolment is testable. Verify: the scenario passes in CI through the
   existing workflow. Passkey ceremonies are covered
@@ -71,12 +71,12 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 Pull request: `feat(identity): announce the passkey first factor on the providers route`
 
-- [ ] 9.1 `test(identity)`: failing backend test for `GET /api/auth/providers` that asserts `passkeyFirstFactor` is `true` when the
+- [x] 9.1 `test(identity)`: failing backend test for `GET /api/auth/providers` that asserts `passkeyFirstFactor` is `true` when the
   login policy enables the passkey first factor, and `false` when it does not or the setting is absent. The test builds its own
   fixture and reads no clock. Verify: the test fails before 9.2, run with `HEAVY_SLOTS=4 HEAVY_MIN_MEM_MB=8192 heavy ./gradlew
   --no-daemon --max-workers=2 :reposilite-backend:test --tests '<pattern>'`.
-- [ ] 9.2 `feat(identity)`: add the boolean `passkeyFirstFactor` to the providers answer, `false` by default, read from the `login.mfa`
+- [x] 9.2 `feat(identity)`: add the boolean `passkeyFirstFactor` to the providers answer, `false` by default, read from the `login.mfa`
   policy. The field is additive: no existing field changes and no setting is required. Verify: 9.1 passes and the existing providers
   tests still pass.
-- [ ] 9.3 Open the pull request `feat(identity): announce the passkey first factor on the providers route`, and merge it before the
+- [x] 9.3 Open the pull request `feat(identity): announce the passkey first factor on the providers route`, and merge it before the
   code pull request of section 8. Verify with `gh pr view --json title,body,files`.

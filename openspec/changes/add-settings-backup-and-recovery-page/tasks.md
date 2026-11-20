@@ -27,16 +27,16 @@ request, not in the code pull requests.
 
 Red test first:
 
-- [ ] 3.1 `src/components/settings/passphraseGuidance.test.js`: below 12 characters "too short" and not submittable, 12 to 15
+- [x] 3.1 `src/components/settings/passphraseGuidance.test.js`: below 12 characters "too short" and not submittable, 12 to 15
   "acceptable", 16 or more "long", code points counted (an emoji is one), mismatch of the confirmation, empty value. Verify: it
   fails, the module does not exist.
 
 Implementation:
 
-- [ ] 3.10 `feat(ui)`: add `passphraseGuidance.js` and use it in `PasswordDialog.vue` (strength line, recommendation of several
+- [x] 3.10 `feat(ui)`: add `passphraseGuidance.js` and use it in `PasswordDialog.vue` (strength line, recommendation of several
   words and a password manager, show and hide control; `autocomplete="new-password"` is already there). Verify: 3.1 passes and
   the dialog tests pass.
-- [ ] 3.16 Open the pull request titled `feat(ui): show a passphrase strength hint in the export dialog`.
+- [x] 3.16 Open the pull request titled `feat(ui): show a passphrase strength hint in the export dialog`.
 
 Superseded by the delivered Maintenance tab (not checked; the route and the page of the first draft are gone):
 
@@ -56,11 +56,11 @@ Delivered in a different form, ticked:
 
 - [x] 4.2 `docs/gitbook/references/http-api/dashboard-pages.md` describes the Settings backup tab and the removed Overview
   buttons (delivered).
-- [ ] 4.1 Add `docs/gitbook/manage/operate/back-up-and-restore-settings.md` (export, store the file and the passphrase apart,
+- [x] 4.1 Add `docs/gitbook/manage/operate/back-up-and-restore-settings.md` (export, store the file and the passphrase apart,
   restore through the review, what a factory reset does, that the file holds secrets in clear inside the encryption, that the
   passphrase cannot be recovered) and link it from `docs/gitbook/manage/operate/back-up-and-restore.md` and
   `docs/gitbook/references/settings/settings-encryption.md` ("Export and import"). Verify: links resolve in `.gitbook.yaml`.
-- [ ] 4.3 Open the pull request titled `docs(gitbook): describe the settings backup in the operator guide`.
+- [x] 4.3 Open the pull request titled `docs(gitbook): describe the settings backup in the operator guide`.
 
 ## 5. Proposal
 
