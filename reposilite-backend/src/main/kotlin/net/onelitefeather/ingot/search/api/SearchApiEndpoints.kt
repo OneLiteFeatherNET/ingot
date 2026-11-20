@@ -67,6 +67,7 @@ import net.onelitefeather.ingot.search.access.SearchGrantSetTooLargeException
 import net.onelitefeather.ingot.search.backend.SEARCH_BACKEND_RETRY_AFTER_SECONDS
 import net.onelitefeather.ingot.search.backend.SearchBackendState
 import net.onelitefeather.ingot.search.backend.backendUnavailableProblem
+import net.onelitefeather.ingot.search.enrichment.EnrichmentTally
 import net.onelitefeather.ingot.search.application.CancelOutcome
 import net.onelitefeather.ingot.search.application.LastVerifyReport
 import net.onelitefeather.ingot.search.application.RunStart
@@ -204,7 +205,7 @@ internal class SearchApiEndpoints(
         path = "/api/maven/search/index",
         methods = [HttpMethod.GET],
         summary = "Get the state of the search index",
-        description = "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Requires the maintenance area.",
+        description = "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs, the last verify report and the counters of the registered artifact enrichers. Requires the maintenance area.",
         responses = [
             OpenApiResponse(status = "200", content = [OpenApiContent(from = SearchIndexResponse::class)]),
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
@@ -403,6 +404,7 @@ internal class SearchApiEndpoints(
                 accessMismatches = backend.accessMismatches,
                 properties = backend.properties.takeIf { it.isNotEmpty() },
             ),
+            enrichers = enricherStatusOf(search.liveBackend()?.enrichers?.invoke().orEmpty()),
         )
     }
 
@@ -539,7 +541,35 @@ internal data class SearchIndexResponse(
     val runs: List<SearchRunResponse>,
     val lastVerify: LastVerifyReport?,
     val backend: SearchBackendResponse,
+    /** The counters of every registered enricher by id; empty when none is registered (artifact enrichment, D7). */
+    val enrichers: Map<String, EnricherStatusResponse> = emptyMap(),
 )
+
+/**
+ * The outcomes of one enricher since this replica started: every call, the completed, skipped and failed ones, the skips of a full
+ * queue, and the failures per reason.
+ */
+internal data class EnricherStatusResponse(
+    val calls: Long,
+    val completed: Long,
+    val skipped: Long,
+    val failed: Long,
+    val busy: Long,
+    val failures: Map<String, Long>,
+)
+
+/** The `enrichers` block of the index status, sorted by enricher id. */
+internal fun enricherStatusOf(counts: Map<String, EnrichmentTally>): Map<String, EnricherStatusResponse> =
+    counts.toSortedMap().mapValues { (_, tally) ->
+        EnricherStatusResponse(
+            calls = tally.calls,
+            completed = tally.completed,
+            skipped = tally.skipped,
+            failed = tally.failed,
+            busy = tally.busy,
+            failures = tally.failures.toSortedMap(),
+        )
+    }
 
 /**
  * The backend of this replica: its id, its state (AVAILABLE, NOT_INSTALLED, REFUSED, OPEN_FAILED, DOWN or CLUSTER_MISMATCH), the

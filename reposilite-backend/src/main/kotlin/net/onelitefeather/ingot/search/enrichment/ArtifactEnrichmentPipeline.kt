@@ -25,8 +25,23 @@ import net.onelitefeather.ingot.search.outbox.StoredFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-/** The outcomes of the calls of one enricher since the pipeline started (artifact enrichment, 6.2). */
-data class EnrichmentTally(val completed: Long, val skipped: Long, val failed: Long)
+/**
+ * The outcomes of the calls of one enricher since the pipeline started (artifact enrichment, D7). [skipped] includes the
+ * [busy] skips of a full queue, and [failures] counts the failed calls per reason.
+ */
+data class EnrichmentTally(
+    val completed: Long,
+    val skipped: Long,
+    val failed: Long,
+    val busy: Long = 0,
+    val failures: Map<String, Long> = emptyMap(),
+) {
+
+    /** Every call the pipeline made, whatever its outcome. */
+    val calls: Long
+        get() = completed + skipped + failed
+
+}
 
 /**
  * Calls the enrichers whose extensions match a file (artifact enrichment, D3). Every call goes through [call], which is the
@@ -39,7 +54,9 @@ internal class ArtifactEnrichmentPipeline(
     private val warn: (String) -> Unit,
 ) {
 
-    private val tallies = ConcurrentHashMap<String, Tally>()
+    private val tallies = ConcurrentHashMap<String, Tally>().apply {
+        enrichers.forEach { put(it.id, Tally()) }
+    }
 
     /**
      * Calls every enricher whose extensions contain the extension of [file]. [content] is asked for once per call, and only when
@@ -73,24 +90,53 @@ internal class ArtifactEnrichmentPipeline(
             val tally = tallies.getOrPut(enricher.id) { Tally() }
             when (val result = call(enricher, request)) {
                 is EnrichmentCompleted, is EnrichmentAttributes -> tally.completed.incrementAndGet()
-                is EnrichmentSkipped -> tally.skipped.incrementAndGet()
+                is EnrichmentSkipped -> {
+                    tally.skipped.incrementAndGet()
+                    if (result.reason == BUSY_REASON) tally.busy.incrementAndGet()
+                }
                 is EnrichmentFailed -> {
                     tally.failed.incrementAndGet()
+                    tally.fail(result.reason)
                     warn("SEARCH | Artifact enricher '${enricher.id}' failed on ${file.repository}/${file.path}: ${result.reason}")
                 }
             }
         }
     }
 
-    /** The outcomes so far, by enricher id. */
+    /** The outcomes so far, by enricher id. Every registered enricher is present, with zeros until it is called. */
     fun counts(): Map<String, EnrichmentTally> = tallies.mapValues { (_, tally) -> tally.snapshot() }
 
     private class Tally {
         val completed = AtomicLong()
         val skipped = AtomicLong()
         val failed = AtomicLong()
+        val busy = AtomicLong()
+        private val failures = ConcurrentHashMap<String, AtomicLong>()
 
-        fun snapshot(): EnrichmentTally = EnrichmentTally(completed.get(), skipped.get(), failed.get())
+        /** Counts a failure under its reason. Reasons come from plugins, so only the first few distinct ones get their own count. */
+        fun fail(reason: String) {
+            val key = if (failures.containsKey(reason) || failures.size < MAX_FAILURE_REASONS) reason else OTHER_FAILURE_REASON
+            failures.computeIfAbsent(key) { AtomicLong() }.incrementAndGet()
+        }
+
+        fun snapshot(): EnrichmentTally = EnrichmentTally(
+            completed = completed.get(),
+            skipped = skipped.get(),
+            failed = failed.get(),
+            busy = busy.get(),
+            failures = failures.mapValues { (_, count) -> count.get() },
+        )
+    }
+
+    companion object {
+        /** The distinct failure reasons counted per enricher; later reasons are counted under [OTHER_FAILURE_REASON]. */
+        const val MAX_FAILURE_REASONS = 16
+
+        /** The reason under which failures beyond [MAX_FAILURE_REASONS] are counted. */
+        const val OTHER_FAILURE_REASON = "other"
+
+        /** The skip reason of a call refused because the queue of the executor was full (D5). */
+        private const val BUSY_REASON = "busy"
     }
 
 }
