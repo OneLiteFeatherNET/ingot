@@ -127,7 +127,7 @@ const openAdd = () => {
 
       <ul
         v-if="team.members.length > 0"
-        class="m-0 flex list-none flex-col gap-1 p-0"
+        class="flex flex-col gap-1"
       >
         <li
           v-for="member in team.members"
@@ -137,7 +137,7 @@ const openAdd = () => {
         >
           <router-link
             :to="{ name: member.kind === 'MACHINE' ? 'access-machine' : 'access-user', params: { name: member.principal } }"
-            class="md-title-small min-w-0 flex-1 text-on-surface [overflow-wrap:anywhere]"
+            class="md-title-small min-w-0 flex-1 text-on-surface break-all"
             data-test="member-name"
           >
             {{ member.principal }}

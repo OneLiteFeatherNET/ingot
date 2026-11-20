@@ -206,7 +206,7 @@ const deleted = (principal: PrincipalSummary) => {
       </p>
       <ul
         v-else-if="rows.length > 0"
-        class="m-0 flex list-none flex-col gap-1 p-0"
+        class="flex flex-col gap-1"
       >
         <li
           v-for="row in rows"
@@ -226,11 +226,11 @@ const deleted = (principal: PrincipalSummary) => {
             @click.prevent="open(row.principal.name)"
           >
             <span
-              class="md-title-small [overflow-wrap:anywhere]"
+              class="md-title-small break-words"
               data-test="display-name"
             >{{ row.principal.displayName || row.principal.name }}</span>
             <span
-              class="md-body-medium [overflow-wrap:anywhere]"
+              class="md-body-medium break-all"
               :class="row.principal.name === name ? 'text-on-secondary-container' : 'text-on-surface-variant'"
               data-test="username"
             >{{ row.principal.name }}</span>

@@ -67,7 +67,7 @@ const rows = computed(() => props.grants.map((grant, index) => ({
           These role grants came from before permission nodes and still apply. They are read only here.
         </p>
         <ul
-          class="m-0 flex list-none flex-col divide-y divide-outline-variant p-0"
+          class="flex flex-col divide-y divide-outline-variant"
           :aria-labelledby="titleId"
         >
           <li
@@ -77,11 +77,11 @@ const rows = computed(() => props.grants.map((grant, index) => ({
             class="flex flex-col gap-1 py-2"
           >
             <span
-              class="md-title-small text-on-surface [overflow-wrap:anywhere]"
+              class="md-title-small text-on-surface break-all"
               data-test="legacy-team-grant-repository"
             >{{ row.scope }}</span>
             <span
-              class="md-body-medium text-on-surface-variant [overflow-wrap:anywhere]"
+              class="md-body-medium text-on-surface-variant break-words"
               data-test="legacy-team-grant-prefix"
             >{{ row.prefix }}</span>
             <span class="flex flex-wrap items-center gap-2">

@@ -104,7 +104,7 @@ const regionId = `inherited-${useId()}`
           :data-node="entry.node"
         >
           <div class="min-w-0 flex-1 basis-56">
-            <code class="font-mono md-body-medium text-on-surface [overflow-wrap:anywhere]"><template
+            <code class="font-mono md-body-medium text-on-surface break-all"><template
               v-for="(part, index) in entry.node.split('.')"
               :key="index"
             >{{ part }}<template v-if="index < entry.node.split('.').length - 1">.<wbr></template></template></code>

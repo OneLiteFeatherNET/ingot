@@ -199,7 +199,7 @@ const validateDomain = (text: string, existing: string[]) => {
         <p class="md-body-medium text-on-surface-variant">
           The kind fills in the name, the mark and the scopes. You add the client details next.
         </p>
-        <ul class="grid list-none grid-cols-2 gap-2 p-0">
+        <ul class="grid grid-cols-2 gap-2">
           <li
             v-for="type in PROVIDER_TYPES"
             :key="type.id"
@@ -479,7 +479,7 @@ const validateDomain = (text: string, existing: string[]) => {
             </p>
             <ul
               v-if="testResult.ok && endpointLines.length"
-              class="mt-2 list-none p-0 text-on-surface-variant"
+              class="mt-2 text-on-surface-variant"
             >
               <li
                 v-for="line in endpointLines"

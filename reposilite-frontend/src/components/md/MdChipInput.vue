@@ -202,7 +202,7 @@ const labelClass = computed(() => {
               class="inline-flex h-8 items-center gap-1 rounded-corner-small border pl-3 pr-1 md-label-large"
               :class="disabled ? 'border-on-surface/12 text-on-surface/38' : 'border-outline bg-surface-container-low text-on-surface'"
             >
-              <span class="[overflow-wrap:anywhere]">{{ tag }}</span>
+              <span class="break-all">{{ tag }}</span>
               <button
                 type="button"
                 class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"

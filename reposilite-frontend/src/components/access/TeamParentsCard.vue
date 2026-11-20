@@ -265,7 +265,7 @@ const save = async () => {
       <template v-else>
         <ul
           v-if="draft.length > 0"
-          class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
+          class="flex flex-wrap items-center gap-2"
           aria-label="Parent teams"
           data-test="parent-list"
         >
@@ -275,7 +275,7 @@ const save = async () => {
             data-test="parent"
             class="inline-flex h-8 items-center gap-1 rounded-corner-small border border-outline bg-surface-container-low pl-3 pr-1 md-label-large text-on-surface"
           >
-            <span class="[overflow-wrap:anywhere]">{{ team }}</span>
+            <span class="break-all">{{ team }}</span>
             <button
               type="button"
               class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"

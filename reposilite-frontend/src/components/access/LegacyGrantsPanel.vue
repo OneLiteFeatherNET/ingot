@@ -53,7 +53,7 @@ defineProps({
     </p>
     <ul
       v-if="grants.length > 0"
-      class="m-0 flex list-none flex-col divide-y divide-outline-variant p-0"
+      class="flex flex-col divide-y divide-outline-variant"
     >
       <li
         v-for="grant in grants"
