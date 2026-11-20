@@ -126,18 +126,49 @@
   transform: scale(0.95);
 }
 
-/* Side sheet: the panel slides in from its edge. */
+/*
+ * Side sheet: Vue puts these classes on the frame of the sheet, and the frame hands them to its two parts. The scrim
+ * fades as the scrim of a dialog does, and the panel slides in from the edge it is pinned to. The frame itself does
+ * not move, so the scrim covers the window throughout. Its own transition changes nothing: it only carries the length
+ * of the longest part, the panel, because Vue times a transition by the element it is applied to.
+ */
 .motion-sheet-enter-active {
-  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
 }
 
 .motion-sheet-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate);
+}
+
+.motion-sheet-enter-active > [data-md-sheet-part='scrim'] {
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard-decelerate);
+}
+
+.motion-sheet-leave-active > [data-md-sheet-part='scrim'] {
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard-accelerate);
+}
+
+.motion-sheet-enter-from > [data-md-sheet-part='scrim'],
+.motion-sheet-leave-to > [data-md-sheet-part='scrim'] {
+  opacity: 0;
+}
+
+.motion-sheet-enter-active > [data-md-sheet-part='panel'] {
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+}
+
+.motion-sheet-leave-active > [data-md-sheet-part='panel'] {
   transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate);
 }
 
-.motion-sheet-enter-from,
-.motion-sheet-leave-to {
+.motion-sheet-enter-from > [data-md-sheet-part='panel'][data-md-sheet-side='start'],
+.motion-sheet-leave-to > [data-md-sheet-part='panel'][data-md-sheet-side='start'] {
   transform: translateX(-100%);
+}
+
+.motion-sheet-enter-from > [data-md-sheet-part='panel'][data-md-sheet-side='end'],
+.motion-sheet-leave-to > [data-md-sheet-part='panel'][data-md-sheet-side='end'] {
+  transform: translateX(100%);
 }
 
 /* Snackbar: slides up 16 pixels and fades. */
