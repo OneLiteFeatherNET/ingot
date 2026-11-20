@@ -16,7 +16,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { markRaw } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
@@ -25,6 +25,7 @@ import { tester as selectTester } from '../renderers/MdSelectRenderer.vue'
 import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
+import type { Entry, Mirror } from '../../store/maven/repositoryTypes'
 
 const renderers = markRaw([
   { tester: textTester, renderer: MdTextFieldRenderer },
@@ -60,9 +61,9 @@ const collection = {
   }
 }
 
-let wrapper
+let wrapper: VueWrapper
 
-const mountEntry = (entry, props = {}) => {
+const mountEntry = (entry: Entry & { id: string }, props = {}) => {
   wrapper = mount(EntryDetail, {
     props: {
       collection,
@@ -76,24 +77,24 @@ const mountEntry = (entry, props = {}) => {
     },
     global: { provide: { styles: defaultStyles } },
     attachTo: document.body
-  })
+  }) as VueWrapper
   return wrapper
 }
 
-const typeSelect = () => wrapper.get('#entry-detail-type')
-const chooseType = async (type) => {
+const typeSelect = () => wrapper.get<HTMLSelectElement>('#entry-detail-type')
+const chooseType = async (type: string) => {
   await wrapper.get('#entry-detail-type').setValue(type)
   await flushPromises()
 }
 const form = () => wrapper.get('[data-test="entry-form"]').text()
-const button = (label) => wrapper.findAll('button').find(item => item.text() === label)
-const lastChange = () => wrapper.emitted('change')?.at(-1)?.[0]
+const button = (label: string) => wrapper.findAll('button').find(item => item.text() === label)!
+// Undefined when nothing was reported, so the check that reads it fails.
+const lastChange = () => wrapper.emitted<[Entry]>('change')?.at(-1)?.[0] as Entry
 // The form reports its own state when it mounts, so a test that needs "no change" counts what came after.
 const changeCount = () => wrapper.emitted('change')?.length ?? 0
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('EntryDetail repository type selector', () => {
@@ -344,7 +345,7 @@ describe('EntryDetail group members', () => {
 
 describe('EntryDetail keeps the settings of the members of a group', () => {
   // A mirrored entry of a group as the server stores it: every setting, the credential, and a key this dashboard does not know.
-  const loopback = (reference, extra = {}) => ({
+  const loopback = (reference: string, extra = {}) => ({
     reference,
     store: false,
     allowedGroups: ['net.onelitefeather'],
@@ -362,7 +363,7 @@ describe('EntryDetail keeps the settings of the members of a group', () => {
     loopback('onelitefeather-snapshots')
   ]
   const others = ['onelitefeather-releases', 'onelitefeather-proxy', 'onelitefeather-snapshots', 'central']
-  const groupWith = (proxied) => ({ id: 'onelitefeather', visibility: 'PRIVATE', type: 'GROUP', proxied })
+  const groupWith = (proxied: Mirror[]) => ({ id: 'onelitefeather', visibility: 'PRIVATE', type: 'GROUP', proxied })
 
   it('keeps every setting and credential of the members that stay, when a member is added', async () => {
     mountEntry(groupWith(members()), { otherIds: others })

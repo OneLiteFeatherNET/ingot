@@ -14,8 +14,9 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { JsonFormsRendererRegistryEntry, UISchemaElement, createAjv } from '@jsonforms/core'
 import { JsonForms } from '@jsonforms/vue'
 import MdButton from '../md/MdButton.vue'
 import MdSelect from '../md/MdSelect.vue'
@@ -24,6 +25,8 @@ import DeleteEntryDialog from './DeleteEntryDialog.vue'
 import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
+import type { SettingsSchema } from './collections'
+import type { MirrorEntry } from './groupMembers'
 import { nestedUischemas } from './nestedLayouts'
 import { unavailableStorageTypeOf } from './repositoryWizard'
 import {
@@ -37,6 +40,17 @@ import {
   violationsOf,
   warningsFor
 } from '../../store/maven/repositoryTypes'
+import type { Entry, Mirror } from '../../store/maven/repositoryTypes'
+
+/* The parts of a collection the pane reads: the noun of one entry and the schema its form is generated from. */
+interface DetailCollection {
+  noun: string
+  itemSchema: SettingsSchema
+}
+/* The ajv instance the generated forms validate with. */
+type Ajv = ReturnType<typeof createAjv>
+/* A node of the generated form layout: a control names its field in `scope`, a layout or group holds `elements`. */
+type LayoutNode = UISchemaElement & { elements?: LayoutNode[]; scope?: string }
 
 /*
  * The detail pane of one entry. The id is edited in its own field, checked the way the new-entry
@@ -45,92 +59,66 @@ import {
  * generated from the item schema, so the entry is edited with the same renderers as the rest of
  * the settings. A null entry means the id in the address names nothing, and the pane says so.
  */
-const props = defineProps({
-  collection: {
-    type: Object,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  collection: DetailCollection
   // The address in the route, which is the id of the entry, or the key marker when it has none.
-  id: {
-    type: String,
-    required: true
-  },
+  id: string
   // Null when the address names no entry; the pane then says so instead of showing a form.
-  entry: {
-    type: [Object, null],
-    default: null
-  },
+  entry?: Entry | null
   // The ids of the other entries of the collection, which the id of this one must not repeat.
-  otherIds: {
-    type: Array,
-    default: () => []
-  },
+  otherIds?: string[]
   // The tags the other entries use, which the tags field offers as suggestions.
-  otherTags: {
-    type: Array,
-    default: () => []
-  },
+  otherTags?: string[]
   // True for the repositories of the maven domain: the pane then shows who has access, below the form.
-  showAccess: {
-    type: Boolean,
-    default: false
-  },
+  showAccess?: boolean
   // True for the repositories of the maven domain: the pane shows the type first, and the fields that type takes.
-  typed: {
-    type: Boolean,
-    default: false
-  },
+  typed?: boolean
   // The message the server gave when the settings were refused, shown next to the type it may be about.
-  serverError: {
-    type: String,
-    default: ''
-  },
-  renderers: {
-    type: Array,
-    required: true
-  },
-  validator: {
-    type: Object,
-    required: true
-  },
+  serverError?: string
+  renderers: JsonFormsRendererRegistryEntry[]
+  validator: Ajv
   // Fields of the entry that the page edits with its own control, so the generated form leaves them out.
-  omit: {
-    type: Array,
-    default: () => []
-  },
+  omit?: string[]
   // The groups that list this entry as a member, named by the delete confirmation before it can be used.
-  references: {
-    type: Array,
-    default: () => []
-  },
+  references?: unknown[]
   // The part of a page this pane draws. Empty draws every part, as before. The repository page draws each part in
   // its own pane: 'type' (the type section), 'danger' (the danger zone), or the key of a tab, which draws the Id
   // field on General, the access card on Access and the form of the fields the tab names.
-  section: {
-    type: String,
-    default: ''
-  },
+  section?: string
   // The fields of the form in the order they are drawn, when the page names one (the fields of a tab). Null keeps the order of the schema.
-  order: {
-    type: Array,
-    default: null
-  }
+  order?: string[] | null
+}>(), {
+  entry: null,
+  otherIds: () => [],
+  otherTags: () => [],
+  showAccess: false,
+  typed: false,
+  serverError: '',
+  omit: () => [],
+  references: () => [],
+  section: '',
+  order: null
 })
 
-const emit = defineEmits(['change', 'delete'])
+const emit = defineEmits<{
+  change: [entry: Entry]
+  delete: []
+}>()
 
 const noun = computed(() => props.collection.noun)
 const whole = computed(() => props.section === '')
-const shows = name => whole.value || props.section === name
+const shows = (name: string) => whole.value || props.section === name
 const drawsForm = computed(() => whole.value || (props.section !== 'type' && props.section !== 'danger'))
 const layout = computed(() => entryLayout(props.collection.itemSchema, props.order ? { order: props.order } : {}))
 const deleteOpen = ref(false)
 
 // The latest value of the whole entry, so an id typed in the field is written next to the fields the form has changed.
-const latest = ref(props.entry)
+const latest = ref<Entry | null>(props.entry)
 watch(() => props.entry, (entry) => {
   latest.value = entry
 })
+// The latest value read by the type section, the members and the form. They are drawn only while there is an entry.
+const current = (): Entry => latest.value ?? {}
 
 const idDraft = ref(idText(props.entry))
 watch(() => idText(props.entry), (id) => {
@@ -139,7 +127,7 @@ watch(() => idText(props.entry), (id) => {
 
 const idError = computed(() => validateNewId(idDraft.value, props.otherIds, noun.value))
 
-const onIdInput = (value) => {
+const onIdInput = (value: string) => {
   idDraft.value = value
   latest.value = { ...latest.value, id: value }
   emit('change', latest.value)
@@ -148,7 +136,7 @@ const onIdInput = (value) => {
 // The tags of the other entries reach the tags field through the form configuration, the one place
 // a renderer can read context from that is not its own data.
 const formConfiguration = computed(() => ({ showUnfocusedDescription: true, tagSuggestions: props.otherTags }))
-const onChange = (event) => {
+const onChange = (event: { data: Entry }) => {
   latest.value = event.data
   emit('change', event.data)
 }
@@ -157,37 +145,38 @@ const onChange = (event) => {
  * The type of a repository. A repository without one behaves as before, and the choice that says so
  * is the empty value. Switching asks first when the new type would take settings away, and names them.
  */
-const TYPE_HELP = {
+const TYPE_HELP: Record<string, string> = {
   '': 'No type set. The repository behaves as before. Choose a type to enforce its rules.',
   HOSTED: 'Files are uploaded here and kept on storage.',
   PROXY: 'Files are fetched from remote repositories and cached in the cache storage. Nothing can be uploaded.',
   GROUP: 'Lists other repositories, in order. Nothing can be uploaded.'
 }
-const typeValue = computed(() => latest.value?.type ?? '')
+// The schema offers the type as a string.
+const typeValue = computed(() => (latest.value?.type ?? '') as string)
 const typeHelp = computed(() => TYPE_HELP[typeValue.value] ?? '')
-const typeLabelOf = (type) => SETTING_TYPE_OPTIONS.find(option => option.value === type)?.label ?? ''
+const typeLabelOf = (type: string) => SETTING_TYPE_OPTIONS.find(option => option.value === type)?.label ?? ''
 const keepLabel = computed(() => (typeValue.value === '' ? 'Keep it as before' : `Keep ${typeLabelOf(typeValue.value)}`))
 // Shown under the type of a group that still has storage, which a group does not use.
-const unusedStorageNote = computed(() => unusedStorageNoteOf(latest.value))
+const unusedStorageNote = computed(() => unusedStorageNoteOf(current()))
 // A stored storage type the served schema does not offer, such as a plugin that is not installed. It is kept as it is.
-const unavailableStorage = computed(() => unavailableStorageTypeOf(latest.value, props.collection.itemSchema))
-const pendingType = ref(null)
+const unavailableStorage = computed(() => unavailableStorageTypeOf(current(), props.collection.itemSchema))
+const pendingType = ref<string | null>(null)
 const typeNotice = ref('')
 const pendingRemovals = computed(() => (pendingType.value === null
   ? []
-  : removalsFor(latest.value, typeValue.value, pendingType.value)))
+  : removalsFor(current(), typeValue.value, pendingType.value)))
 const pendingWarnings = computed(() => (pendingType.value === null
   ? []
-  : warningsFor(latest.value, typeValue.value, pendingType.value)))
+  : warningsFor(current(), typeValue.value, pendingType.value)))
 // Empty mirrored entries are dropped by a typed repository, so the switch names them as removals too.
 const pendingBlanks = computed(() => (pendingType.value === null
   ? 0
-  : blankEntriesRemovedBy(latest.value, pendingType.value)))
+  : blankEntriesRemovedBy(current(), pendingType.value)))
 const pendingRemoves = computed(() => pendingRemovals.value.length > 0 || pendingBlanks.value > 0)
 const confirmLabel = computed(() => (pendingRemoves.value ? 'Switch and remove' : 'Switch'))
 
-const applyType = (type) => {
-  const next = switchedEntry(latest.value, type)
+const applyType = (type: string) => {
+  const next = switchedEntry(current(), type)
   latest.value = next
   pendingType.value = null
   typeNotice.value = `Type set to ${typeLabelOf(type).toLowerCase() || 'not set'}.`
@@ -195,11 +184,11 @@ const applyType = (type) => {
 }
 
 // A switch that removes or leaves behind a setting is asked about first, and names it. Nothing is deleted silently.
-const requestType = (type) => {
+const requestType = (type: string) => {
   if (type === typeValue.value) return
-  if (removalsFor(latest.value, typeValue.value, type).length === 0
-    && warningsFor(latest.value, typeValue.value, type).length === 0
-    && blankEntriesRemovedBy(latest.value, type) === 0) {
+  if (removalsFor(current(), typeValue.value, type).length === 0
+    && warningsFor(current(), typeValue.value, type).length === 0
+    && blankEntriesRemovedBy(current(), type) === 0) {
     applyType(type)
     return
   }
@@ -207,34 +196,36 @@ const requestType = (type) => {
   typeNotice.value = ''
 }
 
-const confirmType = () => applyType(pendingType.value)
+const confirmType = () => {
+  if (pendingType.value !== null) applyType(pendingType.value)
+}
 const cancelType = () => {
   pendingType.value = null
 }
 
 // The rules the type breaks, checked here so the problem is shown before the save. Only for the typed repositories.
-const violations = computed(() => (props.typed ? violationsOf(latest.value, { otherIds: props.otherIds }) : []))
+const violations = computed(() => (props.typed ? violationsOf(current(), { otherIds: props.otherIds }) : []))
 
 // A group's members are its mirrored entries, edited as a list. The picker hands back the entries that stay as they were,
 // so the settings and credentials of each member are kept; only the list itself changes.
-const members = computed(() => (Array.isArray(latest.value.proxied) ? latest.value.proxied : []))
-const onMembers = (entries) => {
-  const next = { ...latest.value, proxied: entries }
+const members = computed(() => (Array.isArray(current().proxied) ? current().proxied as MirrorEntry[] : []))
+const onMembers = (entries: MirrorEntry[]) => {
+  const next = { ...latest.value, proxied: entries as Mirror[] }
   latest.value = next
   emit('change', next)
 }
 
 // The fields the type does not take are left out of the form. The type itself is shown by the selector above it.
-const withoutFields = (node, hidden) => {
+const withoutFields = (node: LayoutNode, hidden: Set<string>): LayoutNode => {
   const elements = (node.elements ?? [])
-    .filter(element => !(element.type === 'Control' && hidden.has(element.scope.replace('#/properties/', ''))))
+    .filter(element => !(element.type === 'Control' && hidden.has((element.scope ?? '').replace('#/properties/', ''))))
     .map(element => (element.elements ? withoutFields(element, hidden) : element))
-    .filter(element => !(element.type === 'Group' && element.elements.length === 0))
+    .filter(element => !(element.type === 'Group' && element.elements?.length === 0))
   return { ...node, elements }
 }
 
 // A proxy's storage is the storage its cache is kept in, so the form names it that way.
-const labelled = (node, type) => ({
+const labelled = (node: LayoutNode, type: string): LayoutNode => ({
   ...node,
   elements: (node.elements ?? []).map(element => {
     if (element.elements) return labelled(element, type)

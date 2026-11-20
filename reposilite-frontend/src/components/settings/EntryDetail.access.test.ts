@@ -16,13 +16,13 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { markRaw, ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { defaultStyles, vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import EntryDetail from './EntryDetail.vue'
 
-const holder = vi.hoisted(() => ({ session: null }))
+const holder = vi.hoisted((): { session: unknown } => ({ session: null }))
 
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 
@@ -33,7 +33,7 @@ const collection = {
   itemSchema: { type: 'object', properties: { id: { type: 'string', title: 'Id' } } }
 }
 
-let wrapper
+let wrapper: VueWrapper
 
 const mountDetail = async (props = {}) => {
   const repositoryAccess = vi.fn(async () => ({ data: { repository: 'releases', visibility: 'PUBLIC', entries: [] } }))
@@ -51,14 +51,13 @@ const mountDetail = async (props = {}) => {
       provide: { styles: defaultStyles },
       plugins: [createRouter({ history: createMemoryHistory(), routes: [] })]
     }
-  })
+  }) as VueWrapper
   await flushPromises()
   return repositoryAccess
 }
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('EntryDetail access section', () => {

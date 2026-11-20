@@ -17,7 +17,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { markRaw } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
@@ -25,6 +25,8 @@ import MdTextFieldRenderer from '../renderers/MdTextFieldRenderer.vue'
 import { tester as selectTester } from '../renderers/MdSelectRenderer.vue'
 import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
+import type { SettingsSchema } from './collections'
+import type { Entry } from '../../store/maven/repositoryTypes'
 
 const renderers = markRaw([
   { tester: textTester, renderer: MdTextFieldRenderer },
@@ -50,12 +52,12 @@ const collection = {
         ]
       }
     }
-  }
+  } as SettingsSchema
 }
 
-let wrapper
+let wrapper: VueWrapper
 
-const mountEntry = (entry) => {
+const mountEntry = (entry: Entry & { id: string }) => {
   wrapper = mount(EntryDetail, {
     props: {
       collection,
@@ -68,13 +70,12 @@ const mountEntry = (entry) => {
     },
     global: { provide: { styles: defaultStyles } },
     attachTo: document.body
-  })
+  }) as VueWrapper
   return wrapper
 }
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('a stored storage type the served schema does not offer', () => {
@@ -94,8 +95,8 @@ describe('a stored storage type the served schema does not offer', () => {
     mountEntry(entry)
     await flushPromises()
 
-    const changes = wrapper.emitted('change') ?? []
-    const types = changes.map(([change]) => change?.storageProvider?.type)
+    const changes = wrapper.emitted<[Entry]>('change') ?? []
+    const types = changes.map(([change]) => (change?.storageProvider as { type?: string } | undefined)?.type)
     expect(types.every(type => type === 'azure-blob'), 'the stored type is kept, never replaced by fs').toBe(true)
   })
 
