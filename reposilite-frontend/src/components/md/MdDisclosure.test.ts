@@ -58,6 +58,18 @@ describe('MdDisclosure content', () => {
     expect(chevron.exists(), 'the summary carries a chevron').toBe(true)
     expect(chevron.attributes('aria-hidden')).toBe('true')
   })
+
+  it('draws the state layer on the summary, so hover, focus and press show on the control', () => {
+    const wrapper = mountDisclosure()
+
+    expect(wrapper.find('summary').classes(), 'the summary carries the md state layer').toContain('md-state-layer')
+  })
+
+  it('rounds the summary, so its state layer has a shape', () => {
+    const wrapper = mountDisclosure()
+
+    expect(wrapper.find('summary').classes(), 'the state layer takes the corner of the summary').toContain('rounded-corner-small')
+  })
 })
 
 describe('MdDisclosure value', () => {
