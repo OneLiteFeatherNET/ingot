@@ -36,6 +36,41 @@ describe('AddMemberDialog', () => {
     document.body.innerHTML = ''
   })
 
+  const PRINCIPALS = [
+    { name: 'alice', displayName: 'Alice Example', kind: 'USER', disabled: false },
+    { name: 'ci-bot', displayName: '', kind: 'MACHINE', disabled: true }
+  ]
+
+  const candidates = () => [...dialog().querySelectorAll<HTMLElement>('[data-test="candidate"]')]
+
+  it('builds the candidate rows from the shared list rows', async () => {
+    await open({ principals: PRINCIPALS })
+
+    expect(wrapper!.findComponent({ name: 'MdList' }).exists(), 'the candidates sit in an MdList').toBe(true)
+    const items = wrapper!.findAllComponents({ name: 'MdListItem' })
+    expect(items.map(item => item.attributes('data-test')), 'every candidate is an MdListItem').toEqual(['candidate', 'candidate'])
+  })
+
+  it('names the checkbox of each candidate by its own label', async () => {
+    await open({ principals: PRINCIPALS })
+
+    const row = candidates()[0]
+    const input = row.querySelector<HTMLInputElement>('input[type="checkbox"]')!
+    const label = row.querySelector<HTMLLabelElement>('label')!
+    expect(label.htmlFor, 'the label names the checkbox by its id').toBe(input.id)
+    expect(label.contains(input), 'the checkbox sits outside the text, so it takes its own clicks').toBe(false)
+  })
+
+  it('ticks a candidate when its label is clicked and enables the add button', async () => {
+    await open({ principals: PRINCIPALS })
+
+    candidates()[1].querySelector<HTMLLabelElement>('label')!.click()
+    await flushPromises()
+
+    expect(candidates()[1].querySelector<HTMLInputElement>('input')!.checked, 'the label ticks its checkbox').toBe(true)
+    expect(dialog().querySelector<HTMLButtonElement>('[data-test="add-members"]')!.disabled, 'one pick enables the add button').toBe(false)
+  })
+
   it('shows a failed load of the principals as an error tone alert', async () => {
     await open({ loadError: 'the directory is down' })
 
