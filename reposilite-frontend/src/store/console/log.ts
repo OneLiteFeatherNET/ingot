@@ -72,10 +72,12 @@ export default function useLog() {
 
   const hasLines = computed(() => rawLog.some(entry => !isSeparator(entry)))
 
-  const logMessage = (value: string) => {
+  // A level given by name, as a socket frame names it, wins over the one read from the text.
+  const logMessage = (value: string, level?: string) => {
     const segments = parseAnsi(value)
     const text = segments.map(segment => segment.text).join('')
-    rawLog.push({ id: id.value++, kind: 'line', segments, text, level: getLevel(value) })
+    const named = level === undefined ? undefined : levelNames.find(name => name.toUpperCase() === level.toUpperCase()) ?? 'Other'
+    rawLog.push({ id: id.value++, kind: 'line', segments, text, level: named ?? getLevel(value) })
   }
 
   // The label is ours and constant, and like every other line it is rendered as text.
