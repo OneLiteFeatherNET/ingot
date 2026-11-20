@@ -110,6 +110,9 @@ class PluginUiFacade internal constructor(
         return synchronized(lock) { readerPagesByPlugin.values.flatten() }
     }
 
+    /** Whether any plugin has a reader page. False while either switch is off. */
+    internal fun hasReaderPages(): Boolean = readerPages().isNotEmpty()
+
     /**
      * The reader manifest of every plugin, in registration order. Empty while either switch is off. The reader pages are
      * the same for an anonymous and a signed in caller, so the manifest takes no caller.

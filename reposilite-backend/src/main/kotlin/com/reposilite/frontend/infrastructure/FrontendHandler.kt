@@ -94,6 +94,8 @@ internal class ResourcesFrontendHandler(
     private val resourcesDirectory: String,
     private val repositoryRegistry: RepositoryRegistry,
     private val repositoryRouteDispatcher: RepositoryRouteDispatcher,
+    /** Further app routes claimed at start, such as the reader routes of DashboardPaths.readerRoutes. */
+    claimedRoutes: List<String> = emptyList(),
 ) : FrontendHandler(frontendFacade, failureFacade) {
 
     private val notFoundHandler = NotFoundHandler(frontendFacade)
@@ -119,7 +121,7 @@ internal class ResourcesFrontendHandler(
     // So every app route needs HEAD as well, and a route whose first segment names a repository has to hand the
     // request to Maven itself when DashboardRouteDecision says so. Without that hand-over, a repository "settings"
     // would receive the dashboard for every Maven and Gradle request under /settings/.
-    private val appRoutes = DashboardPaths.APP_ROUTES.map { path ->
+    private val appRoutes = (DashboardPaths.APP_ROUTES + claimedRoutes).map { path ->
         val repository = path.removePrefix("/").substringBefore('/')
 
         ReposiliteRoute<InputStream>(path, GET, HEAD) {
