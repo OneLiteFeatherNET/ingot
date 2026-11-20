@@ -46,7 +46,8 @@ export default async function globalSetup() {
       tokenName: TOKEN_NAME,
       tokenSecret,
       plugins: [stylePlugin.jar, nexusImportJar],
-      env: NEXUS_IMPORT_ENV,
+      // A settings key of this run only, so that second-factor.spec.js can enrol authenticators.
+      env: { ...NEXUS_IMPORT_ENV, INGOT_SETTINGS_KEY: randomBytes(32).toString('base64') },
     })
   } catch (error) {
     stylePlugin.dispose()
