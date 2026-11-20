@@ -16,29 +16,32 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { toRaw } from 'vue'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
+import type { MirrorEntry } from './groupMembers'
 
-let wrapper
+let wrapper: VueWrapper
 
 // The members are the mirrored entries of the group. Each one is kept as it is; only its reference names the repository.
-const entry = (reference, extra = {}) => ({ reference, ...extra })
+const entry = (reference: string, extra: Record<string, unknown> = {}): MirrorEntry => ({ reference, ...extra })
 
-const mountPicker = (props = {}) => {
+const mountPicker = (props: Record<string, unknown> = {}) => {
   wrapper = mount(RepositoryMembersPicker, {
     props: { modelValue: [], candidates: ['all', 'releases', 'snapshots'], ...props }
-  })
+  }) as VueWrapper
   return wrapper
 }
 
+// The list of members of the last update:modelValue event.
+const lastEmitted = () => (wrapper.emitted('update:modelValue') as Array<[MirrorEntry[]]>).at(-1)![0]
+
 const memberRows = () => wrapper.findAll('[data-test="member"]')
 const memberIds = () => memberRows().map(row => row.get('[data-test="member-id"]').text())
-const button = (label) => wrapper.get(`button[aria-label="${label}"]`)
-const addButton = () => wrapper.findAll('button').find(item => item.text() === 'Add')
+const button = (label: string) => wrapper.get(`button[aria-label="${label}"]`)
+const addButton = () => wrapper.findAll('button').find(item => item.text() === 'Add')!
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
 })
 
 describe('RepositoryMembersPicker', () => {
@@ -63,7 +66,7 @@ describe('RepositoryMembersPicker', () => {
     await wrapper.get('select').setValue('snapshots')
     await addButton().trigger('click')
 
-    const emitted = wrapper.emitted('update:modelValue').at(-1)[0]
+    const emitted = lastEmitted()
     expect(emitted).toEqual([entry('releases', { store: true }), { reference: 'snapshots' }])
     expect(toRaw(emitted[0])).toBe(releases)
     expect(wrapper.get('select').element.value).toBe('')
@@ -84,10 +87,10 @@ describe('RepositoryMembersPicker', () => {
     expect(button('Move snapshots down').attributes('disabled')).toBeDefined()
 
     await button('Move all up').trigger('click')
-    expect(wrapper.emitted('update:modelValue').at(-1)[0].map(item => item.reference)).toEqual(['all', 'releases', 'snapshots'])
+    expect(lastEmitted().map(item => item.reference)).toEqual(['all', 'releases', 'snapshots'])
 
     await button('Move releases down').trigger('click')
-    expect(wrapper.emitted('update:modelValue').at(-1)[0].map(item => item.reference)).toEqual(['all', 'releases', 'snapshots'])
+    expect(lastEmitted().map(item => item.reference)).toEqual(['all', 'releases', 'snapshots'])
   })
 
   it('removes the member clicked and keeps the others with their settings', async () => {
@@ -97,7 +100,7 @@ describe('RepositoryMembersPicker', () => {
 
     await button('Remove all from the group').trigger('click')
 
-    const emitted = wrapper.emitted('update:modelValue').at(-1)[0]
+    const emitted = lastEmitted()
     expect(emitted).toEqual([releases, snapshots])
     expect(toRaw(emitted[0])).toBe(releases)
     expect(toRaw(emitted[1])).toBe(snapshots)
@@ -110,7 +113,7 @@ describe('RepositoryMembersPicker', () => {
 
     await wrapper.findAll('button[aria-label="Remove releases from the group"]')[1].trigger('click')
 
-    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toEqual([first])
+    expect(lastEmitted()).toEqual([first])
   })
 
   it('explains that there is nothing to add when every repository is already a member', () => {
@@ -135,8 +138,8 @@ describe('RepositoryMembersPicker', () => {
 
 describe('RepositoryMembersPicker credentials of the members', () => {
   const loopback = { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: 'mirror-secret' }
-  const mountWithCredentials = (props = {}) => mountPicker({ credentials: true, ...props })
-  const editButton = (reference) => wrapper.get(`button[aria-label="Edit the credential of ${reference}"]`)
+  const mountWithCredentials = (props: Record<string, unknown> = {}) => mountPicker({ credentials: true, ...props })
+  const editButton = (reference: string) => wrapper.get(`button[aria-label="Edit the credential of ${reference}"]`)
 
   it('shows the login of a member credential, and never its password', () => {
     mountWithCredentials({ modelValue: [entry('releases', { authorization: loopback })] })
@@ -163,7 +166,7 @@ describe('RepositoryMembersPicker credentials of the members', () => {
 
     await editButton('releases').trigger('click')
 
-    expect(wrapper.get('#members-login-0').element.value).toBe('reposilite-mirror')
+    expect(wrapper.get<HTMLInputElement>('#members-login-0').element.value).toBe('reposilite-mirror')
     expect(wrapper.get('#members-password-0').attributes('type')).toBe('password')
     expect(wrapper.find('#members-login-1').exists()).toBe(false)
   })
@@ -175,7 +178,7 @@ describe('RepositoryMembersPicker credentials of the members', () => {
 
     await wrapper.get('#members-login-0').setValue('new-mirror')
 
-    const emitted = wrapper.emitted('update:modelValue').at(-1)[0]
+    const emitted = lastEmitted()
     expect(emitted[0]).toEqual(entry('releases', { store: true, authorization: { ...loopback, login: 'new-mirror', extra: 'kept' } }))
     expect(emitted[1]).toEqual(entry('all'))
   })
@@ -186,7 +189,7 @@ describe('RepositoryMembersPicker credentials of the members', () => {
 
     await wrapper.get('#members-login-0').setValue('reposilite-mirror')
 
-    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toEqual([entry('releases', { authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror' } })])
+    expect(lastEmitted()).toEqual([entry('releases', { authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror' } })])
   })
 
   it('writes a typed password into the credential without showing the stored one', async () => {
@@ -195,6 +198,6 @@ describe('RepositoryMembersPicker credentials of the members', () => {
 
     await wrapper.get('#members-password-0').setValue('rotated-secret')
 
-    expect(wrapper.emitted('update:modelValue').at(-1)[0][0].authorization.password).toBe('rotated-secret')
+    expect(lastEmitted()[0].authorization?.password).toBe('rotated-secret')
   })
 })

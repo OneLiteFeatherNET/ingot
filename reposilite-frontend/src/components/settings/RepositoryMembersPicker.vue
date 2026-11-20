@@ -15,13 +15,13 @@
  */
 -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, withCredentialField } from './groupMembers'
+import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, withCredentialField, type MirrorEntry } from './groupMembers'
 
 /*
  * The ordered list of repositories a group lists. A repository is added from a select of the ones
@@ -40,30 +40,23 @@ import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, w
  *   idPrefix     the prefix of the ids of the select, the add button and the credential fields
  *   credentials  whether each member shows its credential, and lets it be edited (the loopback login and password)
  */
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  candidates: {
-    type: Array,
-    default: () => []
-  },
-  error: {
-    type: String,
-    default: ''
-  },
-  idPrefix: {
-    type: String,
-    default: 'members'
-  },
-  credentials: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: MirrorEntry[]
+  candidates?: string[]
+  error?: string
+  idPrefix?: string
+  credentials?: boolean
+}>(), {
+  modelValue: () => [],
+  candidates: () => [],
+  error: '',
+  idPrefix: 'members',
+  credentials: false
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: MirrorEntry[]]
+}>()
 
 const chosen = ref('')
 const choices = computed(() => choosableMembers(props.candidates, props.modelValue))
@@ -80,19 +73,24 @@ const add = () => {
   chosen.value = ''
 }
 
-const move = (index, delta) => emit('update:modelValue', moveMember(props.modelValue, index, delta))
-const remove = (index) => emit('update:modelValue', removeMemberAt(props.modelValue, index))
+const move = (index: number, delta: number) => emit('update:modelValue', moveMember(props.modelValue, index, delta))
+const remove = (index: number) => emit('update:modelValue', removeMemberAt(props.modelValue, index))
 
 // The member whose credential is open for editing, or null. One at a time keeps the list short.
-const openCredential = ref(null)
-const toggleCredential = (index) => {
+const openCredential = ref<number | null>(null)
+const toggleCredential = (index: number) => {
   openCredential.value = openCredential.value === index ? null : index
 }
-const credentialOf = (entry) => entry.authorization ?? {}
-const credentialSummary = (entry) => (credentialOf(entry).login
+// The credential keeps every key it has; the picker reads only its login and password, which are text.
+interface MemberCredential {
+  login?: string
+  password?: string
+}
+const credentialOf = (entry: MirrorEntry): MemberCredential => (entry.authorization ?? {}) as MemberCredential
+const credentialSummary = (entry: MirrorEntry) => (credentialOf(entry).login
   ? `Credential as ${credentialOf(entry).login}`
   : 'No credential')
-const setCredential = (index, field, value) => {
+const setCredential = (index: number, field: string, value: unknown) => {
   emit('update:modelValue', props.modelValue.map((entry, position) => (position === index
     ? withCredentialField(entry, field, value)
     : entry)))
