@@ -17,11 +17,13 @@
 <script setup lang="ts">
 /*
  * A table with a caption, a row header and sortable columns. The table scrolls sideways inside a named region when the
- * page is narrow. A column with priority low is hidden below the md breakpoint.
+ * page is narrow. A column with a priority is hidden below a width: low below the md breakpoint, and medium, expanded,
+ * large and xlarge below that window class. A column with priority base or high (the default) shows at every width.
  *
  * Props:
  *   caption     the visible caption, and the name of the scroll region
- *   columns     { key, label, sortable?, priority? }, the priority being high (the default) or low
+ *   columns     { key, label, sortable?, priority? }, the priority being high (the default), low, base, medium,
+ *               expanded, large or xlarge
  *   rows        one object per row, keyed by the column keys. The first column is the row header (th scope row).
  *   modelValue  the sort, { key, direction } with direction ascending or descending (v-model). Without it the table
  *               keeps the sort itself.
@@ -32,14 +34,16 @@
  */
 import { computed, ref } from 'vue'
 import MdIcon from './MdIcon.vue'
+import { sortRows, type SortDirection } from './MdDataTable.sort'
 
-type Direction = 'ascending' | 'descending'
+type Direction = SortDirection
+type Priority = 'high' | 'low' | 'base' | 'medium' | 'expanded' | 'large' | 'xlarge'
 type Align = 'start' | 'end' | 'center'
 interface Column {
   key: string
   label: string
   sortable?: boolean
-  priority?: 'high' | 'low'
+  priority?: Priority
   align?: Align
 }
 interface Sort {
@@ -64,17 +68,9 @@ const emit = defineEmits<{ 'update:modelValue': [sort: Sort] }>()
 const own = ref<Sort | null>(null)
 const sort = computed<Sort | null>(() => (props.modelValue === undefined ? own.value : props.modelValue))
 
-// Numbers compare by value and text by its natural order, so "10" comes after "9".
-const compare = (a: unknown, b: unknown) => {
-  if (typeof a === 'number' && typeof b === 'number') return a - b
-  return String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true })
-}
-
 const sortedRows = computed(() => {
   const current = sort.value
-  if (!current) return props.rows
-  const factor = current.direction === 'ascending' ? 1 : -1
-  return [...props.rows].sort((a, b) => factor * compare(a[current.key], b[current.key]))
+  return current ? sortRows(props.rows, current.key, current.direction) : props.rows
 })
 
 // The first click on a column sorts it ascending, the next one descending, and so on.
@@ -92,7 +88,17 @@ const ariaSort = (column: Column) => {
 }
 
 const CHEVRON = 'M6 9l6 6 6-6'
-const priorityClass = (column: Column) => (column.priority === 'low' ? 'hidden md:table-cell' : '')
+// The classes are written out in full, so Tailwind finds them in the source.
+const PRIORITY_CLASS: Record<Priority, string> = {
+  high: '',
+  base: '',
+  low: 'hidden md:table-cell',
+  medium: 'hidden medium:table-cell',
+  expanded: 'hidden expanded:table-cell',
+  large: 'hidden large:table-cell',
+  xlarge: 'hidden xlarge:table-cell',
+}
+const priorityClass = (column: Column) => PRIORITY_CLASS[column.priority ?? 'high']
 const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'rotate-180' : '')
 // The classes are written out in full, so Tailwind finds them in the source. A column without an align starts its text.
 const ALIGN_CLASS: Record<Align, string> = { start: 'text-start', end: 'text-end', center: 'text-center' }
