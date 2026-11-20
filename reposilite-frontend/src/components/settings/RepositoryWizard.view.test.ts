@@ -17,13 +17,15 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import RepositoryWizard from './RepositoryWizard.vue'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 // The configuration module reads the session once when it is imported, so the holder starts with an empty client.
-const holder = vi.hoisted(() => ({ session: { client: { value: null } } }))
+const holder = vi.hoisted((): { session: unknown } => ({ session: { client: { value: null } } }))
 
 // The stores are built on a fake client below; the wizard reaches the same client through the session. Toasts stay off the page.
 vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
@@ -31,7 +33,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 vi.mock('../../store/placeholders', () => ({
   default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
@@ -74,14 +76,24 @@ const MAVEN_SCHEMA = {
   }
 }
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const FRONTEND_SCHEMA = { type: 'object', title: 'Frontend', properties: { title: { type: 'string' } } }
 const SCHEMAS = { maven: MAVEN_SCHEMA, frontend: FRONTEND_SCHEMA }
 
 // A server with one team (one manual and one synchronized member, one grant) and one user. Writes land in `state`.
+// A team and a principal as the fake identity server holds them.
+type Team = {
+  name: string
+  members: { principal: string; kind: string; source: string }[]
+  grants: unknown[]
+  nodes: unknown[]
+  instanceRole: boolean
+}
+type Principal = { name: string; kind: string }
+
 const fakeIdentity = () => {
-  const state = {
+  const state: { teams: Record<string, Team>; principals: Principal[] } = {
     teams: {
       developers: {
         name: 'developers',
@@ -96,42 +108,42 @@ const fakeIdentity = () => {
     },
     principals: [{ name: 'alice', kind: 'USER' }]
   }
-  const machineTokens = { create: vi.fn(async (body) => ({ data: { token: { name: body.name }, secret: 'secret-1' } })) }
+  const machineTokens = { create: vi.fn((body: { name: string }) => Promise.resolve({ data: { token: { name: body.name }, secret: 'secret-1' } })) }
   return {
     state,
     machineTokens,
     teams: {
-      list: vi.fn(async () => ({ data: Object.values(state.teams).map(team => ({ name: team.name })) })),
-      get: vi.fn(async (name) => ({ data: clone(state.teams[name]), headers: { etag: '"1"' } })),
-      create: vi.fn(async (body) => {
+      list: vi.fn(() => Promise.resolve({ data: Object.values(state.teams).map(team => ({ name: team.name })) })),
+      get: vi.fn((name: string) => Promise.resolve({ data: clone(state.teams[name]), headers: { etag: '"1"' } })),
+      create: vi.fn((body: { name: string }) => {
         state.teams[body.name] = { name: body.name, members: [], grants: [], nodes: [], instanceRole: false }
-        return { data: clone(state.teams[body.name]) }
+        return Promise.resolve({ data: clone(state.teams[body.name]) })
       }),
-      setGrants: vi.fn(async (name, grants) => {
+      setGrants: vi.fn((name: string, grants: unknown[]) => {
         state.teams[name].grants = clone(grants)
-        return { data: clone(state.teams[name]) }
+        return Promise.resolve({ data: clone(state.teams[name]) })
       }),
-      setMembers: vi.fn(async (name, members) => {
+      setMembers: vi.fn((name: string, members: string[]) => {
         const team = state.teams[name]
         team.members = [
           ...team.members.filter(member => member.source === 'SYNC'),
           ...members.map(principal => ({ principal, kind: 'USER', source: 'MANUAL' }))
         ]
-        return { data: clone(team) }
+        return Promise.resolve({ data: clone(team) })
       })
     },
     nodes: {
-      get: vi.fn(async (kind, name) => ({ data: { nodes: clone(state.teams[name].nodes) }, headers: { etag: '"1"' } })),
-      set: vi.fn(async (kind, name, nodes) => {
+      get: vi.fn((kind: string, name: string) => Promise.resolve({ data: { nodes: clone(state.teams[name].nodes) }, headers: { etag: '"1"' } })),
+      set: vi.fn((kind: string, name: string, nodes: unknown[]) => {
         state.teams[name].nodes = clone(nodes)
-        return { data: { nodes: clone(nodes) } }
+        return Promise.resolve({ data: { nodes: clone(nodes) } })
       })
     },
     principals: {
-      list: vi.fn(async () => ({ data: clone(state.principals) })),
-      create: vi.fn(async (body) => {
+      list: vi.fn(() => Promise.resolve({ data: clone(state.principals) })),
+      create: vi.fn((body: Principal) => {
         state.principals.push({ name: body.name, kind: body.kind })
-        return { data: clone(body) }
+        return Promise.resolve({ data: clone(body) })
       })
     },
     principalTokens: vi.fn(() => machineTokens)
@@ -139,8 +151,12 @@ const fakeIdentity = () => {
 }
 
 // A server with one existing repository. The legacy token routes are spies the wizard must never call.
+// A repository of the maven domain, as the fake server and the draft hold it.
+type Repository = { id: string; visibility: string; [field: string]: unknown }
+type SettingsState = { maven: { repositories: Repository[] }; frontend: Record<string, unknown> }
+
 const fakeClient = () => {
-  const state = {
+  const state: SettingsState = {
     maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] },
     frontend: { title: 'Ingot Repository' }
   }
@@ -148,42 +164,46 @@ const fakeClient = () => {
     state,
     identity: fakeIdentity(),
     settings: {
-      domains: vi.fn(async () => ({ data: ['maven', 'frontend'] })),
+      domains: vi.fn(() => Promise.resolve({ data: ['maven', 'frontend'] })),
       // A copy per answer, so a test that changes the schema it was given does not change the next test's.
-      schema: vi.fn(async (domain) => ({ data: clone(SCHEMAS[domain]) })),
-      fetch: vi.fn(async (domain) => ({ data: clone(state[domain]) })),
-      update: vi.fn(async (domain, content) => { state[domain] = clone(content) })
+      schema: vi.fn((domain: keyof typeof SCHEMAS) => Promise.resolve({ data: clone(SCHEMAS[domain]) })),
+      fetch: vi.fn((domain: keyof SettingsState) => Promise.resolve({ data: clone(state[domain]) })),
+      update: vi.fn((domain: keyof SettingsState, content: unknown) => {
+        (state as Record<string, unknown>)[domain] = clone(content)
+        return Promise.resolve()
+      })
     },
     tokens: {
-      list: vi.fn(async () => ({ data: [] })),
+      list: vi.fn(() => Promise.resolve({ data: [] })),
       createOrUpdate: vi.fn(),
       update: vi.fn()
     }
   }
 }
 
-let wrapper
-let router
-let client
-let configuration
+let wrapper: VueWrapper | undefined
+let router: Router
+let client: ReturnType<typeof fakeClient>
+let configuration: ReturnType<typeof createConfigurationStore>
 
-const $ = (selector) => document.querySelector(selector)
+// The element a selector names. Most are inputs; a test that looks for a missing element compares the result with null.
+const $ = <T extends Element = HTMLInputElement>(selector: string) => document.querySelector(selector) as T
 
-const setText = async (selector, value) => {
+const setText = async (selector: string, value: string) => {
   const input = $(selector)
   input.value = value
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
 
-const pick = async (selector, value) => {
-  const select = $(selector)
+const pick = async (selector: string, value: string) => {
+  const select = $<HTMLSelectElement>(selector)
   select.value = value
   select.dispatchEvent(new Event('change'))
   await flushPromises()
 }
 
-const choose = async (selector) => {
+const choose = async (selector: string) => {
   const input = $(selector)
   input.checked = true
   input.dispatchEvent(new Event('change'))
@@ -191,7 +211,7 @@ const choose = async (selector) => {
   await flushPromises()
 }
 
-const click = async (selector) => {
+const click = async (selector: string) => {
   $(selector).click()
   await flushPromises()
 }
@@ -216,7 +236,7 @@ const reachReview = async ({ id = 'team', machine = false } = {}) => {
 }
 
 // Opens the wizard on the basics step, which is the second step, after the type. `onType` keeps it on the type step.
-const mountWizard = async ({ open = true, onType = false } = {}) => {
+const mountWizard = async ({ open = true, onType = false }: { open?: boolean; onType?: boolean } = {}) => {
   await configuration.fetchConfiguration()
   wrapper = mount(RepositoryWizard, {
     props: { modelValue: open },
@@ -233,7 +253,7 @@ const mountWizard = async ({ open = true, onType = false } = {}) => {
 beforeEach(async () => {
   client = fakeClient()
   holder.session = { client: ref(client) }
-  configuration = createConfigurationStore(ref(client))
+  configuration = createConfigurationStore(ref(client) as unknown as ClientRef)
   router = createRouter({
     history: createMemoryHistory(),
     routes: stubRoutes()
@@ -310,7 +330,7 @@ describe('RepositoryWizard steps', () => {
     await mountWizard()
     expect($('#wizard-description')).toBeNull()
 
-    configuration.schemas.value.maven.properties.repositories.items.properties.description = { type: 'string' }
+    configuration.schemas.value.maven.properties!.repositories.items!.properties!.description = { type: 'string' }
     await flushPromises()
 
     expect($('#wizard-description')).not.toBeNull()
@@ -319,19 +339,19 @@ describe('RepositoryWizard steps', () => {
 
 describe('RepositoryWizard field order', () => {
   // The fields in the order the user answers them, by where each is drawn on the page.
-  const drawnOrder = (anchors) => {
+  const drawnOrder = (anchors: [string, Element | null][]) => {
     const missing = anchors.filter(([, node]) => node === null).map(([name]) => name)
     expect(missing, 'every field named in the order is drawn').toEqual([])
     return [...anchors]
-      .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .sort(([, a], [, b]) => (a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
       .map(([name]) => name)
   }
-  const legend = text => [...document.querySelectorAll('legend')].find(node => node.textContent?.trim() === text) ?? null
+  const legend = (text: string) => [...document.querySelectorAll('legend')].find(node => node.textContent?.trim() === text) ?? null
 
   it('asks for the id, the description and the tags on the basics step, and not yet who can read it', async () => {
     await mountWizard()
-    configuration.schemas.value.maven.properties.repositories.items.properties.description = { type: 'string' }
-    configuration.schemas.value.maven.properties.repositories.items.properties.tags = { type: 'array' }
+    configuration.schemas.value.maven.properties!.repositories.items!.properties!.description = { type: 'string' }
+    configuration.schemas.value.maven.properties!.repositories.items!.properties!.tags = { type: 'array' }
     await flushPromises()
 
     expect(heading()).toBe('Basics')
@@ -362,7 +382,7 @@ describe('RepositoryWizard access step', () => {
 
     await reachAccessStep('team')
 
-    const options = [...$('#wizard-team').options].map(option => option.value)
+    const options = [...$<HTMLSelectElement>('#wizard-team').options].map(option => option.value)
     expect(heading()).toBe('Access')
     expect(client.identity.teams.list).toHaveBeenCalled()
     expect(options).toEqual(['', 'developers'])
@@ -628,7 +648,7 @@ describe('RepositoryWizard create sequence', () => {
 
     await click('#wizard-cancel')
 
-    expect(configuration.configurations.value.maven.repositories.map(repo => repo.id)).toEqual(['releases'])
+    expect((configuration.configurations.value.maven.repositories as Repository[]).map(repo => repo.id)).toEqual(['releases'])
   })
 
   it('keeps a saved repository when the wizard is cancelled after an access step failed', async () => {
@@ -639,7 +659,7 @@ describe('RepositoryWizard create sequence', () => {
 
     await click('#wizard-cancel')
 
-    expect(configuration.configurations.value.maven.repositories.map(repo => repo.id)).toContain('team')
+    expect((configuration.configurations.value.maven.repositories as Repository[]).map(repo => repo.id)).toContain('team')
   })
 
   it('navigates to the repository only when Done is pressed, because the secret is shown there', async () => {
@@ -656,9 +676,9 @@ describe('RepositoryWizard create sequence', () => {
 })
 
 // The option cards are the labels of their radios, so the card is found from its input.
-const optionInputs = name => [...document.querySelectorAll(`input[name="${name}"]`)]
-const optionCard = input => input.closest('label')
-const keyDown = (element, key) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+const optionInputs = (name: string) => [...document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)]
+const optionCard = (input: HTMLInputElement) => input.closest('label')!
+const keyDown = (element: Element, key: string) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
 
 describe('RepositoryWizard option cards', () => {
   it('selects a visibility card when a click lands on its description text', async () => {
@@ -666,7 +686,7 @@ describe('RepositoryWizard option cards', () => {
     await reachAccessStep('team')
     const [, , hidden] = optionInputs('visibility')
 
-    optionCard(hidden).querySelector('[data-part="card-content"]').click()
+    optionCard(hidden).querySelector<HTMLElement>('[data-part="card-content"]')!.click()
     await flushPromises()
 
     expect(hidden.checked, 'the card that was clicked is chosen').toBe(true)
@@ -781,7 +801,7 @@ describe('type step', () => {
     await next()
 
     expect(heading()).toBe('Members')
-    const options = [...$('#wizard-members-add').options].map(option => option.value)
+    const options = [...$<HTMLSelectElement>('#wizard-members-add').options].map(option => option.value)
     expect(options).toEqual(['', 'releases'])
     expect($('#wizard-quota'), 'a group has no storage').toBeNull()
   })
@@ -797,7 +817,7 @@ describe('type step', () => {
     await next()
     await pick('#wizard-team', 'developers')
 
-    const roles = [...$('#wizard-role').options].map(option => option.value)
+    const roles = [...$<HTMLSelectElement>('#wizard-role').options].map(option => option.value)
     expect(roles).toEqual(['READ', 'ADMIN'])
   })
 

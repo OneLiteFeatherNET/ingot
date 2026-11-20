@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, nextTick, reactive, ref, shallowRef, unref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
@@ -64,6 +64,8 @@ import {
   typeLabelOf,
   validateStep
 } from './repositoryWizard'
+import type { ProgressEntry, WizardPorts } from './repositoryWizard'
+import type { MirrorEntry } from './groupMembers'
 
 /*
  * The guided way to a new Maven repository: a type, the basics, the part that depends on the type
@@ -79,14 +81,15 @@ import {
  * when the user presses Done, so the secret is not lost to a redirect.
  */
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+}>(), {
+  modelValue: false
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [open: boolean]
+}>()
 
 const configuration = inject(configurationStoreKey, null) ?? useConfiguration().store
 const { client } = useSession()
@@ -101,12 +104,12 @@ const stepIndex = ref(0)
 // Errors are shown only after the user has tried to leave a step, so a fresh step does not start red.
 const attempted = ref(false)
 // Set when Create runs for the first time. Its actions keep their state across retries.
-const plan = shallowRef(null)
-const progress = reactive({})
+const plan = shallowRef<(ReturnType<typeof buildActions> & { mode: string }) | null>(null)
+const progress = reactive<Record<string, ProgressEntry>>({})
 const running = ref(false)
 const succeeded = ref(false)
 const copied = ref('')
-const heading = ref(null)
+const heading = ref<HTMLElement | null>(null)
 // The step title takes the focus when the wizard is drawn open, so Escape reaches the dialog and the step is announced.
 // The title element is mounted with the dialog, so this runs once per opening, after the element is in the document.
 watch(heading, (element) => {
@@ -126,26 +129,32 @@ const optional = computed(() => optionalFieldsOf(itemSchema.value))
 const storageVariants = computed(() => storageVariantsOf(itemSchema.value))
 const storageFields = computed(() => pluginFieldsOf(itemSchema.value, draft.storage.kind))
 const entryOptions = computed(() => ({ optional: optional.value, storageVariants: storageVariants.value }))
-const existingIds = computed(() => (configuration.configurations.value.maven?.repositories ?? []).map(idText))
+// Boundary cast: the repositories are loose JSON in the configuration; idText reads the id of any entry.
+const existingIds = computed(() => ((configuration.configurations.value.maven?.repositories ?? []) as unknown[]).map(idText))
 // The teams and the principals the access step offers and checks names against. Loaded when the step opens.
-const teams = ref([])
-const principals = ref([])
+const teams = ref<{ name: string }[]>([])
+const principals = ref<{ name: string }[]>([])
 const accessLoadError = ref('')
 const context = computed(() => ({ existingIds: existingIds.value, teams: teams.value, principals: principals.value, storageVariants: storageVariants.value }))
 const stepErrors = computed(() => validateStep(stepKey.value, draft, context.value))
 const shownErrors = computed(() => (attempted.value ? stepErrors.value : {}))
 // The messages of the refused step, listed in the error summary that takes the focus when a step is refused.
-const errorSummary = ref(null)
+const errorSummary = ref<HTMLElement | null>(null)
 const errorList = computed(() => Object.values(shownErrors.value).filter(message => typeof message === 'string' && message !== ''))
 const summary = computed(() => summaryRows(draft, entryOptions.value))
 const addRemote = () => draft.upstream.remotes.push(emptyRemote())
-const removeRemote = (index) => draft.upstream.remotes.splice(index, 1)
+const removeRemote = (index: number) => draft.upstream.remotes.splice(index, 1)
+// The hint of a remote address. It is bound rather than written in the template: the type check of a component's
+// attributes reads the "//" of an address in a plain attribute as the start of a comment, and loses the rest of the template.
+const REMOTE_URL_HINT = 'An http or https address, such as https://repo.example.net/maven.'
+// The members picker hands back the entries it was given, so each reference is the id of a repository.
+const memberIds = (items: MirrorEntry[]) => items.map(item => item.reference as string)
 const teamOptions = computed(() => [
   { value: '', label: 'Choose a team' },
   ...teams.value.map(team => ({ value: team.name, label: team.name }))
 ])
 // The labels of the actions the review shows before anything runs. The ports are never called for it.
-const planLabels = computed(() => buildActions(draft, entryOptions.value, {}).actions.map(action => action.label))
+const planLabels = computed(() => buildActions(draft, entryOptions.value, {} as WizardPorts).actions.map(action => action.label))
 const unsavedNote = computed(() => {
   const titles = unref(configuration.dirtyDomains).map(domain => configuration.titleOf(domain))
   return titles.length > 0 ? `There are unsaved changes in ${titles.join(', ')}. Creating the repository saves them too.` : ''
@@ -153,7 +162,7 @@ const unsavedNote = computed(() => {
 const dismissable = computed(() => !running.value && !succeeded.value)
 
 // The only place the stores and the identity client are touched. Each one throws on failure, which the runner reports per step.
-const ports = {
+const ports: WizardPorts = {
   addEntry: (entry) => configuration.addEntry('maven', 'repositories', entry),
   saveSettings: async () => {
     const invalid = unref(configuration.invalidDomains)
@@ -248,14 +257,17 @@ const create = async () => {
   if (ok) focusHeading()
 }
 
-const stateText = (key) => ({
-  pending: 'Waiting',
-  running: 'Working',
-  done: 'Done',
-  failed: 'Failed'
-})[progress[key]?.state] ?? ''
+const stateText = (key: string) => {
+  const state = progress[key]?.state
+  return state === undefined ? '' : {
+    pending: 'Waiting',
+    running: 'Working',
+    done: 'Done',
+    failed: 'Failed'
+  }[state]
+}
 
-const failureFor = (key) => failureNote(key)
+const failureFor = (key: string) => failureNote(key)
 const created = computed(() => (plan.value ? createdSoFar(plan.value.actions, progress) : []))
 
 const snippets = computed(() => {
@@ -268,14 +280,16 @@ const snippets = computed(() => {
   })
 })
 
+type Snippets = ReturnType<typeof snippetsFor>
+
 const SNIPPET_TITLES = [
-  { key: 'maven-settings', label: 'Maven settings.xml, server entry', text: (snippet) => snippet.maven.settings },
-  { key: 'maven-distribution', label: 'Maven pom.xml, distributionManagement', text: (snippet) => snippet.maven.distributionManagement },
-  { key: 'gradle', label: 'Gradle (Kotlin DSL), publishing', text: (snippet) => snippet.gradle },
-  { key: 'environment', label: 'Environment variables', text: (snippet) => snippet.environment }
+  { key: 'maven-settings', label: 'Maven settings.xml, server entry', text: (snippet: Snippets) => snippet.maven.settings },
+  { key: 'maven-distribution', label: 'Maven pom.xml, distributionManagement', text: (snippet: Snippets) => snippet.maven.distributionManagement },
+  { key: 'gradle', label: 'Gradle (Kotlin DSL), publishing', text: (snippet: Snippets) => snippet.gradle },
+  { key: 'environment', label: 'Environment variables', text: (snippet: Snippets) => snippet.environment }
 ]
 
-const copyText = async (key, text) => {
+const copyText = async (key: string, text: string) => {
   if (await copyToClipboard(text, globalThis.navigator?.clipboard)) copied.value = key
 }
 
@@ -285,7 +299,7 @@ const copyText = async (key, text) => {
  */
 const discardUnsavedEntry = () => {
   if (!plan.value || progress.settings?.state === 'done') return
-  const entries = configuration.configurations.value.maven?.repositories ?? []
+  const entries = (configuration.configurations.value.maven?.repositories ?? []) as { id?: unknown }[]
   const index = entries.findIndex(entry => entry.id === draft.basics.id)
   if (index >= 0) configuration.removeEntry('maven', 'repositories', index)
 }
@@ -303,7 +317,7 @@ const done = () => {
   router.push({ name: 'settings-repository', params: { id } })
 }
 
-const onModalUpdate = (open) => {
+const onModalUpdate = (open: boolean) => {
   if (!open) cancel()
 }
 </script>
@@ -584,7 +598,7 @@ const onModalUpdate = (open) => {
                 variant="outlined"
                 autocomplete="off"
                 inputmode="url"
-                supporting-text="An http or https address, such as https://repo.example.net/maven."
+                :supporting-text="REMOTE_URL_HINT"
                 :error="Boolean(shownErrors[`remote${index}`])"
                 :error-text="shownErrors[`remote${index}`] ?? ''"
                 @update:model-value="remote.url = $event"
@@ -673,7 +687,7 @@ const onModalUpdate = (open) => {
             />
             <MdTextField
               id="wizard-metadata-max-age"
-              :model-value="draft.upstream.metadataMaxAge"
+              :model-value="String(draft.upstream.metadataMaxAge)"
               label="Metadata max age, in seconds"
               variant="outlined"
               autocomplete="off"
@@ -685,7 +699,7 @@ const onModalUpdate = (open) => {
             />
             <MdTextField
               id="wizard-resolution-cache"
-              :model-value="draft.upstream.resolutionCacheMaxEntries"
+              :model-value="String(draft.upstream.resolutionCacheMaxEntries)"
               label="Resolution cache entries"
               variant="outlined"
               autocomplete="off"
@@ -711,7 +725,7 @@ const onModalUpdate = (open) => {
             :model-value="draft.members.map(id => ({ reference: id }))"
             :candidates="existingIds"
             :error="shownErrors.members ?? ''"
-            @update:model-value="draft.members = $event.map(item => item.reference)"
+            @update:model-value="draft.members = memberIds($event)"
           />
         </div>
 
@@ -964,7 +978,7 @@ const onModalUpdate = (open) => {
 
           <!-- Success: the one-time secret, and the snippets that use the repository -->
           <div
-            v-else
+            v-else-if="plan"
             class="flex flex-col gap-6"
             role="status"
           >
@@ -1035,7 +1049,7 @@ const onModalUpdate = (open) => {
             </section>
 
             <section
-              v-else
+              v-else-if="snippets"
               aria-labelledby="wizard-snippets-title"
               class="flex flex-col gap-4"
             >
