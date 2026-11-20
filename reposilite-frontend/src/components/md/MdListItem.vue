@@ -28,10 +28,12 @@ const props = withDefaults(defineProps<{
   to?: RouteLocationRaw
   button?: boolean
   selected?: boolean
+  lines?: 1 | 2
 }>(), {
   to: undefined,
   button: false,
-  selected: false
+  selected: false,
+  lines: 2
 })
 
 const emit = defineEmits<{
@@ -53,6 +55,10 @@ interface ListSettings {
 const list = inject<ListSettings | undefined>('md-list', undefined)
 
 const isOption = computed(() => Boolean(list?.selectable))
+
+// A two-line row is at least 56 pixels high, a one-line row at least 48 pixels (design D3).
+const ROW_HEIGHT = { 1: 'min-h-12', 2: 'min-h-14' } as const
+const rowHeight = computed(() => ROW_HEIGHT[props.lines])
 
 // Each class is written out in full, so the compiler finds it in the source.
 const RULE_START = { 16: 'start-md-inset-16', 72: 'start-md-inset-72' } as Record<string, string>
@@ -83,6 +89,7 @@ const select = (event?: Event) => {
     :role="isOption ? 'option' : undefined"
     :aria-selected="isOption ? (selected ? 'true' : 'false') : undefined"
     :tabindex="isOption ? 0 : undefined"
+    :aria-current="selected ? 'true' : undefined"
     :class="[
       'group relative',
       isOption && selected ? 'bg-secondary-container text-on-secondary-container' : ''
@@ -95,7 +102,8 @@ const select = (event?: Event) => {
     <component
       :is="contentTag"
       v-bind="contentAttrs"
-      class="md-state-layer md-focus-ring md-touch-target relative flex min-h-14 w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large"
+      data-test="list-item-row"
+      :class="['md-state-layer md-focus-ring md-touch-target relative flex w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large', rowHeight]"
     >
       <span
         v-if="$slots.leading"
