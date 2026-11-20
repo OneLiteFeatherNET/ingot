@@ -223,3 +223,17 @@ describe('motion transitions and the one reduced motion rule', () => {
     }
   })
 })
+
+describe('inverse corners of the content sheet', () => {
+  // The sticky corner pieces paint the frame over the sheet's own corner while the page scrolls, so they repaint the
+  // sheet's 1 pixel outline edge on their arc too. Without it the edge would break off at the top bar.
+  for (const piece of ['pane-corner-start', 'pane-corner-end']) {
+    it(`draws the 1 pixel outline edge on the arc of ${piece}`, () => {
+      const block = blockAt(stylesheet, stylesheet.indexOf(`@utility ${piece} {`))
+
+      expect(block, `the outline role in ${piece}`).toContain('var(--md-sys-color-outline)')
+      expect(block, `the edge starts 1 pixel inside the arc of ${piece}`)
+        .toContain('calc(var(--md-sys-shape-corner-extra-large) - 1px)')
+    })
+  }
+})

@@ -199,7 +199,8 @@
  * The inverse corners that finish the content sheet where it meets the navigation frame (see IndexPage.vue). Each piece
  * is a square of the corner radius with a circle of the page colour cut out of it, so the frame shows in the corner
  * outside the arc. The circle's centre is the corner of the square that touches the sheet. The piece takes the frame
- * colour from the role, so the runtime theme and dark mode follow without a change here. pane-corner-start is the piece
+ * colour from the role, so the runtime theme and dark mode follow without a change here. The last pixel inside the arc
+ * is the outline role, so the sheet's 1 pixel edge runs on through the corner. pane-corner-start is the piece
  * on the left edge of the sheet and pane-corner-end the one on the right.
  */
 @utility pane-corner {
@@ -213,7 +214,9 @@
   left: 0;
   background: radial-gradient(
     circle at 100% 100%,
-    transparent var(--md-sys-shape-corner-extra-large),
+    transparent calc(var(--md-sys-shape-corner-extra-large) - 1px),
+    var(--md-sys-color-outline) calc(var(--md-sys-shape-corner-extra-large) - 1px),
+    var(--md-sys-color-outline) var(--md-sys-shape-corner-extra-large),
     var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
   );
 }
@@ -222,7 +225,9 @@
   right: 0;
   background: radial-gradient(
     circle at 0 100%,
-    transparent var(--md-sys-shape-corner-extra-large),
+    transparent calc(var(--md-sys-shape-corner-extra-large) - 1px),
+    var(--md-sys-color-outline) calc(var(--md-sys-shape-corner-extra-large) - 1px),
+    var(--md-sys-color-outline) var(--md-sys-shape-corner-extra-large),
     var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
   );
 }
