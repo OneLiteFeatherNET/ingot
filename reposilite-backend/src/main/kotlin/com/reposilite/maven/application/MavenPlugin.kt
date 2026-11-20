@@ -43,6 +43,7 @@ import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.shared.http.ConfiguredHttpRemoteClientProvider
 import com.reposilite.shared.http.UpstreamStatusMode
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.format.ExtensionsFormatContext
 import net.onelitefeather.ingot.format.RepositoryFormats
@@ -102,7 +103,7 @@ internal class MavenPlugin : ReposilitePlugin() {
         extensions().registerFacade(repositoryRouteDispatcher)
 
         // Plugins ask the viewer access decisions of the routes through this facade; it changes no route.
-        extensions().registerFacade(ViewerAccessFacadeImpl(mavenFacade))
+        extensions().registerFacade(ViewerAccessFacadeImpl(mavenFacade, facade<AccessTokenFacade>()))
 
         logger.info("")
         logger.info("--- Repositories")
