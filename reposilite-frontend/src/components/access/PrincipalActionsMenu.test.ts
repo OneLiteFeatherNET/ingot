@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
+import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import type { PrincipalSummary } from './accessPrincipals'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 
@@ -36,9 +37,11 @@ const rejection = (status: number, message: string | undefined) =>
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper.
 const menu = (): HTMLElement => document.querySelector<HTMLElement>('[role="menu"]')!
-const item = (test: string): HTMLElement => document.querySelector<HTMLElement>(`[role="menu"] [data-test="${test}"]`)!
-const clickItem = async (test: string) => {
-  item(test).click()
+// The items are read by their visible name, the name a person sees and a screen reader announces.
+const item = (label: string): HTMLElement =>
+  [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find(node => node.textContent?.trim() === label)!
+const clickItem = async (label: string) => {
+  item(label).click()
   await flushPromises()
 }
 
@@ -57,6 +60,8 @@ const typeInDialog = async (value: string) => {
 
 describe('PrincipalActionsMenu', () => {
   let wrapper: VueWrapper
+  // The trigger is the first button of the component, the button of the actions menu.
+  const trigger = (): HTMLElement => wrapper.find('button').element as HTMLElement
   let api: Record<'get' | 'update' | 'setPassword' | 'grantInstanceAdmin' | 'revokeInstanceAdmin' | 'remove', Mock>
 
   const mountMenu = async (props: { principal?: Principal; instanceAdmin?: boolean } = {}) => {
@@ -64,10 +69,10 @@ describe('PrincipalActionsMenu', () => {
     await flushPromises()
   }
 
-  const chooseItem = async (test: string) => {
-    await wrapper.find('[data-test="actions"]').trigger('click')
+  const chooseItem = async (label: string) => {
+    await wrapper.find('button').trigger('click')
     await flushPromises()
-    await clickItem(test)
+    await clickItem(label)
   }
 
   beforeEach(() => {
@@ -93,7 +98,7 @@ describe('PrincipalActionsMenu', () => {
     it('tells its row when the menu opens', async () => {
       await mountMenu()
 
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       expect(wrapper.emitted('toggle')?.at(-1), 'the row needs to know to rise above the next one').toEqual([true])
     })
@@ -101,14 +106,14 @@ describe('PrincipalActionsMenu', () => {
     it('tells its row when the menu closes after an item was chosen', async () => {
       await mountMenu()
 
-      await chooseItem('reset-password')
+      await chooseItem('Reset password')
 
       expect(wrapper.emitted('toggle')?.at(-1)).toEqual([false])
     })
 
     it('tells its row when Escape closes the menu', async () => {
       await mountMenu()
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       menu().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
       await flushPromises()
@@ -119,7 +124,7 @@ describe('PrincipalActionsMenu', () => {
 
   describe('placement', () => {
     const openMenu = async () => {
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
       await flushPromises()
     }
 
@@ -141,8 +146,8 @@ describe('PrincipalActionsMenu', () => {
 
     it('positions the menu from the trigger with fixed positioning', async () => {
       await mountMenu()
-      const trigger = wrapper.find('[data-test="actions"]').element
-      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 140, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
+      const button = trigger()
+      vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 140, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
 
       await openMenu()
 
@@ -153,8 +158,8 @@ describe('PrincipalActionsMenu', () => {
 
     it('opens upwards when there is no room below the trigger', async () => {
       await mountMenu()
-      const trigger = wrapper.find('[data-test="actions"]').element
-      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
+      const button = trigger()
+      vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 } as DOMRect)
       vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(768)
       const original = Element.prototype.getBoundingClientRect
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
@@ -172,7 +177,7 @@ describe('PrincipalActionsMenu', () => {
 
   describe('keyboard and pointer', () => {
     const openMenu = async () => {
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
       await flushPromises()
     }
 
@@ -188,11 +193,11 @@ describe('PrincipalActionsMenu', () => {
       await mountMenu()
       await openMenu()
 
-      item('delete').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      item('Delete').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
       await flushPromises()
 
       expect(menu(), 'Escape closes the menu').toBeNull()
-      expect(document.activeElement, 'the focus goes back to where the user came from').toBe(wrapper.find('[data-test="actions"]').element)
+      expect(document.activeElement, 'the focus goes back to where the user came from').toBe(trigger())
     })
 
     it('closes on a click outside of the menu', async () => {
@@ -219,13 +224,13 @@ describe('PrincipalActionsMenu', () => {
 
   describe('scrolling and resizing', () => {
     const openMenu = async () => {
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
       await flushPromises()
     }
     // The trigger's rect is a fixed box, so a test can move it the way a scroll does.
     const moveTrigger = (top: number) => {
       const rect = { top, bottom: top + 40, left: 260, right: 300, width: 40, height: 40 }
-      wrapper.find('[data-test="actions"]').element.getBoundingClientRect = () => rect as DOMRect
+      trigger().getBoundingClientRect = () => rect as DOMRect
     }
     const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
@@ -290,7 +295,7 @@ describe('PrincipalActionsMenu', () => {
   describe('menu items', () => {
     it('offers every action for a user', async () => {
       await mountMenu()
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       await flushPromises()
 
@@ -299,25 +304,25 @@ describe('PrincipalActionsMenu', () => {
 
     it('offers Enable for a disabled principal', async () => {
       await mountMenu({ principal: { ...ALICE, disabled: true } })
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       await flushPromises()
 
-      expect(item('toggle-disabled').textContent?.trim()).toBe('Enable')
+      expect(texts()).toContain('Enable')
     })
 
     it('offers Remove instance admin for an instance admin', async () => {
       await mountMenu({ instanceAdmin: true })
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       await flushPromises()
 
-      expect(item('toggle-admin').textContent?.trim()).toBe('Remove instance admin')
+      expect(texts()).toContain('Remove instance admin')
     })
 
     it('offers a machine account neither a password nor the admin role', async () => {
       await mountMenu({ principal: { name: 'ci-bot', kind: 'MACHINE', disabled: false } })
-      await wrapper.find('[data-test="actions"]').trigger('click')
+      await wrapper.find('button').trigger('click')
 
       await flushPromises()
 
@@ -325,11 +330,41 @@ describe('PrincipalActionsMenu', () => {
     })
   })
 
+  describe('shared overflow menu', () => {
+    it('draws the actions with the shared overflow menu', async () => {
+      await mountMenu()
+
+      expect(wrapper.findComponent(MdOverflowMenu).exists(), 'the actions are the shared menu of the md primitives').toBe(true)
+    })
+
+    it('disables the change item while the change is still running', async () => {
+      api.update.mockReturnValue(new Promise(() => {}))
+      await mountMenu()
+      await chooseItem('Disable')
+
+      await trigger().click()
+      await flushPromises()
+
+      expect(item('Disable').getAttribute('aria-disabled'), 'the item is announced as disabled until the answer comes').toBe('true')
+    })
+
+    it('draws the destructive item in the error role and keeps its focus ring', async () => {
+      await mountMenu()
+      await trigger().click()
+      await flushPromises()
+
+      const classes = item('Delete').className
+      expect(classes, 'the item uses the error role').toContain('text-error')
+      expect(classes, 'the item keeps the focus ring of the menu').toContain('md-focus-ring')
+      expect(classes, 'no important modifier overrides the focus ring').not.toContain('!text-error')
+    })
+  })
+
   describe('disable and enable', () => {
     it('reads the principal again and sends the fresh entity tag as If-Match when disabling', async () => {
       await mountMenu()
 
-      await chooseItem('toggle-disabled')
+      await chooseItem('Disable')
 
       expect(api.get).toHaveBeenCalledWith('alice')
       expect(api.update).toHaveBeenCalledWith('alice', { disabled: true }, '"7"')
@@ -341,7 +376,7 @@ describe('PrincipalActionsMenu', () => {
       api.get.mockResolvedValue({ data: { ...ALICE, disabled: true }, headers: { etag: '"9"' } })
       await mountMenu({ principal: { ...ALICE, disabled: true } })
 
-      await chooseItem('toggle-disabled')
+      await chooseItem('Enable')
 
       expect(api.update).toHaveBeenCalledWith('alice', { disabled: false }, '"9"')
     })
@@ -349,7 +384,7 @@ describe('PrincipalActionsMenu', () => {
     it('reports the changed principal', async () => {
       await mountMenu()
 
-      await chooseItem('toggle-disabled')
+      await chooseItem('Disable')
 
       expect(wrapper.emitted('changed')![0][0]).toMatchObject({ name: 'alice', disabled: true })
     })
@@ -358,7 +393,7 @@ describe('PrincipalActionsMenu', () => {
       api.update.mockRejectedValue(rejection(409, 'The last instance admin cannot be disabled.'))
       await mountMenu()
 
-      await chooseItem('toggle-disabled')
+      await chooseItem('Disable')
 
       expect(createErrorToast).toHaveBeenCalledWith('The last instance admin cannot be disabled.')
       expect(wrapper.emitted('changed')).toBeUndefined()
@@ -368,7 +403,7 @@ describe('PrincipalActionsMenu', () => {
       api.update.mockRejectedValue(rejection(412, 'Precondition failed'))
       await mountMenu()
 
-      await chooseItem('toggle-disabled')
+      await chooseItem('Disable')
 
       expect(createErrorToast).toHaveBeenCalledWith(expect.stringContaining('changed in the meantime'))
       expect(wrapper.emitted('changed')![0], 'the caller reads the principal again').toEqual([])
@@ -379,7 +414,7 @@ describe('PrincipalActionsMenu', () => {
     it('asks first and sends nothing until it is confirmed', async () => {
       await mountMenu()
 
-      await chooseItem('toggle-admin')
+      await chooseItem('Make instance admin')
 
       expect(dialog().textContent).toContain('Make instance admin')
       expect(api.grantInstanceAdmin).not.toHaveBeenCalled()
@@ -387,7 +422,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('grants the role with exactly one PUT call after the confirmation', async () => {
       await mountMenu()
-      await chooseItem('toggle-admin')
+      await chooseItem('Make instance admin')
 
       dialogButton('Make instance admin').click()
       await flushPromises()
@@ -399,7 +434,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('revokes the role with exactly one DELETE call after the confirmation', async () => {
       await mountMenu({ instanceAdmin: true })
-      await chooseItem('toggle-admin')
+      await chooseItem('Remove instance admin')
 
       dialogButton('Remove instance admin').click()
       await flushPromises()
@@ -411,7 +446,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('sends nothing when the confirmation is cancelled', async () => {
       await mountMenu()
-      await chooseItem('toggle-admin')
+      await chooseItem('Make instance admin')
 
       dialogButton('Cancel').click()
       await flushPromises()
@@ -422,7 +457,7 @@ describe('PrincipalActionsMenu', () => {
     it('shows the server message for the last instance admin inside the dialog', async () => {
       api.revokeInstanceAdmin.mockRejectedValue(rejection(409, 'The last instance admin cannot be demoted.'))
       await mountMenu({ instanceAdmin: true })
-      await chooseItem('toggle-admin')
+      await chooseItem('Remove instance admin')
 
       dialogButton('Remove instance admin').click()
       await flushPromises()
@@ -437,7 +472,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('names the username in the dialog text, not the display name', async () => {
       await mountMenu({ principal: SWAPPED })
-      await chooseItem('delete')
+      await chooseItem('Delete')
 
       expect(dialog().textContent, 'the text names the username that has to be typed').toContain('sdsdfsdf and their tokens are deleted')
       expect(dialog().textContent, 'the display name is not the name of the user here').not.toContain('sdfsdfsdf and their tokens')
@@ -445,7 +480,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('enables the delete button for the username when the display name differs', async () => {
       await mountMenu({ principal: SWAPPED })
-      await chooseItem('delete')
+      await chooseItem('Delete')
 
       await typeInDialog('sdfsdfsdf')
       expect(dialogButton('Delete').disabled, 'the display name does not unlock the deletion').toBe(true)
@@ -455,7 +490,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('keeps the delete button disabled until the username is typed', async () => {
       await mountMenu()
-      await chooseItem('delete')
+      await chooseItem('Delete')
 
       expect(dialogButton('Delete').disabled).toBe(true)
       await typeInDialog('alic')
@@ -466,7 +501,7 @@ describe('PrincipalActionsMenu', () => {
 
     it('deletes by name once the username is typed and reports it', async () => {
       await mountMenu()
-      await chooseItem('delete')
+      await chooseItem('Delete')
       await typeInDialog('alice')
 
       dialogButton('Delete').click()
@@ -479,7 +514,7 @@ describe('PrincipalActionsMenu', () => {
     it('shows the server message for the last instance admin inside the dialog', async () => {
       api.remove.mockRejectedValue(rejection(409, 'The last instance admin cannot be deleted.'))
       await mountMenu()
-      await chooseItem('delete')
+      await chooseItem('Delete')
       await typeInDialog('alice')
 
       dialogButton('Delete').click()
@@ -494,7 +529,7 @@ describe('PrincipalActionsMenu', () => {
     it('opens the dialog for the user', async () => {
       await mountMenu()
 
-      await chooseItem('reset-password')
+      await chooseItem('Reset password')
 
       expect(dialog().textContent).toContain('Reset password')
       expect(dialog().textContent).toContain('alice')
