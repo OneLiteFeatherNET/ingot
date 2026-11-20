@@ -107,6 +107,11 @@ const mountPanel = async () => {
   return wrapper
 }
 
+// The shared cards of the panel that carry the given data attribute, and the props of a shared component as a record.
+const cardsWith = (attribute: string) => (wrapper.findAllComponents({ name: 'MdCard' }) as VueWrapper[])
+  .filter(card => card.attributes(attribute) !== undefined)
+const propsOf = (component: VueWrapper) => component.props() as Record<string, unknown>
+
 const buttonNamed = (text: string) => wrapper.findAll('button').find(button => button.text() === text)!
 const dialogButton = (id: string) => document.getElementById(id) as HTMLElement
 
@@ -202,6 +207,29 @@ describe('IndexPanel status', () => {
   })
 })
 
+describe('IndexPanel section', () => {
+  it('titles the card with a level 3 MdSection that keeps the heading id of the panel', async () => {
+    await mountPanel()
+
+    const section = wrapper.findComponent({ name: 'MdSection' }) as VueWrapper
+    const heading = wrapper.get('#search-index-title')
+
+    expect(section.exists(), 'the card holds the shared section').toBe(true)
+    expect(propsOf(section).level,'the panel sits inside the page, so its section is level 3').toBe(3)
+    expect(heading.element.tagName, 'the title is a level 3 heading').toBe('H3')
+    expect(heading.classes(), 'a level 3 title takes the title-small role').toContain('md-title-small')
+  })
+
+  it('puts the rebuild and verify actions in the section header', async () => {
+    await mountPanel()
+
+    const header = wrapper.get('[data-test="section-header"]')
+
+    expect(header.text(), 'the rebuild action sits beside the title').toContain('Rebuild index')
+    expect(header.text(), 'the verify action sits beside the title').toContain('Verify sample')
+  })
+})
+
 describe('IndexPanel active run', () => {
   it('shows each repository of a running rebuild as done, current or pending', async () => {
     session.client = fakeClient({
@@ -232,6 +260,16 @@ describe('IndexPanel active run', () => {
 
     expect(live.classes(), 'a block nested in a card is surface-container').toContain('bg-surface-container')
     expect(live.classes(), 'not the role of its card').not.toContain('bg-surface-container-low')
+  })
+
+  it('draws the live run as a shared card on the container tone', async () => {
+    session.client = fakeClient({ searchIndex: vi.fn(() => Promise.resolve({ data: indexBody({ activeRun: run() }) })) })
+    await mountPanel()
+
+    const live = cardsWith('data-live-run')[0]
+
+    expect(live, 'the live run is an MdCard').toBeDefined()
+    expect(live && propsOf(live).tone,'the live run steps one surface role above its card').toBe('container')
   })
 
   it('cancels the live run by its id', async () => {
@@ -386,6 +424,15 @@ describe('IndexPanel latest runs', () => {
       expect(card.classes(), `${card.attributes('data-latest-run')} is surface-container`).toContain('bg-surface-container')
       expect(card.classes(), `${card.attributes('data-latest-run')} is not the role of its card`).not.toContain('bg-surface-container-low')
     }
+  })
+
+  it('draws each latest run as a shared card list item', async () => {
+    await mountPanel()
+
+    const cards = cardsWith('data-latest-run')
+
+    expect(cards.map(card => (card.element as HTMLElement).tagName), 'one list item card per kind').toEqual(['LI', 'LI'])
+    expect(cards.map(card => propsOf(card).tone),'each latest run steps one surface role above its card').toEqual(['container', 'container'])
   })
 
   it('draws no list of index runs', async () => {
