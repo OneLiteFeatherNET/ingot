@@ -19,6 +19,8 @@ import { onMounted, ref } from 'vue'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
+import MdSection from '../md/MdSection.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import CreateTokenDialog from './CreateTokenDialog.vue'
 import RevokeTokenDialog from './RevokeTokenDialog.vue'
@@ -142,167 +144,161 @@ const lastUsedText = (token: IdentityToken) => {
 
 <template>
   <section
-    class="overflow-hidden rounded-corner-large border border-outline bg-surface-container-low"
     aria-labelledby="token-list-title"
     data-ingot-component="token-list"
   >
-    <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
-      <div class="flex min-w-0 flex-col gap-1">
-        <h3
-          id="token-list-title"
-          class="md-title-large text-on-surface"
-        >
-          {{ title }}
-        </h3>
-        <p class="md-body-medium text-on-surface-variant">
-          {{ description }}
-        </p>
-      </div>
-      <MdButton
-        variant="tonal"
-        @click="createOpen = true"
+    <MdCard>
+      <MdSection
+        :title="title"
+        :description="description"
+        :level="3"
+        heading-id="token-list-title"
       >
-        Create token
-      </MdButton>
-    </div>
-
-    <div
-      v-if="loadError"
-      class="border-t border-outline-variant px-4 py-3"
-    >
-      <MdAlert
-        tone="error"
-        data-ingot-state="error"
-      >
-        Could not load the tokens: {{ loadError }}
-        <template #action>
+        <template #actions>
           <MdButton
-            variant="text"
-            @click="load()"
+            variant="tonal"
+            @click="createOpen = true"
           >
-            Retry
+            Create token
           </MdButton>
         </template>
-      </MdAlert>
-    </div>
 
-    <div
-      v-else-if="loaded && tokens.length === 0"
-      class="flex flex-col items-center gap-4 border-t border-outline-variant px-4 py-12 text-center"
-    >
-      <p class="md-body-large text-on-surface-variant">
-        {{ emptyText }}
-      </p>
-      <MdButton
-        variant="tonal"
-        @click="createOpen = true"
-      >
-        Create your first token
-      </MdButton>
-    </div>
-
-    <p
-      v-else-if="!loaded"
-      class="border-t border-outline-variant px-4 py-6 md-body-medium text-on-surface-variant"
-      role="status"
-    >
-      Loading tokens...
-    </p>
-
-    <ul
-      v-else
-      class="m-0 list-none divide-y divide-outline-variant border-t border-outline-variant p-0"
-    >
-      <li
-        v-for="token in tokens"
-        :key="token.name"
-        data-test="token-row"
-        class="flex flex-col gap-3 px-4 py-4 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between"
-      >
-        <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <div class="flex min-w-0 flex-col">
-            <span class="md-title-medium break-words text-on-surface">{{ token.name }}</span>
-            <span
-              v-if="token.description"
-              class="md-body-medium break-words text-on-surface-variant"
-            >
-              {{ token.description }}
-            </span>
-          </div>
-          <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
-            <div class="contents min-[480px]:flex min-[480px]:flex-col">
-              <dt>Created</dt>
-              <dd class="m-0 text-on-surface">
-                {{ createdDay(token) }}
-              </dd>
-            </div>
-            <div class="contents min-[480px]:flex min-[480px]:flex-col">
-              <dt>Expires</dt>
-              <dd class="m-0 text-on-surface">
-                {{ token.expiresAt ? expiryDay(token) : 'Never' }}
-              </dd>
-            </div>
-            <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
-              <dt>Last used</dt>
-              <dd
-                class="m-0 min-w-0 text-on-surface"
-                data-test="last-used"
-                :title="lastUsedTitle(token)"
+        <div v-if="loadError">
+          <MdAlert
+            tone="error"
+            data-ingot-state="error"
+          >
+            Could not load the tokens: {{ loadError }}
+            <template #action>
+              <MdButton
+                variant="text"
+                @click="load()"
               >
-                {{ lastUsedText(token) }}
-                <span
-                  v-if="token.lastUsedAt && token.lastUsedIp"
-                  class="flex min-w-0 items-baseline gap-1 text-on-surface-variant"
-                  data-test="last-used-ip"
-                >
-                  <span class="shrink-0">from</span>
-                  <span
-                    class="min-w-0 truncate font-mono"
-                    data-test="last-used-address"
-                    :title="token.lastUsedIp"
-                  >{{ token.lastUsedIp }}</span>
-                </span>
-              </dd>
-            </div>
-          </dl>
-          <div class="flex flex-wrap items-center gap-2">
-            <template v-if="scopeText(token)">
-              <TokenTag
-                v-for="scope in scopeText(token)"
-                :key="scope"
-                data-test="scope"
-              >
-                {{ scope }}
-              </TokenTag>
+                Retry
+              </MdButton>
             </template>
-            <span
-              v-else
-              class="md-body-small text-on-surface-variant"
-            >
-              All rights of your teams
-            </span>
-          </div>
+          </MdAlert>
         </div>
-        <div class="flex shrink-0 gap-2">
+
+        <div
+          v-else-if="loaded && tokens.length === 0"
+          class="flex flex-col items-center gap-4 py-8 text-center"
+        >
+          <p class="md-body-large text-on-surface-variant">
+            {{ emptyText }}
+          </p>
           <MdButton
-            v-if="api.rotate"
-            variant="outlined"
-            :aria-label="`Rotate ${token.name}`"
-            @click="askRotate(token)"
+            variant="tonal"
+            @click="createOpen = true"
           >
-            Rotate
-          </MdButton>
-          <MdButton
-            variant="text"
-            error
-            :aria-label="`Revoke ${token.name}`"
-            @click="askRevoke(token)"
-          >
-            Revoke
+            Create your first token
           </MdButton>
         </div>
-      </li>
-    </ul>
+
+        <p
+          v-else-if="!loaded"
+          class="md-body-medium text-on-surface-variant"
+          role="status"
+        >
+          Loading tokens...
+        </p>
+
+        <ul
+          v-else
+          class="m-0 list-none divide-y divide-outline-variant p-0"
+        >
+          <li
+            v-for="token in tokens"
+            :key="token.name"
+            data-test="token-row"
+            class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between"
+          >
+            <div class="flex min-w-0 flex-1 flex-col gap-2">
+              <div class="flex min-w-0 flex-col">
+                <span class="md-title-medium break-words text-on-surface">{{ token.name }}</span>
+                <span
+                  v-if="token.description"
+                  class="md-body-medium break-words text-on-surface-variant"
+                >
+                  {{ token.description }}
+                </span>
+              </div>
+              <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
+                <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                  <dt>Created</dt>
+                  <dd class="m-0 text-on-surface">
+                    {{ createdDay(token) }}
+                  </dd>
+                </div>
+                <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                  <dt>Expires</dt>
+                  <dd class="m-0 text-on-surface">
+                    {{ token.expiresAt ? expiryDay(token) : 'Never' }}
+                  </dd>
+                </div>
+                <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
+                  <dt>Last used</dt>
+                  <dd
+                    class="m-0 min-w-0 text-on-surface"
+                    data-test="last-used"
+                    :title="lastUsedTitle(token)"
+                  >
+                    {{ lastUsedText(token) }}
+                    <span
+                      v-if="token.lastUsedAt && token.lastUsedIp"
+                      class="flex min-w-0 items-baseline gap-1 text-on-surface-variant"
+                      data-test="last-used-ip"
+                    >
+                      <span class="shrink-0">from</span>
+                      <span
+                        class="min-w-0 truncate font-mono"
+                        data-test="last-used-address"
+                        :title="token.lastUsedIp"
+                      >{{ token.lastUsedIp }}</span>
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+              <div class="flex flex-wrap items-center gap-2">
+                <template v-if="scopeText(token)">
+                  <TokenTag
+                    v-for="scope in scopeText(token)"
+                    :key="scope"
+                    data-test="scope"
+                  >
+                    {{ scope }}
+                  </TokenTag>
+                </template>
+                <span
+                  v-else
+                  class="md-body-small text-on-surface-variant"
+                >
+                  All rights of your teams
+                </span>
+              </div>
+            </div>
+            <div class="flex shrink-0 gap-2">
+              <MdButton
+                v-if="api.rotate"
+                variant="outlined"
+                :aria-label="`Rotate ${token.name}`"
+                @click="askRotate(token)"
+              >
+                Rotate
+              </MdButton>
+              <MdButton
+                variant="text"
+                error
+                :aria-label="`Revoke ${token.name}`"
+                @click="askRevoke(token)"
+              >
+                Revoke
+              </MdButton>
+            </div>
+          </li>
+        </ul>
+      </MdSection>
+    </MdCard>
 
     <CreateTokenDialog
       v-model="createOpen"
