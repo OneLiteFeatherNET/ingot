@@ -631,13 +631,15 @@ dependencies {
     testImplementation(javadocPluginClasses)
 }
 
-// The cleanup plugin, compiled classes and service file. The server runs from its classes directory in the integration tests, which
-// embeds no jar, so the test server loads the plugin from the class path instead, as the server jar loads its embedded copy.
+// The cleanup plugin, compiled classes, generated settings schema and api document fragment, and service file. The server runs from
+// its classes directory in the integration tests, which embeds no jar, so the test server loads the plugin from the class path
+// instead, as the server jar loads its embedded copy.
 val cleanupPlugin = project(":reposilite-plugins:cleanup-plugin")
 dependencies {
     "integrationImplementation"(
         files(
             cleanupPlugin.layout.buildDirectory.dir("classes/kotlin/main"),
+            cleanupPlugin.layout.buildDirectory.dir("tmp/kapt3/classes/main"),
             cleanupPlugin.layout.buildDirectory.dir("resources/main"),
         ).builtBy(":reposilite-plugins:cleanup-plugin:compileKotlin", ":reposilite-plugins:cleanup-plugin:processResources"),
     )

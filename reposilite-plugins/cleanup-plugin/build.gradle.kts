@@ -17,6 +17,10 @@ dependencies {
     testImplementation(testFixtures(project(":reposilite-backend")))
 }
 
+// The settings schema of CleanupSettings is generated at build time, as the server generates its own, and the api document
+// fragment goes to META-INF/ingot/openapi/cleanup.json. The processor indexes are left out, so the server's stay the only ones.
+ingot.plugin.PluginApiFragments.apply(project, "cleanup")
+
 tasks.withType<ShadowJar> {
     archiveFileName.set("cleanup-plugin.jar")
     mergeServiceFiles()
