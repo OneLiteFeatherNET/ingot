@@ -14,7 +14,7 @@
   - limitations under the License.
   -->
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
@@ -39,13 +39,16 @@ import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
 import { collectionsOf, entryAddresses, idText, validateNewId } from './collections'
+import type { CollectionEntry } from './collections'
 import { nestedUischemas } from './nestedLayouts'
 import { barClearance } from './barClearance'
 import { settingsByDomain } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
 import ConflictDialog from './ConflictDialog.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
-import { property } from '../../helpers/vue-extensions'
+import type { SettingsChange } from './settingsDiff'
+import type { SettingsLink } from './settingsHub'
+import type { JsonFormsChangeEvent } from '@jsonforms/vue'
 
 /*
  * The address decides what is shown. `settings` (/settings/:domain?) names the domain, and
@@ -55,24 +58,23 @@ import { property } from '../../helpers/vue-extensions'
  * previous selection. A new entry replaces the address, because the one just created is the place
  * to be. The domain on screen is reported with update:domain, and the page writes it to the address.
  */
-const props = defineProps({
-  selectedTab: property(String, true),
+const props = defineProps<{
+  selectedTab: string
   // The address: the domain on screen, and for an entry the collection and the entry in it.
-  domain: {
-    type: String,
-    default: undefined
-  },
-  collection: {
-    type: String,
-    default: undefined
-  },
-  entry: {
-    type: String,
-    default: undefined
-  }
-})
+  domain?: string
+  collection?: string
+  entry?: string
+}>()
 
-const emit = defineEmits(['update:domain'])
+const emit = defineEmits<{
+  'update:domain': [domain: string]
+}>()
+
+// One collection of a domain, as collectionsOf lists it, and its entries as the collection editor takes them.
+type Collection = ReturnType<typeof collectionsOf>[number]
+type EditorEntries = InstanceType<typeof CollectionEditor>['$props']['entries']
+// Boundary cast: a collection is loose JSON in the configuration, and the schema describes each entry as an object with an id.
+const asEntries = (value: unknown): EditorEntries => value as EditorEntries
 
 const { store: sharedStore, renderers, configurationStyles } = useConfiguration()
 const store = inject(configurationStoreKey, null) ?? sharedStore
@@ -121,12 +123,12 @@ const narrow = useMediaQuery('(max-width: 1239px)')
  * are the tabs of this page, and the repositories page is one of its links.
  */
 const session = useSession()
-const can = (node) => (typeof session.can === 'function' ? session.can(node) : true)
+const can = (node: string) => (typeof session.can === 'function' ? session.can(node) : true)
 const sideNav = sideNavOf('settings')
 // The hub is the one page of the section without an entry of the tree: its heading is the section, and this line says what it is.
 const HUB_DESCRIPTION = 'Shared configuration for all instances.'
 const navGroups = computed(() => adminGroups(can, {
-  domains: tabDomains.value,
+  domains: [...tabDomains.value],
   titleOf: (domain) => settingsLabelOf(domain) ?? store.titleOf(domain),
   descriptionOf: (domain) => store.schemas.value?.[domain]?.description ?? '',
 }))
@@ -139,10 +141,10 @@ const repositoriesRoute = computed(() => repositoriesPage.value || repositoryPag
 const entryPage = computed(() => props.collection !== undefined && props.entry !== undefined)
 // The name a detail page gives the entry at an address: its id, or "Unnamed" and the noun of its collection while it has
 // no usable id. The address itself when no entry has it.
-const nameOfEntry = (domain, collectionKey, address) => {
+const nameOfEntry = (domain: string, collectionKey: string, address: string): string => {
   if (!domain) return address
   const list = collectionsFor(domain).find(collection => collection.key === collectionKey)
-  const entries = configurations.value[domain]?.[collectionKey] ?? []
+  const entries = asEntries(configurations.value[domain]?.[collectionKey] ?? [])
   const entry = entries[entryAddresses(entries, store.entryKeysOf(domain, collectionKey)).indexOf(address)]
   if (!list || !entry) return address
   return idText(entry) || `Unnamed ${list.noun}`
@@ -152,7 +154,7 @@ const nameOfEntry = (domain, collectionKey, address) => {
 // The frame names the repository of its detail page, as the detail no longer repeats it in a heading.
 const detailTitle = computed(() => {
   if (repositoryPage.value) return nameOfEntry(activeDomain.value, 'repositories', String(route.params.id ?? ''))
-  return entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''
+  return props.collection !== undefined && props.entry !== undefined ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''
 })
 // The entry of the tree on screen: the domain in the address, or the Repositories page. The hub marks none.
 const settingsCurrent = computed(() => currentTreeKey(route.name, props.domain))
@@ -164,15 +166,15 @@ const repositoryFields = computed(() => Object.keys(store.schemas.value.maven?.p
 // address is replaced with it, as the watcher below reports. The repositories pages have no domain at all.
 const hubShown = computed(() => !props.domain && tabDomains.value.length > 1 && !repositoriesRoute.value)
 
-const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
+const collectionsFor = (domain: string) => collectionsOf(store.schemas.value[domain])
 
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
   ? collectionsFor(activeDomain.value)
   : []))
 
-const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
+const entriesOf = (domain: string, collection: Collection) => asEntries(configurations.value[domain]?.[collection.key] ?? [])
 
-const selectedIdFor = (collection) => (props.collection === collection.key ? (props.entry ?? null) : null)
+const selectedIdFor = (collection: Collection) => (props.collection === collection.key ? (props.entry ?? null) : null)
 
 /*
  * The fields of a domain that are not collections, as one generated form. Most domains have none
@@ -193,7 +195,10 @@ const tabbedDomain = computed(() => {
   const domain = activeDomain.value
   return Boolean(domain) && sectionTabsOf(domain) && !isAccessDomain(domain) && domainForm.value !== null
 })
-const sectionTabs = computed(() => (tabbedDomain.value ? tabsOfLayout(domainForm.value.layout, domainForm.value.schema) : []))
+const sectionTabs = computed(() => {
+  const form = domainForm.value
+  return tabbedDomain.value && form ? tabsOfLayout(form.layout, form.schema) : []
+})
 const sectionErrors = computed(() => {
   if (sectionTabs.value.length === 0) return {}
   const domain = activeDomain.value
@@ -212,7 +217,8 @@ const firstErrorSection = computed(() => firstErrorTab(sectionTabs.value, sectio
 const firstErrorLink = computed(() => {
   const key = firstErrorSection.value
   if (key === undefined) return null
-  const tab = sectionTabs.value.find(entry => entry.key === key)
+  // firstErrorTab names a key of these tabs, so the tab is found.
+  const tab = sectionTabs.value.find(entry => entry.key === key)!
   return { label: tab.label, href: router.resolve({ path: route.path, query: { ...route.query, tab: key }, hash: route.hash }).href }
 })
 
@@ -239,11 +245,11 @@ watch([activeDomain, () => props.domain], ([domain, requested]) => {
   if (domain && domain !== requested && !hubShown.value && !repositoriesRoute.value) emit('update:domain', domain)
 }, { immediate: true })
 
-const selectEntry = (collection, id) => {
+const selectEntry = (collection: Collection, id: string) => {
   router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
 }
 
-const createEntry = (collection, id) => {
+const createEntry = (collection: Collection, id: string) => {
   const domain = activeDomain.value
   store.addEntry(domain, collection.key, { id })
   router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
@@ -254,11 +260,11 @@ const createEntry = (collection, id) => {
  * usable: until then the address keeps the old id and the entry stays open, so typing a new id does
  * not close the pane.
  */
-const updateEntry = (collection, { index, entry }) => {
+const updateEntry = (collection: Collection, { index, entry }: { index: number; entry: CollectionEntry }) => {
   const domain = activeDomain.value
   store.setEntry(domain, collection.key, index, entry)
   if (props.collection !== collection.key) return
-  const others = (configurations.value[domain]?.[collection.key] ?? [])
+  const others = asEntries(configurations.value[domain]?.[collection.key] ?? [])
     .filter((_, other) => other !== index)
     .map(idText)
   const id = idText(entry)
@@ -266,12 +272,12 @@ const updateEntry = (collection, { index, entry }) => {
   router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
 }
 
-const deleteEntry = (collection, index) => {
+const deleteEntry = (collection: Collection, index: number) => {
   store.removeEntry(activeDomain.value, collection.key, index)
   router.replace({ name: 'settings', params: { domain: activeDomain.value } })
 }
 
-const onDomainChange = (domain, event) => {
+const onDomainChange = (domain: string, event: JsonFormsChangeEvent) => {
   store.setDomainData(domain, event.data)
   store.validateDomain(domain)
 }
@@ -281,7 +287,7 @@ const onDomainChange = (domain, event) => {
  * shown the page keeps the bar's height free below its content, and on phones also the height of the
  * bottom navigation, which the bar sits above. The height is measured, because a wrapped line adds to it.
  */
-const barElement = ref(null)
+const barElement = ref<HTMLElement | null>(null)
 const barHeight = ref(0)
 const barObserver = typeof ResizeObserver === 'undefined'
   ? null
@@ -337,7 +343,9 @@ const openConflictReview = async () => {
 const unsavedDomains = computed(() => [...new Set(changes.value.map(change => change.domain))])
 // The tree marks the entries of the domains with a draft, on every Administration page of the settings section.
 const unsavedKeys = computed(() => unsavedTreeKeys(unsavedDomains.value))
-const treeLinks = computed(() => navGroups.value.flatMap(group => group.links))
+// Boundary cast: every entry of the tree has a key, so every link has one. The link type leaves it open only because
+// pageTreeKey also accepts an unset key.
+const treeLinks = computed(() => navGroups.value.flatMap(group => group.links) as SettingsLink[])
 const attentionList = computed(() => attentionRows(treeLinks.value, unsavedKeys.value))
 const glanceList = computed(() => glanceRows({ links: treeLinks.value, schemas: store.schemas.value, saved: savedSettings.value }))
 const canEdit = computed(() => can(ADMIN_NODES.settings))
@@ -370,9 +378,12 @@ const closeReview = () => {
   conflictReviewOpen.value = false
 }
 
-const revertChange = (change) => {
+// Boundary cast: revertChange answers undefined only for a whole domain the saved state lacks, which is stored as before.
+type DomainData = Parameters<typeof store.setDomainData>[1]
+
+const revertChange = (change: SettingsChange) => {
   const domain = change.domain
-  store.setDomainData(domain, revertDraftChange(configurations.value[domain], savedSettings.value[domain], change))
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], savedSettings.value[domain], change) as DomainData)
   store.validateDomain(domain)
 }
 
@@ -380,9 +391,11 @@ const revertChange = (change) => {
  * Reverting in the conflict review takes the stored value of one field into the draft. The review then lists
  * what is left, so the user sees the draft come closer to the stored state.
  */
-const useStoredChange = (change) => {
+const useStoredChange = (change: SettingsChange) => {
   const domain = change.domain
-  store.setDomainData(domain, revertDraftChange(configurations.value[domain], conflict.value.server, change))
+  // The conflict review opens only after reviewConflict has loaded the stored settings of the conflict it holds.
+  const stored = conflict.value!.server as Parameters<typeof revertDraftChange>[1]
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], stored, change) as DomainData)
   store.validateDomain(domain)
 }
 
@@ -403,7 +416,7 @@ const takeStoredSettings = async () => {
   if (await reloadConflict()) closeReview()
 }
 
-const onSheetRevert = (change) => (reviewingConflict.value ? useStoredChange(change) : revertChange(change))
+const onSheetRevert = (change: SettingsChange) => (reviewingConflict.value ? useStoredChange(change) : revertChange(change))
 const onSheetDiscard = () => (reviewingConflict.value ? takeStoredSettings() : discardAll())
 
 /* JsonForms configuration */
@@ -435,7 +448,7 @@ watch(
     :groups="navGroups"
     :current="settingsCurrent"
     :index-to="sideNav.indexTo"
-    :shortcuts="shortcutsOf(settingsCurrent, can)"
+    :shortcuts="shortcutsOf(settingsCurrent ?? '', can)"
     :narrow="narrow"
     :unsaved="unsavedKeys"
     :overview="settingsCurrent === OVERVIEW_TREE_KEY"
@@ -479,7 +492,7 @@ watch(
         </h2>
 
         <div
-          :role="repositoryPage ? null : 'tabpanel'"
+          :role="repositoryPage ? undefined : 'tabpanel'"
           class="mt-6 flex flex-col gap-8"
         >
           <RepositoriesView
@@ -488,7 +501,7 @@ watch(
           />
           <RepositoryDetail
             v-else-if="repositoryPage"
-            :id="route.params.id"
+            :id="String(route.params.id)"
           />
           <template v-else>
             <AccessDomainCard
@@ -508,7 +521,7 @@ watch(
                   :to="indexRebuild"
                 />
                 <JsonForms
-                  v-if="tab === activeSection"
+                  v-if="tab === activeSection && domainForm"
                   :key="`domain-fields:${activeDomain}:${tab}`"
                   :config="formsConfiguration"
                   :data="configurations[activeDomain]"

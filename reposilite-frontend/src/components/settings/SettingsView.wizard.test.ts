@@ -17,16 +17,18 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const MAVEN_SCHEMA = {
@@ -44,17 +46,17 @@ const SERVER = { maven: { repositories: [{ id: 'releases' }] } }
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: ['maven'] }),
-    schema: async () => ({ data: MAVEN_SCHEMA }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: ['maven'] }),
+    schema: () => Promise.resolve({ data: MAVEN_SCHEMA }),
+    fetch: (domain: keyof typeof SERVER) => Promise.resolve({ data: JSON.parse(JSON.stringify(SERVER[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountSettings = async () => {
-  const store = createConfigurationStore(ref(fakeClient()))
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
   await store.fetchConfiguration()
   const router = createRouter({
     history: createMemoryHistory(),
@@ -81,7 +83,7 @@ afterEach(() => {
 describe('SettingsView: new maven repository', () => {
   it('opens the wizard and not the plain id dialog', async () => {
     await mountSettings()
-    await wrapper.get('[data-test="new-entry"]').trigger('click')
+    await wrapper!.get('[data-test="new-entry"]').trigger('click')
     await flushPromises()
 
     expect(wizard(), 'the wizard is open').not.toBeNull()
@@ -90,10 +92,10 @@ describe('SettingsView: new maven repository', () => {
 
   it('leaves no dialog open when the wizard is cancelled', async () => {
     await mountSettings()
-    await wrapper.get('[data-test="new-entry"]').trigger('click')
+    await wrapper!.get('[data-test="new-entry"]').trigger('click')
     await flushPromises()
 
-    const cancel = [...wizard().querySelectorAll('button')].find(button => button.textContent.trim() === 'Cancel')
+    const cancel = [...wizard()!.querySelectorAll('button')].find(button => button.textContent.trim() === 'Cancel')!
     cancel.click()
     await flushPromises()
 

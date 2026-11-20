@@ -15,19 +15,21 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter, useRoute, useRouter } from 'vue-router'
+import { defineComponent, h, ref, type Component } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, useRoute, useRouter, type Router } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import { stubRoutes } from './fixtures/routes'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 // Session and toast are replaced, so that the store and the view touch neither the network nor the DOM.
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const MAVEN_SCHEMA = {
@@ -89,13 +91,13 @@ const MIRRORS_SERVER = {
 
 const SCHEMAS = { maven: MAVEN_SCHEMA, ingot: INGOT_SCHEMA, web: { title: 'Web', description: 'General web settings', properties: {} } }
 
-const fakeClient = (server = SERVER) => ({
+const fakeClient = (server: Record<string, unknown> = SERVER) => ({
   server,
   settings: {
-    domains: async () => ({ data: Object.keys(server) }),
-    schema: async (domain) => ({ data: SCHEMAS[domain] }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: Object.keys(server) }),
+    schema: (domain: keyof typeof SCHEMAS) => Promise.resolve({ data: SCHEMAS[domain] }),
+    fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(server[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
@@ -104,15 +106,23 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-const loadedStore = async (server) => {
-  const store = createConfigurationStore(ref(fakeClient(server)))
+const loadedStore = async (server?: Record<string, unknown>) => {
+  const store = createConfigurationStore(ref(fakeClient(server)) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
 
-let wrapper
+type Store = Awaited<ReturnType<typeof loadedStore>>
+// An entry of the mirrors collection, as the draft holds it.
+type Mirror = { id: string; visibility?: string }
 
-const mountSettings = async ({ props = {}, router = namedRouter(), store } = {}) => {
+let wrapper: VueWrapper | undefined
+
+const mountSettings = async ({ props = {}, router = namedRouter(), store }: {
+  props?: { domain?: string; collection?: string; entry?: string }
+  router?: Router
+  store?: Store
+} = {}) => {
   const configuration = store ?? await loadedStore()
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings', ...props },
@@ -126,19 +136,19 @@ const mountSettings = async ({ props = {}, router = namedRouter(), store } = {})
   return { wrapper, router, store: configuration }
 }
 
-const itemButtons = () => wrapper.findAll('li button')
+const itemButtons = () => wrapper!.findAll('li button')
 const itemIds = () => itemButtons().map(button => button.find('span').text())
-const pressButton = async (name) => {
-  await wrapper.findAll('button').find(button => button.text() === name).trigger('click')
+const pressButton = async (name: string) => {
+  await wrapper!.findAll('button').find(button => button.text() === name)!.trigger('click')
   await flushPromises()
 }
-const typeIn = async (selector, value) => {
-  const input = document.querySelector(selector)
+const typeIn = async (selector: string, value: string) => {
+  const input = document.querySelector<HTMLInputElement>(selector)!
   input.value = value
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
-const mirrorIds = (store) => store.configurations.value.ingot.mirrors.map(entry => entry.id)
+const mirrorIds = (store: Store) => (store.configurations.value.ingot.mirrors as Mirror[]).map(entry => entry.id)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -155,8 +165,8 @@ describe('SettingsView page', () => {
   it('shows the Administration heading and a single line that says the configuration is shared', async () => {
     await mountSettings()
 
-    expect(wrapper.get('h1').text()).toBe('Administration')
-    expect(wrapper.text()).toContain('Shared configuration for all instances.')
+    expect(wrapper!.get('h1').text()).toBe('Administration')
+    expect(wrapper!.text()).toContain('Shared configuration for all instances.')
   })
 
   it('does not repeat the propagation notice as the description of a settings page', async () => {
@@ -164,8 +174,8 @@ describe('SettingsView page', () => {
     store.domains.value = ['web', 'ingot']
     await mountSettings({ store, props: { domain: 'web' } })
 
-    expect(wrapper.text(), 'the description of the page is the one of its tree entry').toContain('The headers that carry the client address')
-    expect(wrapper.text(), 'no 10 second notice in the description').not.toContain('10 seconds')
+    expect(wrapper!.text(), 'the description of the page is the one of its tree entry').toContain('The headers that carry the client address')
+    expect(wrapper!.text(), 'no 10 second notice in the description').not.toContain('10 seconds')
   })
 
   it('names a single domain as a section title, without tabs', async () => {
@@ -173,8 +183,8 @@ describe('SettingsView page', () => {
     store.domains.value = ['maven']
     await mountSettings({ store })
 
-    expect(wrapper.find('[aria-label="Settings sections"]').exists()).toBe(false)
-    expect(wrapper.get('h2').text()).toBe('Maven')
+    expect(wrapper!.find('[aria-label="Settings sections"]').exists()).toBe(false)
+    expect(wrapper!.get('h2').text()).toBe('Maven')
   })
 
   it('does not offer the login domain as a tab, because it is edited under Access', async () => {
@@ -184,7 +194,7 @@ describe('SettingsView page', () => {
     await mountSettings({ store, props: { domain: 'ingot' } })
 
     // The Administration tree replaces the tabs of the domains (administration-navigation spec).
-    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    const links = wrapper!.findAll('[aria-label="Administration"] a').map(tab => tab.text())
     expect(links, 'Ingot is in the tree').toEqual(expect.arrayContaining(['Ingot']))
     expect(links, 'Login is edited under Access, not in the tree').not.toContain('Login')
     expect(links, 'Maven is edited on the Repositories page, not in the tree').not.toContain('Maven')
@@ -197,16 +207,16 @@ describe('SettingsView page', () => {
     store.selectedDomain.value = 'login'
     await mountSettings({ store, props: { domain: 'login' } })
 
-    expect(wrapper.find('[data-test="access-domain"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Login is managed under Access')
-    const hrefs = wrapper.findAll('[data-test="access-domain"] a').map(link => link.attributes('href'))
+    expect(wrapper!.find('[data-test="access-domain"]').exists()).toBe(true)
+    expect(wrapper!.text()).toContain('Login is managed under Access')
+    const hrefs = wrapper!.findAll('[data-test="access-domain"] a').map(link => link.attributes('href'))
     expect(hrefs).toEqual(['/access/sso', '/access/ldap'])
   })
 
   it('shows one link per domain when there is more than one, in the Administration tree', async () => {
     await mountSettings({ props: { domain: 'ingot' } })
 
-    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    const links = wrapper!.findAll('[aria-label="Administration"] a').map(tab => tab.text())
     expect(links, 'the domains are links of the tree, the Maven domain is on the Repositories page').toEqual(expect.arrayContaining(['Ingot']))
     expect(links).not.toContain('Maven')
   })
@@ -214,14 +224,14 @@ describe('SettingsView page', () => {
   it('keeps the factory reset off the settings pages, which reset every instance from the system and support page', async () => {
     await mountSettings({ props: { domain: 'maven' } })
 
-    expect(wrapper.find('#settings-danger-title').exists(), 'no danger zone on a settings page').toBe(false)
-    expect(wrapper.text(), 'no factory reset button on a settings page').not.toContain('Factory reset')
+    expect(wrapper!.find('#settings-danger-title').exists(), 'no danger zone on a settings page').toBe(false)
+    expect(wrapper!.text(), 'no factory reset button on a settings page').not.toContain('Factory reset')
   })
 
   it('hides the action bar while nothing is unsaved', async () => {
     await mountSettings({ props: { domain: 'maven' } })
 
-    expect(wrapper.text()).not.toContain('unsaved change')
+    expect(wrapper!.text()).not.toContain('unsaved change')
   })
 })
 
@@ -229,7 +239,7 @@ describe('SettingsView collections', () => {
   it('lists the entries of a collection under the collection title', async () => {
     await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot' } })
 
-    expect(wrapper.get('[aria-labelledby="mirrors-title"] h2').text()).toBe('Mirrors')
+    expect(wrapper!.get('[aria-labelledby="mirrors-title"] h2').text()).toBe('Mirrors')
     expect(itemIds()).toEqual(['releases', 'snapshots'])
   })
 
@@ -246,15 +256,15 @@ describe('SettingsView collections', () => {
   it('selects the entry named by the address', async () => {
     await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'snapshots' } })
 
-    expect(wrapper.get('h1').text()).toBe('snapshots')
+    expect(wrapper!.get('h1').text()).toBe('snapshots')
     expect(itemButtons()[1].attributes('aria-current')).toBe('true')
   })
 
   it('says the repository was not found when the address names no entry, and draws no link of its own back to the list', async () => {
     await mountSettings({ props: { domain: 'ingot', collection: 'mirrors', entry: 'ghost' } })
 
-    expect(wrapper.text()).toContain('Repository not found')
-    expect(wrapper.findAll('a').find(link => link.text() === 'Back to mirrors'), 'the page frame carries the way back').toBeUndefined()
+    expect(wrapper!.text()).toContain('Repository not found')
+    expect(wrapper!.findAll('a').find(link => link.text() === 'Back to mirrors'), 'the page frame carries the way back').toBeUndefined()
   })
 
   it('adds a new entry, selects it and replaces the address with the new entry', async () => {
@@ -262,14 +272,14 @@ describe('SettingsView collections', () => {
     await pressButton('New mirror')
 
     await typeIn('#new-entry-id', 'backup')
-    document.getElementById('new-entry-form').dispatchEvent(new Event('submit', { cancelable: true }))
+    document.getElementById('new-entry-form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(store.configurations.value.ingot.mirrors.map(entry => entry.id)).toEqual(['central', 'backup'])
+    expect((store.configurations.value.ingot.mirrors as Mirror[]).map(entry => entry.id)).toEqual(['central', 'backup'])
     expect(router.currentRoute.value.params.entry).toBe('backup')
     // The router hands the new address back to the view as props; the test does the same.
-    await wrapper.setProps({ collection: 'mirrors', entry: 'backup' })
-    expect(wrapper.get('h1').text()).toBe('backup')
+    await wrapper!.setProps({ collection: 'mirrors', entry: 'backup' })
+    expect(wrapper!.get('h1').text()).toBe('backup')
   })
 
   it('removes an entry only after its id is typed exactly, then returns to the list', async () => {
@@ -277,9 +287,9 @@ describe('SettingsView collections', () => {
     await pressButton('Delete mirror')
 
     await typeIn('#delete-entry-confirm-input', 'snapshot')
-    expect(document.getElementById('delete-entry-confirm').hasAttribute('disabled')).toBe(true)
+    expect(document.getElementById('delete-entry-confirm')!.hasAttribute('disabled')).toBe(true)
     await typeIn('#delete-entry-confirm-input', 'snapshots')
-    document.getElementById('delete-entry-confirm').click()
+    document.getElementById('delete-entry-confirm')!.click()
     await flushPromises()
 
     expect(mirrorIds(store)).toEqual(['releases'])
@@ -288,7 +298,7 @@ describe('SettingsView collections', () => {
 })
 
 // The entry form has the type select first; the visibility select is the one that offers PRIVATE.
-const visibilitySelect = () => wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())
+const visibilitySelect = () => wrapper!.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
 
 describe('SettingsView unsaved changes', () => {
   it('counts an edit in the action bar and drops it when the edit is discarded', async () => {
@@ -297,24 +307,24 @@ describe('SettingsView unsaved changes', () => {
     await visibilitySelect().setValue('PRIVATE')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('1 unsaved change')
+    expect(wrapper!.text()).toContain('1 unsaved change')
     expect(store.hasUnsavedChanges.value).toBe(true)
 
     await pressButton('Discard')
 
-    expect(store.configurations.value.ingot.mirrors[0].visibility).toBe('PUBLIC')
-    expect(wrapper.text()).not.toContain('unsaved change')
+    expect((store.configurations.value.ingot.mirrors as Mirror[])[0].visibility).toBe('PUBLIC')
+    expect(wrapper!.text()).not.toContain('unsaved change')
   })
 
   it('keeps the edit in the store when the view is closed, so the bar comes back with the draft', async () => {
     const { store } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
     await visibilitySelect().setValue('PRIVATE')
-    wrapper.unmount()
+    wrapper!.unmount()
     wrapper = undefined
 
     await mountSettings({ store, props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
 
-    expect(wrapper.text()).toContain('1 unsaved change')
+    expect(wrapper!.text()).toContain('1 unsaved change')
   })
 })
 
@@ -326,20 +336,20 @@ describe('SettingsView driven by the router', () => {
     setup() {
       const route = useRoute()
       const router = useRouter()
-      return () => (route.name?.startsWith('settings')
-        ? h(SettingsView, {
+      return () => ((route.name as string | undefined)?.startsWith('settings')
+        ? h(SettingsView as Component, {
           selectedTab: 'Settings',
           domain: route.params.domain,
           collection: route.params.collection,
           entry: route.params.entry,
-          'onUpdate:domain': (domain) => router.replace({ name: 'settings', params: { domain } })
+          'onUpdate:domain': (domain: string) => router.replace({ name: 'settings', params: { domain } })
         })
         : null)
     }
   })
 
   // The paths are visited in order, so the history holds them the way a user would have made them.
-  const mountAt = async (paths, server) => {
+  const mountAt = async (paths: string[], server?: Record<string, unknown>) => {
     const router = namedRouter()
     for (const path of paths) {
       await router.push(path)
@@ -356,15 +366,15 @@ describe('SettingsView driven by the router', () => {
     return { router, store }
   }
 
-  const clickButtonText = async (text) => {
-    await wrapper.findAll('button').find(button => button.text() === text).trigger('click')
+  const clickButtonText = async (text: string) => {
+    await wrapper!.findAll('button').find(button => button.text() === text)!.trigger('click')
     await flushPromises()
   }
 
   it('selects the entry the address names when the page is opened', async () => {
     await mountAt(['/settings/ingot/mirrors/snapshots'], MIRRORS_SERVER)
 
-    expect(wrapper.get('h1').text()).toBe('snapshots')
+    expect(wrapper!.get('h1').text()).toBe('snapshots')
   })
 
   it('pushes the address of an entry that is selected', async () => {
@@ -374,27 +384,27 @@ describe('SettingsView driven by the router', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
-    expect(wrapper.get('h1').text()).toBe('releases')
+    expect(wrapper!.get('h1').text()).toBe('releases')
   })
 
   it('returns to the previous selection with the back button', async () => {
     const { router } = await mountAt(['/', '/settings/ingot/mirrors/releases'], MIRRORS_SERVER)
     await itemButtons()[1].trigger('click')
     await flushPromises()
-    expect(wrapper.get('h1').text()).toBe('snapshots')
+    expect(wrapper!.get('h1').text()).toBe('snapshots')
 
     router.back()
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
-    expect(wrapper.get('h1').text()).toBe('releases')
+    expect(wrapper!.get('h1').text()).toBe('releases')
   })
 
   it('keeps an address that names no domain and shows the hub when there are several domains', async () => {
     const { router } = await mountAt(['/', '/settings'], { ...SERVER, web: {} })
 
     expect(router.currentRoute.value.fullPath).toBe('/settings')
-    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(true)
+    expect(wrapper!.find('[data-test="settings-hub"]').exists()).toBe(true)
   })
 
   it('writes the one domain into an address that names none, without adding a history entry', async () => {
@@ -414,7 +424,7 @@ describe('SettingsView driven by the router', () => {
 
   it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
     const { router } = await mountAt(['/', '/settings/maven'])
-    await wrapper.findAll('[aria-label="Administration"] a').find(tab => tab.text() === 'Ingot').trigger('click')
+    await wrapper!.findAll('[aria-label="Administration"] a').find(tab => tab.text() === 'Ingot')!.trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
@@ -427,22 +437,22 @@ describe('SettingsView driven by the router', () => {
     const { router } = await mountAt(['/', '/settings/ghost'])
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
-    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the Maven page is not the first domain any more').toBe(false)
+    expect(wrapper!.find('#maven-repositories-link-title').exists(), 'the Maven page is not the first domain any more').toBe(false)
   })
 
   it('draws the not-found pane without a link of its own, and the page frame names the missing entry', async () => {
     await mountAt(['/', '/settings/ingot/mirrors/ghost'])
 
-    expect(wrapper.text()).toContain('Repository not found')
-    expect(wrapper.get('h1').text(), 'the page heading names the address that was asked for').toBe('ghost')
-    expect(wrapper.findAll('a').find(link => link.text() === 'Back to mirrors'), 'no link of its own').toBeUndefined()
+    expect(wrapper!.text()).toContain('Repository not found')
+    expect(wrapper!.get('h1').text(), 'the page heading names the address that was asked for').toBe('ghost')
+    expect(wrapper!.findAll('a').find(link => link.text() === 'Back to mirrors'), 'no link of its own').toBeUndefined()
   })
 
   it('returns to the domain list when the selected entry is deleted', async () => {
     const { router, store } = await mountAt(['/', '/settings/ingot/mirrors/snapshots'], MIRRORS_SERVER)
     await clickButtonText('Delete mirror')
     await typeIn('#delete-entry-confirm-input', 'snapshots')
-    document.getElementById('delete-entry-confirm').click()
+    document.getElementById('delete-entry-confirm')!.click()
     await flushPromises()
 
     expect(mirrorIds(store)).toEqual(['releases'])
@@ -457,13 +467,13 @@ describe('SettingsView while the configuration loads', () => {
       props: { selectedTab: 'Settings' },
       global: {
         plugins: [namedRouter()],
-        provide: { [configurationStoreKey]: createConfigurationStore(ref(fakeClient())) }
+        provide: { [configurationStoreKey]: createConfigurationStore(ref(fakeClient()) as unknown as ClientRef) }
       },
       attachTo: document.body
     })
 
     const loading = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Loading configuration')
     expect(loading, 'the loading line is drawn before the configuration is loaded').toBeDefined()
-    expect(loading.classes(), 'a 48 pixel minimum height, the height of the first row of the frame').toContain('min-h-12')
+    expect(loading!.classes(), 'a 48 pixel minimum height, the height of the first row of the frame').toContain('min-h-12')
   })
 })

@@ -16,8 +16,8 @@
 
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { ref, type Component } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import { ADMIN_NODES } from '../../store/nodeAccess'
@@ -32,12 +32,14 @@ import maven from './fixtures/maven.schema.json'
 import statistics from './fixtures/statistics.schema.json'
 import web from './fixtures/web.schema.json'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 // What the visitor holds; each test sets it before it mounts the view. The dashboard node is set on its own.
 const session = vi.hoisted(() => ({ mayEdit: true, mayDashboard: true }))
 vi.mock('../../store/session', () => ({
   useSession: () => ({
     client: { value: null },
-    can: (node) => (node === ADMIN_NODES.dashboard ? session.mayDashboard : session.mayEdit)
+    can: (node: string) => (node === ADMIN_NODES.dashboard ? session.mayDashboard : session.mayEdit)
   })
 }))
 // The status block has its own tests (DashboardView). Here it is a marker, so the view tests do not fetch the status.
@@ -48,7 +50,7 @@ vi.mock('../dashboard/DashboardView.vue', async () => {
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 // The fixture server: the schemas the backend serves, plus a plugin domain the registry does not name.
@@ -73,23 +75,23 @@ const sixRepositories = () => Array.from({ length: 6 }, (_, index) => ({ id: `re
 // domain list never arrive, so a test can look at the page while it loads.
 const fakeClient = (names = Object.keys(SCHEMAS), { hang = false } = {}) => {
   const update = vi.fn()
-  const calls = []
+  const calls: string[] = []
   return {
     update,
     calls,
     settings: {
-      domains: async () => {
+      domains: () => {
         calls.push('domains')
         if (hang) return new Promise(() => {})
-        return { data: names }
+        return Promise.resolve({ data: names })
       },
-      schema: async (domain) => {
+      schema: (domain: keyof typeof SCHEMAS) => {
         calls.push(`schema:${domain}`)
-        return { data: SCHEMAS[domain] }
+        return Promise.resolve({ data: SCHEMAS[domain] })
       },
-      fetch: async (domain) => {
+      fetch: (domain: string) => {
         calls.push(`fetch:${domain}`)
-        return { data: domain === 'maven' ? { repositories: sixRepositories() } : {} }
+        return Promise.resolve({ data: domain === 'maven' ? { repositories: sixRepositories() } : {} })
       },
       update
     }
@@ -101,7 +103,7 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 afterEach(() => {
   wrapper?.unmount()
@@ -112,9 +114,15 @@ afterEach(() => {
 
 // Mounts the view at an address. The configuration is loaded before the mount unless `loaded` is false, in which case the
 // view loads it itself, as it does when a visitor opens the page.
-const mountAt = async ({ path = '/settings', names, props = {}, loaded = true, hang = false } = {}) => {
+const mountAt = async ({ path = '/settings', names, props = {}, loaded = true, hang = false }: {
+  path?: string
+  names?: string[]
+  props?: { domain?: string }
+  loaded?: boolean
+  hang?: boolean
+} = {}) => {
   const client = fakeClient(names, { hang })
-  const store = createConfigurationStore(ref(client))
+  const store = createConfigurationStore(ref(client) as unknown as ClientRef)
   if (loaded) await store.fetchConfiguration()
   const router = namedRouter()
   await router.push(path)
@@ -127,15 +135,15 @@ const mountAt = async ({ path = '/settings', names, props = {}, loaded = true, h
   return { store, router, client }
 }
 
-const overview = () => wrapper.get('[data-test="settings-hub"]')
-const attention = () => wrapper.get('[data-test="settings-attention"]')
-const treeEntries = () => wrapper.get('nav[aria-label="Administration"]')
+const overview = () => wrapper!.get('[data-test="settings-hub"]')
+const attention = () => wrapper!.get('[data-test="settings-attention"]')
+const treeEntries = () => wrapper!.get('nav[aria-label="Administration"]')
 
 describe('the Overview page at /settings', () => {
   it('draws no card of a page or domain: the Administration pages are listed only in the tree', async () => {
     await mountAt()
 
-    expect(wrapper.find('[data-test="settings-card"]').exists(), 'no card of a page or domain').toBe(false)
+    expect(wrapper!.find('[data-test="settings-card"]').exists(), 'no card of a page or domain').toBe(false)
     expect(overview().findAll('a').map(link => link.attributes('aria-label')), 'the only links of the hub are the counts').toEqual(
       expect.arrayContaining(['Repositories, 6', 'Cleanup policies, 0'])
     )
@@ -156,8 +164,8 @@ describe('the Overview page at /settings', () => {
   it('draws the page header as Overview with the shared configuration line', async () => {
     await mountAt()
 
-    expect(wrapper.get('h1').text()).toBe('Overview')
-    expect(wrapper.text()).toContain('Status of this instance and its shared configuration.')
+    expect(wrapper!.get('h1').text()).toBe('Overview')
+    expect(wrapper!.text()).toContain('Status of this instance and its shared configuration.')
   })
 
   it('reads "Nothing needs attention." when no domain has a draft', async () => {
@@ -183,10 +191,10 @@ describe('the Overview page at /settings', () => {
     await flushPromises()
 
     const review = attention().findAll('button').find(button => button.text() === 'Review changes')
-    await review.trigger('click')
+    await review!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.findComponent(SettingsReviewSheet).props('open'), 'the review sheet opens').toBe(true)
+    expect((wrapper!.findComponent(SettingsReviewSheet as Component) as VueWrapper<{ $props: Record<string, unknown> }>).props('open'), 'the review sheet opens').toBe(true)
     expect(client.update, 'nothing is saved by opening the review').not.toHaveBeenCalled()
   })
 
@@ -230,60 +238,60 @@ describe('the Overview page at /settings', () => {
   it('draws no count before the saved settings have loaded', async () => {
     await mountAt({ loaded: false, hang: true })
 
-    expect(wrapper.find('[data-test="glance-card"]').exists(), 'no count is drawn while the settings load').toBe(false)
-    expect(wrapper.text()).toContain('Loading configuration')
+    expect(wrapper!.find('[data-test="glance-card"]').exists(), 'no count is drawn while the settings load').toBe(false)
+    expect(wrapper!.text()).toContain('Loading configuration')
   })
 
   it('draws no link to a Dashboard page, because the status is on this page', async () => {
     await mountAt()
 
-    expect(wrapper.findAll('a').filter(link => link.attributes('href') === '/dashboard'), 'no link to /dashboard').toEqual([])
-    expect(wrapper.find('[data-test="settings-hub-dashboard-line"]').exists()).toBe(false)
+    expect(wrapper!.findAll('a').filter(link => link.attributes('href') === '/dashboard'), 'no link to /dashboard').toEqual([])
+    expect(wrapper!.find('[data-test="settings-hub-dashboard-line"]').exists()).toBe(false)
   })
 
   it('draws the status block on Overview for a visitor with the dashboard node', async () => {
     await mountAt()
 
-    expect(wrapper.find('[data-test="status-block"]').exists(), 'the instance status is part of Overview').toBe(true)
+    expect(wrapper!.find('[data-test="status-block"]').exists(), 'the instance status is part of Overview').toBe(true)
   })
 
   it('draws no status block without the dashboard node', async () => {
     session.mayDashboard = false
     await mountAt()
 
-    expect(wrapper.find('[data-test="status-block"]').exists()).toBe(false)
+    expect(wrapper!.find('[data-test="status-block"]').exists()).toBe(false)
   })
 
   it('draws the status block above the counts of At a glance', async () => {
     await mountAt()
 
-    const html = wrapper.html()
+    const html = wrapper!.html()
     expect(html.indexOf('status-block'), 'the status comes before At a glance').toBeLessThan(html.indexOf('settings-hub'))
   })
 
   it('describes Overview as the status and the shared configuration to an administrator', async () => {
     await mountAt()
 
-    expect(wrapper.text()).toContain('Status of this instance and its shared configuration.')
+    expect(wrapper!.text()).toContain('Status of this instance and its shared configuration.')
   })
 
   it('describes Overview as the status alone to a visitor with the dashboard node only', async () => {
     session.mayEdit = false
     await mountAt({ loaded: false })
 
-    expect(wrapper.text()).toContain('Status of this instance.')
-    expect(wrapper.text(), 'the shared configuration is not described').not.toContain('shared configuration')
+    expect(wrapper!.text()).toContain('Status of this instance.')
+    expect(wrapper!.text(), 'the shared configuration is not described').not.toContain('shared configuration')
   })
 
   it('shows the status block and none of the settings sections to a visitor with the dashboard node only', async () => {
     session.mayEdit = false
     await mountAt({ loaded: false })
 
-    expect(wrapper.find('[data-test="status-block"]').exists(), 'the status is shown').toBe(true)
-    expect(wrapper.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
-    expect(wrapper.find('[data-test="settings-hub"]').exists(), 'no At a glance').toBe(false)
-    expect(wrapper.find('#settings-danger-title').exists(), 'no Danger zone').toBe(false)
-    expect(wrapper.findAll('button').map(button => button.text()), 'no import or download action').not.toContain('Import settings')
+    expect(wrapper!.find('[data-test="status-block"]').exists(), 'the status is shown').toBe(true)
+    expect(wrapper!.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
+    expect(wrapper!.find('[data-test="settings-hub"]').exists(), 'no At a glance').toBe(false)
+    expect(wrapper!.find('#settings-danger-title').exists(), 'no Danger zone').toBe(false)
+    expect(wrapper!.findAll('button').map(button => button.text()), 'no import or download action').not.toContain('Import settings')
   })
 
   it('makes no settings request for a visitor with the dashboard node only', async () => {
@@ -302,8 +310,8 @@ describe('the Overview page at /settings', () => {
   it('ends with no line that sends sign in and security to Access, since the tree lists it', async () => {
     await mountAt()
 
-    expect(wrapper.find('[data-test="settings-hub-access"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Sign-in and security live in')
+    expect(wrapper!.find('[data-test="settings-hub-access"]').exists()).toBe(false)
+    expect(wrapper!.text()).not.toContain('Sign-in and security live in')
   })
 
   it('draws the Administration tree beside the Overview, with the entries of the other Administration pages', async () => {
@@ -319,21 +327,21 @@ describe('the Overview page at /settings', () => {
     session.mayEdit = false
     await mountAt()
 
-    expect(wrapper.find('[data-test="settings-hub"]').exists(), 'no Overview root').toBe(false)
-    expect(wrapper.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
+    expect(wrapper!.find('[data-test="settings-hub"]').exists(), 'no Overview root').toBe(false)
+    expect(wrapper!.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
   })
 
   it('shows no hub when the address names a domain', async () => {
     await mountAt({ path: '/settings/web', props: { domain: 'web' } })
 
-    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(false)
+    expect(wrapper!.find('[data-test="settings-hub"]').exists()).toBe(false)
   })
 
   it('forwards to the one domain a visitor sees instead of showing the hub', async () => {
     await mountAt({ names: ['maven', 'login'] })
 
-    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(false)
-    expect(wrapper.emitted('update:domain')?.at(-1), 'the address is replaced with the only domain').toEqual(['maven'])
+    expect(wrapper!.find('[data-test="settings-hub"]').exists()).toBe(false)
+    expect(wrapper!.emitted('update:domain')?.at(-1), 'the address is replaced with the only domain').toEqual(['maven'])
   })
 })
 
@@ -341,7 +349,7 @@ describe('the settings file actions', () => {
   it('draws neither Import settings nor Download as JSON in the header of Overview', async () => {
     await mountAt()
 
-    const labels = wrapper.get('header').findAll('button').map(button => button.text())
+    const labels = wrapper!.get('header').findAll('button').map(button => button.text())
     expect(labels, 'the actions moved to the Settings backup tab of Maintenance').not.toContain('Import settings')
     expect(labels, 'the actions moved to the Settings backup tab of Maintenance').not.toContain('Download as JSON')
   })
@@ -349,7 +357,7 @@ describe('the settings file actions', () => {
   it('draws neither action on a domain page', async () => {
     await mountAt({ path: '/settings/javadoc', props: { domain: 'javadoc' } })
 
-    const labels = wrapper.get('header').findAll('button').map(button => button.text())
+    const labels = wrapper!.get('header').findAll('button').map(button => button.text())
     expect(labels, 'no Import settings').not.toContain('Import settings')
     expect(labels, 'no Download as JSON').not.toContain('Download as JSON')
   })
@@ -357,7 +365,7 @@ describe('the settings file actions', () => {
   it('draws neither action on the Repositories page', async () => {
     await mountAt({ path: '/settings/repositories' })
 
-    const labels = wrapper.get('header').findAll('button').map(button => button.text())
+    const labels = wrapper!.get('header').findAll('button').map(button => button.text())
     expect(labels).not.toContain('Import settings')
     expect(labels).not.toContain('Download as JSON')
   })
@@ -365,7 +373,7 @@ describe('the settings file actions', () => {
   it('draws no filled button in the page header', async () => {
     await mountAt()
 
-    const filled = wrapper.get('header').findAll('button').filter(button => button.classes().includes('bg-primary'))
+    const filled = wrapper!.get('header').findAll('button').filter(button => button.classes().includes('bg-primary'))
     expect(filled, 'the header has no filled button').toEqual([])
   })
 })

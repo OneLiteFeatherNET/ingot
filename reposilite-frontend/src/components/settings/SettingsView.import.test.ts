@@ -17,17 +17,19 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import MaintenanceView from '../maintenance/MaintenanceView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMA = {
@@ -50,21 +52,24 @@ const SCHEMA = {
   }
 }
 
+// A repository of the maven domain, as the draft holds it.
+type Repository = { id: string; visibility: string }
+
 const initialServer = () => ({
   maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] }
 })
 
-let server
-let writes
+let server: ReturnType<typeof initialServer>
+let writes: { domain: string; content: unknown }[]
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: Object.keys(server) }),
-    schema: async () => ({ data: SCHEMA }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async (domain, content) => {
+    domains: () => Promise.resolve({ data: Object.keys(server) }),
+    schema: () => Promise.resolve({ data: SCHEMA }),
+    fetch: (domain: keyof typeof server) => Promise.resolve({ data: JSON.parse(JSON.stringify(server[domain])) as unknown }),
+    update: (domain: string, content: unknown) => {
       writes.push({ domain, content })
-      return { data: {} }
+      return Promise.resolve({ data: {} })
     }
   }
 })
@@ -74,12 +79,12 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountView = async () => {
   server = initialServer()
   writes = []
-  const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => false })
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef, { secretsHidden: () => false })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   // Import is an action of the Settings backup tab, so the view is opened at /maintenance?tab=backup.
   const router = namedRouter()
@@ -99,10 +104,10 @@ const mountView = async () => {
  * Picks a file in the file input. The file's text is given directly, because the view reads it with
  * Blob.text() and the test does not depend on how the test DOM implements the File API.
  */
-const pickFile = async (text) => {
-  const input = wrapper.get('input[type="file"]')
+const pickFile = async (text: string) => {
+  const input = wrapper!.get('input[type="file"]')
   const file = new File([text], 'settings.json', { type: 'application/json' })
-  file.text = async () => text
+  file.text = () => Promise.resolve(text)
   Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
   await input.trigger('change')
   await flushPromises()
@@ -134,11 +139,11 @@ describe('Settings backup import', () => {
 
     await pickFile(JSON.stringify({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } }))
 
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect((store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PRIVATE')
     expect(store.hasUnsavedChanges.value).toBe(true)
     expect(writes, 'nothing is written before the user saves').toEqual([])
     expect(sheet(), 'the review shows the imported changes').not.toBeNull()
-    expect(sheet().textContent).toContain('Visibility')
+    expect(sheet()!.textContent).toContain('Visibility')
   })
 
   it('counts the imported change as unsaved on the tab, and writes nothing to the server', async () => {
@@ -146,7 +151,7 @@ describe('Settings backup import', () => {
 
     await pickFile(JSON.stringify({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } }))
 
-    expect(wrapper.text(), 'the imported change is a draft until Save').toContain('1 unsaved change')
+    expect(wrapper!.text(), 'the imported change is a draft until Save').toContain('1 unsaved change')
     expect(writes, 'the import is a draft until Save').toEqual([])
   })
 
@@ -155,9 +160,9 @@ describe('Settings backup import', () => {
 
     await pickFile(JSON.stringify({ maven: { repositories: [{ id: 'releases', visibility: 'SECRET' }] } }))
 
-    const alert = wrapper.get('[role="alert"]')
+    const alert = wrapper!.get('[role="alert"]')
     expect(alert.text()).toContain('Repositories > releases > Visibility')
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect((store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PUBLIC')
     expect(store.hasUnsavedChanges.value).toBe(false)
   })
 
@@ -166,6 +171,6 @@ describe('Settings backup import', () => {
 
     await pickFile('{ "maven": ')
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('not valid JSON')
+    expect(wrapper!.get('[role="alert"]').text()).toContain('not valid JSON')
   })
 })
