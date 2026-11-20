@@ -697,6 +697,34 @@ describe('SystemInfoView plugin cards', () => {
     expect(valueOf(card, 'Settings')).toBe('None')
   })
 
+  it('shows the description of a plugin as plain text under its name', async () => {
+    const described = plugin('checksum', 'official', 'plugin-store', { description: 'Checks <b>sums</b> of uploads' })
+    const wrapper = await pluginsTab([described])
+
+    const card = cardNamed(wrapper, 'checksum')
+    const description = card.find('header + p')
+    expect(description.exists(), 'the card shows the description right under the header with the name').toBe(true)
+    expect(description.text(), 'the description is shown as it was sent').toBe('Checks <b>sums</b> of uploads')
+    expect(description.find('b').exists(), 'the description is never read as markup').toBe(false)
+    expect(description.classes(), 'the description uses the existing supporting text style').toEqual(
+      expect.arrayContaining(['md-body-medium', 'text-on-surface-variant']),
+    )
+  })
+
+  it('adds no element for a plugin without a description', async () => {
+    const wrapper = await pluginsTab([plugin('metrics', 'community', 'plugins-directory')])
+
+    const card = cardNamed(wrapper, 'metrics')
+    expect(Array.from(card.element.children).map(child => child.tagName), 'the card holds only its header and its list').toEqual(['HEADER', 'DL'])
+  })
+
+  it('adds no element for a plugin with an empty description', async () => {
+    const wrapper = await pluginsTab([plugin('metrics', 'community', 'plugins-directory', { description: '' })])
+
+    const card = cardNamed(wrapper, 'metrics')
+    expect(Array.from(card.element.children).map(child => child.tagName), 'an empty description draws nothing').toEqual(['HEADER', 'DL'])
+  })
+
   it('lays the cards out in one column on phones, two from medium and three from expanded widths', async () => {
     const wrapper = await pluginsTab(PLUGINS)
 

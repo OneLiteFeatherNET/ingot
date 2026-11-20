@@ -481,6 +481,13 @@ onMounted(() => {
                     data-ingot-part="plugin-tier"
                   >{{ tierLabel(plugin.tier) }}</span>
                 </header>
+                <p
+                  v-if="plugin.description"
+                  class="md-body-medium min-w-0 wrap-anywhere text-on-surface-variant"
+                  data-ingot-part="plugin-description"
+                >
+                  {{ plugin.description }}
+                </p>
                 <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
                   <dt>Origin</dt><dd class="min-w-0 wrap-anywhere">
                     {{ originLabel(plugin.origin) }}

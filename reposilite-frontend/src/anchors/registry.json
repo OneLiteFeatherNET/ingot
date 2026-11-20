@@ -1593,6 +1593,7 @@
         "plugin-tier",
         "plugin-grid",
         "plugin-card",
+        "plugin-description",
         "filter",
         "support-action",
         "support-note"
