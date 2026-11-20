@@ -18,6 +18,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import MdSelect from './MdSelect.vue'
+import MdFieldShell from './MdFieldShell.vue'
 
 const options = [
   { value: 'PUBLIC', label: 'Public' },
@@ -465,6 +466,27 @@ describe('MdSelect', () => {
       const wrapper = mountSelect({ readonly: true, modelValue: 'PUBLIC' })
 
       expect(wrapper.find(CHEVRON_PATH).exists(), 'a read only field offers no dropdown').toBe(false)
+    })
+
+    it('hides the decorative dropdown chevron from assistive technology', () => {
+      const wrapper = mountSelect()
+
+      expect(wrapper.get('svg').element.parentElement!.getAttribute('aria-hidden'), 'the chevron adds no name or role of its own').toBe('true')
+    })
+
+    it('sits the dropdown chevron 12px from the edge, the field shell inset', () => {
+      const wrapper = mountSelect()
+      const chevron = wrapper.get('svg').element.parentElement!.classList
+
+      expect(chevron.contains('right-3'), 'the chevron sits at right-3, 12px from the edge').toBe(true)
+      expect(chevron.contains('right-4'), 'the chevron no longer uses the old 16px inset').toBe(false)
+    })
+
+    it('builds the field on the shared field shell', () => {
+      const wrapper = mountSelect()
+
+      const shell = (wrapper as unknown as { findComponent: (component: unknown) => { exists: () => boolean } }).findComponent(MdFieldShell)
+      expect(shell.exists(), 'the select renders its field through MdFieldShell').toBe(true)
     })
 
     it('keeps the dropdown chevron on an editable field', () => {

@@ -25,21 +25,35 @@ import { computed } from 'vue'
  * The default slot receives `describedBy`, the helper id when there is helper text and undefined otherwise,
  * and `invalid`, so the input binds aria-describedby and aria-invalid itself. The root is `display: contents`:
  * it takes no box, so the primitive that wraps it keeps its own layout.
+ *
+ * A trailing slot is interactive by default, as a visibility toggle is. `decorativeTrailing` marks it as an icon
+ * that only shows the field's behaviour, such as a dropdown chevron: it is hidden from assistive technology, it
+ * takes no clicks so the field under it still opens, and it follows the focus role of the field.
  */
 const props = withDefaults(defineProps<{
   inputId: string
   helperText?: string
   invalid?: boolean
   disabled?: boolean
+  decorativeTrailing?: boolean
 }>(), {
   helperText: '',
   invalid: false,
-  disabled: false
+  disabled: false,
+  decorativeTrailing: false
 })
 
 const helperId = computed(() => `${props.inputId}-helper`)
 const describedBy = computed(() => (props.helperText ? helperId.value : undefined))
 const iconClass = computed(() => (props.disabled ? 'text-on-surface/38' : 'text-on-surface-variant'))
+
+// A decorative trailing icon follows the focus role of the field, as MD3 does, unless the field is invalid.
+const trailingClass = computed(() => {
+  if (props.disabled) return 'text-on-surface/38'
+  if (!props.decorativeTrailing) return 'text-on-surface-variant'
+  return props.invalid ? 'text-on-surface-variant' : 'text-on-surface-variant peer-focus:text-primary'
+})
+const trailingMode = computed(() => (props.decorativeTrailing ? 'pointer-events-none' : ''))
 
 const helperClass = computed(() => {
   if (props.disabled) return 'text-on-surface/38'
@@ -68,9 +82,10 @@ const helperClass = computed(() => {
       <span
         v-if="$slots.trailing"
         class="absolute right-3 top-1/2 -translate-y-1/2 md-field-icon"
-        :class="iconClass"
+        :class="[trailingClass, trailingMode]"
+        :aria-hidden="decorativeTrailing ? 'true' : undefined"
       >
-        <!-- Not aria-hidden: the trailing slot may hold an interactive button, such as a visibility toggle. -->
+        <!-- Not aria-hidden unless decorative: the trailing slot may hold an interactive button, such as a visibility toggle. -->
         <slot name="trailing" />
       </span>
     </div>
