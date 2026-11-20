@@ -63,7 +63,7 @@ The step runs first in the definition processor of `configureOpenApi`, before `E
 entries get the same treatment as server entries. Reading the fragments happens inside the processor, which runs when the document is
 built on the first request, after every plugin has loaded. D13 says "the start logs one WARN line"; the line is written when the
 document is first built, which is the first request to `/openapi` or the Swagger UI, not the start itself. Javalin builds the document
-once per process, so the line is still written once.
+once per process, so the line is still written once (confirmed by task 0.3, see "Preconditions").
 
 Rejected: merging into the snapshot at build time. A third-party plugin is not known at build time.
 
@@ -88,8 +88,11 @@ warning and generates the schema at runtime, as today.
   processor version as the server.
 - It renames `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/<pluginId>.json` and excludes `openapi-plugin/.index` and
   `json-schemes/index` from the module's processed output, so the files are absent from the classes directory the integration classpath
-  uses, not only from the jar. Where the processor writes (the class output of kapt or a resource directory) is confirmed by task 0.2
-  before the step is written.
+  uses, not only from the jar. Task 0.2 confirmed where the processor writes: into the kapt class output
+  `build/tmp/kapt3/classes/<source set>/`, not into `build/resources/<source set>/` and not into `build/generated/`. The Kotlin kapt
+  plugin adds that directory to the source set output, so the files reach both the jar and the classes directories of the integration
+  classpath from there. The step therefore rewrites that directory after the kapt task, not the output of `processResources`. See
+  "Preconditions" below for the exact files.
 - A task `verifyPluginApiFragments` reads the module's jar and fails when it holds `openapi-plugin/.index`, `json-schemes/index`, or any
   `META-INF/ingot/openapi/*.json` other than `<pluginId>.json`. It runs as part of `check`. Its rules are a pure function over a jar
   file, tested in `buildSrc/src/test/kotlin/` with temporary jars, as `EmbeddedPluginJars` is.
@@ -101,6 +104,53 @@ gives the plain Gradle lines instead, which are a handful.
 
 No runtime type is public (proposal, "Plugin API"). The file layout is the contract a plugin author meets, and it is documented as
 experimental. The plugin ABI gate and `reposilite-backend/plugin-api-classes.txt` show no change.
+
+## Preconditions
+
+Recorded on `origin/main` at `5dd921e11`, before the first code pull request.
+
+### 0.1 Baseline
+
+- `heavy ./gradlew --no-daemon --max-workers=2 :reposilite-backend:classes :reposilite-backend:test --tests
+  'com.reposilite.configuration.shared.*'`: green, 27 test classes, 166 tests, 0 failures, 0 errors, 0 skipped.
+- `heavy ./gradlew --no-daemon --max-workers=2 :reposilite-backend:integration --tests
+  'com.reposilite.web.OpenApiSnapshotIntegrationTest'`: green, 3 tests, 0 failures, 0 errors, 0 skipped. The test passing means the
+  canonical form of the document served at `/openapi` equals the committed snapshot byte for byte.
+- Reference of task 1.4: `docs/openapi/ingot-openapi.json`, 224064 bytes, sha256
+  `df6073ee650ffc139b59a982e6b69e39f9bc64c5bbf3ab2808af20083ff41412`. A copy is kept outside the repository. Task 1.4 compares the
+  canonical served document with no plugin fragment against this hash.
+
+### 0.2 Output of the annotation processor
+
+Read from the backend's own build, which applies `kotlin("kapt")` and
+`kapt("io.javalin.community.openapi:openapi-annotation-processor:7.2.2")` exactly as a plugin module will through D4. kapt writes
+generated resources to `build/tmp/kapt3/classes/<source set>/`, which for a plugin module's main source set is
+`build/tmp/kapt3/classes/main/`:
+
+| Path below `build/tmp/kapt3/classes/main/` | Content |
+|---|---|
+| `openapi-plugin/.index` | The file names of the generated documents, one per line. For one default document it is the single line `openapi-default.json` (20 bytes, no trailing newline). |
+| `openapi-plugin/openapi-default.json` | The generated document of every `@OpenApi` route of the module (220470 bytes for the backend). |
+| `json-schemes/index` | The fully qualified class names of every `@JsonSchema` class, one per line, no trailing newline (45 names for the backend). |
+| `json-schemes/<fully qualified class name>` | One schema per class, the file name is `Class.name`, for example `json-schemes/com.reposilite.cleanup.application.CleanupSettings`. |
+
+- None of these files is in `build/resources/main/` or `build/classes/kotlin/main/`, and nothing of them is under `build/generated/`
+  (that holds only the kapt stubs and sources).
+- The jar `reposilite-backend-<version>.jar` holds them at the same relative paths: `openapi-plugin/.index`,
+  `openapi-plugin/openapi-default.json`, `json-schemes/index` and the `json-schemes/<class name>` files.
+- The test resources keep an empty `reposilite-backend/src/test/resources/json-schemes/index`, and the `kaptTest`, `kaptIntegration`
+  and `kaptTestFixtures` configurations exclude the processor, so no test source set writes its own copy.
+- The same directory also holds unrelated kapt output (`META-INF/native-image/` of `picocli-codegen` in the backend), which the step
+  of D4 leaves alone.
+
+### 0.3 When the document is built
+
+`OpenApiPlugin` of `javalin-openapi-plugin` 7.2.2, the version the backend declares as `javalinOpenApi`, registers the `/openapi`
+route in `onStart` with a handler over `lazy { ... }`. The lazy block loads `openapi-plugin/.index`, applies the definition
+configuration and then the definition processor. Kotlin's `lazy` is synchronised by default, so the document and every line the
+processor logs are produced once per process, on the first request to `/openapi`. `ReposiliteFactory.createReposilite` loads and
+initialises every plugin (`loadPluginsByServiceFiles`, `initialize`) before `Reposilite.launch` starts the web server, so the processor
+always runs after every plugin has loaded.
 
 ## Risks
 
