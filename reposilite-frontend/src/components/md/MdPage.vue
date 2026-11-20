@@ -19,6 +19,8 @@
  * Material Design 3 page container. The side gutter comes from the shared container utility
  * (16px in a compact window, 24px from 600px), so the page adds no padding of its own.
  * `measure` caps the width at the reading measure, and `centred` centres the page in the window.
+ * Without `measure` the page takes the full width: the inline max-width lifts the width steps of Tailwind's container
+ * (1536 pixels from the 2xl window), and leaves no max-w-* class on the page container.
  */
 withDefaults(defineProps<{
   measure?: boolean
@@ -36,6 +38,7 @@ defineSlots<{
 <template>
   <div
     :class="['container', measure && 'max-w-md-reading', centred && 'mx-auto']"
+    :style="measure ? undefined : { maxWidth: 'none' }"
     data-ingot-component="md-page"
   >
     <slot />

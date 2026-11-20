@@ -50,6 +50,19 @@ describe('MdPage', () => {
     expect(wrapper.classes()).not.toContain('max-w-md-reading')
   })
 
+  it('lifts the width steps of the container, so the page takes the full width without a max-w class', () => {
+    const wrapper = mount(MdPage)
+
+    expect((wrapper.element as HTMLElement).style.maxWidth, 'the 1536 pixel container step is lifted').toBe('none')
+    expect(wrapper.classes().filter(name => name.startsWith('max-w-')), 'the page container carries no max-w class').toEqual([])
+  })
+
+  it('leaves the reading measure in charge of the width when measure is set', () => {
+    const wrapper = mount(MdPage, { props: { measure: true } })
+
+    expect((wrapper.element as HTMLElement).style.maxWidth, 'no inline width overrides the reading measure').toBe('')
+  })
+
   it('centres the page when centred is set', () => {
     const wrapper = mount(MdPage, { props: { centred: true } })
 
