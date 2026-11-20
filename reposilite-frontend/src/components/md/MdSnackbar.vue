@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import { SNACKBAR_QUEUE_KEY, snackbar as sharedQueue } from '../../store/snackbar'
+import MdTransition from './MdTransition.vue'
 
 /*
  * Material Design 3 snackbar. It shows the head of a notification queue and nothing else:
@@ -37,9 +38,9 @@ const isError = computed(() => current.value?.tone === 'error')
     class="pointer-events-none fixed inset-x-4 bottom-4 max-medium:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))] z-md-snackbar flex justify-center medium:inset-x-auto medium:bottom-6 medium:left-[calc(var(--app-rail-width,0px)+1.5rem)] medium:justify-start"
     data-ingot-component="md-snackbar"
   >
-    <Transition
-      enter-active-class="motion-safe:animate-md-snackbar-enter"
-      leave-active-class="motion-safe:animate-md-snackbar-leave"
+    <MdTransition
+      pattern="snackbar"
+      mode="out-in"
     >
       <div
         v-if="current"
@@ -76,6 +77,6 @@ const isError = computed(() => current.value?.tone === 'error')
           </svg>
         </button>
       </div>
-    </Transition>
+    </MdTransition>
   </div>
 </template>
