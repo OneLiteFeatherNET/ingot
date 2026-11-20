@@ -19,6 +19,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
 import TokenList from '../identity/TokenList.vue'
 import PasswordCard from './PasswordCard.vue'
+import SecondFactorsCard from './SecondFactorsCard.vue'
+import type { SecondFactorsApi } from './secondFactorsApi'
 import ProfileCard from './ProfileCard.vue'
 import YourAccess from './YourAccess.vue'
 import { accessView, signInSources, type OwnAccessSummary } from './accessView'
@@ -27,14 +29,17 @@ import MdPageHeader from '../md/MdPageHeader.vue'
 
 /*
  * "My account": four sections, each with its heading. Profile shows each value once. Sign-in and security holds the
- * password card and a named slot for two-step sign-in. Tokens are the signed in user's own. Your access is read only
- * and shows the caller's own access summary; the page asks for no principal, so none can come from the address.
+ * password card and, in the named slot for two-step sign-in, the second factors card. Tokens are the signed in user's
+ * own. Your access is read only and shows the caller's own access summary; the page asks for no principal, so none can
+ * come from the address.
  * When the server requires a new password (mustChangePassword), a banner says so and the sign-in and security section
  * moves to the top; the router keeps the other pages closed until it is done.
  */
 const { principal, authMode, mustChangePassword, client } = useSession()
 
 const identity = computed(() => client.value.identity.me)
+// The card reads the factors as typed by its own API; the generated client types the answer with optional fields.
+const secondFactors = computed(() => identity.value as SecondFactorsApi)
 const passwordAvailable = computed(() => authMode.value === 'cookie')
 const blocks = computed<string[]>(() => (mustChangePassword.value ? ['security', 'overview'] : ['overview', 'security']))
 
@@ -118,22 +123,16 @@ const sources = computed<string[]>(() => (answer.value
               :focus="mustChangePassword"
               @changed="passwordChanged"
             />
-            <section
+            <div
               data-test="sign-in-slot"
               data-ingot-slot="add-multi-factor-authentication"
-              class="flex flex-col gap-2 rounded-corner-large bg-surface-container-low px-4 py-4"
-              aria-labelledby="mfa-title"
+              class="min-w-0"
             >
-              <h4
-                id="mfa-title"
-                class="md-title-small text-on-surface"
-              >
-                Two-step sign-in
-              </h4>
-              <p class="md-body-medium text-on-surface-variant">
-                Two-step sign-in is not set up.
-              </p>
-            </section>
+              <SecondFactorsCard
+                :api="secondFactors"
+                :account-name="principal?.name ?? ''"
+              />
+            </div>
           </section>
         </template>
         <div class="col-span-full min-w-0">

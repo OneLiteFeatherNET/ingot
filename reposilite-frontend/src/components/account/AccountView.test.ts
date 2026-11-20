@@ -70,6 +70,15 @@ const fakeSession = (options: SessionOptions = {}) => {
       : new Promise(() => {})
   const me = {
     changePassword: vi.fn().mockResolvedValue({ status: 204 }),
+    factors: {
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      startAuthenticator: vi.fn(),
+      confirmAuthenticator: vi.fn(),
+      startPasskey: vi.fn(),
+      registerPasskey: vi.fn(),
+      rename: vi.fn(),
+      remove: vi.fn()
+    },
     access: vi.fn(() => accessAnswer),
     tokens: {
       list: vi.fn().mockResolvedValue({ data: [] }),
@@ -215,14 +224,38 @@ describe('AccountView', () => {
     expect(wrapper.text()).toContain('signed in with an access token')
   })
 
-  it('puts the placeholder slot for two-step sign-in inside the sign-in and security section', async () => {
+  it('places the second factors card inside the sign-in and security section, below the password card', async () => {
+    await mountView()
+
+    const card = wrapper.findComponent({ name: 'SecondFactorsCard' })
+    const section = sectionOf('security-title').element as HTMLElement
+
+    expect(card.exists(), 'the second factors card is on the page').toBe(true)
+    expect(section.contains(card.element as Node), 'the card sits in the sign-in and security section').toBe(true)
+    const password = section.querySelector('#account-current-password') as HTMLElement
+    expect(password.compareDocumentPosition(card.element as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING, 'the card follows the password card').toBeTruthy()
+  })
+
+  it('passes the signed in account name to the second factors card', async () => {
+    await mountView()
+
+    expect(wrapper.findComponent({ name: 'SecondFactorsCard' }).props('accountName'), 'the passkey is named after the account').toBe('alice')
+  })
+
+  it('gives the second factors card the identity endpoints, so it loads the factors of the signed in user', async () => {
+    const session = await mountView()
+
+    expect(session.me.factors.list, 'the card asks for the factors once, when it opens').toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the slot for two-step sign-in around the card, named for the change that fills it', async () => {
     await mountView()
 
     const slot = wrapper.find('[data-test="sign-in-slot"]')
 
     expect(slot.attributes('data-ingot-slot'), 'the slot is named for the change that fills it').toBe('add-multi-factor-authentication')
-    expect(slot.text()).toContain('Two-step sign-in is not set up')
-    expect(sectionOf('security-title').find('[data-test="sign-in-slot"]').exists()).toBe(true)
+    expect(slot.findComponent({ name: 'SecondFactorsCard' }).exists(), 'the card fills the slot').toBe(true)
+    expect(slot.text(), 'the placeholder note is gone').not.toContain('Two-step sign-in is not set up')
   })
 
   it('shows no banner when no new password is required', async () => {
