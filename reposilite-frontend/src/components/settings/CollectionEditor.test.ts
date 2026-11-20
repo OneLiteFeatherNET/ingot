@@ -69,4 +69,20 @@ describe('CollectionEditor detail pane', () => {
 
     expect(detailPane(), 'the detail pane is never hidden below 840 pixels').not.toContain('max-expanded:hidden')
   })
+
+  it('asks for a selection through the shared empty state when no entry is selected', () => {
+    mountEditor(null)
+
+    const empty = wrapper!.get('[data-test="no-selection"]')
+    expect(empty.attributes('data-ingot-component'), 'the detail pane without a selection is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text(), 'the empty state names the entry to select').toBe('Select a webhook to edit its settings.')
+    expect(empty.classes(), 'the prompt stays hidden below 840 pixels, where the list takes the screen').toContain('max-expanded:hidden')
+  })
+
+  it('draws no empty state when an entry is selected', () => {
+    mountEditor('hook')
+
+    expect(wrapper!.find('[data-test="no-selection"]').exists(), 'the selected entry replaces the empty state').toBe(false)
+  })
 })

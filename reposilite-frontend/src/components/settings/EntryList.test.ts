@@ -105,10 +105,30 @@ describe('EntryList', () => {
     expect(wrapper.text()).toContain('No repository matches "nothing-like-this".')
   })
 
+  it('draws the search without a match as the shared empty state', async () => {
+    mountList()
+
+    await wrapper.find('input').setValue('nothing-like-this')
+
+    const empty = wrapper.get('[data-test="empty"]')
+    expect(empty.attributes('data-ingot-component'), 'the empty list is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text(), 'the empty state names the search').toContain('No repository matches "nothing-like-this".')
+  })
+
   it('says that the collection is empty when it has no entries', () => {
     mountList({ entries: [], keys: [] })
 
     expect(wrapper.text()).toContain('No repositories yet.')
+  })
+
+  it('draws the empty collection as the shared empty state', () => {
+    mountList({ entries: [], keys: [] })
+
+    const empty = wrapper.get('[data-test="empty"]')
+    expect(empty.attributes('data-ingot-component'), 'the empty collection is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
+    expect(empty.text(), 'the empty state names the collection').toContain('No repositories yet.')
   })
 
   it('names the add action after the entry it adds', () => {

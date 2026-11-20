@@ -134,6 +134,20 @@ describe('RepositoryMembersPicker', () => {
     const alert = wrapper.get('[role="alert"]')
     expect(alert.text()).toBe('Add at least one repository.')
   })
+
+  it('shows the problem as the shared alert in the error tone', () => {
+    mountPicker({ modelValue: [], error: 'Add at least one repository.' })
+
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.attributes('data-ingot-component'), 'the problem is drawn by MdAlert').toBe('md-alert')
+    expect(alert.attributes('data-tone'), 'the problem uses the error tone').toBe('error')
+  })
+
+  it('draws no alert when there is no problem', () => {
+    mountPicker({ modelValue: [] })
+
+    expect(wrapper.find('[role="alert"]').exists(), 'no problem, no alert').toBe(false)
+  })
 })
 
 describe('RepositoryMembersPicker credentials of the members', () => {
