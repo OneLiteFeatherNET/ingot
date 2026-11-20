@@ -20,6 +20,8 @@ import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdIcon from '../md/MdIcon.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import NewMachineDialog from './NewMachineDialog.vue'
@@ -89,7 +91,7 @@ const toggleMenu = (name: string, open: boolean) => {
 
 onMounted(load)
 
-// Everything a row shows comes from its list item. A machine account counts as used when it last
+// Everything a row shows comes from its list item, and the list decides the selected row here, once. A machine account counts as used when it last
 // authenticated, which the server records as the last seen time of the principal.
 const rows = computed(() => filterPrincipals(principals.value, query.value).map(principal => {
   const activity = isMachine.value ? usedLabel(principal.lastSeenAt ?? null) : seenLabel(principal.lastSeenAt ?? null)
@@ -102,7 +104,8 @@ const rows = computed(() => filterPrincipals(principals.value, query.value).map(
     activity,
     // "Last sign-in 3 days ago", or the bare "Never signed in".
     activityText: activity.title ? `${prefix} ${activity.text}` : activity.text,
-    href: router.resolve({ name: COPY.value.detail, params: { name: principal.name } }).href
+    to: { name: COPY.value.detail, params: { name: principal.name } },
+    selected: principal.name === props.name
   }
 }))
 
@@ -204,26 +207,32 @@ const deleted = (principal: PrincipalSummary) => {
       >
         Loading...
       </p>
-      <ul
+      <!--
+        A row holds two controls: the link to the principal and its actions menu. A menu button
+        inside a link is nested interactive content, so the row is a plain MdListItem rather than
+        its link form. The link fills the default slot and stretches over the whole row with its
+        ::after, the menu sits in the trailing slot above it. The row keeps the shared geometry,
+        the whole row still opens the principal, and the menu stays a separate tab stop.
+      -->
+      <MdList
         v-else-if="rows.length > 0"
-        class="flex flex-col gap-1"
+        data-test="principals-list"
       >
-        <li
+        <MdListItem
           v-for="row in rows"
           :key="row.principal.name"
           data-test="row"
-          class="md-state-layer relative flex items-start gap-1 rounded-corner-large"
+          class="md-state-layer"
           :class="[
-            row.principal.name === name ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface',
+            row.selected ? 'bg-secondary-container text-on-secondary-container' : '',
             row.principal.name === menuRow ? 'z-20' : ''
           ]"
         >
-          <a
-            :href="row.href"
-            :aria-current="row.principal.name === name ? 'true' : undefined"
-            class="md-focus-ring-inset flex min-w-0 flex-1 flex-col gap-1 rounded-corner-large px-4 py-3 no-underline"
-            :class="row.principal.name === name ? 'text-on-secondary-container' : 'text-on-surface'"
-            @click.prevent="open(row.principal.name)"
+          <router-link
+            :to="row.to"
+            :aria-current="row.selected ? 'true' : undefined"
+            class="md-focus-ring-inset flex flex-col gap-1 no-underline after:absolute after:inset-0"
+            :class="row.selected ? 'text-on-secondary-container' : 'text-on-surface'"
           >
             <span
               class="md-title-small break-words"
@@ -231,7 +240,7 @@ const deleted = (principal: PrincipalSummary) => {
             >{{ row.principal.displayName || row.principal.name }}</span>
             <span
               class="md-body-medium break-all"
-              :class="row.principal.name === name ? 'text-on-secondary-container' : 'text-on-surface-variant'"
+              :class="row.selected ? 'text-on-secondary-container' : 'text-on-surface-variant'"
               data-test="username"
             >{{ row.principal.name }}</span>
             <span
@@ -250,22 +259,23 @@ const deleted = (principal: PrincipalSummary) => {
             </span>
             <span
               class="md-body-small"
-              :class="row.principal.name === name ? 'text-on-secondary-container' : 'text-on-surface-variant'"
+              :class="row.selected ? 'text-on-secondary-container' : 'text-on-surface-variant'"
               data-test="activity"
               :title="row.activity.title"
             >{{ row.activityText }}</span>
-          </a>
-          <PrincipalActionsMenu
-            class="mr-1 mt-1"
-            :principal="row.principal"
-            :instance-admin="row.directAdmin"
-            :api="api"
-            @changed="load()"
-            @deleted="deleted"
-            @toggle="toggleMenu(row.principal.name, $event)"
-          />
-        </li>
-      </ul>
+          </router-link>
+          <template #trailing>
+            <PrincipalActionsMenu
+              :principal="row.principal"
+              :instance-admin="row.directAdmin"
+              :api="api"
+              @changed="load()"
+              @deleted="deleted"
+              @toggle="toggleMenu(row.principal.name, $event)"
+            />
+          </template>
+        </MdListItem>
+      </MdList>
       <p
         v-else
         class="px-1 py-4 md-body-medium text-on-surface-variant"
