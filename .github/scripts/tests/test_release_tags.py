@@ -196,6 +196,18 @@ class CommandLineTest(unittest.TestCase):
         self.assertNotEqual(0, code, "a missing previous release must fail the job")
         self.assertEqual("", out, "nothing is printed when no tag exists")
 
+    def test_newest_command_prints_the_highest_tag_across_lines(self):
+        code, out = self.run_cli(["newest"], "v2.0.0\nv1.1.2\nnightly\n")
+
+        self.assertEqual(0, code, "a repository with releases has a newest tag")
+        self.assertEqual("v2.0.0\n", out, "a later patch of an old line never becomes the newest tag")
+
+    def test_newest_command_fails_without_a_release(self):
+        code, out = self.run_cli(["newest"], "nightly\n")
+
+        self.assertNotEqual(0, code, "without a release there is no tag to mark as Latest")
+        self.assertEqual("", out, "nothing is printed when no tag exists")
+
 
 if __name__ == "__main__":
     unittest.main()

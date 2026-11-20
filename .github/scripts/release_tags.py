@@ -13,7 +13,8 @@ Container tag rules (see openspec/changes/add-release-branches-and-backports/des
 - `latest` is set only when the release is the highest version across all lines.
 
 The standard library only. Imported by the workflows and by `tests/test_release_tags.py`. The command line runs the
-same rules for the workflows: `container-tags VERSION` and `previous BRANCH`, both reading the version tags on stdin.
+same rules for the workflows: `container-tags VERSION`, `previous BRANCH` and `newest`, all reading the version tags on
+stdin.
 """
 
 import argparse
@@ -123,7 +124,8 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
     """Runs one rule for a workflow step. The version tags are read from stdin, one per line.
 
     `container-tags VERSION` prints the container tags of a release. `previous BRANCH` prints the previous release of
-    the branch's line, or of all lines for any other branch, and exits 1 when there is none.
+    the branch's line, or of all lines for any other branch, and exits 1 when there is none. `newest` prints the highest
+    tag across all lines, the release that keeps the GitHub Latest flag, and exits 1 when there is none.
     """
     parser = argparse.ArgumentParser(prog="release_tags.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -131,6 +133,7 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
     container.add_argument("version")
     previous = commands.add_parser("previous", help="print the previous release of a branch line")
     previous.add_argument("branch")
+    commands.add_parser("newest", help="print the highest release tag across all lines")
     args = parser.parse_args(argv)
 
     stdin = stdin if stdin is not None else sys.stdin
@@ -140,6 +143,13 @@ def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[s
     if args.command == "container-tags":
         for tag in container_tags(args.version, tags):
             stdout.write(tag + "\n")
+        return 0
+
+    if args.command == "newest":
+        newest = newest_tag(tags)
+        if newest is None:
+            return 1
+        stdout.write(newest + "\n")
         return 0
 
     branch = args.branch[len("refs/heads/"):] if args.branch.startswith("refs/heads/") else args.branch

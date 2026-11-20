@@ -65,6 +65,31 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+  # GitHub marks the most recently created release as Latest, and Release Please has no
+  # input for that flag. A patch on an older line would take the badge from the newest
+  # line, so after every release the flag goes back to the highest version tag across all
+  # lines. On main that is the release just created, so nothing visible changes there.
+  latest-flag:
+    name: "Keep Latest on the newest line"
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Mark the newest release as Latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          newest="$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' \
+            | python3 .github/scripts/release_tags.py newest)"
+          echo "Marking ${newest} as Latest."
+          gh release edit "$newest" --latest --repo "$GITHUB_REPOSITORY"
+
   # A push that changes nothing the image contains does not need a new nightly.
   #
   # Before this, every commit on main rebuilt and pushed both images for two architectures.
