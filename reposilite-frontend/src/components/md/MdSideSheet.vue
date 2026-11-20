@@ -18,6 +18,7 @@
 import { nextTick, ref, useId, watch } from 'vue'
 import MdIcon from './MdIcon.vue'
 import MdIconButton from './MdIconButton.vue'
+import MdTransition from './MdTransition.vue'
 
 /*
  * A modal side sheet: a panel from the leading or the trailing edge of the window, over a scrim, for one task that the page
@@ -38,7 +39,8 @@ import MdIconButton from './MdIconButton.vue'
  * sheet closes by its own means (Escape, the close button, the scrim), focus returns to the element that had it on
  * open. A close that the page starts, such as a choice of an entry, leaves the focus where the page puts it.
  *
- * Motion: the fade is off for a visitor who asks for reduced motion (prefers-reduced-motion).
+ * Motion: the sheet pattern of MdTransition. The scrim fades and the panel slides in from its edge, on the first paint
+ * too. Both are an instant swap for a visitor who asks for reduced motion (prefers-reduced-motion).
  */
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -120,12 +122,9 @@ const onKeydown = (event: KeyboardEvent) => {
 </script>
 
 <template>
-  <Transition
+  <MdTransition
+    pattern="sheet"
     appear
-    enter-active-class="motion-safe:transition-opacity motion-safe:duration-md-short4 motion-reduce:transition-none"
-    enter-from-class="opacity-0"
-    leave-active-class="motion-safe:transition-opacity motion-safe:duration-md-short3 motion-reduce:transition-none"
-    leave-to-class="opacity-0"
   >
     <div
       v-if="open"
@@ -139,12 +138,15 @@ const onKeydown = (event: KeyboardEvent) => {
     >
       <div
         class="absolute inset-0 bg-scrim/md-scrim"
+        data-md-sheet-part="scrim"
         aria-hidden="true"
         @click="dismiss"
       />
       <div
         class="absolute inset-y-0 flex max-w-md-sheet-max flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-1"
         :class="[EDGE[side], WIDTH[width]]"
+        data-md-sheet-part="panel"
+        :data-md-sheet-side="side"
       >
         <div class="flex items-center justify-between gap-2">
           <h2
@@ -163,5 +165,5 @@ const onKeydown = (event: KeyboardEvent) => {
         <slot />
       </div>
     </div>
-  </Transition>
+  </MdTransition>
 </template>
