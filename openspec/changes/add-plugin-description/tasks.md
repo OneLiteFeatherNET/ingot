@@ -9,17 +9,17 @@ support bundle or the plugin API reference) also updates the matching page under
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose add-plugin-description`: this change and nothing else, branched from the remote main branch.
+- [x] 1.1 `docs(openspec): propose add-plugin-description`: this change and nothing else, branched from the remote main branch.
   Verify: `openspec validate add-plugin-description --strict` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Annotation and registry
 
 PR title: `feat(plugin): add the optional description to the plugin annotation`
 
-- [ ] 2.1 `feat(plugin)`: write failing tests for the normalisation table (whitespace, control characters, the 280 code point cut,
+- [x] 2.1 `feat(plugin)`: write failing tests for the normalisation table (whitespace, control characters, the 280 code point cut,
   the empty result), the single WARN line for a cut with a captured appender, a class compiled without the element reading the
   empty text, and the registry lookup for a known and an unknown name. Verify: they fail on the missing classes.
-- [ ] 2.2 `feat(plugin)`: add the `description` element to `@Plugin` in `com.reposilite.plugin.api`, the pure normaliser in
+- [x] 2.2 `feat(plugin)`: add the `description` element to `@Plugin` in `com.reposilite.plugin.api`, the pure normaliser in
   `net.onelitefeather.ingot.plugin.description`, and the lookup by name next to the tier lookup in `Extensions`. Document the
   element in the `@Plugin` table of `docs/gitbook/reference/plugin-api.md`. Verify: the tests of 2.1 pass, and the existing plugin
   tests pass unedited.
@@ -28,10 +28,10 @@ PR title: `feat(plugin): add the optional description to the plugin annotation`
 
 PR title: `feat(plugin): show the plugin description in the system information`
 
-- [ ] 3.1 `feat(plugin)`: write failing tests for `PluginInformation` with and without a description, asserting the serialised JSON
+- [x] 3.1 `feat(plugin)`: write failing tests for `PluginInformation` with and without a description, asserting the serialised JSON
   of `system-info.json` and `plugins.json` (the second plugin is byte-identical to the output before the change), and for the
   redaction of a description that matches a rule (masked, bundle served). Verify: they fail before 3.2.
-- [ ] 3.2 `feat(plugin)`: add `description` to `PluginInformation` with the field omitted when empty, pass it through the redaction
+- [x] 3.2 `feat(plugin)`: add `description` to `PluginInformation` with the field omitted when empty, pass it through the redaction
   check, and update the plugin row of the `docs/gitbook/references/http-api` schema and `docs/gitbook/manage/operate/collect-a-support-bundle.md`.
   Verify: the tests of 3.1 pass, and the OpenAPI document lists the field as optional.
 
@@ -50,9 +50,9 @@ PR title: `feat(plugin): show the plugin description on the system information p
 
 PR title: `feat(plugin): read the description of a store catalogue entry`
 
-- [ ] 5.1 `feat(plugin)`: write failing tests for an entry with and without `description` in `ingot-plugin-catalogue.json` (schema 1
+- [x] 5.1 `feat(plugin)`: write failing tests for an entry with and without `description` in `ingot-plugin-catalogue.json` (schema 1
   accepted in both cases). Verify: they fail before 5.2.
-- [ ] 5.2 `feat(plugin)`: add the optional `description` to `PluginCatalogueEntry`, read through the same normaliser as 2.2. Document
+- [x] 5.2 `feat(plugin)`: add the optional `description` to `PluginCatalogueEntry`, read through the same normaliser as 2.2. Document
   the field in the catalogue page of `docs/gitbook`. Verify: the tests of 5.1 pass, and the existing catalogue tests pass unedited.
 
 ## 6. Pull requests

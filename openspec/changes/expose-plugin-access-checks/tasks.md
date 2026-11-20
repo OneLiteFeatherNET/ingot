@@ -10,31 +10,31 @@ chain: this change delegates to the current rules (D2). The switch to the chain 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose `expose-plugin-access-checks`. This change and nothing else. Verify:
+- [x] 1.1 `docs(openspec)`: propose `expose-plugin-access-checks`. This change and nothing else. Verify:
   `openspec validate expose-plugin-access-checks --strict --no-interactive` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Parity matrix (red, then green)
 
-- [ ] 2.1 `test(maven)`: failing parity tests over the matrix of visibilities (PUBLIC, HIDDEN, PRIVATE) and viewers (anonymous, a token
+- [x] 2.1 `test(maven)`: failing parity tests over the matrix of visibilities (PUBLIC, HIDDEN, PRIVATE) and viewers (anonymous, a token
   without rights, a token with the read right, a token with rights on another repository, a session), comparing each answer of the
   `Viewer` with the route function for the same input, and `listedRepositories()` with the list route (decision 70), including a `HIDDEN` repository the viewer can see but may not list. The test fails on the missing facade. Verify: they fail.
-- [ ] 2.2 `feat(maven)`: `ViewerAccessFacade` and `Viewer` in `net.onelitefeather.ingot.access`, delegating to `RepositorySecurityProvider`,
+- [x] 2.2 `feat(maven)`: `ViewerAccessFacade` and `Viewer` in `net.onelitefeather.ingot.access`, delegating to `RepositorySecurityProvider`,
   `MavenFacade.listRepositories` (the source of `listedRepositories()`, decision 70) and `SearchAccessCompiler.compile`, all marked `@ExperimentalIngotPluginApi`. Add the classes to the
   allowlist of `add-plugin-api-artifact`. Verify: the tests of 2.1 pass.
 
 ## 3. Paths and no existence leak (red, then green)
 
-- [ ] 3.1 `test(maven)`: failing tests: `..`, empty segments, encoded slashes and dot segments give `false`; a canonical path gives the
+- [x] 3.1 `test(maven)`: failing tests: `..`, empty segments, encoded slashes and dot segments give `false`; a canonical path gives the
   route's answer; an unknown repository, an unreadable repository and a missing one give the same `false`. Verify: they fail.
-- [ ] 3.2 `feat(maven)`: the canonical path check of `canonicalize-authorization-paths` applied in `canReadPath`, and the uniform `false`.
+- [x] 3.2 `feat(maven)`: the canonical path check of `canonicalize-authorization-paths` applied in `canReadPath`, and the uniform `false`.
   Verify: the tests of 3.1 pass.
 
 ## 4. Surface guard (red, then green)
 
-- [ ] 4.1 `test(maven)`: failing test over the public members of `net.onelitefeather.ingot.access` and their types: no type of the
+- [x] 4.1 `test(maven)`: failing test over the public members of `net.onelitefeather.ingot.access` and their types: no type of the
   authorization package, no token secret or hash, no public constructor of `Viewer`, and no `toString` that shows the token. Verify: it
   fails before the surface exists and passes after 2.2.
-- [ ] 4.2 `test(maven)`: an architecture test that the access package depends on no `authorization` type (extends the existing
+- [x] 4.2 `test(maven)`: an architecture test that the access package depends on no `authorization` type (extends the existing
   `DependencyRulesTest` pattern with the new package). Verify: it passes.
 
 ## 5. Search access value (red, then green)
