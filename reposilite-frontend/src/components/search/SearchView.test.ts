@@ -537,7 +537,7 @@ describe('SearchView states', () => {
     await mountAt('/search', { client })
 
     const skeleton = wrapper.find('[data-test="skeleton"]')
-    expect(skeleton.findAll('[data-ingot-component="md-skeleton"]').length, 'each skeleton row is drawn with shared bars').toBeGreaterThan(0)
+    expect(skeleton.findAll('[data-shape="bar"]').length, 'each skeleton row is drawn with shared bars').toBeGreaterThan(0)
     expect(skeleton.find('.animate-pulse').exists(), 'the skeleton does not pulse on its own').toBe(false)
   })
 
@@ -545,7 +545,7 @@ describe('SearchView states', () => {
     const client = clientAnswering({ search: () => Promise.reject(failing(500, 'boom')) })
     await mountAt('/search', { client })
 
-    expect(wrapper.find('[data-test="failure"]').attributes('data-ingot-state'), 'the failure is an error state panel').toBe('error')
+    expect(wrapper.find('[data-test="failure"]').attributes('role'), 'the failure is announced as an error panel').toBe('alert')
     expect(wrapper.find('[data-test="retry"]').attributes('data-variant'), 'the retry is a tonal button').toBe('tonal')
   })
 
@@ -553,9 +553,7 @@ describe('SearchView states', () => {
     const client = clientAnswering({ search: () => Promise.resolve({ data: answerPage({ items: [], total: 0 }) }) })
     await mountAt('/search', { client })
 
-    const empty = wrapper.find('[data-test="empty"] [data-ingot-component="md-state-panel"]')
-    expect(empty.attributes('data-ingot-state'), 'the empty answer is an empty state panel').toBe('empty')
-    expect(empty.text(), 'the empty state names the query').toContain('Nothing matches.')
+    expect(wrapper.find('[data-test="empty"] > div').text(), 'the empty state is the state panel and names the query').toBe('Nothing matches.')
   })
 
   it('says why nothing was found and which filters were active', async () => {

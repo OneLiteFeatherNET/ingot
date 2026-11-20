@@ -265,6 +265,6 @@ describe('FailuresSheet', () => {
 
     const retry = buttonNamed('Retry')
     expect(retry?.getAttribute('data-variant'), 'the retry is a tonal button').toBe('tonal')
-    expect(retry?.closest('[data-ingot-state="error"]'), 'the retry sits in the error state panel').not.toBeNull()
+    expect(retry?.closest('[role="alert"]'), 'the retry sits in the error state panel').not.toBeNull()
   })
 })

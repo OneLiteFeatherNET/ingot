@@ -455,9 +455,9 @@ describe('RepositoryOverview empty and failing states', () => {
   })
 
   it('shows the failure as an error state panel with a tonal retry', async () => {
-    await mountAt('/', { answer: () => Promise.reject({ response: { status: 500, data: { message: 'Boom' } } }) })
+    await mountAt('/', { answer: () => Promise.reject(Object.assign(new Error('Boom'), { response: { status: 500, data: { message: 'Boom' } } })) })
 
-    const panel = wrapper.find('[data-ingot-state="error"]')
+    const panel = wrapper.find('[role="alert"]')
     expect(panel.text(), 'the panel names what went wrong').toContain('Cannot load repositories')
     expect(panel.findAll('button').find(button => button.text() === 'Retry')?.attributes('data-variant'), 'the retry is a tonal button').toBe('tonal')
   })
@@ -465,8 +465,8 @@ describe('RepositoryOverview empty and failing states', () => {
   it('draws the loading line with shared skeleton bars, without a pulsing box', async () => {
     await mountAt('/', { answer: () => new Promise(() => {}) })
 
-    const loading = wrapper.find('[data-ingot-state="loading"]')
-    expect(loading.findAll('[data-ingot-component="md-skeleton"]').length, 'the loading line is drawn with shared bars').toBeGreaterThan(0)
+    const loading = wrapper.find('[aria-busy="true"]')
+    expect(loading.findAll('[data-shape="bar"]').length, 'the loading line is drawn with shared bars').toBeGreaterThan(0)
     expect(loading.find('.animate-pulse').exists(), 'the loading line does not pulse on its own').toBe(false)
   })
 

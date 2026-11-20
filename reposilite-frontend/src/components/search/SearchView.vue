@@ -22,6 +22,8 @@ import { ADMIN_NODES } from '../../store/nodeAccess'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdSkeleton from '../md/MdSkeleton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdPage from '../md/MdPage.vue'
 import MdSelect from '../md/MdSelect.vue'
 import SearchBar from './SearchBar.vue'
@@ -105,6 +107,7 @@ const finalPage = computed(() => lastPage(result.value?.total ?? 0, query.value.
 const countText = computed(() => (result.value ? announcement(result.value) : ''))
 const outOfRange = computed(() => result.value !== null && result.value.total > 0 && items.value.length === 0)
 const onlyMirrors = computed(() => query.value.origin === 'mirror')
+const emptyMessage = computed(() => (query.value.q ? `Nothing matches "${query.value.q}".` : 'Nothing matches.'))
 
 /*
  * Asks for the page the address names, once the session is known and again when it changes, because a
@@ -433,32 +436,32 @@ const toggleRow = (item: SearchItem) => {
               <li
                 v-for="row in SKELETON_ROWS"
                 :key="row"
-                class="h-[88px] animate-pulse border-b border-outline-variant px-4 py-4 last:border-b-0"
+                class="border-b border-outline-variant px-4 py-4 last:border-b-0"
               >
-                <div class="h-5 w-2/3 rounded-corner-small bg-surface-container-highest" />
-                <div class="mt-3 h-4 w-1/3 rounded-corner-small bg-surface-container-highest" />
+                <div class="flex flex-col gap-3">
+                  <MdSkeleton width="md" />
+                  <MdSkeleton width="sm" />
+                </div>
               </li>
             </MdCard>
 
-            <div
+            <MdStatePanel
               v-else-if="failure"
-              class="mt-4 flex flex-col items-start gap-3"
+              state="error"
+              class="mt-4"
+              :description="failure"
               data-test="failure"
             >
-              <p
-                class="m-0 md-body-large text-error"
-                role="alert"
-              >
-                {{ failure }}
-              </p>
-              <MdButton
-                variant="tonal"
-                data-test="retry"
-                @click="load"
-              >
-                Retry
-              </MdButton>
-            </div>
+              <template #actions>
+                <MdButton
+                  variant="tonal"
+                  data-test="retry"
+                  @click="load"
+                >
+                  Retry
+                </MdButton>
+              </template>
+            </MdStatePanel>
 
             <div
               v-else-if="outOfRange"
@@ -481,9 +484,11 @@ const toggleRow = (item: SearchItem) => {
               class="mt-4 flex flex-col items-start gap-3"
               data-test="empty"
             >
-              <p class="m-0 md-body-large text-on-surface">
-                {{ query.q ? `Nothing matches "${query.q}".` : 'Nothing matches.' }}
-              </p>
+              <MdStatePanel
+                state="empty"
+                class="w-full px-0"
+                :description="emptyMessage"
+              />
               <p
                 v-if="filterWords.length > 0"
                 class="m-0 md-body-medium text-on-surface-variant"
