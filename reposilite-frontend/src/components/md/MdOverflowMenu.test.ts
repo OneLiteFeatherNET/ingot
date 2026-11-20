@@ -108,6 +108,18 @@ describe('MdOverflowMenu', () => {
     expect(document.activeElement, 'End moves to the last item').toBe(menuItems()[2])
   })
 
+  it('tells its parent when the menu opens and when it closes', async () => {
+    await mountMenu()
+
+    await trigger().trigger('click')
+    await flushPromises()
+    expect(wrapper!.emitted('toggle')?.at(-1), 'the parent learns that the menu opened').toEqual([true])
+
+    menuItems()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+    expect(wrapper!.emitted('toggle')?.at(-1), 'the parent learns that the menu closed').toEqual([false])
+  })
+
   it('draws no menu until the trigger is activated', async () => {
     await mountMenu()
 

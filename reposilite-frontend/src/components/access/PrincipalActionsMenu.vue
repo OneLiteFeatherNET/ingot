@@ -15,12 +15,13 @@
   -->
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch, type PropType } from 'vue'
+import { computed, ref, type PropType } from 'vue'
 import type { AxiosError, AxiosResponse } from 'axios'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { etagOf, isPreconditionFailed } from '../../store/client'
 import MoreIcon from '../icons/MoreIcon.vue'
-import MdIconButton from '../md/MdIconButton.vue'
+import MdOverflowMenu from '../md/MdOverflowMenu.vue'
+import type { MenuItem } from '../md/types'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 import ResetPasswordDialog from './ResetPasswordDialog.vue'
 import { detailOf, type PrincipalDetailAnswer, type PrincipalSummary, type PrincipalsApi } from './accessPrincipals'
@@ -42,12 +43,9 @@ import { detailOf, type PrincipalDetailAnswer, type PrincipalSummary, type Princ
  *   toggle   the menu opened (true) or closed (false). A list row is its own stacking context, so
  *            the row of an open menu has to be raised above the rows that follow it.
  *
- * The open menu is teleported to the body and positioned with `fixed` from the bounding rect of
- * its trigger, because the list card clips whatever sticks out of it (overflow-hidden keeps its
- * rounded corners). It opens upwards when there is no room below. A scroll or a resize moves the
- * trigger, so the menu is placed again from it, once per frame. It closes only when the trigger has
- * left the screen. It also closes on Escape (the focus goes back to the trigger), on a press outside
- * of it and when the focus leaves it.
+ * The menu is the shared MdOverflowMenu: it is teleported and placed from its trigger, follows the
+ * trigger on scroll and closes on Escape, on a press outside of it and when the focus leaves it.
+ * The change item is disabled while a change is running.
  *
  * Disable and enable read the principal again right before the write and send the entity tag
  * of that fresh read as If-Match, so a change made elsewhere in the meantime answers 412
@@ -71,70 +69,6 @@ const props = defineProps({
 
 const emit = defineEmits(['changed', 'deleted', 'toggle'])
 
-const menuOpen = ref(false)
-const root = ref<HTMLElement | null>(null)
-const menuElement = ref<HTMLElement | null>(null)
-const placement = ref<Record<string, string>>({})
-
-const GAP = 4
-const triggerElement = (): HTMLElement | null | undefined => root.value?.querySelector<HTMLElement>('[data-test="actions"]')
-
-const place = async () => {
-  const trigger = triggerElement()
-  if (!trigger) return
-  const rect = trigger.getBoundingClientRect()
-  const right = `${window.innerWidth - rect.right}px`
-  placement.value = { top: `${rect.bottom + GAP}px`, right }
-  await nextTick()
-  const height = menuElement.value?.getBoundingClientRect().height ?? 0
-  if (rect.bottom + GAP + height > window.innerHeight && rect.top - GAP - height >= 0) {
-    placement.value = { bottom: `${window.innerHeight - rect.top + GAP}px`, right }
-  }
-}
-
-const closeMenu = () => {
-  menuOpen.value = false
-}
-
-const insideMenu = (node: EventTarget | null) => root.value?.contains(node as Node | null) || menuElement.value?.contains(node as Node | null)
-
-const onPointerdown = (event: Event) => {
-  if (!insideMenu(event.target)) closeMenu()
-}
-
-// Follows the trigger after a scroll or a resize, at most once per frame. The menu closes only when the trigger has
-// left the screen; a menu that closed on every scroll lost the race with a scroll that began before it opened.
-let frame = 0
-const follow = () => {
-  if (frame) return
-  frame = requestAnimationFrame(() => {
-    frame = 0
-    const rect = triggerElement()?.getBoundingClientRect()
-    if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) closeMenu()
-    else place()
-  })
-}
-
-const listen = (on: boolean) => {
-  const toggle = on ? 'addEventListener' : 'removeEventListener'
-  document[toggle]('pointerdown', onPointerdown)
-  window[toggle]('scroll', follow, true)
-  window[toggle]('resize', follow)
-  if (!on && frame) {
-    cancelAnimationFrame(frame)
-    frame = 0
-  }
-}
-
-watch(menuOpen, async (open) => {
-  emit('toggle', open)
-  listen(open)
-  if (!open) return
-  await place()
-  menuElement.value?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true })
-})
-
-onBeforeUnmount(() => listen(false))
 const passwordOpen = ref(false)
 const adminOpen = ref(false)
 const deleteOpen = ref(false)
@@ -144,22 +78,23 @@ const failure = ref('')
 const isUser = computed(() => props.principal.kind === 'USER')
 const noun = computed(() => (isUser.value ? 'user' : 'machine account'))
 const label = computed(() => props.principal.displayName || props.principal.name)
+const menuLabel = computed(() => `Actions for ${props.principal.name}`)
 
-const choose = (action: () => void) => {
-  menuOpen.value = false
+// The change item is disabled while a change runs, so a second press cannot start another one.
+const menuItems = computed<MenuItem[]>(() => [
+  ...(isUser.value ? [{ value: 'reset-password', label: 'Reset password' }] : []),
+  { value: 'toggle-disabled', label: props.principal.disabled ? 'Enable' : 'Disable', disabled: busy.value },
+  ...(isUser.value ? [{ value: 'toggle-admin', label: props.instanceAdmin ? 'Remove instance admin' : 'Make instance admin' }] : []),
+  { value: 'delete', label: 'Delete', error: true }
+])
+
+// The menu has closed by the time an item is chosen: the choice opens its dialog or runs its change.
+const choose = (value: string) => {
   failure.value = ''
-  action()
-}
-
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key !== 'Escape' || !menuOpen.value) return
-  menuOpen.value = false
-  triggerElement()?.focus({ preventScroll: true })
-}
-
-// Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
-const onFocusout = (event: FocusEvent) => {
-  if (!insideMenu(event.relatedTarget)) menuOpen.value = false
+  if (value === 'reset-password') passwordOpen.value = true
+  else if (value === 'toggle-disabled') toggleDisabled()
+  else if (value === 'toggle-admin') adminOpen.value = true
+  else if (value === 'delete') deleteOpen.value = true
 }
 
 const toggleDisabled = async () => {
@@ -216,79 +151,24 @@ const remove = async () => {
     busy.value = false
   }
 }
-
-const itemClass = 'md-state-layer relative flex w-full items-center rounded-corner-small px-3 py-2 text-left md-label-large text-on-surface'
 </script>
 
 <template>
   <div
-    ref="root"
     class="relative shrink-0"
     data-ingot-component="principal-actions-menu"
-    @keydown="onKeydown"
-    @focusout="onFocusout"
   >
-    <MdIconButton
-      data-test="actions"
-      :aria-label="`Actions for ${principal.name}`"
-      aria-haspopup="menu"
-      :aria-expanded="menuOpen ? 'true' : 'false'"
-      @click="menuOpen = !menuOpen"
+    <MdOverflowMenu
+      :label="menuLabel"
+      :trigger-label="menuLabel"
+      :items="menuItems"
+      @select="choose"
+      @toggle="$emit('toggle', $event)"
     >
-      <MoreIcon />
-    </MdIconButton>
-    <Teleport to="body">
-      <div
-        v-if="menuOpen"
-        ref="menuElement"
-        role="menu"
-        :aria-label="`Actions for ${principal.name}`"
-        :style="{ position: 'fixed', ...placement }"
-        class="z-50 flex w-56 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
-        @keydown="onKeydown"
-        @focusout="onFocusout"
-      >
-        <button
-          v-if="isUser"
-          type="button"
-          role="menuitem"
-          data-test="reset-password"
-          :class="itemClass"
-          @click="choose(() => (passwordOpen = true))"
-        >
-          Reset password
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          data-test="toggle-disabled"
-          :class="itemClass"
-          :disabled="busy"
-          @click="choose(toggleDisabled)"
-        >
-          {{ principal.disabled ? 'Enable' : 'Disable' }}
-        </button>
-        <button
-          v-if="isUser"
-          type="button"
-          role="menuitem"
-          data-test="toggle-admin"
-          :class="itemClass"
-          @click="choose(() => (adminOpen = true))"
-        >
-          {{ instanceAdmin ? 'Remove instance admin' : 'Make instance admin' }}
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          data-test="delete"
-          :class="[itemClass, '!text-error']"
-          @click="choose(() => (deleteOpen = true))"
-        >
-          Delete
-        </button>
-      </div>
-    </Teleport>
+      <template #trigger>
+        <MoreIcon />
+      </template>
+    </MdOverflowMenu>
 
     <ResetPasswordDialog
       v-if="isUser"

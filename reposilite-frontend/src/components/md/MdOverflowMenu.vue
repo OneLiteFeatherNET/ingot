@@ -41,6 +41,7 @@ import type { MenuEntry, MenuItem } from './types'
  *   header   a line above the items, such as the name of the signed in user; it is not a menu item
  * Emits:
  *   select  the value of the chosen item; the menu closes and the focus returns to the button
+ *   toggle  the menu opened (true) or closed (false), for a parent that has to raise its own row above the rows that follow
  *
  * Keyboard: Enter or Space open the menu through the click of the native button, and ArrowDown opens it too. The
  * first item then has the focus. Arrow keys move between the items and wrap at the ends. Escape closes the menu
@@ -66,6 +67,7 @@ defineSlots<{
 
 const emit = defineEmits<{
   select: [value: string]
+  toggle: [open: boolean]
 }>()
 
 const menuOpen = ref(false)
@@ -120,6 +122,7 @@ const listen = (on: boolean) => {
 }
 
 watch(menuOpen, async (open) => {
+  emit('toggle', open)
   listen(open)
   if (!open) return
   await place()
