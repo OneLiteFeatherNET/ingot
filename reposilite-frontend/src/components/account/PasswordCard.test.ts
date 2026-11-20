@@ -186,4 +186,20 @@ describe('PasswordCard', () => {
     const card = wrapper.find('[data-variant="low"]')
     expect(card.classes(), 'the card has the outline edge').toEqual(expect.arrayContaining(['border', 'border-outline']))
   })
+
+  it('draws the card through MdCard holding a level 3 MdSection titled Change password', () => {
+    mountCard()
+
+    const section = wrapper.findComponent({ name: 'MdCard' }).findComponent({ name: 'MdSection' })
+    expect(section.exists(), 'the heading belongs to an MdSection inside the card').toBe(true)
+    expect(section.props('level'), 'a section inside the account page is level 3').toBe(3)
+    expect(section.find('h3').text()).toBe('Change password')
+  })
+
+  it('keeps the password card labelled by its section heading', () => {
+    mountCard()
+
+    const id = wrapper.attributes('aria-labelledby')
+    expect(wrapper.findComponent({ name: 'MdSection' }).find('h3').attributes('id'), 'the label points at the section heading').toBe(id)
+  })
 })
