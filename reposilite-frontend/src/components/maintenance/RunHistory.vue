@@ -16,27 +16,23 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import MdSelect from '../md/MdSelect.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
-import { sortNewestFirst, statusLabel, triggerLabel } from './cleanup'
+import { lastRunOf, statusLabel, triggerLabel } from './cleanup'
 import type { CleanupRun } from './cleanup'
 
+/*
+ * The latest run of each policy. The full history is on the Jobs page, which the "All runs" link opens
+ * filtered to the cleanup source (add-jobs-page, D7).
+ */
 const props = withDefaults(defineProps<{
-  /** The runs the server returned, in any order. They are shown newest first. */
+  /** The runs the server returned, in any order. */
   runs?: CleanupRun[]
-  /** The policy ids the filter offers. */
+  /** The policy ids, in the order the tab lists them. A policy with no run is left out. */
   policyIds?: string[]
-  /** The policy the list is filtered to, or an empty string for every policy. */
-  policy?: string
 }>(), {
   runs: () => [],
-  policyIds: () => [],
-  policy: ''
+  policyIds: () => []
 })
-
-defineEmits<{
-  'update:policy': [value: string]
-}>()
 
 const STATUS_CLASS: Partial<Record<CleanupRun['status'], string>> = {
   SUCCEEDED: 'text-success',
@@ -44,14 +40,12 @@ const STATUS_CLASS: Partial<Record<CleanupRun['status'], string>> = {
   FAILED: 'text-error'
 }
 
-const filterOptions = computed(() => [
-  { value: '', label: 'All policies' },
-  ...props.policyIds.map(id => ({ value: id, label: id }))
-])
-
-const visibleRuns = computed(() => sortNewestFirst(
-  props.policy ? props.runs.filter(run => run.policyId === props.policy) : props.runs
-))
+const latestRuns = computed((): CleanupRun[] => {
+  const ids = [...new Set([...props.policyIds, ...props.runs.map(run => run.policyId)])]
+  return ids
+    .map(id => lastRunOf(props.runs, id))
+    .filter((run): run is CleanupRun => run !== null)
+})
 </script>
 
 <template>
@@ -65,20 +59,18 @@ const visibleRuns = computed(() => sortNewestFirst(
         id="run-history-title"
         class="md-title-large text-on-surface"
       >
-        Run history
+        Latest runs
       </h3>
-      <MdSelect
-        id="run-history-policy"
-        label="Policy"
-        class="w-full sm:w-72"
-        :model-value="policy"
-        :options="filterOptions"
-        @update:model-value="$emit('update:policy', $event)"
-      />
+      <RouterLink
+        :to="{ name: 'jobs', query: { kind: 'cleanup' } }"
+        class="md-label-large text-primary"
+      >
+        All runs
+      </RouterLink>
     </div>
 
     <p
-      v-if="!visibleRuns.length"
+      v-if="!latestRuns.length"
       class="md-body-medium text-on-surface-variant"
     >
       No runs yet.
@@ -87,11 +79,11 @@ const visibleRuns = computed(() => sortNewestFirst(
     <ul
       v-else
       class="flex flex-col divide-y divide-outline-variant rounded-corner-medium bg-surface-container-low"
-      aria-label="Runs, newest first"
+      aria-label="Latest run of each policy"
     >
       <li
-        v-for="run in visibleRuns"
-        :key="run.id"
+        v-for="run in latestRuns"
+        :key="run.policyId"
         :data-run-id="String(run.id)"
         class="flex flex-col gap-2 px-4 py-3"
       >

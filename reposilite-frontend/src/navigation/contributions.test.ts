@@ -149,7 +149,7 @@ describe('contributed pages in the Administration tree', () => {
     expect(labelsOf('Artifacts'), 'the Repositories page, then the plugin page of Repository').toEqual(['Repositories', 'repo'])
     expect(labelsOf('Access'), 'the plugin page of Security alone, no built-in page for this visitor').toEqual(['sec'])
     expect(labelsOf('Instance'), 'the plugin page of System alone').toEqual(['sys'])
-    expect(labelsOf('Monitoring and support'), 'Maintenance and Analytics, then the plugin page of Support').toEqual(['Maintenance', 'Analytics', 'sup'])
+    expect(labelsOf('Monitoring and support'), 'Maintenance, Jobs and Analytics, then the plugin page of Support').toEqual(['Maintenance', 'Jobs', 'Analytics', 'sup'])
   })
 
   it('lists a plugin settings section under the heading of its group, with the section label', () => {

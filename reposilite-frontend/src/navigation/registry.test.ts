@@ -317,7 +317,7 @@ describe('the labels and descriptions of the Administration tree', () => {
       'page:overview', 'page:repositories','settings:cleanup', 'settings:javadoc', 'settings:search',
       'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check',
       'settings:frontend', 'settings:web', 'page:migration',
-      'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info',
+      'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:jobs', 'page:analytics', 'page:system-info',
     ])
   })
 })
@@ -362,5 +362,41 @@ describe('shortcuts between the pages of the Administration tree', () => {
 
   it('shows no shortcut on a page without a related page', () => {
     expect(shortcutsOf('page:users', canWith(['*']))).toEqual([])
+  })
+})
+
+// The Jobs page lists the background runs of the maintenance area and of the instance admin (add-jobs-page, D6, D7).
+describe('the Jobs page entry', () => {
+  const linksFor = (nodes: string[]) => adminGroups(canUse.bind(null, nodes))
+    .flatMap(group => group.links)
+    .map(link => link.key)
+
+  it('lists Jobs in the Support group right after Maintenance', () => {
+    const keys = linksFor(['ingot.admin.*'])
+
+    expect(keys.indexOf('page:jobs'), 'Jobs is listed').toBeGreaterThan(-1)
+    expect(keys.indexOf('page:jobs'), 'Jobs follows Maintenance').toBe(keys.indexOf('page:maintenance') + 1)
+  })
+
+  it('lists Jobs for a visitor who holds the maintenance node alone', () => {
+    expect(linksFor(['ingot.admin.maintenance'])).toContain('page:jobs')
+  })
+
+  it('leaves Jobs out for a visitor who holds neither the maintenance node nor the instance admin node', () => {
+    expect(linksFor(['ingot.admin.console'])).not.toContain('page:jobs')
+  })
+
+  it('opens the list at /settings/jobs with the maintenance or instance admin node', () => {
+    const route = ROUTES.find(entry => entry.name === 'jobs')
+
+    expect(route?.path).toBe('/settings/jobs')
+    expect(route?.meta?.anyNode, 'the node alternatives of the Jobs page').toEqual(['ingot.admin.maintenance', 'ingot.admin.*'])
+  })
+
+  it('opens one run at /settings/jobs/:id with the same permission', () => {
+    const route = ROUTES.find(entry => entry.name === 'job')
+
+    expect(route?.path).toBe('/settings/jobs/:id')
+    expect(route?.meta?.anyNode).toEqual(['ingot.admin.maintenance', 'ingot.admin.*'])
   })
 })

@@ -104,6 +104,9 @@ const ROUTES: AppRoute[] = [
   // which would otherwise take them as domains. The old support address keeps its name and redirects, with query and fragment.
   { name: 'system-info', path: '/settings/system-info', meta: adminRouteMeta('system-info') },
   { name: 'support', path: '/settings/support', redirect: { name: 'system-info' } },
+  // The background runs, one page for every source. The run detail is /settings/jobs/:id. Placed before the generic settings route, which would take `jobs` as a domain.
+  { name: 'jobs', path: '/settings/jobs', meta: routeMeta('jobs') },
+  { name: 'job', path: '/settings/jobs/:id', meta: routeMeta('jobs') },
   // Overview opens for either node; a settings domain page needs the settings node, which the page checks (IndexPage).
   { name: 'settings', path: '/settings/:domain?', meta: { section: 'settings', manager: true, anyNode: [ADMIN_NODES.settings, ADMIN_NODES.dashboard] } },
   {

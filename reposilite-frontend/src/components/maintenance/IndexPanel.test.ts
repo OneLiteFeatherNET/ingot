@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import IndexPanel from './IndexPanel.vue'
 
@@ -79,20 +79,30 @@ const indexBody = (overrides = {}) => ({
 const httpError = (status: number, message = `Request failed with status code ${status}`) =>
   Object.assign(new Error(message), { response: { status, data: { status, message } } })
 
-const fakeClient = (overrides = {}) => ({
+// The Jobs endpoint answers the latest run of a kind; the panel asks it for one run of each index kind.
+const jobPage = (items: unknown[] = []) => ({ items, nextCursor: null, sourceErrors: [], kinds: ['index.rebuild', 'index.verify'] })
+
+const fakeClient = (overrides = {}, jobs: Record<string, unknown> = {}) => ({
   maven: {
     searchIndex: vi.fn(() => Promise.resolve({ data: indexBody() })),
     startIndexRebuild: vi.fn(() => Promise.resolve({ status: 202, data: { runId: 8 } })),
     startIndexVerify: vi.fn(() => Promise.resolve({ status: 202, data: { runId: 9 } })),
     cancelIndexRun: vi.fn(() => Promise.resolve({ status: 204, data: '' })),
     ...overrides
+  },
+  jobs: {
+    list: vi.fn(() => Promise.resolve({ data: jobPage() })),
+    ...jobs
   }
 })
 
 let wrapper: VueWrapper
 
 const mountPanel = async () => {
-  wrapper = mount(IndexPanel, { attachTo: document.body }) as VueWrapper
+  wrapper = mount(IndexPanel, {
+    attachTo: document.body,
+    global: { stubs: { RouterLink: RouterLinkStub } }
+  }) as VueWrapper
   await flushPromises()
   return wrapper
 }
@@ -324,23 +334,51 @@ describe('IndexPanel actions', () => {
   })
 })
 
-describe('IndexPanel run history', () => {
-  it('lists the runs newest first with the status and the last error of a failed run', async () => {
+describe('IndexPanel latest runs', () => {
+  const jobRun = (id: string, kind: string, label: string) => ({
+    id: `index:${id}`,
+    source: 'index',
+    kind,
+    label,
+    trigger: 'MANUAL',
+    triggerDetail: null,
+    state: 'SUCCEEDED',
+    startedAt: '2026-11-10T10:00:00Z',
+    finishedAt: '2026-11-10T10:05:00Z',
+    durationMs: 300000,
+    counts: [],
+    failures: [],
+    failuresTruncated: false
+  })
+
+  it('shows the latest rebuild and the latest verify, asking the Jobs endpoint for one run of each kind', async () => {
+    const list = vi.fn((params: Record<string, string>) => Promise.resolve({
+      data: jobPage([jobRun(params.kind === 'index.rebuild' ? '7' : '9', params.kind, params.kind === 'index.rebuild' ? 'Rebuild' : 'Verify')])
+    }))
+    session.client = fakeClient({}, { list })
+    await mountPanel()
+
+    expect(list).toHaveBeenCalledWith({ kind: 'index.rebuild', size: '1' })
+    expect(list).toHaveBeenCalledWith({ kind: 'index.verify', size: '1' })
+    expect(wrapper.findAll('[data-latest-run]').map(item => item.attributes('data-latest-run'))).toEqual(['index.rebuild', 'index.verify'])
+  })
+
+  it('draws no list of index runs', async () => {
     session.client = fakeClient({
       searchIndex: vi.fn(() => Promise.resolve({
-        data: indexBody({
-          runs: [
-            run({ id: 8, status: 'FAILED', finishedAt: SECONDS + 5, lastError: 'could not list releases' }),
-            run({ id: 7, status: 'COMPLETED', finishedAt: SECONDS - 60 })
-          ]
-        })
+        data: indexBody({ runs: [run({ id: 8, status: 'FAILED' }), run({ id: 7 })] })
       }))
     })
     await mountPanel()
 
-    const ids = wrapper.findAll('[data-run-id]').map(item => item.attributes('data-run-id'))
-    expect(ids).toEqual(['8', '7'])
-    expect(wrapper.find('[data-run-id="8"]').text()).toContain('could not list releases')
-    expect(wrapper.find('[data-run-id="7"]').text()).toContain('Completed')
+    expect(wrapper.find('[data-run-id]').exists()).toBe(false)
+  })
+
+  it('links "All runs" to the Jobs page filtered to the index source', async () => {
+    await mountPanel()
+
+    const link = wrapper.findAllComponents(RouterLinkStub).find(item => item.text() === 'All runs')
+
+    expect(link?.props('to')).toEqual({ name: 'jobs', query: { kind: 'index' } })
   })
 })
