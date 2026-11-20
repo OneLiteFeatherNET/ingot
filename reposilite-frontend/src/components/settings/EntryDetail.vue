@@ -26,6 +26,7 @@ import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
 import type { SettingsSchema } from './collections'
+import type { MirrorEntry } from './groupMembers'
 import { nestedUischemas } from './nestedLayouts'
 import { unavailableStorageTypeOf } from './repositoryWizard'
 import {
@@ -207,9 +208,9 @@ const violations = computed(() => (props.typed ? violationsOf(current(), { other
 
 // A group's members are its mirrored entries, edited as a list. The picker hands back the entries that stay as they were,
 // so the settings and credentials of each member are kept; only the list itself changes.
-const members = computed(() => (Array.isArray(current().proxied) ? current().proxied as Mirror[] : []))
-const onMembers = (entries: Mirror[]) => {
-  const next = { ...latest.value, proxied: entries }
+const members = computed(() => (Array.isArray(current().proxied) ? current().proxied as MirrorEntry[] : []))
+const onMembers = (entries: MirrorEntry[]) => {
+  const next = { ...latest.value, proxied: entries as Mirror[] }
   latest.value = next
   emit('change', next)
 }
