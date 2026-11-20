@@ -20,7 +20,9 @@ import { JsonForms } from '@jsonforms/vue'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { entryLayout, type SettingsSchema } from '../settings/collections'
 import { nestedUischemas } from '../settings/nestedLayouts'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 
 /*
  * One group of a settings domain, drawn by the same generic form as the Settings page and saved by the same store.
@@ -111,26 +113,17 @@ onMounted(() => {
     data-test="authentication-group"
     data-ingot-component="authentication-group-form"
   >
-    <p
+    <MdStatePanel
       v-if="!loaded && !loadError"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
-    >
-      Loading...
-    </p>
-    <div
+      state="loading"
+    />
+    <MdStatePanel
       v-else-if="loadError"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-    >
-      <span class="md-body-medium text-error">Could not load the {{ DOMAIN }} settings: {{ loadError }}</span>
-      <MdButton
-        variant="text"
-        @click="store.fetchConfiguration()"
-      >
-        Retry
-      </MdButton>
-    </div>
+      state="error"
+      :title="`Could not load the ${DOMAIN} settings`"
+      :description="loadError"
+      @retry="store.fetchConfiguration()"
+    />
     <p
       v-else-if="!form || !configurations[DOMAIN]"
       class="md-body-medium text-on-surface-variant"
@@ -157,20 +150,18 @@ onMounted(() => {
         >
           You have unsaved changes.
         </p>
-        <p
+        <MdAlert
           v-if="conflict?.name === DOMAIN"
-          role="alert"
-          class="md-body-medium text-error"
+          tone="error"
         >
           The {{ DOMAIN }} settings changed elsewhere. Open Settings to review them before saving again.
-        </p>
-        <p
+        </MdAlert>
+        <MdAlert
           v-else-if="saveError"
-          role="alert"
-          class="md-body-medium text-error"
+          tone="error"
         >
           {{ saveError }}
-        </p>
+        </MdAlert>
         <span v-else />
         <MdButton
           :disabled="saving || invalidDomains.includes(DOMAIN)"

@@ -19,10 +19,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { AxiosResponse } from 'axios'
 import { useSession } from '../../store/session'
 import { errorMessage, createSuccessToast } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChipInput from '../md/MdChipInput.vue'
 import MdSection from '../md/MdSection.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { LDAP_DEFAULTS, validateLdap, type LdapSettings } from './loginSettings'
@@ -120,26 +122,17 @@ onMounted(load)
       aria-labelledby="ldap-title"
       description="Users with an account in the directory sign in to this dashboard with their directory username and password. The directory that Maven and Gradle clients use is set in the section Maven and Gradle clients below, and does not change this one."
     >
-      <p
+      <MdStatePanel
         v-if="!loaded"
-        role="status"
-        class="md-body-medium text-on-surface-variant"
-      >
-        Loading...
-      </p>
-      <div
+        state="loading"
+      />
+      <MdStatePanel
         v-else-if="loadError"
-        role="alert"
-        class="flex flex-wrap items-center gap-3"
-      >
-        <span class="md-body-medium text-error">Could not load the LDAP settings: {{ loadError }}</span>
-        <MdButton
-          variant="text"
-          @click="load()"
-        >
-          Retry
-        </MdButton>
-      </div>
+        state="error"
+        title="Could not load the LDAP settings"
+        :description="loadError"
+        @retry="load()"
+      />
 
       <form
         v-else-if="form"
@@ -327,13 +320,12 @@ onMounted(load)
           >
             You have unsaved changes.
           </p>
-          <p
+          <MdAlert
             v-if="saveError"
-            role="alert"
-            class="md-body-medium text-error"
+            tone="error"
           >
             {{ saveError }}
-          </p>
+          </MdAlert>
           <span v-else-if="!dirty" />
           <MdButton
             type="submit"
