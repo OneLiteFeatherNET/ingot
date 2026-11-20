@@ -46,7 +46,7 @@ On shutdown, `ReposiliteDisposeEvent` is emitted before the web server stops.
 | --- | --- | --- | --- |
 | `name` | String | none, required | Unique name of the plugin. Other plugins use it in `dependencies`. |
 | `version` | String | the server version | Version of the plugin. |
-| `description` | String | empty, which means no description | Short plain text on what the plugin is for. Control characters and line breaks are removed, and a text longer than 280 characters is cut with one warning at start. The text is never read as markup, and it never stops the plugin from loading. |
+| `description` | String | empty, which means no description | Short plain text on what the plugin is for. Control characters and line breaks are removed, and a text longer than 280 characters is cut with one warning at start. The text is never read as markup, and it never stops the plugin from loading. The plugin card on the system information page shows it under the plugin name. |
 | `dependencies` | String array | empty | Names of plugins that must initialize first. |
 | `settings` | class of `SharedSettings` | `SharedSettings` | Settings class owned by the plugin. Read it with `SharedConfigurationFacade.getDomainSettings<T>()`. |
 
