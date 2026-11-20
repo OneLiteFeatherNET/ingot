@@ -344,6 +344,13 @@ describe('AdministrationFrame on the settings pages', () => {
     expect(crumbs[1].find('a').exists(), 'the group is plain text').toBe(false)
     expect(wrapper.get('h1').text(), 'the page is named by its heading').toBe('Audit settings')
   })
+
+  it('draws the section crumb while the tree does not hold the entry on screen yet, so the header keeps its height', async () => {
+    const wrapper = await mountFrame({ groups: overviewGroups().slice(0, 1), current: 'settings:audit' }, '/settings/audit')
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumbLabel), 'the trail row is drawn before the settings domains arrive').toEqual(['Administration'])
+  })
 })
 
 // The placement of design D2: from 1240 pixels the header sits in the page column, beside the side navigation, and

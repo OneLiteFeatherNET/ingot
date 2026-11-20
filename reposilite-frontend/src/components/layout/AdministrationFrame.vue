@@ -100,11 +100,13 @@ const currentGroup = computed(() => props.groups
 
 // The trail: the section, the group of the current entry and, on a detail page, the current entry as text. On a detail
 // page the group is a link to the list. Overview has no group and draws the section alone. A page whose entry has no
-// group heading draws the section as its current crumb. Empty when no entry is on screen, as on the settings hub.
+// group heading draws the section as its current crumb. Empty when no entry is on screen, as on the settings hub. While
+// the tree does not hold the entry on screen yet (the settings domains are still loading), the section is the crumb too,
+// so the header does not grow by the trail row when the tree arrives.
 const crumbs = computed<MdBreadcrumbItem[]>(() => {
   if (props.overview) return [{ label: props.sectionLabel }]
   const link = currentLink.value
-  if (!link) return []
+  if (!link) return props.current === undefined ? [] : [{ label: props.sectionLabel }]
   const heading = currentGroup.value?.heading
   if (heading === undefined) return [{ label: props.sectionLabel }]
   const trail: MdBreadcrumbItem[] = [
