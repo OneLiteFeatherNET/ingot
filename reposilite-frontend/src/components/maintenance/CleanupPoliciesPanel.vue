@@ -263,7 +263,7 @@ load()
           v-for="policy in policies"
           :key="policy.id"
           :data-policy="policy.id"
-          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
+          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex min-w-0 flex-col gap-1">

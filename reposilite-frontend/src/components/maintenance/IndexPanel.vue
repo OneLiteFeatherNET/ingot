@@ -353,7 +353,7 @@ onBeforeUnmount(stopPolling)
 
         <div
           v-if="index.activeRun && live"
-          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
+          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
           data-live-run
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -436,7 +436,7 @@ onBeforeUnmount(stopPolling)
               v-for="card in latestCards"
               :key="card.kind"
               :data-latest-run="card.kind"
-              class="flex flex-col gap-1 rounded-corner-medium bg-surface-container-low px-4 py-3"
+              class="flex flex-col gap-1 rounded-corner-medium bg-surface-container px-4 py-3"
             >
               <span class="md-title-small text-on-surface">{{ card.label }}</span>
               <template v-if="card.run">

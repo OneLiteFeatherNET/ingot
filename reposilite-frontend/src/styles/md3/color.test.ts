@@ -256,6 +256,25 @@ describe('dark surface-dim', () => {
   })
 })
 
+describe('nested surface steps', () => {
+  // A block nested in a card steps one role up from the card, and a block nested in that block one more. Each step must
+  // differ from the one below it, which the same role (1.00:1) does not.
+  const STEPS = [
+    ['--md-sys-color-surface-container-low', '--md-sys-color-surface-container'],
+    ['--md-sys-color-surface-container', '--md-sys-color-surface-container-high']
+  ] as const
+
+  for (const theme of ['light', 'dark'] as const) {
+    for (const [parent, child] of STEPS) {
+      it(`sets ${child} apart from ${parent} in the ${theme} theme`, () => {
+        const ratio = contrastRatio(resolveColour(theme, THEMES[theme][parent]), resolveColour(theme, THEMES[theme][child]))
+
+        expect(ratio, `${child} against ${parent} in the ${theme} theme`).toBeGreaterThanOrEqual(1.04)
+      })
+    }
+  }
+})
+
 describe('brand expression', () => {
   it('runs the brand gradient at 135 degrees from the primary to the tertiary of the default scheme', () => {
     const light = resolveColour('light', THEMES.light['--olf-gradient'])

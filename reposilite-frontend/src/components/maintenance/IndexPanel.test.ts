@@ -223,6 +223,17 @@ describe('IndexPanel active run', () => {
     expect(buttonNamed('Verify sample').attributes('disabled')).toBeDefined()
   })
 
+  // The panel is a filled card on surface-container-low, so the live run block steps one role up, never the same role.
+  it('draws the live run one surface step above its card', async () => {
+    session.client = fakeClient({ searchIndex: vi.fn(() => Promise.resolve({ data: indexBody({ activeRun: run() }) })) })
+    await mountPanel()
+
+    const live = wrapper.find('[data-live-run]')
+
+    expect(live.classes(), 'a block nested in a card is surface-container').toContain('bg-surface-container')
+    expect(live.classes(), 'not the role of its card').not.toContain('bg-surface-container-low')
+  })
+
   it('cancels the live run by its id', async () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.resolve({ data: indexBody({ activeRun: run({ id: 7 }) }) })) })
     await mountPanel()
@@ -361,6 +372,20 @@ describe('IndexPanel latest runs', () => {
     expect(list).toHaveBeenCalledWith({ kind: 'index.rebuild', size: '1' })
     expect(list).toHaveBeenCalledWith({ kind: 'index.verify', size: '1' })
     expect(wrapper.findAll('[data-latest-run]').map(item => item.attributes('data-latest-run'))).toEqual(['index.rebuild', 'index.verify'])
+  })
+
+  it('draws each latest run one surface step above its card', async () => {
+    const list = vi.fn((params: Record<string, string>) => Promise.resolve({
+      data: jobPage([jobRun(params.kind === 'index.rebuild' ? '7' : '9', params.kind, params.kind === 'index.rebuild' ? 'Rebuild' : 'Verify')])
+    }))
+    session.client = fakeClient({}, { list })
+    await mountPanel()
+
+    expect(wrapper.findAll('[data-latest-run]'), 'one card per kind').toHaveLength(2)
+    for (const card of wrapper.findAll('[data-latest-run]')) {
+      expect(card.classes(), `${card.attributes('data-latest-run')} is surface-container`).toContain('bg-surface-container')
+      expect(card.classes(), `${card.attributes('data-latest-run')} is not the role of its card`).not.toContain('bg-surface-container-low')
+    }
   })
 
   it('draws no list of index runs', async () => {
