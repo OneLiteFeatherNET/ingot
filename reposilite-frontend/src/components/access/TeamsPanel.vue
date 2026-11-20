@@ -20,6 +20,8 @@ import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdIcon from '../md/MdIcon.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import NewTeamDialog from './NewTeamDialog.vue'
@@ -56,11 +58,13 @@ onMounted(load)
 
 const count = (value: number | null | undefined, noun: string) => `${value ?? 0} ${noun}${value === 1 ? '' : 's'}`
 
+// The list decides the selected row here, once, and each row only reads its flag.
 const rows = computed(() => filterTeams(teams.value, query.value).map(team => ({
   team,
   admin: isInstanceAdmin(team),
   counts: `${count(team.memberCount, 'member')}, ${count(team.nodeCount, 'node')}`,
-  href: router.resolve({ name: 'access-team', params: { name: team.name } }).href
+  to: { name: 'access-team', params: { name: team.name } },
+  selected: team.name === props.name
 })))
 
 const emptyText = computed(() =>
@@ -162,24 +166,15 @@ const deleted = (name: string) => {
       >
         Loading...
       </p>
-      <ul
-        v-else-if="rows.length > 0"
-        class="flex flex-col gap-1"
-      >
-        <li
+      <MdList v-else-if="rows.length > 0">
+        <MdListItem
           v-for="row in rows"
           :key="row.team.name"
           data-test="row"
-          class="md-state-layer relative flex items-start gap-1 rounded-corner-large"
-          :class="row.team.name === name ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+          :to="row.to"
+          :selected="row.selected"
         >
-          <a
-            :href="row.href"
-            :aria-current="row.team.name === name ? 'true' : undefined"
-            class="md-focus-ring-inset flex min-w-0 flex-1 flex-col gap-1 rounded-corner-large px-4 py-3 no-underline"
-            :class="row.team.name === name ? 'text-on-secondary-container' : 'text-on-surface'"
-            @click.prevent="open(row.team.name)"
-          >
+          <span class="flex flex-col gap-1">
             <span
               class="md-title-small break-all"
               data-test="team-name"
@@ -187,12 +182,12 @@ const deleted = (name: string) => {
             <span
               v-if="row.team.description"
               class="md-body-medium break-words"
-              :class="row.team.name === name ? 'text-on-secondary-container' : 'text-on-surface-variant'"
+              :class="row.selected ? 'text-on-secondary-container' : 'text-on-surface-variant'"
               data-test="team-description"
             >{{ row.team.description }}</span>
             <span
               class="md-body-small"
-              :class="row.team.name === name ? 'text-on-secondary-container' : 'text-on-surface-variant'"
+              :class="row.selected ? 'text-on-secondary-container' : 'text-on-surface-variant'"
               data-test="counts"
             >{{ row.counts }}</span>
             <span
@@ -204,9 +199,9 @@ const deleted = (name: string) => {
                 data-test="admin-badge"
               >Instance admin</TokenTag>
             </span>
-          </a>
-        </li>
-      </ul>
+          </span>
+        </MdListItem>
+      </MdList>
       <p
         v-else
         class="px-1 py-4 md-body-medium text-on-surface-variant"
