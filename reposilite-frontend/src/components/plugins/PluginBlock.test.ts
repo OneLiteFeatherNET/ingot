@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import axios from 'axios'
 import PluginBlock from './PluginBlock.vue'
+import MdCard from '../md/MdCard.vue'
 import type { PluginBlockDefinition } from './pluginBlocks'
 
 vi.mock('axios', () => ({
@@ -92,6 +93,24 @@ describe('action block', () => {
 
     expect(wrapper.text()).toContain('Start the job?')
     expect(axios.request).not.toHaveBeenCalled()
+  })
+
+  it('asks for the confirm text on the shared card, one surface step above the block', async () => {
+    const wrapper = mountBlock({
+      type: 'action',
+      label: 'Start',
+      method: 'POST',
+      path: '/api/plugins/example/start',
+      confirm: 'Start the job?',
+    })
+    await wrapper.find('button').trigger('click')
+
+    const confirm = wrapper.get('[data-test="confirm"]').element
+    const card = wrapper.findAllComponents(MdCard).find(candidate => (candidate.element as Element).contains(confirm))
+    expect(card, 'the confirmation sits on the card primitive, not on a hand-built container').toBeDefined()
+    expect(card!.text(), 'the card holds the confirm text').toContain('Start the job?')
+    expect(card!.props('tone'), 'the card keeps the container surface of the confirmation').toBe('container')
+    expect(card!.props('edge'), 'the card draws no edge, like the tinted panel it replaces').toBe('none')
   })
 
   it('sends the write with the CSRF header once the confirm text is accepted', async () => {
