@@ -171,6 +171,28 @@ const createPrincipalToken = async (name, tokenName) => {
   return (await response.json()).secret
 }
 
+// Starts a rebuild of the search index for the named repositories and returns the id of its run.
+const startIndexRebuild = async (repositories) => {
+  const response = await fetch(siteUrl('/api/maven/search/index/rebuild'), {
+    method: 'POST',
+    headers: { Authorization: authorization(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ repositories }),
+  })
+  if (!response.ok) {
+    throw new Error(`starting the index rebuild answered ${response.status}: ${await response.text()}`)
+  }
+  return (await response.json()).runId
+}
+
+// One background run as the Jobs endpoint answers it, by its `<source>:<local id>` id.
+const readJob = async (id) => {
+  const response = await fetch(siteUrl(`/api/jobs/${encodeURIComponent(id)}`), { headers: { Authorization: authorization() } })
+  if (!response.ok) {
+    throw new Error(`reading the run ${id} answered ${response.status}`)
+  }
+  return response.json()
+}
+
 const principalStatus = async (name) => {
   const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}`), {
     headers: { Authorization: authorization() },
@@ -190,4 +212,6 @@ export {
   principalStatus,
   setPrincipalNodes,
   createPrincipalToken,
+  startIndexRebuild,
+  readJob,
 }
