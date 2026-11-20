@@ -41,7 +41,7 @@ Domains:
 | [`audit`](#audit) | Retention of the audit log. |
 | [`cleanup`](#cleanup) | Cleanup policies. |
 | [`frontend`](#frontend) | Title, links and appearance of the dashboard. |
-| [`javadoc`](#javadoc) | Javadoc viewer. |
+| [`javadoc`](#javadoc) | Javadoc viewer. Added by the `javadoc` plugin, which the server embeds. |
 | [`login`](#login) | Browser login: sessions, lockout, OpenID Connect and LDAP. |
 | [`maven`](#maven) | Repositories. Edited on the Repositories page, not under Settings. |
 | [`search`](#search) | Behavior of the artifact search index. |
@@ -136,6 +136,8 @@ Fields of `appearance`:
 | `footerText` | String | empty | Plain text in the footer. HTML is not rendered. |
 
 ## javadoc
+
+The `javadoc` plugin owns this domain. It lives in its own module, `javadoc-plugin`, and the server jar embeds it, so the domain is there by default. The domain name, its fields and their defaults are the same as when the viewer was part of the server.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
