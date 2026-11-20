@@ -6337,6 +6337,7 @@ export interface components {
         };
         PluginInformation: {
             dependencies: string[];
+            description?: string | null;
             name: string;
             origin: string;
             settingsDomain?: string | null;
