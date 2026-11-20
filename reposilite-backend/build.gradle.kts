@@ -721,6 +721,7 @@ val pluginApiPackages = listOf(
 // its own package in its own pull request. com.reposilite.frontend.api is the dashboard facade, which keeps its com.reposilite.*
 // name. com.reposilite.journalist is a third-party library and never belongs here.
 val ingotPluginApiPackages = listOf(
+    "net.onelitefeather.ingot.access",
     "net.onelitefeather.ingot.format",
     "net.onelitefeather.ingot.plugin.ui",
     "net.onelitefeather.ingot.repository",
@@ -731,6 +732,7 @@ val ingotPluginApiPackages = listOf(
 
 // The packages of ingotPluginApiPackages whose findings are experimental, because the documentation marks them so.
 val ingotExperimentalPackages = listOf(
+    "net.onelitefeather.ingot.access",
     "net.onelitefeather.ingot.format",
     "net.onelitefeather.ingot.plugin.ui",
     "net.onelitefeather.ingot.search.backend",
