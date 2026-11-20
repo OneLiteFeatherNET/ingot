@@ -5,11 +5,6 @@
     "count": 1
   },
   {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": "<style",
-    "count": 1
-  },
-  {
     "file": "src/components/renderers/ObjectRenderer.vue",
     "match": "<style",
     "count": 1

@@ -5,46 +5,6 @@
     "count": 1
   },
   {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-left-enter-active",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-left-enter-from",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-left-leave-active",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-left-leave-to",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-right-enter-active",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-right-enter-from",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-right-leave-active",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": ".slide-right-leave-to",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/SettingsView.vue",
     "match": ".settings-view",
     "count": 3
