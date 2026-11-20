@@ -19,6 +19,9 @@ import { computed } from 'vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
 import { lastRunOf, statusLabel, triggerLabel } from './cleanup'
 import type { CleanupRun } from './cleanup'
+import MdDisclosure from '../md/MdDisclosure.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 
 /*
  * The latest run of each policy. The full history is on the Jobs page, which the "All runs" link opens
@@ -76,48 +79,47 @@ const latestRuns = computed((): CleanupRun[] => {
       No runs yet.
     </p>
 
-    <ul
+    <MdList
       v-else
-      class="flex flex-col divide-y divide-outline-variant rounded-corner-medium bg-surface-container-low"
+      divided
+      class="rounded-corner-medium bg-surface-container-low"
       aria-label="Latest run of each policy"
     >
-      <li
+      <MdListItem
         v-for="run in latestRuns"
         :key="run.policyId"
         :data-run-id="String(run.id)"
-        class="flex flex-col gap-2 px-4 py-3"
       >
-        <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <span class="font-mono md-title-small text-on-surface">{{ run.policyId }}</span>
-          <span
-            class="md-label-large"
-            :class="STATUS_CLASS[run.status] ?? 'text-on-surface-variant'"
-          >{{ statusLabel(run.status) }}</span>
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <span class="font-mono md-title-small text-on-surface">{{ run.policyId }}</span>
+            <span
+              class="md-label-large"
+              :class="STATUS_CLASS[run.status] ?? 'text-on-surface-variant'"
+            >{{ statusLabel(run.status) }}</span>
+          </div>
+          <p class="md-body-medium text-on-surface-variant">
+            {{ triggerLabel(run.trigger) }}, started {{ formatDateTime(run.startedAt) }},
+            finished {{ formatDateTime(run.finishedAt, 'not finished') }}
+          </p>
+          <p class="md-body-medium text-on-surface">
+            {{ countLabel(run.deletedCount, 'artifact') }} deleted, {{ formatBytes(run.deletedBytes) }}
+          </p>
+          <MdDisclosure v-if="run.failures.length">
+            <template #summary>
+              <span class="text-error">{{ countLabel(run.failures.length, 'failure') }}</span>
+            </template>
+            <ul class="flex list-disc flex-col gap-1 pl-5 md-body-medium">
+              <li
+                v-for="(failure, index) in run.failures"
+                :key="index"
+              >
+                {{ failure }}
+              </li>
+            </ul>
+          </MdDisclosure>
         </div>
-        <p class="md-body-medium text-on-surface-variant">
-          {{ triggerLabel(run.trigger) }}, started {{ formatDateTime(run.startedAt) }},
-          finished {{ formatDateTime(run.finishedAt, 'not finished') }}
-        </p>
-        <p class="md-body-medium text-on-surface">
-          {{ countLabel(run.deletedCount, 'artifact') }} deleted, {{ formatBytes(run.deletedBytes) }}
-        </p>
-        <details
-          v-if="run.failures.length"
-          class="md-body-medium"
-        >
-          <summary class="cursor-pointer text-error">
-            {{ countLabel(run.failures.length, 'failure') }}
-          </summary>
-          <ul class="mt-2 flex list-disc flex-col gap-1 pl-5 text-on-surface-variant">
-            <li
-              v-for="(failure, index) in run.failures"
-              :key="index"
-            >
-              {{ failure }}
-            </li>
-          </ul>
-        </details>
-      </li>
-    </ul>
+      </MdListItem>
+    </MdList>
   </section>
 </template>
