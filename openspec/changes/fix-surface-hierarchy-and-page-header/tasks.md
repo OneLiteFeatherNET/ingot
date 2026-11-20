@@ -12,46 +12,46 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose fix-surface-hierarchy-and-page-header`: this change, nothing else, tasks unchecked, branched from the
+- [x] 1.1 `docs(openspec): propose fix-surface-hierarchy-and-page-header`: this change, nothing else, tasks unchecked, branched from the
   remote main branch. Verify: `openspec validate fix-surface-hierarchy-and-page-header --strict` passes and the dash grep prints nothing.
 
 ## 2. Test (red tests)
 
-- [ ] 2.1 `test(ui)`: in `src/components/md/MdCard.test.js`, assert that the default card is `bg-surface-container-low` with `border-outline`,
+- [x] 2.1 `test(ui)`: in `src/components/md/MdCard.test.js`, assert that the default card is `bg-surface-container-low` with `border-outline`,
   that `outlined` is `bg-surface` with `border-outline`, and that `elevated` keeps `shadow-elevation-1` without a border. Remove the
   assertion that the default is `bg-surface-container-highest`. Verify: it fails on `MdCard.vue:31-35`.
-- [ ] 2.2 `test(ui)`: in `src/styles/md3/color.test.js`, assert that dark `surface-dim` is `#080f16`, that it has a lower relative luminance
+- [x] 2.2 `test(ui)`: in `src/styles/md3/color.test.js`, assert that dark `surface-dim` is `#080f16`, that it has a lower relative luminance
   than dark `surface`, and that `outline` reaches 3:1 against `surface-container` in both themes. Verify: it fails, because dark
   `surface-dim` equals `surface` (`color.css:114`).
-- [ ] 2.3 `test(ui)`: in `src/theme/runtime.test.js`, assert that a generated dark theme gives `surface-dim` a lower luminance than
+- [x] 2.3 `test(ui)`: in `src/theme/runtime.test.js`, assert that a generated dark theme gives `surface-dim` a lower luminance than
   `surface`. Verify: it fails, because the generator maps `surfaceDim` to the same value as `surface` (`runtime.js:108`).
-- [ ] 2.4 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert on every administration page (overview, a group
+- [x] 2.4 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert on every administration page (overview, a group
   page, a detail page, `/settings` without an entry): exactly one `h1`; the trail is a `nav` with an `ol`; each separator is an
   `aria-hidden` element; no crumb class contains `after:` or `before:`; the last crumb is the only `aria-current="page"`; below 1240
   pixels the trail draws its last crumb only and its `title` is the full trail; the back control is not inside the text column; from
   1240 pixels a detail page draws no back control and its group crumb is a link to the list page; the
   page root is `MdPage` with no `mx-auto` and no `max-w-*` class. Verify: it fails on `AdministrationFrame.vue:98`, `:103`, `:156`,
   `:170-173` and `:178`.
-- [ ] 2.5 `test(ui)`: in `src/components/browser/BreadcrumbNavigation.test.js`, assert that the trail renders `MdBreadcrumb` (its root
+- [x] 2.5 `test(ui)`: in `src/components/browser/BreadcrumbNavigation.test.js`, assert that the trail renders `MdBreadcrumb` (its root
   carries the `breadcrumb-navigation` anchor), that the current crumb and the links share one minimum height class, that the parent
   directory button is outside the trail, and that no separator uses `after:`. Verify: it fails on `BreadcrumbNavigation.vue:52`, `:69`
   and `:94`.
-- [ ] 2.6 `test(ui)`: in `src/components/repositories/RepositoryDetail.test.js`, assert that no `h2` repeats the repository name, that
+- [x] 2.6 `test(ui)`: in `src/components/repositories/RepositoryDetail.test.js`, assert that no `h2` repeats the repository name, that
   the element with `data-ingot-part="header"` and `data-ingot-repository` holds the repository type section, and that the page emits the
   name through its title. Verify: it fails on `RepositoryDetail.vue:200-212`.
-- [ ] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root is `MdPage` with no `mx-auto` or `max-w-*` class,
+- [x] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root is `MdPage` with no `mx-auto` or `max-w-*` class,
   that its form blocks carry the reading measure, and that the page has one `h1`. Verify: it fails on `AccountView.vue:43` and `:47`.
 - [ ] 2.8 `test(ui)`: in `src/components/settings/EntryDetail.test.js`, assert that the back button is in its own row above the `h3` at
   every width (no `expanded:hidden` on the row that holds the heading). Verify: it fails on `EntryDetail.vue:280`.
-- [ ] 2.9 `test(ui)`: in `src/components/access/TeamsPanel.test.js`, `src/components/access/PrincipalsPanel.test.js` and a new
+- [x] 2.9 `test(ui)`: in `src/components/access/TeamsPanel.test.js`, `src/components/access/PrincipalsPanel.test.js` and a new
   `src/components/settings/CollectionEditor.test.js`, assert that the detail pane carries the inset class that `MdListDetail` gives both
   panes, and no `max-expanded:hidden` on the pane's inset. Verify: it fails on `TeamsPanel.vue:196`, `PrincipalsPanel.vue:255` and
   `CollectionEditor.vue:161`.
-- [ ] 2.10 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that the card title is a heading of level two or three.
+- [x] 2.10 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that the card title is a heading of level two or three.
   Verify: it fails on `SnippetsCard.vue:178`.
 - [ ] 2.11 `test(ui)`: in `src/styles/md3/window-margins.test.js`, read the views of the page list in the design (D2) and assert that no
   file contains the `container` class outside `MdPage`. Verify: it fails on each file that still writes `container`.
-- [ ] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
+- [x] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
   `src/components/layout/AdministrationTrail.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
   fails, because the registry has no `administration-breadcrumb` entry.
 - [ ] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
@@ -68,14 +68,14 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 3.2 `refactor(ui)`: move the inline page headings onto `MdPageHeader` where the heading keeps its size: `DashboardView.vue:40`,
   `SearchView.vue:253`, `IndexPage.vue:381` and `:402`, and `RepositoriesView.vue:161-184`. The level changes to one, so the page has
   one `h1`. Verify: 2.4 (page count) passes for these pages, and the before and after screenshots are identical.
-- [ ] 3.3 `refactor(ui)`: move `BreadcrumbNavigation.vue` onto `MdBreadcrumb` and keep the `breadcrumb-navigation` anchor on the `nav`.
+- [x] 3.3 `refactor(ui)`: move `BreadcrumbNavigation.vue` onto `MdBreadcrumb` and keep the `breadcrumb-navigation` anchor on the `nav`.
   Verify: 2.5 passes and the file browser screenshots at 390 and 1280 pixels differ only in the trail's separators.
 
 ## 4. Fix (fix(ui))
 
-- [ ] 4.1 `fix(ui)`: add the card rows of the surface table to `MdCard.vue` (filled, outlined, elevated) and to the hand-written cards
+- [x] 4.1 `fix(ui)`: add the card rows of the surface table to `MdCard.vue` (filled, outlined, elevated) and to the hand-written cards
   listed in design D7. Verify: 2.1 passes.
-- [ ] 4.2 `fix(ui)`: set the dark `surface-dim` in `src/styles/md3/color.css` and the seeded path in `src/theme/runtime.js`. Verify: 2.2
+- [x] 4.2 `fix(ui)`: set the dark `surface-dim` in `src/styles/md3/color.css` and the seeded path in `src/theme/runtime.js`. Verify: 2.2
   and 2.3 pass.
 - [ ] 4.3 `fix(ui)`: apply the menu, side sheet and floating panel elevations of the surface table: `MdSideSheet.vue:126` to
   `shadow-elevation-1`, and the More panel in `IndexPage.vue:517` to `shadow-elevation-2`. `dashboard/PublicRepositoriesDialog.vue:73`
@@ -86,26 +86,26 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   of D7. Verify: the nested-step test of the spec passes for each file, and the contrast values are recorded.
 - [ ] 4.5 `fix(ui)`: draw the content sheet edge in `IndexPage.vue:359-360` with a 1 pixel `outline` border from 600 pixels. Verify: the
   content sheet requirement passes at 1280 pixels in light and dark.
-- [ ] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` and `MdPageHeader`; put the back control in the back
+- [x] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` and `MdPageHeader`; put the back control in the back
   row (`-ms-3`), below 1240 pixels only; draw the trail with `MdBreadcrumb` inside a new `AdministrationTrail.vue`, with the Overview crumb
   as the current section name; keep the Sections button and the shortcuts in the actions; give `AdministrationTrail.vue` the anchor
   `administration-breadcrumb` and register it in `src/anchors/registry.json` in the same commit (design D9). Verify: 2.4 and 2.12 pass.
-- [ ] 4.7 `fix(ui)`: `RepositoryDetail.vue`: drop the `header` block with the `h2` (`:200-212`); pass the name to the frame as its title; move
+- [x] 4.7 `fix(ui)`: `RepositoryDetail.vue`: drop the `header` block with the `h2` (`:200-212`); pass the name to the frame as its title; move
   `data-ingot-part="header"` and `data-ingot-repository` to the type section; turn the "Back to repositories" text button into the frame's
   back control with an `aria-label`; `SettingsView.vue:464-473` passes the title and the back target. Verify: 2.6 and 2.13 pass.
 - [ ] 4.8 `fix(ui)`: `settings/EntryDetail.vue`: move the back button into its own row above the `h3` (`:272-295`), with the same offset as
   the frame, so the heading stays put at 840 pixels. Verify: 2.8 passes, and `SettingsView.entries.test.js` still passes.
-- [ ] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` and `MdPageHeader` with the one `h1`, and its form blocks take the reading measure. Verify: 2.7 passes.
-- [ ] 4.10 `fix(ui)`: `TeamsPanel.vue`, `PrincipalsPanel.vue` and `CollectionEditor.vue`: take the inset of `MdListDetail` on both panes
+- [x] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` and `MdPageHeader` with the one `h1`, and its form blocks take the reading measure. Verify: 2.7 passes.
+- [x] 4.10 `fix(ui)`: `TeamsPanel.vue`, `PrincipalsPanel.vue` and `CollectionEditor.vue`: take the inset of `MdListDetail` on both panes
   at every width. Verify: 2.9 passes.
 - [ ] 4.11 `fix(ui)`: the remaining page containers that differ from `MdPage` today: `SearchView.vue:250` (wide, `max-w-none`),
   `SiteFooter.vue:31` (centred), `RepositoryOverview.vue:202` (`pb-12` instead of `mb-12`), and the frame's reading branch, removed with 4.6. Verify: 2.11
   passes, and the screenshot of each at 1280 pixels shows the full width page or the aligned result.
-- [ ] 4.12 `fix(ui)`: `SnippetsCard.vue:178`: draw the card title as a heading of level two or three. Verify: 2.10 passes.
+- [x] 4.12 `fix(ui)`: `SnippetsCard.vue:178`: draw the card title as a heading of level two or three. Verify: 2.10 passes.
 
 ## 5. Docs (docs(ui) and docs(gitbook))
 
-- [ ] 5.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, add the surface table of design D1, the page shell rules (D2), the page header
+- [x] 5.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, add the surface table of design D1, the page shell rules (D2), the page header
   rules (D3), the one trail (D4), the card default (D7) and the dark `surface-dim` (D8), and update "Top app bar" and "Adaptive navigation"
   where they describe the content sheet edge. Verify: the dash grep prints nothing.
 - [ ] 5.2 `docs(gitbook)`: in `docs/gitbook/reference/dashboard-pages.md`, describe the trail and the page header where that page describes

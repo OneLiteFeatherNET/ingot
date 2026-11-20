@@ -16,37 +16,37 @@ light and dark. Motion is not visible in a still image, so each group also attac
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec): propose add-dashboard-motion`: this change and nothing else, tasks unchecked, branched from the remote
+- [x] 1.1 `docs(openspec): propose add-dashboard-motion`: this change and nothing else, tasks unchecked, branched from the remote
   main branch. Verify: `openspec validate add-dashboard-motion --strict` passes, and the dash grep prints nothing.
 
 ## 2. Group 1: motion primitives
 
 Pull request title: `feat(ui): add the motion primitives for dashboard transitions`
 
-- [ ] 2.1 `test(ui)`: in `src/styles/md3/motion-transitions.test.ts`, assert that every named transition class in
+- [x] 2.1 `test(ui)`: in `src/styles/md3/motion-transitions.test.ts`, assert that every named transition class in
   `src/styles/md3/motion-transitions.css` takes its duration from a `--md-sys-motion-duration-*` token or a `duration-md-*`
   utility, and holds no literal duration. Verify: it fails, because the file does not exist.
-- [ ] 2.2 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert that each pattern name maps to the expected Vue transition
+- [x] 2.2 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert that each pattern name maps to the expected Vue transition
   name, mode and `appear` flag, that `appear` is false by default, and that the wrapper adds no element of its own (the rendered
   root is the slot child). Verify: it fails, because `MdTransition.vue` does not exist.
-- [ ] 2.3 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert that an unknown pattern name is rejected with a message
+- [x] 2.3 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert that an unknown pattern name is rejected with a message
   and renders the slot without a transition. Verify: it fails, as 2.2 does.
-- [ ] 2.4 `test(ui)`: in `src/style.test.ts`, assert that the single `prefers-reduced-motion` block of `src/style.css` still covers
+- [x] 2.4 `test(ui)`: in `src/style.test.ts`, assert that the single `prefers-reduced-motion` block of `src/style.css` still covers
   the transition classes and that no other stylesheet of the dashboard sets a transition duration under that media query. Verify:
   it fails for the new classes, which are not yet covered by a test of the base layer.
-- [ ] 2.5 `test(ui)`: in `src/helpers/motionDirection.test.ts`, assert the direction for two indexes: `1` when the target is later,
+- [x] 2.5 `test(ui)`: in `src/helpers/motionDirection.test.ts`, assert the direction for two indexes: `1` when the target is later,
   `-1` when it is earlier, and `0` when they are equal, with a fixed list of three entries. Verify: it fails, because the helper
   does not exist.
-- [ ] 2.6 `feat(ui)`: add `src/styles/md3/motion-transitions.css` with the named classes for the nine patterns of the design
+- [x] 2.6 `feat(ui)`: add `src/styles/md3/motion-transitions.css` with the named classes for the nine patterns of the design
   (`fade-through`, `shared-x`, `shared-y`, `menu`, `dialog`, `sheet`, `snackbar`, `expand`, `fade`), built from the motion tokens.
   Verify: 2.1 passes.
-- [ ] 2.7 `feat(ui)`: add `src/components/md/MdTransition.vue` as the wrapper of Vue `<Transition>`, and `src/helpers/motionDirection.ts`.
+- [x] 2.7 `feat(ui)`: add `src/components/md/MdTransition.vue` as the wrapper of Vue `<Transition>`, and `src/helpers/motionDirection.ts`.
   Verify: 2.2, 2.3 and 2.5 pass.
-- [ ] 2.8 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert with a stubbed `matchMedia` that under reduced motion the
+- [x] 2.8 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert with a stubbed `matchMedia` that under reduced motion the
   wrapper renders the same slot with no motion class of its own. Then make it pass in `MdTransition.vue`. Verify: 2.4 passes.
 - [ ] 2.9 Run `npm test` for the new files through `heavy`, targeted, and the style gate. Verify: the gate passes, and the gate
   scan of the new file finds no literal duration.
-- [ ] 2.10 Open the code pull request `feat(ui): add the motion primitives for dashboard transitions`, with the template body and the
+- [x] 2.10 Open the code pull request `feat(ui): add the motion primitives for dashboard transitions`, with the template body and the
   recording. Verify: `gh pr view -R OneLiteFeatherNET/ingot` shows the exact title, and the body has no em or en dash.
 
 ## 3. Group 2: route transitions and focus
@@ -55,38 +55,38 @@ Pull request title: `feat(ui): fade between top-level pages and move focus to th
 
 Starts after group 1 is merged.
 
-- [ ] 3.1 `test(ui)`: in `src/router/create.test.ts`, assert that a navigation between two top-level pages moves focus to the target
+- [x] 3.1 `test(ui)`: in `src/router/create.test.ts`, assert that a navigation between two top-level pages moves focus to the target
   decided by the pure function of the focus helper, and that a first navigation, a query change and a hash change move no focus.
   Verify: it fails for the heading case, because focus goes to `main` today.
-- [ ] 3.2 `test(ui)`: in `src/composables/useFocusOnInsert.test.ts`, assert the target: the first `h1` of the page when it has one,
+- [x] 3.2 `test(ui)`: in `src/composables/useFocusOnInsert.test.ts`, assert the target: the first `h1` of the page when it has one,
   `main` otherwise, and `null` when neither exists. Verify: it fails, because the composable does not exist.
-- [ ] 3.3 `test(ui)`: in `src/pages/IndexPage.test.ts`, assert that the content of `main` is wrapped by `MdTransition` with the
+- [x] 3.3 `test(ui)`: in `src/pages/IndexPage.test.ts`, assert that the content of `main` is wrapped by `MdTransition` with the
   `fade-through` pattern, that the key changes with the section and not with the query, and that the first mount has no `appear`.
   Verify: it fails, because the content has no transition.
-- [ ] 3.4 `test(ui)`: in `src/components/plugins/PluginPageView.test.ts`, assert that a plugin page without a `motion` field takes
+- [x] 3.4 `test(ui)`: in `src/components/plugins/PluginPageView.test.ts`, assert that a plugin page without a `motion` field takes
   `fade-through`, that `motion: 'none'` gives an instant swap with focus still on the heading, and that an unknown value takes
   `fade-through`. Verify: it fails, because the field is not read.
-- [ ] 3.5 `test(ui)`: in `e2e/navigation.spec.js`, assert that moving from Overview to Search focuses the heading of Search, with
+- [x] 3.5 `test(ui)`: in `e2e/navigation.spec.js`, assert that moving from Overview to Search focuses the heading of Search, with
   `toBeFocused()` and no fixed wait, and that a query change keeps focus where it was. Verify: it fails for the heading.
-- [ ] 3.6 `test(ui)`: in `e2e/navigation.spec.js`, assert under reduced-motion emulation that the page is drawn with no transform on
+- [x] 3.6 `test(ui)`: in `e2e/navigation.spec.js`, assert under reduced-motion emulation that the page is drawn with no transform on
   its content, and that focus still moves to the heading. Verify: it fails, because the heading receives no focus today.
-- [ ] 3.7 `test(ui)`: in `e2e/navigation.spec.js`, assert that a second navigation started during the first transition shows only
+- [x] 3.7 `test(ui)`: in `e2e/navigation.spec.js`, assert that a second navigation started during the first transition shows only
   the second page, and that no `*-leave-active` class remains after the transition. Verify: it fails until 3.9 lands. It waits on
   the page role and on the absence of the class, never on a time.
-- [ ] 3.8 `test(ui)`: in `e2e/layout.spec.js`, assert that the side navigation and the header keep their boxes while the page
+- [x] 3.8 `test(ui)`: in `e2e/layout.spec.js`, assert that the side navigation and the header keep their boxes while the page
   transitions, within half a pixel, and that a sheet opened during a transition sits at the window edge. Verify: the sheet case
   fails if the transition wraps the frame, which is why 3.9 wraps the page content only.
-- [ ] 3.9 `feat(ui)`: wrap the content of `main` in `src/pages/IndexPage.vue` with `MdTransition` (`fade-through`, `out-in`, the
+- [x] 3.9 `feat(ui)`: wrap the content of `main` in `src/pages/IndexPage.vue` with `MdTransition` (`fade-through`, `out-in`, the
   section as the key). Add no element. Apply the change to the page content only, not to the frame, so that the sheet of the frame is
   not moved. Verify: 3.3 and 3.8 pass.
-- [ ] 3.10 `feat(ui)`: add `src/composables/useFocusOnInsert.ts` and use it in `src/router/create.ts` and in the page heading. Focus
+- [x] 3.10 `feat(ui)`: add `src/composables/useFocusOnInsert.ts` and use it in `src/router/create.ts` and in the page heading. Focus
   is set at the insertion of the page, not in an after-enter hook, and a page without a heading takes `main`. Verify: 3.1, 3.2 and
   3.5 pass.
-- [ ] 3.11 `feat(ui)`: read the optional `motion` field of the plugin page descriptor in `PluginPageView.vue`, with `route` as the
+- [x] 3.11 `feat(ui)`: read the optional `motion` field of the plugin page descriptor in `PluginPageView.vue`, with `route` as the
   default and `none` as the opt-out. Verify: 3.4 passes.
 - [ ] 3.12 Run the layout and navigation e2e specs through `heavy`, with `--workers=2`, and the accessibility spec for the pages of the
   change. Verify: they pass, and the axe result of each page is clean.
-- [ ] 3.13 Attach the before and after screenshots and the recording of the fade, and open the code pull request `feat(ui): fade
+- [x] 3.13 Attach the before and after screenshots and the recording of the fade, and open the code pull request `feat(ui): fade
   between top-level pages and move focus to the heading`. Verify: `gh pr view -R OneLiteFeatherNET/ingot` shows the exact title.
 
 ## 4. Group 3: sibling pages
@@ -96,24 +96,24 @@ Pull request title: `feat(ui): slide administration pages by their order in the 
 Starts after group 2 is merged and after `rework-admin-header-and-repository-tabs` group 2 is merged, because this group replaces
 its `animate-md-page-enter` rise.
 
-- [ ] 4.1 `test(ui)`: in `src/components/layout/SideNavLayout.test.ts`, assert that a change of entry between two siblings passes
+- [x] 4.1 `test(ui)`: in `src/components/layout/SideNavLayout.test.ts`, assert that a change of entry between two siblings passes
   `shared-x` with the direction of the two tree positions, that a query change passes no direction and keeps the page, and that the
   side navigation is not keyed. Verify: it fails, because the page column has the rise of the older token.
-- [ ] 4.2 `test(ui)`: in `src/helpers/motionDirection.test.ts`, assert the direction for entries across two groups of the tree, using
+- [x] 4.2 `test(ui)`: in `src/helpers/motionDirection.test.ts`, assert the direction for entries across two groups of the tree, using
   the order of the flat list. Verify: it fails, because the tree order is not passed to the helper yet.
-- [ ] 4.3 `test(ui)`: in `src/components/layout/SideNavLayout.test.ts`, assert that the page column no longer carries
+- [x] 4.3 `test(ui)`: in `src/components/layout/SideNavLayout.test.ts`, assert that the page column no longer carries
   `animate-md-page-enter` and carries the `shared-x` class of the pattern. Verify: it fails, as 4.1 does.
-- [ ] 4.4 `test(ui)`: in `e2e/layout.spec.js`, assert under reduced-motion emulation that the page column has no transform while the
+- [x] 4.4 `test(ui)`: in `e2e/layout.spec.js`, assert under reduced-motion emulation that the page column has no transform while the
   entry changes, and that the side navigation keeps its position. Verify: it fails until 4.5 lands, because the rise is not removed
   by the reduced-motion rule in the base layer for the new classes.
-- [ ] 4.5 `feat(ui)`: in `src/components/layout/SideNavLayout.vue`, wrap the page column in `MdTransition` with `shared-x` and the
+- [x] 4.5 `feat(ui)`: in `src/components/layout/SideNavLayout.vue`, wrap the page column in `MdTransition` with `shared-x` and the
   direction from `motionDirection`, and remove `animate-md-page-enter` from the page column. Remove the `md-page-enter` keyframes from
   `src/styles/md3/shape-elevation-motion.css` if nothing else uses them. Verify: 4.1 to 4.4 pass.
-- [ ] 4.6 Scope check: this group changes the page column and, if unused, the keyframes only. The `DESIGN.md` entry is updated in
+- [x] 4.6 Scope check: this group changes the page column and, if unused, the keyframes only. The `DESIGN.md` entry is updated in
   group 8. Verify: the diff of this group has no file under `docs/`.
 - [ ] 4.7 Run the layout e2e spec through `heavy`, with `--workers=2`, and the unit tests of the layout. Verify: they pass, and the
   axe result of each Administration page is clean.
-- [ ] 4.8 Attach the before and after screenshots at 320, 600 and 1440 pixels, and the recording of the entry change, and open the code
+- [x] 4.8 Attach the before and after screenshots at 320, 600 and 1440 pixels, and the recording of the entry change, and open the code
   pull request `feat(ui): slide administration pages by their order in the tree`. Verify: `gh pr view -R OneLiteFeatherNET/ingot`
   shows the exact title.
 

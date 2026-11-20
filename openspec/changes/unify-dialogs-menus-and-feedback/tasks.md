@@ -12,7 +12,7 @@ merged before this change, so the baseline exists when the first area is migrate
 
 ## 1. docs(openspec): propose the change
 
-- [ ] 1.1 `docs(openspec): propose unify-dialogs-menus-and-feedback`: this change, nothing else. Verify:
+- [x] 1.1 `docs(openspec): propose unify-dialogs-menus-and-feedback`: this change, nothing else. Verify:
   `openspec validate unify-dialogs-menus-and-feedback --strict` passes and the dash grep prints nothing.
 
 
@@ -23,27 +23,27 @@ The primitive tests (the `MdDialog` focus contract and size range, the `MdSideSh
 `<style>` block) belong to `add-md3-component-catalogue` (its tasks 2.5, 2.14, 2.15, 2.17 and 2.25) and are not written again
 here.
 
-- [ ] 2.1 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `dialog-shell`, `new-team-dialog`, `create-token-dialog`,
+- [x] 2.1 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `dialog-shell`, `new-team-dialog`, `create-token-dialog`,
   `revoke-token-dialog` and `problem-alert` are still in `registry.json` and that each is reported where its file carries it.
   Verify: it passes before the migration and is kept as the guard.
-- [ ] 2.2 `test(ui)`: in `src/components/md/MdDialog.test.js`, assert that `size="compact"` renders full screen below the
+- [x] 2.2 `test(ui)`: in `src/components/md/MdDialog.test.js`, assert that `size="compact"` renders full screen below the
   `medium` window class and the `lg` frame from it (a class check), if question 3 is answered with the default. Verify: it
   fails, because the size does not exist.
 
 
 ## 3. Primitive check and the one extension
 
-- [ ] 3.1 No commit. Confirm on the remote main branch that `add-md3-component-catalogue` is merged and that `MdDialog`,
+- [x] 3.1 No commit. Confirm on the remote main branch that `add-md3-component-catalogue` is merged and that `MdDialog`,
   `MdAlert`, `MdStatePanel`, `MdSkeleton`, `MdListbox`, `src/helpers/useCombobox.js`, the `MdSideSheet` `side` prop with
   `--container-md-sheet-wide`, and the `MdOverflowMenu` disabled and two-line items exist with their tests green. Verify: each
   is present; a missing one stops this change and goes back into the catalogue change (proposal question 4).
-- [ ] 3.2 `fix(ui)`: add the `compact` size to `MdDialog.vue` (question 3). Verify: 2.2 passes and the existing `MdDialog`
+- [x] 3.2 `fix(ui)`: add the `compact` size to `MdDialog.vue` (question 3). Verify: 2.2 passes and the existing `MdDialog`
   tests pass unchanged.
 
 
 ## 4. test(ui): red tests per area, one test(ui) commit per area
 
-- [ ] 4.1 `test(ui)`: in `CreateTokenDialog.test.js`, `RevokeTokenDialog.test.js`, `RotateTokenDialog.test.js` and
+- [x] 4.1 `test(ui)`: in `CreateTokenDialog.test.js`, `RevokeTokenDialog.test.js`, `RotateTokenDialog.test.js` and
   `SecretOnceDialog.test.js`, add the dialog assertions of D9 (labelledby, initial focus, focus return, Escape, one filled button)
   where they are missing, and assert `data-ingot-state="error"` on the rotation error. Verify: they fail on the missing
   attribute and on the hand-built heading.
@@ -64,24 +64,24 @@ here.
   `GettingStartedCard` and `InstanceStatusPanel`, assert the dialog assertions of D9 for the dialogs, the `end` side and the sheet
   focus return for `FailuresSheet`, the error state attribute on `ReadOnlyToggle`, `GettingStartedCard` and the Retry of
   `ChartCard` and `FailuresSheet`. Verify: they fail.
-- [ ] 4.6 `test(ui)`: in `MigrationDialog.test.js`, `MappingStep.test.js` and `CutOverStep.test.js`, assert the dialog assertions of
+- [x] 4.6 `test(ui)`: in `MigrationDialog.test.js`, `MappingStep.test.js` and `CutOverStep.test.js`, assert the dialog assertions of
   D9, that the own focus trap of the dialog is gone (the focus trap is the one of `MdDialog`), and that the destructive confirmations
   use the `error` prop. Verify: they fail.
-- [ ] 4.7 `test(ui)`: in `OneOfSelectRenderers.test.js` and `OneOfVariantSwitch.test.js`, assert the dialog assertions of D9, a
+- [x] 4.7 `test(ui)`: in `OneOfSelectRenderers.test.js` and `OneOfVariantSwitch.test.js`, assert the dialog assertions of D9, a
   named tab panel (the `tabpanel` at `OneOfRenderer.vue:20` has no name today), no `min-w-[280px]` or `max-w-[560px]` literal, and a
   filled confirm button (D3). Verify: they fail.
-- [ ] 4.8 `test(ui)`: in `LoginModal.test.js`, assert the dialog assertions of D9 (the login dialog is named by its heading, focus
+- [x] 4.8 `test(ui)`: in `LoginModal.test.js`, assert the dialog assertions of D9 (the login dialog is named by its heading, focus
   starts on the first field, focus returns to the account button, Escape closes it). Verify: it fails on the own overlay style.
 
 ## 5. fix(ui): migration per area, one fix(ui) commit per area in the order identity, access, maintenance, settings, dashboard, migration, renderers, header
 
-- [ ] 5.1 `fix(ui)`: move `CreateTokenDialog.vue`, `RevokeTokenDialog.vue`, `RotateTokenDialog.vue` and `SecretOnceDialog.vue` to
+- [x] 5.1 `fix(ui)`: move `CreateTokenDialog.vue`, `RevokeTokenDialog.vue`, `RotateTokenDialog.vue` and `SecretOnceDialog.vue` to
   `MdDialog` with `header` and `actions` slots; keep `create-token-dialog`, `revoke-token-dialog` and their anchors on the
   same elements; replace the inline errors at `CreateTokenDialog.vue:357` and `:373`, `RevokeTokenDialog.vue:112` and
   `RotateTokenDialog.vue:92` with `MdAlert` in the error tone; make the static copy of `SecretOnceDialog.vue:175` a notice without
   an alert role; replace the alert in `identity/TokenList.vue:176` with `MdAlert`. Verify: 4.1 passes.
 
-- [ ] 5.2 `fix(ui)`: migrate the seven dialogs to `MdDialog`, deleting their frames; move `NewMachineDialog` to `useId`
+- [x] 5.2 `fix(ui)`: migrate the seven dialogs to `MdDialog`, deleting their frames; move `NewMachineDialog` to `useId`
   (its fixed id is at line 98); replace the inline errors (`AddMemberDialog.vue:130` and `:178`, `ConfirmActionDialog.vue:124`,
   `NewMachineDialog.vue:141`, `NewTeamDialog.vue:137`) with `MdAlert`. Delete `identity/DialogShell.vue` in this commit, when
   its last importer is migrated, and leave `dialog-shell` on `MdDialog`.
@@ -131,21 +131,21 @@ here.
   (empty), `overview/RepositoryOverview.vue:351` (Retry), `search/SearchView.vue:431` and `:451` (Retry), `:467` (empty), and the
   skeleton of `:422` (`h-[88px] animate-pulse`). Verify: the tests of these views pass with state assertions.
 
-- [ ] 5.10 `fix(ui)`: migrate `MigrationDialog.vue` (78 to 108; its own Teleport, focus trap, `bg-scrim/40` and `z-50`) to
+- [x] 5.10 `fix(ui)`: migrate `MigrationDialog.vue` (78 to 108; its own Teleport, focus trap, `bg-scrim/40` and `z-50`) to
   `MdDialog`. Set `error` on the destructive confirmations `MappingStep.vue:266` and `CutOverStep.vue:332`, which are filled today.
   Replace `migration/ProblemAlert.vue:37` and `migration/ConnectStep.vue:148` (the same string, shown in two styles) with one
   `MdAlert`. Verify: 4.6 passes.
 
-- [ ] 5.11 `fix(ui)`: migrate the dialog frame of `OneOfRenderer.vue` (31 to 75) to `MdDialog`, name the tab panel, make the
+- [x] 5.11 `fix(ui)`: migrate the dialog frame of `OneOfRenderer.vue` (31 to 75) to `MdDialog`, name the tab panel, make the
   confirm button filled, and remove the `SCRIM_STYLE` import at line 98. Verify: 4.7 passes.
 
-- [ ] 5.12 `fix(ui)`: migrate the frame of `LoginModal.vue` (269 to 520, its own overlay style at 268) to `MdDialog`, keeping its
+- [x] 5.12 `fix(ui)`: migrate the frame of `LoginModal.vue` (269 to 520, its own overlay style at 268) to `MdDialog`, keeping its
   fields, validation and provider links unchanged. Verify: 4.8 passes.
 
 
 ## 6. docs(ui): design rules
 
-- [ ] 6.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, state the `MdDialog` size range, inset, `role` and stacking value
+- [x] 6.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, state the `MdDialog` size range, inset, `role` and stacking value
   beside the existing dialog rule; the focus contract of D2; the confirm button rule of D3; the `MdSideSheet` `side` prop and the
   width token; the `MdOverflowMenu` item fields and the `MdListbox` and `useCombobox` contract; the status primitives and their
   states (D6); the snackbar breakpoint, corrected from the `md` breakpoint to 600px; and the `z-md-menu` layer of the listbox popup. Remove "No tabs, list, dialog or drawer primitive" from "Known gaps" for the parts that now exist. Verify: the dash grep
