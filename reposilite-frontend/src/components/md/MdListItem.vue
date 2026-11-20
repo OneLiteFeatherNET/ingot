@@ -76,6 +76,9 @@ const contentAttrs = computed(() => {
   return props.button ? { type: 'button' } : {}
 })
 
+// A plain text row does nothing on a click, so it shows no hover, focus or press state.
+const interactive = computed(() => isOption.value || props.to !== undefined || props.button)
+
 // Only an option takes the keys. A link or a button in a plain list keeps its own Enter and Space.
 const select = (event?: Event) => {
   if (!isOption.value) return
@@ -103,7 +106,11 @@ const select = (event?: Event) => {
       :is="contentTag"
       v-bind="contentAttrs"
       data-test="list-item-row"
-      :class="['md-state-layer md-focus-ring md-touch-target relative flex w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large', rowHeight]"
+      :class="[
+        'relative flex w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large',
+        interactive ? 'md-state-layer md-focus-ring md-touch-target' : '',
+        rowHeight
+      ]"
     >
       <span
         v-if="$slots.leading"
