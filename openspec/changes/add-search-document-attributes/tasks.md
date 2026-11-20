@@ -10,15 +10,15 @@ allowlist if they are plugin-facing.
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose `add-search-document-attributes`. This change and nothing else. Verify:
+- [x] 1.1 `docs(openspec)`: propose `add-search-document-attributes`. This change and nothing else. Verify:
   `openspec validate add-search-document-attributes --strict --no-interactive` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Validation of attribute sets (red, then green)
 
-- [ ] 2.1 `test(search)`: failing tests of the validation of D1: an allowed set passes; more than 32 keys, more than 16 values, a value
+- [x] 2.1 `test(search)`: failing tests of the validation of D1: an allowed set passes; more than 32 keys, more than 16 values, a value
   over 2000 characters, a set over 8 KiB, a control character, a bidirectional override, a key of another namespace and a key outside
   the name pattern are each refused with its fixed rule name, and the message never contains a value. Verify: they fail.
-- [ ] 2.2 `feat(search)`: the validation as a pure function in the search package, and the `Attributes` variant of `EnrichmentResult` with
+- [x] 2.2 `feat(search)`: the validation as a pure function in the search package, and the `Attributes` variant of `EnrichmentResult` with
   the namespace check of D2. Verify: the tests of 2.1 pass.
 
 ## 3. Capability and write rules (red, then green)

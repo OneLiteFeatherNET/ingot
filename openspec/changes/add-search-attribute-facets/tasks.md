@@ -9,7 +9,7 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose `add-search-attribute-facets`. This change and nothing else. Verify:
+- [x] 1.1 `docs(openspec)`: propose `add-search-attribute-facets`. This change and nothing else. Verify:
   `openspec validate add-search-attribute-facets --strict --no-interactive` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Declarations (red, then green)

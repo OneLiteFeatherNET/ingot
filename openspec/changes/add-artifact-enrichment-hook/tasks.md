@@ -9,12 +9,12 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose `add-artifact-enrichment-hook`. This change and nothing else. Verify:
+- [x] 1.1 `docs(openspec)`: propose `add-artifact-enrichment-hook`. This change and nothing else. Verify:
   `openspec validate add-artifact-enrichment-hook --strict --no-interactive` passes and the dash grep from the proposal prints nothing.
 
 ## 2. Contract and registry (red, then green)
 
-- [ ] 2.1 `test(search)`: failing tests of the registry: a matching `apiVersion` registers; another version is refused with a warning
+- [x] 2.1 `test(search)`: failing tests of the registry: a matching `apiVersion` registers; another version is refused with a warning
   naming both numbers; a duplicate `id` is refused naming both classes; an `id` outside the pattern is refused; a refused enricher is
   never called. Verify: they fail on the missing types.
 - [ ] 2.2 `feat(search)`: add `net.onelitefeather.ingot.search.enrichment` with `ArtifactEnricher`, `ArtifactEnrichmentRequest`,
@@ -24,14 +24,14 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
 
 ## 3. Content handle and executor (red, then green)
 
-- [ ] 3.1 `test(search)`: failing tests with a fake storage that counts reads: a range beyond the byte budget throws; a range inside it
+- [x] 3.1 `test(search)`: failing tests with a fake storage that counts reads: a range beyond the byte budget throws; a range inside it
   is served; a request outside the path of the call is impossible by construction. Verify: they fail.
-- [ ] 3.2 `feat(search)`: the content handle over `StorageProvider.getFile(location, offset, length)` with the budget of D4, and the
+- [x] 3.2 `feat(search)`: the content handle over `StorageProvider.getFile(location, offset, length)` with the budget of D4, and the
   bounded stream of `BoundedInputStream`. Verify: the tests of 3.1 pass.
-- [ ] 3.3 `test(search)`: failing tests of the executor with a fake executor: a normal return sets the result; an exception becomes
+- [x] 3.3 `test(search)`: failing tests of the executor with a fake executor: a normal return sets the result; an exception becomes
   `EnrichmentFailed("exception: <simple name>")` and never carries the message; a deadline expiry becomes `EnrichmentFailed("timeout")`
   with the task cancelled; a full queue becomes `EnrichmentSkipped("busy")` without a call; `Error` propagates. Verify: they fail.
-- [ ] 3.4 `feat(search)`: the executor of D5 owned by the search plugin, with the queue bound and the deadline read from the injected
+- [x] 3.4 `feat(search)`: the executor of D5 owned by the search plugin, with the queue bound and the deadline read from the injected
   clock for the timeout decision. Verify: the tests of 3.3 pass.
 
 ## 4. Changed paths (red, then green)

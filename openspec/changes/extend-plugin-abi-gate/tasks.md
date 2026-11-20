@@ -13,16 +13,16 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose extend-plugin-abi-gate. Verify: `openspec validate extend-plugin-abi-gate --strict --no-interactive`
+- [x] 1.1 `docs(openspec)`: propose extend-plugin-abi-gate. Verify: `openspec validate extend-plugin-abi-gate --strict --no-interactive`
   passes and the dash grep from the proposal prints nothing.
 
 ## 2. Code pull request 1: package lists (`test(plugin)`, `build(plugin)`)
 
-- [ ] 2.1 `test(plugin)`: `ingot_package_lists_test.py` in `.github/scripts/tests`. It reads `reposilite-backend/build.gradle.kts` and
+- [x] 2.1 `test(plugin)`: `ingot_package_lists_test.py` in `.github/scripts/tests`. It reads `reposilite-backend/build.gradle.kts` and
   `docs/gitbook/references/plugins/plugin-api.md` as text and asserts that every documented `net.onelitefeather.ingot.*` package and
   `com.reposilite.frontend.api` is in `ingotPluginApiPackages`, and that `com.reposilite.journalist` is in neither list. Fails before 2.2,
   with a message that names the missing package.
-- [ ] 2.2 `build(plugin)`: add `ingotPluginApiPackages` with the packages of the design, and `ingotExperimentalPackages` with the experimental
+- [x] 2.2 `build(plugin)`: add `ingotPluginApiPackages` with the packages of the design, and `ingotExperimentalPackages` with the experimental
   packages named in the documentation. No task is registered yet.
 - [ ] 2.3 Verify the Ingot baseline (design Q1): run `./gradlew --build-cache :reposilite-backend:dependencies --configuration` on a detached
   configuration that declares `net.onelitefeather.ingot:ingot:1.1.1`, and record in the pull request whether it resolves from
@@ -30,10 +30,10 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 3. Code pull request 2: the Ingot report (`build(plugin)`, `test(plugin)`)
 
-- [ ] 3.1 `build(plugin)`: add the property `ingotBaseline` (the release of 2.3), the detached configurations for the baseline archive and its
+- [x] 3.1 `build(plugin)`: add the property `ingotBaseline` (the release of 2.3), the detached configurations for the baseline archive and its
   classpath, and the task `ingotPluginApiReport` with `failOnModification = false`, `onlyBinaryIncompatibleModified = true`, and the
   reports `build/reports/plugin-api/ingot-report.html` and `ingot-report.md`. Verify: the task succeeds and writes both files.
-- [ ] 3.2 `test(plugin)`: a unit test of the classification rule of design D3 over a small table: an annotation whose simple name starts with
+- [x] 3.2 `test(plugin)`: a unit test of the classification rule of design D3 over a small table: an annotation whose simple name starts with
   `ExperimentalIngot` makes a finding experimental, a package in `ingotExperimentalPackages` does too, and everything else is promised. The
   test is a plain Kotlin test in `reposilite-backend/src/test`, with no class files read from disk.
 - [ ] 3.3 `build(plugin)`: the classification step of D3, which reads the annotations of the new jar with the class-file reader already on the
@@ -48,9 +48,9 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 4. Code pull request 3, the complete gate (`ci(plugin)`, `test(plugin)`, `docs(plugin)`)
 
-- [ ] 4.1 `test(plugin)`: `plugin_api_summary_test.py` for the summary script that counts the two groups from the Markdown report. It uses a
+- [x] 4.1 `test(plugin)`: `plugin_api_summary_test.py` for the summary script that counts the two groups from the Markdown report. It uses a
   fixture report written into a temporary directory. Fails before 4.2.
-- [ ] 4.2 `ci(plugin)`: add the step `./gradlew --build-cache :reposilite-backend:ingotPluginApiReport` to the job "Plugin API" in
+- [x] 4.2 `ci(plugin)`: add the step `./gradlew --build-cache :reposilite-backend:ingotPluginApiReport` to the job "Plugin API" in
   `.github/workflows/ci.yml`, after the 3.5.28 report, and the section "Ingot plugin API" in `$GITHUB_STEP_SUMMARY` with the counts of each
   group. The step is report-only, and `permissions: contents: read` stays.
 - [ ] 4.3 `docs(plugin)`: the "Compatibility checks" section of `docs/gitbook/references/plugins/plugin-api.md`. The baseline row gets the Ingot
@@ -59,7 +59,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 5. Pull request
 
-- [ ] 5.1 Open code pull requests 1 and 2 under the titles `test(plugin): check the ingot package lists against the plugin api docs` and
+- [x] 5.1 Open code pull requests 1 and 2 under the titles `test(plugin): check the ingot package lists against the plugin api docs` and
   `build(plugin): report the ingot plugin api against the last release`, each from a branch of the remote main branch, each with no file under
   `openspec/`.
 - [ ] 5.2 Open code pull request 3, last, under the title `ci(plugin): cover the ingot plugin api packages in the abi gate`. Read
