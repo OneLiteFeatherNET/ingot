@@ -31,6 +31,8 @@ import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.deploy.DeployTarget
 import net.onelitefeather.ingot.deploy.WorkerRoutes
 import net.onelitefeather.ingot.logging.AccessLogHandler
+import net.onelitefeather.ingot.plugin.openapi.PluginOpenApiFragmentSource
+import net.onelitefeather.ingot.plugin.openapi.PluginOpenApiFragments
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
 import net.onelitefeather.ingot.web.openapi.LoginChallengeSchemas
@@ -102,7 +104,7 @@ internal object JavalinConfiguration {
         configureSecurityHeaders(config)
         // The worker serves no API documentation either, so the OpenAPI route is not registered there
         if (reposilite.parameters.deployTarget != DeployTarget.WORKER) {
-            configureOpenApi(config, frontendSettings.get())
+            configureOpenApi(reposilite, config, frontendSettings.get())
         }
         configureDebug(reposilite, localConfiguration, config)
         configureRoutingPlugin(config, reposilite)
@@ -232,7 +234,7 @@ internal object JavalinConfiguration {
         config.routes.after { ctx -> securityHeaders.apply(ctx) }
     }
 
-    private fun configureOpenApi(config: JavalinConfig, frontendSettings: FrontendSettings) {
+    private fun configureOpenApi(reposilite: Reposilite, config: JavalinConfig, frontendSettings: FrontendSettings) {
         config.registerPlugin(OpenApiPlugin { openapi ->
             openapi.withDefinitionConfiguration { _, builder ->
                 builder.info {
@@ -248,10 +250,17 @@ internal object JavalinConfiguration {
             }
             // Enums that grow get x-extensible-enum, so clients accept values they do not know yet.
             openapi.withDefinitionProcessor { document ->
+                // The fragments of loaded plugins come first, so their entries get the same treatment as the server's. The
+                // document is built after every plugin has loaded, on the first request to it.
+                val loaders = reposilite.extensions.getPlugins().mapValues { it.value.plugin.javaClass.classLoader }
+                val merged = PluginOpenApiFragments.merge(
+                    document,
+                    PluginOpenApiFragmentSource.load(loaders) { reposilite.logger.warn(it) },
+                ) { reposilite.logger.warn(it) }
                 // The login answer that asks for a second factor is listed next to the session answer, and the login
                 // challenge next to the plain 429.
                 describeSecuritySchemes(
-                    LoginChallengeSchemas.apply(SecondFactorAlternative.apply(ExtensibleEnumSchemas.apply(document, listOf(RunTrigger::class.java))))
+                    LoginChallengeSchemas.apply(SecondFactorAlternative.apply(ExtensibleEnumSchemas.apply(merged, listOf(RunTrigger::class.java))))
                 ).toString()
             }
         })
