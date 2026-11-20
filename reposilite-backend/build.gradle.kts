@@ -301,8 +301,8 @@ tasks.withType<ShadowJar> {
 }
 
 // Plugin modules that the server jar embeds as embedded-plugins/<jar name>, see openspec change add-embedded-plugin-jars.
-// The list is empty, so the server jar is unchanged until a module is named here together with its loader.
-val embeddedPluginProjects: List<String> = emptyList()
+// The javadoc viewer is embedded by default, so a server jar started outside the image keeps the viewer and its settings domain.
+val embeddedPluginProjects: List<String> = listOf(":reposilite-plugins:javadoc-plugin")
 
 // The shadow jars of those modules. The configuration is on no classpath, so the compile and runtime classpaths do not change.
 val embeddedPlugin by configurations.creating {
@@ -485,6 +485,13 @@ tasks.test {
         setDestinationFile(file("${project.layout.buildDirectory.get()}/jacoco/jacoco.exec"))
     }
 
+    // JavadocModuleBoundaryTest reads the backend's own compiled classes. The javadoc module's classes are on the test class
+    // path as well, so a class lookup cannot tell the two apart.
+    val mainClassesDirs = sourceSets.main.get().output.classesDirs
+    doFirst {
+        systemProperty("ingot.backend.mainClasses", mainClassesDirs.files.joinToString(File.pathSeparator) { it.absolutePath })
+    }
+
     finalizedBy("jacocoTestReport")
 }
 
@@ -601,6 +608,24 @@ dependencies {
         files(storageCachePlugin.layout.buildDirectory.dir("classes/kotlin/main"))
             .builtBy(":reposilite-plugins:storage-cache-plugin:compileKotlin"),
     )
+}
+
+// The javadoc viewer, compiled classes, generated settings schema and api document fragment, and service file. The server runs
+// from its classes directory in the integration tests, which embeds no jar, so the test server loads the plugin from the class
+// path instead, as the server jar loads its embedded copy.
+val javadocPlugin = project(":reposilite-plugins:javadoc-plugin")
+val javadocPluginClasses = files(
+    javadocPlugin.layout.buildDirectory.dir("classes/kotlin/main"),
+    javadocPlugin.layout.buildDirectory.dir("tmp/kapt3/classes/main"),
+).builtBy(":reposilite-plugins:javadoc-plugin:compileKotlin")
+dependencies {
+    "integrationImplementation"(
+        javadocPluginClasses + files(javadocPlugin.layout.buildDirectory.dir("resources/main"))
+            .builtBy(":reposilite-plugins:javadoc-plugin:processResources"),
+    )
+    // The unit tests of the viewer stay in the backend (design D7 of extract-javadoc-plugin). They see its classes and generated
+    // resources, but not its service file, so no unit test loads the plugin from the class path.
+    testImplementation(javadocPluginClasses)
 }
 
 tasks.named<Test>("integration") {

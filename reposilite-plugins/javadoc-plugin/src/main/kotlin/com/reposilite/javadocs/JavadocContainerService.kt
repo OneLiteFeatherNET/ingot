@@ -37,23 +37,23 @@ import kotlin.io.path.writeText
 
 private const val INDEX_FILE = "index.html"
 
-internal const val DEFAULT_JAVADOC_MAX_ENTRY_BYTES = 10L * 1024 * 1024
+const val DEFAULT_JAVADOC_MAX_ENTRY_BYTES = 10L * 1024 * 1024
 
 /**
  * Per-entry size cap of a javadoc jar. Ingot reads -Dingot.javadocs.max-entry-bytes first and falls
  * back to the legacy -Dreposilite.javadocs.max-entry-bytes when the Ingot property is not set.
  */
-internal fun javadocMaxEntryBytes(property: (String) -> String?): Long =
+fun javadocMaxEntryBytes(property: (String) -> String?): Long =
     (property("ingot.javadocs.max-entry-bytes") ?: property("reposilite.javadocs.max-entry-bytes"))
         ?.toLong() ?: DEFAULT_JAVADOC_MAX_ENTRY_BYTES
 
-internal class JavadocContainer(
+class JavadocContainer(
     val javadocContainerPath: Path,
     val javadocContainerIndex: Path,
     val javadocUnpackPath: Path
 )
 
-internal class JavadocContainerService(
+class JavadocContainerService(
     private val failureFacade: FailureFacade,
     private val mavenFacade: MavenFacade,
     private val javadocFolder: Path,
@@ -192,7 +192,7 @@ internal class JavadocContainerService(
         originInput.copyToAndClose(FileOutputStream(destinationJarPath.toString()))
     }
 
-    internal fun unpackJavadocJar(jarPath: Path, javadocUnpackPath: Path): Result<Unit, ErrorResponse> =
+    fun unpackJavadocJar(jarPath: Path, javadocUnpackPath: Path): Result<Unit, ErrorResponse> =
         when {
             !jarPath.name.contains("javadoc.jar") -> badRequestError("Invalid javadoc jar! Name must contain: 'javadoc.jar'")
             jarPath.isDirectory() -> badRequestError("JavaDoc jar path has to be a file!")

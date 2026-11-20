@@ -104,12 +104,12 @@ internal class OpenApiCompletenessTest {
         val key: String get() = "$method $path"
     }
 
-    private fun sourceFiles(): List<Path> {
-        val root = Path.of(SOURCE_ROOT)
+    private fun sourceFiles(): List<Path> = (listOf(SOURCE_ROOT) + EMBEDDED_PLUGIN_SOURCE_ROOTS).flatMap { sourceRoot ->
+        val root = Path.of(sourceRoot)
         assertThat(Files.isDirectory(root))
-            .describedAs("$SOURCE_ROOT must exist; the test runs from the backend module directory")
+            .describedAs("$sourceRoot must exist; the test runs from the backend module directory")
             .isTrue()
-        return Files.walk(root).use { stream ->
+        Files.walk(root).use { stream ->
             stream.filter { it.toString().endsWith(".kt") }.sorted().toList()
         }
     }
@@ -182,6 +182,8 @@ internal class OpenApiCompletenessTest {
 
     private companion object {
         const val SOURCE_ROOT = "src/main/kotlin"
+        // The server jar embeds these plugin modules, so their routes are served by default and belong to the same check.
+        val EMBEDDED_PLUGIN_SOURCE_ROOTS = listOf("../reposilite-plugins/javadoc-plugin/src/main/kotlin")
         const val MINIMUM_ROUTE_DECLARATIONS = 80
 
         val routeCalls = Regex("""(?<!class )ReposiliteRoute(?:<[^>\n]*>)?\(""")

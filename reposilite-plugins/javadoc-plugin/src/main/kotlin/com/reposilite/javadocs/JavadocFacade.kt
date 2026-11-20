@@ -52,12 +52,12 @@ private const val LATEST_PATTERN = "/latest"
  * The artifact directory whose unpacked javadoc cache is evicted when a jar at [gav] is deployed, or null when the jar is not a
  * javadoc jar. The directory holds every version of the artifact, so it is two levels above the jar.
  */
-internal fun javadocEvictionRoot(gav: Location, suffixes: List<String>): Location? =
+fun javadocEvictionRoot(gav: Location, suffixes: List<String>): Location? =
     gav.takeIf { location -> suffixes.any { location.toString().endsWith(it) } }
         ?.getParent()
         ?.getParent()
 
-class JavadocFacade internal constructor(
+class JavadocFacade(
     private val journalist: Journalist,
     val mavenFacade: MavenFacade,
     private val javadocFolder: Path,
