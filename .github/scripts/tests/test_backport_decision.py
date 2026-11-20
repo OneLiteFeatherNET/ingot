@@ -171,5 +171,48 @@ class LabelHandlingTest(unittest.TestCase):
         )
 
 
+class CommandLineTest(unittest.TestCase):
+
+    def run_cli(self, event):
+        import io
+        import json
+
+        stdout = io.StringIO()
+        code = backport_decision.main([], stdin=io.StringIO(json.dumps(event)), stdout=stdout)
+        return code, stdout.getvalue()
+
+    def event(self, **overrides):
+        event = {
+            "title": "fix(security): reject a path outside the repository",
+            "body": "",
+            "labels": ["backport:1.1"],
+            "base_ref": "main",
+            "merged": True,
+            "lines_with_branch": ["1.1"],
+        }
+        event.update(overrides)
+        return event
+
+    def test_command_prints_one_tab_separated_line_per_decision(self):
+        code, out = self.run_cli(self.event())
+
+        self.assertEqual(0, code, "a decision is not a failure")
+        self.assertEqual("backport\t1.1\trelease/1.1.x\tsecurity fix for line 1.1\n", out,
+                         "the workflow reads action, line, branch and reason from one line")
+
+    def test_command_leaves_empty_fields_for_a_refused_label_without_line(self):
+        code, out = self.run_cli(self.event(labels=["backport:latest"]))
+
+        self.assertEqual(0, code, "a refusal is reported, not raised")
+        self.assertEqual("refuse\t\t\t" + backport_decision.REASON_MALFORMED + "\n", out,
+                         "a malformed label has neither a line nor a branch")
+
+    def test_command_prints_nothing_for_an_unmerged_pull_request(self):
+        code, out = self.run_cli(self.event(merged=False))
+
+        self.assertEqual(0, code, "a closed pull request is not an error")
+        self.assertEqual("", out, "a pull request that was not merged is never backported")
+
+
 if __name__ == "__main__":
     unittest.main()

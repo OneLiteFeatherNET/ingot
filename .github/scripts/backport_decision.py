@@ -7,12 +7,15 @@ A merged pull request into `main` that carries a label `backport:<major>.<minor>
 pull request should carry as a comment.
 
 The module takes the title, body, labels and base of the pull request and the lines that have a release branch. It never
-reads the network, the clock or the file system.
+reads the network, the clock or the file system. The command line reads the same inputs as one JSON object on stdin and
+prints one tab separated line per decision (action, line, branch, reason) for .github/workflows/backport.yml.
 """
 
+import json
 import re
+import sys
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence
+from typing import IO, Iterable, List, Optional, Sequence
 
 BACKPORT_LABEL_PREFIX = "backport:"
 LINE_PATTERN = re.compile(r"^backport:((?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$")
@@ -97,3 +100,29 @@ def decide(
             continue
         decisions.append(Decision(action="backport", line=line, branch=f"release/{line}.x", reason=f"security fix for line {line}"))
     return decisions
+
+
+def main(argv: List[str], stdin: Optional[IO[str]] = None, stdout: Optional[IO[str]] = None) -> int:
+    """Reads the pull request as JSON on stdin and prints `action<TAB>line<TAB>branch<TAB>reason` per decision.
+
+    The object carries `title`, `body`, `labels`, `base_ref`, `merged` and `lines_with_branch`. A missing line or branch
+    is printed as an empty field. Every reason is one of the fixed texts above, so no input text reaches the output.
+    """
+    stdin = stdin if stdin is not None else sys.stdin
+    stdout = stdout if stdout is not None else sys.stdout
+    event = json.load(stdin)
+    decisions = decide(
+        title=event.get("title") or "",
+        body=event.get("body") or "",
+        labels=event.get("labels") or [],
+        base_ref=event.get("base_ref") or "",
+        merged=bool(event.get("merged")),
+        lines_with_branch=event.get("lines_with_branch") or [],
+    )
+    for decision in decisions:
+        stdout.write("\t".join([decision.action, decision.line or "", decision.branch or "", decision.reason]) + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
