@@ -16,7 +16,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import type { Component } from 'vue'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import SnippetsCard from './SnippetsCard.vue'
+import MdTransition from '../md/MdTransition.vue'
 import { DETAILS_COLLAPSED_KEY } from './detailsCollapsed'
 
 // By default the metadata request never answers, so the card stays in its loading state. A test that
@@ -645,6 +649,40 @@ describe('SnippetsCard tab choice', () => {
 
     expect(wrapper!.find('[role="region"][aria-label$="scrolls sideways"]').attributes('aria-label'), 'the snippet region names the chosen tab')
       .toBe('Gradle Kotlin snippet, scrolls sideways')
+  })
+
+  it('moves the snippet along the shared x axis, forward to a later tab and back to an earlier one', async () => {
+    await mountCard()
+    const tab = (name: string) => wrapper!.findAll('#card-menu button').find(button => button.text() === name)!
+    const transition = () => wrapper!.findComponent(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }
+
+    await tab('SBT').trigger('click')
+    await flushPromises()
+    expect(transition().props('pattern'), 'the tab panel uses the shared x axis pattern').toBe('shared-x')
+    expect(transition().props('direction'), 'a later tab moves forward').toBe(1)
+
+    await tab('Maven').trigger('click')
+    await flushPromises()
+    expect(transition().props('direction'), 'an earlier tab moves back').toBe(-1)
+  })
+})
+
+describe('SnippetsCard styles', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('carries no style block, so no rule of the card reaches the rest of the dashboard', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'card', 'SnippetsCard.vue'), 'utf8')
+
+    expect(source, 'the card source has no <style> element').not.toContain('<style')
+  })
+
+  it('gives the snippet region the thin md scrollbar', async () => {
+    await mountCard()
+
+    expect(wrapper!.find('.card-editor').classes()).toContain('md-scrollbar')
   })
 })
 

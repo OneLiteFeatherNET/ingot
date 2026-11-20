@@ -257,6 +257,28 @@
   }
 }
 
+/*
+ * A thin scrollbar for a block that scrolls sideways, such as a code sample: a six pixel bar in the outline variant
+ * colour on a transparent track. Only an element that opts in gets it; every other scrollbar is the browser default.
+ */
+@utility md-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--md-sys-color-outline-variant);
+    border-radius: 20px;
+  }
+}
+
 @utility md-router-view {
   min-height: calc(100vh - --spacing(8));
 }

@@ -57,7 +57,7 @@ defineExpose({ codeElement })
       role="region"
       tabindex="0"
       :aria-label="label"
-      class="md-focus-ring max-w-full overflow-x-auto whitespace-pre break-normal"
+      class="md-focus-ring md-scrollbar max-w-full overflow-x-auto whitespace-pre break-normal"
       :class="$slots.actions ? 'pr-12' : ''"
     >
       <pre><code ref="codeElement"><slot /></code></pre>

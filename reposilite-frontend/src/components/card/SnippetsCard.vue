@@ -22,6 +22,7 @@ import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdTransition from '../md/MdTransition.vue'
 import BrowserIcon from '../browser/BrowserIcon.vue'
 import DownIcon from '../icons/DownIcon.vue'
 import CardMenu from './CardMenu.vue'
@@ -186,12 +187,13 @@ watchEffect(() => {
 })
 
 const selectedTab = ref<string>()
-const transitionName = ref('slide-right')
+// The snippet moves along the shared x axis: forward to a tab further right, back to one further left.
+const transitionDirection = ref<1 | -1>(1)
 
 watch(selectedTab, (to, from) => {
   const toIndex = configurations.findIndex(entry => entry.name === to)
   const fromIndex = configurations.findIndex(entry => entry.name === from)
-  transitionName.value = toIndex - fromIndex < 0 ? 'slide-left' : 'slide-right'
+  transitionDirection.value = toIndex - fromIndex < 0 ? -1 : 1
 })
 
 const snippetRef = ref<Array<{ content?: string }>>()
@@ -294,9 +296,9 @@ const selectTab = (tab: string) =>
         />
 
         <div class="mt-5">
-          <transition
-            :name="transitionName"
-            mode="out-in"
+          <MdTransition
+            pattern="shared-x"
+            :direction="transitionDirection"
           >
             <div
               :key="selectedTab"
@@ -331,7 +333,7 @@ const selectTab = (tab: string) =>
                   role="region"
                   tabindex="0"
                   :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
-                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal pr-12 font-mono md-body-small"
+                  class="md-focus-ring md-scrollbar card-editor max-w-full overflow-x-auto whitespace-pre break-normal pr-12 font-mono md-body-small"
                 >
                   <div
                     v-if="loading"
@@ -378,7 +380,7 @@ const selectTab = (tab: string) =>
                 </div>
               </div>
             </div>
-          </transition>
+          </MdTransition>
           <!--
             Below the snippet, so a status line never sits over a line of it. The region is rendered before any
             outcome, so assistive technology announces the message when it changes.
@@ -395,50 +397,3 @@ const selectTab = (tab: string) =>
     </div>
   </div>
 </template>
-
-<style>
-.slide-right-enter-active,
-.slide-right-leave-active,
-.slide-left-enter-active,
-.slide-left-leave-active {
-  transition: opacity .1s ease, transform .1s ease;
-
-  /* Viewers who ask the system for less motion get the fade without the slide. */
-  @media (prefers-reduced-motion: reduce) {
-    transition: opacity .1s ease;
-  }
-}
-
-.slide-right-leave-to,
-.slide-left-enter-from {
-  opacity: 0;
-  transform: translateX(60px);
-
-  @media (prefers-reduced-motion: reduce) {
-    transform: none;
-  }
-}
-
-.slide-right-enter-from,
-.slide-left-leave-to {
-  opacity: 0;
-  transform: translateX(-60px);
-
-  @media (prefers-reduced-motion: reduce) {
-    transform: none;
-  }
-}
-
-::-webkit-scrollbar {
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background-color: var(--md-sys-color-outline-variant);
-  border-radius: 20px;
-  border: transparent;
-  margin-top: 10px;
-}
-</style>

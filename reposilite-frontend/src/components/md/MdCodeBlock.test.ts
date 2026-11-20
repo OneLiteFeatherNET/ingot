@@ -56,6 +56,10 @@ describe('MdCodeBlock scroll region', () => {
     expect(region.attributes('tabindex'), 'a keyboard user can reach the scroll area').toBe('0')
     expect(region.classes()).toContain('overflow-x-auto')
   })
+
+  it('opts into the thin md scrollbar, so the bar of a long line stays inside the padding', () => {
+    expect(mountBlock().find('[role="region"]').classes()).toContain('md-scrollbar')
+  })
 })
 
 describe('MdCodeBlock actions', () => {
