@@ -187,7 +187,7 @@ describe('NodeEditor', () => {
 
       expect(wrapper.find('[role="listbox"]').isVisible()).toBe(true)
       const options = wrapper.findAll('[role="option"]')
-      expect(options.map(option => option.find('code').text())).toEqual([
+      expect(options.map(option => option.find('span').text())).toEqual([
         'ingot.repository.releases.read',
         'ingot.repository.releases.deploy'
       ])
@@ -198,7 +198,7 @@ describe('NodeEditor', () => {
 
       await type('ingot')
 
-      expect(wrapper.findAll('[data-test="suggestion-heading"]').map(heading => heading.text()))
+      expect(wrapper.findAll('[data-test="option-group"]').map(heading => heading.text()))
         .toEqual(['Static', 'Repository', 'Wildcard'])
     })
 
@@ -215,7 +215,7 @@ describe('NodeEditor', () => {
 
       await type('releases')
 
-      expect(wrapper.findAll('[role="option"]').map(option => option.find('code').text()))
+      expect(wrapper.findAll('[role="option"]').map(option => option.find('span').text()))
         .not.toContain('ingot.repository.releases.read')
     })
 
@@ -270,6 +270,39 @@ describe('NodeEditor', () => {
 
       expect(wrapper.find('[role="listbox"]').isVisible()).toBe(false)
       expect(input().attributes('aria-expanded')).toBe('false')
+    })
+
+    it('draws the suggestions with the shared listbox in the menu layer', async () => {
+      mountEditor({ nodes: [], savedNodes: [] })
+
+      await type('releases')
+
+      const listbox = wrapper.find('[role="listbox"]')
+      expect(listbox.attributes('data-ingot-component'), 'the list is the shared MdListbox').toBe('md-listbox')
+      expect(listbox.classes(), 'the list sits in the menu layer').toContain('z-md-menu')
+      expect(listbox.classes(), 'no z-index literal is left').not.toContain('z-20')
+    })
+
+    it('names each group of suggestions by its heading', async () => {
+      mountEditor({ nodes: [], savedNodes: [] })
+
+      await type('ingot')
+
+      const group = wrapper.findAll('[role="group"]')[1]
+      expect(wrapper.find(`#${group.attributes('aria-labelledby')}`).text(), 'the second group is named Repository')
+        .toBe('Repository')
+    })
+
+    it('moves to the last and the first option with End and Home', async () => {
+      mountEditor({ nodes: [], savedNodes: [] })
+      await type('releases')
+      await input().trigger('keydown', { key: 'ArrowDown' })
+
+      await input().trigger('keydown', { key: 'End' })
+      expect(wrapper.findAll('[role="option"]')[1].attributes('aria-selected'), 'End moves to the last option').toBe('true')
+
+      await input().trigger('keydown', { key: 'Home' })
+      expect(wrapper.findAll('[role="option"]')[0].attributes('aria-selected'), 'Home moves to the first option').toBe('true')
     })
 
     it('reports an open list through aria-expanded and aria-controls', async () => {
@@ -882,7 +915,7 @@ describe('NodeEditor artifact nodes', () => {
   })
 
   const input = () => wrapper.find('input[role="combobox"]')
-  const options = () => wrapper.findAll('[role="option"]').map(option => option.find('code').text())
+  const options = () => wrapper.findAll('[role="option"]').map(option => option.find('span').text())
 
   it('suggests the artifact actions after a groupId and adds the chosen one as Allow', async () => {
     mountEditor()
@@ -890,7 +923,7 @@ describe('NodeEditor artifact nodes', () => {
     await input().setValue('ingot.artifact.net.onelitefeather')
     expect(options(), 'the deploy action is suggested').toContain('ingot.artifact.net.onelitefeather.deploy')
     await wrapper.findAll('[role="option"]')
-      .find(option => option.find('code').text() === 'ingot.artifact.net.onelitefeather.deploy')!
+      .find(option => option.find('span').text() === 'ingot.artifact.net.onelitefeather.deploy')!
       .trigger('click')
 
     expect(wrapper.emitted<[NodeEntry[]]>('update:nodes')?.at(-1)?.[0]).toEqual([
@@ -903,7 +936,7 @@ describe('NodeEditor artifact nodes', () => {
 
     await input().setValue('ingot.repository.releases.')
     const continuation = wrapper.findAll('[role="option"]')
-      .find(option => option.find('code').text() === 'ingot.repository.releases.artifact.')!
+      .find(option => option.find('span').text() === 'ingot.repository.releases.artifact.')!
     await continuation.trigger('click')
 
     expect((input().element as HTMLInputElement).value).toBe('ingot.repository.releases.artifact.')
@@ -917,7 +950,7 @@ describe('NodeEditor artifact nodes', () => {
 
     await input().setValue('artifact')
 
-    expect(wrapper.findAll('[data-test="suggestion-heading"]').map(heading => heading.text())).toContain('Artifact')
+    expect(wrapper.findAll('[data-test="option-group"]').map(heading => heading.text())).toContain('Artifact')
   })
 
   it('shows the problem the server gave for an artifact row inline', () => {

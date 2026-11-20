@@ -17,9 +17,11 @@
 <script setup lang="ts">
 import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../../md/MdButton.vue'
+import MdListbox from '../../md/MdListbox.vue'
 import MdTextField from '../../md/MdTextField.vue'
+import { useCombobox, type ComboboxOption } from '../../../helpers/useCombobox'
 import { parseNode } from './nodeGrammar'
-import { groupSuggestions, hasNode, suggestWithArtifacts, type Suggestion } from './nodeList'
+import { groupSuggestions, hasNode, suggestWithArtifacts } from './nodeList'
 import type { CatalogItem, NodeEntry } from './permissionNodesApi'
 
 /*
@@ -27,11 +29,11 @@ import type { CatalogItem, NodeEntry } from './permissionNodesApi'
  * it (and are not listed yet) appear in a listbox grouped as Static, Repository, Artifact and
  * Wildcard, each with its description. Artifact nodes are completed as they are typed: a repository
  * continues with '.artifact.', and a groupId or artifactId with the actions read, deploy, delete and
- * '*'. A continuation fills the field and adds nothing. ArrowDown and ArrowUp move through the
- * options, Enter on an option picks it, and Escape closes the list. Free text is accepted when it is
- * a valid node: the grammar is checked live and an invalid text shows its error under
- * the field and cannot be added. A node that is listed already is not added twice: Add or Enter
- * moves to its row instead.
+ * '*'. A continuation fills the field and adds nothing. The keys are those of useCombobox: ArrowDown
+ * and ArrowUp move through the options, Home and End jump to the first and the last one, Enter on an
+ * option picks it, and Escape closes the list. Free text is accepted when it is a valid node: the
+ * grammar is checked live and an invalid text shows its error under the field and cannot be added.
+ * A node that is listed already is not added twice: Add or Enter moves to its row instead.
  *
  * The suggestions are a plain filter over the catalog the parent loaded once, so typing needs no
  * request and no timer.
@@ -53,16 +55,16 @@ const emit = defineEmits(['add', 'reveal'])
 
 const inputId = `node-add-${useId()}`
 const listboxId = `${inputId}-listbox`
-const optionId = (index: number): string => `${inputId}-option-${index}`
 
 const text = ref('')
-const open = ref(false)
-const active = ref(-1)
 
 const trimmed = computed(() => text.value.trim())
-const suggestions = computed(() => suggestWithArtifacts(props.catalog, text.value, props.nodes))
-const groups = computed(() => groupSuggestions(suggestions.value))
-const showList = computed(() => open.value && suggestions.value.length > 0)
+// The suggestions in the order they are shown: group by group, so the keys walk the list as it is drawn.
+const suggestions = computed(() =>
+  groupSuggestions(suggestWithArtifacts(props.catalog, text.value, props.nodes))
+    .flatMap(group => group.options.map(item => ({ ...item, group: group.label }))))
+const options = computed<ComboboxOption[]>(() =>
+  suggestions.value.map(item => ({ value: item.node, description: item.description, group: item.group })))
 // A node that is listed already is not added twice: Add (or Enter) moves to its row instead.
 const isListed = computed(() => trimmed.value !== '' && hasNode(props.nodes, trimmed.value))
 
@@ -73,28 +75,14 @@ const errorText = computed(() => {
 })
 
 const canAdd = computed(() => trimmed.value !== '' && (isListed.value || errorText.value === ''))
-const activeDescendant = computed(() => (showList.value && active.value >= 0 ? optionId(active.value) : undefined))
 
 const reset = () => {
   text.value = ''
-  active.value = -1
-  open.value = false
 }
 
 const add = (node: string) => {
   emit('add', node)
   reset()
-}
-
-// A continuation is not a node yet: it fills the field and keeps the list open for the next part.
-const pick = (item: Suggestion) => {
-  if (item.continuation) {
-    text.value = item.node
-    active.value = -1
-    open.value = true
-    return
-  }
-  add(item.node)
 }
 
 const submit = () => {
@@ -106,48 +94,39 @@ const submit = () => {
   }
 }
 
-const onInput = (value: string) => {
-  text.value = value
-  open.value = true
-  active.value = -1
-}
-
-const move = (step: number) => {
-  const count = suggestions.value.length
-  if (count === 0) return
-  if (!open.value) {
-    open.value = true
-    active.value = step > 0 ? 0 : count - 1
-    return
+const { open, active, visible, inputAttrs, onKeydown, onInput, onBlur, choose } = useCombobox({
+  id: listboxId,
+  options: () => options.value,
+  // A continuation is not a node yet: it fills the field and keeps the list open for the next part.
+  onChoose: (node) => {
+    const item = suggestions.value.find(candidate => candidate.node === node)
+    if (item?.continuation) {
+      text.value = item.node
+      open.value = true
+      active.value = -1
+      return
+    }
+    add(node)
   }
-  active.value = (active.value + step + count) % count
+})
+
+const onType = (value: string) => {
+  text.value = value
+  onInput()
 }
 
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'ArrowDown') {
+// Enter always stays in the field: it picks the active option, or else adds (or reveals) the typed node.
+const onKeydownEvent = (event: KeyboardEvent) => {
+  if (onKeydown(event.key)) {
     event.preventDefault()
-    move(1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    move(-1)
   } else if (event.key === 'Enter') {
     event.preventDefault()
-    if (showList.value && active.value >= 0) pick(suggestions.value[active.value])
-    else submit()
-  } else if (event.key === 'Escape' && open.value) {
-    event.preventDefault()
-    open.value = false
-    active.value = -1
+    submit()
   }
 }
 
 const onFocus = () => {
   open.value = true
-}
-
-const onBlur = () => {
-  open.value = false
-  active.value = -1
 }
 </script>
 
@@ -159,6 +138,7 @@ const onBlur = () => {
     <div class="relative min-w-0 flex-1">
       <MdTextField
         :id="inputId"
+        v-bind="inputAttrs"
         :model-value="text"
         label="Add a node"
         variant="outlined"
@@ -167,58 +147,21 @@ const onBlur = () => {
         :error="errorText !== ''"
         :error-text="errorText"
         supporting-text="Type a node or choose one from the list"
-        role="combobox"
-        aria-autocomplete="list"
-        :aria-expanded="showList ? 'true' : 'false'"
-        :aria-controls="listboxId"
-        :aria-activedescendant="activeDescendant"
-        @update:model-value="onInput"
-        @keydown="onKeydown"
+        @update:model-value="onType"
+        @keydown="onKeydownEvent"
         @focus="onFocus"
         @blur="onBlur"
       />
-      <ul
-        v-show="showList"
+      <MdListbox
         :id="listboxId"
-        role="listbox"
-        aria-label="Node suggestions"
-        class="absolute inset-x-0 top-14 z-20 max-h-72 overflow-y-auto rounded-corner-extra-small bg-surface-container shadow-elevation-2"
-        @mousedown.prevent
-      >
-        <li
-          v-for="group in groups"
-          :key="group.kind"
-          role="presentation"
-        >
-          <span
-            :id="`${inputId}-group-${group.kind}`"
-            class="block px-4 pb-1 pt-3 md-label-medium text-on-surface-variant"
-            data-test="suggestion-heading"
-          >{{ group.label }}</span>
-          <ul
-            role="group"
-            :aria-labelledby="`${inputId}-group-${group.kind}`"
-          >
-            <li
-              v-for="item in group.options"
-              :id="optionId(suggestions.indexOf(item))"
-              :key="item.node"
-              role="option"
-              :aria-selected="suggestions.indexOf(item) === active ? 'true' : 'false'"
-              class="md-state-layer relative flex cursor-pointer flex-col px-4 py-2"
-              :class="suggestions.indexOf(item) === active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
-              data-test="suggestion"
-              @click="pick(item)"
-            >
-              <code class="break-all font-mono md-body-medium">{{ item.node }}</code>
-              <span
-                v-if="item.description"
-                class="md-body-small text-on-surface-variant"
-              >{{ item.description }}</span>
-            </li>
-          </ul>
-        </li>
-      </ul>
+        class="absolute inset-x-0 top-14"
+        label="Node suggestions"
+        :options="options"
+        :active="active"
+        :open="visible"
+        mono
+        @choose="choose"
+      />
     </div>
     <MdButton
       variant="tonal"
