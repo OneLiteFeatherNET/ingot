@@ -144,14 +144,11 @@ const admin = computed(() => isInstanceAdmin(detail.value))
     class="flex min-w-0 flex-col gap-4"
     data-ingot-component="principal-detail"
   >
-    <p
+    <MdStatePanel
       v-if="status === 'loading'"
       data-ingot-state="loading"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
-    >
-      Loading...
-    </p>
+      state="loading"
+    />
     <div
       v-else-if="status === 'missing'"
       role="alert"
