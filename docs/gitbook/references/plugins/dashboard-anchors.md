@@ -203,6 +203,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `search-rebuild-note` | experimental | `src/components/settings/SearchRebuildNote.vue` | none | none | none |
 | `search-result-row` | experimental | `src/components/search/SearchResultRow.vue` | none | none | none |
 | `search-view` | experimental | `src/components/search/SearchView.vue` | none | `loading` | none |
+| `second-factors-card` | experimental | `src/components/account/SecondFactorsCard.vue` | none | none | none |
 | `secret-once-dialog` | experimental | `src/components/identity/SecretOnceDialog.vue` | none | none | none |
 | `section-renderer` | stable | `src/components/renderers/SectionRenderer.vue` | none | none | none |
 | `security-panel` | experimental | `src/components/access/SecurityPanel.vue` | none | none | none |
