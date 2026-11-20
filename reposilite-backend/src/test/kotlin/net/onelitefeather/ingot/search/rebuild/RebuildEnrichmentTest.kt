@@ -211,19 +211,83 @@ internal class RebuildEnrichmentTest {
         }
     }
 
+    /** Seeds an unchanged row of [jar] 1 at [backend], with [attributes] stored, and the same file in storage. */
+    private fun RebuildHarness.seedUnchanged(backend: FakeArtifactSearchBackend, attributes: Map<String, List<String>>) {
+        val parsed = ArtifactPathParser.parse("releases", jar(1)) as ArtifactPathResult.Row
+        val modified = Instant.parse("2026-10-01T00:00:00Z").toEpochMilli()
+        backend.apply(listOf(IndexAction.Upsert(IndexRow(parsed.file, Provenance.HOSTED, 1, modified, null, null, clock.millis()), attributes)))
+        entries.put("releases", jar(1), size = 1)
+        clock.advance(Duration.ofMinutes(1))
+    }
+
     @Test
     fun `an unchanged row keeps its stored attributes`() {
         withHarness(directory, "attributes-unchanged") {
             val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
-            val parsed = ArtifactPathParser.parse("releases", jar(1)) as ArtifactPathResult.Row
-            val modified = Instant.parse("2026-10-01T00:00:00Z").toEpochMilli()
-            backend.apply(listOf(IndexAction.Upsert(IndexRow(parsed.file, Provenance.HOSTED, 1, modified, null, null, clock.millis()))))
-            entries.put("releases", jar(1), size = 1)
-            clock.advance(Duration.ofMinutes(1))
+            seedUnchanged(backend, mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")))
 
             enrichingService(loader(), backend = backend).rebuild(RunTrigger.MANUAL)
 
             assertThat(backend.upserts().last().attributes).`as`("attributes sent for an unchanged row, null keeps the stored ones").isNull()
+        }
+    }
+
+    @Test
+    fun `an unchanged row with the stored version of every matching enricher does not reach the enricher`() {
+        withHarness(directory, "version-current") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            val enricher = loader()
+            seedUnchanged(backend, mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")))
+
+            enrichingService(enricher, backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(enricher.requests).`as`("calls for a row enriched by the current version").isEmpty()
+        }
+    }
+
+    @Test
+    fun `an unchanged row without a stored version reaches the enricher with the rebuild trigger`() {
+        withHarness(directory, "version-missing") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            val enricher = loader()
+            seedUnchanged(backend, emptyMap())
+
+            enrichingService(enricher, backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(enricher.requests.map { it.trigger }).`as`("triggers of the calls for a row never enriched").containsExactly(EnrichmentTrigger.REBUILD)
+            assertThat(backend.upserts().last().attributes).`as`("attributes written for the row").isEqualTo(
+                mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")),
+            )
+        }
+    }
+
+    @Test
+    fun `an unchanged row with another stored version reaches the enricher with the rebuild trigger`() {
+        withHarness(directory, "version-other") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            val enricher = loader()
+            seedUnchanged(backend, mapOf("loader.name" to listOf("spigot"), "core.enricher.loader" to listOf("0")))
+
+            enrichingService(enricher, backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(enricher.requests.map { it.trigger }).`as`("triggers of the calls for a row of an older version").containsExactly(EnrichmentTrigger.REBUILD)
+            assertThat(backend.upserts().last().attributes).`as`("attributes written for the row").isEqualTo(
+                mapOf("loader.name" to listOf("paper"), "core.enricher.loader" to listOf("1")),
+            )
+        }
+    }
+
+    @Test
+    fun `a held row without a stored version does not reach the enricher`() {
+        withHarness(directory, "version-held") {
+            val backend = FakeArtifactSearchBackend(capabilities = setOf(SearchCapability.ATTRIBUTES))
+            val enricher = loader()
+            seedUnchanged(backend, emptyMap())
+            outbox.enqueue("releases", jar(1), OutboxOp.CHANGED_PATH)
+
+            enrichingService(enricher, backend = backend).rebuild(RunTrigger.MANUAL)
+
+            assertThat(enricher.requests).`as`("calls for a path left to the outbox worker").isEmpty()
         }
     }
 
