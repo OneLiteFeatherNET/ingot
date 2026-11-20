@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import MdNavigationRail from './MdNavigationRail.vue'
+import MdNavigationItem from './MdNavigationItem.vue'
 import { RAIL_WIDTH_VARIABLE } from '../../helpers/navigation-rail'
 
 describe('MdNavigationRail width variable', () => {
@@ -183,6 +184,44 @@ describe('MdNavigationRail', () => {
     })
 
     expect(wrapper.find('button').text(), 'the entry is named by its full label').toContain('Administration')
+  })
+})
+
+describe('MdNavigationRail items', () => {
+  it('draws every destination with MdNavigationItem, one item per entry', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
+
+    for (const entry of wrapper.findAll('li')) {
+      expect(entry.findAllComponents(MdNavigationItem), `${entry.text()} is a navigation item`).toHaveLength(1)
+    }
+  })
+
+  it('keeps its own md-navigation-rail anchor on the landmark', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
+
+    expect(wrapper.attributes('data-ingot-component'), 'the landmark is the root').toBe('md-navigation-rail')
+  })
+
+  it('keeps the page in place for a plain click on a link, and switches the section', () => {
+    const items = [{ key: 'overview', label: 'Overview', href: '#/overview' }, { key: 'tokens', label: 'Tokens', href: '#/tokens' }]
+    const wrapper = mount(MdNavigationRail, { props: { items, modelValue: 'overview' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+
+    wrapper.findAll('a')[1].element.dispatchEvent(event)
+
+    expect(event.defaultPrevented, 'the rail switches the section through its parent, not through a reload').toBe(true)
+    expect(wrapper.emitted('update:modelValue')).toEqual([['tokens']])
+  })
+
+  it('leaves a modified click on a link to the browser and does not switch the section', () => {
+    const items = [{ key: 'overview', label: 'Overview', href: '#/overview' }, { key: 'tokens', label: 'Tokens', href: '#/tokens' }]
+    const wrapper = mount(MdNavigationRail, { props: { items, modelValue: 'overview' } })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, metaKey: true })
+
+    wrapper.findAll('a')[1].element.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 })
 

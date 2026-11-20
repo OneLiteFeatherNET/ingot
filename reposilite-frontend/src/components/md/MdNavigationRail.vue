@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
+import MdNavigationItem from './MdNavigationItem.vue'
 import type { NavIconSlot, NavItem } from './types'
 
 /*
@@ -34,7 +35,7 @@ import type { NavIconSlot, NavItem } from './types'
  *
  * An item may carry a `group` (the group name). Neighbouring items of one group are drawn together as an
  * element labelled with the group name, with a divider between groups. Items without a group form one
- * unnamed list, as before.
+ * unnamed list, as before. Each destination is an MdNavigationItem with the rail variant.
  */
 interface Block {
   group?: string
@@ -76,15 +77,26 @@ const blocks = computed(() => props.items.reduce<Block[]>((all, item) => {
 
 const isActive = (item: NavItem) => item.key === props.modelValue
 
-// The label elements by entry key, and the keys of the labels that are cut at the rail's width.
-const labels = new Map<string, HTMLElement>()
+// The destinations by entry key, and the keys of the labels that are cut at the rail's width. Each destination is an
+// MdNavigationItem, which exposes the element of its label. The element is read when the labels are measured, because
+// the item sets its own template ref after the rail has received the item.
+const destinations = new Map<string, ComponentPublicInstance>()
 const cut = ref<Set<string>>(new Set())
-const setLabel = (key: string, element: Element | ComponentPublicInstance | null) => {
-  if (element instanceof HTMLElement) labels.set(key, element)
-  else labels.delete(key)
+const setLabel = (key: string, instance: Element | ComponentPublicInstance | null) => {
+  if (instance && !(instance instanceof Element) && 'labelElement' in instance) destinations.set(key, instance)
+  else destinations.delete(key)
+}
+const labelOf = (instance: ComponentPublicInstance): HTMLElement | null => {
+  const element = (instance as ComponentPublicInstance & { labelElement?: unknown }).labelElement
+  return element instanceof HTMLElement ? element : null
 }
 const measureLabels = () => {
-  cut.value = new Set([...labels].filter(([, element]) => element.scrollWidth > element.clientWidth).map(([key]) => key))
+  cut.value = new Set([...destinations]
+    .filter(([, instance]) => {
+      const element = labelOf(instance)
+      return element !== null && element.scrollWidth > element.clientWidth
+    })
+    .map(([key]) => key))
 }
 const titleOf = (item: NavItem) => (cut.value.has(item.key) ? item.label : undefined)
 
@@ -95,17 +107,13 @@ onMounted(() => {
 onBeforeUnmount(() => window.removeEventListener('resize', measureLabels))
 watch(() => props.items, () => nextTick(measureLabels), { deep: true })
 
-const isPlainLeftClick = (event: MouseEvent) =>
-  event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
-
+// MdNavigationItem leaves a modified click on a link to the browser and reports every other click. A reported
+// click on a link keeps the page in place, so the parent switches the section through the router.
 // The focus ring is for keyboard focus. A pointer click (detail above 0) leaves the destination
 // it selected without focus, so no ring is left behind in any browser. A keyboard activation
 // has detail 0 and keeps the focus where the keyboard put it.
 const select = (item: NavItem, event: MouseEvent) => {
   if (item.href) {
-    if (!isPlainLeftClick(event)) {
-      return
-    }
     event.preventDefault()
   }
   if (event.detail > 0) {
@@ -144,33 +152,23 @@ const select = (item: NavItem, event: MouseEvent) => {
           :key="item.key"
           class="flex w-full"
         >
-          <component
-            :is="item.href ? 'a' : 'button'"
+          <MdNavigationItem
+            :ref="(instance) => setLabel(item.key, instance)"
+            variant="rail"
+            :label="item.label"
             :href="item.href"
-            :type="item.href ? undefined : 'button'"
-            :aria-current="isActive(item) ? 'page' : undefined"
-            class="group md-focus-ring-inset relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-corner-large px-1 py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
-            :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
-            @click="select(item, $event)"
+            :active="isActive(item)"
+            :label-title="titleOf(item)"
+            @select="select(item, $event)"
           >
-            <span
-              class="md-state-layer flex h-8 w-14 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard group-hover:md-state-hover motion-reduce:transition-none [&>svg]:size-6"
-              :class="isActive(item) ? 'bg-secondary-container text-on-secondary-container' : ''"
-              aria-hidden="true"
-            >
+            <template #leading>
               <slot
                 name="icon"
                 :item="item"
                 :active="isActive(item)"
               />
-            </span>
-            <span
-              :ref="(element) => setLabel(item.key, element)"
-              class="md-label-medium block max-w-full truncate text-center whitespace-nowrap"
-              :class="isActive(item) ? 'md-label-medium-prominent text-on-surface' : ''"
-              :title="titleOf(item)"
-            >{{ item.label }}</span>
-          </component>
+            </template>
+          </MdNavigationItem>
         </li>
       </ul>
     </div>

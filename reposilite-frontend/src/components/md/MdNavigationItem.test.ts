@@ -162,14 +162,38 @@ describe('MdNavigationItem button and plain link events', () => {
     expect(wrapper.emitted('select')).toHaveLength(1)
   })
 
-  it('leaves a modified click of a button to the browser and does not emit', () => {
+  it('emits select for a modified click of a button, which has no browser default to leave it to', () => {
     const wrapper = mountItem({})
     const event = clickEvent({ shiftKey: true })
 
     dispatch(control(wrapper).element, event)
 
+    expect(wrapper.emitted('select'), 'a button destination is selected whatever key is held').toHaveLength(1)
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('leaves a modified click of a plain link to the browser and does not emit', () => {
+    const wrapper = mountItem({ href: '#docs' })
+    const event = clickEvent({ ctrlKey: true })
+
+    dispatch(control(wrapper).element, event)
+
     expect(wrapper.emitted('select')).toBeUndefined()
     expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('names the full label as the title of the control and of the label when given', () => {
+    const wrapper = mountItem({ label: 'Admin', description: 'Administration', labelTitle: 'Administration' })
+
+    expect(control(wrapper).attributes('title'), 'the description of the destination').toBe('Administration')
+    expect(wrapper.find('[data-test="label"]').attributes('title'), 'the full name of a cut label').toBe('Administration')
+  })
+
+  it('leaves both titles off by default', () => {
+    const wrapper = mountItem({})
+
+    expect(control(wrapper).attributes('title')).toBeUndefined()
+    expect(wrapper.find('[data-test="label"]').attributes('title')).toBeUndefined()
   })
 
   it('does not prevent the default action of a plain link, so the browser follows its href', () => {
@@ -194,5 +218,19 @@ describe('MdNavigationItem variants', () => {
     const wrapper = mountItem({ variant: 'rail' })
 
     expect(wrapper.find('[data-test="indicator"]').classes()).toContain('w-14')
+  })
+
+  it('draws the bar state layer on the whole destination', () => {
+    const wrapper = mountItem({ variant: 'bar' })
+
+    expect(control(wrapper).classes(), 'the bar destination carries the layer').toContain('md-state-layer')
+    expect(wrapper.find('[data-test="indicator"]').classes(), 'the bar indicator has no layer of its own').not.toContain('md-state-layer')
+  })
+
+  it('draws the rail state layer on the indicator, not on the whole destination', () => {
+    const wrapper = mountItem({ variant: 'rail' })
+
+    expect(wrapper.find('[data-test="indicator"]').classes(), 'the rail indicator carries the layer').toContain('md-state-layer')
+    expect(control(wrapper).classes(), 'the rail destination has no layer of its own').not.toContain('md-state-layer')
   })
 })
