@@ -642,11 +642,6 @@
       "count": 1
     }
   },
-  "src/components/settings/PasswordDialog.vue": {
-    "vue/max-attributes-per-line": {
-      "count": 2
-    }
-  },
   "src/components/settings/repositoryAccessPorts.test.ts": {
     "@typescript-eslint/require-await": {
       "count": 9
