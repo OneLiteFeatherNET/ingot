@@ -11,6 +11,7 @@ This page lists the types a plugin uses. For a step-by-step build, see [Write a 
 | Item | Value |
 | --- | --- |
 | Maven coordinate | `net.onelitefeather.ingot:ingot:<version>`, the server bundle. Use `compileOnly`. |
+| Plugin API coordinate | `net.onelitefeather.ingot:ingot-plugin-api:<version>`, the slim artifact with the plugin API types only. Use `compileOnly`. It is published with each release next to the bundle. |
 | Release repository | `https://repo.onelitefeather.dev/onelitefeather-releases`. Requires credentials, also for reads. |
 | Snapshot repository | `https://repo.onelitefeather.dev/onelitefeather-snapshots`, for versions that contain `SNAPSHOT`. |
 | Journalist dependency | `https://maven.reposilite.com/releases`, group `com.reposilite`. The server depends on it, so plugin builds need this repository too. |
@@ -19,6 +20,10 @@ This page lists the types a plugin uses. For a step-by-step build, see [Write a 
 | Java target | 17 |
 
 Plugins written for Reposilite compile against Ingot unchanged, apart from the dependency coordinate.
+
+A plugin picks one of the two coordinates. The slim artifact holds the classes listed in [plugin-api-classes.txt](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-backend/plugin-api-classes.txt), which are the new Ingot types of the plugin API. A plugin that uses only those classes, and the legacy classes that the server provides and that [plugin-api-provided.txt](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-backend/plugin-api-provided.txt) names (the `com.reposilite.plugin.api.*` base classes and the `com.reposilite.journalist` library), follows the rule of the plugin API. The slim artifact does not contain the legacy base classes, so a plugin that extends one of them, such as `ReposilitePlugin`, still compiles against the bundle, as it does today. The [consumer fixture](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-test/plugin-api-consumer) is a sample plugin that compiles against the slim artifact alone.
+
+Existing plugins need no change. The bundle keeps its coordinate and its contents, and the slim artifact is an addition that a plugin can move to when it wants to.
 
 ## Loading and lifecycle
 
