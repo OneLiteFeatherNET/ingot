@@ -483,6 +483,13 @@ tasks.test {
         setDestinationFile(file("${project.layout.buildDirectory.get()}/jacoco/jacoco.exec"))
     }
 
+    // JavadocModuleBoundaryTest reads the backend's own compiled classes. The javadoc module's classes are on the test class
+    // path as well, so a class lookup cannot tell the two apart.
+    val mainClassesDirs = sourceSets.main.get().output.classesDirs
+    doFirst {
+        systemProperty("ingot.backend.mainClasses", mainClassesDirs.files.joinToString(File.pathSeparator) { it.absolutePath })
+    }
+
     finalizedBy("jacocoTestReport")
 }
 
