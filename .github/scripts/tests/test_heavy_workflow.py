@@ -144,6 +144,15 @@ class ConcurrencyTest(unittest.TestCase):
     def test_only_pull_request_runs_are_cancelled(self):
         self.assertIn("github.event_name == 'pull_request'", str(load()["concurrency"]["cancel-in-progress"]))
 
+    def test_only_a_new_commit_cancels_a_running_run(self):
+        # A run cancelled on the head commit leaves a red "Heavy tests" and cancelled required checks on it. Opening a
+        # pull request with a label fires opened and labeled at once, so same-commit events have to queue instead.
+        cancel = str(load()["concurrency"]["cancel-in-progress"])
+        self.assertIn("github.event.action == 'synchronize'", cancel)
+        for action in ("opened", "reopened", "labeled", "unlabeled"):
+            with self.subTest(action=action):
+                self.assertNotIn(f"'{action}'", cancel)
+
 
 class IntegrationJobTest(unittest.TestCase):
     """The aggregate keeps the check name; the matrix of shards does the work."""

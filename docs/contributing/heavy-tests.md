@@ -25,7 +25,8 @@ The label stays on the pull request until a maintainer removes it. Every push to
 again. On a pull request from a fork a push does not rerun them, and `Heavy tests` stays red until a maintainer has looked at the
 push and removed and re-added the label. The jobs of a fork pull request run with a read-only token and no secrets.
 
-Adding a label that does not start with `ci:` cancels nothing.
+Adding a label that does not start with `ci:` cancels nothing. Adding or removing a `ci:` label cancels nothing either: the new decision waits for the
+running heavy run on the same commit and starts after it. Only a new push cancels the run of the commit it replaces.
 
 ## In the merge queue
 
