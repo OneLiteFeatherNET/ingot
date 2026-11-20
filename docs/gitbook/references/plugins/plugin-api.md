@@ -126,6 +126,7 @@ Facades are registered by Ingot's built-in plugins. A plugin gets one with `faca
 | `StorageFacade` (`com.reposilite.storage`) | Storage providers. |
 | `FailureFacade` (`com.reposilite.status`) | Records failures. |
 | `StatusFacade` (`com.reposilite.status`) | Server status. |
+| `ViewerAccessFacade` (`net.onelitefeather.ingot.access`) | `viewerOf(token)`, which answers whether a caller may read or list a repository, read a path, and which search rows it may see, with the decisions of the routes. Experimental. See [Viewer access checks](viewer-access-checks.md). |
 
 ## Job sources
 
