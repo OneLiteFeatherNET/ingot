@@ -1,6 +1,8 @@
 # Release automation.
 #
-# Every push to main lets Release Please open or update the release pull request.
+# Every push to main lets Release Please open or update the release pull request. A push to a
+# release branch release/X.Y.x does the same for the patch releases of that line, against the
+# branch, and a version outside the line is refused before anything is tagged.
 # Merging that pull request tags the release, which in the same run publishes the
 # Maven artifacts and the container image. Pushes that change something the image
 # contains refresh the rolling nightly container image instead. A daily schedule
@@ -9,7 +11,7 @@ name: "Release Please"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/**" ]
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
@@ -61,10 +63,28 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      # Merging a release pull request pushes its manifest, and the action tags the version in
+      # it. On a release branch that version has to stay on the branch's line: a feature or a
+      # breaking change that slipped onto the branch would otherwise publish a new minor or
+      # major from it. On main there is no line and the check accepts every version.
+      - name: "Refuse a version outside the line of the branch"
+        env:
+          BRANCH: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r '."."' .release-please-manifest.json)"
+          python3 .github/scripts/release_tags.py check-line "$version" "$BRANCH"
+
       - id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
+          # The manifest and the configuration are read from this branch, and the release pull
+          # request is opened against it. On main this is the default branch, as before.
+          target-branch: ${{ github.ref_name }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -511,8 +531,9 @@ jobs:
       # Keyless cosign signing of the chart. No attestation: the chart is signed, not attested.
       id-token: write
     env:
-      # The only identity a release signature is accepted from: this workflow running on main.
-      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main
+      # The only identity a release signature is accepted from: this workflow running on the ref
+      # that built the release, main or a release branch.
+      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@${{ github.ref }}
       OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - name: "Checkout repository"

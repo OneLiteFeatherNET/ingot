@@ -208,6 +208,28 @@ class CommandLineTest(unittest.TestCase):
         self.assertNotEqual(0, code, "without a release there is no tag to mark as Latest")
         self.assertEqual("", out, "nothing is printed when no tag exists")
 
+    def test_check_line_command_accepts_a_patch_on_the_branch_line(self):
+        code, out = self.run_cli(["check-line", "1.1.2", "release/1.1.x"], "")
+
+        self.assertEqual(0, code, "1.1.2 belongs to the line of release/1.1.x")
+        self.assertEqual("", out, "an accepted version prints nothing")
+
+    def test_check_line_command_refuses_a_minor_bump_on_a_release_branch(self):
+        code, _ = self.run_cli(["check-line", "1.2.0", "refs/heads/release/1.1.x"], "")
+
+        self.assertNotEqual(0, code, "a release branch never releases a version of another line")
+
+    def test_check_line_command_refuses_a_major_bump_on_a_release_branch(self):
+        code, _ = self.run_cli(["check-line", "v2.0.0", "release/1.1.x"], "")
+
+        self.assertNotEqual(0, code, "a breaking change on a release branch must not become a new major")
+
+    def test_check_line_command_accepts_any_version_on_main(self):
+        code, out = self.run_cli(["check-line", "2.0.0", "main"], "")
+
+        self.assertEqual(0, code, "main has no line, so every version may be released from it")
+        self.assertEqual("", out, "an accepted version prints nothing")
+
 
 if __name__ == "__main__":
     unittest.main()
