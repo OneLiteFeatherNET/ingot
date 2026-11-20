@@ -159,6 +159,21 @@ appears or disappears.
 - **WHEN** a visitor opens a settings entry at 800 pixels and then at 900 pixels
 - **THEN** the entry heading does not move horizontally between the two widths
 
+### Requirement: One way back on wide pages
+
+The back control SHALL be drawn below 1240 pixels only. From 1240 pixels a detail page SHALL lead back to its list page through the group
+link of its trail alone, and SHALL NOT draw a back arrow.
+
+#### Scenario: No back arrow on a wide detail page
+
+- **WHEN** a visitor opens a repository detail at 1280 pixels
+- **THEN** the header draws no back control, and the group crumb of the trail is a link to the list page
+
+#### Scenario: Back arrow on a narrow detail page
+
+- **WHEN** a visitor opens the same page at 900 pixels
+- **THEN** the header draws one back control, which leads to the list page
+
 ### Requirement: One breadcrumb component
 
 The administration trail and the file browser trail SHALL both be drawn by `MdBreadcrumb`, as a `nav` with an ordered list. The
@@ -216,7 +231,7 @@ below 840 pixels.
 
 The dashboard SHALL keep every `data-ingot-component`, `data-ingot-part` and `data-ingot-state` name that `src/anchors/registry.json`
 lists, and SHALL NOT rename or remove one. The registry SHALL gain the entry `administration-breadcrumb` for the administration trail,
-registered as `experimental` in `src/components/layout/AdministrationFrame.vue`. The `header` part of `repository-detail` SHALL stay
+registered as `experimental` in `src/components/layout/AdministrationTrail.vue`. The `header` part of `repository-detail` SHALL stay
 registered and SHALL be drawn by an element in the repository detail's page content.
 
 #### Scenario: Registry check

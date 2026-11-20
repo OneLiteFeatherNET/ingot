@@ -63,6 +63,21 @@ and the public `JavadocCacheReceiver` of the cluster seam, which `JavadocFacade`
 change for the core, and every one of these stays `internal` in the module. This pins the list of the move pull request as empty.
 The design text above cites task 0.3 for this check, while `tasks.md` numbers it 0.4.
 
+**Exception, decided with question 112.** The unit tests of the viewer stay in `reposilite-backend` (D7), in another Gradle module than
+the code they test, so the declarations they reach become public in the move pull request. Read on main, the four tests and
+`specification/JavadocSpecification.kt` reach exactly these:
+
+- `JavadocContainerService`: the class, its constructor and its member `unpackJavadocJar`.
+- `JavadocContainer`: not named by a test, but the public `loadContainer` of a public `JavadocContainerService` returns it, and Kotlin
+  rejects a public function that exposes an `internal` type.
+- `javadocMaxEntryBytes` and `DEFAULT_JAVADOC_MAX_ENTRY_BYTES`, which `JavadocMaxEntryBytesTest` compares against.
+- `javadocEvictionRoot`.
+- The constructor of `JavadocFacade`, which `JavadocEvictionTest` calls.
+
+Nothing else is made public: `JavadocEndpoints`, `JavadocPlugin`, `JavadocView` and `createContainer` stay `internal`. None of the
+widened declarations is plugin API. Their package is not in `pluginApiPackages`, and no entry is added to
+`reposilite-backend/plugin-api-classes.txt`.
+
 ### D3. The core reaches the viewer through an interface it owns
 
 `FacadeCacheHooks.javadocInvalidated` no longer looks up `JavadocFacade`. The cluster package declares a public interface
@@ -121,12 +136,22 @@ survive a save, which is a maintainer decision.
 - Cache directory: `<workingDirectory>/javadocs`. An existing installation adopts its cache unchanged.
 - Settings: the key `javadoc`, the fields `enabled` and `suffixes`, their defaults, and the shared configuration file are unchanged.
 
-### D7. Tests move with the code, and the cluster test stays
+### D7. The unit tests stay in the backend, the integration test moves, and the cluster test stays
 
-The unit tests `JavadocContainerServiceTest`, `JavadocEvictionTest`, `JavadocMaxEntryBytesTest`, `JavadocSnapshotResolutionTest` and
-`specification/JavadocSpecification.kt` move into the module's test source set, in the same package, so they keep their access to
-`internal` declarations. The integration test `JavadocsIntegrationTest` and its specification move into the module's integration
-source set. Only build wiring changes, and no assertion does.
+Decided with question 112. The unit tests `JavadocContainerServiceTest`, `JavadocEvictionTest`, `JavadocMaxEntryBytesTest`,
+`JavadocSnapshotResolutionTest` and `specification/JavadocSpecification.kt` stay in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/`.
+`JavadocSpecification` extends `MavenSpecification`, which is `internal` to the backend and builds its fixture from backend `internal`
+types, so the tests cannot compile in the module. The declarations of the viewer that they reach become public, as the exception in D2
+lists. The guard test of task 2a.2 stays in the backend with them.
+
+The module's compiled classes join the backend's unit test classpath, together with its generated `json-schemes/` and
+`META-INF/ingot/openapi/` resources and without its service entry, in the same way `storage-cache-plugin` joins the integration
+classpath (`files(...).builtBy(...)` in `reposilite-backend/build.gradle.kts`). It is a file dependency, not a project dependency, so the
+module's `compileOnly` on the backend makes no cycle. Because of it, a test in the backend can no longer prove by `Class.forName` that a
+viewer class has left the server; task 3.1 checks the backend's own compiled output instead.
+
+The integration test `JavadocsIntegrationTest` and its specification move into the module's integration source set. Only build wiring
+and the visibility of D2 change, and no assertion does.
 
 `ClusterJavadocEventsTest` stays in the core, because it tests the bus. It uses a fake of the seam of D3 for the received side and the
 `JavadocInvalidatedEvent` of the plugin API for the publishing side. `FrontendFacadeTest` and `OpenApiCompletenessTest` keep their
@@ -230,6 +255,7 @@ This change owns the module side: the build step above and the guard tests of gr
 
 - **The prerequisite is a dependency.** If it slips, this change slips. Its code pull requests cannot start before it merges.
 - **Internal visibility across modules.** The compiler finds each use (task 0.3). The fix stays small and is part of the move pull request.
+  The exception of D2 widens the declarations the backend's unit tests reach, and nothing else.
 - **Load order.** The dependencies of the plugin (`failure`, `shared-configuration`, `frontend`, `maven`) do not change, so the order of
   initialisation stays the same.
 - **Dashboard placeholder.** The frontend and the server must agree. An older dashboard reads the placeholder the server sends, and the
@@ -244,27 +270,19 @@ Each step is one pull request, buildable and passing alone:
 0. The prerequisite `add-embedded-plugin-jars` is merged (outside this change).
 1. The seam of D3 and the architecture test. The core stops importing the viewer, which is still in the core.
 1a. The guard test of D13 (task group 2a), green on main. The move waits for `add-plugin-api-fragments` as well.
-2. The module, the move of the sources and the tests, the build wiring of D1, the embedded jar and the removal of the run configuration.
+2. The module, the move of the sources and the integration tests, the build wiring of D1 and D7, the embedded jar and the removal of
+   the run configuration.
    Renames dominate the diff, so the pull request stays near 400 changed lines.
 3. The frontend fallback of D5 and its tests.
 4. The docs of the module, the embedded copy and the update path.
 
-## Open questions
+## Settled question 112
 
-- **Q112. The unit tests of the viewer cannot move as D7 says.** Raised by the maintainer as question 112, not decided yet.
-  `specification/JavadocSpecification.kt` extends `MavenSpecification` (`reposilite-backend/src/test/kotlin/com/reposilite/maven/specification/`),
-  which is `internal` and builds its fixture from backend `internal` types (`MavenComponents`, `InMemoryMirrorCacheLedger`,
-  `RecordingArtifactIndexSink` and others). Kotlin `internal` is visible only inside the module that declares it, so the four unit tests of D7
-  do not compile in the module's test source set. The options:
-  1. **Keep the unit tests in the backend.** `JavadocSpecification` and the four tests stay in `reposilite-backend/src/test/`, and the
-     backend's test source set depends on the module. The move pull request stays small, but the tests no longer move with the code, and the
-     core gains a test dependency on a plugin module.
-  2. **Move the shared fixture into the backend's test fixtures.** `MavenSpecification` and what it needs move into the existing
-     `testFixtures` source set of `reposilite-backend`, and the `internal` types it touches become public there or are reached through a
-     public fixture factory. The module's tests use `testImplementation(testFixtures(project(":reposilite-backend")))`. The tests move with the
-     code, at the cost of a wider fixture surface that other plugin modules can also use.
-  3. **Rewrite the viewer's tests against public API.** The module gets its own small specification built only from public types, or the
-     cases become integration tests over the HTTP surface of the viewer. Nothing in the backend changes, but the tests are rewritten rather
-     than moved, so the move pull request grows and the "no assertion changes" promise of D7 no longer holds.
-
-  Until it is decided, task 3.3 cannot move the unit tests, and group 3 does not start.
+- **Q112. The unit tests of the viewer cannot move as D7 first said.** `specification/JavadocSpecification.kt` extends `MavenSpecification`
+  (`reposilite-backend/src/test/kotlin/com/reposilite/maven/specification/`), which is `internal` and builds its fixture from backend
+  `internal` types (`MavenComponents`, `InMemoryMirrorCacheLedger`, `RecordingArtifactIndexSink` and others), so the four unit tests do not
+  compile in the module's test source set. Decided by the maintainer: option 1, the unit tests stay in `reposilite-backend`. The few
+  declarations of the viewer they need become public, recorded as an explicit exception to D2 that names them, and the module's classes
+  join the backend's test classpath as `storage-cache-plugin` joins the integration classpath (D7). The two options not taken were a shared
+  `testFixtures` surface for `MavenSpecification`, which other plugin modules would also start to use, and rewriting the tests against
+  public API, which breaks the "no assertion changes" promise of the move.

@@ -39,7 +39,7 @@ PR title: `refactor(cleanup): report the last scheduled run through a core inter
 
 PR title: `test(cleanup): guard the api document and the settings schema of the cleanup domain`
 
-Group 2 does not start before this group is merged and the gate of 1a.1 passes. See design D13.
+Group 2 does not start before this group is merged, the gate of 1a.1 passes, and group 1b is merged. See design D13.
 
 - [ ] 1a.1 Gate: the change `add-plugin-api-fragments` (`feat(plugin)`) is merged on main: the server merges the
   `META-INF/ingot/openapi/<id>.json` fragment of every loaded plugin into the served document, and looks up `json-schemes/<type name>` through
@@ -58,6 +58,30 @@ Group 2 does not start before this group is merged and the gate of 1a.1 passes. 
   `test(cleanup): guard the api document and the settings schema of the cleanup domain`, branched from the remote main branch, after its
   tests pass on main. Verify: the title is a valid Conventional Commit, `gh pr view` shows only the two test files, and no file under
   `openspec/`.
+
+## 1b. Core interface for the mirror cache and the job claims (prerequisite of group 2, red, then green)
+
+PR title: `refactor(cleanup): reach the mirror cache and the job claims through a core interface`
+
+Group 2 does not start before this group is merged. See design D14.
+
+- [ ] 1b.1 `test(cleanup)`: failing unit tests in `reposilite-backend/src/test/kotlin/net/onelitefeather/ingot/cleanup/`, each with its own
+  fixture and a `@TempDir`: (a) `CleanupSupportFacade.mirrorCacheEntries` returns the mirror copies that `MavenFacade` records for a
+  repository, and an empty map for a repository without mirror copies; (b) two claim stores from `scheduledJobClaims` on one SQLite test
+  database grant a key to one of them only, with a fixed `Clock`; (c) the interface carries `@ExperimentalIngotPluginApi` and its name is a
+  line of `reposilite-backend/plugin-api-classes.txt`; (d) a source scan of `reposilite-backend/src/main/kotlin/com/reposilite/cleanup/`
+  finds neither `mirrorCacheEntries(` on `MavenFacade` nor `SqlScheduledJobClaims`, and `MavenFacade.mirrorCacheEntries` and
+  `SqlScheduledJobClaims` are still `internal`, read through Kotlin reflection. Verify: they fail because the interface does not exist.
+- [ ] 1b.2 `refactor(cleanup)`: add `CleanupSupportFacade` in `net.onelitefeather.ingot.cleanup` with `@ExperimentalIngotPluginApi`, list it in
+  `reposilite-backend/plugin-api-classes.txt`, implement it in the core on top of `MavenFacade.mirrorCacheEntries` and `SqlScheduledJobClaims`
+  (both stay `internal`), register it in the maven plugin next to `ViewerAccessFacade`, and switch `CleanupPlugin` to
+  `facade<CleanupSupportFacade>()`. Verify: the tests of 1b.1 pass;
+  `heavy ./gradlew :reposilite-backend:test --tests 'net.onelitefeather.ingot.cleanup.*' --tests 'com.reposilite.cleanup.*' --max-workers=2`
+  passes; `heavy ./gradlew :reposilite-backend:pluginApiClosure --max-workers=2` passes;
+  `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.cleanup.*' --max-workers=2` passes.
+- [ ] 1b.3 Open the code pull request of this group under
+  `refactor(cleanup): reach the mirror cache and the job claims through a core interface`, branched from the remote main branch, after its
+  tests pass. Verify: the title is a valid Conventional Commit, and `gh pr view` shows no file under `openspec/`.
 
 ## 2. Move the cleanup feature into its own module (red, then green)
 
@@ -80,7 +104,9 @@ This pull request is the single move. The classes must leave the server classpat
   tests of `reposilite-backend/src/test/kotlin/com/reposilite/cleanup/` into the module's test source set, and the integration tests of
   `reposilite-backend/src/integration/kotlin/com/reposilite/cleanup/` and `WorkerTwoInstanceCleanupIntegrationTest` into its integration source
   set. Remove `CleanupPlugin` from the service entry of `reposilite-backend/src/main/resources/META-INF/services/` and put it in the module's
-  entry. Make public only the declarations that group 0.4 lists. Change imports only where a declaration moved module. Verify: the test of 2.1
+  entry. Make public only the declarations that group 0.4 lists. `MavenFacade.mirrorCacheEntries` and `SqlScheduledJobClaims` stay
+  `internal`; the module reaches them through `CleanupSupportFacade` of group 1b (design D14). Change imports only where a declaration moved
+  module. Verify: the test of 2.1
   passes; `heavy ./gradlew :reposilite-plugins:cleanup-plugin:test --max-workers=2` passes; `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.cleanup.*' --max-workers=2`
   passes; `SettingsIntegrationTest` passes with only its import changed; the OpenAPI snapshot test passes without `-PrefreshOpenApiSnapshot`; the
   worker test shows `CLEANUP_SCHEDULE` only on the worker; and the backend unit suite compiles.
@@ -117,6 +143,6 @@ PR title: `test(cleanup): cover the replacement of the embedded copy by a newer 
 
 ## 5. Open the code pull requests
 
-- [ ] 5.1 Open the code pull requests in the order of groups 1, 1a and 2 to 4, each on the remote main branch that holds the previous one and the merged
+- [ ] 5.1 Open the code pull requests in the order of groups 1, 1a, 1b and 2 to 4, each on the remote main branch that holds the previous one and the merged
   prerequisite, with the titles named above. Each one is opened only after its tests pass and no file under `openspec/` is in it. Verify: each
   pull request title is a valid Conventional Commit, and `gh pr view` shows the expected title and files.

@@ -28,7 +28,8 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 2.4 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert on every administration page (overview, a group
   page, a detail page, `/settings` without an entry): exactly one `h1`; the trail is a `nav` with an `ol`; each separator is an
   `aria-hidden` element; no crumb class contains `after:` or `before:`; the last crumb is the only `aria-current="page"`; below 1240
-  pixels the trail draws its last crumb only and its `title` is the full trail; the back control is not inside the text column; the
+  pixels the trail draws its last crumb only and its `title` is the full trail; the back control is not inside the text column; from
+  1240 pixels a detail page draws no back control and its group crumb is a link to the list page; the
   page root is `MdPage` with no `mx-auto` and no `max-w-*` class. Verify: it fails on `AdministrationFrame.vue:98`, `:103`, `:156`,
   `:170-173` and `:178`.
 - [ ] 2.5 `test(ui)`: in `src/components/browser/BreadcrumbNavigation.test.js`, assert that the trail renders `MdBreadcrumb` (its root
@@ -51,11 +52,11 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 2.11 `test(ui)`: in `src/styles/md3/window-margins.test.js`, read the views of the page list in the design (D2) and assert that no
   file contains the `container` class outside `MdPage`. Verify: it fails on each file that still writes `container`.
 - [ ] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
-  `src/components/layout/AdministrationFrame.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
+  `src/components/layout/AdministrationTrail.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
   fails, because the registry has no `administration-breadcrumb` entry.
 - [ ] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
   edges of the repository detail title and its trail match within 0.5 pixel; at 1920 pixels the page container has no `max-w-*` class and a form block is no wider than 960 pixels; at 390 pixels
-  the back control of a detail page does not move the title. Replace the level 2 "Repositories" heading check at `layout.spec.js:35`
+  the back control of a detail page does not move the title; at 1280 pixels the same page has no back control. Replace the level 2 "Repositories" heading check at `layout.spec.js:35`
   with level 1. Selectors are roles and accessible names. Verify: they fail against the current build.
 
 ## 3. Refactor (refactor(ui))
@@ -86,9 +87,9 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 4.5 `fix(ui)`: draw the content sheet edge in `IndexPage.vue:359-360` with a 1 pixel `outline` border from 600 pixels. Verify: the
   content sheet requirement passes at 1280 pixels in light and dark.
 - [ ] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` and `MdPageHeader`; put the back control in the back
-  row (`-ms-3`); draw the trail with `MdBreadcrumb`, with the Overview crumb as the current section name; keep the Sections button and the
-  shortcuts in the actions; give the trail the anchor `administration-breadcrumb` and register it in `src/anchors/registry.json` in the
-  same commit. Verify: 2.4 and 2.12 pass.
+  row (`-ms-3`), below 1240 pixels only; draw the trail with `MdBreadcrumb` inside a new `AdministrationTrail.vue`, with the Overview crumb
+  as the current section name; keep the Sections button and the shortcuts in the actions; give `AdministrationTrail.vue` the anchor
+  `administration-breadcrumb` and register it in `src/anchors/registry.json` in the same commit (design D9). Verify: 2.4 and 2.12 pass.
 - [ ] 4.7 `fix(ui)`: `RepositoryDetail.vue`: drop the `header` block with the `h2` (`:200-212`); pass the name to the frame as its title; move
   `data-ingot-part="header"` and `data-ingot-repository` to the type section; turn the "Back to repositories" text button into the frame's
   back control with an `aria-label`; `SettingsView.vue:464-473` passes the title and the back target. Verify: 2.6 and 2.13 pass.
