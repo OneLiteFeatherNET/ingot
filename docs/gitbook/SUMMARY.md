@@ -200,3 +200,4 @@
 ## Contributing
 
 * [Contributing to the docs](contributing/contributing-to-the-docs.md)
+* [Run the load tests](contributing/run-the-load-tests.md)
