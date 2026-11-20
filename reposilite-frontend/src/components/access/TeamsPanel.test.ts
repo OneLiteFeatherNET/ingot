@@ -161,6 +161,28 @@ describe('TeamsPanel', () => {
     expect(router.currentRoute.value.fullPath).toBe('/access/teams/release')
   })
 
+  it('builds the team rows from the shared list rows', async () => {
+    await mountPanel()
+
+    expect(wrapper!.findComponent({ name: 'MdList' }).exists(), 'the rows sit in an MdList').toBe(true)
+    const items = wrapper!.findAllComponents({ name: 'MdListItem' })
+    expect(items.map(item => item.attributes('data-test')), 'every team row is an MdListItem').toEqual(['row', 'row', 'row'])
+  })
+
+  it('marks the row of the open team as current, and no other', async () => {
+    await mountPanel({ name: 'release' }, '/access/teams/release')
+
+    const current = wrapper!.findAll('[data-test="row"] [aria-current="true"]')
+    expect(current, 'exactly one row is current').toHaveLength(1)
+    expect(current[0].find('[data-test="team-name"]').text(), 'the current row is the open team').toBe('release')
+  })
+
+  it('marks no row as current while no team is open', async () => {
+    await mountPanel()
+
+    expect(wrapper!.findAll('[data-test="row"] [aria-current]'), 'the list alone has no current row').toHaveLength(0)
+  })
+
   it('shows the detail of the team named by the address', async () => {
     await mountPanel({ name: 'release' }, '/access/teams/release')
 
