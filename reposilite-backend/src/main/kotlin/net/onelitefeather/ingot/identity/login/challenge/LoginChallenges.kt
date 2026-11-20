@@ -19,6 +19,13 @@
 package net.onelitefeather.ingot.identity.login.challenge
 
 import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import java.time.Duration
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /** The `challenge` member of a login request, as far as it could be read. A missing or `null` member is no answer at all. */
 sealed interface LoginChallengeAnswer {
@@ -60,11 +67,30 @@ internal sealed interface ChallengeVerdict {
 /**
  * The registered login challenge provider, at most one, and the judgement of a delayed dashboard login. The provider is
  * asked only by [judge], so a failure of it is logged by its id and type here, never with its text, which may echo the answer.
+ *
+ * Every call to the provider is bounded by [timeout]. A provider that does not answer in time counts as failed: the login
+ * gets the plain delay and no password check goes through. [executor] runs the calls, so tests can keep one from answering.
  */
-internal class LoginChallenges(private val warn: (String) -> Unit) {
+internal class LoginChallenges(
+    private val warn: (String) -> Unit,
+    private val executor: Executor = daemonExecutor(),
+    private val timeout: Duration = DEFAULT_TIMEOUT,
+) {
 
     @Volatile
     private var provider: LoginChallengeProvider? = null
+
+    companion object {
+
+        /** The longest a provider may take to answer one call before the delayed login is answered without a challenge. */
+        val DEFAULT_TIMEOUT: Duration = Duration.ofSeconds(2)
+
+        /** Daemon threads, so a provider that hangs cannot keep the server from stopping. */
+        private fun daemonExecutor(): Executor = Executors.newCachedThreadPool { task ->
+            Thread(task, "ingot-login-challenge").apply { isDaemon = true }
+        }
+
+    }
 
     fun registered(): LoginChallengeProvider? = provider
 
@@ -96,18 +122,28 @@ internal class LoginChallenges(private val warn: (String) -> Unit) {
         return ChallengeVerdict.Required(provider = current.id, parameters = parameters)
     }
 
-    /** The result of [call], or `null` when the provider failed. */
-    private fun <T : Any> ask(current: LoginChallengeProvider, call: () -> T): T? =
-        try {
-            call()
-        } catch (failure: Exception) {
-            failed(current, failure)
-        } catch (failure: LinkageError) {
-            failed(current, failure)
+    /** The result of [call] within [timeout], or `null` when the provider failed or did not answer in time. */
+    private fun <T : Any> ask(current: LoginChallengeProvider, call: () -> T): T? {
+        val future = CompletableFuture.supplyAsync({ call() }, executor)
+        return try {
+            future.get(timeout.toMillis(), TimeUnit.MILLISECONDS)
+        } catch (failure: TimeoutException) {
+            future.cancel(true)
+            failed(current, "did not answer within ${timeout.toMillis()} ms")
+        } catch (failure: ExecutionException) {
+            when (val cause = failure.cause ?: failure) {
+                is Exception, is LinkageError -> failed(current, cause.javaClass.name)
+                else -> throw cause
+            }
+        } catch (failure: InterruptedException) {
+            future.cancel(true)
+            Thread.currentThread().interrupt()
+            failed(current, failure.javaClass.name)
         }
+    }
 
-    private fun failed(current: LoginChallengeProvider, failure: Throwable): Nothing? {
-        warn("Login challenge provider '${current.id}' failed with ${failure.javaClass.name}, the delayed login is answered without a challenge")
+    private fun failed(current: LoginChallengeProvider, reason: String): Nothing? {
+        warn("Login challenge provider '${current.id}' failed ($reason), the delayed login is answered without a challenge")
         return null
     }
 
