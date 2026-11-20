@@ -11,3 +11,4 @@ These pages document what a plugin can use and how plugins are distributed.
 * [Dashboard anchors](dashboard-anchors.md)
 * [Plugin tiers](plugin-tiers.md)
 * [Viewer access checks](viewer-access-checks.md)
+* [Artifact enrichment](artifact-enrichment.md)

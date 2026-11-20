@@ -189,6 +189,7 @@
   * [Dashboard anchors](references/plugins/dashboard-anchors.md)
   * [Plugin tiers](references/plugins/plugin-tiers.md)
   * [Viewer access checks](references/plugins/viewer-access-checks.md)
+  * [Artifact enrichment](references/plugins/artifact-enrichment.md)
 * [Console commands](references/console-commands.md)
 * [Command line client](references/cli.md)
 * [Glossary](references/glossary.md)
