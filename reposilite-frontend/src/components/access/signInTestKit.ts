@@ -26,7 +26,7 @@ import loginSchema from '../settings/fixtures/login.schema.json'
  * and `login` (account throttle, password policy, idle timeout). Every call builds fresh data, so a test never
  * shares state with another one.
  */
-const loginServer = () => ({
+const loginServer = (overrides: Record<string, unknown> = {}) => ({
   maxFailedAttempts: 5,
   lockoutMinutes: 15,
   accountThrottle: { threshold: 10, quietMinutes: 60, maxDelaySeconds: 300, knownAddressDays: 30 },
@@ -35,6 +35,8 @@ const loginServer = () => ({
     breachCheck: { mode: 'OFF', file: '', rangeUrl: 'https://api.pwnedpasswords.com/range/', failClosed: false },
   },
   idleTimeoutMinutes: 0,
+  mfa: { requiredForAdmins: false, requiredForTeams: [], graceDays: 14, stepUpMinutes: 5, passkeyFirstFactor: false },
+  ...overrides,
 })
 
 const schemas: Record<string, unknown> = { authentication: authenticationSchema, login: loginSchema }
@@ -42,8 +44,8 @@ const schemas: Record<string, unknown> = { authentication: authenticationSchema,
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 // A settings client that serves both domains. `update` is the write, replaceable by a spy.
-const signInClient = ({ update = () => Promise.resolve({ data: {} }) }: { update?: (...args: unknown[]) => Promise<unknown> } = {}) => {
-  const servers: Record<string, unknown> = { authentication: authenticationServer(), login: loginServer() }
+const signInClient = ({ update = () => Promise.resolve({ data: {} }), login = {} }: { update?: (...args: unknown[]) => Promise<unknown>, login?: Record<string, unknown> } = {}) => {
+  const servers: Record<string, unknown> = { authentication: authenticationServer(), login: loginServer(login) }
   return {
     settings: {
       domains: () => Promise.resolve({ data: ['authentication', 'login'] }),
