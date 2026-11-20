@@ -564,7 +564,7 @@ describe('RepositoryOverview layout order', () => {
   it('lists the repositories before the snippet card in the reading order', async () => {
     await mountAt('/')
 
-    const [first, second] = wrapper.element.children
+    const [first, second] = wrapper.element.firstElementChild.children
     expect(first.tagName, 'the list is the first block, so a narrow screen shows it first').toBe('SECTION')
     expect(second.className, 'the snippet card follows the list').toContain('lg:col-start-2')
   })
@@ -574,7 +574,7 @@ describe('RepositoryOverview width', () => {
   it('keeps the list and the snippet card side by side from 1024 pixels, as before', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.className, 'the card keeps its column on the right from 1024 pixels').toContain(
+    expect(wrapper.element.firstElementChild.className, 'the card keeps its column on the right from 1024 pixels').toContain(
       'min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
     )
   })
@@ -582,13 +582,18 @@ describe('RepositoryOverview width', () => {
   it('keeps the details card at its own width on wide screens, so the list does not stretch with the window', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.className, 'the card column is the same from 1920 pixels').not.toContain('min-[1920px]:grid-cols-[2fr_1fr]')
+    expect(wrapper.element.firstElementChild.className, 'the card column is the same from 1920 pixels').not.toContain('min-[1920px]:grid-cols-[2fr_1fr]')
   })
 
-  it('has no maximum width, so the list uses the full window width', async () => {
+  it('renders its page container through MdPage at the full width, without a container or width class of its own', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.className).toContain('max-w-none')
+    expect(wrapper.attributes('style'), 'the page shell lifts the width steps, so the list uses the full window width').toContain('max-width: none')
+    expect(wrapper.classes(), 'the page shell writes the container class').toContain('container')
+    expect(wrapper.classes(), 'the page container is not centred').not.toContain('mx-auto')
+    expect(wrapper.classes().filter(name => name.startsWith('max-w-')), 'the page container takes no max-w-* class').toEqual([])
+    expect(wrapper.classes(), 'the page keeps its bottom margin').toContain('mb-12')
+    expect(wrapper.element.firstElementChild.className, 'only the page shell writes the container class').not.toMatch(/(?<![-\w])container(?![-\w])/)
   })
 })
 

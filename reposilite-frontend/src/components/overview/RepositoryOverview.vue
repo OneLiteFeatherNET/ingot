@@ -29,6 +29,7 @@ import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdPage from '../md/MdPage.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -228,321 +229,325 @@ const setShowDetails = (value: boolean) => {
     v-if="unsupported"
     :qualifier="qualifier"
   />
-  <div
+  <MdPage
     v-else
-    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
-    data-ingot-component="repository-overview"
+    class="mb-12"
   >
-    <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
-    <section
-      class="min-w-0"
-      aria-labelledby="overview-repositories-title"
+    <div
+      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+      data-ingot-component="repository-overview"
     >
-      <h1
-        id="overview-repositories-title"
-        class="flex min-h-12 items-center md-title-large text-on-surface"
+      <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
+      <section
+        class="min-w-0"
+        aria-labelledby="overview-repositories-title"
       >
-        Repositories
-      </h1>
+        <h1
+          id="overview-repositories-title"
+          class="flex min-h-12 items-center md-title-large text-on-surface"
+        >
+          Repositories
+        </h1>
 
-      <div class="mt-4 flex flex-col gap-3">
-        <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
-          <div class="min-w-0 shrink grow basis-72">
-            <MdTextField
-              :model-value="text"
-              label="Filter repositories"
-              variant="outlined"
-              type="search"
-              autocomplete="off"
-              supporting-text="Search by id, description or tag. Use tag:name for one tag."
-              @update:model-value="setText"
-            >
-              <template #leading-icon>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
-                </svg>
-              </template>
-              <template
-                v-if="text !== ''"
-                #trailing-icon
+        <div class="mt-4 flex flex-col gap-3">
+          <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
+            <div class="min-w-0 shrink grow basis-72">
+              <MdTextField
+                :model-value="text"
+                label="Filter repositories"
+                variant="outlined"
+                type="search"
+                autocomplete="off"
+                supporting-text="Search by id, description or tag. Use tag:name for one tag."
+                @update:model-value="setText"
               >
-                <button
-                  type="button"
-                  class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 items-center justify-center rounded-corner-full text-on-surface-variant"
-                  aria-label="Clear search"
-                  @click="setText('')"
-                >
+                <template #leading-icon>
                   <svg
-                    class="size-6"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                     aria-hidden="true"
                     focusable="false"
                   >
-                    <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
                   </svg>
-                </button>
-              </template>
-            </MdTextField>
-          </div>
-          <div class="flex flex-none flex-col">
-            <p
-              aria-hidden="true"
-              class="md-label-medium text-on-surface-variant"
-            >
-              Repository type
-            </p>
-            <div
-              role="group"
-              aria-label="Repository type"
-              class="flex flex-wrap gap-2 pt-1"
-            >
-              <MdChip
-                v-for="filter in DECLARED_FILTERS"
-                :key="filter.key"
-                variant="filter"
-                data-test="filter-type"
-                :selected="selectedTypes.includes(filter.key)"
-                @click="toggleType(filter.key)"
-              >
-                {{ filter.label }}
-              </MdChip>
+                </template>
+                <template
+                  v-if="text !== ''"
+                  #trailing-icon
+                >
+                  <button
+                    type="button"
+                    class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 items-center justify-center rounded-corner-full text-on-surface-variant"
+                    aria-label="Clear search"
+                    @click="setText('')"
+                  >
+                    <svg
+                      class="size-6"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                  </button>
+                </template>
+              </MdTextField>
             </div>
-          </div>
+            <div class="flex flex-none flex-col">
+              <p
+                aria-hidden="true"
+                class="md-label-medium text-on-surface-variant"
+              >
+                Repository type
+              </p>
+              <div
+                role="group"
+                aria-label="Repository type"
+                class="flex flex-wrap gap-2 pt-1"
+              >
+                <MdChip
+                  v-for="filter in DECLARED_FILTERS"
+                  :key="filter.key"
+                  variant="filter"
+                  data-test="filter-type"
+                  :selected="selectedTypes.includes(filter.key)"
+                  @click="toggleType(filter.key)"
+                >
+                  {{ filter.label }}
+                </MdChip>
+              </div>
+            </div>
 
-          <div class="flex flex-none flex-col">
-            <p
-              aria-hidden="true"
-              class="md-label-medium text-on-surface-variant"
-            >
-              Derived type
-            </p>
-            <div
-              role="group"
-              aria-label="Derived type"
-              aria-describedby="overview-derived-type-help"
-              class="flex flex-wrap gap-2 pt-1"
-            >
-              <MdChip
-                v-for="filter in DERIVED_FILTERS"
-                :key="filter.key"
-                variant="filter"
-                data-test="filter-type"
-                :selected="selectedTypes.includes(filter.key)"
-                @click="toggleType(filter.key)"
+            <div class="flex flex-none flex-col">
+              <p
+                aria-hidden="true"
+                class="md-label-medium text-on-surface-variant"
               >
-                {{ filter.label }}
-              </MdChip>
+                Derived type
+              </p>
+              <div
+                role="group"
+                aria-label="Derived type"
+                aria-describedby="overview-derived-type-help"
+                class="flex flex-wrap gap-2 pt-1"
+              >
+                <MdChip
+                  v-for="filter in DERIVED_FILTERS"
+                  :key="filter.key"
+                  variant="filter"
+                  data-test="filter-type"
+                  :selected="selectedTypes.includes(filter.key)"
+                  @click="toggleType(filter.key)"
+                >
+                  {{ filter.label }}
+                </MdChip>
+              </div>
             </div>
+            <MdSwitch
+              :model-value="showDetails"
+              class="flex-none self-center"
+              @update:model-value="setShowDetails"
+            >
+              Details
+            </MdSwitch>
           </div>
-          <MdSwitch
-            :model-value="showDetails"
-            class="flex-none self-center"
-            @update:model-value="setShowDetails"
+          <p
+            id="overview-derived-type-help"
+            class="md-body-small text-on-surface-variant"
           >
-            Details
-          </MdSwitch>
+            {{ DERIVED_TYPE_HELP }}
+          </p>
+
+          <div
+            v-if="shownTags.length > 0"
+            role="group"
+            aria-label="Filter by tag"
+            class="-mx-4 -mt-2 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <MdChip
+              v-for="tag in shownTags"
+              :key="tag"
+              variant="filter"
+              data-test="filter-tag"
+              :selected="selectedTags.includes(tag)"
+              @click="toggleTag(tag)"
+            >
+              {{ tag }}
+            </MdChip>
+          </div>
         </div>
+
         <p
-          id="overview-derived-type-help"
-          class="md-body-small text-on-surface-variant"
+          role="status"
+          class="mt-3 md-body-medium text-on-surface-variant"
         >
-          {{ DERIVED_TYPE_HELP }}
+          {{ statusText }}
         </p>
 
         <div
-          v-if="shownTags.length > 0"
-          role="group"
-          aria-label="Filter by tag"
-          class="-mx-4 -mt-2 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          v-if="loading"
+          data-ingot-state="loading"
         >
-          <MdChip
-            v-for="tag in shownTags"
-            :key="tag"
-            variant="filter"
-            data-test="filter-tag"
-            :selected="selectedTags.includes(tag)"
-            @click="toggleTag(tag)"
-          >
-            {{ tag }}
-          </MdChip>
+          <MdStatePanel
+            state="loading"
+            title="Loading repositories"
+          />
         </div>
-      </div>
 
-      <p
-        role="status"
-        class="mt-3 md-body-medium text-on-surface-variant"
-      >
-        {{ statusText }}
-      </p>
-
-      <div
-        v-if="loading"
-        data-ingot-state="loading"
-      >
         <MdStatePanel
-          state="loading"
-          title="Loading repositories"
-        />
-      </div>
-
-      <MdStatePanel
-        v-else-if="failure"
-        state="error"
-        class="mt-4"
-        :description="failure"
-      >
-        <template #actions>
-          <MdButton
-            variant="tonal"
-            type="button"
-            @click="load"
-          >
-            Retry
-          </MdButton>
-        </template>
-      </MdStatePanel>
-
-      <!--
-        The list is one surface-container-low block. Each row is a link over its whole width: a 40px tonal
-        avatar, the id and description, the tags as assist chips, the type and a chevron at the end. The visibility and the write policy join them while the Details switch is on.
-        The rows are divided by a line that starts at the text, 72px in, as MD3 insets list dividers.
-      -->
-      <ul
-        v-else-if="matches.length > 0"
-        class="mt-2 m-0 list-none overflow-hidden rounded-corner-medium border border-outline bg-surface-container-low p-0"
-      >
-        <li
-          v-for="repository in matches"
-          :key="repository.id"
-          class="relative after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-outline-variant after:content-[''] after:left-[72px] last:after:hidden"
+          v-else-if="failure"
+          state="error"
+          class="mt-4"
+          :description="failure"
         >
-          <RouterLink
-            data-test="repository-row"
-            :to="browseLocation(repository.id)"
-            :aria-label="`Browse ${repository.id}`"
-            :class="['md-state-layer md-focus-ring-inset relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 px-4 text-on-surface no-underline medium:flex medium:gap-4', rowLayout(repository)]"
+          <template #actions>
+            <MdButton
+              variant="tonal"
+              type="button"
+              @click="load"
+            >
+              Retry
+            </MdButton>
+          </template>
+        </MdStatePanel>
+
+        <!--
+          The list is one surface-container-low block. Each row is a link over its whole width: a 40px tonal
+          avatar, the id and description, the tags as assist chips, the type and a chevron at the end. The visibility and the write policy join them while the Details switch is on.
+          The rows are divided by a line that starts at the text, 72px in, as MD3 insets list dividers.
+        -->
+        <ul
+          v-else-if="matches.length > 0"
+          class="mt-2 m-0 list-none overflow-hidden rounded-corner-medium border border-outline bg-surface-container-low p-0"
+        >
+          <li
+            v-for="repository in matches"
+            :key="repository.id"
+            class="relative after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-outline-variant after:content-[''] after:left-[72px] last:after:hidden"
           >
-            <span
-              class="flex size-10 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container text-on-secondary-container"
-              aria-hidden="true"
-            >
-              <svg
-                class="size-6"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                focusable="false"
-              >
-                <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-              </svg>
-            </span>
-            <span class="flex min-w-0 flex-1 flex-col gap-1">
-              <span
-                data-test="repository-id"
-                class="truncate md-body-large text-on-surface"
-              >{{ repository.id }}</span>
-              <span
-                v-if="repository.description"
-                data-test="repository-description"
-                class="truncate md-body-medium text-on-surface-variant"
-                :title="repository.description"
-              >{{ repository.description }}</span>
-              <span
-                v-if="repository.tags.length > 0"
-                class="mt-1 flex flex-wrap gap-2"
-              >
-                <span
-                  v-for="tag in repository.tags"
-                  :key="tag"
-                  data-test="tag"
-                  class="inline-flex h-8 items-center rounded-corner-small border border-outline px-3 md-label-large text-on-surface"
-                >{{ tag }}</span>
-              </span>
-            </span>
-            <!--
-              The marks sit on a line of their own under the text below 600px, so they are never pushed out of the row.
-              From 600px the wrapper takes no box of its own and they sit at the end of the row. The type comes last, before
-              the chevron, so the types line up on the right edge. The visibility and the write policy show only with the Details switch on.
-            -->
-            <span
-              data-test="marks"
-              class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 medium:contents"
+            <RouterLink
+              data-test="repository-row"
+              :to="browseLocation(repository.id)"
+              :aria-label="`Browse ${repository.id}`"
+              :class="['md-state-layer md-focus-ring-inset relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 px-4 text-on-surface no-underline medium:flex medium:gap-4', rowLayout(repository)]"
             >
               <span
-                v-if="showDetails && badgeOf(repository)"
-                data-test="visibility"
-                class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
+                class="flex size-10 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container text-on-secondary-container"
+                aria-hidden="true"
               >
                 <svg
-                  class="size-md-icon"
+                  class="size-6"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  aria-hidden="true"
                   focusable="false"
                 >
-                  <path :d="badgeOf(repository)?.icon" />
+                  <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
                 </svg>
-                {{ badgeOf(repository)?.label }}
               </span>
+              <span class="flex min-w-0 flex-1 flex-col gap-1">
+                <span
+                  data-test="repository-id"
+                  class="truncate md-body-large text-on-surface"
+                >{{ repository.id }}</span>
+                <span
+                  v-if="repository.description"
+                  data-test="repository-description"
+                  class="truncate md-body-medium text-on-surface-variant"
+                  :title="repository.description"
+                >{{ repository.description }}</span>
+                <span
+                  v-if="repository.tags.length > 0"
+                  class="mt-1 flex flex-wrap gap-2"
+                >
+                  <span
+                    v-for="tag in repository.tags"
+                    :key="tag"
+                    data-test="tag"
+                    class="inline-flex h-8 items-center rounded-corner-small border border-outline px-3 md-label-large text-on-surface"
+                  >{{ tag }}</span>
+                </span>
+              </span>
+              <!--
+                The marks sit on a line of their own under the text below 600px, so they are never pushed out of the row.
+                From 600px the wrapper takes no box of its own and they sit at the end of the row. The type comes last, before
+                the chevron, so the types line up on the right edge. The visibility and the write policy show only with the Details switch on.
+              -->
               <span
-                v-if="showDetails && writePolicyLabelOf(repository)"
-                data-test="write-policy"
-                class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
-              >{{ writePolicyLabelOf(repository) }}</span>
-              <RepositoryTypeBadge
-                :repository="repository"
-                class="self-center"
-              />
-            </span>
-            <svg
-              class="size-6 shrink-0 self-center text-on-surface-variant"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" />
-            </svg>
-          </RouterLink>
-        </li>
-      </ul>
+                data-test="marks"
+                class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 medium:contents"
+              >
+                <span
+                  v-if="showDetails && badgeOf(repository)"
+                  data-test="visibility"
+                  class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
+                >
+                  <svg
+                    class="size-md-icon"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path :d="badgeOf(repository)?.icon" />
+                  </svg>
+                  {{ badgeOf(repository)?.label }}
+                </span>
+                <span
+                  v-if="showDetails && writePolicyLabelOf(repository)"
+                  data-test="write-policy"
+                  class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
+                >{{ writePolicyLabelOf(repository) }}</span>
+                <RepositoryTypeBadge
+                  :repository="repository"
+                  class="self-center"
+                />
+              </span>
+              <svg
+                class="size-6 shrink-0 self-center text-on-surface-variant"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" />
+              </svg>
+            </RouterLink>
+          </li>
+        </ul>
 
-      <div
-        v-else
-        class="mt-4 flex flex-col items-start gap-3"
-      >
-        <p class="md-body-large text-on-surface-variant">
-          {{ repositories.length === 0 ? 'No repositories yet.' : 'No repository matches these filters.' }}
-        </p>
         <div
-          v-if="repositories.length > 0 && filtersActive"
-          class="flex flex-wrap items-center gap-2"
+          v-else
+          class="mt-4 flex flex-col items-start gap-3"
         >
-          <RouterLink
-            v-if="artifactSearchText !== ''"
-            :to="{ name: 'search', query: { q: artifactSearchText } }"
-            class="md-state-layer md-focus-ring inline-flex h-10 items-center rounded-corner-full px-3 md-label-large text-primary no-underline"
+          <p class="md-body-large text-on-surface-variant">
+            {{ repositories.length === 0 ? 'No repositories yet.' : 'No repository matches these filters.' }}
+          </p>
+          <div
+            v-if="repositories.length > 0 && filtersActive"
+            class="flex flex-wrap items-center gap-2"
           >
-            Search artifacts for {{ artifactSearchText }}
-          </RouterLink>
-          <MdButton
-            variant="text"
-            type="button"
-            @click="clearFilters"
-          >
-            Clear filters
-          </MdButton>
+            <RouterLink
+              v-if="artifactSearchText !== ''"
+              :to="{ name: 'search', query: { q: artifactSearchText } }"
+              class="md-state-layer md-focus-ring inline-flex h-10 items-center rounded-corner-full px-3 md-label-large text-primary no-underline"
+            >
+              Search artifacts for {{ artifactSearchText }}
+            </RouterLink>
+            <MdButton
+              variant="text"
+              type="button"
+              @click="clearFilters"
+            >
+              Clear filters
+            </MdButton>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
-      <Card :qualifier="qualifier" />
+      <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+        <Card :qualifier="qualifier" />
+      </div>
     </div>
-  </div>
+  </MdPage>
 </template>
