@@ -71,7 +71,8 @@ export default [
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ['*.ts'] },
+        // Every .ts file belongs to one of the tsconfig projects, the configuration files included (tsconfig.node.json).
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
