@@ -49,6 +49,7 @@ import net.onelitefeather.ingot.format.ExtensionsFormatContext
 import net.onelitefeather.ingot.format.RepositoryFormats
 import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
 import net.onelitefeather.ingot.access.ViewerAccessFacadeImpl
+import net.onelitefeather.ingot.cleanup.CleanupSupportFacadeImpl
 import net.onelitefeather.ingot.repository.index.SearchFacadeArtifactIndexSink
 import java.time.Clock
 import panda.std.reactive.computed
@@ -104,6 +105,8 @@ internal class MavenPlugin : ReposilitePlugin() {
 
         // Plugins ask the viewer access decisions of the routes through this facade; it changes no route.
         extensions().registerFacade(ViewerAccessFacadeImpl(mavenFacade, facade<AccessTokenFacade>()))
+        // The cleanup plugin reaches the mirror copies and the job claims through this facade, so both stay internal.
+        extensions().registerFacade(CleanupSupportFacadeImpl(mavenFacade, reposilite().database))
 
         logger.info("")
         logger.info("--- Repositories")

@@ -38,7 +38,8 @@ import com.reposilite.plugin.reposilite
 import net.onelitefeather.ingot.deploy.BackgroundJobGate
 import net.onelitefeather.ingot.deploy.SingletonJob
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
-import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import net.onelitefeather.ingot.cleanup.CleanupSupportFacade
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import io.javalin.http.HttpStatus.CONFLICT
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
@@ -51,13 +52,15 @@ import java.util.concurrent.TimeUnit.SECONDS
 @Plugin(name = "cleanup", dependencies = ["shared-configuration", "maven", "read-only"], settings = CleanupSettings::class)
 internal class CleanupPlugin : ReposilitePlugin() {
 
+    @OptIn(ExperimentalIngotPluginApi::class)
     override fun initialize(): CleanupService {
         val clock = parameters().clock ?: Clock.systemDefaultZone()
         val cleanupSettings = facade<SharedConfigurationFacade>().getDomainSettings<CleanupSettings>()
         val mavenFacade = facade<MavenFacade>()
         val repositoryRegistry = facade<RepositoryRegistry>()
+        val support = facade<CleanupSupportFacade>()
         // One claim store for the service and the scheduler, so that the day lease and the run lease have the same owner.
-        val claims = SqlScheduledJobClaims(reposilite().database, clock)
+        val claims = support.scheduledJobClaims(clock)
         // The service exposes the scheduler tick and the scheduler starts runs through the service, so one is late-bound.
         lateinit var scheduler: CleanupScheduler
 
@@ -71,7 +74,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
                         name = repository.name,
                         storage = repository.storageProvider,
                         storesMirrors = repository.storesProxiedFiles,
-                        cachedVersions = mavenFacade.mirrorCacheEntries(repository.name),
+                        cachedVersions = support.mirrorCacheEntries(repository.name),
                         readOnly = mavenFacade.getRepository(repository.name)?.readOnly ?: false,
                     )
                 }
