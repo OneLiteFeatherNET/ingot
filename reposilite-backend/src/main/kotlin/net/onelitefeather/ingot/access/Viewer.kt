@@ -18,8 +18,8 @@ package net.onelitefeather.ingot.access
 
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.api.RepositoryListQuery
-import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
+import net.onelitefeather.ingot.format.RepositoryPath
 import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 
 /**
@@ -37,16 +37,25 @@ class Viewer internal constructor(
     fun canReadRepository(repository: String): Boolean =
         maven.getRepository(repository)?.let { maven.canAccessRepository(token, it) } ?: false
 
-    /** Whether the viewer may read the file or directory [path] of [repository], as the resource route decides. */
+    /**
+     * Whether the viewer may read the file or directory [path] of [repository], as the resource route decides. The path is
+     * judged only in its canonical form: a path with an encoded slash, a dot segment, an empty segment or a leading slash
+     * answers false.
+     */
     fun canReadPath(repository: String, path: String): Boolean {
-        val target = maven.getRepository(repository) ?: return false
-        val location = Location.ofRequest(path).orNull() ?: return false
-        return maven.canAccessResource(token, target, location).isOk
+        val canonical = canonicalPathOf(repository, path) ?: return false
+        val target = maven.getRepository(canonical.repository) ?: return false
+        return maven.canAccessResource(token, target, canonical.location).isOk
     }
 
     /** Whether the repository appears in the repository list for this viewer. */
     fun canListRepository(repository: String): Boolean =
         maven.getRepository(repository)?.let { maven.canListRepository(token, it) } ?: false
+
+    private fun canonicalPathOf(repository: String, path: String): RepositoryPath? {
+        if (path.startsWith('/') || path.split('/').any { it.isEmpty() }) return null
+        return RepositoryPath.canonicalize("/$repository/$path").orNull()?.takeIf { it.repository == repository }
+    }
 
     /** The repositories the repository list shows to this viewer. Every name is one [canListRepository] answers true for. */
     fun listedRepositories(): Set<String> =
