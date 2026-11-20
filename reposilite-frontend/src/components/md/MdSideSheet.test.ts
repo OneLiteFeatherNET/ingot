@@ -18,7 +18,11 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, reactive } from 'vue'
+import type { Component } from 'vue'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import MdSideSheet from './MdSideSheet.vue'
+import MdTransition from './MdTransition.vue'
 
 // The sheet is attached to the document, so that focus can move into it and be read back. Each test unmounts what it
 // mounted and removes the opener it made, so no test reads another test's focus.
@@ -33,6 +37,24 @@ const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
 const closeButton = () => dialog().querySelector<HTMLElement>('[aria-label="Close"]')!
 // The panel is the scrollable column that holds the heading and the content of the sheet.
 const panel = () => dialog().querySelector<HTMLElement>('.overflow-y-auto')!
+const scrim = () => dialog().firstElementChild as HTMLElement
+
+// The rules of the named transition classes, read from disk as the stylesheet tests do: vitest does not process
+// stylesheets. Each rule is its selectors, with quotes and spaces made uniform, and the text of its block.
+const transitionRules = () => {
+  const css = readFileSync(join(process.cwd(), 'src', 'styles', 'md3', 'motion-transitions.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selectors: match[1].split(',').map((selector) => selector.trim().replace(/\s+/g, ' ').replace(/'/g, '"')),
+    body: match[2]
+  }))
+}
+
+// The value that the stylesheet gives one property under one selector, or undefined when no rule sets it.
+const declared = (selector: string, property: string): string | undefined => {
+  const rule = transitionRules().find((candidate) => candidate.selectors.includes(selector))
+  return rule?.body.match(new RegExp(`(?:^|;|\\s)${property}\\s*:\\s*([^;]+);`))?.[1].trim()
+}
 
 // A page that owns the open state, as the Administration frame does. The test reads `state` to close the sheet from the
 // page side, as a choice of an entry does.
@@ -61,7 +83,7 @@ const mountSheet = async ({ open = true, side = 'start', width = 'default' }: { 
   const wrapper = mount(page, { attachTo: document.body })
   mounted.push(wrapper)
   await flushPromises()
-  return { state, opener }
+  return { state, opener, wrapper }
 }
 
 describe('MdSideSheet', () => {
@@ -227,5 +249,54 @@ describe('MdSideSheet', () => {
     const classes = frame.flatMap(element => [...element.classList])
 
     expect(classes.filter(name => name.includes('[')), 'no class uses an arbitrary value').toEqual([])
+  })
+
+  it('opens and closes through the sheet pattern of MdTransition, from the first paint', async () => {
+    const { wrapper } = await mountSheet()
+    const transition = wrapper.findComponent(MdTransition as Component) as unknown as { exists: () => boolean, props: (key: 'pattern' | 'appear') => unknown }
+
+    expect(transition.exists(), 'the sheet is wrapped by MdTransition').toBe(true)
+    expect(transition.props('pattern'), 'the pattern of a side sheet').toBe('sheet')
+    expect(transition.props('appear'), 'a sheet mounted open still slides in').toBe(true)
+  })
+
+  it('marks the scrim and the panel as the parts that the sheet pattern moves', async () => {
+    await mountSheet()
+
+    expect(scrim().getAttribute('data-md-sheet-part'), 'the scrim is the part that fades').toBe('scrim')
+    expect(panel().getAttribute('data-md-sheet-part'), 'the panel is the part that slides').toBe('panel')
+  })
+
+  it.each([
+    ['start', 'translateX(-100%)'],
+    ['end', 'translateX(100%)']
+  ] as const)('slides a panel at the %s edge in from outside that edge', async (side, transform) => {
+    await mountSheet({ side })
+
+    expect(panel().getAttribute('data-md-sheet-side'), 'the panel names its edge for the stylesheet').toBe(side)
+    const part = `[data-md-sheet-part="panel"][data-md-sheet-side="${side}"]`
+    expect(declared(`.motion-sheet-enter-from > ${part}`, 'transform'), 'the panel enters from its edge').toBe(transform)
+    expect(declared(`.motion-sheet-leave-to > ${part}`, 'transform'), 'the panel leaves to its edge').toBe(transform)
+  })
+
+  it('fades the scrim in and out in the sheet pattern, while the panel only slides', () => {
+    const scrimPart = '[data-md-sheet-part="scrim"]'
+    const panelPart = '[data-md-sheet-part="panel"]'
+
+    expect(declared(`.motion-sheet-enter-from > ${scrimPart}`, 'opacity'), 'the scrim fades in').toBe('0')
+    expect(declared(`.motion-sheet-leave-to > ${scrimPart}`, 'opacity'), 'the scrim fades out').toBe('0')
+    expect(declared(`.motion-sheet-enter-active > ${scrimPart}`, 'transition'), 'the scrim fades over short4')
+      .toMatch(/^opacity var\(--md-sys-motion-duration-short4\)/)
+    expect(declared(`.motion-sheet-leave-active > ${scrimPart}`, 'transition'), 'the scrim fades out over short3')
+      .toMatch(/^opacity var\(--md-sys-motion-duration-short3\)/)
+    expect(declared(`.motion-sheet-enter-active > ${panelPart}`, 'transition'), 'the panel slides in over medium2')
+      .toBe('transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate)')
+    expect(declared(`.motion-sheet-leave-active > ${panelPart}`, 'transition'), 'the panel slides out over short4')
+      .toBe('transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate)')
+  })
+
+  it('keeps the frame of the sheet in place while its parts move', () => {
+    expect(declared('.motion-sheet-enter-from', 'transform'), 'the frame does not slide, so the scrim covers the window').toBeUndefined()
+    expect(declared('.motion-sheet-leave-to', 'transform'), 'the frame does not slide on the way out').toBeUndefined()
   })
 })
