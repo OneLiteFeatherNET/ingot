@@ -30,6 +30,7 @@ import {
   displayValue, facetCount, failureText, filterKeyAllowed, linkAllowed, listQuery, listRows, pathAllowed, PLUGIN_FILTER_SCOPE, tableRows,
   BLOCK_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
 } from './pluginBlocks'
+import MdCard from '../md/MdCard.vue'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -511,9 +512,11 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
           {{ block.label }}
         </button>
       </div>
-      <div
+      <MdCard
         v-if="confirming"
-        class="flex flex-col gap-2 rounded-corner-medium bg-surface-container p-4"
+        tone="container"
+        edge="none"
+        class="flex flex-col gap-2"
       >
         <p class="md-body-large">
           {{ block.confirm }}
@@ -535,7 +538,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
             Cancel
           </button>
         </div>
-      </div>
+      </MdCard>
       <p
         v-if="outcome"
         role="status"
