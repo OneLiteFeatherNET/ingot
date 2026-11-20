@@ -21,6 +21,7 @@ package net.onelitefeather.ingot.search.enrichment
 import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.outbox.StoredFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -45,8 +46,9 @@ data class EnrichmentTally(
 
 /**
  * Calls the enrichers whose extensions match a file (artifact enrichment, D3). Every call goes through [call], which is the
- * executor of D5 in production. A failed call is reported in one warning and counted. The outcome never reaches the index
- * write that follows, so a failing enricher cannot change what a client sees.
+ * executor of D5 in production. A failed call is reported in one warning and counted. An attribute set is validated and then
+ * passed through the boundary of the backend before it is counted, so a refused set counts as failed and a set the backend
+ * cannot store counts as skipped (search document attributes, D1 and D3).
  */
 internal class ArtifactEnrichmentPipeline(
     private val enrichers: List<ArtifactEnricher>,
@@ -60,7 +62,8 @@ internal class ArtifactEnrichmentPipeline(
 
     /**
      * Calls every enricher whose extensions contain the extension of [file]. [content] is asked for once per call, and only when
-     * an enricher matches, so a path that no enricher matches is never read.
+     * an enricher matches, so a path that no enricher matches is never read. Returns the outcome of each call, as the backend
+     * with [capabilities] sees it.
      */
     fun enrich(
         trigger: EnrichmentTrigger,
@@ -69,8 +72,10 @@ internal class ArtifactEnrichmentPipeline(
         stored: StoredFile,
         sha1: String?,
         sha256: String?,
+        capabilities: Set<SearchCapability> = emptySet(),
         content: () -> ArtifactContent?,
-    ) {
+    ): List<EnricherOutcome> {
+        val outcomes = mutableListOf<EnricherOutcome>()
         val extension = file.extension.lowercase()
         for (enricher in enrichers.filter { extension in it.extensions }) {
             val bytes = content() ?: continue
@@ -88,7 +93,9 @@ internal class ArtifactEnrichmentPipeline(
                 content = bytes,
             )
             val tally = tallies.getOrPut(enricher.id) { Tally() }
-            when (val result = call(enricher, request)) {
+            val result = call(enricher, request).validated(enricher.id).atBoundary(capabilities)
+            outcomes += EnricherOutcome(enricher.id, enricher.version, result)
+            when (result) {
                 is EnrichmentCompleted, is EnrichmentAttributes -> tally.completed.incrementAndGet()
                 is EnrichmentSkipped -> {
                     tally.skipped.incrementAndGet()
@@ -101,7 +108,12 @@ internal class ArtifactEnrichmentPipeline(
                 }
             }
         }
+        return outcomes
     }
+
+    /** An attribute set that breaks a rule of D1 becomes a failure that names the rule and never a value. */
+    private fun EnrichmentResult.validated(enricherId: String): EnrichmentResult =
+        if (this is EnrichmentAttributes) validateAttributes(enricherId, values)?.let { EnrichmentFailed(it.reason) } ?: this else this
 
     /** The outcomes so far, by enricher id. Every registered enricher is present, with zeros until it is called. */
     fun counts(): Map<String, EnrichmentTally> = tallies.mapValues { (_, tally) -> tally.snapshot() }
