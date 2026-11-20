@@ -1,0 +1,141 @@
+# Backports of security fixes to a previous release line.
+#
+# A merged pull request into main that carries a `backport:<major>.<minor>` label is
+# cherry-picked onto `release/<major>.<minor>.x`, and the release bot opens the pull
+# request there. Only `fix(security)` without a breaking marker is eligible; the rules live
+# in .github/scripts/backport_decision.py and its tests, and this file only wires them.
+#
+# pull_request_target runs with a write token even for a pull request from a fork, so this
+# workflow never checks out the head of the pull request. It checks out main, which already
+# holds the squashed merge commit, and picks that commit. The pull request text reaches the
+# shell through the event file and environment variables only, never through ${{ }}.
+name: "Backport"
+
+on:
+  pull_request_target:
+    types: [ closed, labeled ]
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  backport:
+    name: "Backport"
+    # A label added before the merge waits for the `closed` event, which sees every label.
+    # A label added after the merge starts its own run for that one label.
+    if: >-
+      github.event.pull_request.merged == true
+      && (github.event.action == 'closed' || startsWith(github.event.label.name, 'backport:'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "backport-${{ github.event.pull_request.number }}"
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      # The release bot pushes the branch and opens the pull request, so the checks of the
+      # backport run like those of any other pull request.
+      - name: "Create release bot token"
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: "Checkout main"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: "Decide the backports"
+        run: |
+          set -euo pipefail
+          lines="$(git ls-remote --heads origin 'refs/heads/release/*' \
+            | sed -nE 's#.*refs/heads/release/([0-9]+\.[0-9]+)\.x$#\1#p' \
+            | jq -R . | jq -s -c .)"
+          jq --argjson lines "$lines" '{
+              title: .pull_request.title,
+              body: (.pull_request.body // ""),
+              labels: (if .action == "labeled" then [.label.name] else [.pull_request.labels[].name] end),
+              base_ref: .pull_request.base.ref,
+              merged: .pull_request.merged,
+              lines_with_branch: $lines
+            }' "$GITHUB_EVENT_PATH" \
+            | python3 .github/scripts/backport_decision.py > "$RUNNER_TEMP/decisions.tsv"
+          cat "$RUNNER_TEMP/decisions.tsv"
+
+      - name: "Cherry-pick and open the pull requests"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          # The sign-off names the person who asked for the backport, because the DCO has to
+          # come from a person. Without a public email the pick carries no sign-off and the
+          # pull request says so, and a maintainer adds it before merging.
+          email="$(gh api "users/${ACTOR}" --jq '.email // empty')"
+          signed=true
+          if [ -z "$email" ]; then
+            signed=false
+            email="$(gh api "users/${ACTOR}" --jq '.id')+${ACTOR}@users.noreply.github.com"
+          fi
+          git config user.name "$ACTOR"
+          git config user.email "$email"
+
+          pick() {
+            if [ "$signed" = true ]; then
+              git cherry-pick -x -s "$SHA"
+            else
+              git cherry-pick -x "$SHA"
+            fi
+          }
+
+          while IFS=$'\t' read -r -u 3 action line branch reason; do
+            if [ "$action" != "backport" ]; then
+              gh pr comment "$PR" --body "No backport${line:+ to line ${line}}: ${reason}."
+              continue
+            fi
+
+            work="backport/${PR}-${line}"
+            if git ls-remote --exit-code --heads origin "refs/heads/${work}" > /dev/null; then
+              echo "${work} already exists, nothing to do."
+              continue
+            fi
+
+            git switch --quiet -c "$work" "origin/${branch}"
+            if pick; then
+              git push origin "$work"
+              note=""
+              if [ "$signed" = false ]; then
+                note=$'\n\n'"The commit carries no sign-off because @${ACTOR} has no public email. A maintainer adds it before merging."
+              fi
+              gh pr create --base "$branch" --head "$work" --title "$TITLE" \
+                --body "Backport of #${PR} to \`${branch}\`.${note}"
+            else
+              git cherry-pick --abort
+              git switch --quiet --detach main
+              git branch -D "$work"
+              gh pr comment "$PR" --body "$(cat <<EOF
+          The backport to \`${branch}\` did not apply cleanly, so no pull request was opened. To finish it by hand:
+
+          \`\`\`
+          git fetch origin
+          git switch -c ${work} origin/${branch}
+          git cherry-pick -x -s ${SHA}
+          # resolve the conflicts, then: git cherry-pick --continue
+          git push origin ${work}
+          gh pr create --base ${branch} --head ${work} --title "<the title of this pull request>"
+          \`\`\`
+          EOF
+          )"
+            fi
+          done 3< "$RUNNER_TEMP/decisions.tsv"
