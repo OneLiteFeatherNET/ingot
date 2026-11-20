@@ -5,6 +5,7 @@ import download from 'downloadjs'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdChip from '../md/MdChip.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import MdSelect from '../md/MdSelect.vue'
@@ -147,7 +148,10 @@ const countText = computed(() => {
     aria-label="Audit log"
     data-ingot-component="audit-view"
   >
-    <div class="overflow-hidden rounded-corner-large border border-outline bg-surface-container-low">
+    <MdCard
+      padding="none"
+      class="overflow-hidden"
+    >
       <form
         role="search"
         aria-label="Filter the audit log"
@@ -311,6 +315,6 @@ const countText = computed(() => {
           Load more
         </MdButton>
       </div>
-    </div>
+    </MdCard>
   </section>
 </template>
