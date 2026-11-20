@@ -19,7 +19,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { computeAccessibleName } from 'dom-accessibility-api'
 import MdOverflowMenu from './MdOverflowMenu.vue'
-import MdTransition from './MdTransition.vue'
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper!.
 const menu = () => document.querySelector<HTMLElement>('[role="menu"]')!
@@ -544,7 +543,7 @@ describe('MdOverflowMenu motion', () => {
     await trigger().trigger('click')
     await flushPromises()
 
-    const transition = wrapper!.findComponent(MdTransition) as VueWrapper
+    const transition = wrapper!.findComponent({ name: 'MdTransition' }) as VueWrapper<{ $props: Record<string, unknown> }>
     expect(transition.exists(), 'the menu is wrapped by MdTransition').toBe(true)
     expect(transition.props('pattern'), 'the menu uses the menu pattern, not a transition name of its own').toBe('menu')
   })
