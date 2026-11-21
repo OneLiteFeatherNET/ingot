@@ -18,7 +18,12 @@ Use the S3 provider with HMAC keys when the bucket is reachable through the XML 
 
 ## Steps
 
-1. Copy the jar into the `plugins` directory that the server reads at start.
+1. Install the plugin in one of two ways, then restart the server:
+
+   * Copy the jar into the `plugins` directory that the server reads at start, as [Install a plugin](../../manage/plugins/install-a-plugin.md#install-a-jar-file) describes.
+   * Select the coordinate `net.onelitefeather.ingot:gcs-storage-plugin:<version>` in `INGOT_PLUGINS`, from a catalogue that lists it, as [Install from the plugin store](../../manage/plugins/install-a-plugin.md#install-from-the-plugin-store) describes. The official catalogue does not list this plugin yet, so the store path needs a catalogue of your own until it does.
+
+   A jar in the `plugins` directory wins over a store entry with the same plugin id. See [Plugin store](../../references/plugins/plugin-store.md#precedence).
 
 2. Create the repository with `type` set to `gcs` and the settings of the next section. The keys are stored with the repository settings, as the [storage provider reference](../../references/repositories/storage-providers.md#google-cloud-storage-provider) describes.
 
@@ -100,7 +105,7 @@ No Ingot setting names the service account. The client finds it through the meta
 ## Limits
 
 * **Removal is not atomic.** Removing a directory deletes its objects one by one. A failure part way leaves the rest in place and is reported. Run the removal again to finish it.
-* **Abandoned uploads expire.** An upload that fails before it is finished creates no object. Its resumable session is left to expire on the service side, and the plugin does not cancel it.
+* **Abandoned uploads expire.** An upload that fails before it is finished creates no object. Its resumable session is left to expire on the service side, one week after it was started, and the plugin does not cancel it.
 * **Archived and cold objects** are read as they are. A read of an object in an archive class fails with the error of the service. Restore the object in Google Cloud first.
 * **No lifecycle, autoclass or retention management** is done by the plugin. Configure them on the bucket.
 * **No metadata cache.** Every request reads the object metadata from the bucket.
@@ -126,7 +131,13 @@ The size is high because the Google client brings its gRPC transport classes. Th
 | Interoperability run of the S3 tests against a real bucket | Not run yet. |
 | Role `roles/storage.objectUser` on a bucket, bound at bucket scope | Not confirmed on a real bucket. See Before you begin. |
 | Service account key and GKE workload identity against a real bucket | Not run yet. Planned once a throwaway bucket exists. |
-| Behaviour against the emulator `fake-gcs-server` | Run in the continuous integration with every change of the plugin. Permissions are not modelled by the emulator. |
+| Behaviour against the emulator `fake-gcs-server` | Run in the continuous integration with every change of the plugin. See the limits of the emulator below. |
+
+The emulator tests cover writes in one request and in resumable chunks of a 20 MiB file, that no object is visible while a resumable upload runs, ranged reads, directory listing, paging with the path cursor, details, removal, a missing object and the readiness probe. No case is skipped. The emulator does not cover:
+
+* **Permissions and credentials.** The emulator accepts every request without credentials. The answer to a 401 or 403 is tested against the in-memory fake of the unit tests, and workload identity and service account keys are not run against a real bucket yet.
+* **Error bodies.** The texts of the emulator can differ from those of the service. The plugin maps errors by status code, not by text.
+* **Storage classes, retention and session expiry.** Archive classes, retention locks and the one-week expiry of resumable sessions are not tested against the emulator.
 
 ## Result
 
