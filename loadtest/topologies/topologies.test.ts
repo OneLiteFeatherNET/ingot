@@ -135,7 +135,7 @@ test('every overlay sizes the heap as a percentage of the memory limit and sets 
     const text = overlayText(name);
     assert.match(
       text,
-      /^env:\n  - name: JAVA_OPTS\n    value: "-XX:MaxRAMPercentage=75"$/m,
+      /^env:\n  - name: JAVA_OPTS\n    value: "-XX:MaxRAMPercentage=75( [^"]*)?"$/m,
       `"${name}" does not size the heap as a percentage of the memory limit`,
     );
     assert.doesNotMatch(text, /-Xmx/, `"${name}" sets a fixed heap, which overrides the percentage`);
@@ -144,6 +144,26 @@ test('every overlay sizes the heap as a percentage of the memory limit and sets 
 
 const OBJECT_STORAGE_OVERLAYS = ['ha', 'scalable', 'scalable-read-1', 'scalable-read-2', 'scalable-read-4'];
 const TOKEN_FROM_SECRET = /^  - name: INGOT_OPTS\n    value: "--token loadtest:\$\(LOADTEST_PASSWORD\)"$/m;
+
+const PATH_STYLE = /-Dreposilite\.s3\.pathStyleAccessEnabled=true/;
+
+test('the bucket overlays address the bucket by path, because the in-cluster endpoint has no per-bucket host name', () => {
+  // The S3 client otherwise asks for <bucket>.<endpoint host>, which the cluster DNS does not resolve, and every
+  // repository fails to start. Ingot reads the switch only as a JVM system property, not from the provider settings.
+  for (const name of OBJECT_STORAGE_OVERLAYS) {
+    assert.match(
+      overlayText(name),
+      /^  - name: JAVA_OPTS\n    value: "[^"]*-Dreposilite\.s3\.pathStyleAccessEnabled=true[^"]*"$/m,
+      `"${name}" does not turn on path-style access in JAVA_OPTS`,
+    );
+  }
+});
+
+test('the file system overlays leave the S3 path style alone', () => {
+  for (const name of TOPOLOGIES.filter((topology) => !OBJECT_STORAGE_OVERLAYS.includes(topology))) {
+    assert.doesNotMatch(overlayText(name), PATH_STYLE, `"${name}" keeps no bucket but sets the S3 path style`);
+  }
+});
 
 test('the bucket overlays pass the run token in env, where the shared configuration of the runner keeps it', () => {
   for (const name of OBJECT_STORAGE_OVERLAYS) {
