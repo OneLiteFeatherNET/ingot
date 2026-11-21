@@ -21,7 +21,7 @@ import { createPasswordUser, currentStep, enrolAuthenticator, nextCode, secretOf
 // The second factor of a password user, end to end: the enrolment on the account page, the second step of the sign-in
 // with an authenticator code and with a recovery code, and the reset by an administrator. Every test has a user of its
 // own, so the shared administrator of the run never gets a factor. The server starts with a settings key
-// (global-setup.js), which authenticator enrolments need.
+// (global-setup.ts), which authenticator enrolments need.
 
 const openSignIn = async (page) => {
   await page.goto(siteUrl('/'))

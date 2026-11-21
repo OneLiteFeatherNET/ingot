@@ -31,14 +31,14 @@ import { resolveJar, startServer } from './server'
 const TOKEN_NAME = 'e2e-admin'
 const ADMIN_USER = 'e2e-operator'
 
-const secret = (bytes) => randomBytes(bytes).toString('base64url')
+const secret = (bytes: number): string => randomBytes(bytes).toString('base64url')
 
-export default async function globalSetup() {
+export default async function globalSetup(): Promise<() => Promise<void>> {
   const tokenSecret = secret(24)
   const adminPassword = secret(24)
   // The style fixture is loaded by the shared server, so the stylesheet spec and the rest of the run see one instance.
   const stylePlugin = buildStylePlugin(resolveJar())
-  let server
+  let server: Awaited<ReturnType<typeof startServer>>
   try {
     // The nexus-import plugin is loaded with its switch on, so the Migration page is part of this run.
     const nexusImportJar = resolveNexusImportJar()

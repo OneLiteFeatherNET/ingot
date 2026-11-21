@@ -135,7 +135,7 @@ test.describe('plugin stylesheet with INGOT_LOCAL_PLUGINSTYLES=false', () => {
       plugins: [stylePlugin.jar],
       env: { INGOT_LOCAL_PLUGINSTYLES: 'false' },
     })
-    // The first administrator is created the way an operator creates it, as in global-setup.js.
+    // The first administrator is created the way an operator creates it, as in global-setup.ts.
     const setupCode = await server.setupCodeFrom()
     const response = await fetch(`${server.baseUrl}/api/auth/setup`, {
       method: 'POST',

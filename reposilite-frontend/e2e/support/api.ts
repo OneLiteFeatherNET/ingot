@@ -16,7 +16,7 @@
 
 /*
  * Seeding through the public REST API only, with the bootstrap token of this run. Nothing here reads
- * or writes the data directory or the database. The environment variables are set by global-setup.js.
+ * or writes the data directory or the database. The environment variables are set by global-setup.ts.
  */
 
 const siteUrl = (path = '/'): string => new URL(path, process.env.E2E_BASE_URL).toString()

@@ -5,7 +5,7 @@
     "vite.config.ts",
     "vite.config.test.ts",
     "vitest.config.ts",
-    "playwright.config.js",
+    "playwright.config.ts",
     "eslint.config.js",
     "nitro.config.ts",
     "scripts/**/*",

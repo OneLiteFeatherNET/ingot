@@ -16,12 +16,13 @@
 
 import { defineConfig, devices } from '@playwright/test'
 
-// The browser suite of the dashboard. It starts the shaded server jar itself (e2e/support/global-setup.js),
+// The browser suite of the dashboard. It starts the shaded server jar itself (e2e/support/global-setup.ts),
 // so it needs the jar to be built first: ./gradlew :reposilite-backend:shadowJar
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/*.spec.js',
-  globalSetup: './e2e/support/global-setup.js',
+  // Both extensions while the specs move to TypeScript one group at a time.
+  testMatch: '**/*.spec.{js,ts}',
+  globalSetup: './e2e/support/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   // A test that needs a retry to pass is a failing test, locally and in CI.
@@ -44,11 +45,11 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/repositories-crud.spec.js',
+      testIgnore: '**/repositories-crud.spec.{js,ts}',
     },
     {
       name: 'chromium-settings-writes',
-      testMatch: '**/repositories-crud.spec.js',
+      testMatch: '**/repositories-crud.spec.{js,ts}',
       dependencies: ['chromium'],
       fullyParallel: false,
       use: { ...devices['Desktop Chrome'] },
