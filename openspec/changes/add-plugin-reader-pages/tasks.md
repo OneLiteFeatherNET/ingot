@@ -29,41 +29,41 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 ## 3. Code pull request 2: serving readers (`feat(frontend)`, `test(frontend)`, `docs(frontend)`)
 
-- [ ] 3.1 `test(frontend)`: `PluginUiReaderManifestIntegrationTest`: anonymous and signed-in callers get the same reader pages; `GET
+- [x] 3.1 `test(frontend)`: `PluginUiReaderManifestIntegrationTest`: anonymous and signed-in callers get the same reader pages; `GET
   /api/frontend/plugin-ui` still answers `401` to an anonymous caller; the manifest has no stylesheet and no `enabledPlugins`. Fails before 3.3.
-- [ ] 3.2 `test(frontend)`: `PluginUiReaderGuardIntegrationTest`: a declared source answers an anonymous `GET` and `HEAD`; `POST` to the same
+- [x] 3.2 `test(frontend)`: `PluginUiReaderGuardIntegrationTest`: a declared source answers an anonymous `GET` and `HEAD`; `POST` to the same
   path answers `401`; `..`, `//`, an empty segment and `%2e` do not match; another plugin's source does not match; the admin floor still
   answers `403` for a non-source route; the switch answers `404` without running the handler; the answer carries `Vary: Cookie,
   Authorization` and `Cache-Control: private, no-cache` unless set by the plugin.
-- [ ] 3.3 `feat(frontend)`: `PluginUiReaderEndpoint` for `GET /api/frontend/plugin-ui/readers`, and the exemption lookup in
+- [x] 3.3 `feat(frontend)`: `PluginUiReaderEndpoint` for `GET /api/frontend/plugin-ui/readers`, and the exemption lookup in
   `PluginUiDataGuard` (design D5, in the order given there) with the response headers.
-- [ ] 3.4 `docs(frontend)`: the endpoint in `docs/gitbook/references/http-api/http-api.md` and the rules of reader sources in
+- [x] 3.4 `docs(frontend)`: the endpoint in `docs/gitbook/references/http-api/http-api.md` and the rules of reader sources in
   `docs/gitbook/references/plugins/plugin-api.md`, including the viewer contract of design D6.
 
 ## 4. Code pull request 3, the user-visible change (`feat(frontend)`, `test(frontend)`, `docs(frontend)`)
 
-- [ ] 4.1 `test(frontend)`: `reposilite-frontend/src/navigation/registry.test.ts` (new cases): `readerPages()` lists the manifest pages
+- [x] 4.1 `test(frontend)`: `reposilite-frontend/src/navigation/registry.test.ts` (new cases): `readerPages()` lists the manifest pages
   in order, the "Plugins" heading is absent with no page, a reader page is not in the bottom bar, and `unlistedRoutes` accepts
   `plugin-reader`. `pluginUi.test.ts`: the reader manifest loads for an anonymous visitor.
-- [ ] 4.2 `test(frontend)`: `reposilite-frontend/src/components/plugins/PluginBlock.test.ts` (new case): a `form`, `action` or `status`
+- [x] 4.2 `test(frontend)`: `reposilite-frontend/src/components/plugins/PluginBlock.test.ts` (new case): a `form`, `action` or `status`
   block in a reader page shows the unsupported note and sends no request.
-- [ ] 4.3 `test(frontend)`: `reposilite-frontend/server/lib/route-classifier.test.js`: `/plugins/x` is a document for a navigation, a
+- [x] 4.3 `test(frontend)`: `reposilite-frontend/server/lib/route-classifier.test.js`: `/plugins/x` is a document for a navigation, a
   proxy otherwise, and `/api/...` is unchanged.
-- [ ] 4.4 `feat(frontend)`: the route `plugin-reader` in `routes.ts`, the reader view (`PluginPageView.vue` with a reader prop), the
+- [x] 4.4 `feat(frontend)`: the route `plugin-reader` in `routes.ts`, the reader view (`PluginPageView.vue` with a reader prop), the
   registry functions, the Browse heading, the store change in `pluginUi.ts`, and the `navigationSegments` list in the split classifier.
-- [ ] 4.5 `test(frontend)` and `feat(frontend)`: the startup warning for a repository named `plugins` while a reader page exists, with a
+- [x] 4.5 `test(frontend)` and `feat(frontend)`: the startup warning for a repository named `plugins` while a reader page exists, with a
   test that asserts the message through a captured logger.
-- [ ] 4.6 `docs(frontend)`: the route in `docs/gitbook/references/http-api/dashboard-pages.md` and the "Who can open it" row for the reader
+- [x] 4.6 `docs(frontend)`: the route in `docs/gitbook/references/http-api/dashboard-pages.md` and the "Who can open it" row for the reader
   route, the sign-in rule and the Browse entry in the same page.
 - [ ] 4.7 Verify in a browser at 320, 600 and 1440 px that a reader page has no horizontal scroll, and that the Browse heading appears
   only with a reader page. Screenshots go to the `pr-screenshots` branch and are linked in the pull request.
 
 ## 5. Pull request
 
-- [ ] 5.1 Open code pull requests 1 and 2 under the titles `feat(frontend): accept reader pages in the plugin ui facade` and
+- [x] 5.1 Open code pull requests 1 and 2 under the titles `feat(frontend): accept reader pages in the plugin ui facade` and
   `feat(frontend): serve reader pages to anonymous visitors`, each from a branch of the remote main branch, each with no file under
   `openspec/`.
-- [ ] 5.2 Open code pull request 3, last, under the title `feat(frontend): let plugins contribute pages for readers`. Read
+- [x] 5.2 Open code pull request 3, last, under the title `feat(frontend): let plugins contribute pages for readers`. Read
   `.github/PULL_REQUEST_TEMPLATE.md` and fill its sections (type `feat`). The description tells the story of a reader who has no
   administrator account and still finds the plugins of the repositories they may read. It carries no session link and no attribution line.
   Verify: `gh pr view --json title` shows the exact title, the commit-style hook accepts the title and every commit, and the body has no
