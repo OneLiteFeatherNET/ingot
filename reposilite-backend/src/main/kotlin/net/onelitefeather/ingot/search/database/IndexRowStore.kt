@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.backend.SampledRow
 import net.onelitefeather.ingot.search.backend.SamplePage
 import net.onelitefeather.ingot.search.backend.StoredRow
+import net.onelitefeather.ingot.search.enrichment.ENRICHER_VERSION_PREFIX
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -29,6 +30,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -46,19 +48,44 @@ internal class IndexRowStore(private val database: Database) {
 
     private val tables = SearchTables(SearchDialect.of(database.vendor))
     private val rows = tables.artifact
+    private val attributes = tables.attribute
 
-    /** The rows of [paths] in [repository], by path. */
+    /**
+     * The rows of [paths] in [repository], by path, each with the version of every enricher stored in its `core.enricher.<id>`
+     * attribute (search document attributes, D5).
+     */
     fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
         if (paths.isEmpty()) return emptyMap()
         val hashes = paths.associateBy { pathHash(repository, it) }
         return transaction(database) {
             hashes.keys.chunked(HASH_CHUNK).flatMap { chunk ->
+                val versions = enricherVersions(repository, chunk)
                 rows.selectAll()
                     .where { (rows.repository eq repository) and (rows.pathHash inList chunk) }
-                    .map { row -> hashes.getValue(row[rows.pathHash]) to StoredRow(row[rows.sizeBytes], row[rows.lastModified], row[rows.sha1], row[rows.sha256]) }
+                    .map { row ->
+                        val hash = row[rows.pathHash]
+                        hashes.getValue(hash) to StoredRow(
+                            row[rows.sizeBytes],
+                            row[rows.lastModified],
+                            row[rows.sha1],
+                            row[rows.sha256],
+                            versions[hash].orEmpty(),
+                        )
+                    }
             }.toMap()
         }
     }
+
+    /** The stored enricher versions of the rows of [repository] whose path hashes are [hashes], by hash and enricher id. */
+    private fun enricherVersions(repository: String, hashes: List<String>): Map<String, Map<String, String>> =
+        attributes.select(attributes.pathHash, attributes.key, attributes.value)
+            .where {
+                (attributes.repository eq repository) and (attributes.pathHash inList hashes) and
+                    (attributes.key like "$ENRICHER_VERSION_PREFIX%") and (attributes.valueIndex eq 0)
+            }
+            .filter { it[attributes.key].startsWith(ENRICHER_VERSION_PREFIX) }
+            .groupBy({ it[attributes.pathHash] }, { it[attributes.key].removePrefix(ENRICHER_VERSION_PREFIX) to it[attributes.value] })
+            .mapValues { (_, versions) -> versions.toMap() }
 
     /** Marks the rows of [paths] as seen at [indexedAt] without changing anything else. Returns how many rows exist. */
     fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int {

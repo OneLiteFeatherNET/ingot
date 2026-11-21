@@ -84,11 +84,18 @@ internal class RebuildHarness(val database: Database, val clock: MutableClock, p
     fun indexedPaths(repository: String): Set<String> =
         indexRows().filter { it[tables.artifact.repository] == repository }.map { it[tables.artifact.path] }.toSet()
 
-    /** Writes a row as an earlier run or a worker would have, with the given size and indexing time. */
-    fun seedRow(repository: String, path: String, size: Long, indexedAt: Instant, sha1: String? = null) {
+    /** Writes a row as an earlier run or a worker would have, with the given size, indexing time and [attributes]. */
+    fun seedRow(
+        repository: String,
+        path: String,
+        size: Long,
+        indexedAt: Instant,
+        sha1: String? = null,
+        attributes: Map<String, List<String>>? = null,
+    ) {
         val parsed = ArtifactPathParser.parse(repository, path) as ArtifactPathResult.Row
         val row = IndexRow(parsed.file, Provenance.HOSTED, size, Instant.parse("2026-10-01T00:00:00Z").toEpochMilli(), sha1, null, indexedAt.toEpochMilli())
-        DatabaseSearchBackend(database, clock).apply(listOf(IndexAction.Upsert(row)))
+        DatabaseSearchBackend(database, clock).apply(listOf(IndexAction.Upsert(row, attributes)))
     }
 
     companion object {

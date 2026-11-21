@@ -33,6 +33,7 @@ import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.RepositoryPresence
 import net.onelitefeather.ingot.search.SearchFacets
 import net.onelitefeather.ingot.search.access.SearchAccess
+import net.onelitefeather.ingot.search.enrichment.ENRICHER_VERSION_PREFIX
 import java.time.Instant
 import kotlin.random.Random
 
@@ -43,7 +44,8 @@ import kotlin.random.Random
  *
  * [joinsDatabaseTransaction] is a constructor flag so a test can pick the rebuild branch it exercises. [failApply] makes
  * the next calls of [apply] throw, and [onApply] sees every batch before it is applied. [capabilities] is what the backend
- * declares, empty by default like a backend that declares nothing.
+ * declares, empty by default like a backend that declares nothing. The attributes of an upsert are kept per row, and
+ * [existing] reports their enricher versions.
  */
 internal class FakeArtifactSearchBackend(
     override val joinsDatabaseTransaction: Boolean = true,
@@ -52,7 +54,7 @@ internal class FakeArtifactSearchBackend(
 
     override val id: String = "fake"
 
-    private class Stored(val sequence: Long, var row: IndexRow)
+    private class Stored(val sequence: Long, var row: IndexRow, var attributes: Map<String, List<String>> = emptyMap())
 
     private val rows = linkedMapOf<Pair<String, String>, Stored>()
     private var sequence = 0L
@@ -105,9 +107,10 @@ internal class FakeArtifactSearchBackend(
                 val key = action.row.file.repository to action.row.file.path
                 val existing = rows[key]
                 if (existing == null) {
-                    rows[key] = Stored(++sequence, action.row)
+                    rows[key] = Stored(++sequence, action.row, action.attributes.orEmpty())
                 } else {
                     existing.row = action.row
+                    action.attributes?.let { existing.attributes = it }
                 }
             }
             is IndexAction.RemovePath -> rows.remove(action.repository to action.path)
@@ -131,7 +134,14 @@ internal class FakeArtifactSearchBackend(
 
     override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> =
         paths.mapNotNull { path ->
-            rows[repository to path]?.row?.let { path to StoredRow(it.sizeBytes, it.lastModified, it.sha1, it.sha256) }
+            rows[repository to path]?.let { stored ->
+                val row = stored.row
+                val versions = stored.attributes
+                    .filterKeys { it.startsWith(ENRICHER_VERSION_PREFIX) }
+                    .mapNotNull { (key, values) -> values.firstOrNull()?.let { key.removePrefix(ENRICHER_VERSION_PREFIX) to it } }
+                    .toMap()
+                path to StoredRow(row.sizeBytes, row.lastModified, row.sha1, row.sha256, versions)
+            }
         }.toMap()
 
     override fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int {
