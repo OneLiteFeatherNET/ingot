@@ -280,21 +280,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/RepositoryWizard.vue",
-    "match": "medium:max-h-[min(44rem,90dvh)]",
-    "count": 1
-  },
-  {
-    "file": "src/components/settings/RepositoryWizard.vue",
-    "match": "medium:max-w-[560px]",
-    "count": 1
-  },
-  {
-    "file": "src/components/settings/RepositoryWizard.vue",
-    "match": "min-w-[280px]",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/SettingsDownloadMenu.vue",
     "match": "w-[min(22rem,calc(100vw-2rem))]",
     "count": 1

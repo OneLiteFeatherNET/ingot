@@ -190,11 +190,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/RepositoryWizard.vue",
-    "match": "max-medium:rounded-none",
-    "count": 1
-  },
-  {
     "file": "src/components/settings/SettingsDownloadMenu.vue",
     "match": "z-20",
     "count": 1
