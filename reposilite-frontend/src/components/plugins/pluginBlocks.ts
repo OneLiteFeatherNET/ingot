@@ -26,6 +26,9 @@ import type { InjectionKey } from 'vue'
 import type { PluginPage } from '../../navigation/registry'
 
 export const BLOCK_TYPES = ['text', 'keyValue', 'table', 'form', 'action', 'status', 'code', 'link', 'list', 'filter']
+// The blocks a reader page may not hold, because they write or poll. The server refuses them at registration, and the
+// dashboard draws them as unsupported too, so a reader page never sends one of their requests.
+export const READER_REFUSED_TYPES = ['form', 'action', 'status']
 
 // One block of a page as the server declares it. Each kind reads only the fields it names.
 export interface PluginBlockDefinition {

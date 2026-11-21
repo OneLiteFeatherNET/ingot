@@ -191,6 +191,38 @@ describe('unknown block', () => {
   })
 })
 
+describe('block in a reader page', () => {
+  const mountReaderBlock = (block: PluginBlockDefinition) => mount(PluginBlock, { props: { plugin: PLUGIN, block, reader: true } })
+  const WRITING_BLOCKS: PluginBlockDefinition[] = [
+    { type: 'form', source: '/api/plugins/example/settings', target: '/api/plugins/example/settings', method: 'PUT', schema: {}, uiSchema: { type: 'VerticalLayout' } },
+    { type: 'action', label: 'Rebuild', path: '/api/plugins/example/rebuild', method: 'POST' },
+    { type: 'status', source: '/api/plugins/example/status', refreshSeconds: 5 },
+  ]
+
+  for (const block of WRITING_BLOCKS) {
+    it(`shows the unsupported note for a ${block.type} block and sends no request`, async () => {
+      vi.mocked(axios).get.mockResolvedValue({ data: {} })
+
+      const wrapper = mountReaderBlock(block)
+      await flushPromises()
+
+      expect(wrapper.text(), `the ${block.type} block is not drawn for readers`).toContain(`Unsupported block: ${block.type}`)
+      expect(wrapper.find('button').exists(), `no control of the ${block.type} block`).toBe(false)
+      expect(vi.mocked(axios).get.mock.calls, `no read for the ${block.type} block`).toEqual([])
+      expect(vi.mocked(axios).request.mock.calls, `no write for the ${block.type} block`).toEqual([])
+    })
+  }
+
+  it('still draws a reading block for readers', async () => {
+    vi.mocked(axios).get.mockResolvedValue({ data: { version: '1.0.0' } })
+
+    const wrapper = mountReaderBlock({ type: 'keyValue', source: '/api/plugins/example/info' })
+    await flushPromises()
+
+    expect(wrapper.text(), 'the key value block reads its source for a reader').toContain('1.0.0')
+  })
+})
+
 describe('code block', () => {
   const clipboardOf = (writeText: ReturnType<typeof vi.fn>) =>
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })

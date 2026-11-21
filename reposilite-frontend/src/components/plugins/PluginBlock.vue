@@ -28,13 +28,15 @@ import { useConfiguration } from '../../store/configuration'
 import { copyToClipboard, selectText } from '../card/copySnippet'
 import {
   displayValue, facetCount, failureText, filterKeyAllowed, linkAllowed, listQuery, listRows, pathAllowed, PLUGIN_FILTER_SCOPE, tableRows,
-  BLOCK_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
+  BLOCK_TYPES, READER_REFUSED_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
 } from './pluginBlocks'
 import MdCard from '../md/MdCard.vue'
 
 const props = defineProps({
   plugin: { type: String, required: true },
   block: { type: Object as PropType<PluginBlockDefinition>, required: true },
+  // True on a reader page: the blocks that write or poll (form, action, status) are not drawn there and send nothing.
+  reader: { type: Boolean, default: false },
 })
 
 const { renderers } = useConfiguration()
@@ -46,7 +48,8 @@ const scope = inject(PLUGIN_FILTER_SCOPE, null) ?? reactive<PluginFilterScope>({
 const send = (config: { method?: Method; url?: string; data?: unknown }) => axios.request(handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, ...config, url: createURL(config.url as string) }))
 const read = (path: string, params?: Record<string, string>) => axios.get(createURL(path), handleRequest({ withCredentials: true, headers: {} as AxiosRequestHeaders, params }))
 
-const known = computed(() => BLOCK_TYPES.includes(props.block?.type ?? ''))
+const known = computed(() => BLOCK_TYPES.includes(props.block?.type ?? '')
+  && !(props.reader && READER_REFUSED_TYPES.includes(props.block?.type ?? '')))
 
 // Code: the copy action writes the code text and nothing else. A refused clipboard selects the text instead.
 const codeText = ref<HTMLElement>()
@@ -167,7 +170,7 @@ const readStatus = async () => {
 const { pause, resume } = useIntervalFn(readStatus, refreshMs, { immediate: false })
 const visibility = useDocumentVisibility()
 watch(visibility, (state) => {
-  if (props.block?.type !== 'status') return
+  if (props.block?.type !== 'status' || !known.value) return
   if (state === 'hidden') {
     pause()
   } else {
@@ -223,7 +226,7 @@ const saveForm = async () => {
 
 if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
   load()
-} else if (props.block?.type === 'form') {
+} else if (props.block?.type === 'form' && known.value) {
   loadForm()
 } else if (props.block?.type === 'list') {
   loadList()
