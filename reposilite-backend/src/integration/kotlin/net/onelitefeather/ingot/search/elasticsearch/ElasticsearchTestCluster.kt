@@ -130,6 +130,13 @@ internal class ElasticsearchAdminClient(private val cluster: StartedElasticsearc
         call("DELETE", "/$index", body = null, allowMissing = true)
     }
 
+    /** The stored `attributes` object of the document [id] of [index], as written; empty when the document or the object is missing. */
+    fun attributes(index: String, id: String): Map<String, List<String>> {
+        val attributes = mapper.readTree(call("GET", "/$index/_doc/$id", body = null, allowMissing = true))
+            .path("_source").path("attributes")
+        return attributes.properties().associate { (key, values) -> key to values.map { it.asText() } }
+    }
+
     /**
      * Creates an API key that holds exactly the privileges of the design (D10): the cluster privilege `monitor`, and on the index
      * pattern `<prefix>-*` and the alias `<prefix>` the index privileges the plugin uses. Returns the encoded key the plugin is given.

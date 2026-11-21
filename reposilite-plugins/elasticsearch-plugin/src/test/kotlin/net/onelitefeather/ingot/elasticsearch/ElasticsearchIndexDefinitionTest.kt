@@ -82,8 +82,8 @@ internal class ElasticsearchIndexDefinitionTest {
         // when: the field names of the mapping are read
         val fields = ElasticsearchIndexDefinition.fieldNames()
 
-        // then: the mapping declares the twenty-two fields of design D3
-        assertThat(fields).`as`("mapped fields").hasSize(22).contains("gav", "artifact_key", "tokens", "snapshot", "indexed_at")
+        // then: the mapping declares the twenty-two fields of design D3 and the attributes object
+        assertThat(fields).`as`("mapped fields").hasSize(23).contains("gav", "artifact_key", "tokens", "snapshot", "indexed_at", "attributes")
     }
 
 }
