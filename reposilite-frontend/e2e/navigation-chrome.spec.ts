@@ -16,6 +16,7 @@
 
 // The chrome of the window: the navigation rail, the top bar and the account menu. The layout is measured in a real
 // browser, because the alignment is a matter of boxes, not of classes.
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 import { ACCOUNT_NAME } from './support/session'
@@ -23,13 +24,13 @@ import { ACCOUNT_NAME } from './support/session'
 const DESKTOP_WIDTHS = [1280, 1920]
 
 // The rail is the fixed column at the left window edge, from the medium window size up.
-const rail = (page) => page.locator('.fixed.inset-y-0 > nav')
-const railLabels = (page) => rail(page).locator('li a span:last-child, li button span:last-child')
-const topBar = (page) => page.locator('header').first()
-const accountButton = (page) => page.getByRole('button', { name: `Account menu, ${ACCOUNT_NAME}`, exact: true })
+const rail = (page: Page) => page.locator('.fixed.inset-y-0 > nav')
+const railLabels = (page: Page) => rail(page).locator('li a span:last-child, li button span:last-child')
+const topBar = (page: Page) => page.locator('header').first()
+const accountButton = (page: Page) => page.getByRole('button', { name: `Account menu, ${ACCOUNT_NAME}`, exact: true })
 
 // The left edge of the first shared container of the page, past its side padding: where the page content starts.
-const contentBox = (page, selector) => page.locator(selector).first().evaluate((element) => {
+const contentBox = (page: Page, selector: string) => page.locator(selector).first().evaluate((element) => {
   const box = element.getBoundingClientRect()
   const style = getComputedStyle(element)
   return {
@@ -38,7 +39,7 @@ const contentBox = (page, selector) => page.locator(selector).first().evaluate((
   }
 })
 
-const edgesOf = (locator) => locator.evaluate((element) => {
+const edgesOf = (locator: Locator) => locator.evaluate((element) => {
   const box = element.getBoundingClientRect()
   return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }
 })
@@ -287,7 +288,7 @@ test.describe('administration trail on a phone', () => {
 
     const back = await page.getByRole('link', { name: 'Back to Administration', exact: true }).boundingBox()
     const trailBox = await trail.boundingBox()
-    expect(back.y + back.height, 'the back arrow ends above the trail').toBeLessThanOrEqual(trailBox.y + 0.5)
+    expect(back!.y + back!.height, 'the back arrow ends above the trail').toBeLessThanOrEqual(trailBox!.y + 0.5)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
   })

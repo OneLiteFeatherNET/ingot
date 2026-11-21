@@ -62,6 +62,6 @@ test.describe('nexus import wizard, the connect step', () => {
     await expect(form).toBeVisible()
     const box = await form.boundingBox()
 
-    expect(box.width, 'the form is no wider than the reading width at 1440 pixels').toBeLessThanOrEqual(READING_WIDTH)
+    expect(box!.width, 'the form is no wider than the reading width at 1440 pixels').toBeLessThanOrEqual(READING_WIDTH)
   })
 })
