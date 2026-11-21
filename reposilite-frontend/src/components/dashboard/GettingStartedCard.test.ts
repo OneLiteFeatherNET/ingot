@@ -166,6 +166,17 @@ describe('GettingStartedCard', () => {
     expect(document.body.textContent).toContain('1 of 4 steps done')
   })
 
+  it('draws the setup steps as the rows of one divided shared list', async () => {
+    await mountCard()
+
+    const list = $('[aria-label="Setup steps"]')
+    const rows = [...(list?.children ?? [])]
+    expect(list?.dataset.ingotComponent, 'the steps are an md-list').toBe('md-list')
+    expect(list?.dataset.divided, 'the list draws the rule between the steps').toBe('true')
+    expect(rows, 'one row per step').toHaveLength(4)
+    expect(rows.map(row => (row as HTMLElement).dataset.ingotComponent), 'every step is an md-list-item').toEqual(Array(4).fill('md-list-item'))
+  })
+
   it('sends each open step to the place that completes it', async () => {
     await mountCard()
 
