@@ -23,6 +23,7 @@ import { useSession } from '../../store/session'
 import type { STATUS } from '../../store/palette'
 import type { components } from '../../types/api'
 import MdAlert from '../md/MdAlert.vue'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdKeyValueList from '../md/MdKeyValueList.vue'
@@ -443,18 +444,15 @@ const readOnlyScope = computed(() => {
         >
           <div class="flex flex-wrap items-center gap-2">
             <span class="md-title-small text-on-surface">{{ row.id }}</span>
-            <span
+            <MdBadge
               v-if="row.local"
-              class="rounded-corner-full bg-secondary-container px-2 py-0.5 md-label-small text-on-secondary-container"
+              tone="accent"
             >
               This instance
-            </span>
-            <span
-              v-if="row.stale"
-              class="rounded-corner-full bg-surface-container-high px-2 py-0.5 md-label-small text-on-surface"
-            >
+            </MdBadge>
+            <MdBadge v-if="row.stale">
               Stale
-            </span>
+            </MdBadge>
             <MdButton
               v-if="row.local && hasFailures"
               variant="text"
