@@ -1,0 +1,26 @@
+{
+  "bool": {
+    "filter": [
+      {"terms": {"extension": ["jar"]}},
+      {
+        "bool": {
+          "should": [
+            {"term": {"attributes.portal.platforms": {"value": "Paper", "case_insensitive": true}}},
+            {"term": {"attributes.portal.platforms": {"value": "velocity", "case_insensitive": true}}},
+            {"term": {"attributes.portal.platforms": {"value": "Folia", "case_insensitive": true}}}
+          ],
+          "minimum_should_match": 1
+        }
+      },
+      {
+        "bool": {
+          "should": [
+            {"term": {"attributes.portal.versions": {"value": "1.21", "case_insensitive": true}}}
+          ],
+          "minimum_should_match": 1
+        }
+      },
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}
