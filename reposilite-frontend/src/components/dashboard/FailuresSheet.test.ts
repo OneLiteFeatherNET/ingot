@@ -108,6 +108,19 @@ describe('FailuresSheet', () => {
     expect(sources[1], 'the older failure must follow it').toContain('/com/reposilite/private')
   })
 
+  it('draws each failure as a high shared card in the list', async () => {
+    session.client = ref(clientWith({}))
+    mountSheet()
+    await flushPromises()
+
+    const entries = [...(dialog()?.querySelectorAll('ol > li') ?? [])]
+    expect(entries, 'both failures must be listed').toHaveLength(2)
+    for (const entry of entries) {
+      expect(entry.getAttribute('data-ingot-component'), 'a failure entry is the shared card').toBe('md-card')
+      expect(entry.getAttribute('data-variant'), 'the card is the flat low variant').toBe('low')
+    }
+  })
+
   it('shows when each failure happened in words, and the exact time as a tooltip', async () => {
     session.client = ref(clientWith({}))
     mountSheet()
