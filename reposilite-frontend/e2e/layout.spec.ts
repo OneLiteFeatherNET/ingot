@@ -17,11 +17,23 @@
 import AxeBuilder from '@axe-core/playwright'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
+import type { Locator, Page } from '@playwright/test'
 
 // Repositories that make the Repositories page taller than the viewport, so that it scrolls.
 const FILLER_REPOSITORIES = 8
 
-const topOf = (locator) => locator.evaluate(element => element.getBoundingClientRect().top)
+// The parts of the frame that the transition recorder measures in every animation frame, and one frame of its record.
+type StillPart = 'banner' | 'sideNavigation' | 'frameHeader'
+type FrameSample = { transitioning: boolean } & Record<StillPart, { top: number, left: number }>
+
+declare global {
+  interface Window {
+    __frameSamples?: FrameSample[]
+    __frameRecording?: boolean
+  }
+}
+
+const topOf = (locator: Locator) => locator.evaluate(element => element.getBoundingClientRect().top)
 
 test.describe('administration page header while scrolling', () => {
   // The design (rework-administration-layout, D2) keeps the page header out of sticky positioning: the top bar is the
@@ -81,7 +93,7 @@ test.describe('wide screens', () => {
         const rowOf = async () => {
           const first = await memory.boundingBox()
           const second = await threads.boundingBox()
-          return { sameRow: Math.abs(first.y - second.y) < 2, rightOf: second.x > first.x + first.width / 2 }
+          return { sameRow: Math.abs(first!.y - second!.y) < 2, rightOf: second!.x > first!.x + first!.width / 2 }
         }
         await expect.poll(rowOf, 'the two charts share one row, the threads chart to the right').toEqual({ sameRow: true, rightOf: true })
 
@@ -98,7 +110,7 @@ test.describe('wide screens', () => {
         await expect(hide).toBeVisible()
 
         const box = await hide.boundingBox()
-        expect(box.x + box.width, 'the checklist reaches well past the middle of the window').toBeGreaterThan(width * 0.6)
+        expect(box!.x + box!.width, 'the checklist reaches well past the middle of the window').toBeGreaterThan(width * 0.6)
       })
 
       test('lets a settings form use the content width, past the 960 pixel measure', async ({ adminPage: page }) => {
@@ -108,7 +120,7 @@ test.describe('wide screens', () => {
 
         // The administration forms take the full width of the container; the page column is the content beside the side navigation.
         const box = await frame.locator('[data-ingot-part="page"]').boundingBox()
-        expect(box.width, 'the width of the settings page in px').toBeGreaterThan(960)
+        expect(box!.width, 'the width of the settings page in px').toBeGreaterThan(960)
       })
 
       test('places the snippet card beside the browse list on the overview', async ({ adminPage: page, seed }) => {
@@ -122,12 +134,12 @@ test.describe('wide screens', () => {
 
         const listBox = await list.boundingBox()
         const cardBox = await card.boundingBox()
-        expect(cardBox.x, 'the card starts to the right of the list').toBeGreaterThan(listBox.x + 100)
-        expect(cardBox.y, 'the card starts on the same row as the list').toBeLessThan(listBox.y + listBox.height + 200)
+        expect(cardBox!.x, 'the card starts to the right of the list').toBeGreaterThan(listBox!.x + 100)
+        expect(cardBox!.y, 'the card starts on the same row as the list').toBeLessThan(listBox!.y + listBox!.height + 200)
 
         // The list takes the wider column: two thirds of the split, so it is at least 1.5 times the card.
         const listRegion = await page.getByRole('region', { name: 'Repositories', exact: true }).boundingBox()
-        expect(listRegion.width, 'the browse list is the wider column').toBeGreaterThanOrEqual(cardBox.width * 1.5)
+        expect(listRegion!.width, 'the browse list is the wider column').toBeGreaterThanOrEqual(cardBox!.width * 1.5)
       })
     })
   }
@@ -137,14 +149,14 @@ test.describe('wide screens', () => {
 // it fits between the top bar and the save bar, and it never has a scroll box of its own. Below 1240 pixels the Sections
 // sheet opens the same tree from 600 pixels, and nothing is drawn below 600. The tree is found by its name and its links.
 test.describe('the administration tree at wide widths', () => {
-  const tree = (page) => page.getByRole('navigation', { name: 'Administration', exact: true }).filter({ has: page.getByRole('link') })
+  const tree = (page: Page) => page.getByRole('navigation', { name: 'Administration', exact: true }).filter({ has: page.getByRole('link') })
 
   // The number of elements inside the tree that scroll on their own, which must be none.
-  const scrollBoxes = (locator) => locator.evaluate(nav => [nav, ...nav.querySelectorAll('*')]
+  const scrollBoxes = (locator: Locator) => locator.evaluate(nav => [nav, ...nav.querySelectorAll('*')]
     .filter(element => ['auto', 'scroll'].includes(getComputedStyle(element).overflowY)).length)
-  const positionOf = (locator) => locator.evaluate(element => getComputedStyle(element).position)
+  const positionOf = (locator: Locator) => locator.evaluate(element => getComputedStyle(element).position)
   // The number of elements of the page content that are sticky, and the page content itself.
-  const stickyInContent = (page) => page.locator('main').evaluate(main => [...main.querySelectorAll('*')]
+  const stickyInContent = (page: Page) => page.locator('main').evaluate(main => [...main.querySelectorAll('*')]
     .filter(element => getComputedStyle(element).position === 'sticky').length)
 
   for (const [width, height] of [[1280, 1440], [2560, 1440]]) {
@@ -168,7 +180,7 @@ test.describe('the administration tree at wide widths', () => {
       const navigation = tree(page)
       await expect(navigation).toBeVisible()
       // The entries arrive with the settings domains, so the height is polled until the tree has its full height.
-      const treeHeight = () => navigation.evaluate(element => element.offsetHeight)
+      const treeHeight = () => navigation.evaluate((element: HTMLElement) => element.offsetHeight)
       await expect.poll(treeHeight, 'the precondition: the tree is taller than the window').toBeGreaterThan(height)
       expect(await positionOf(navigation), 'the tree is not sticky when it does not fit').not.toBe('sticky')
       expect(await scrollBoxes(navigation), 'no element of the tree scrolls on its own').toBe(0)
@@ -183,8 +195,8 @@ test.describe('the administration tree at wide widths', () => {
 })
 
 test.describe('the Sections sheet below 1240 pixels', () => {
-  const sectionsButton = (page) => page.getByRole('button', { name: 'Sections', exact: true })
-  const sheet = (page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
+  const sectionsButton = (page: Page) => page.getByRole('button', { name: 'Sections', exact: true })
+  const sheet = (page: Page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
 
   test('moves from a page to a sibling page through the sheet at 900 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
@@ -232,7 +244,7 @@ test.describe('the Sections sheet below 1240 pixels', () => {
 // Below 1240 pixels the Overview page is the index and the page at once. Its order is the page header, Needs attention,
 // the index with Overview marked current, and At a glance; no back arrow leads anywhere, because the index is on the page.
 test.describe('the Overview page below 1240 pixels', () => {
-  const topOf = (locator) => locator.evaluate(element => element.getBoundingClientRect().top)
+  const topOf = (locator: Locator) => locator.evaluate(element => element.getBoundingClientRect().top)
 
   for (const width of [320, 900]) {
     test(`orders the header, Needs attention, the index and At a glance at ${width} pixels`, async ({ adminPage: page, seed }) => {
@@ -273,7 +285,7 @@ test.describe('the Overview page below 1240 pixels', () => {
 // and a detail title never breaks inside a word.
 test.describe('the administration page header', () => {
   // Every child of the breadcrumb items, in reading order: a crumb, then its separator when it has one.
-  const trailParts = (page) => page.evaluate(() => [...document.querySelectorAll('nav[aria-label="Breadcrumb"] li')]
+  const trailParts = (page: Page) => page.evaluate(() => [...document.querySelectorAll('nav[aria-label="Breadcrumb"] li')]
     .flatMap(item => [...item.children].map(child => {
       const box = child.getBoundingClientRect()
       return { separator: child.getAttribute('aria-hidden') === 'true', top: box.top, bottom: box.bottom, left: box.left, right: box.right }
@@ -309,7 +321,7 @@ test.describe('the administration page header', () => {
 
     const titleBox = await title.boundingBox()
     const checkBox = await page.locator('[data-test="check-permission"]').boundingBox()
-    expect(checkBox.y, 'the actions start below the title').toBeGreaterThanOrEqual(titleBox.y + titleBox.height - 1)
+    expect(checkBox!.y, 'the actions start below the title').toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height - 1)
   })
 
   test('keeps the description at least 300 pixels wide at 600 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
@@ -319,7 +331,7 @@ test.describe('the administration page header', () => {
 
     const text = page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"] [data-test="page-header-title"]').first()
     const box = await text.boundingBox()
-    expect(box.width, 'the text column of the header in px').toBeGreaterThanOrEqual(300)
+    expect(box!.width, 'the text column of the header in px').toBeGreaterThanOrEqual(300)
   })
 
   test('spans the shortcuts of a reading page to the edge of the header, as a wide page does, at 1440 pixels', async ({ adminPage: page }) => {
@@ -330,7 +342,7 @@ test.describe('the administration page header', () => {
     await expect(shortcut).toBeVisible()
 
     const box = await shortcut.boundingBox()
-    expect(box.x + box.width, 'the last shortcut ends near the right edge of the container, in px').toBeGreaterThan(1200)
+    expect(box!.x + box!.width, 'the last shortcut ends near the right edge of the container, in px').toBeGreaterThan(1200)
   })
 })
 
@@ -380,8 +392,8 @@ test.describe('the bottom navigation bar at phone width', () => {
 // The header of the administration pages keeps its height and the frame keeps its left edge when the page changes, so
 // the side navigation and the heading do not jump between an Overview, an entry page, a list and a detail page.
 test.describe('the administration header does not move between pages', () => {
-  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
-  const boxOf = (locator) => locator.evaluate(element => {
+  const frameHeader = (page: Page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
+  const boxOf = (locator: Locator) => locator.evaluate(element => {
     const { top, left, height } = element.getBoundingClientRect()
     return { top, left, height }
   })
@@ -394,7 +406,7 @@ test.describe('the administration header does not move between pages', () => {
       const detail = await seed.repository('header-detail')
       await page.setViewportSize({ width, height: 900 })
 
-      const heights = {}
+      const heights: Record<string, number> = {}
       for (const [name, path] of [
         ['Overview', '/settings'],
         ['entry', '/settings/audit'],
@@ -451,8 +463,8 @@ test.describe('the administration header does not move between pages', () => {
 
 // From 1240 pixels the header sits beside the side navigation, in the page column. Below it the header stays above the index.
 test.describe('the administration header beside the side navigation', () => {
-  const frameHeader = (page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
-  const boxOf = (locator) => locator.evaluate(element => {
+  const frameHeader = (page: Page) => page.locator('[data-ingot-component="administration-frame"] [data-ingot-component="md-page-header"]').first()
+  const boxOf = (locator: Locator) => locator.evaluate(element => {
     const { top, left, bottom } = element.getBoundingClientRect()
     return { top, left, bottom }
   })
@@ -532,13 +544,13 @@ test.describe('the frame while a page transitions', () => {
     sideNavigation: 'nav[aria-label="Administration"]',
     frameHeader: '#administration-title',
   })
-  const sheet = (page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
+  const sheet = (page: Page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
 
   // Starts one recorder per page: each animation frame stores the top and left edges of the still parts, and whether a
   // sibling page transition (the shared axis X classes of the page column) is running. The frame header is found through
   // the title it labels, and the header of the document is the top app bar.
-  const startFrameRecorder = (page) => page.evaluate((parts) => {
-    const samples = []
+  const startFrameRecorder = (page: Page) => page.evaluate((parts) => {
+    const samples: FrameSample[] = []
     window.__frameSamples = samples
     window.__frameRecording = true
     const sample = () => {
@@ -547,11 +559,11 @@ test.describe('the frame while a page transitions', () => {
       }
       const entry = {
         transitioning: document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length > 0,
-      }
+      } as FrameSample
       for (const [name, selector] of Object.entries(parts)) {
         const element = name === 'frameHeader' ? document.querySelector(selector)?.closest('header') : document.querySelector(selector)
         const { top, left } = element ? element.getBoundingClientRect() : { top: Number.NaN, left: Number.NaN }
-        entry[name] = { top, left }
+        entry[name as StillPart] = { top, left }
       }
       samples.push(entry)
       requestAnimationFrame(sample)
@@ -559,12 +571,12 @@ test.describe('the frame while a page transitions', () => {
     requestAnimationFrame(sample)
   }, STILL_PARTS)
 
-  const stopFrameRecorder = (page) => page.evaluate(() => {
+  const stopFrameRecorder = (page: Page) => page.evaluate(() => {
     window.__frameRecording = false
-    return window.__frameSamples
+    return window.__frameSamples!
   })
 
-  const sliding = (page) => page.evaluate(() => document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length)
+  const sliding = (page: Page) => page.evaluate(() => document.querySelectorAll('[data-test="page-column"][class*="motion-shared-x"]').length)
 
   test('keeps the side navigation and the frame header in place while a sibling page slides in at 1440 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -579,9 +591,9 @@ test.describe('the frame while a page transitions', () => {
     const samples = await stopFrameRecorder(page)
 
     expect(samples.some(sample => sample.transitioning), 'the slide was seen in at least one frame').toBe(true)
-    for (const part of Object.keys(STILL_PARTS)) {
+    for (const part of Object.keys(STILL_PARTS) as StillPart[]) {
       const first = samples[0][part]
-      for (const axis of ['top', 'left']) {
+      for (const axis of ['top', 'left'] as const) {
         const drift = Math.max(...samples.map(sample => Math.abs(sample[part][axis] - first[axis])))
         expect(drift, `the ${part} keeps its ${axis} edge during the slide, in px`).toBeLessThanOrEqual(0.5)
       }
@@ -603,7 +615,7 @@ test.describe('the frame while a page transitions', () => {
         return false
       }
       const button = [...document.querySelectorAll('button')].find(element => element.textContent.trim() === 'Sections')
-      button.click()
+      button!.click()
       return true
     })
     await expect.poll(openWhileSliding, 'the sheet is opened while the page slides in').toBe(true)
