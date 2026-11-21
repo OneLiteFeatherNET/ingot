@@ -23,6 +23,8 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { useSession } from '../../store/session'
 import { adminGroups, currentTreeKey, indexRebuildLinkOf, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import AppTabs from '../tabs/AppTabs.vue'
+import MdAlert from '../md/MdAlert.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
@@ -466,13 +468,14 @@ watch(
       />
     </template>
 
-    <p
+    <MdAlert
       v-if="loadError"
-      role="alert"
-      class="md-body-medium text-error pb-4"
+      data-test="settings-load-error"
+      tone="error"
+      class="mb-4"
     >
       {{ loadError }}
-    </p>
+    </MdAlert>
 
     <DashboardView v-if="statusShown" />
 
@@ -566,12 +569,13 @@ watch(
         </div>
       </div>
     </template>
-    <p
+    <MdStatePanel
       v-else-if="!loadError && canEdit"
-      class="mt-6 min-h-12 md-body-large text-on-surface-variant"
-    >
-      Loading configuration
-    </p>
+      data-test="settings-loading"
+      state="loading"
+      title="Loading configuration"
+      class="mt-6 min-h-12"
+    />
 
     <div
       v-if="hasUnsavedChanges"
