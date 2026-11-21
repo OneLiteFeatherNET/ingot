@@ -15,8 +15,12 @@
   -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
+import MdTextField from '../md/MdTextField.vue'
 import { MIN_PASSWORD_LENGTH, PASSWORD_PROBLEM_MESSAGES, passwordProblem } from './settingsEncryption'
 import { passphraseGuidance } from './passphraseGuidance'
 
@@ -60,6 +64,8 @@ const strength = computed(() => passphraseGuidance({
 const inputType = computed(() => (visible.value ? 'text' : 'password'))
 const title = computed(() => (isExport.value ? 'Download the settings with a password' : 'Open the settings file'))
 
+const titleId = useId()
+
 const toggleVisible = () => {
   visible.value = !visible.value
 }
@@ -88,40 +94,40 @@ const cancel = () => {
   emit('cancel')
 }
 
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') cancel()
+// Escape and a click on the scrim close the dialog through the frame; that is a cancel.
+const onOpenChange = (value: boolean) => {
+  if (!value) cancel()
 }
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4"
-    :style="{ backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)' }"
-    data-ingot-component="password-dialog"
-    @keydown="onKeydown"
+  <MdDialog
+    :model-value="open"
+    :labelledby="titleId"
+    @update:model-value="onOpenChange"
   >
     <form
-      role="dialog"
-      aria-modal="true"
-      :aria-label="title"
-      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface"
+      novalidate
+      data-ingot-component="password-dialog"
       @submit.prevent="submit"
     >
-      <h2 class="md-headline-small mb-4">
+      <h2
+        :id="titleId"
+        class="md-headline-small mb-4 text-on-surface"
+      >
         {{ title }}
       </h2>
 
-      <label class="md-body-medium mb-1 block" for="settings-password">Password</label>
-      <input
+      <MdTextField
         id="settings-password"
         v-model="password"
+        label="Password"
+        variant="outlined"
         :type="inputType"
         autocomplete="new-password"
-        class="mb-2 w-full rounded-corner-small border border-outline bg-surface px-3 py-2"
-        :aria-describedby="isExport ? 'settings-password-hint' : undefined"
-      >
-      <div class="mb-2 flex items-center justify-between gap-2">
+        :supporting-text="isExport ? `At least ${MIN_PASSWORD_LENGTH} characters. The file cannot be opened without it, and nobody can recover it for you. A passphrase of several words is easy to remember and hard to guess, and a password manager can keep it for you.` : ''"
+      />
+      <div class="my-2 flex items-center justify-between gap-2">
         <p
           v-if="isExport && strength.label"
           id="settings-password-strength"
@@ -133,6 +139,7 @@ const onKeydown = (event: KeyboardEvent) => {
         <MdButton
           variant="text"
           type="button"
+          class="ml-auto"
           data-test="toggle-passphrase-visibility"
           :aria-pressed="visible ? 'true' : 'false'"
           @click="toggleVisible"
@@ -140,42 +147,34 @@ const onKeydown = (event: KeyboardEvent) => {
           {{ visible ? 'Hide passphrase' : 'Show passphrase' }}
         </MdButton>
       </div>
-      <p
+
+      <MdTextField
         v-if="isExport"
-        id="settings-password-hint"
-        class="md-body-small mb-4 text-on-surface-variant"
-      >
-        At least {{ MIN_PASSWORD_LENGTH }} characters. The file cannot be opened without it, and nobody can recover it for you.
-        A passphrase of several words is easy to remember and hard to guess, and a password manager can keep it for you.
-      </p>
+        id="settings-password-confirmation"
+        v-model="confirmation"
+        class="mb-4"
+        label="Repeat the password"
+        variant="outlined"
+        :type="inputType"
+        autocomplete="new-password"
+      />
 
-      <template v-if="isExport">
-        <label class="md-body-medium mb-1 block" for="settings-password-confirmation">Repeat the password</label>
-        <input
-          id="settings-password-confirmation"
-          v-model="confirmation"
-          :type="inputType"
-          autocomplete="new-password"
-          class="mb-4 w-full rounded-corner-small border border-outline bg-surface px-3 py-2"
-        >
-      </template>
-
-      <p
+      <MdAlert
         v-if="attempted && message"
-        role="alert"
-        class="md-body-medium mb-4 text-error"
+        tone="error"
+        class="mb-4"
       >
         {{ message }}
-      </p>
-      <p
+      </MdAlert>
+      <MdAlert
         v-if="error"
-        role="alert"
-        class="md-body-medium mb-4 text-error"
+        tone="error"
+        class="mb-4"
       >
         {{ error }}
-      </p>
+      </MdAlert>
 
-      <div class="flex justify-end gap-2">
+      <MdDialogActions>
         <MdButton
           variant="text"
           type="button"
@@ -190,7 +189,7 @@ const onKeydown = (event: KeyboardEvent) => {
         >
           {{ isExport ? 'Download' : 'Open' }}
         </MdButton>
-      </div>
+      </MdDialogActions>
     </form>
-  </div>
+  </MdDialog>
 </template>

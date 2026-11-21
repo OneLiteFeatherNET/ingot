@@ -110,10 +110,21 @@ const choose = async (name) => {
 
 const downloadedJson = () => JSON.parse(download.mock.calls.at(-1)[0])
 
+// The password dialog is teleported to the body, so its fields are reached through the document.
+const passwordDialog = () => document.getElementById('settings-password')?.closest('form') ?? null
+
+const typeInto = (id, value) => {
+  const input = document.getElementById(id)
+  input.value = value
+  input.dispatchEvent(new Event('input'))
+}
+
 const fillPassword = async (password) => {
-  await wrapper.find('#settings-password').setValue(password)
-  await wrapper.find('#settings-password-confirmation').setValue(password)
-  await wrapper.find('form[role="dialog"]').trigger('submit')
+  await flushPromises()
+  typeInto('settings-password', password)
+  typeInto('settings-password-confirmation', password)
+  await flushPromises()
+  passwordDialog().dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
@@ -147,7 +158,8 @@ describe('Settings backup download', () => {
     await openMenu()
     await choose('Download saved settings')
 
-    expect(wrapper.find('form[role="dialog"]').exists()).toBe(true)
+    await flushPromises()
+    expect(passwordDialog(), 'the password dialog is open').not.toBeNull()
     expect(download).not.toHaveBeenCalled()
   })
 
