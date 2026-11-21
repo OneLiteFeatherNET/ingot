@@ -121,6 +121,24 @@ abstract class AttributeStorageContract {
     }
 
     @Test
+    fun `the stored row reports the version of each enricher stored with it`() = withBackend { opened ->
+        opened.backend.apply(listOf(IndexAction.Upsert(row(JAR), FIRST)))
+
+        assertThat(opened.backend.existing(REPOSITORY, listOf(JAR)).getValue(JAR).enricherVersions)
+            .`as`("enricher versions of a row stored with a core.enricher key")
+            .isEqualTo(mapOf("portal" to "1.2.0"))
+    }
+
+    @Test
+    fun `the stored row reports no enricher version without a stored one`() = withBackend { opened ->
+        opened.backend.apply(listOf(IndexAction.Upsert(row(JAR), SECOND)))
+
+        assertThat(opened.backend.existing(REPOSITORY, listOf(JAR)).getValue(JAR).enricherVersions)
+            .`as`("enricher versions of a row stored without a core.enricher key")
+            .isEmpty()
+    }
+
+    @Test
     fun `a touch keeps the attributes`() = withBackend { opened ->
         opened.backend.apply(listOf(IndexAction.Upsert(row(JAR), FIRST)))
 

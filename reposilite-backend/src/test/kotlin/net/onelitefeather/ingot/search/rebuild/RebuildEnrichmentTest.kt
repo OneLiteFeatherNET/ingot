@@ -151,7 +151,7 @@ internal class RebuildEnrichmentTest {
     fun `an unchanged row with the same size and modification time does not reach the enricher`() {
         withHarness(directory, "enrich-unchanged") {
             val enricher = RecordingEnricher("app-id", setOf("jar"))
-            seedRow("releases", jar(1), size = 1, indexedAt = clock.instant())
+            seedRow("releases", jar(1), size = 1, indexedAt = clock.instant(), attributes = mapOf("core.enricher.app-id" to listOf("1")))
             entries.put("releases", jar(1), size = 1)
             clock.advance(Duration.ofMinutes(1))
 
