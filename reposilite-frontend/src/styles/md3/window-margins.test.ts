@@ -79,22 +79,24 @@ describe('views use the shared window margins', () => {
 describe('only MdPage writes the container class', () => {
   const sourceRoot = fileURLToPath(new URL('../../', import.meta.url))
   const pageShell = 'components/md/MdPage.vue'
-  // Views that pull request #997 moves onto MdPage. Each entry is removed once that change is on main.
-  const pendingViews = new Set([
+  const views = readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
+    .map(file => file.split('\\').join('/'))
+    .filter(file => file.endsWith('.vue') && file !== pageShell)
+    .sort()
+
+  it('finds the views it scans', () => {
+    expect(views, 'the scan must read the view sources').toContain('components/overview/RepositoryOverview.vue')
+  })
+
+  it.each([
     'components/browser/FileBrowserView.vue',
     'components/footer/SiteFooter.vue',
     'components/util/NotFoundView.vue',
     'components/util/ViewLoadError.vue',
     'components/util/ViewLoading.vue',
     'pages/IndexPage.vue'
-  ])
-  const views = readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
-    .map(file => file.split('\\').join('/'))
-    .filter(file => file.endsWith('.vue') && file !== pageShell && !pendingViews.has(file))
-    .sort()
-
-  it('finds the views it scans', () => {
-    expect(views, 'the scan must read the view sources').toContain('components/overview/RepositoryOverview.vue')
+  ])('scans %s, which renders its page through MdPage now', (file) => {
+    expect(views, 'no view is skipped by the scan').toContain(file)
   })
 
   it.each(views)('%s does not write the container class', (file) => {
