@@ -518,6 +518,27 @@ describe('MdOverflowMenu catalogue features', () => {
     expect(menu().className, 'no arbitrary max width is left').not.toContain('max-w-[')
   })
 
+  it('draws the trigger as a text button unless another variant is asked for', async () => {
+    await mountMenu()
+
+    expect(trigger().attributes('data-variant'), 'the default trigger is a text button').toBe('text')
+  })
+
+  it('draws the trigger in the variant it is given, so a menu can open from an outlined button', async () => {
+    await mountMenu({ triggerVariant: 'outlined' })
+
+    expect(trigger().attributes('data-variant'), 'the trigger takes the given variant').toBe('outlined')
+  })
+
+  it('disables the trigger when the menu is disabled, so it cannot be opened', async () => {
+    await mountMenu({ disabled: true })
+
+    expect(trigger().attributes('disabled'), 'the trigger is a disabled native button').toBeDefined()
+    await trigger().trigger('click')
+    await flushPromises()
+    expect(document.querySelector('[role="menu"]'), 'no menu opens from a disabled trigger').toBeNull()
+  })
+
   it('still applies the deprecated triggerClass to the trigger button', async () => {
     await mountMenu({ triggerClass: 'w-10' })
 
