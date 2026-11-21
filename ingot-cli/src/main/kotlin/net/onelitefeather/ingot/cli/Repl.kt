@@ -23,6 +23,7 @@ import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
 import org.jline.terminal.Terminal
+import org.jline.terminal.Terminal.Signal
 import java.io.PrintStream
 
 /** Opens one session on the console socket. Log lines reach [ConsoleConnector.open]'s callback as they arrive. */
@@ -33,8 +34,8 @@ fun interface ConsoleConnector {
 /**
  * The interactive mode, on one console socket session in protocol 1. Each line is one `execute` frame, Tab sends one
  * `complete` frame, and no HTTP request is made while the session runs. `:quit` leaves, and Ctrl-D on an empty line
- * leaves with exit code 0. Ctrl-C discards the line. A dangerous command asks `[y/N]` on the terminal, and only `y`
- * accepts it.
+ * leaves with exit code 0. Ctrl-C discards the line, and while a command runs it stops the wait for its result on the
+ * client only and keeps the connection open. A dangerous command asks `[y/N]` on the terminal, and only `y` accepts it.
  */
 fun runRepl(
     client: IngotClient,
@@ -86,14 +87,21 @@ fun runRepl(
 
 /** Runs one line. Returns an exit code when the session has to end, and null when the REPL goes on. */
 private fun runLine(socket: ConsoleSocket, reader: LineReader, line: String, json: Boolean, yes: Boolean, out: PrintStream, err: PrintStream): Int? {
+    // Ctrl-C while the result is awaited. The confirmation prompt is a readLine, which handles Ctrl-C itself meanwhile.
+    val previous = reader.terminal.handle(Signal.INT) { socket.stopWaiting() }
     val result = try {
         socket.execute(line) { command, reason -> yes || askYesNo(reader, command, reason) }
+    } catch (_: ConsoleWaitStoppedException) {
+        err.println("Stopped waiting for '$line'. The server may still complete it, and its result is not shown.")
+        return null
     } catch (_: ConsoleSocketLostException) {
         err.println("The connection to the server was lost. '$line' may or may not have run, and it is not sent again.")
         return ExitCode.UNREACHABLE
     } catch (refused: ConsoleSocketRefusedException) {
         err.println(refused.message)
         return if (refused.code == "unauthorized") ExitCode.DENIED else null
+    } finally {
+        reader.terminal.handle(Signal.INT, previous)
     }
     if (json) {
         val answer = mapOf(

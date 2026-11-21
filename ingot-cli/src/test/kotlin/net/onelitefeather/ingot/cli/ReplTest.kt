@@ -21,8 +21,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.jline.terminal.Attributes
 import org.jline.terminal.Attributes.ControlChar
 import org.jline.terminal.Size
+import org.jline.terminal.Terminal
+import org.jline.terminal.Terminal.Signal
 import org.jline.terminal.impl.DumbTerminal
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -34,6 +37,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 private const val CTRL_C = 0x03
 private const val CTRL_D = 0x04
@@ -129,7 +133,13 @@ private class ScriptedKeyboard(keys: ByteArray) : InputStream() {
  * and so no completion. Every script ends with Ctrl-D on an empty line, which is how an operator leaves, so the REPL
  * returns without waiting for more input. The console socket is at [socketUrl], and [http] answers the HTTP side.
  */
-private fun runScripted(socketUrl: String, http: StubIngot, keys: String, yes: Boolean = false): Session {
+private fun runScripted(
+    socketUrl: String,
+    http: StubIngot,
+    keys: String,
+    yes: Boolean = false,
+    onTerminal: (Terminal) -> Unit = {},
+): Session {
     val out = ByteArrayOutputStream()
     val err = ByteArrayOutputStream()
     val screen = ByteArrayOutputStream()
@@ -141,6 +151,7 @@ private fun runScripted(socketUrl: String, http: StubIngot, keys: String, yes: B
         setLocalFlag(Attributes.LocalFlag.ISIG, true)
     }
     terminal.size = Size(SCREEN_COLUMNS, SCREEN_ROWS)
+    onTerminal(terminal)
     try {
         val timeout = Duration.ofSeconds(5)
         val client = IngotClient(http.url, "ci:ci-secret", timeout, HttpClient.newHttpClient())
@@ -244,6 +255,41 @@ internal class ReplTest {
     fun `should discard the current line on Ctrl-C and run the next line only`() {
         session("stop\u0003status\n") { _, socket, _ ->
             assertThat(socket.executed()).describedAs("commands").containsExactly("status")
+        }
+    }
+
+    // The bound is a safety net only: a REPL that ignores Ctrl-C would wait for the result forever.
+    @Test
+    @Timeout(value = 10, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    fun `should stop waiting for a result on Ctrl-C and keep the connection open for the next line`() {
+        val terminal = AtomicReference<Terminal>()
+        val slowId = AtomicReference<String>()
+        // `slow` gets no answer until the next execute, and the operator presses Ctrl-C while the REPL waits for it.
+        // The late result of `slow` then arrives first and must not be shown as the result of the next line.
+        val socket = StubSocket { text, peer ->
+            val frame = mapper.readTree(text)
+            val id = frame.path("id").asText()
+            when (frame.path("type").asText()) {
+                "hello" -> peer.send(WELCOME)
+                "execute" -> if (frame.path("command").asText() == "slow") {
+                    slowId.set(id)
+                    terminal.get().raise(Signal.INT)
+                } else {
+                    peer.send(result(slowId.get(), 0, "ran slow"))
+                    peer.send(result(id, 0, "ran status"))
+                }
+            }
+        }
+        socket.use {
+            httpWithListing(200).use { http ->
+                val session = runScripted(socket.url, http, "slow\nstatus\n", onTerminal = terminal::set)
+
+                assertThat(socket.executed()).describedAs("commands on one connection").containsExactly("slow", "status")
+                assertThat(socket.typed("hello")).describedAs("the connection stays open").hasSize(1)
+                assertThat(session.err).describedAs("message").contains("Stopped waiting for 'slow'").contains("may still")
+                assertThat(session.out.lines()).describedAs("command output").contains("ran status").doesNotContain("ran slow")
+                assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.OK)
+            }
         }
     }
 
