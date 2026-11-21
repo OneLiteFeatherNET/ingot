@@ -18,6 +18,13 @@
 // credentials in the Secret of the same name, which the overlays already pass as objectStorage.existingSecret. The
 // server reads endpoint and bucket from the storage provider settings of a repository, not from the environment, so the
 // runner reads the ConfigMap and builds those settings. No host of the cluster is kept in the repository.
+//
+// The settings reach the release as the chart's shared configuration, so every pod starts on the bucket. A worker of
+// scalable mode refuses to start while a repository is on the file system, so the settings cannot wait for the k6
+// setup() and the settings API: the pods would never become ready and the TestRun would never start. The shared
+// configuration also leaves the settings in the shared database untouched, so a later monolith run does not inherit the
+// bucket. The chart then owns INGOT_OPTS in env, which wins over the INGOT_OPTS of the run Secret in envFrom, so the
+// bucket overlays pass the run token in env as a reference to the password of that Secret.
 
 import { LOAD_NAMESPACE, type Topology } from '../lib/config.ts';
 
@@ -78,6 +85,30 @@ export function objectStorageSettings(topology: Topology, configMapData: string)
     region: data.BUCKET_REGION?.trim() || DEFAULT_BUCKET_REGION,
     sharedBucket: true,
   };
+}
+
+/** The default repositories of Ingot, each on the bucket. The private one keeps its visibility. */
+const REPOSITORIES = [
+  { id: 'releases', visibility: 'PUBLIC' },
+  { id: 'snapshots', visibility: 'PUBLIC' },
+  { id: 'private', visibility: 'PRIVATE' },
+] as const;
+
+/**
+ * The shared configuration document of a bucket run: the maven domain with every default repository on the bucket. It
+ * names no credentials, so the server reads them from the bucket Secret the overlays pass.
+ */
+export function sharedConfigurationDocument(settings: S3StorageProvider): string {
+  const repositories = REPOSITORIES.map((repository) => ({ ...repository, storageProvider: { ...settings } }));
+  return `${JSON.stringify({ maven: { repositories } }, null, 2)}\n`;
+}
+
+/** The helm arguments that enable the chart's shared configuration with the document in the given file. */
+export function objectStorageHelmArguments(documentPath: string): string[] {
+  return [
+    '--set', 'sharedConfiguration.enabled=true',
+    '--set-file', `sharedConfiguration.content=${documentPath}`,
+  ];
 }
 
 function parseData(text: string): Record<string, string | undefined> {

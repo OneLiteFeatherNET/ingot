@@ -135,3 +135,18 @@ test('every overlay sizes the heap as a percentage of the memory limit and sets 
     assert.doesNotMatch(text, /-Xmx/, `"${name}" sets a fixed heap, which overrides the percentage`);
   }
 });
+
+const OBJECT_STORAGE_OVERLAYS = ['ha', 'scalable', 'scalable-read-1', 'scalable-read-2', 'scalable-read-4'];
+const TOKEN_FROM_SECRET = /^  - name: INGOT_OPTS\n    value: "--token loadtest:\$\(LOADTEST_PASSWORD\)"$/m;
+
+test('the bucket overlays pass the run token in env, where the shared configuration of the runner keeps it', () => {
+  for (const name of OBJECT_STORAGE_OVERLAYS) {
+    assert.match(overlayText(name), TOKEN_FROM_SECRET, `"${name}" does not pass the token in env`);
+  }
+});
+
+test('no overlay holds a token secret, only the reference to the password of the run Secret', () => {
+  for (const name of TOPOLOGIES) {
+    assert.doesNotMatch(overlayText(name).replace(TOKEN_FROM_SECRET, ''), /--token/, `"${name}" holds a token`);
+  }
+});

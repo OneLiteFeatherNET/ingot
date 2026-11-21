@@ -34,6 +34,7 @@ The options are:
 | `--topology` | `monolith`, `ha`, `split`, `scalable`, `scalable-read-1`, `scalable-read-2`, `scalable-read-4` | required |
 | `--profile` | `breakpoint`, `plateau`, `soak` | required |
 | `--scenario` | `resolve`, `resolve-miss`, `metadata`, `deploy`, `mirror`, `auth`, `search-browse`, `dashboard`, `mix` | required |
+| `--size` | `N`, `T`, `S`, `M`, `L` | chart default resources, and no result record |
 | `--reference` | flag | off |
 | `--parallelism` | whole number of at least 1 | 1 |
 
@@ -46,6 +47,10 @@ The runner reads further settings from its environment:
 | `LOADTEST_ABORT_ON_FAIL` | `false` runs the whole breakpoint ramp instead of stopping at the first broken threshold. |
 | `LOADTEST_BREAKPOINT`, `LOADTEST_HOLD_MINUTES` | Breakpoint rate and step hold of the plateau profile. The plateau needs the breakpoint. |
 | `LOADTEST_RATE`, `LOADTEST_SOAK_MINUTES` | Rate and duration of the soak profile. The soak needs the rate. |
+| `INGOT_LOADTEST_CPU_MODEL` | CPU model of the load test nodes, kept in the result record. Required with `--size`, because a Kubernetes node does not report it. |
+| `INGOT_LOADTEST_QUERY_URL` | Prometheus HTTP API of the metrics store, as the machine of the runner reaches it, for example `http://<host>/prometheus`. The runner reads the maximum and its p95 of the run from it. Without it, the runner uses the query API on the host of `INGOT_LOADTEST_RW_URL`, which works when that host also resolves outside the cluster. |
+
+With `--size`, the runner applies that reference size with requests equal to limits, and after the run it writes the result record. It reads the highest passed plateau step of the run from the metrics store, with the p95 over that step's hold. A run without a passed step writes no record.
 
 Pass `--reference` only for a published run. A reference run first counts the nodes that carry the load test label and refuses to start when there are fewer than its topology needs, with the number found and the number needed. Only a reference run pins the load generator to the labelled nodes. A run without the flag may share nodes, and its record is marked `reference: false`, so its numbers are never published.
 
