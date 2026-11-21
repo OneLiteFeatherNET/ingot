@@ -45,6 +45,9 @@ Options: --url <url>, --context <name>, --token-file <path>, --credential-helper
 Variables: INGOT_URL, INGOT_TOKEN, INGOT_TOKEN_FILE, INGOT_CREDENTIAL_HELPER, INGOT_CA_CERT, INGOT_CONTEXT, INGOT_CONFIG
 Exit codes: 0 success, 1 command failed, 2 usage or unknown command, 3 confirmation required, 4 denied, 5 unreachable, 6 server too old"""
 
+/** The `client` of the hello, which the server writes into the audit event. */
+private val CLIENT_NAME = "ingot-cli/" + (IngotClient::class.java.`package`?.implementationVersion ?: "dev")
+
 fun main(args: Array<String>) {
     val interactive = System.console() != null
     exitProcess(runCli(args.toList(), System.getenv(), System.`in`, System.out, System.err, interactive) { createTerminal() })
@@ -136,7 +139,9 @@ fun runCli(
         return ExitCode.USAGE
     }
 
-    val client = IngotClient(url, token, Duration.ofSeconds(config.timeoutSeconds), httpClient(config, err))
+    val timeout = Duration.ofSeconds(config.timeoutSeconds)
+    val http = httpClient(config, err)
+    val client = IngotClient(url, token, timeout, http)
     val json = config.output == "json" || flags["output"] == "json"
     val yes = flags.containsKey("yes")
 
@@ -145,7 +150,8 @@ fun runCli(
             err.println(USAGE)
             return ExitCode.USAGE
         }
-        return runRepl(client, term, config.context ?: url, json = json, yes = yes, out = out, err = err)
+        val connector = ConsoleConnector { onLog -> ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout, onLog) }
+        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = out, err = err)
     }
 
     val lines = if (commandArguments == listOf("-")) {
