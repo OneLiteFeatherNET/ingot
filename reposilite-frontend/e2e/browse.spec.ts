@@ -33,7 +33,7 @@ test.describe('browse a repository', () => {
 
     // The link points at the file itself: following it is the download, and the bytes are the uploaded ones.
     const href = await file.getAttribute('href')
-    const response = await page.request.get(href)
+    const response = await page.request.get(href!)
     expect(response.status(), 'the status of the download').toBe(200)
     expect(await response.text(), 'the downloaded bytes').toBe(ARTIFACT_BYTES)
   })

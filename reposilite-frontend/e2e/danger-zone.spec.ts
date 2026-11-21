@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+import type { Locator } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 
 // The number of lines the label of a control is drawn on. A label that wraps has one text box per line, and the
 // boxes of one line share a top edge.
-const linesOf = (locator) => locator.evaluate((element) => {
+const linesOf = (locator: Locator) => locator.evaluate((element) => {
   const range = document.createRange()
   range.selectNodeContents(element)
   const tops = new Set(Array.from(range.getClientRects(), rect => Math.round(rect.top)))

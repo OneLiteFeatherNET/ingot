@@ -37,7 +37,7 @@ test.describe('a visitor with the dashboard node alone', () => {
       await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
       await expect(dialog, 'the token signs the visitor in').toBeHidden()
 
-      const requests = []
+      const requests: string[] = []
       page.on('request', request => requests.push(request.url()))
       await page.goto(siteUrl('/settings'))
 
