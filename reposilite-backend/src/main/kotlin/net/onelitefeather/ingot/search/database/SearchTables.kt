@@ -44,8 +44,11 @@ internal class SearchTables(dialect: SearchDialect) {
     /** The tokens of each GAV, keyed by its `gav_key` (full text change, D1). Added by the `schema-2` marker. */
     val token = SearchTokenTable(binary)
 
+    /** The attributes of each row (search document attributes, D6). Added by the `schema-3` marker. */
+    val attribute = SearchAttributeTable(binary)
+
     /** Every table in creation order. */
-    fun all(): List<Table> = listOf(state, artifact, outbox, rebuildRun, token)
+    fun all(): List<Table> = listOf(state, artifact, outbox, rebuildRun, token, attribute)
 
 }
 
@@ -117,6 +120,32 @@ internal class SearchTokenTable(binary: String?) : Table("search_token") {
 
     companion object {
         const val TOKEN_LENGTH = 64
+    }
+
+}
+
+/**
+ * The attributes of each row of `search_artifact`, one row per value (search document attributes, D6). A row is found by
+ * `(repository, path_hash)`, the upsert key of its artifact row; [valueIndex] keeps the order of the values of a key. The
+ * primary key leaves out the value itself, whose 2000 characters would exceed the key width of MariaDB and MySQL.
+ */
+internal class SearchAttributeTable(binary: String?) : Table("search_attribute") {
+    val repository = varchar("repository", SearchColumn.REPOSITORY.limit, binary)
+    val path = varchar("path", SearchColumn.PATH.limit, binary)
+    val pathHash = char("path_hash", SearchArtifactTable.PATH_HASH_LENGTH)
+    val key = varchar("attr_key", KEY_LENGTH, binary)
+    val valueIndex = integer("value_index")
+    val value = varchar("attr_value", VALUE_LENGTH)
+    val valueLc = varchar("attr_value_lc", VALUE_LENGTH, binary)
+
+    override val primaryKey = PrimaryKey(repository, pathHash, key, valueIndex)
+
+    companion object {
+        /** An enricher id of 32 characters, a dot and a name of 32, with room for the `core.enricher.` prefix. */
+        const val KEY_LENGTH = 80
+
+        /** The longest value the core accepts (search document attributes, D1). */
+        const val VALUE_LENGTH = 2000
     }
 
 }

@@ -43,6 +43,9 @@ internal object SearchSchema {
     /** The marker of the token index (full text change, D4): the key column, the token table and their indexes. */
     const val TOKEN_MARKER_KEY = "schema-2"
 
+    /** The marker of the attribute table (search document attributes, D6). */
+    const val ATTRIBUTE_MARKER_KEY = "schema-3"
+
     enum class Outcome {
         /** This starter created the tables. */
         CREATED,
@@ -69,10 +72,14 @@ internal object SearchSchema {
             // SchemaUtils.create commits, so the token marker has to be written before it: another instance that sees
             // the schema-1 marker must also see schema-2, or it would add the key column a second time.
             markTokenIndex(tables, clock)
-            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun, tables.token)
+            mark(tables, ATTRIBUTE_MARKER_KEY, clock)
+            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun, tables.token, tables.attribute)
             Outcome.CREATED
         }
-        if (outcome == Outcome.ALREADY_CREATED) upgradeToTokenIndex(database, tables, clock)
+        if (outcome == Outcome.ALREADY_CREATED) {
+            upgradeToTokenIndex(database, tables, clock)
+            upgradeToAttributes(database, tables, clock)
+        }
         return outcome
     }
 
@@ -101,9 +108,22 @@ internal object SearchSchema {
         }
     }
 
-    private fun markTokenIndex(tables: SearchTables, clock: Clock): Int =
+    /**
+     * Adds the attribute table to a database created before it (search document attributes, D8). Only an addition: the rows
+     * that exist have no attributes until they are enriched. Serialised on its marker like the other upgrades.
+     */
+    private fun upgradeToAttributes(database: Database, tables: SearchTables, clock: Clock) {
+        transaction(database) {
+            if (mark(tables, ATTRIBUTE_MARKER_KEY, clock) == 0) return@transaction
+            SchemaUtils.createStatements(tables.attribute).forEach { exec(it) }
+        }
+    }
+
+    private fun markTokenIndex(tables: SearchTables, clock: Clock): Int = mark(tables, TOKEN_MARKER_KEY, clock)
+
+    private fun mark(tables: SearchTables, key: String, clock: Clock): Int =
         tables.state.insertIgnore {
-            it[tables.state.key] = TOKEN_MARKER_KEY
+            it[tables.state.key] = key
             it[tables.state.value] = "created"
             it[tables.state.updatedAt] = clock.millis()
         }.insertedCount

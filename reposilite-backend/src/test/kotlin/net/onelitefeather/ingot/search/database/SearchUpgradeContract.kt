@@ -198,6 +198,41 @@ internal abstract class SearchUpgradeContract {
             .isEqualTo(SPRING_CORE_TOKENS)
     }
 
+    /** Takes a fresh database back to the layout before the attribute table: the table and its marker are removed. */
+    private fun createSchemaTwoWithRows(database: Database) {
+        SearchSchema.ensure(database, clock)
+        DatabaseSearchBackend(database, clock).apply(listOf(IndexAction.Upsert(row(JAR))))
+        transaction(database) {
+            exec("DROP TABLE search_attribute")
+            val state = SearchTables(SearchDialect.of(database.vendor)).state
+            state.deleteWhere { state.key eq "schema-3" }
+        }
+    }
+
+    @Test
+    fun `an installation at schema-2 gains the attribute table and keeps its rows`() = withDatabase { database ->
+        createSchemaTwoWithRows(database)
+
+        SearchSchema.ensure(database, clock)
+
+        transaction(database) { exec("SELECT attr_key FROM search_attribute WHERE 1 = 0") { } }
+        assertThat(DatabaseSearchBackend(database, clock).count())
+            .`as`("rows after the upgrade of a schema-2 database")
+            .isEqualTo(1L)
+    }
+
+    @Test
+    fun `a second upgrade of the same database writes one schema-3 marker`() = withDatabase { database ->
+        createSchemaTwoWithRows(database)
+
+        SearchSchema.ensure(database, clock)
+        SearchSchema.ensure(database, clock)
+
+        assertThat(markerCount(database, "schema-3"))
+            .`as`("schema-3 markers after two starts")
+            .isEqualTo(1)
+    }
+
     private fun row(path: String): IndexRow {
         val parsed = ArtifactPathParser.parse(REPOSITORY, path) as ArtifactPathResult.Row
         return IndexRow(

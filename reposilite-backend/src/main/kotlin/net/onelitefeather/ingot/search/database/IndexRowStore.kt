@@ -44,7 +44,8 @@ import org.jetbrains.exposed.v1.jdbc.update
  */
 internal class IndexRowStore(private val database: Database) {
 
-    private val rows = SearchTables(SearchDialect.of(database.vendor)).artifact
+    private val tables = SearchTables(SearchDialect.of(database.vendor))
+    private val rows = tables.artifact
 
     /** The rows of [paths] in [repository], by path. */
     fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
@@ -71,19 +72,32 @@ internal class IndexRowStore(private val database: Database) {
         }
     }
 
-    /** Deletes up to [limit] rows of [repository] that were indexed before [before]. Returns how many were deleted. */
+    /**
+     * Deletes up to [limit] rows of [repository] that were indexed before [before], and their attributes. Returns how many rows
+     * were deleted.
+     */
     fun deleteStale(repository: String, before: Long, limit: Int): Int = transaction(database) {
-        val ids = rows.select(rows.id)
-            .where { (rows.repository eq repository) and (rows.indexedAt less before) }
-            .limit(limit)
-            .map { it[rows.id] }
-        if (ids.isEmpty()) 0 else rows.deleteWhere { rows.id inList ids }
+        deleteFound(
+            repository,
+            rows.select(rows.id, rows.pathHash)
+                .where { (rows.repository eq repository) and (rows.indexedAt less before) }
+                .limit(limit),
+        )
     }
 
-    /** Deletes up to [limit] rows of [repository]. Returns how many were deleted. */
+    /** Deletes up to [limit] rows of [repository] and their attributes. Returns how many rows were deleted. */
     fun deleteRepository(repository: String, limit: Int): Int = transaction(database) {
-        val ids = rows.select(rows.id).where { rows.repository eq repository }.limit(limit).map { it[rows.id] }
-        if (ids.isEmpty()) 0 else rows.deleteWhere { rows.id inList ids }
+        deleteFound(repository, rows.select(rows.id, rows.pathHash).where { rows.repository eq repository }.limit(limit))
+    }
+
+    /** Deletes the rows of [found] and their attributes in the caller's transaction. Returns how many rows were deleted. */
+    private fun deleteFound(repository: String, found: Iterable<ResultRow>): Int {
+        val selected = found.map { it[rows.id] to it[rows.pathHash] }
+        if (selected.isEmpty()) return 0
+        val ids = selected.map { it.first }
+        val deleted = rows.deleteWhere { rows.id inList ids }
+        tables.attribute.deleteOf(repository, selected.map { it.second })
+        return deleted
     }
 
     /** The names of the repositories that have at least one row. */
