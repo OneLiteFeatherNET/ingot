@@ -18,6 +18,8 @@
 import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import NewEntryDialog from './NewEntryDialog.vue'
@@ -62,6 +64,7 @@ interface ListItem {
   problem: string
   summary: string
   tags: string[]
+  selected: boolean
 }
 
 const tagsOf = (entry: ListEntry | undefined): string[] => {
@@ -77,14 +80,17 @@ const items = computed((): ListItem[] => {
   const ids = props.entries.map(idText)
   return filterEntries(props.entries, query.value).map((item) => {
     const problem = validateNewId(item.id, ids.filter((_, other) => other !== item.index), props.noun)
+    const key = props.keys[item.index] ?? String(item.index)
     return {
-      key: props.keys[item.index] ?? String(item.index),
+      key,
       address: addresses[item.index],
       title: item.id !== '' ? item.id : `Unnamed ${props.noun}`,
       unnamed: item.id === '',
       problem,
       summary: problem ? '' : summaryOf(props.itemSchema, item.entry),
-      tags: tagsOf(item.entry)
+      tags: tagsOf(item.entry),
+      // The selection is decided here, once per list, and each row reads its own flag.
+      selected: key === props.selectedKey
     }
   })
 })
@@ -100,8 +106,6 @@ const emptyText = computed(() => {
   if (props.entries.length === 0) return `No ${props.collectionTitle.toLowerCase()} yet.`
   return `No ${props.noun} matches "${query.value.trim()}".`
 })
-
-const isSelected = (item: ListItem) => item.key === props.selectedKey
 </script>
 
 <template>
@@ -148,62 +152,65 @@ const isSelected = (item: ListItem) => item.key === props.selectedKey
       </template>
     </MdTextField>
 
-    <ul
+    <!--
+      Each entry is a plain MdListItem, and the whole item is one block: the selection colour, the state
+      layer and the tag chips all belong to it. The button holds the id and the supporting line, is the
+      part that selects, and stretches over the whole item with its ::after. The chips follow it in the
+      source and are positioned, so they are painted above that stretched area and take their own clicks.
+    -->
+    <MdList
       v-if="items.length > 0"
-      class="flex flex-col gap-1"
+      class="gap-1"
     >
-      <!--
-        The item is one block: the selection colour, the state layer and the tag chips all belong to the
-        <li>. The button inside it holds the id and the supporting line, and is the part that selects.
-      -->
-      <li
+      <MdListItem
         v-for="item in items"
         :key="item.key"
         class="md-state-layer rounded-corner-large"
-        :class="isSelected(item) ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+        :class="item.selected ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
       >
-        <button
-          type="button"
-          class="md-focus-ring-inset relative flex w-full min-w-0 flex-col gap-1 rounded-corner-large px-4 pt-3 text-left"
-          :class="item.tags.length > 0 ? 'pb-0' : 'pb-3'"
-          :aria-current="isSelected(item) ? 'true' : undefined"
-          @click="emit('select', item.address)"
-        >
-          <span
-            class="md-title-small break-all"
-            :class="item.unnamed ? 'italic' : ''"
-          >{{ item.title }}</span>
-          <span
-            v-if="item.problem"
-            class="md-body-medium text-error"
+        <span class="flex flex-col gap-2">
+          <button
+            type="button"
+            class="md-focus-ring-inset flex w-full min-w-0 flex-col gap-1 text-left after:absolute after:inset-0"
+            :aria-current="item.selected ? 'true' : undefined"
+            @click="emit('select', item.address)"
           >
-            {{ item.problem }}
+            <span
+              class="md-title-small break-all"
+              :class="item.unnamed ? 'italic' : ''"
+            >{{ item.title }}</span>
+            <span
+              v-if="item.problem"
+              class="md-body-medium text-error"
+            >
+              {{ item.problem }}
+            </span>
+            <span
+              v-else-if="item.summary"
+              :title="item.summary"
+              class="block truncate md-body-medium"
+              :class="item.selected ? 'text-on-secondary-container' : 'text-on-surface-variant'"
+            >
+              {{ item.summary }}
+            </span>
+          </button>
+          <span
+            v-if="item.tags.length > 0"
+            class="relative flex flex-wrap gap-2"
+          >
+            <MdChip
+              v-for="tag in item.tags"
+              :key="tag"
+              data-test="tag-chip"
+              :aria-label="`Show repositories tagged ${tag}`"
+              @click="filterBy(tag)"
+            >
+              {{ tag }}
+            </MdChip>
           </span>
-          <span
-            v-else-if="item.summary"
-            :title="item.summary"
-            class="block truncate md-body-medium"
-            :class="isSelected(item) ? 'text-on-secondary-container' : 'text-on-surface-variant'"
-          >
-            {{ item.summary }}
-          </span>
-        </button>
-        <div
-          v-if="item.tags.length > 0"
-          class="flex flex-wrap gap-2 px-4 pb-3 pt-2"
-        >
-          <MdChip
-            v-for="tag in item.tags"
-            :key="tag"
-            data-test="tag-chip"
-            :aria-label="`Show repositories tagged ${tag}`"
-            @click="filterBy(tag)"
-          >
-            {{ tag }}
-          </MdChip>
-        </div>
-      </li>
-    </ul>
+        </span>
+      </MdListItem>
+    </MdList>
     <MdStatePanel
       v-else
       data-test="empty"
