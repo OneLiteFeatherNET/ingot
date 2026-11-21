@@ -25,6 +25,8 @@ const render = (props: { principal?: Principal; sources?: string[] } = {}) =>
   mount(ProfileCard, { props: { principal: ALICE, sources: ['Local'], ...props } })
 
 const labels = (wrapper: ReturnType<typeof render>) => wrapper.findAll('dt').map(term => term.text())
+const valueOf = (wrapper: ReturnType<typeof render>, label: string) =>
+  wrapper.findAll('[data-test="key-value-row"]').find(row => row.find('dt').text() === label)?.find('dd').text()
 
 describe('ProfileCard', () => {
   it('shows the display name, the username and the kind', () => {
@@ -61,13 +63,23 @@ describe('ProfileCard', () => {
     const wrapper = render({ sources: ['Local', 'LDAP'] })
 
     expect(labels(wrapper), 'the profile names how the principal signs in').toContain('Sign-in')
-    expect(wrapper.find('[data-test="sign-in-sources"]').text()).toBe('Local, LDAP')
+    expect(valueOf(wrapper, 'Sign-in'), 'the sources are joined in one value').toBe('Local, LDAP')
   })
 
   it('falls back to the username when there is no display name', () => {
     const wrapper = render({ principal: { ...ALICE, displayName: '' } })
 
-    expect(wrapper.find('[data-test="display-name"]').text()).toBe('alice')
+    expect(valueOf(wrapper, 'Display name'), 'the username stands in for the display name').toBe('alice')
+  })
+
+  it('lays out the profile values as a shared key and value list', () => {
+    const list = render({ sources: ['Local', 'LDAP'] }).get('dl')
+
+    expect(list.attributes('data-ingot-component'), 'the profile values sit in an md-key-value-list').toBe('md-key-value-list')
+    expect(list.findAll('dt').map(term => term.text()), 'one term per value, in the order of the card')
+      .toEqual(['Display name', 'Username', 'Kind', 'Sign-in'])
+    expect(list.findAll('dd').map(detail => detail.text()), 'each term keeps its value')
+      .toEqual(['Alice Example', 'alice', 'User', 'Local, LDAP'])
   })
 
   it('names a machine account as such', () => {

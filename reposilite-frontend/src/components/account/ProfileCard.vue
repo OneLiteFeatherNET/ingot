@@ -18,6 +18,7 @@
 import { computed } from 'vue'
 import type { Principal } from '../../store/session'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdSection from '../md/MdSection.vue'
 
 /*
@@ -41,6 +42,14 @@ const KINDS: Readonly<Record<string, string | undefined>> = { USER: 'User', MACH
 const kind = computed(() => KINDS[props.principal.kind] ?? props.principal.kind)
 const displayName = computed(() => props.principal.displayName || props.principal.name)
 const username = computed(() => (props.principal.name === displayName.value ? '' : props.principal.name))
+
+// The rows of the card, in order. The username and the sign-in sources are left out when empty.
+const rows = computed(() => [
+  { label: 'Display name', value: displayName.value },
+  ...(username.value ? [{ label: 'Username', value: username.value }] : []),
+  { label: 'Kind', value: kind.value },
+  ...(props.sources.length > 0 ? [{ label: 'Sign-in', value: props.sources.join(', ') }] : [])
+])
 </script>
 
 <template>
@@ -58,45 +67,7 @@ const username = computed(() => (props.principal.name === displayName.value ? ''
         :level="3"
         heading-id="profile-title"
       >
-        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">
-          <dt class="text-on-surface-variant">
-            Display name
-          </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="display-name"
-          >
-            {{ displayName }}
-          </dd>
-          <template v-if="username">
-            <dt class="text-on-surface-variant">
-              Username
-            </dt>
-            <dd
-              class="m-0 min-w-0 break-words text-on-surface"
-              data-test="username"
-            >
-              {{ username }}
-            </dd>
-          </template>
-          <dt class="text-on-surface-variant">
-            Kind
-          </dt>
-          <dd class="m-0 text-on-surface">
-            {{ kind }}
-          </dd>
-          <template v-if="sources.length > 0">
-            <dt class="text-on-surface-variant">
-              Sign-in
-            </dt>
-            <dd
-              class="m-0 min-w-0 break-words text-on-surface"
-              data-test="sign-in-sources"
-            >
-              {{ sources.join(', ') }}
-            </dd>
-          </template>
-        </dl>
+        <MdKeyValueList :items="rows" />
       </MdSection>
     </MdCard>
   </section>
