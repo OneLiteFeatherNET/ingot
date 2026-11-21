@@ -45,7 +45,7 @@ test.describe('administration page header while scrolling', () => {
     }
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto(siteUrl('/settings/repositories'))
-    const heading = page.getByRole('heading', { name: 'Repositories', level: 2 })
+    const heading = page.getByRole('heading', { name: 'Repositories', level: 1, exact: true })
     const action = page.getByRole('button', { name: 'New repository', exact: true })
     const appBar = page.getByRole('banner')
     await expect(heading).toBeVisible()
@@ -629,5 +629,89 @@ test.describe('the frame while a page transitions', () => {
     expect(Math.abs(overlay.top), 'the sheet starts at the top edge of the window, in px').toBeLessThanOrEqual(0.5)
     expect(Math.abs(overlay.width - overlay.viewportWidth), 'the sheet is as wide as the window, in px').toBeLessThanOrEqual(0.5)
     expect(Math.abs(overlay.height - overlay.viewportHeight), 'the sheet is as high as the window, in px').toBeLessThanOrEqual(0.5)
+  })
+})
+
+// The page shell and the page header of every page (design D2 and D3 of fix-surface-hierarchy-and-page-header): one h1 per
+// page, the title on the edge of its trail, a full width page container, and a back control in its own row that never moves
+// the title.
+test.describe('the page shell and the page header', () => {
+  const PAGES = ['/', '/settings', '/settings/repositories', '/access/users', '/audit', '/account']
+
+  for (const width of [320, 1440]) {
+    for (const path of PAGES) {
+      test(`draws exactly one h1 on ${path} at ${width} pixels`, async ({ adminPage: page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto(siteUrl(path))
+        await expect(page.getByRole('heading', { level: 1 }), `the page heading of ${path} is visible`).toBeVisible()
+
+        await expect(page.locator('h1'), `exactly one h1 on ${path} at ${width} pixels`).toHaveCount(1)
+      })
+    }
+  }
+
+  for (const width of [1280, 1920]) {
+    test(`starts the repository detail title on the left edge of its trail at ${width} pixels`, async ({ adminPage: page, seed }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const id = await seed.repository(`title-edge-${width}`)
+      await page.goto(siteUrl(`/settings/repositories/${id}`))
+      const title = page.getByRole('heading', { level: 1, name: id, exact: true })
+      const trail = page.getByRole('navigation', { name: 'Breadcrumb', exact: true })
+      await expect(title).toBeVisible()
+      await expect(trail).toBeVisible()
+
+      const titleBox = await title.boundingBox()
+      const trailBox = await trail.boundingBox()
+      expect(Math.abs(titleBox!.x - trailBox!.x), 'the left edges of the title and the trail, in px').toBeLessThanOrEqual(0.5)
+    })
+  }
+
+  test('draws the page container at full width and keeps a form block to the reading measure at 1920 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1920, height: 900 })
+    await page.goto(siteUrl('/account'))
+    const title = page.getByRole('heading', { level: 1, name: 'My account', exact: true })
+    await expect(title).toBeVisible()
+
+    const container = page.locator('[data-ingot-component="md-page"]').filter({ has: title })
+    const classes = await container.evaluate(element => [...element.classList])
+    expect(classes.filter(name => name.startsWith('max-w-')), 'the page container has no max-w class').toEqual([])
+
+    const form = page.getByRole('region', { name: 'Sign-in and security', exact: true })
+    await expect(form).toBeVisible()
+    const box = await form.boundingBox()
+    expect(box!.width, 'the width of the security form block, in px').toBeLessThanOrEqual(960)
+  })
+
+  test('draws the back control of a detail page in its own row, with its glyph on the title edge, at 390 pixels', async ({ adminPage: page, seed }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    const id = await seed.repository('back-row')
+    await page.goto(siteUrl(`/settings/repositories/${id}`))
+    const title = page.getByRole('heading', { level: 1, name: id, exact: true })
+    const back = page.getByRole('link', { name: /^Back to / })
+    await expect(title).toBeVisible()
+    await expect(back).toBeVisible()
+
+    const titleBox = await title.boundingBox()
+    const backBox = await back.boundingBox()
+    const glyphBox = await back.locator('svg').boundingBox()
+    expect(backBox!.y + backBox!.height, 'the back control ends above the title, in px').toBeLessThanOrEqual(titleBox!.y + 0.5)
+    expect(Math.abs(glyphBox!.x - titleBox!.x), 'the left edges of the back glyph and the title, in px').toBeLessThanOrEqual(0.5)
+
+    // Overview draws no back control, so its title edge is the edge the detail title must keep.
+    await page.goto(siteUrl('/settings'))
+    await expect(page.getByRole('link', { name: /^Back to / }), 'Overview has no back control').toHaveCount(0)
+    const overviewTitle = page.getByRole('heading', { level: 1 })
+    await expect(overviewTitle).toBeVisible()
+    const overviewBox = await overviewTitle.boundingBox()
+    expect(Math.abs(overviewBox!.x - titleBox!.x), 'the title starts on the same edge with and without the back control, in px').toBeLessThanOrEqual(0.5)
+  })
+
+  test('draws no back control on a detail page at 1280 pixels', async ({ adminPage: page, seed }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const id = await seed.repository('no-back-wide')
+    await page.goto(siteUrl(`/settings/repositories/${id}`))
+    await expect(page.getByRole('heading', { level: 1, name: id, exact: true })).toBeVisible()
+
+    await expect(page.getByRole('link', { name: /^Back to / }), 'no back control from 1240 pixels').toHaveCount(0)
   })
 })
