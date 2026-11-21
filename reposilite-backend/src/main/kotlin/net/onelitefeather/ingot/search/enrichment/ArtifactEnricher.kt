@@ -49,7 +49,28 @@ interface ArtifactEnricher {
     /** Enriches one file. Must not hold state that outlives one call. */
     fun enrich(artifact: ArtifactEnrichmentRequest): EnrichmentResult
 
+    /**
+     * The attribute keys a search may filter, facet or sort on (search attribute facets, D1). Each key is in this enricher's
+     * namespace, `<id>.<name>`. A key that is not declared, or declared without the matching flag, is refused by the search.
+     * Empty by default, which keeps every attribute out of filters, facets and sorts.
+     */
+    @ExperimentalIngotPluginApi
+    val declaredAttributes: List<AttributeDeclaration> get() = emptyList()
+
 }
+
+/**
+ * One attribute key an [ArtifactEnricher] declares, with what a search may do with it: [filterable] in a filter, [facetable] as a
+ * facet with counts per value, [sortable] as the sort of the results.
+ */
+@ExperimentalIngotSearchApi
+@ExperimentalIngotPluginApi
+data class AttributeDeclaration(
+    val key: String,
+    val filterable: Boolean,
+    val facetable: Boolean,
+    val sortable: Boolean,
+)
 
 /** The stored file an enricher is called for. Built by the core only. */
 @ExperimentalIngotSearchApi

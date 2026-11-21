@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.search.enrichment
 
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.entry
 import org.junit.jupiter.api.Test
 
 internal class ArtifactEnricherRegistryTest {
@@ -118,9 +120,92 @@ internal class ArtifactEnricherRegistryTest {
         assertThat(registry.accepted()).`as`("accepted enrichers after registration through the event").containsExactly(enricher)
     }
 
+    @Test
+    fun `an enricher without declarations adds nothing to the catalogue`() {
+        val registry = registry()
+
+        registry.register(FakeEnricher(id = "jar-manifest"))
+
+        assertThat(registry.catalogue()).`as`("catalogue of an enricher that declares nothing").isEmpty()
+        assertThat(warnings).`as`("warnings of an enricher that declares nothing").isEmpty()
+    }
+
+    @Test
+    fun `a declared key is in the catalogue with its three flags`() {
+        val registry = registry()
+        val loader = AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false)
+        val name = AttributeDeclaration(key = "minecraft-portal.name", filterable = false, facetable = false, sortable = true)
+
+        registry.register(FakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(loader, name)))
+
+        assertThat(registry.catalogue()).`as`("catalogue of the declared keys")
+            .containsExactly(entry("minecraft-portal.loader", loader), entry("minecraft-portal.name", name))
+        assertThat(warnings).`as`("warnings of valid declarations").isEmpty()
+    }
+
+    @Test
+    fun `a declaration outside the enricher namespace is refused and the warning names the key and the class`() {
+        val registry = registry()
+        val own = AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false)
+        val foreign = AttributeDeclaration(key = "gradle-portal.plugin_id", filterable = true, facetable = false, sortable = false)
+
+        val accepted = registry.register(FakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(own, foreign)))
+
+        assertThat(accepted).`as`("registration of an enricher with one foreign declaration").isTrue()
+        assertThat(registry.catalogue()).`as`("catalogue without the foreign declaration")
+            .containsExactly(entry("minecraft-portal.loader", own))
+        assertThat(warnings).`as`("warnings of the foreign declaration").hasSize(1)
+        assertThat(warnings.single()).`as`("warning text")
+            .contains("gradle-portal.plugin_id")
+            .contains(FakeEnricher::class.java.name)
+    }
+
+    @Test
+    fun `a declaration whose name breaks the attribute key rules is refused`() {
+        val invalidKeys = listOf("minecraft-portal", "minecraft-portal.", "minecraft-portal.Loader", "minecraft-portal.game-version")
+
+        invalidKeys.forEach { key ->
+            val registry = registry()
+            val declaration = AttributeDeclaration(key = key, filterable = true, facetable = true, sortable = true)
+
+            registry.register(FakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(declaration)))
+
+            assertThat(registry.catalogue()).`as`("catalogue for the invalid key '$key'").isEmpty()
+        }
+        assertThat(warnings).`as`("one warning per refused key").hasSize(invalidKeys.size)
+    }
+
+    @Test
+    fun `a key declared twice is refused naming both classes and the first declaration is kept`() {
+        val registry = registry()
+        val first = AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false)
+        val second = AttributeDeclaration(key = "minecraft-portal.loader", filterable = false, facetable = false, sortable = true)
+
+        registry.register(FakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(first, second)))
+
+        assertThat(registry.catalogue()).`as`("catalogue after a duplicate declaration")
+            .containsExactly(entry("minecraft-portal.loader", first))
+        assertThat(warnings).`as`("warnings of the duplicate declaration").hasSize(1)
+        assertThat(warnings.single()).`as`("warning text")
+            .contains("minecraft-portal.loader")
+            .contains(FakeEnricher::class.java.name)
+    }
+
+    @Test
+    fun `a refused enricher adds nothing to the catalogue`() {
+        val registry = registry()
+        val declaration = AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false)
+        registry.register(FakeEnricher(id = "minecraft-portal"))
+
+        registry.register(AnotherFakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(declaration)))
+
+        assertThat(registry.catalogue()).`as`("catalogue after a refused enricher").isEmpty()
+    }
+
     private open class FakeEnricher(
         override val id: String,
         override val apiVersion: Int = ARTIFACT_ENRICHER_API_VERSION,
+        override val declaredAttributes: List<AttributeDeclaration> = emptyList(),
     ) : ArtifactEnricher {
 
         override val version: String = "1"
@@ -131,6 +216,9 @@ internal class ArtifactEnricherRegistryTest {
 
     }
 
-    private class AnotherFakeEnricher(id: String) : FakeEnricher(id = id)
+    private class AnotherFakeEnricher(
+        id: String,
+        declaredAttributes: List<AttributeDeclaration> = emptyList(),
+    ) : FakeEnricher(id = id, declaredAttributes = declaredAttributes)
 
 }
