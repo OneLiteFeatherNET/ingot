@@ -27,6 +27,13 @@ import { promisify } from 'node:util';
 import { INGOT_RELEASE, K6_IMAGE, LOAD_NAMESPACE, parseRunOptions } from '../lib/config.ts';
 import { remoteWriteUrl, scriptArguments, scriptVariables } from './environment.ts';
 import { labelledNodesCommand } from './nodes.ts';
+import {
+  objectStorageConfigMapCommand,
+  objectStorageHelmArguments,
+  objectStorageSettings,
+  sharedConfigurationDocument,
+  usesObjectStorage,
+} from './object-storage.ts';
 import { parseSizeOption, sizeHelmArguments } from './size.ts';
 import { buildTestRun } from './testrun.ts';
 import { runSteps, type RunnerPorts } from './steps.ts';
@@ -125,6 +132,16 @@ async function main(argv: readonly string[]): Promise<void> {
       (await kubectl(labelledNodesCommand())).split('\n').filter((line) => line.trim() !== '').length,
     install: async () => {
       await kubectl(['apply', '-f', secretPath]);
+      // ha and scalable keep their artifacts in the bucket. Its endpoint comes from the ConfigMap of the bucket claim.
+      const storageArguments: string[] = [];
+      const settings = usesObjectStorage(options.topology)
+        ? objectStorageSettings(options.topology, await kubectl(objectStorageConfigMapCommand()))
+        : undefined;
+      if (settings) {
+        const documentPath = join(workDir, 'configuration.shared.json');
+        writeFileSync(documentPath, sharedConfigurationDocument(settings));
+        storageArguments.push(...objectStorageHelmArguments(documentPath));
+      }
       await exec('helm', [
         'upgrade', '--install', INGOT_RELEASE, chartPath,
         '--namespace', LOAD_NAMESPACE,
@@ -134,6 +151,7 @@ async function main(argv: readonly string[]): Promise<void> {
         ...(ingotDigest ? ['--set', `image.digest=${ingotDigest}`] : []),
         '--set', `envFrom[0].secretRef.name=${credentialsSecret}`,
         ...(size ? sizeHelmArguments(size) : []),
+        ...storageArguments,
         '--wait=false',
       ]);
     },

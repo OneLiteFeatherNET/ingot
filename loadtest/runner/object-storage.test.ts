@@ -20,7 +20,9 @@ import {
   DEFAULT_BUCKET_REGION,
   OBJECT_STORAGE_CONFIG_MAP,
   objectStorageConfigMapCommand,
+  objectStorageHelmArguments,
   objectStorageSettings,
+  sharedConfigurationDocument,
   usesObjectStorage,
 } from './object-storage.ts';
 
@@ -117,4 +119,33 @@ test('a host with a scheme or a path is refused, so the endpoint is always schem
 test('ConfigMap data that is not a JSON object is refused', () => {
   assert.throws(() => objectStorageSettings('ha', ''), /ConfigMap/);
   assert.throws(() => objectStorageSettings('ha', '[]'), /ConfigMap/);
+});
+
+test('the shared configuration puts every default repository on the bucket and keeps private private', () => {
+  const settings = objectStorageSettings('ha', bucket)!;
+
+  const document = JSON.parse(sharedConfigurationDocument(settings));
+
+  assert.deepEqual(document, {
+    maven: {
+      repositories: [
+        { id: 'releases', visibility: 'PUBLIC', storageProvider: settings },
+        { id: 'snapshots', visibility: 'PUBLIC', storageProvider: settings },
+        { id: 'private', visibility: 'PRIVATE', storageProvider: settings },
+      ],
+    },
+  });
+});
+
+test('the shared configuration carries no credentials, so the server takes them from the bucket Secret', () => {
+  const text = sharedConfigurationDocument(objectStorageSettings('scalable', bucket)!);
+
+  assert.doesNotMatch(text, /accessKey|secretKey|password|token/i);
+});
+
+test('the helm arguments enable the shared configuration and read its content from the file', () => {
+  assert.deepEqual(objectStorageHelmArguments('/work/shared.json'), [
+    '--set', 'sharedConfiguration.enabled=true',
+    '--set-file', 'sharedConfiguration.content=/work/shared.json',
+  ]);
 });
