@@ -21,6 +21,17 @@
     "_meta": {
       "ingot_mapping_version": 1
     },
+    "dynamic_templates": [
+      {
+        "ingot_attributes": {
+          "path_match": "attributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      }
+    ],
     "properties": {
       "repository": {
         "type": "keyword"
@@ -91,6 +102,10 @@
       },
       "tokens": {
         "type": "keyword"
+      },
+      "attributes": {
+        "type": "object",
+        "dynamic": true
       }
     }
   }

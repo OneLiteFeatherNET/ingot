@@ -36,14 +36,14 @@ internal class ElasticsearchBulkPlanTest {
 
     private fun bulkLines(body: String): List<String> = body.trimEnd('\n').split('\n')
 
-    /** The document ids of the action lines, in order. An index action is followed by its document line, a delete is not. */
+    /** The document ids of the action lines, in order. An index or update action is followed by its document line, a delete is not. */
     private fun actionIds(body: String): List<String> {
         val lines = bulkLines(body).iterator()
         val ids = mutableListOf<String>()
         while (lines.hasNext()) {
             val action = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(lines.next())
             ids.add(action.elements().next().path("_id").asText())
-            if (action.has("index")) lines.next()
+            if (action.has("index") || action.has("update")) lines.next()
         }
         return ids
     }
