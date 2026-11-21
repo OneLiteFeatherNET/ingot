@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
+import type { Locator } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 import { unbrokenName } from './support/names'
 
 // The lines the text of an element occupies, counted from the boxes of its text. The box of a table cell is not
 // used: a cell is as tall as its row, so a tall neighbour would count as lines of the name.
-const linesOfText = (locator) => locator.evaluate((element) => {
+const linesOfText = (locator: Locator) => locator.evaluate((element) => {
   const range = document.createRange()
   range.selectNodeContents(element)
   return new Set([...range.getClientRects()].map(box => Math.round(box.top))).size
@@ -44,7 +45,7 @@ test.describe('repositories table layout', () => {
       expect(await linesOfText(address), 'lines of the address').toBe(1)
       // The Actions button is an icon with no visible text, so it cannot wrap: its box stays one touch target tall.
       const actionsBox = await actions.boundingBox()
-      expect(actionsBox.height, 'the height of the Actions button').toBeLessThanOrEqual(56)
+      expect(actionsBox!.height, 'the height of the Actions button').toBeLessThanOrEqual(56)
     })
   }
 
@@ -62,7 +63,7 @@ test.describe('repositories table layout', () => {
     // The vertical centre of each element, from its box. Differing centres are the visible asymmetry of the row.
     const centres = await Promise.all([badge, name, actions].map(async (locator) => {
       const box = await locator.boundingBox()
-      return box.y + box.height / 2
+      return box!.y + box!.height / 2
     }))
     const spread = Math.max(...centres) - Math.min(...centres)
     expect(spread, `the centres of the badge, the name and the Actions button of ${repository} differ by ${spread.toFixed(1)} px`).toBeLessThanOrEqual(2)
