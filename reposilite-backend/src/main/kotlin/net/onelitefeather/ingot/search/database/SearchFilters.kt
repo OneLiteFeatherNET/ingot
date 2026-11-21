@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.core.notInSubQuery
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.exists
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
@@ -48,6 +49,8 @@ internal class SearchFilters(
     private val query: ArtifactSearchQuery,
     private val rows: SearchArtifactTable,
     private val tokens: SearchTokenTable,
+    /** Only names columns in the queries, so the collation of its definition does not matter here. */
+    private val attributes: SearchAttributeTable = SearchAttributeTable(null),
 ) {
 
     private val artifacts: SearchArtifactTable = rows
@@ -104,9 +107,30 @@ internal class SearchFilters(
         sizeFilter(query, rows)?.let { put(FilterKind.SIZE, it) }
     }
 
-    /** The AND of every filter, except the kind [except] when a facet asks for its own alternatives. */
-    fun predicate(except: FilterKind? = null): Op<Boolean> =
-        parts().filterKeys { it != except }.values.fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
+    /**
+     * One `EXISTS` per filtered attribute key (search attribute facets, D4): the row holds one of the values of that key,
+     * compared lower-cased. Two filters on one key are one OR over their values.
+     */
+    private fun attributeParts(): Map<String, Op<Boolean>> =
+        query.attributeFilters.groupBy({ it.key }, { it.values }).mapValues { (key, values) ->
+            val wanted = values.flatten().map { it.lowercase(Locale.ROOT) }.distinct()
+            exists(
+                attributes.select(attributes.key).where {
+                    (attributes.repository eq rows.repository) and
+                        (attributes.pathHash eq rows.pathHash) and
+                        (attributes.key eq key) and
+                        (attributes.valueLc inList wanted)
+                }
+            )
+        }
+
+    /**
+     * The AND of every filter, except the kind [except] when a facet asks for its own alternatives, and except the attribute
+     * filter on [exceptAttribute] when an attribute facet does (search attribute facets, D3).
+     */
+    fun predicate(except: FilterKind? = null, exceptAttribute: String? = null): Op<Boolean> =
+        (parts().filterKeys { it != except }.values + attributeParts().filterKeys { it != exceptAttribute }.values)
+            .fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
 
     /** Main's rows and the other filters: the groups main returns, which a search lists first, in main's order. */
     fun coordinatePredicate(): Op<Boolean> = (text ?: Op.TRUE) and others()
@@ -126,7 +150,7 @@ internal class SearchFilters(
         return (tokenText ?: Op.FALSE) and others() and (artifacts.id notInSubQuery mainRows)
     }
 
-    private fun others(): Op<Boolean> = parts().filterKeys { it != FilterKind.TEXT }.values
+    private fun others(): Op<Boolean> = (parts().filterKeys { it != FilterKind.TEXT }.values + attributeParts().values)
         .fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
 
     internal enum class FilterKind { TEXT, GROUP, ARTIFACT, VERSION, REPOSITORY, EXTENSION, CLASSIFIER, SHA1, SNAPSHOT, ORIGIN, MODIFIED, SIZE }

@@ -140,13 +140,18 @@ data class ArtifactSearchItem(
 /** A repository that holds a version, with the origin of its copy. */
 data class RepositoryPresence(val name: String, val origin: Origin)
 
-/** The buckets of every facet, each counting files over the visible rows (4.4). */
-data class SearchFacets(
+/**
+ * The buckets of every facet, each counting files over the visible rows (4.4). [attributes] holds the buckets of each key of
+ * [ArtifactSearchQuery.attributeFacets] in the order asked for, and is null when the query asks for none, so the answer of a
+ * request without attribute facets is unchanged (search attribute facets, D2).
+ */
+data class SearchFacets @JvmOverloads constructor(
     val repository: List<FacetBucket>,
     val extension: List<FacetBucket>,
     val classifier: List<FacetBucket>,
     val origin: List<FacetBucket>,
     val snapshot: List<FacetBucket>,
+    val attributes: Map<String, List<FacetBucket>>? = null,
 )
 
 /** One bucket of a facet. Classifier `null` is the bucket `-`. */
