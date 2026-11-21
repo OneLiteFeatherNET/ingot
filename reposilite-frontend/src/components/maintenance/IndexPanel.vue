@@ -210,7 +210,7 @@ onBeforeUnmount(stopPolling)
       class="flex flex-col gap-4"
     >
       <MdSection
-        :level="3"
+        :level="2"
         title="Search index"
         description="The index behind artifact search. The outbox keeps it current; a rebuild reads storage again, and a verify compares a sample of rows with storage."
         heading-id="search-index-title"
@@ -354,9 +354,9 @@ onBeforeUnmount(stopPolling)
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex flex-col gap-1">
-              <h4 class="md-title-medium text-on-surface">
+              <h3 class="md-title-medium text-on-surface">
                 {{ runKindLabel(index.activeRun.kind) }} running
-              </h4>
+              </h3>
               <p class="md-body-small text-on-surface-variant">
                 {{ runTriggerLabel(index.activeRun.trigger) }}, started {{ formatDateTime(index.activeRun.startedAt) }}
               </p>
@@ -397,9 +397,9 @@ onBeforeUnmount(stopPolling)
           class="flex flex-col gap-2"
           data-verify
         >
-          <h4 class="md-title-medium text-on-surface">
+          <h3 class="md-title-medium text-on-surface">
             Last verify
-          </h4>
+          </h3>
           <p class="md-body-medium text-on-surface">
             Drift {{ percent(index.lastVerify.drift) }} in a sample of {{ countLabel(index.lastVerify.sampled, 'row') }}:
             {{ countLabel(index.lastVerify.missing, 'row') }} missing from storage,
@@ -421,9 +421,9 @@ onBeforeUnmount(stopPolling)
         </div>
 
         <div class="flex flex-col gap-3">
-          <h4 class="md-title-medium text-on-surface">
+          <h3 class="md-title-medium text-on-surface">
             Latest runs
-          </h4>
+          </h3>
           <ul
             class="grid gap-3 sm:grid-cols-2"
             aria-label="Latest index runs"

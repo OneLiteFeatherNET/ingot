@@ -209,12 +209,12 @@ const discard = () => store.discardChanges()
       aria-labelledby="settings-backup-download"
       class="flex flex-col gap-3"
     >
-      <h3
+      <h2
         id="settings-backup-download"
         class="md-title-medium text-on-surface"
       >
         Download
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         Exports the saved settings as a JSON file, encrypted with a password of at least 12 characters, with the secrets inside the encrypted file; unsaved changes are left out.
       </p>
@@ -234,12 +234,12 @@ const discard = () => store.discardChanges()
       aria-labelledby="settings-backup-import"
       class="flex flex-col gap-3"
     >
-      <h3
+      <h2
         id="settings-backup-import"
         class="md-title-medium text-on-surface"
       >
         Import
-      </h3>
+      </h2>
       <p class="md-body-medium text-on-surface-variant">
         Replaces the values named in a settings file in the draft and keeps the rest; nothing is stored until you save.
       </p>

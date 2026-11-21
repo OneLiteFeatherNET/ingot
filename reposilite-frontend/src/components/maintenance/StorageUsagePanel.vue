@@ -98,7 +98,7 @@ onBeforeUnmount(stopPolling)
   >
     <div data-ingot-component="storage-usage-panel">
       <MdSection
-        :level="3"
+        :level="2"
         title="Storage usage"
         :description="storage && storage.computedAt ? `Computed ${formatDateTime(storage.computedAt)}` : undefined"
         heading-id="storage-usage-title"
