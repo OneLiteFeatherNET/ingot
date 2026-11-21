@@ -17,12 +17,13 @@
 <script setup lang="ts">
 import { computed, useId, type PropType } from 'vue'
 import MdCard from '../md/MdCard.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import { ROLES, grantScopeLabel, pathPrefixLabel, roleExplanation, type TeamGrant } from './accessTeams'
 
 /*
- * The role grants a team still has from before permission nodes, shown for reading only in a
- * section that starts collapsed. They have no controls: nothing here edits or removes a grant.
+ * The role grants a team still has from before permission nodes, shown for reading only in the
+ * shared disclosure, which starts collapsed. They have no controls: nothing here edits or removes a grant.
  * Without grants nothing is shown.
  *
  * Props:
@@ -51,46 +52,47 @@ const rows = computed(() => props.grants.map((grant, index) => ({
     v-if="rows.length > 0"
     variant="low"
   >
-    <details
+    <div
       data-test="legacy-team-grants"
       data-ingot-component="team-legacy-grants"
     >
-      <summary
-        :id="titleId"
-        class="md-focus-ring cursor-pointer rounded-corner-extra-small md-title-medium text-on-surface"
-        data-test="legacy-team-grants-summary"
-      >
-        Legacy grants ({{ rows.length }})
-      </summary>
-      <div class="mt-3 flex flex-col gap-3">
-        <p class="md-body-medium text-on-surface-variant">
-          These role grants came from before permission nodes and still apply. They are read only here.
-        </p>
-        <ul
-          class="flex flex-col divide-y divide-outline-variant"
-          :aria-labelledby="titleId"
-        >
-          <li
-            v-for="row in rows"
-            :key="row.index"
-            data-test="legacy-team-grant"
-            class="flex flex-col gap-1 py-2"
+      <MdDisclosure>
+        <template #summary>
+          <span
+            :id="titleId"
+            data-test="legacy-team-grants-summary"
+          >Legacy grants ({{ rows.length }})</span>
+        </template>
+        <div class="flex flex-col gap-3">
+          <p class="md-body-medium text-on-surface-variant">
+            These role grants came from before permission nodes and still apply. They are read only here.
+          </p>
+          <ul
+            class="flex flex-col divide-y divide-outline-variant"
+            :aria-labelledby="titleId"
           >
-            <span
-              class="md-title-small text-on-surface break-all"
-              data-test="legacy-team-grant-repository"
-            >{{ row.scope }}</span>
-            <span
-              class="md-body-medium text-on-surface-variant break-words"
-              data-test="legacy-team-grant-prefix"
-            >{{ row.prefix }}</span>
-            <span class="flex flex-wrap items-center gap-2">
-              <TokenTag data-test="legacy-team-grant-role">{{ row.role }}</TokenTag>
-              <span class="md-body-small text-on-surface-variant">{{ row.explanation }}</span>
-            </span>
-          </li>
-        </ul>
-      </div>
-    </details>
+            <li
+              v-for="row in rows"
+              :key="row.index"
+              data-test="legacy-team-grant"
+              class="flex flex-col gap-1 py-2"
+            >
+              <span
+                class="md-title-small text-on-surface break-all"
+                data-test="legacy-team-grant-repository"
+              >{{ row.scope }}</span>
+              <span
+                class="md-body-medium text-on-surface-variant break-words"
+                data-test="legacy-team-grant-prefix"
+              >{{ row.prefix }}</span>
+              <span class="flex flex-wrap items-center gap-2">
+                <TokenTag data-test="legacy-team-grant-role">{{ row.role }}</TokenTag>
+                <span class="md-body-small text-on-surface-variant">{{ row.explanation }}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </MdDisclosure>
+    </div>
   </MdCard>
 </template>
