@@ -54,8 +54,9 @@ private fun result(id: String, exitCode: Int, text: String, stream: String = "st
         """"output":[{"stream":"$stream","text":"$text"}],"data":null,"node":"ingot-0","confirmed":false}"""
 
 /**
- * A console socket in protocol 1. `stop` asks for confirmation, `fail` answers on stderr, `boom` drops the connection, and
- * every other command runs at once after one log line. Completion answers the names that start with the line.
+ * A console socket in protocol 1. `stop` asks for confirmation, `fail` answers on stderr, `boom` drops the connection,
+ * `expire` ends the session with 1008, and every other command runs at once after one log line. Completion answers the
+ * names that start with the line.
  */
 private fun consoleSocket(): StubSocket = StubSocket { text, peer ->
     val frame = mapper.readTree(text)
@@ -71,6 +72,7 @@ private fun consoleSocket(): StubSocket = StubSocket { text, peer ->
             "stop" -> peer.send("""{"type":"confirm","id":"$id","command":"stop","reason":"stops the server"}""")
             "fail" -> peer.send(result(id, 1, "it failed", stream = "stderr"))
             "boom" -> peer.close(1011)
+            "expire" -> peer.close(1008)
             else -> {
                 peer.send("""{"type":"log","seq":8,"node":"ingot-0","level":"INFO","text":"server log line","dropped":0}""")
                 peer.send(result(id, 0, "ran $command"))
@@ -91,7 +93,7 @@ private fun refusingSocket(refusal: String): StubSocket = StubSocket { _, peer -
 /** The HTTP side, used only to tell an older server from a refused token. */
 private fun httpWithListing(status: Int): StubIngot = StubIngot { status to (if (status == 200) """{"commands":[]}""" else "") }
 
-private class Session(val exit: Int, val out: String, val err: String, val terminalOutput: String)
+private class Session(val exit: Int, val out: String, val err: String, val terminalOutput: String, val pauses: List<Duration>)
 
 /**
  * The keyboard of the scripted terminal. It serves the scripted keys and then holds the terminal open until the test
@@ -155,9 +157,11 @@ private fun runScripted(
     try {
         val timeout = Duration.ofSeconds(5)
         val client = IngotClient(http.url, "ci:ci-secret", timeout, HttpClient.newHttpClient())
-        val connector = ConsoleConnector { onLog ->
-            ConsoleSocket.open(socketUrl, "ci:ci-secret", "ingot-cli/test", HttpClient.newHttpClient(), timeout, onLog)
+        val connector = ConsoleConnector { resume, onLog ->
+            ConsoleSocket.open(socketUrl, "ci:ci-secret", "ingot-cli/test", HttpClient.newHttpClient(), timeout, onLog, resume)
         }
+        // The reconnect waits are recorded instead of waited, and the jitter is fixed, so a step is exact.
+        val pauses = mutableListOf<Duration>()
         val exit = runRepl(
             client = client,
             connector = connector,
@@ -167,12 +171,15 @@ private fun runScripted(
             yes = yes,
             out = PrintStream(out, true, StandardCharsets.UTF_8),
             err = PrintStream(err, true, StandardCharsets.UTF_8),
+            backoff = Backoff { 0.5 },
+            pause = { pauses.add(it) },
         )
         return Session(
             exit = exit,
             out = out.toString(StandardCharsets.UTF_8),
             err = err.toString(StandardCharsets.UTF_8),
             terminalOutput = screen.toString(StandardCharsets.UTF_8),
+            pauses = pauses,
         )
     } finally {
         keyboard.release()
@@ -343,11 +350,41 @@ internal class ReplTest {
     }
 
     @Test
-    fun `should report a command as unknown when the connection drops and not send it again`() {
+    fun `should report a command as unknown when the connection drops, not send it again and reconnect`() {
         session("boom\nstatus\n") { session, socket, _ ->
-            assertThat(socket.executed()).describedAs("commands sent").containsExactly("boom")
-            assertThat(session.err).describedAs("message").contains("may or may not have run")
-            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.UNREACHABLE)
+            assertThat(socket.executed()).describedAs("commands sent").containsExactly("boom", "status")
+            assertThat(session.err).describedAs("message").contains("may or may not have run").contains("Reconnected")
+            assertThat(session.out.lines()).describedAs("the next line runs on the new connection").contains("ran status")
+            assertThat(session.pauses).describedAs("one backoff step before the reconnect").containsExactly(Duration.ofSeconds(1))
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.OK)
+        }
+    }
+
+    @Test
+    fun `should resume the log after the last seq it showed when it reconnects`() {
+        session("status\nboom\n") { _, socket, _ ->
+            val hellos = socket.typed("hello")
+            assertThat(hellos).describedAs("hellos").hasSize(2)
+            assertThat(hellos.first().has("resume")).describedAs("the first hello resumes nothing").isFalse()
+            assertThat(hellos.last().path("resume").path("boot").asText()).describedAs("resumed boot").isEqualTo("b-1")
+            assertThat(hellos.last().path("resume").path("seq").asLong()).describedAs("seq of the last log line").isEqualTo(8L)
+        }
+    }
+
+    @Test
+    fun `should resume from the seq of the welcome when no log line arrived`() {
+        session("boom\n") { _, socket, _ ->
+            assertThat(socket.typed("hello").last().path("resume").path("seq").asLong()).describedAs("seq of the welcome").isEqualTo(7L)
+        }
+    }
+
+    @Test
+    fun `should exit with 4 and not reconnect when the server ends the session with 1008`() {
+        session("expire\nstatus\n") { session, socket, _ ->
+            assertThat(session.exit).describedAs("exit code").isEqualTo(ExitCode.DENIED)
+            assertThat(socket.typed("hello")).describedAs("hellos").hasSize(1)
+            assertThat(socket.executed()).describedAs("commands").containsExactly("expire")
+            assertThat(session.pauses).describedAs("no backoff").isEmpty()
         }
     }
 
