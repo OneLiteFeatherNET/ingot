@@ -69,14 +69,14 @@ the unit tests stay in the backend (design D7).
 
 PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugin module`
 
-- [ ] 3.1 `test(javadoc)`: failing tests, both in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/`:
+- [x] 3.1 `test(javadoc)`: failing tests, both in `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/`:
   (a) the backend's own compiled main output holds no class of `com.reposilite.javadocs`, read from the class directory that the build
   passes to the test as a system property. `Class.forName` cannot prove it, because the module's classes are on the backend's test
   classpath (design D7);
   (b) the module's resources hold the service entry naming `com.reposilite.javadocs.application.JavadocPlugin`, read from
   `reposilite-plugins/javadoc-plugin/src/main/resources/META-INF/services/`. The test does not read a built jar, so it does not depend on
   the build order. Verify: (a) fails on the classes that are still in the server, and (b) fails because the module does not exist.
-- [ ] 3.2 `build(javadoc)`: add `reposilite-plugins/javadoc-plugin/build.gradle.kts` with `version = "1.0.0" // x-release-please-version`,
+- [x] 3.2 `build(javadoc)`: add `reposilite-plugins/javadoc-plugin/build.gradle.kts` with `version = "1.0.0" // x-release-please-version`,
   `compileOnly` and `testImplementation` on `:reposilite-backend` and its test fixtures, a shadow jar `javadoc-plugin.jar` with
   `Implementation-Version` in its manifest, and the Maven publication `net.onelitefeather.ingot:javadoc-plugin` as
   `reposilite-plugins/gcs-storage-plugin/build.gradle.kts` configures its own. In `reposilite-backend/build.gradle.kts` place the module's jar
@@ -99,9 +99,9 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
 - [ ] 3.4 Verify the drop-in path. Start the built server jar with no plugins directory and with the default image layout, and check that
   the viewer answers on `/javadoc/` and that a jar of version `1.1.0` in the plugins directory is the one in use (the update rule of the
   prerequisite). Verify: the container images job passes on this pull request, including the upgrade rehearsal against the upstream image.
-- [ ] 3.5 Verify: `git diff --stat` shows renames of the files above, the pull request names no file under `openspec/`, and its changed
+- [x] 3.5 Verify: `git diff --stat` shows renames of the files above, the pull request names no file under `openspec/`, and its changed
   lines stay near 400 with the renames not counted.
-- [ ] 3.6 `build(javadoc)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
+- [x] 3.6 `build(javadoc)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
   `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/javadoc.json`, and leaves out its `openapi-plugin/.index` and
   `json-schemes/index` (design D13). The module's resources join the backend integration classpath with its classes (task 3.2). Verify: the
   jar lists `json-schemes/com.reposilite.javadocs.application.JavadocSettings`; the test of 2a.2 passes unedited;
@@ -123,7 +123,7 @@ PR title: `refactor(javadoc): stop falling back to default javadoc suffixes in t
 
 PR title: `refactor(javadoc): describe the javadoc module and its embedded copy in the GitBook pages`
 
-- [ ] 5.1 `docs(javadoc)`: update the module list and the plugin graph in `docs/gitbook/references/architecture/backend-architecture.md`
+- [x] 5.1 `docs(javadoc)`: update the module list and the plugin graph in `docs/gitbook/references/architecture/backend-architecture.md`
   (the endpoint list near line 39, the plugin graph, and the note on `JavadocPlugin` near line 512), and the owner of the `javadoc` domain in
   `docs/gitbook/references/settings/settings-domains.md` and `docs/gitbook/references/http-api/dashboard-pages.md`. Add the update path of
   design D9 and the plugins directory of design D10 to the architecture page. The configuration reference, the environment variables and the
@@ -132,6 +132,6 @@ PR title: `refactor(javadoc): describe the javadoc module and its embedded copy 
 
 ## 6. Open the code pull requests
 
-- [ ] 6.1 Open the code pull requests in the order of groups 2, 2a and 3 to 5, each on the remote main branch that holds the previous one and the
+- [x] 6.1 Open the code pull requests in the order of groups 2, 2a and 3 to 5, each on the remote main branch that holds the previous one and the
   merged prerequisite, with the titles named in those groups. Each one is opened only after its tests pass and no file under `openspec/` is
   in it. Verify: each pull request title is a valid Conventional Commit, and `gh pr view` shows the expected title and files.
