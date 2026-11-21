@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.search.opensearch
 
+import com.reposilite.ReposiliteObjectMapper
 import com.github.dockerjava.api.command.InspectContainerResponse
 import org.testcontainers.DockerClientFactory
 import org.testcontainers.containers.GenericContainer
@@ -126,7 +127,14 @@ internal class OpenSearchAdminClient(private val cluster: StartedOpenSearch, ssl
         call("DELETE", "/$index", allowMissing = true)
     }
 
-    private fun call(method: String, path: String, allowMissing: Boolean) {
+    /** The stored `attributes` object of the document [id] of [index], as written; empty when the document or the object is missing. */
+    fun attributes(index: String, id: String): Map<String, List<String>> {
+        val attributes = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(call("GET", "/$index/_doc/$id", allowMissing = true))
+            .path("_source").path("attributes")
+        return attributes.properties().associate { (key, values) -> key to values.map { it.asText() } }
+    }
+
+    private fun call(method: String, path: String, allowMissing: Boolean): String {
         val request = HttpRequest.newBuilder(URI.create(cluster.url() + path))
             .header("Authorization", authorization)
             .timeout(Duration.ofSeconds(30))
@@ -135,6 +143,7 @@ internal class OpenSearchAdminClient(private val cluster: StartedOpenSearch, ssl
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
         val accepted = response.statusCode() in 200..299 || (allowMissing && response.statusCode() == 404)
         check(accepted) { "the test cluster answered ${response.statusCode()} to $method $path" }
+        return response.body()
     }
 
 }

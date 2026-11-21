@@ -33,8 +33,8 @@ internal class OpenSearchDocumentTest {
 
     @Test
     fun `should write exactly the fields of the mapping`() {
-        // when: a row is written as a document
-        val document = OpenSearchDocument.of(testRow())
+        // when: a row is written as a document with its attributes
+        val document = OpenSearchDocument.of(testRow(), emptyMap())
 
         // then: the document carries the fields of the strict mapping and no others
         assertThat(document.fieldNames().asSequence().toSet())
