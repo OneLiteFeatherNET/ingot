@@ -62,17 +62,12 @@ test.describe('wide screens', () => {
         await page.setViewportSize({ width, height: 900 })
       })
 
-      test('shows the address column, and the storage column only from 2560 pixels', async ({ adminPage: page, seed }) => {
+      test('shows the address and the storage column, both past the xlarge window', async ({ adminPage: page, seed }) => {
         await seed.repository('wide-columns')
         await page.goto(siteUrl('/settings/repositories'))
 
         await expect(page.getByRole('columnheader', { name: 'Address', exact: true }), 'the address is shown').toBeVisible()
-        const storage = page.getByRole('columnheader', { name: 'Storage', exact: true })
-        if (width >= 2560) {
-          await expect(storage, 'the storage column has room at 2560 pixels').toBeVisible()
-        } else {
-          await expect(storage, 'the storage column is still hidden at 1920 pixels').toBeHidden()
-        }
+        await expect(page.getByRole('columnheader', { name: 'Storage', exact: true }), 'the storage column has room from 1600 pixels').toBeVisible()
       })
 
       test('lays the resource charts out in two columns at this width, with no empty third column', async ({ adminPage: page }) => {

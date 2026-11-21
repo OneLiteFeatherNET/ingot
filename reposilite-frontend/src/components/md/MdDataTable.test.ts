@@ -289,3 +289,72 @@ describe('MdDataTable alignment', () => {
     expect(wrapper.findAll('tbody th').map(alignmentOf)).toEqual(['end', 'end', 'end'])
   })
 })
+
+describe('MdDataTable for a page that owns its rows', () => {
+  it('names the scroll region with the label when one is given, and keeps the caption for the table', () => {
+    const wrapper = mountTable({ label: 'Repositories table' })
+
+    expect(wrapper.attributes('aria-label'), 'the region takes the label').toBe('Repositories table')
+    expect(wrapper.find('caption').text(), 'the caption still names the table').toBe('Repositories')
+  })
+
+  it('keeps the rows in the given order when they come sorted, while the header still shows the sort', () => {
+    const wrapper = mountTable({ presorted: true, modelValue: { key: 'name', direction: 'ascending' } })
+
+    expect(bodyNames(wrapper), 'the table does not sort the rows again').toEqual(['releases', 'snapshots', 'docs'])
+    expect(headers(wrapper)[0].attributes('aria-sort')).toBe('ascending')
+  })
+
+  it('keeps the element of a row with its key when the rows change order', async () => {
+    const wrapper = mountTable({ rowKey: 'name' })
+    const docs = wrapper.findAll('tbody tr')[2].element
+
+    await wrapper.setProps({ rows: [ROWS[2], ROWS[0], ROWS[1]] })
+
+    expect(wrapper.findAll('tbody tr')[0].element, 'the row moved with its key').toBe(docs)
+  })
+
+  it('puts the attributes of rowAttrs on the element of each body row, each with the value of its column', () => {
+    const wrapper = mountTable({ rowAttrs: { 'data-test-name': 'name' } })
+
+    expect(wrapper.findAll('tbody tr').map((row) => row.attributes('data-test-name'))).toEqual(['releases', 'snapshots', 'docs'])
+  })
+
+  it('lets a fill column take the remaining width, so its cells can truncate', () => {
+    const wrapper = mountTable({ columns: [COLUMNS[0], { ...COLUMNS[1], fill: true }, COLUMNS[2]] })
+
+    const cells = [headers(wrapper)[1], ...wrapper.findAll('tbody tr').map((row) => row.findAll('td')[0])]
+
+    expect(cells.map((cell) => cell.classes().includes('w-full') && cell.classes().includes('max-w-0'))).toEqual([true, true, true, true])
+  })
+
+  it('renders the empty slot in one cell across every column when there are no rows', () => {
+    const wrapper = mountTable({ rows: [] }, { empty: () => h('p', 'No repositories yet.') })
+
+    const cells = wrapper.findAll('tbody td')
+
+    expect(cells.map((cell) => cell.text())).toEqual(['No repositories yet.'])
+    expect(cells[0].attributes('colspan')).toBe('3')
+  })
+
+  it('leaves the empty slot out while there are rows', () => {
+    const wrapper = mountTable({}, { empty: () => h('p', 'No repositories yet.') })
+
+    expect(wrapper.text()).not.toContain('No repositories yet.')
+  })
+
+  it('centres every cell vertically and keeps each heading on one line', () => {
+    const wrapper = mountTable()
+
+    const cells = [...wrapper.findAll('thead th'), ...wrapper.findAll('tbody th'), ...wrapper.findAll('tbody td')]
+
+    expect(cells.filter((cell) => !cell.classes().includes('align-middle')).length, 'every cell is centred').toBe(0)
+    expect(headers(wrapper).map((header) => header.classes().includes('whitespace-nowrap'))).toEqual([true, true, true])
+  })
+
+  it('gives a sort button a target of at least 24 by 24 pixels', () => {
+    const wrapper = mountTable()
+
+    expect(headers(wrapper)[0].find('button').classes()).toEqual(expect.arrayContaining(['min-h-6', 'min-w-6']))
+  })
+})

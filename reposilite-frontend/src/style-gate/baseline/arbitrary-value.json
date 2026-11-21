@@ -260,21 +260,6 @@
     "count": 1
   },
   {
-    "file": "src/components/repositories/RepositoriesTable.vue",
-    "match": "min-[1920px]:table-cell",
-    "count": 4
-  },
-  {
-    "file": "src/components/repositories/RepositoriesTable.vue",
-    "match": "min-[2560px]:table-cell",
-    "count": 2
-  },
-  {
-    "file": "src/components/repositories/RepositoriesTable.vue",
-    "match": "min-w-[40rem]",
-    "count": 1
-  },
-  {
     "file": "src/components/search/SearchBar.vue",
     "match": "[&::-webkit-search-cancel-button]:hidden",
     "count": 1

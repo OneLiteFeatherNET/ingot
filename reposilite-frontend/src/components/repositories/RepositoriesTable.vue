@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import MdDataTable from '../md/MdDataTable.vue'
 import MdIcon from '../md/MdIcon.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import TypeBadge from './TypeBadge.vue'
@@ -28,9 +29,10 @@ import type { RepositoryRow, SortDirection, SortKey } from './repositoryRows'
  * The table of the repositories: a plain HTML table, not an ARIA grid, so each row is reached with Tab in the order
  * name link, then its Actions button, and a screen reader reads it with its table commands. The name cell is the row
  * header, and every column header carries scope="col". Only the sorted column has aria-sort. The actions of a row are
- * one menu, and every action is named after the repository it acts on. Columns are hidden by priority at narrower
- * widths; Name, Type and Actions are always shown. The table itself is the only thing that scrolls on a narrow screen,
- * inside a named region.
+ * one menu, and every action is named after the repository it acts on. The table is the shared MdDataTable: columns
+ * are hidden by window class priority at narrower widths; Name, Type and Actions are always shown. The table itself is
+ * the only thing that scrolls on a narrow screen, inside a named region. The page sorts the rows (repositoryRows.ts),
+ * so the table shows them in the order it is given and only reports the column that was chosen.
  */
 const props = withDefaults(defineProps<{
   // The rows the page shows, already filtered and sorted (see repositoryRows.ts).
@@ -63,14 +65,30 @@ const router = useRouter()
 // Three dots on one vertical line: zero-length strokes with round caps, drawn by MdIcon.
 const MORE_PATH = 'M12 5.25h.01M12 12h.01M12 18.75h.01'
 
-const SORT_ARROWS: Record<SortDirection, string> = { ascending: '▲', descending: '▼' }
 const VERSION_LABELS: Record<string, string> = { RELEASE: 'Release', SNAPSHOT: 'Snapshot', MIXED: 'Mixed' }
 const WRITE_LABELS: Record<string, string> = Object.fromEntries(WRITE_CHOICES.map(choice => [choice.value, choice.label]))
 
-const columnCount = computed(() => 6 + (props.versionPolicy ? 1 : 0) + (props.writePolicy ? 1 : 0))
+// Visibility, Version policy and Storage need the room of an xlarge window; Write policy and Address that of a large one.
+const columns = computed(() => [
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'type', label: 'Type', sortable: true },
+  { key: 'visibility', label: 'Visibility', sortable: true, priority: 'xlarge' as const },
+  ...(props.versionPolicy ? [{ key: 'versionPolicy', label: 'Version policy', priority: 'xlarge' as const }] : []),
+  ...(props.writePolicy ? [{ key: 'writePolicy', label: 'Write policy', priority: 'large' as const }] : []),
+  { key: 'storage', label: 'Storage', sortable: true, priority: 'xlarge' as const },
+  { key: 'address', label: 'Address', priority: 'large' as const, fill: true },
+  { key: 'actions', label: 'Actions' },
+])
 
-const ariaSort = (key: SortKey): SortDirection | undefined => (props.sortKey === key ? props.sortDirection : undefined)
-const arrowOf = (key: SortKey): string => (props.sortKey === key ? SORT_ARROWS[props.sortDirection] : '')
+// The sort the page keeps, as the table reads it, and the column the table reports when a header is chosen.
+const sort = computed(() => (props.sortKey ? { key: props.sortKey, direction: props.sortDirection } : null))
+const onSort = (next: { key: string }) => emit('sort', next.key as SortKey)
+
+// The table takes plain records; each cell reads its repository back from the row.
+const tableRows = computed(() => props.rows as unknown as Record<string, unknown>[])
+const repositoryOf = (row: Record<string, unknown>) => row as unknown as RepositoryRow
+// Each row carries the name it shows (the anchor spec: a repository row has data-ingot-repository).
+const ROW_ANCHORS = { 'data-ingot-repository': 'name' }
 
 // A group has no version policy of its own; an absent one means Mixed, as the server reads it.
 const versionLabel = (row: RepositoryRow): string => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[String(row.versionPolicy)] ?? 'Mixed'))
@@ -94,192 +112,89 @@ const onAction = (row: RepositoryRow, value: string) => {
 </script>
 
 <template>
-  <div
-    role="region"
-    aria-label="Repositories table"
-    tabindex="0"
-    class="overflow-x-auto md-focus-ring"
-    data-ingot-component="repositories-table"
-  >
-    <table class="w-full min-w-[40rem] border-collapse text-left">
-      <caption class="sr-only">
-        {{ caption }}
-      </caption>
-      <thead data-ingot-part="header">
-        <tr class="border-b border-outline-variant">
-          <th
-            scope="col"
-            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
-            :aria-sort="ariaSort('name')"
-          >
-            <button
-              type="button"
-              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
-              @click="emit('sort', 'name')"
-            >
-              Name<span aria-hidden="true">{{ arrowOf('name') }}</span>
-            </button>
-          </th>
-          <th
-            scope="col"
-            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
-            :aria-sort="ariaSort('type')"
-          >
-            <button
-              type="button"
-              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
-              @click="emit('sort', 'type')"
-            >
-              Type<span aria-hidden="true">{{ arrowOf('type') }}</span>
-            </button>
-          </th>
-          <th
-            scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[1920px]:table-cell"
-            :aria-sort="ariaSort('visibility')"
-          >
-            <button
-              type="button"
-              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
-              @click="emit('sort', 'visibility')"
-            >
-              Visibility<span aria-hidden="true">{{ arrowOf('visibility') }}</span>
-            </button>
-          </th>
-          <th
-            v-if="versionPolicy"
-            scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[1920px]:table-cell"
-          >
-            Version policy
-          </th>
-          <th
-            v-if="writePolicy"
-            scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface large:table-cell"
-          >
-            Write policy
-          </th>
-          <th
-            scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface min-[2560px]:table-cell"
-            :aria-sort="ariaSort('storage')"
-          >
-            <button
-              type="button"
-              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
-              @click="emit('sort', 'storage')"
-            >
-              Storage<span aria-hidden="true">{{ arrowOf('storage') }}</span>
-            </button>
-          </th>
-          <th
-            scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface large:table-cell"
-          >
-            Address
-          </th>
-          <th
-            scope="col"
-            class="whitespace-nowrap px-3 py-2 align-middle text-left md-label-large text-on-surface"
-          >
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="row in rows"
-          :key="row.route"
-          data-ingot-part="row"
-          :data-ingot-repository="row.name"
-          class="border-b border-outline-variant"
+  <div data-ingot-component="repositories-table">
+    <MdDataTable
+      :caption="caption"
+      caption-hidden
+      label="Repositories table"
+      :columns="columns"
+      :rows="tableRows"
+      :model-value="sort"
+      presorted
+      row-key="route"
+      :row-attrs="ROW_ANCHORS"
+      @update:model-value="onSort"
+    >
+      <template #cell="{ row, column }">
+        <div
+          v-if="column.key === 'name'"
+          data-ingot-part="cell-name"
         >
-          <th
-            scope="row"
-            data-ingot-part="cell-name"
-            class="px-3 py-3 align-middle text-left md-body-large text-on-surface"
+          <RouterLink
+            :to="{ name: 'settings-repository', params: { id: repositoryOf(row).route } }"
+            :title="repositoryOf(row).name"
+            class="md-focus-ring md-touch-target relative block max-w-80 truncate rounded-corner-small text-primary"
           >
-            <RouterLink
-              :to="{ name: 'settings-repository', params: { id: row.route } }"
-              :title="row.name"
-              class="md-focus-ring md-touch-target relative block max-w-80 truncate rounded-corner-small text-primary"
-            >
-              {{ row.name }}
-            </RouterLink>
-            <span
-              v-if="row.unsaved"
-              class="ml-2 md-label-medium text-warning"
-            >Unsaved</span>
-            <span
-              v-if="row.unnamed"
-              class="block md-body-small text-on-surface-variant"
-            >Enter an id.</span>
-          </th>
-          <td class="px-3 py-3 align-middle">
-            <div class="flex flex-col gap-2">
-              <div class="w-max">
-                <TypeBadge :type="row.type" />
-              </div>
-              <p
-                v-if="row.type.key === 'MIXED'"
-                class="md-body-small text-warning"
-              >
-                {{ MIXED_WARNING }}
-              </p>
-            </div>
-          </td>
-          <td class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[1920px]:table-cell">
-            {{ row.visibility }}
-          </td>
-          <td
-            v-if="versionPolicy"
-            class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[1920px]:table-cell"
+            {{ repositoryOf(row).name }}
+          </RouterLink>
+          <span
+            v-if="repositoryOf(row).unsaved"
+            class="ml-2 md-label-medium text-warning"
+          >Unsaved</span>
+          <span
+            v-if="repositoryOf(row).unnamed"
+            class="block md-body-small text-on-surface-variant"
+          >Enter an id.</span>
+        </div>
+        <div
+          v-else-if="column.key === 'type'"
+          class="flex flex-col gap-2"
+        >
+          <div class="w-max">
+            <TypeBadge :type="repositoryOf(row).type" />
+          </div>
+          <p
+            v-if="repositoryOf(row).type.key === 'MIXED'"
+            class="md-body-small text-warning"
           >
-            {{ versionLabel(row) }}
-          </td>
-          <td
-            v-if="writePolicy"
-            class="hidden px-3 py-3 align-middle md-body-medium text-on-surface large:table-cell"
-          >
-            {{ writeLabel(row) }}
-          </td>
-          <td class="hidden px-3 py-3 align-middle md-body-medium text-on-surface min-[2560px]:table-cell">
-            {{ row.storage }}
-          </td>
-          <td class="hidden w-full max-w-0 px-3 py-3 align-middle large:table-cell">
-            <code
-              :title="row.address"
-              class="block truncate md-body-small text-on-surface-variant"
-            >{{ row.address }}</code>
-          </td>
-          <td class="px-3 py-3 align-middle">
-            <MdOverflowMenu
-              :label="`Actions for ${row.name}`"
-              :items="actionsOf(row)"
-              trigger-class="!px-0 w-10"
-              @select="(value) => onAction(row, value)"
-            >
-              <template #trigger>
-                <span class="sr-only">Actions for {{ row.name }}</span>
-                <MdIcon :path="MORE_PATH" />
-              </template>
-            </MdOverflowMenu>
-          </td>
-        </tr>
-        <tr
-          v-if="rows.length === 0"
+            {{ MIXED_WARNING }}
+          </p>
+        </div>
+        <template v-else-if="column.key === 'versionPolicy'">
+          {{ versionLabel(repositoryOf(row)) }}
+        </template>
+        <template v-else-if="column.key === 'writePolicy'">
+          {{ writeLabel(repositoryOf(row)) }}
+        </template>
+        <code
+          v-else-if="column.key === 'address'"
+          :title="repositoryOf(row).address"
+          class="block truncate md-body-small text-on-surface-variant"
+        >{{ repositoryOf(row).address }}</code>
+        <MdOverflowMenu
+          v-else-if="column.key === 'actions'"
+          :label="`Actions for ${repositoryOf(row).name}`"
+          :items="actionsOf(repositoryOf(row))"
+          trigger-class="!px-0 w-10"
+          @select="(value) => onAction(repositoryOf(row), value)"
+        >
+          <template #trigger>
+            <span class="sr-only">Actions for {{ repositoryOf(row).name }}</span>
+            <MdIcon :path="MORE_PATH" />
+          </template>
+        </MdOverflowMenu>
+        <template v-else>
+          {{ row[column.key] }}
+        </template>
+      </template>
+      <template #empty>
+        <p
           data-ingot-part="empty"
           data-ingot-state="empty"
         >
-          <td
-            :colspan="columnCount"
-            class="px-3 py-6 md-body-medium text-on-surface-variant"
-          >
-            {{ emptyText }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+          {{ emptyText }}
+        </p>
+      </template>
+    </MdDataTable>
   </div>
 </template>
