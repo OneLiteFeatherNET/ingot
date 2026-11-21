@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { SCENARIOS, TOPOLOGIES } from '../lib/config.ts';
 import { REFERENCE_SIZES } from '../lib/sizes.ts';
+import { STEP_PASSED_METRIC } from '../profiles/step-metric.ts';
 
 interface DashboardVariable {
   readonly name: string;
@@ -35,6 +36,7 @@ interface DashboardPanel {
   readonly title?: string;
   readonly type?: string;
   readonly datasource?: { readonly uid?: string };
+  readonly targets?: readonly { readonly expr?: string }[];
 }
 
 interface Dashboard {
@@ -143,4 +145,39 @@ test('the dashboard marks step changes as annotations read from the step metric'
 test('every panel title is unique so that the panels can be referred to by name', () => {
   const titles = panelTitles();
   assert.equal(new Set(titles).size, titles.length, `duplicate panel titles: ${titles.join(', ')}`);
+});
+
+// k6 remote write prefixes every metric with k6_ and names it by its type: a counter ends in _total, a time trend sent as
+// a native histogram ends in _seconds, and a gauge keeps its name. These are the k6 series the dashboard may read.
+const K6_REMOTE_WRITE_NAMES = new Set([
+  'k6_vus',
+  'k6_http_reqs_total',
+  'k6_http_req_duration_seconds',
+  'k6_dropped_iterations_total',
+  'k6_data_received_total',
+  'k6_data_sent_total',
+  `k6_${STEP_PASSED_METRIC}`,
+]);
+
+const expressions = (): string[] => [
+  ...dashboard.annotations.list.flatMap((annotation) => (annotation.expr === undefined ? [] : [annotation.expr])),
+  ...dashboard.panels.flatMap((panel) => (panel.targets ?? []).flatMap((target) => (target.expr === undefined ? [] : [target.expr]))),
+];
+
+test('every k6 series the dashboard reads has the name k6 remote write gives it', () => {
+  for (const expr of expressions()) {
+    for (const name of expr.match(/\bk6_[a-z0-9_]+/g) ?? []) {
+      assert.ok(K6_REMOTE_WRITE_NAMES.has(name), `"${name}" in ${expr} is not a series k6 remote write produces`);
+    }
+  }
+});
+
+test('the step metric is read with the k6_ prefix that remote write adds', () => {
+  for (const expr of expressions()) {
+    assert.doesNotMatch(
+      expr,
+      new RegExp(`(?<!k6_)\\b${STEP_PASSED_METRIC}\\b`),
+      `${expr} reads the step metric without its k6_ prefix and finds no series`,
+    );
+  }
 });
