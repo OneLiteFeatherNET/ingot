@@ -116,6 +116,8 @@ The [command line client](../cli.md) reads these variables. It is a separate pro
 | `INGOT_OUTPUT` | `text` | `text` or `json`. |
 | `INGOT_TIMEOUT` | `30` | Seconds to wait for the server. |
 
+The client also reads two standard variables that carry no `INGOT_` prefix: `NO_COLOR`, which removes the colour of the server output when it is set and not empty, and `XDG_STATE_HOME`, under which the interactive mode keeps its history (`$XDG_STATE_HOME/ingot/history`, else `~/.local/state/ingot/history`).
+
 The order of precedence and the config file are described in [Command line client](../cli.md#order-of-precedence).
 
 ## Shutdown variables
