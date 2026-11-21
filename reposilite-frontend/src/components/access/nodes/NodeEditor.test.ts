@@ -724,6 +724,17 @@ describe('NodeEditor', () => {
       expect(rows[1].find('[data-test="inherited-source"]').text()).toBe('from team ops')
     })
 
+    it('lists the inherited nodes as rows of a divided shared list', () => {
+      mountEditor({ inherited: INHERITED() })
+
+      const rows = wrapper.findAll('[data-test="inherited-row"]')
+      expect(rows.map(row => row.attributes('data-ingot-component')), 'each inherited node is an md-list-item')
+        .toEqual(INHERITED().map(() => 'md-list-item'))
+      const list = rows[0].element.parentElement
+      expect(list?.dataset.ingotComponent, 'the rows sit in an md-list').toBe('md-list')
+      expect(list?.dataset.divided, 'the list draws the rule between the rows').toBe('true')
+    })
+
     it('shows the allowed state of an inherited node as text', () => {
       mountEditor({ inherited: INHERITED() })
 
