@@ -22,6 +22,7 @@ import { PROFILES, type Profile } from '../lib/config.ts';
 import { breakpointScenario } from './breakpoint.ts';
 import { plateauScenarios, plateauSteps } from './plateau.ts';
 import { soakScenario } from './soak.ts';
+import { plateauVerdictScenarios } from './step-verdict.ts';
 
 export type ScriptVariables = Readonly<Record<string, string | undefined>>;
 
@@ -45,7 +46,7 @@ export function profileOptions(env: ScriptVariables, scenario: string, p95Ms: nu
         requiredNumber(env, 'LOADTEST_BREAKPOINT'),
         optionalNumber(env, 'LOADTEST_HOLD_MINUTES'),
       );
-      return { scenarios: plateauScenarios(steps, EXEC) };
+      return { scenarios: { ...plateauScenarios(steps, EXEC), ...plateauVerdictScenarios(steps, scenario, p95Ms) } };
     }
     case 'soak':
       return {
