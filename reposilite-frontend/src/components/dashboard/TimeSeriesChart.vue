@@ -25,6 +25,7 @@ import useTheme from '../../store/theme'
 import { categorical, chrome } from '../../store/palette'
 import { summariseSeries } from './seriesSummary'
 import type { Series } from './seriesSummary'
+import { typescale } from '../md/typescale'
 
 // ECharts ships every chart type and component separately so a build only pays for what it
 // draws. The dashboard needs one chart type and three components, which keeps this bundle
@@ -85,14 +86,14 @@ const buildOption = (): EChartsCoreOption => {
           itemGap: 18,
           itemWidth: 10,
           itemHeight: 10,
-          textStyle: { color: ink.text, fontSize: 11 }
+          textStyle: { color: ink.text, fontSize: typescale.labelSmall.size }
         }
       : { show: false },
     tooltip: {
       trigger: 'axis',
       backgroundColor: ink.tooltipSurface,
       borderWidth: 0,
-      textStyle: { color: ink.tooltipText, fontSize: 12 },
+      textStyle: { color: ink.tooltipText, fontSize: typescale.labelMedium.size },
       axisPointer: { type: 'line', lineStyle: { color: ink.baseline } },
       valueFormatter: formatValue
     },
@@ -100,14 +101,14 @@ const buildOption = (): EChartsCoreOption => {
       type: 'time',
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: ink.axis, hideOverlap: true, fontSize: 11 },
+      axisLabel: { color: ink.axis, hideOverlap: true, fontSize: typescale.labelSmall.size },
       splitLine: { show: false }
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: ink.axis, fontSize: 11, formatter: formatValue },
+      axisLabel: { color: ink.axis, fontSize: typescale.labelSmall.size, formatter: formatValue },
       splitLine: { lineStyle: { color: ink.grid } }
     },
     series: props.series.map(series => ({
