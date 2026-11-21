@@ -32,7 +32,20 @@ test('the plateau profile runs its five steps from the breakpoint in LOADTEST_BR
     'plateau-3',
     'plateau-4',
     'plateau-5',
+    'verdict-1',
+    'verdict-2',
+    'verdict-3',
+    'verdict-4',
+    'verdict-5',
   ]);
+});
+
+test('the plateau verdicts carry the p95 limit and the name of the scenario', () => {
+  const options = profileOptions({ LOADTEST_PROFILE: 'plateau', LOADTEST_BREAKPOINT: '100' }, 'resolve', 150);
+
+  const verdict = options.scenarios?.['verdict-1'];
+  assert.equal(verdict?.env?.LOADTEST_STEP_P95_MS, '150');
+  assert.equal(verdict?.env?.LOADTEST_STEP_SCENARIO, 'resolve');
 });
 
 test('the plateau profile is refused without a breakpoint, and the refusal names the variable', () => {

@@ -19,15 +19,17 @@
 import { Gauge } from 'k6/metrics';
 import type { MetricSink } from './step-metric.ts';
 
-/** One gauge per metric name, created on first use, so a sample lands in the metric it names. */
-export function k6MetricSink(): MetricSink {
-  const gauges = new Map<string, Gauge>();
+/**
+ * One gauge per metric name. k6 accepts a new metric only in the init context, so every gauge is declared when the sink
+ * is built, and the sink has to be built at the top level of a module. A sample of a name not declared is refused.
+ */
+export function k6MetricSink(names: readonly string[]): MetricSink {
+  const gauges = new Map(names.map((name) => [name, new Gauge(name)]));
   return {
     add(name, value, tags) {
-      let gauge = gauges.get(name);
+      const gauge = gauges.get(name);
       if (gauge === undefined) {
-        gauge = new Gauge(name);
-        gauges.set(name, gauge);
+        throw new Error(`the metric ${name} was not declared when the sink was built`);
       }
       gauge.add(value, tags);
     },

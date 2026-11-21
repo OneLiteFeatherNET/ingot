@@ -29,6 +29,9 @@ const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
 /** The executor of the profile the runner chose, with the p95 limit of this scenario. */
 export const options = profileOptions(__ENV, 'metadata', thresholdFor('metadata').p95Ms);
 
+/** The pass rule of every plateau step, run by the verdict scenarios the plateau profile adds. */
+export { stepVerdict } from '../profiles/step-verdict-k6.ts';
+
 export function metadataIteration(coordinate: Coordinate): void {
   const response = http.get(`${BASE_URL}${metadataPath(RESOLVE_REPOSITORY, coordinate)}`, {
     tags: { scenario: 'metadata' },
