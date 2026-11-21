@@ -50,7 +50,7 @@ vi.mock('../store/login', () => ({ openLogin: login.openLogin }))
 // The plugin manifest is set by each test through the registry, so loading it from the server is replaced.
 vi.mock('../store/pluginUi', async () => {
   const { ref: makeRef } = await import('vue')
-  return { pluginUiReady: makeRef(true), loadPluginUi: vi.fn(), clearPluginUi: vi.fn() }
+  return { pluginUiReady: makeRef(true), loadPluginUi: vi.fn(), clearPluginUi: vi.fn(), readerPagesReady: makeRef(true), loadReaderPages: vi.fn() }
 })
 
 vi.mock('../components/header/DefaultHeader.vue', async () => {

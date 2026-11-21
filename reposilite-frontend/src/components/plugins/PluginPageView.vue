@@ -2,8 +2,10 @@
 // A page a server plugin contributed, drawn from its declaration. The permission is checked by the page
 // that shows it (IndexPage), and the page is drawn inside the Administration frame, which names it in
 // its heading. This view draws the description and the plugin of the page, and then its blocks.
+// With `reader` it draws a reader page instead: one from the reader manifest, open to every visitor. That page has no
+// frame, so it names itself in a heading, and its blocks refuse the kinds that write or poll (see PluginBlock).
 import { computed, provide, reactive } from 'vue'
-import { contributedPageByRoute, pluginPageMotion } from '../../navigation/registry'
+import { contributedPageByRoute, pluginPageMotion, readerPageByRoute } from '../../navigation/registry'
 import PluginBlock from './PluginBlock.vue'
 import NotFoundView from '../util/NotFoundView.vue'
 import MdTransition from '../md/MdTransition.vue'
@@ -13,9 +15,12 @@ import { PLUGIN_FILTER_SCOPE, type DrawnPage, type PluginFilterScope } from './p
 const props = defineProps({
   plugin: { type: String, required: true },
   pageId: { type: String, required: true },
+  reader: { type: Boolean, default: false },
 })
 
-const page = computed(() => contributedPageByRoute(props.plugin, props.pageId) as DrawnPage | undefined)
+const page = computed(() => (props.reader
+  ? readerPageByRoute(props.plugin, props.pageId)
+  : contributedPageByRoute(props.plugin, props.pageId)) as DrawnPage | undefined)
 
 // The page id reaches the DOM only in the shape the server accepts for a page id, so a plugin cannot put free text there.
 const PAGE_ID = /^[a-z0-9-]{1,32}$/
@@ -46,6 +51,12 @@ provide(PLUGIN_FILTER_SCOPE, reactive<PluginFilterScope>({ values: {}, facets: {
         data-ingot-part="header"
         class="flex flex-col gap-2"
       >
+        <h1
+          v-if="reader"
+          class="md-headline-small text-on-surface"
+        >
+          {{ page.title }}
+        </h1>
         <p
           v-if="page.description"
           class="md-body-large text-on-surface-variant"
@@ -61,6 +72,7 @@ provide(PLUGIN_FILTER_SCOPE, reactive<PluginFilterScope>({ values: {}, facets: {
         :key="index"
         :plugin="page.plugin"
         :block="block"
+        :reader="reader"
       />
     </section>
   </component>

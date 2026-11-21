@@ -137,6 +137,12 @@ vi.mock('../components/audit/AuditView.vue', sectionStub('AuditStub', 'audit'))
 vi.mock('../components/search/SearchView.vue', sectionStub('SearchStub', 'search'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
 vi.mock('../components/support/SystemInfoView.vue', sectionStub('SystemInfoStub', 'system-info'))
+// The reader manifest is read once on mount. The page here has no reader page, so the read is replaced and sends nothing.
+vi.mock('../store/pluginUi', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../store/pluginUi')>(),
+  loadReaderPages: vi.fn(),
+}))
+
 // The support gate is answered by the test: the bundle check is ready, and the page is offered through the registry.
 vi.mock('../store/supportBundle', async () => {
   const { ref: makeRef } = await import('vue')

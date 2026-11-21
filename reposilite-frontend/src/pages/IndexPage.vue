@@ -49,9 +49,9 @@ import { ADMIN_NODES, routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, pluginPageMotion, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, pluginPageMotion, NEXUS_IMPORT_PLUGIN, readerKey, readerPageByRoute, readerPageRedirect, readerRailGroups } from '../navigation/registry'
 import type { ContributedPage, Page, RouteMeta } from '../navigation/registry'
-import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
+import { pluginUiReady, loadPluginUi, clearPluginUi, readerPagesReady, loadReaderPages } from '../store/pluginUi'
 import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
@@ -128,7 +128,11 @@ const section = computed((): string | null => currentMeta().section ?? null)
 // The route params are text, or a list of text when a param repeats. The pages take them as text, so the value passes through unchanged.
 const routeText = (value: unknown): string => value as string
 
-const navigationSection = computed((): string | null => (isListed(ADMINISTRATION_SECTIONS, section.value) ? 'settings' : section.value))
+// A reader page is its own entry of the rail, under Plugin pages, so that entry is current on its address.
+const navigationSection = computed((): string | null => {
+  if (route.name === 'plugin-reader') return readerKey(routeText(route.params.plugin), routeText(route.params.page))
+  return isListed(ADMINISTRATION_SECTIONS, section.value) ? 'settings' : section.value
+})
 // The reading pages of the administration frame (text and forms) keep a 960 pixel measure. The other pages are wide
 // (lists, tables, the charts and the system information cards) and take the full width after the side navigation.
 const readingPage = computed((): boolean => isListed(['migration'], section.value))
@@ -162,6 +166,19 @@ watch([pluginUiReady, () => route.fullPath], () => {
   if (target) router.replace(target)
 }, { immediate: true })
 watch(isLogged, (logged) => (logged ? loadPluginUi(credentials.value) : clearPluginUi()), { immediate: true })
+// The reader pages are the same for every visitor, so their manifest is read once, signed in or not.
+void loadReaderPages()
+// A reader page waits for the reader manifest, then shows not found for a page it does not name. An address without a
+// page id opens the first reader page of its plugin.
+const readerPageMissing = computed(() => route.name === 'plugin-reader'
+  && readerPagesReady.value
+  && !readerPageRedirect(routeText(route.params.plugin), route.params.page as string | undefined)
+  && !readerPageByRoute(routeText(route.params.plugin), routeText(route.params.page)))
+watch([readerPagesReady, () => route.fullPath], () => {
+  if (route.name !== 'plugin-reader' || !readerPagesReady.value) return
+  const target = readerPageRedirect(routeText(route.params.plugin), route.params.page as string | undefined)
+  if (target) router.replace(target)
+}, { immediate: true })
 watch(isLogged, (logged) => (logged ? loadSupportBundle(credentials.value) : clearSupportBundle()), { immediate: true })
 
 // The support pages are not found while the instance does not offer them (an opt-out instance), and wait for the answer.
@@ -248,9 +265,17 @@ const destinationOf = (entry: Page): Destination => ({
 // The rail draws the destinations in their groups; `group` is the name the rail labels a block with.
 // The contributed pages follow the built-in ones, in the group each names. They are never in the bottom bar.
 const contributedLocationOf = (page: ContributedPage) => ({ name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } })
+// The reader pages follow the built-in entries under Plugin pages, for every visitor, and come before the admin pages.
+const readerLocationOf = (page: { plugin: string; id: string }) => ({ name: 'plugin-reader', params: { plugin: page.plugin, page: page.id } })
 const railItems = computed(() => [
   ...railGroups(can).flatMap(group =>
     group.pages.map(entry => ({ ...destinationOf(entry), group: group.heading }))),
+  ...readerRailGroups().flatMap(group => group.pages.map(page => ({
+    key: page.key,
+    label: page.title,
+    href: router.resolve(readerLocationOf(page)).href,
+    group: group.heading,
+  }))),
   ...contributedRailGroups(can).flatMap(group => group.pages.map(page => ({
     key: page.key,
     label: page.title,
@@ -260,6 +285,11 @@ const railItems = computed(() => [
 ])
 
 const selectSection = (key: string): void => {
+  const reader = readerRailGroups().flatMap(group => group.pages).find(entry => entry.key === key)
+  if (reader) {
+    router.push(readerLocationOf(reader))
+    return
+  }
   const page = contributedRailGroups(can).flatMap(group => group.pages).find(entry => entry.key === key)
   router.push(page ? contributedLocationOf(page) : locationOf(key))
 }
@@ -418,6 +448,8 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
           <NotFoundView v-else-if="migrationMissing" />
           <NotFoundView v-else-if="pluginPageMissing" />
           <ViewLoading v-else-if="supportPageWaiting" />
+          <ViewLoading v-else-if="route.name === 'plugin-reader' && !readerPagesReady" />
+          <NotFoundView v-else-if="readerPageMissing" />
           <NotFoundView v-else-if="supportPageAbsent" />
           <MdPage v-else-if="!sectionAllowed && isLogged">
             <section
@@ -473,6 +505,17 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
                 Sign in
               </MdButton>
             </section>
+          </MdPage>
+          <!-- A reader page has no frame: it is a page of Browse, drawn with the page margins and its own heading. -->
+          <MdPage
+            v-else-if="route.name === 'plugin-reader'"
+            class="py-6"
+          >
+            <PluginPageView
+              :plugin="routeText(route.params.plugin)"
+              :page-id="routeText(route.params.page)"
+              reader
+            />
           </MdPage>
           <!-- The hero and the listing are one element, so the page transition has one child to animate. -->
           <div
