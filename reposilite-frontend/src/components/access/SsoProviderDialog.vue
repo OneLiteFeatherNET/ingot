@@ -18,6 +18,7 @@
 import { computed, nextTick, ref, watch, type PropType } from 'vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdChipInput from '../md/MdChipInput.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSwitch from '../md/MdSwitch.vue'
@@ -261,8 +262,11 @@ const validateDomain = (text: string, existing: string[]) => {
         />
 
         <!-- The callback the provider has to accept, and how to register it there. -->
-        <section
-          class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4"
+        <MdCard
+          as="section"
+          tone="container"
+          edge="none"
+          class="flex flex-col gap-3"
           aria-labelledby="sso-register-title"
         >
           <h3
@@ -292,7 +296,7 @@ const validateDomain = (text: string, existing: string[]) => {
               <CopyIcon />
             </MdIconButton>
           </div>
-        </section>
+        </MdCard>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <MdTextField
