@@ -39,7 +39,7 @@ Domains:
 | --- | --- |
 | [`authentication`](#authentication) | Brute force protection and the legacy LDAP authenticator for Basic authentication. |
 | [`audit`](#audit) | Retention of the audit log. |
-| [`cleanup`](#cleanup) | Cleanup policies. |
+| [`cleanup`](#cleanup) | Cleanup policies. Added by the `cleanup` plugin, which the server embeds. |
 | [`frontend`](#frontend) | Title, links and appearance of the dashboard. |
 | [`javadoc`](#javadoc) | Javadoc viewer. Added by the `javadoc` plugin, which the server embeds. |
 | [`login`](#login) | Browser login: sessions, lockout, OpenID Connect and LDAP. |
@@ -83,6 +83,8 @@ Settings of the Basic authentication of Maven clients and tools.
 | `recordActorAddress` | Boolean | `true` | Stores the client IP address next to the actor of each event. |
 
 ## cleanup
+
+The `cleanup` plugin owns this domain. It lives in its own module, `cleanup-plugin`, and the server jar embeds it, so the domain is there by default. The domain name, its fields and their defaults are the same as when the policies were part of the server.
 
 Validated: a domain with a violation is refused. Nothing is deleted unless a policy is run by hand or enabled with a schedule. The rules are in [Cleanup policies](../repositories/cleanup-policies.md).
 

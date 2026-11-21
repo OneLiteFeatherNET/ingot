@@ -108,7 +108,9 @@ A plugin can live in its own Gradle module under `reposilite-plugins/` and still
 
 The Javadoc viewer is such a module. Its sources are in `reposilite-plugins/javadoc-plugin`, still in the package `com.reposilite.javadocs`, and its jar `javadoc-plugin.jar` is published as `net.onelitefeather.ingot:javadoc-plugin` with a version of its own. The plugin id `javadoc`, its routes, the `javadoc` settings domain and the `javadocs` cache directory are the same as when the viewer was part of the server. The core reaches the viewer's cache only through the `JavadocCacheReceiver` interface in `net.onelitefeather.ingot.cluster`, so no class of the server depends on `com.reposilite.javadocs`.
 
-At each start the embedded jars are written to `<working directory>/embedded-plugins/`. The plugins directory is `<working directory>/plugins/` unless the `--plugin-directory` parameter names another one. In the container image the working directory is `/app/data`, so the plugins directory is `/app/data/plugins` and the embedded jars land in `/app/data/embedded-plugins`. The image has no extra copy of the viewer: it comes only from `ingot.jar`.
+The cleanup policies are another such module. Their sources are in `reposilite-plugins/cleanup-plugin`, still in the package `com.reposilite.cleanup`, and the jar `cleanup-plugin.jar` is published as `net.onelitefeather.ingot:cleanup-plugin` with a version of its own. The plugin id `cleanup`, its routes under `/api/cleanup`, the `cleanup` settings domain, the run records and the job leases are the same as when the policies were part of the server. The core reaches the module only through interfaces of its own: `JobLastSuccessSource` in `net.onelitefeather.ingot.deploy` reports the last scheduled run, and the module reaches the mirror cache records and the job claims of the core through `CleanupSupportFacade` in `net.onelitefeather.ingot.cleanup`. No class of the server depends on `com.reposilite.cleanup`.
+
+At each start the embedded jars are written to `<working directory>/embedded-plugins/`. The plugins directory is `<working directory>/plugins/` unless the `--plugin-directory` parameter names another one. In the container image the working directory is `/app/data`, so the plugins directory is `/app/data/plugins` and the embedded jars land in `/app/data/embedded-plugins`. The image has no extra copy of the viewer or of the cleanup policies: both come only from `ingot.jar`.
 
 The update path of an embedded plugin is a newer jar in the plugins directory. A jar there with the same plugin id replaces the embedded copy only when the `Implementation-Version` in its manifest is strictly higher. With the same, a lower or no version the embedded copy stays in use. Either way one `INFO` line names both versions and the copy in use, and the two copies are never registered together. [Install a plugin](../../manage/plugins/install-a-plugin.md#update-a-plugin) describes the steps for operators.
 
@@ -170,7 +172,7 @@ flowchart TB
   maven["maven"]
   redirect["redirect"]
   javadoc["javadoc (embedded module)"]
-  cleanup["cleanup"]
+  cleanup["cleanup (embedded module)"]
   search["search"]
   failure["failure (stub)"]
   local-configuration["local-configuration (stub)"]
@@ -550,7 +552,7 @@ These deviations were found by reading imports and facade lookups in the code. E
 
 1. **Facades looked up across plugins without a declared dependency.** `FrontendPlugin` resolves `MavenFacade` (`FrontendPlugin.kt`, route lambda). `AccessTokenPlugin` resolves `MavenFacade` in lazy lambdas (`AccessTokenPlugin.kt`). `SearchPlugin` resolves `AccessTokenFacade` in the routing listener (`SearchPlugin.kt`). The declared `dependencies` are not checked against these calls.
 2. **Maven reaches search at runtime with no declared link.** `SearchFacadeArtifactIndexSink` finds `SearchFacade` per call. Maven code calls `ArtifactIndexSink` directly in five places (`RepositoryService.kt`, `MirrorService.kt`, `MetadataService.kt`, `PreservedBuildsListener.kt`, `MavenFacade.kt`) instead of only publishing events.
-3. **Application code imports infrastructure.** `CleanupPlugin` imports `scheduling.infrastructure.SqlScheduledJobClaims`. `SearchPlugin` imports `maven.infrastructure.SqlMirrorCacheLedger` and `scheduling.infrastructure.SqlScheduledJobClaims`, and takes an Exposed `Database` directly. The `*Components` files in `audit`, `configuration`, `statistics` and `token` take an Exposed `Database` as well.
+3. **Application code imports infrastructure.** `SearchPlugin` imports `maven.infrastructure.SqlMirrorCacheLedger` and `scheduling.infrastructure.SqlScheduledJobClaims`, and takes an Exposed `Database` directly. The `*Components` files in `audit`, `configuration`, `statistics` and `token` take an Exposed `Database` as well.
 4. **Cross-domain types in a plugin.** `AccessTokenPlugin` imports `identity.service.IdentityFacade` and `identity.storage.IdentityStore`. The token domain depends on identity internals, which the plugin graph does not declare.
 5. **HTTP types in the service and shared layers.** `identity/service/IdentityFacade.kt` imports `io.javalin.http.HttpStatus` constants (`CONFLICT`, `FORBIDDEN`, `PRECONDITION_FAILED`). `shared/ContextDsl.kt` imports Javalin and `identity.model.Action`. The service layer therefore knows about the web layer.
 6. **Event listeners without isolation.** `Extensions.emitEvent` calls listeners in sequence with no exception handling. Only `DeployIndexListener` and `DeleteIndexListener` wrap their calls in `guarded`.
