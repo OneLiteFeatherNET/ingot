@@ -12,3 +12,4 @@ These pages document what a plugin can use and how plugins are distributed.
 * [Plugin tiers](plugin-tiers.md)
 * [Viewer access checks](viewer-access-checks.md)
 * [Artifact enrichment](artifact-enrichment.md)
+* [Search document attributes](search-document-attributes.md)

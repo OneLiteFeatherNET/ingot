@@ -190,6 +190,7 @@
   * [Plugin tiers](references/plugins/plugin-tiers.md)
   * [Viewer access checks](references/plugins/viewer-access-checks.md)
   * [Artifact enrichment](references/plugins/artifact-enrichment.md)
+  * [Search document attributes](references/plugins/search-document-attributes.md)
 * [Console commands](references/console-commands.md)
 * [Command line client](references/cli.md)
 * [Glossary](references/glossary.md)
