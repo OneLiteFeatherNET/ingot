@@ -91,7 +91,7 @@ Pull request: `test(load): add the capacity search profiles`
 
 Pull request: `test(load): add the topology overlays and the upstream mock`
 
-- [ ] 5.1 Add the overlays `loadtest/topologies/monolith.yaml`, `ha.yaml` and `split.yaml`. Verify: `helm template` with each overlay
+- [x] 5.1 Add the overlays `loadtest/topologies/monolith.yaml`, `ha.yaml` and `split.yaml`. Verify: `helm template` with each overlay
   renders and the requests of every Ingot container equal its limits for each size of `loadtest/lib/sizes.ts`.
 - [x] 5.2 Add `loadtest/topologies/scalable.yaml` and `scalable-read-1.yaml`, `scalable-read-2.yaml`, `scalable-read-4.yaml` for the
   scaling series. These files render only after `add-worker-target` is merged, so they are added in this pull request only when that
