@@ -110,7 +110,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 7. The CLI REPL over the shared websocket (`feat(cli)`, `test(cli)`)
 
-- [ ] 7.1 `test(cli)`: failing tests for the REPL with an in-process WebSocket stub on an ephemeral port, driven by a scripted dumb terminal:
+- [x] 7.1 `test(cli)`: failing tests for the REPL with an in-process WebSocket stub on an ephemeral port, driven by a scripted dumb terminal:
   the hello carries protocol 1 and the token; no HTTP request is made during a session; Tab sends one `complete`; `stop` asks `y/N`,
   defaults to no and sends `accept` false unless the answer is yes; a sensitive line is not written to the history file; `Ctrl-C` stops the
   wait for a result and the connection stays open; `Ctrl-D` on an empty line exits with 0; a drop during a command reports it as unknown
