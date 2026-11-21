@@ -290,16 +290,35 @@ class ChartRenderTest(unittest.TestCase):
             "probes.path must not change the all-in-one readiness default",
         )
 
-    # Replaces test_startup_probe_is_absent_by_default for split: the startup probe is on by default in split, so a
-    # first start that takes longer than the liveness budget is not restarted. All-in-one keeps it off.
-    def test_startup_probe_is_absent_by_default_in_all_in_one(self):
-        deployment = named(render(), "Deployment", SERVER)
-        self.assertNotIn("startupProbe", container(deployment), "no startup probe in all-in-one unless it is enabled")
+    # Replaces test_startup_probe_is_absent_by_default_in_all_in_one. Under a small CPU limit the JVM needs longer to open
+    # its port than the liveness budget of about 32 seconds, and the kubelet restarted the container in a loop. The
+    # startup probe holds liveness back, so it is on by default in every mode.
+    def test_startup_probe_is_rendered_by_default_in_all_in_one(self):
+        startup = container(named(render(), "Deployment", SERVER))["startupProbe"]
+        self.assertEqual(5, startup["periodSeconds"], "the all-in-one startup probe period must be 5 seconds")
+        self.assertEqual(60, startup["failureThreshold"], "the all-in-one startup budget must be 60 failures of 5 seconds")
+        self.assertEqual(
+            "/api/status/health", startup["httpGet"]["path"], "the all-in-one startup probe must use the liveness path",
+        )
 
+    def test_startup_probe_can_be_turned_off_in_all_in_one(self):
+        deployment = named(render({"probes": {"startup": {"enabled": False}}}), "Deployment", SERVER)
+        self.assertNotIn("startupProbe", container(deployment), "an explicit enabled: false must turn the probe off")
+
+    def test_startup_probe_leaves_the_liveness_budget_unchanged(self):
+        liveness = container(named(render(), "Deployment", SERVER))["livenessProbe"]
+        self.assertEqual(
+            {"initialDelaySeconds": 2, "periodSeconds": 10, "timeoutSeconds": 2, "successThreshold": 1, "failureThreshold": 3},
+            {key: liveness[key] for key in ("initialDelaySeconds", "periodSeconds", "timeoutSeconds", "successThreshold",
+                                            "failureThreshold")},
+            "the startup probe is additive, the liveness defaults must not change",
+        )
+
+    # The split budget grew from 150 to 300 seconds, the same as all-in-one, for the same slow start under a CPU limit.
     def test_startup_probe_is_rendered_by_default_in_split(self):
         startup = container(named(render(split_values()), "Deployment", SERVER))["startupProbe"]
         self.assertEqual(5, startup["periodSeconds"], "the split startup probe period must be 5 seconds")
-        self.assertEqual(30, startup["failureThreshold"], "the split startup budget must be 30 failures of 5 seconds")
+        self.assertEqual(60, startup["failureThreshold"], "the split startup budget must be 60 failures of 5 seconds")
         self.assertEqual(
             "/api/status/health", startup["httpGet"]["path"], "the split startup probe must use the health endpoint",
         )
@@ -810,6 +829,22 @@ class ScalableWorkloadTest(unittest.TestCase):
                 f"{name} must use the health endpoint for liveness",
             )
             self.assertIn("startupProbe", container(deployment), f"{name} must render the split startup probe")
+
+    def test_every_server_workload_gets_the_startup_budget(self):
+        manifests = render(scalable_values())
+        for name in (READ, WRITE, WORKER):
+            startup = container(named(manifests, "Deployment", name))["startupProbe"]
+            self.assertEqual(
+                (5, 60, "/api/status/health"),
+                (startup["periodSeconds"], startup["failureThreshold"], startup["httpGet"]["path"]),
+                f"{name} must get the 300 second startup budget on the health endpoint",
+            )
+
+    def test_startup_probe_can_be_turned_off_for_every_server_workload(self):
+        manifests = render(scalable_values(probes={"startup": {"enabled": False}}))
+        for name in (READ, WRITE, WORKER):
+            self.assertNotIn("startupProbe", container(named(manifests, "Deployment", name)),
+                             f"an explicit enabled: false must turn the probe off for {name}")
 
     def test_pod_disruption_budget_is_rendered_for_an_enabled_workload_only(self):
         values = scalable_values(scalable={"write": {"podDisruptionBudget": {"enabled": True}}})

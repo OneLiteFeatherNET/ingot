@@ -71,6 +71,14 @@ spec:
           requests:
             cpu: 1
             memory: 128Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/status/health
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 5
+          timeoutSeconds: 2
         stdin: true
         volumeMounts:
         - mountPath: /app/data

@@ -168,6 +168,21 @@
         "enabled": {"type": "boolean"}
       }
     },
+    "probes": {
+      "type": "object",
+      "properties": {
+        "startup": {
+          "type": "object",
+          "description": "Startup probe of every server workload. Liveness waits until it succeeds. The budget is periodSeconds * failureThreshold.",
+          "properties": {
+            "enabled": {"type": "boolean", "description": "Renders the startup probe. On by default in every mode."},
+            "periodSeconds": {"type": "integer", "minimum": 1, "description": "Seconds between two startup probes."},
+            "timeoutSeconds": {"type": "integer", "minimum": 1, "description": "Seconds before a startup probe counts as failed."},
+            "failureThreshold": {"type": "integer", "minimum": 1, "description": "Failed startup probes before the container is restarted."}
+          }
+        }
+      }
+    },
     "httpRoute": {
       "type": "object",
       "properties": {

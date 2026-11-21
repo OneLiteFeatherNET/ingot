@@ -414,13 +414,14 @@ probes:
     timeoutSeconds: 2
     successThreshold: 1
     failureThreshold: 3
-  # Startup probe of the server. `enabled` is unset by default, which means on in split mode and off in allInOne mode.
-  # Set it to true or false to choose. Liveness is held back until the startup probe succeeds, so a first start that takes
-  # longer than the liveness budget is not restarted. The budget is periodSeconds * failureThreshold.
+  # Startup probe of every server workload, on the liveness path. Liveness is held back until the startup probe
+  # succeeds, so a first start that takes longer than the liveness budget is not restarted, which happens under a small
+  # CPU limit. The budget is periodSeconds * failureThreshold, 300 seconds. Set enabled to false to turn it off.
   startup:
+    enabled: true
     periodSeconds: 5
     timeoutSeconds: 2
-    failureThreshold: 30
+    failureThreshold: 60
 
 ## Persistent Volume Claim of the server
 ## Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/

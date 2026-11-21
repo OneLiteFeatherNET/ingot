@@ -91,7 +91,7 @@ The server image starts as root, and its entrypoint switches to the service user
 
 In `allInOne` mode the liveness and readiness probes send `GET probes.path`, which is `/` by default. In `split` mode the liveness probe of the server uses `probes.serverPath`, and the readiness probe uses `/api/status/ready` unless `probes.readinessPath` is set. The readiness of the split server takes its values from `probes.split.readiness`, which tolerates one slow answer, because the check runs a database query and a storage listing.
 
-The startup probe is on in `split` mode and off in `allInOne` mode. `probes.startup.enabled` overrides that. Its budget is `periodSeconds * failureThreshold`, which is 150 seconds by default. Liveness does not run before the startup probe succeeds.
+Every server workload has a startup probe on its liveness path, in every mode. Its budget is `periodSeconds * failureThreshold`, which is 300 seconds by default. Liveness does not run before the startup probe succeeds, so a server that starts slowly under a small CPU limit is not restarted before it opens its port. Set `probes.startup.enabled: false` to turn it off.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -115,9 +115,10 @@ The startup probe is on in `split` mode and off in `allInOne` mode. `probes.star
 | `probes.liveness.timeoutSeconds` | integer | `2` | Seconds before a probe counts as failed. |
 | `probes.liveness.successThreshold` | integer | `1` | Successful probes in a row that mark the check as passing. |
 | `probes.liveness.failureThreshold` | integer | `3` | Failed probes in a row before the check counts as failing. |
+| `probes.startup.enabled` | boolean | `true` | Renders the startup probe of every server workload. `false` turns it off. |
 | `probes.startup.periodSeconds` | integer | `5` | Seconds between startup probes. The startup budget is `periodSeconds * failureThreshold`. |
 | `probes.startup.timeoutSeconds` | integer | `2` | Seconds before a startup probe counts as failed. |
-| `probes.startup.failureThreshold` | integer | `30` | Failed startup probes before the server is restarted. Liveness is held back until the startup probe succeeds. |
+| `probes.startup.failureThreshold` | integer | `60` | Failed startup probes before the server is restarted. Liveness is held back until the startup probe succeeds. |
 
 
 ## Storage
@@ -379,7 +380,6 @@ The chart reads these keys, but `values.yaml` has no entry for them. Set them on
 | `persistence.storageClass` | string | Storage class of the claim. Rendered as `storageClassName` when set. |
 | `persistence.existingClaim` | string | Name of a claim that already exists. The server mounts it, and the chart creates no claim. |
 | `persistence.subPath` | string | Mounts only a subdirectory of the data volume at `persistence.path`. |
-| `probes.startup.enabled` | boolean | Turns the startup probe on or off. Unset means on in `split` mode and off in `allInOne` mode. See [Probes](#probes). |
 
 ## Combinations that fail the render
 

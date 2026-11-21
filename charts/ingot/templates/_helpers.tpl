@@ -203,13 +203,13 @@ modes. It is never the root path, which answers 503 while the server drains. Liv
 
 {{/*
 Whether the startup probe of the server is rendered, as "true" or "false". probes.startup.enabled wins when it is set.
-Otherwise the probe is on in split mode and off in allInOne mode.
+Otherwise the probe is on in every mode.
 */}}
 {{- define "ingot.startupProbeEnabled" -}}
 {{- if hasKey .Values.probes.startup "enabled" }}
 {{- .Values.probes.startup.enabled }}
 {{- else }}
-{{- has .Values.mode (list "split" "scalable") }}
+{{- true }}
 {{- end }}
 {{- end }}
 
