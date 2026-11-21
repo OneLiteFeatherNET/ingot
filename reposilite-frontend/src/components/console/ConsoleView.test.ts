@@ -447,10 +447,10 @@ describe('ConsoleView', () => {
       expect(wrapper.find('#console').attributes('aria-live'), 'the whole log must not be a live region').toBeUndefined()
     })
 
-    it('sets the log output in the md3 body small role instead of a fixed text size', async () => {
+    it('sets the log output in the small code role instead of a fixed text size', async () => {
       await mountView()
 
-      expect(wrapper.find('#console').classes(), 'the log uses the md-body-small type role').toContain('md-body-small')
+      expect(wrapper.find('#console').classes(), 'the log uses the md-code-small role, body small in monospace').toContain('md-code-small')
       expect(wrapper.find('#console').classes(), 'the log has no Tailwind text size class').not.toContain('text-xs')
     })
 

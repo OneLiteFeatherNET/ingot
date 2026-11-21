@@ -50,7 +50,7 @@ const rows = computed(() => props.preview.deletions.map((row) => ({
 // The table gives every cell the same classes, so the path, the size and the reason get theirs here.
 const CELL_CLASS: Record<string, string> = {
   repository: 'block text-on-surface',
-  path: 'block font-mono md-body-small break-words text-on-surface',
+  path: 'block md-code-small break-words text-on-surface',
   version: 'block text-on-surface',
   size: 'block whitespace-nowrap text-on-surface',
   reason: 'block md-body-small',

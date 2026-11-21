@@ -213,7 +213,7 @@ const submit = () => {
             @click="choose(template)"
           >
             <span class="md-label-large text-on-surface">{{ template.label }}</span>
-            <span class="break-all font-mono md-body-small text-on-surface-variant">{{ template.nodes.join(', ') }}</span>
+            <span class="break-all md-code-small text-on-surface-variant">{{ template.nodes.join(', ') }}</span>
           </button>
         </li>
         <li
@@ -286,7 +286,7 @@ const submit = () => {
         </template>
         <p
           v-if="preview"
-          class="break-all font-mono md-body-small text-on-surface-variant"
+          class="break-all md-code-small text-on-surface-variant"
           data-test="template-preview"
         >
           Adds {{ preview }}

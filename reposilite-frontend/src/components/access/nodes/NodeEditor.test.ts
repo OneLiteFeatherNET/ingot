@@ -316,10 +316,10 @@ describe('NodeEditor', () => {
   })
 
   describe('rows', () => {
-    it('shows each node in monospace', () => {
+    it('shows each node in the medium code role, which is monospace', () => {
       mountEditor()
 
-      expect(wrapper.findAll('[data-test="node-row"] code').every(code => code.classes().includes('font-mono'))).toBe(true)
+      expect(wrapper.findAll('[data-test="node-row"] code').every(code => code.classes().includes('md-code-medium'))).toBe(true)
     })
 
     it('removes a row with its remove button, which is named after the node', async () => {

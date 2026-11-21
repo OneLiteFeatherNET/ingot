@@ -71,7 +71,7 @@ const emit = defineEmits(['toggle', 'remove'])
   >
     <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 basis-56">
       <code
-        class="break-all font-mono md-body-medium text-on-surface"
+        class="break-all md-code-medium text-on-surface"
         :title="entry.node"
       >{{ label || entry.node }}</code>
       <span
