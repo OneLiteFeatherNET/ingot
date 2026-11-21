@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.search.enrichment
 
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 
 private val ENRICHER_ID_PATTERN = Regex("[a-z0-9][a-z0-9-]{1,31}")
@@ -26,6 +27,8 @@ private val ENRICHER_ID_PATTERN = Regex("[a-z0-9][a-z0-9-]{1,31}")
 internal class ArtifactEnricherRegistry(private val warn: (String) -> Unit) {
 
     private val enrichers = linkedMapOf<String, ArtifactEnricher>()
+
+    private val declarations = linkedMapOf<String, DeclaredAttribute>()
 
     /** Registers [enricher]. Returns false when it was refused, and says why in a warning. */
     fun register(enricher: ArtifactEnricher): Boolean {
@@ -44,10 +47,34 @@ internal class ArtifactEnricherRegistry(private val warn: (String) -> Unit) {
             return false
         }
         enrichers[enricher.id] = enricher
+        declare(enricher)
         return true
     }
+
+    /** Adds the declarations of an accepted [enricher] to the catalogue. A refused declaration is skipped with a warning. */
+    private fun declare(enricher: ArtifactEnricher) {
+        val name = enricher.javaClass.name
+        enricher.declaredAttributes.forEach { declaration ->
+            val refusal = validateAttributes(enricher.id, mapOf(declaration.key to emptyList()))
+            if (refusal != null) {
+                warn("SEARCH | Refused attribute declaration '${declaration.key}' of artifact enricher '${enricher.id}' from $name: ${refusal.rule}")
+                return@forEach
+            }
+            val existing = declarations[declaration.key]
+            if (existing != null) {
+                warn("SEARCH | Refused attribute declaration '${declaration.key}' from $name: ${existing.owner} already declares this key")
+                return@forEach
+            }
+            declarations[declaration.key] = DeclaredAttribute(declaration, name)
+        }
+    }
+
+    /** The attribute catalogue: every accepted declaration by key, in registration order (search attribute facets, D1). */
+    fun catalogue(): Map<String, AttributeDeclaration> = declarations.mapValues { it.value.declaration }
 
     /** The enrichers that were accepted, in registration order. */
     fun accepted(): List<ArtifactEnricher> = enrichers.values.toList()
 
 }
+
+private class DeclaredAttribute(val declaration: AttributeDeclaration, val owner: String)
