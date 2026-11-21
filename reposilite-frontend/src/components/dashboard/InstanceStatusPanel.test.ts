@@ -376,6 +376,21 @@ describe('InstanceStatusPanel cluster view', () => {
     wrapper.unmount()
   })
 
+  it('draws the figures of an instance row as a shared key and value list', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: { instances: [member({ id: 'ingot-0', version: '1.3.0', failuresCount: 2 })] }
+    })
+
+    const list = wrapper.get('[data-testid="cluster-instance"] dl')
+    expect(list.attributes('data-ingot-component'), 'the figures of the row sit in an md-key-value-list').toBe('md-key-value-list')
+    expect(list.findAll('dt').map(term => term.text()), 'one term per figure, in the order of the row')
+      .toEqual(['Version', 'Uptime', 'Heap', 'Threads', 'Failures', 'Health'])
+    expect(list.findAll('dd').map(detail => detail.text()), 'each figure keeps its value')
+      .toEqual(['1.3.0', '2h 0m', '100.0 MB of 512 MB maximum heap', '3 live threads', '2', 'Up'])
+    wrapper.unmount()
+  })
+
   it('marks the first row as this instance', async () => {
     const wrapper = await mountWithStatus({
       ...INSTANCE,
