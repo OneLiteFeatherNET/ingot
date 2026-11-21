@@ -154,6 +154,16 @@ describe('the Cut-over step', () => {
     expect(ids).toEqual(['migration-cutover-freeze', 'migration-cutover-verify', 'migration-cutover-switch'])
   })
 
+  it('draws each checklist item as a row of the shared list', async () => {
+    const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob(), verifyJob(verified)]), at: '/settings/migration/cut-over' })
+
+    for (const id of ['migration-cutover-freeze', 'migration-cutover-verify', 'migration-cutover-switch']) {
+      const row = checkboxOf(wrapper, id).element.closest('li')
+      expect(row?.dataset.ingotComponent, `the item ${id} is an md-list-item`).toBe('md-list-item')
+      expect(row?.parentElement?.dataset.ingotComponent, `the item ${id} sits in an md-list`).toBe('md-list')
+    }
+  })
+
   it('removes a finished job only after a confirmation', async () => {
     const api = fakeApi()
     const { wrapper } = await mountWith(CutOverStep, { api, wizard: wizardWith([importJob(), verifyJob(verified)]), at: '/settings/migration/cut-over', attachTo: document.body })
