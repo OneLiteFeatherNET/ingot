@@ -145,7 +145,7 @@ Pull request: `test(load): add the load test grafana dashboard`
 
 Pull request: `test(load): add result records and the reference capacities page`
 
-- [ ] 8.1 Test: `loadtest/runner/record.test.ts` for the result record: the fields of design.md D13, an outcome of `not-ready` or
+- [x] 8.1 Test: `loadtest/runner/record.test.ts` for the result record: the fields of design.md D13, an outcome of `not-ready` or
   `oom-killed` with its step instead of a rate when a pod never became ready or was OOM-killed, and one file per topology, size and
   scenario. Then add `loadtest/runner/record.ts` and wire it as the record step of `loadtest/runner/steps.ts`.
 - [x] 8.2 Test: `loadtest/runner/capacities.test.ts` for the generator: only the core scenarios `mix`, `resolve` and `deploy` are
