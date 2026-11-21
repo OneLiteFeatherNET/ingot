@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.meilisearch
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.search.IndexRow
@@ -38,7 +39,11 @@ internal object MeilisearchDocument {
     /** The document id of a row, the path hash of the database. */
     fun id(repository: String, path: String): String = pathHash(repository, path)
 
-    fun of(row: IndexRow): ObjectNode {
+    /**
+     * The document of [row]. A non-empty [attributes] set is written as the object `attributes`, in the order and case it came in
+     * (search document attributes, D6). An empty or absent set leaves the object out, so the replacing write removes it.
+     */
+    fun of(row: IndexRow, attributes: Map<String, List<String>>? = null): ObjectNode {
         val file = row.file
         val document = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.createObjectNode()
         document.put("id", id(file.repository, file.path))
@@ -80,8 +85,33 @@ internal object MeilisearchDocument {
             .plus(lower(file.version))
             .distinct()
             .forEach { heads.add(it) }
+        if (!attributes.isNullOrEmpty()) {
+            val stored = document.putObject("attributes")
+            attributes.forEach { (key, values) ->
+                val array = stored.putArray(key)
+                values.forEach { array.add(it) }
+            }
+        }
         return document
     }
+
+    /** The `attributes` object of a stored [document], or null when it has none. */
+    fun attributesOf(document: JsonNode): Map<String, List<String>>? {
+        val attributes = document.path("attributes").takeIf { it.isObject } ?: return null
+        return attributes.properties().associate { (key, values) -> key to values.map { it.asText() } }
+    }
+
+    /**
+     * The version of each enricher stored with a [document]: the single value of each `core.enricher.<id>` attribute, by id
+     * (search document attributes, D5).
+     */
+    fun enricherVersionsOf(document: JsonNode): Map<String, String> = attributesOf(document).orEmpty()
+        .filterKeys { it.startsWith(ENRICHER_VERSION_PREFIX) }
+        .mapNotNull { (key, values) -> values.firstOrNull()?.let { key.removePrefix(ENRICHER_VERSION_PREFIX) to it } }
+        .toMap()
+
+    /** The key prefix under which the core stores the version of each enricher, fixed by search document attributes, D1. */
+    private const val ENRICHER_VERSION_PREFIX = "core.enricher."
 
     private fun lower(value: String): String = value.lowercase(Locale.ROOT)
 
