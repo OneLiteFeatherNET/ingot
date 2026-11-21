@@ -20,6 +20,7 @@ import MdDialog from '../md/MdDialog.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChipInput from '../md/MdChipInput.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -380,11 +381,11 @@ const validateDomain = (text: string, existing: string[]) => {
         </MdSwitch>
 
         <!-- The claims and the trusted second factor values are rarely changed, so they wait behind a disclosure. -->
-        <details class="rounded-corner-medium border border-outline-variant p-4">
-          <summary class="cursor-pointer md-title-small text-on-surface">
+        <MdDisclosure>
+          <template #summary>
             Advanced
-          </summary>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          </template>
+          <div class="grid gap-4 sm:grid-cols-2">
             <MdTextField
               id="sso-claim-username"
               v-model="form.usernameClaim"
@@ -435,7 +436,7 @@ const validateDomain = (text: string, existing: string[]) => {
               :error-text="errorOf('mfaAmrValues')"
             />
           </div>
-        </details>
+        </MdDisclosure>
 
         <MdSwitch
           id="sso-enabled"
