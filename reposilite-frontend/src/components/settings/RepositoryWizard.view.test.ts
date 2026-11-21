@@ -942,3 +942,55 @@ describe('RepositoryWizard problems', () => {
       .toEqual({ component: 'md-alert', tone: 'error', role: 'alert' })
   })
 })
+
+describe('RepositoryWizard dialog', () => {
+  const modalRoot = () => document.querySelector('.vfm')
+  const frame = () => document.querySelector('.vfm__content > div')
+
+  it('is one dialog, named by its heading', async () => {
+    await mountWizard({ onType: true })
+
+    expect(document.querySelectorAll('[role="dialog"]').length, 'only the modal root carries the dialog role').toBe(1)
+    const name = document.getElementById(modalRoot()?.getAttribute('aria-labelledby') ?? '')
+    expect(name?.textContent?.trim(), 'the accessible name is the heading').toBe('New repository')
+  })
+
+  it('opens in the shared dialog frame, full screen below the medium window', async () => {
+    await mountWizard({ onType: true })
+
+    expect(frame()?.getAttribute('data-ingot-component'), 'the frame is the shared dialog frame').toBe('dialog-shell')
+    expect(frame()?.contains($('#repository-wizard')), 'the wizard form is inside the frame').toBe(true)
+    expect(frame()?.classList.contains('max-medium:h-dvh'), 'the compact size fills the screen below 600px').toBe(true)
+    expect(frame()?.classList.contains('medium:max-w-140'), 'from 600px the frame caps the width at 560px').toBe(true)
+  })
+
+  it('draws the scrim through the dialog frame, not as an inline style', async () => {
+    await mountWizard({ onType: true })
+
+    const overlay = document.querySelector('.vfm__overlay')
+    expect(overlay, 'the modal overlay is in the document').not.toBeNull()
+    expect(overlay?.getAttribute('style') ?? '', 'the overlay has no inline colour').not.toContain('color-mix')
+  })
+
+  it('puts the focus on the step title when it opens', async () => {
+    await mountWizard({ onType: true })
+
+    expect(document.activeElement?.id, 'the step title has the focus').toBe('wizard-step-title')
+  })
+
+  it('has one filled button, the one that moves on', async () => {
+    await mountWizard({ onType: true })
+
+    const filled = [...(frame()?.querySelectorAll('button[data-variant="filled"]') ?? [])]
+    expect(filled.map(button => button.textContent?.trim()), 'one filled button, Next').toEqual(['Next'])
+  })
+
+  it('asks to close on Escape while nothing runs', async () => {
+    await mountWizard({ onType: true })
+
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper!.emitted('update:modelValue'), 'Escape asks to close the wizard').toEqual([[false]])
+  })
+})
