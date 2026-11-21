@@ -62,6 +62,9 @@ describe('TeamDetail', () => {
 
   const routeOf = (host: VueWrapper) => (host.vm as unknown as { $router: Router }).$router.currentRoute.value
 
+  const valueOf = (label: string) =>
+    wrapper!.findAll('[data-test="key-value-row"]').find(row => row.find('dt').text() === label)?.find('dd').text()
+
   const conflictDialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
 
   beforeEach(() => {
@@ -110,7 +113,18 @@ describe('TeamDetail', () => {
       await mountDetail('developers')
 
       expect(teams.get).toHaveBeenCalledWith('developers')
-      expect(wrapper!.find('[data-test="description"]').text()).toBe('Everyone who writes code')
+      expect(valueOf('Description'), 'the description row holds the team description').toBe('Everyone who writes code')
+    })
+
+    it('lays out the team values as a shared key and value list', async () => {
+      await mountDetail('developers')
+
+      const list = wrapper!.get('dl')
+      expect(list.attributes('data-ingot-component'), 'the team values sit in an md-key-value-list').toBe('md-key-value-list')
+      expect(list.findAll('dt').map(term => term.text()), 'one term per value, in the order of the card')
+        .toEqual(['Description', 'External reference', 'Members'])
+      expect(list.findAll('dd').map(detail => detail.text()), 'each term keeps its value, with None for a missing reference')
+        .toEqual(['Everyone who writes code', 'None', '3 (2 added by hand)'])
     })
 
     it('names the team in the second level heading of the detail', async () => {
@@ -390,7 +404,7 @@ describe('TeamDetail', () => {
 
       await edit('Writes code', '')
 
-      expect(wrapper!.find('[data-test="description"]').text()).toBe('Writes code')
+      expect(valueOf('Description'), 'the description row shows the saved description').toBe('Writes code')
     })
 
     it('uses the entity tag of the last answer for the next write', async () => {
