@@ -36,36 +36,36 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
 
 ## 4. Changed paths (red, then green)
 
-- [ ] 4.1 `test(search)`: failing tests of `OutboxWorker.changedPath`: no enricher matches, so the storage content is not read and the
+- [x] 4.1 `test(search)`: failing tests of `OutboxWorker.changedPath`: no enricher matches, so the storage content is not read and the
   row is upserted as before; a matching extension reaches the enricher once with trigger `CHANGED` and the stored checksums; a mirror
   file reaches it with provenance `MIRROR`; an enricher that throws still yields the upsert and one warning, counted as failed.
   Verify: they fail.
-- [ ] 4.2 `feat(search)`: call the enrichers matching the extension between the row and `Upsert` in `OutboxWorker.changedPath`, and
+- [x] 4.2 `feat(search)`: call the enrichers matching the extension between the row and `Upsert` in `OutboxWorker.changedPath`, and
   count the results. Verify: the tests of 4.1 pass and the existing outbox tests pass with unchanged assertions.
 
 ## 5. Rebuild (red, then green)
 
-- [ ] 5.1 `test(search)`: failing tests of `RebuildService.writeRows`: a new or changed row reaches the enricher with trigger `REBUILD`;
+- [x] 5.1 `test(search)`: failing tests of `RebuildService.writeRows`: a new or changed row reaches the enricher with trigger `REBUILD`;
   an unchanged row (same size and modification time) does not; a held (pending) row does not; a failing enricher does not stop the
   page. Verify: they fail.
-- [ ] 5.2 `feat(search)`: call the enrichers in `writeRows` for the writable rows that are not unchanged, before `backend.apply`.
+- [x] 5.2 `feat(search)`: call the enrichers in `writeRows` for the writable rows that are not unchanged, before `backend.apply`.
   Verify: the tests of 5.1 pass and the rebuild tests pass with unchanged assertions.
 
 ## 6. Status (red, then green)
 
-- [ ] 6.1 `test(search)`: failing tests that the index status response carries the `enrichers` block with the counters per id, and that
+- [x] 6.1 `test(search)`: failing tests that the index status response carries the `enrichers` block with the counters per id, and that
   the block is empty when no enricher is registered and every existing field is unchanged. Verify: they fail.
-- [ ] 6.2 `feat(search)`: add the counters to the status reader and the additive block to the response. Verify: the tests of 6.1 pass.
+- [x] 6.2 `feat(search)`: add the counters to the status reader and the additive block to the response. Verify: the tests of 6.1 pass.
 
 ## 7. Documentation (pull request of its own)
 
-- [ ] 7.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` that describes the hook, the three invocation points, the
+- [x] 7.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` that describes the hook, the three invocation points, the
   budget and the deadline, the failure rules and the rebuild gap of D3. Verify: the page links the consumer fixture and the
   experimental marker.
 
 ## 8. Pull requests
 
-- [ ] 8.1 Open the code pull requests in the order of groups 2 to 7, each from a fresh `origin/main` that contains the merged proposal
+- [x] 8.1 Open the code pull requests in the order of groups 2 to 7, each from a fresh `origin/main` that contains the merged proposal
   and the merged `add-plugin-api-artifact`, each small and with no file under `openspec/`. The first one carries the title
   `feat(search): let plugins enrich artifacts when they are indexed`, and the documentation pull request is titled
   `docs(search): describe the artifact enrichment hook`. Each pull request body fills `.github/PULL_REQUEST_TEMPLATE.md` and contains
