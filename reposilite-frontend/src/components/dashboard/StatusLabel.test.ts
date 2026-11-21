@@ -18,12 +18,18 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import StatusLabel from './StatusLabel.vue'
 
-const COLOUR = 'var(--md-ext-color-success)'
+type Status = 'good' | 'warning' | 'critical' | 'neutral'
 
-const mountLabel = () => mount(StatusLabel, {
-  props: { color: COLOUR },
+const mountLabel = (status: Status = 'good') => mount(StatusLabel, {
+  props: { status },
   slots: { default: 'Healthy' }
 })
+
+const dotOf = (status: Status) => mountLabel(status).element.firstElementChild as HTMLElement
+
+// The runtime declaration of the props, where the validator of the status lives.
+const declaredProps = () =>
+  (StatusLabel as unknown as { props: Record<string, { validator?: (value: unknown) => boolean }> }).props
 
 describe('StatusLabel', () => {
   it('lays the dot and its text on one centre line with the shared gap', () => {
@@ -34,8 +40,7 @@ describe('StatusLabel', () => {
   })
 
   it('draws the dot as an 8 by 8 pixel circle that does not shrink', () => {
-    const dot = mountLabel().element.firstElementChild
-    const classes = dot.className.split(' ')
+    const classes = dotOf('good').className.split(' ')
 
     expect(classes, 'the dot is size-2, which is 8px').toEqual(expect.arrayContaining(['size-2', 'shrink-0', 'rounded-full']))
   })
@@ -45,12 +50,33 @@ describe('StatusLabel', () => {
     const [dot, text] = wrapper.element.children
 
     expect(dot.getAttribute('aria-hidden')).toBe('true')
-    expect(text.textContent.trim(), 'the text is what a reader hears').toBe('Healthy')
+    expect(text.textContent?.trim(), 'the text is what a reader hears').toBe('Healthy')
   })
 
-  it('paints the dot with the colour it is given and no other', () => {
-    const dot = mountLabel().element.firstElementChild
+  it.each([
+    ['good', 'bg-success'],
+    ['warning', 'bg-warning'],
+    ['critical', 'bg-error'],
+    ['neutral', 'bg-outline']
+  ] as const)('paints the dot of the %s status with the %s token class', (status, token) => {
+    expect(dotOf(status).className.split(' '), `the ${status} dot takes its colour from a token class`).toContain(token)
+  })
 
-    expect(dot.style.backgroundColor).toBe('var(--md-ext-color-success)')
+  it('sets no inline colour on the dot', () => {
+    expect(dotOf('warning').getAttribute('style'), 'the colour comes from the class, not a style attribute').toBeNull()
+  })
+
+  it('accepts only the statuses of the closed set', () => {
+    const validator = declaredProps().status?.validator
+
+    expect(validator, 'the status prop is checked at runtime').toBeTypeOf('function')
+    for (const status of ['good', 'warning', 'critical', 'neutral']) {
+      expect(validator?.(status), `${status} is one of the set`).toBe(true)
+    }
+    expect(validator?.('var(--md-ext-color-success)'), 'a colour is not a status').toBe(false)
+  })
+
+  it('has no colour prop', () => {
+    expect(Object.keys(declaredProps()), 'the caller names a status, never a colour').not.toContain('color')
   })
 })

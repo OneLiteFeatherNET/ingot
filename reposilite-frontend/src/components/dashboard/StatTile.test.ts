@@ -49,3 +49,35 @@ describe('StatTile meter', () => {
     wrapper.unmount()
   })
 })
+
+describe('StatTile meter colour', () => {
+  const fillOf = (ratio: number) => {
+    const wrapper = mount(StatTile, { props: { label: 'Used memory', value: '1 MB', ratio } })
+    return wrapper.find('[role="meter"]').element.firstElementChild as HTMLElement
+  }
+
+  it.each([
+    [0.5, 'bg-primary'],
+    [0.75, 'bg-warning'],
+    [0.9, 'bg-error']
+  ])('fills a meter at %s with the %s token class', (ratio, token) => {
+    expect(fillOf(ratio).className.split(' '), `a reading of ${ratio} picks its colour from the closed set`).toContain(token)
+  })
+
+  it('sets no inline colour on the meter fill', () => {
+    const style = fillOf(0.95).getAttribute('style') ?? ''
+
+    expect(style, 'only the width is inline, the colour is a class').not.toContain('background')
+  })
+})
+
+describe('StatTile status', () => {
+  it('hands its status to the status label as a status, not a colour', () => {
+    const wrapper = mount(StatTile, {
+      props: { label: 'Disk', value: '10 GB', status: 'warning', statusLabel: 'Filling up' }
+    })
+    const dot = wrapper.findComponent({ name: 'StatusLabel' }).find('[aria-hidden="true"]')
+
+    expect(dot.classes(), 'the warning status draws the warning dot').toContain('bg-warning')
+  })
+})
