@@ -122,13 +122,24 @@ Do not rotate the token the job itself authenticates with, because the next run 
 
 The exit code is the job's result. A step that runs several commands can pipe a script to `exec -` and add `--keep-going` only where the later commands do not depend on the earlier ones.
 
+## Interactive sessions
+
+The interactive mode keeps one WebSocket connection to `/api/console/sock` open for the whole session, the same connection the dashboard console uses. `exec` uses plain HTTP requests only. So:
+
+* A reverse proxy or an ingress between the client and the server must allow the WebSocket upgrade on `/api/console/sock`, and its idle timeout should be long enough for a session in which nobody types. A proxy that serves the dashboard console already does both.
+* When the connection drops, for a restart of the server or of a proxy, the client reconnects at the next command, which it does not send, with a wait that starts at about one second and grows to 30 seconds. The log continues where it stopped. A command that was running at the drop is reported as unknown and is not sent again, so check its effect before you repeat it.
+* Behind a load balancer with several replicas, the session stays on one replica, and a reconnect may reach another one. The commands `level`, `status`, `failures`, `stats` and `cache` answer for the replica that runs them. Point `INGOT_URL` at one replica to look at that replica.
+* A revoked token ends the session at its next command with exit code `4`. The client does not reconnect with it.
+
+The protocol, its limits and its close codes are described in [Console commands](../../references/console-commands.md#websocket-protocol-version-1).
+
 ## Check that it works
 
 ```bash
 ingot exec status
 ```
 
-Exit code `0` and the status lines mean the server answered. The other codes are listed in [Exit codes](../../references/cli.md#exit-codes): `4` is the token, `5` is the network, `6` is an older server.
+Exit code `0` and the status lines mean the server answered. The other codes are listed in [Exit codes](../../references/cli.md#exit-codes): `4` is the token, `5` is the network, `6` is an older server. The interactive mode answers `6` as well, before anything runs, against a server release older than the console protocol.
 
 ## Related
 

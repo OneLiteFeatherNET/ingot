@@ -1,15 +1,15 @@
 ---
-description: Reference for the ingot command line client, which runs console commands on a running Ingot from a terminal or a script. Lists the commands, the options, the environment variables, the config file, the token sources and the exit codes.
+description: Reference for the ingot command line client, which runs console commands on a running Ingot from a terminal or a script. Lists the commands, the options, the environment variables, the config file, the token sources, the exit codes and the behaviour of the interactive mode over the console WebSocket.
 ---
 
 # Command line client
 
-`ingot` runs the [console commands](console-commands.md) of a running Ingot from another program. It talks to the console API over HTTP with a token, so it works from a workstation, a CI job or a pod in the same cluster. It does not read the server's files and it does not start a server.
+`ingot` runs the [console commands](console-commands.md) of a running Ingot from another program. It talks to the console API with a token, so it works from a workstation, a CI job or a pod in the same cluster. It does not read the server's files and it does not start a server.
 
 Two modes exist:
 
-* **Exec mode** runs one command, or a script of commands, and exits with a code that says what happened. Use it in scripts and CI. A prompt never appears unless the program runs on a terminal.
-* **Interactive mode** opens a prompt with line editing and completion of command names. It starts when the program runs with no words on a terminal.
+* **Exec mode** runs one command, or a script of commands, and exits with a code that says what happened. Use it in scripts and CI. It sends one HTTP request per command line (`POST /api/console/execute?structured=true`). A prompt never appears unless the program runs on a terminal.
+* **Interactive mode** opens a prompt with line editing, history and completion, and shows the server log above the prompt. It starts when the program runs with no words on a terminal. It keeps one connection to the console WebSocket open for the whole session, in [protocol version 1](console-commands.md#websocket-protocol-version-1), the same protocol the dashboard console uses.
 
 ## Usage
 
@@ -61,8 +61,10 @@ The token has no option. The `--token` option is refused with exit code 2, becau
 | `INGOT_INSECURE` | `true` turns off certificate verification. |
 | `INGOT_OUTPUT` | `text` or `json`. |
 | `INGOT_TIMEOUT` | Seconds to wait for the server. |
+| `NO_COLOR` | Set and not empty, it removes the colour of the server output. Colour is also removed when standard output is not a terminal. |
+| `XDG_STATE_HOME` | The directory under which the interactive mode keeps its history, see [History](#history). |
 
-The client reads no `REPOSILITE_` variable. These names are new, so no older spelling is kept.
+The client reads no `REPOSILITE_` variable. These names are new, so no older spelling is kept. `NO_COLOR` and `XDG_STATE_HOME` are the common names other programs read too.
 
 ## Order of precedence
 
@@ -101,9 +103,9 @@ Each context takes `url`, `tokenFile`, `credentialHelper` and `caCert`. The clie
 | `1` | The command failed. Its failure lines are on standard error. |
 | `2` | A usage error, a parse error, an unknown command, or an argument with a space. |
 | `3` | A dangerous command was not confirmed. Nothing ran. Pass `--yes` in a script that means it. |
-| `4` | The server refused the token, or the token has no console area. |
+| `4` | The server refused the token, or the token has no console area. In interactive mode also when the server ends the session because the token was revoked or the session expired. |
 | `5` | The server could not be reached within the timeout. |
-| `6` | The server has no structured console API, so it is older than this client needs. |
+| `6` | The server is older than this client needs: in exec mode it has no structured console API, in interactive mode it does not speak version 1 of the console WebSocket protocol. |
 
 In a script with several commands, the client stops at the first command that does not exit with `0`, unless `--keep-going` is given. It then exits with that code.
 
@@ -122,15 +124,46 @@ The confirmation guards against a typing mistake in a script. It is not a permis
 
 ## Interactive mode
 
-On a terminal, `ingot` opens a prompt such as `ingot (production)> `.
+On a terminal, `ingot` opens a prompt that names the context of the config file, or the server URL when no context is selected, such as `ingot (production)> `.
 
-* Tab completes the names and aliases of the server's commands. The names come from the server once at the start, and the client sends no request per key.
-* Each line is one command. Its output prints as the server sends it.
-* A dangerous command asks for `y` or `n` on the terminal before it runs.
-* `:quit` leaves. Ctrl-D on an empty line also leaves, with exit code `0`. Ctrl-C discards the line being typed.
-* Lines starting with `:` are the client's own commands. Any other line goes to the server.
+* Each line is one command. It is sent over the console WebSocket, and its output prints when the result arrives. No HTTP request is made while the session runs.
+* Tab asks the server once for the words that may stand at the cursor: command names, aliases, options and fixed values. Typing sends nothing.
+* Log lines of the server print above the prompt as they arrive. When the server dropped lines because the client read too slowly, a line says how many.
+* A dangerous command asks `Run '<command>' (<reason>)? [y/N]` before it runs. Only `y` or `yes` runs it. Enter, Ctrl-C and Ctrl-D answer no, and the command does not run. `--yes` answers yes for the whole session.
+* Ctrl-C while a command runs stops the wait for its result. The command keeps running on the server, its result is not shown, and the connection stays open. Ctrl-C at the prompt discards the line being typed.
+* `:quit` leaves. Ctrl-D on an empty line also leaves, with exit code `0`.
+* Lines starting with `:` are the client's own commands, and any other line goes to the server:
 
-Against a server release that predates the structured console API, no command can run: each one ends with exit code `6`. The client reports that once for each command. A server that has the structured API but no command listing runs commands, with completion off.
+| Builtin | Effect |
+| --- | --- |
+| `:quit` | Leaves the interactive mode with exit code `0`. |
+| `:output text\|json` | Switches the output of the next commands. `json` prints one JSON object per command, as in exec mode, with the `node` that ran it and `confirmed`. |
+| `:context` | Prints the context of the session. |
+| `:context <name>` | Ends the session and opens a new one with that context of the config file, as if `--context <name>` had been given. A context the config file does not resolve is refused and the session goes on. |
+
+### History
+
+The lines typed in interactive mode are kept for the next session in `$XDG_STATE_HOME/ingot/history`, or `~/.local/state/ingot/history` when `XDG_STATE_HOME` is not set. The client creates the file and its directory readable only by their owner, and narrows an existing file to its owner. A line that may carry a secret is not written to it: `token-generate`, `token-regenerate`, and any line with a `--secret` or `-s` option. When the file cannot be created, the client prints a warning and keeps the history of the session in memory only.
+
+### Reconnect
+
+When the connection to the server drops while a command runs, or a line is typed after it dropped, the client says so and opens a new one. It waits about 1 second before the first attempt and doubles the wait after each failed one, up to 30 seconds. Ctrl-C leaves while it waits.
+
+* The new connection resumes the log after the last line the client showed, so no line is shown twice. When the server restarted, or another replica answers, the server shows its cached log again, and the client says so.
+* A command that had no result when the connection dropped may or may not have run. The client says so and does not send it again. Check the audit log, or run a command that shows the state, before you repeat it.
+* A line typed while the connection is down is not sent. Type it again once the client says it reconnected.
+* When the server stops, the client reports that the command may or may not have run and reconnects after one wait.
+* When the server ends the session with `1008`, because the token was revoked, the console area was removed or the session expired, the client does not reconnect and exits with code `4`.
+
+### Commands on several replicas
+
+Behind a load balancer the session stays on one replica, and every command of the session runs there. Some commands act only on the replica that runs them: `level`, `status`, `failures`, `stats` and `cache`. The [command listing](console-commands.md#command-listing) marks them with the `scope` `node`. Every other command, plugin commands included, has the `scope` `cluster` and gives the same answer on every replica. The JSON output names the replica in `node`. To reach a particular replica, point `--url` at it rather than at the load balancer.
+
+### Older servers
+
+The interactive mode needs a server that speaks version 1 of the console WebSocket protocol. An older server refuses the opening message of the session the way it refuses a wrong token, so the client then asks for the command listing over HTTP. When the server has none (`GET /api/console/commands` answers `404`), it is a release older than the protocol: the client says so and exits with code `6` before it runs anything. Any other answer means the token was refused, and the exit code is `4`.
+
+Exec mode needs the structured console API: against a server release that predates it, each command ends with exit code `6`, and the client reports that once for each command. A server that has the structured API but no command listing runs commands in exec mode.
 
 ## Container image
 
