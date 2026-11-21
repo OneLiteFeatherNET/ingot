@@ -40,7 +40,7 @@ export default defineConfig({
     timezoneId: 'UTC',
   },
   // Chromium only. The settings writes run as a second project after the first one: a save on the Repositories
-  // page conflicts with the repositories that other specs seed in parallel (see repositories-crud.spec.js).
+  // page conflicts with the repositories that other specs seed in parallel (see repositories-crud.spec.ts).
   projects: [
     {
       name: 'chromium',
