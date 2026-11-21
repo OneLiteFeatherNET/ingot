@@ -64,7 +64,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 4. Wave 2: lists and rows
 
-- [ ] 4.1 `test(ui)`: in `src/components/md/MdListItem.test.js`, assert `aria-current="true"` on the selected row only, the 56 pixel and
+- [x] 4.1 `test(ui)`: in `src/components/md/MdListItem.test.js`, assert `aria-current="true"` on the selected row only, the 56 pixel and
   48 pixel minimum height classes through a `data-test` on the row, and the divider drawn by the list. Verify: it fails, because the row
   does not take `selected` yet.
 - [ ] 4.2 `test(ui)`: in `src/components/access/PrincipalsPanel.test.js` and `TeamsPanel.test.js`, assert that exactly one row is selected
@@ -72,9 +72,9 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   on the four copies.
 - [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js` and `EntryList.test.js`, assert that each link row is an `md-navigation-item` link
   with the current state when its route is open. Verify: it fails.
-- [ ] 4.4 `fix(ui)`: set `aria-current` and the 56 and 48 pixel row heights on the catalogue's `MdListItem`, and draw the divider
+- [x] 4.4 `fix(ui)`: set `aria-current` and the 56 and 48 pixel row heights on the catalogue's `MdListItem`, and draw the divider
   of `MdList` with `divide-y`. Verify: 4.1 passes.
-- [ ] 4.5 `fix(ui)`: migrate selectable rows (TeamsPanel, PrincipalsPanel, EntryList, AddMemberDialog) to `MdList` and `MdListItem`,
+- [x] 4.5 `fix(ui)`: migrate selectable rows (TeamsPanel, PrincipalsPanel, EntryList, AddMemberDialog) to `MdList` and `MdListItem`,
   and compute the selected key once per list. The `MdListDetail` panes of TeamsPanel, PrincipalsPanel and CollectionEditor are already
   done by `fix-surface-hierarchy-and-page-header` (its task 4.10). Verify: 4.2 passes.
 - [ ] 4.6 `fix(ui)`: migrate link rows (DetailedListEntry, FileList, SettingsAttention, the More panel of `IndexPage`) to
@@ -91,7 +91,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   (its task 3.16). Verify: the tests of each file pass.
 - [ ] 4.9 `test(ui)`: in `src/components/md/MdDisclosure.test.js`, assert that `aria-expanded` toggles, the content is hidden while
   collapsed, and focus stays on the control. Verify: it fails before 4.8 is applied to `RunHistory`, then passes.
-- [ ] 4.10 `fix(ui)`: drop the redundant `m-0`, `p-0` and `list-none` resets (TeamsPanel and the ten siblings), and replace
+- [x] 4.10 `fix(ui)`: drop the redundant `m-0`, `p-0` and `list-none` resets (TeamsPanel and the ten siblings), and replace
   `[overflow-wrap:anywhere]` with `break-words` or `break-all` on the identifier element (TeamsPanel, TeamMembersCard, TeamParentsCard,
   TeamLegacyGrants, AddMemberDialog, PrincipalsPanel, NodeInheritedSection, MdChipInput, EntryList, RepositoryWizard). Verify: no
   `overflow-wrap` arbitrary value remains in `src`.
@@ -102,22 +102,22 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 5. Wave 3: tables and code
 
-- [ ] 5.1 `test(ui)`: in a new `src/components/md/MdDataTable.sort.test.js`, assert the pure `sortRows(rows, column, direction)` on plain
+- [x] 5.1 `test(ui)`: in a new `src/components/md/MdDataTable.sort.test.js`, assert the pure `sortRows(rows, column, direction)` on plain
   arrays: ascending, descending, a stable order for equal keys, and no mutation of the input. Verify: it fails, because the function does
   not exist.
-- [ ] 5.2 `test(ui)`: in `src/components/md/MdDataTable.test.js` (added by the catalogue change, which already asserts `aria-sort`),
+- [x] 5.2 `test(ui)`: in `src/components/md/MdDataTable.test.js` (added by the catalogue change, which already asserts `aria-sort`),
   assert that a sortable header holds a button, that a second activation reverses the order through `sortRows`, and that a column
   with a priority carries its window class.
   Verify: it fails.
-- [ ] 5.3 `test(ui)`: in `src/components/repositories/RepositoriesTable.test.js`, assert the four sortable headers sort the rows, the
+- [x] 5.3 `test(ui)`: in `src/components/repositories/RepositoriesTable.test.js`, assert the four sortable headers sort the rows, the
   actions cell has the shared cell padding, and the anchors `repositories-table` and `repositories-view` both resolve. Verify: it fails
   on the hand-built table.
 - [ ] 5.4 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that each snippet is an `MdCopyableCode` inside an
   `MdCodeBlock`, that the anchors `repository-snippet` and `artifact-snippet` match the snippet roots, and that the component source has no
   `<style` element. Verify: it fails, because the `<style>` block is still there.
-- [ ] 5.5 `fix(ui)`: add `src/components/md/MdDataTable.sort.js` and use it, with the window-class priorities, in the catalogue's
+- [x] 5.5 `fix(ui)`: add `src/components/md/MdDataTable.sort.js` and use it, with the window-class priorities, in the catalogue's
   `MdDataTable.vue`. Verify: 5.1 and 5.2 pass.
-- [ ] 5.6 `fix(ui)`: migrate `src/components/repositories/RepositoriesTable.vue` to `MdDataTable` inside the `repositories-table`
+- [x] 5.6 `fix(ui)`: migrate `src/components/repositories/RepositoriesTable.vue` to `MdDataTable` inside the `repositories-table`
   component; drop the `min-w-[40rem]` literal and the per-width column classes in favour of priorities. Verify: 5.3 passes.
 - [ ] 5.7 `fix(ui)`: migrate the dry-run and migration tables (`src/components/maintenance/DryRunResult.vue`, the migration `DiscoverStep`,
   `MappingStep`, `CutOverStep` with its row header in column 2, `DryRunStep` with its hand-built select, search and sort button, `SyncStep`,
@@ -129,7 +129,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `CutOverStep.vue`, `RepositoryWizard.vue`, `SystemInfoView.vue`, `ConsoleView.vue`, and every other `font-mono` use. `MdCode` and
   `MdCodeBlock` replace hand-written monospace. `CodeBrackets` and `CodeString` keep their anchors. Verify: `grep -rn "font-mono" src`
   finds only the code primitives.
-- [ ] 5.10 `fix(ui)`: add `@utility md-scrollbar` (the thin scrollbar of the removed app-wide rule, from colour tokens) to
+- [x] 5.10 `fix(ui)`: add `@utility md-scrollbar` (the thin scrollbar of the removed app-wide rule, from colour tokens) to
   `src/style.css`, and use it only where a code block needs it. Verify: the
   scrollbar of a page without code is the browser default in the Playwright screenshot.
 - [ ] 5.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if wave 3 added a name. Verify: `anchors.test.js` passes.
