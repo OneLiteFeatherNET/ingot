@@ -90,6 +90,12 @@ test('the ha overlay runs the all-in-one chart with three replicas', () => {
   assert.equal(deploymentReplicas(text, 'ha'), 3);
 });
 
+test('the ha overlay turns persistence off, because its replicas cannot share a ReadWriteOnce claim', () => {
+  // The repositories, the database and the configuration are shared through the bucket, PostgreSQL and the shared
+  // configuration, so each replica keeps its data directory in an emptyDir, as the scalable overlays do.
+  assert.match(overlayText('ha'), /^persistence:\n  enabled: false$/m, 'ha mounts one claim on all three replicas');
+});
+
 test('the split overlay runs the server and the dashboard as split mode', () => {
   const text = overlayText('split');
   assert.match(text, /^mode: split$/m);
