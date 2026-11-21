@@ -16,6 +16,8 @@
 
 <script setup lang="ts">
 import { ref, useId, type PropType } from 'vue'
+import MdList from '../../md/MdList.vue'
+import MdListItem from '../../md/MdListItem.vue'
 import type { InheritedEntry } from './inheritedNodes'
 import { inheritedSourceLabel, isOverridden } from './nodeList'
 import type { NodeEntry } from './permissionNodesApi'
@@ -92,18 +94,17 @@ const regionId = `inherited-${useId()}`
       >
         {{ warning }}
       </p>
-      <ul
+      <div
         v-if="inherited.length > 0"
-        class="flex flex-col divide-y divide-outline-variant rounded-corner-medium border border-outline-variant"
+        class="rounded-corner-medium border border-outline-variant"
       >
-        <li
-          v-for="entry in inherited"
-          :key="`${entry.source}:${entry.subject}:${entry.node}`"
-          class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2"
-          data-test="inherited-row"
-          :data-node="entry.node"
-        >
-          <div class="min-w-0 flex-1 basis-56">
+        <MdList divided>
+          <MdListItem
+            v-for="entry in inherited"
+            :key="`${entry.source}:${entry.subject}:${entry.node}`"
+            data-test="inherited-row"
+            :data-node="entry.node"
+          >
             <code class="md-code-medium text-on-surface break-all"><template
               v-for="(part, index) in entry.node.split('.')"
               :key="index"
@@ -114,19 +115,21 @@ const regionId = `inherited-${useId()}`
             >
               {{ inheritedSourceLabel(entry) }}
             </p>
-          </div>
-          <span
-            v-if="isOverridden(entry, direct)"
-            class="rounded-corner-small bg-surface-container-highest px-2 py-1 md-label-small text-on-surface-variant"
-            data-test="inherited-overridden"
-          >Overridden by a direct node</span>
-          <span
-            class="md-label-large"
-            :class="entry.allowed ? 'text-on-surface' : 'text-error'"
-            data-test="inherited-state"
-          >{{ entry.allowed ? 'Allowed' : 'Denied' }}</span>
-        </li>
-      </ul>
+            <span
+              v-if="isOverridden(entry, direct)"
+              class="mt-1 inline-block rounded-corner-small bg-surface-container-highest px-2 py-1 md-label-small text-on-surface-variant"
+              data-test="inherited-overridden"
+            >Overridden by a direct node</span>
+            <template #trailing>
+              <span
+                class="md-label-large"
+                :class="entry.allowed ? 'text-on-surface' : 'text-error'"
+                data-test="inherited-state"
+              >{{ entry.allowed ? 'Allowed' : 'Denied' }}</span>
+            </template>
+          </MdListItem>
+        </MdList>
+      </div>
     </div>
   </section>
 </template>
