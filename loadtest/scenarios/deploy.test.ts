@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { ARTIFACT_SIZES } from '../lib/artifacts.ts';
-import { DEPLOY_EXPECTED_STATUSES, DEPLOY_SIZES, deployPath } from './deploy-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { DEPLOY_EXPECTED_STATUSES, DEPLOY_P95_MS, DEPLOY_SIZES, deployPath } from './deploy-plan.ts';
+
+const SCENARIO_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 
 const COORDINATE = { groupId: 'net.onelitefeather.loadtest', artifactId: 'deploy-fixture' } as const;
 
@@ -38,4 +44,16 @@ test('two deploys in one run never share a path', () => {
 
 test('an accepted deploy answers 200 OK', () => {
   assert.deepEqual([...DEPLOY_EXPECTED_STATUSES], [200]);
+});
+
+test('the deploy script runs the profile the runner chose instead of a single iteration', () => {
+  // The script imports k6 modules and cannot load under node, so its exports are read from the source.
+  const source = readFileSync(join(SCENARIO_DIRECTORY, 'deploy.ts'), 'utf8');
+
+  assert.match(source, /export const options = profileOptions\(__ENV, 'deploy', DEPLOY_P95_MS\);/);
+  assert.match(source, /export \{ stepVerdict \} from '\.\.\/profiles\/step-verdict-k6\.ts';/);
+});
+
+test('the deploy profile is held to the p95 limit of its largest size, which dominates the p95 of the cycle', () => {
+  assert.equal(DEPLOY_P95_MS, thresholdFor('deploy', '200MB').p95Ms);
 });

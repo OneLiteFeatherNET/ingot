@@ -21,7 +21,14 @@ import http from 'k6/http';
 import { ARTIFACT_SIZES, type ArtifactSize, generateArtifact } from '../lib/artifacts.ts';
 import { basicAuthHeader } from '../lib/auth.ts';
 import { statusIs } from '../lib/checks.ts';
-import { DEPLOY_EXPECTED_STATUSES, DEPLOY_SIZES, deployPath } from './deploy-plan.ts';
+import { profileOptions } from '../profiles/options.ts';
+import { DEPLOY_EXPECTED_STATUSES, DEPLOY_P95_MS, DEPLOY_SIZES, deployPath } from './deploy-plan.ts';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'deploy', DEPLOY_P95_MS);
+
+/** The pass rule of every plateau step, run by the verdict scenarios the plateau profile adds. */
+export { stepVerdict } from '../profiles/step-verdict-k6.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
 const REPOSITORY = 'snapshots';
