@@ -25,6 +25,7 @@ import type { components } from '../../types/api'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdSkeleton from '../md/MdSkeleton.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
@@ -194,13 +195,16 @@ const clusterView = computed(() => {
     rows: instances.map((instance, index) => ({
       id: instance.id,
       local: index === 0,
-      version: instance.version,
-      uptime: prettyUptime(uptimeOf(instance, now)),
-      heap: `${Number(instance.usedMemory).toFixed(1)} MB of ${instance.maxMemory} MB maximum heap`,
-      threads: `${instance.usedThreads} live threads`,
-      failures: `${instance.failuresCount}`,
-      health: ROW_HEALTH[instance.health] ?? 'Unknown',
-      stale: instance.stale
+      stale: instance.stale,
+      // The figures of the row, as label and value pairs for the shared key and value list.
+      figures: [
+        { label: 'Version', value: instance.version },
+        { label: 'Uptime', value: prettyUptime(uptimeOf(instance, now)) },
+        { label: 'Heap', value: `${Number(instance.usedMemory).toFixed(1)} MB of ${instance.maxMemory} MB maximum heap` },
+        { label: 'Threads', value: `${instance.usedThreads} live threads` },
+        { label: 'Failures', value: `${instance.failuresCount}` },
+        { label: 'Health', value: ROW_HEALTH[instance.health] ?? 'Unknown' }
+      ]
     }))
   }
 })
@@ -459,56 +463,7 @@ const readOnlyScope = computed(() => {
               Show failures
             </MdButton>
           </div>
-          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-3">
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Version
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.version }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Uptime
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.uptime }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Heap
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.heap }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Threads
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.threads }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Failures
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.failures }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="md-label-medium text-on-surface-variant">
-                Health
-              </dt>
-              <dd class="md-body-small text-on-surface">
-                {{ row.health }}
-              </dd>
-            </div>
-          </dl>
+          <MdKeyValueList :items="row.figures" />
         </li>
       </ul>
     </section>
