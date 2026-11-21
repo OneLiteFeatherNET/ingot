@@ -890,6 +890,13 @@
       "states": []
     },
     {
+      "name": "md-fieldset",
+      "file": "src/components/md/MdFieldset.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-icon",
       "file": "src/components/md/MdIcon.vue",
       "stability": "experimental",
