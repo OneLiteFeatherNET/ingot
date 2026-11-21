@@ -27,6 +27,7 @@ import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdTextField from '../md/MdTextField.vue'
+import ConfirmActionDialog from '../access/ConfirmActionDialog.vue'
 
 const props = withDefaults(defineProps<{
   /**
@@ -80,9 +81,20 @@ const {
   sessionExpired,
   command,
   execute,
+  confirmation,
+  answerConfirmation,
   previousCommand,
   nextCommand
 } = useConsole()
+
+// A dangerous command waits on the server until it is answered. Run accepts it. Cancel, Escape and a click on the scrim
+// all decline it, and the focus starts on Cancel, so a stray Enter never runs it.
+const confirmationOpen = computed({
+  get: () => confirmation.value !== null,
+  set: (open: boolean) => {
+    if (!open) answerConfirmation(false)
+  }
+})
 
 const scrollToEnd = () => {
   const console = document.getElementById('console')
@@ -369,5 +381,15 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
         </MdIconButton>
       </div>
     </section>
+
+    <ConfirmActionDialog
+      v-model="confirmationOpen"
+      :title="`Run ${confirmation?.command ?? 'this command'}?`"
+      confirm-label="Run"
+      danger
+      @confirm="answerConfirmation(true)"
+    >
+      {{ confirmation?.reason || 'This command is hard to undo' }}. It runs only after you confirm it.
+    </ConfirmActionDialog>
   </div>
 </template>

@@ -20,7 +20,7 @@ import { createURL } from '../client'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session"
-import { ConsoleSocket, type ResultFrame, type SocketState } from './socket'
+import { ConsoleSocket, type ConfirmFrame, type ResultFrame, type SocketState } from './socket'
 
 const { client, authMode } = useSession()
 
@@ -54,6 +54,13 @@ const historyIdx = ref(0)
 let socket: ConsoleSocket | undefined
 let welcomed = false
 
+// The dangerous command that waits for the user, or null. The server holds it until the answer arrives, and every other
+// command is answered busy meanwhile.
+const confirmation = ref<ConfirmFrame | null>(null)
+
+// The exit code of a command that did not run because it was not confirmed, the code of the HTTP 409 answer.
+const NOT_CONFIRMED_EXIT_CODE = 3
+
 export default function useConsole() {
   const consoleAddress = createURL("/api/console/log")
 
@@ -66,6 +73,7 @@ export default function useConsole() {
   const close = () => {
     const current = socket
     socket = undefined
+    confirmation.value = null
     current?.close()
     // Not gated on isConnected: a stream still opening has a readyState of CONNECTING and
     // would slip through, which is how leaving the tab mid-handshake used to leave the
@@ -198,8 +206,22 @@ export default function useConsole() {
     }
   }
 
+  // Sends the answer of the waiting command and closes the question. Without a ready socket nothing is sent, and the
+  // server drops the command with the connection, so it does not run.
+  const answerConfirmation = (accept: boolean) => {
+    const asked = confirmation.value
+    if (asked === null) return
+    confirmation.value = null
+    if (socket?.confirm(asked.id, accept) !== true) {
+      onMessage.value?.(`The connection dropped before "${asked.command}" was answered. It did not run.`, 'WARN')
+    }
+  }
+
   const printResult = (result: ResultFrame) => {
     const output = (result.output as { stream: string; text: string }[] | undefined) ?? []
+    if (result.exitCode === NOT_CONFIRMED_EXIT_CODE && result.confirmed === false && output.length === 0) {
+      onMessage.value?.('The command did not run, because it was not confirmed.', 'WARN')
+    }
     output.forEach(line => onMessage.value?.(line.text, line.stream === 'stderr' ? 'ERROR' : 'INFO'))
     const exitCode = result.exitCode as number | undefined
     if (exitCode !== undefined && exitCode !== 0) onMessage.value?.(`Exit code ${exitCode}`, 'ERROR')
@@ -257,8 +279,19 @@ export default function useConsole() {
           if (frame.code === 'busy') createErrorToast('Command not sent: another command is still running.')
           else if (frame.id !== undefined) onMessage.value?.(frame.message, 'ERROR')
         },
-        onUnknown: (_id, sent) => {
-          if (socket === candidate) onMessage.value?.(`The connection dropped before "${sent}" answered. It may or may not have run.`, 'WARN')
+        onUnknown: (id, sent) => {
+          if (socket !== candidate) return
+          // The server drops a command that still waits for its confirmation together with the connection, so it did
+          // not run, and the question has no one left to answer it.
+          if (confirmation.value?.id === id) {
+            confirmation.value = null
+            onMessage.value?.(`The connection dropped while "${sent}" waited for its confirmation. It did not run.`, 'WARN')
+            return
+          }
+          onMessage.value?.(`The connection dropped before "${sent}" answered. It may or may not have run.`, 'WARN')
+        },
+        onConfirm: frame => {
+          if (socket === candidate) confirmation.value = frame
         }
       }
     })
@@ -280,6 +313,8 @@ export default function useConsole() {
     onClose,
     command,
     execute,
+    confirmation,
+    answerConfirmation,
     previousCommand,
     nextCommand,
     isConnected

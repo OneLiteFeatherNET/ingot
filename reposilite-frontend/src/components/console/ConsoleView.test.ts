@@ -267,7 +267,7 @@ describe('ConsoleView', () => {
         return { socket, id }
       }
 
-      const dialog = () => document.querySelector('[data-ingot-component="console-confirm-dialog"]')?.closest('[role]') ?? null
+      const dialog = () => document.querySelector('[role="dialog"]')
 
       it('opens a dialog that names the command and its reason', async () => {
         await askedToConfirm()
