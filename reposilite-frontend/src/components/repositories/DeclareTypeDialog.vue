@@ -15,17 +15,16 @@
   -->
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
-import { SCRIM_STYLE } from '../settings/dialog'
+import MdDialog from '../md/MdDialog.vue'
+import MdDialogActions from '../md/MdDialogActions.vue'
 
 /*
  * Asks before a declared type drops empty mirrored entries. Confirm writes the type; Cancel and Escape leave the
- * repository as it is. Initial focus is on Cancel, and when the dialog closes without a confirmation the focus goes
- * back to the button that opened it.
+ * repository as it is. Initial focus is on Cancel. When the dialog closes, the focus goes back to the button that
+ * opened it, or to its nearest ancestor once the declaration has removed that button.
  */
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   modelValue?: boolean
   // The name of the type that is declared, such as Proxy.
   typeLabel: string
@@ -41,53 +40,25 @@ const emit = defineEmits<{
   confirm: []
 }>()
 
-const cancel = ref<{ $el: HTMLElement } | null>(null)
-let opener: HTMLElement | null = null
-let confirmed = false
-
-watch(() => props.modelValue, (open) => {
-  if (open) {
-    opener = document.activeElement as HTMLElement | null
-    confirmed = false
-    return
-  }
-  if (!confirmed && opener?.isConnected) opener.focus()
-})
-
-// Cancel takes the focus as soon as it is drawn, and the focus trap of the modal starts on it too.
-watch(cancel, (button) => {
-  if (button && props.modelValue) button.$el.focus()
-})
-const focusTrap = {
-  allowOutsideClick: true,
-  initialFocus: () => cancel.value?.$el
-}
-
 const close = () => emit('update:modelValue', false)
 
 const confirm = () => {
-  confirmed = true
   emit('confirm')
   close()
 }
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-center justify-center p-4"
-    :focus-trap="focusTrap"
+    labelledby="declare-type-title"
+    describedby="declare-type-body"
+    role="alertdialog"
+    size="md"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form
       data-test="declare-type-dialog"
-      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
-      aria-labelledby="declare-type-title"
-      aria-describedby="declare-type-body"
-      role="alertdialog"
-      aria-modal="true"
       novalidate
       data-ingot-component="declare-type-dialog"
       @submit.prevent="confirm"
@@ -104,9 +75,9 @@ const confirm = () => {
       >
         The repository gets the {{ typeLabel }} type. {{ notice }}
       </p>
-      <div class="mt-6 flex flex-wrap justify-end gap-2">
+      <MdDialogActions class="mt-6">
         <MdButton
-          ref="cancel"
+          data-autofocus
           variant="text"
           type="button"
           @click="close"
@@ -119,7 +90,7 @@ const confirm = () => {
         >
           Declare {{ typeLabel }}
         </MdButton>
-      </div>
+      </MdDialogActions>
     </form>
-  </VueFinalModal>
+  </MdDialog>
 </template>
