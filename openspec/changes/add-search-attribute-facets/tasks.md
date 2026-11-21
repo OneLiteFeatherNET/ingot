@@ -21,21 +21,21 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 
 ## 3. Query model and refusals (red, then green)
 
-- [ ] 3.1 `test(search)`: failing tests of the query validation: a filter, sort or facet on an undeclared key is refused with
+- [x] 3.1 `test(search)`: failing tests of the query validation: a filter, sort or facet on an undeclared key is refused with
   `undeclared-attribute`; a filter on a key declared without `filterable` is refused; more than 4 keys, 16 values or 8 facet keys is
   refused; a feature whose capability the fake backend lacks is refused with `unsupported-search-capability` before the backend is called.
   Verify: they fail.
-- [ ] 3.2 `feat(search)`: the model types `AttributeFilter`, `AttributeSort` and the facet keys on `ArtifactSearchQuery`, the parsing of
+- [x] 3.2 `feat(search)`: the model types `AttributeFilter`, `AttributeSort` and the facet keys on `ArtifactSearchQuery`, the parsing of
   `attribute`, `attributeSort` and `attributeFacets` in `api/SearchApiEndpoints.kt`, and the validation. Verify: the tests of 3.1 pass and
   existing search route tests pass with unchanged assertions.
 
 ## 4. Database backend (red, then green)
 
-- [ ] 4.1 `test(search)`: failing contract tests for the database backend: OR within a key and AND across keys; multi-select: a selected value
+- [x] 4.1 `test(search)`: failing contract tests for the database backend: OR within a key and AND across keys; multi-select: a selected value
   keeps its alternatives in the facet; counts exclude a row of a private repository for an anonymous viewer; sort puts missing values
   last and breaks ties by the existing order; the sort of a 10 000-row fixture finishes within the measured budget recorded in the test
   (no wall-clock sleep, the budget is a count of queries). Verify: they fail.
-- [ ] 4.2 `feat(search)`: the `EXISTS` filters, the grouped facet counts and the scalar sort subquery of D4 in `DatabaseArtifactSearchEngine`.
+- [x] 4.2 `feat(search)`: the `EXISTS` filters, the grouped facet counts and the scalar sort subquery of D4 in `DatabaseArtifactSearchEngine`.
   Verify: the tests of 4.1 pass and the existing facet tests pass unedited.
 
 ## 5. Elasticsearch and OpenSearch (red, then green, one pull request per module)
