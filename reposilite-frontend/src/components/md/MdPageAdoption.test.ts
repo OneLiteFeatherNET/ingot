@@ -93,7 +93,8 @@ const spacedViews = [
   '../account/AccountView.vue',
   '../layout/AdministrationFrame.vue',
   '../search/SearchView.vue',
-  '../browser/FileBrowserView.vue'
+  '../browser/FileBrowserView.vue',
+  '../overview/RepositoryOverview.vue'
 ]
 
 describe('pages take their spacing from MdPage', () => {
