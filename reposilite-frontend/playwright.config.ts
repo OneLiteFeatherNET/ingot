@@ -20,7 +20,8 @@ import { defineConfig, devices } from '@playwright/test'
 // so it needs the jar to be built first: ./gradlew :reposilite-backend:shadowJar
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/*.spec.js',
+  // Both extensions while the specs move to TypeScript one group at a time.
+  testMatch: '**/*.spec.{js,ts}',
   globalSetup: './e2e/support/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
@@ -44,11 +45,11 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/repositories-crud.spec.js',
+      testIgnore: '**/repositories-crud.spec.{js,ts}',
     },
     {
       name: 'chromium-settings-writes',
-      testMatch: '**/repositories-crud.spec.js',
+      testMatch: '**/repositories-crud.spec.{js,ts}',
       dependencies: ['chromium'],
       fullyParallel: false,
       use: { ...devices['Desktop Chrome'] },
