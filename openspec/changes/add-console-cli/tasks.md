@@ -44,7 +44,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   `unsupported_protocol`, no hello deadline; a silent socket stays open as upstream, an unknown `type` gets
   `unknown_type` and keeps the connection, a frame over 4 KiB gets `too_long`, and the worker target does not upgrade the path. Verify:
   red on the missing branch.
-- [ ] 4.3 `test(console)`: failing tests for `execute`, `result` and `confirm`: the `result` has the fields of the structured HTTP answer
+- [x] 4.3 `test(console)`: failing tests for `execute`, `result` and `confirm`: the `result` has the fields of the structured HTTP answer
   plus `confirmed`; a second `execute` gets `busy`; `complete` is answered while an `execute` runs; a dangerous command waits for an accepted
   `confirm`; a declined or unanswered one (120 seconds, fake scheduler) runs nothing and answers exit code `3`; the `confirm` frame of
   `token-regenerate ci s3cr3t` does not contain the secret. Verify: red before 4.8.
@@ -74,14 +74,14 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 
 ## 5. Dashboard web REPL (`feat(ui)`, `test(ui)`)
 
-- [ ] 5.1 `test(ui)`: failing Vitest tests for the socket client in `reposilite-frontend/src/store/console/`: hello and welcome handling, the
+- [x] 5.1 `test(ui)`: failing Vitest tests for the socket client in `reposilite-frontend/src/store/console/`: hello and welcome handling, the
   `resume` with boot and `seq`, de-duplication by `(node, seq)`, an `execute` without a `result` at a drop shows as unknown and is not sent
   again, `busy` is shown, 1008 stops the reconnect, the backoff steps (1 s, doubling, 30 s cap) with fake timers. Verify: red before 5.3.
 - [ ] 5.2 `test(ui)`: failing component tests for `ConsoleView.vue`: Enter sends `execute` and no HTTP request; Tab sends one `complete`;
   typing sends no frame; the confirmation dialog defaults to cancel and hides the arguments of a sensitive command; a failed result shows
   exit code 1 and its stderr lines as errors; `data` renders as a table; history stays per tab (a stubbed `sessionStorage`) and skips a
   sensitive line; the level filter runs in the client. Verify: red before 5.3.
-- [ ] 5.3 `test(ui)`: failing test that the Nitro socket proxy (`reposilite-frontend/server/lib/console-socket.js`) relays version 1 text frames
+- [x] 5.3 `test(ui)`: failing test that the Nitro socket proxy (`reposilite-frontend/server/lib/console-socket.js`) relays version 1 text frames
   in both directions and forwards the `cookie` and `origin` headers unchanged. Verify: green on the current proxy, which needs no change.
 - [ ] 5.4 `feat(ui)`: replace the HTTP input and the SSE stream of `reposilite-frontend/src/store/console/connection.ts` and
   `reposilite-frontend/src/components/console/ConsoleView.vue` with the socket client, completion, the confirmation dialog, structured
