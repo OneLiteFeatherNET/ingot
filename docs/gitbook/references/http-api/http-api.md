@@ -255,11 +255,12 @@ Downloads and uploads hold their slot until the last byte is transferred. Withou
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/console/execute` | Instance admin | Runs one console command and returns its output. |
-| WebSocket | `/api/console/sock` | Instance admin | Interactive console over a WebSocket. |
-| GET (SSE) | `/api/console/log` | Instance admin | Live log as server-sent events. |
+| POST | `/api/console/execute` | Admin area `console` | Runs one console command and returns its output. |
+| GET | `/api/console/commands` | Admin area `console` | Lists the registered console commands with their options, flags and scope, for help and completion. See [Command listing](../console-commands.md#command-listing). |
+| WebSocket | `/api/console/sock` | Admin area `console` | Interactive console over a WebSocket, in the legacy text protocol or in [protocol version 1](../console-commands.md#websocket-protocol-version-1), chosen by the first message. |
+| GET (SSE) | `/api/console/log` | Admin area `console` | Live log as server-sent events. |
 
-The console, the WebSocket and the event stream accept a token or a browser session of an instance admin. 
+The console, the WebSocket and the event stream accept a token or a browser session of a principal with the console area (`ingot.admin.console`). An instance admin has it. `POST /api/console/execute` answers `401` without credentials and `403` without the area. The WebSocket and the event stream refuse both as an authentication failure.
 ## Frontend, javadoc and redirects
 
 | Method | Path | Auth | Purpose |
