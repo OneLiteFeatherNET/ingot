@@ -25,10 +25,15 @@ import org.jline.terminal.Terminal
 import org.jline.terminal.Terminal.Signal
 import java.io.PrintStream
 import java.nio.file.Path
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicLong
 
-/** Opens one session on the console socket. Log lines reach [ConsoleConnector.open]'s callback as they arrive. */
+/**
+ * Opens one session on the console socket. Log lines reach [ConsoleConnector.open]'s callback as they arrive. With a
+ * resume, the server replays the log after the point where the earlier session stopped.
+ */
 fun interface ConsoleConnector {
-    fun open(onLog: (ConsoleLogLine) -> Unit): ConsoleSocket
+    fun open(resume: ConsoleResume?, onLog: (ConsoleLogLine) -> Unit): ConsoleSocket
 }
 
 /**
@@ -37,6 +42,9 @@ fun interface ConsoleConnector {
  * leaves with exit code 0. Ctrl-C discards the line, and while a command runs it stops the wait for its result on the
  * client only and keeps the connection open. A dangerous command asks `[y/N]` on the terminal, and only `y` accepts it.
  * With [historyFile], the lines are kept there for the next session, except a line that may carry a secret.
+ * When the connection drops, the REPL reconnects with a backoff ([backoff], waited through [pause]) and resumes the log
+ * after the last line it showed. A command that had no result is reported as unknown and never sent again, and a line
+ * typed while the connection is down is not sent. A session the server ends with 1008 is not reopened.
  */
 fun runRepl(
     client: IngotClient,
@@ -48,15 +56,23 @@ fun runRepl(
     out: PrintStream,
     err: PrintStream,
     historyFile: Path? = null,
+    backoff: Backoff = Backoff(),
+    pause: (Duration) -> Unit = { Thread.sleep(it.toMillis()) },
 ): Int {
-    var socket: ConsoleSocket? = null
+    lateinit var session: ConsoleSocket
     val completer = Completer { _, line, candidates ->
-        val completion = runCatching { socket?.complete(line.line(), line.cursor()) }.getOrNull()
+        val completion = runCatching { session.complete(line.line(), line.cursor()) }.getOrNull()
         completion?.candidates?.forEach { candidates.add(Candidate(it)) }
     }
     val reader = buildLineReader(terminal, completer, historyFile)
-    val session = try {
-        connector.open { log -> showLog(reader, log) }
+    // The last log number of the current session, or -1 before its first log line. Each session counts its own.
+    var lastSeq = AtomicLong(-1)
+    val open = { resume: ConsoleResume? ->
+        val seen = AtomicLong(-1)
+        connector.open(resume) { log -> seen.set(log.seq); showLog(reader, log) }.also { lastSeq = seen }
+    }
+    session = try {
+        open(null)
     } catch (_: ServerUnreachableException) {
         err.println("The server could not be reached. Check INGOT_URL and the network.")
         return ExitCode.UNREACHABLE
@@ -67,8 +83,12 @@ fun runRepl(
         err.println("${lost.message}. Nothing ran.")
         return ExitCode.UNREACHABLE
     }
-    socket = session
-    session.use {
+    val reconnector = Reconnector(backoff, pause, err, open)
+    val recover = { old: ConsoleSocket ->
+        val resume = old.welcome.boot?.let { ConsoleResume(it, lastSeq.get().takeIf { seq -> seq >= 0 } ?: old.welcome.seq ?: 0) }
+        reconnect(reconnector, old, resume, err)
+    }
+    try {
         while (true) {
             val line = try {
                 reader.readLine("ingot ($context)> ").trim()
@@ -81,11 +101,52 @@ fun runRepl(
                 line.isEmpty() -> continue
                 line == ":quit" -> return ExitCode.OK
                 line.startsWith(":") -> err.println("Unknown builtin ${line.substringBefore(' ')}. Builtins: :quit")
-                else -> runLine(session, reader, line, json, yes, out, err)?.let { return it }
+                !session.isOpen -> {
+                    err.println("The connection to the server was lost, so '$line' was not sent.")
+                    session = recover(session)
+                }
+                else -> {
+                    runLine(session, reader, line, json, yes, out, err)?.let { return it }
+                    if (!session.isOpen) session = recover(session)
+                }
             }
         }
+    } catch (exit: ReplExit) {
+        return exit.code
+    } finally {
+        session.close()
     }
 }
+
+/** Ends the REPL with [code] from inside a reconnect. */
+private class ReplExit(val code: Int) : RuntimeException(null, null, false, false)
+
+/** Closes [old] and opens a new session that resumes at [resume], or ends the REPL when the server will not have it. */
+private fun reconnect(reconnector: Reconnector, old: ConsoleSocket, resume: ConsoleResume?, err: PrintStream): ConsoleSocket {
+    old.close()
+    if (old.closeCode == CLOSE_POLICY_VIOLATION) {
+        err.println("The server ended the session: the token is no longer accepted, or the session expired.")
+        throw ReplExit(ExitCode.DENIED)
+    }
+    val fresh = try {
+        reconnector.reconnect(resume)
+    } catch (refused: ConsoleSocketRefusedException) {
+        if (refused.code == "unsupported_protocol") throw ReplExit(tooOld(err))
+        err.println("The server refused the new connection. The token is not accepted, or it has no console area (ingot.admin.console).")
+        throw ReplExit(ExitCode.DENIED)
+    }
+    err.println(
+        when (fresh.welcome.replay) {
+            "resumed" -> "Reconnected. The log continues where it stopped."
+            "full" -> "Reconnected to a restarted server or another replica. Its cached log is shown again."
+            else -> "Reconnected."
+        }
+    )
+    return fresh
+}
+
+/** The close code of a session the server refuses: a revoked token, an expired session. It is not reopened. */
+private const val CLOSE_POLICY_VIOLATION = 1008
 
 /** Runs one line. Returns an exit code when the session has to end, and null when the REPL goes on. */
 private fun runLine(socket: ConsoleSocket, reader: LineReader, line: String, json: Boolean, yes: Boolean, out: PrintStream, err: PrintStream): Int? {
@@ -98,8 +159,14 @@ private fun runLine(socket: ConsoleSocket, reader: LineReader, line: String, jso
         return null
     } catch (_: ConsoleSocketLostException) {
         err.println("The connection to the server was lost. '$line' may or may not have run, and it is not sent again.")
-        return ExitCode.UNREACHABLE
+        return null
     } catch (refused: ConsoleSocketRefusedException) {
+        if (refused.code == "shutdown") {
+            // The server is stopping and closes the connection next, so the REPL reconnects.
+            err.println("The server is stopping. '$line' may or may not have run, and it is not sent again.")
+            socket.close()
+            return null
+        }
         err.println(refused.message)
         return if (refused.code == "unauthorized") ExitCode.DENIED else null
     } finally {

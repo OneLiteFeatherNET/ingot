@@ -40,6 +40,9 @@ class ConsoleSocketLostException(message: String) : RuntimeException(message)
 /** The client stopped waiting for a result through [ConsoleSocket.stopWaiting]. The command may still run on the server. */
 class ConsoleWaitStoppedException : RuntimeException("Stopped waiting for the result")
 
+/** Where the log of an earlier session stopped: the boot of its server and the last log number the client holds. */
+data class ConsoleResume(val boot: String, val seq: Long)
+
 data class ConsoleWelcome(val protocol: Int, val boot: String?, val seq: Long?, val replay: String?)
 
 data class ConsoleLogLine(val seq: Long, val node: String, val level: String, val text: String, val dropped: Int)
@@ -66,8 +69,17 @@ class ConsoleSocket private constructor(
     private val socket: WebSocket,
     private val answers: LinkedBlockingQueue<JsonNode>,
     private val timeout: Duration,
+    private val state: Ending,
     val welcome: ConsoleWelcome,
 ) : AutoCloseable {
+
+    /** False once the connection has ended, from either side. */
+    val isOpen: Boolean
+        get() = !state.ended
+
+    /** The close code the server sent, or null while the connection is open or when it ended without one. */
+    val closeCode: Int?
+        get() = state.code
 
     private val ids = AtomicLong()
 
@@ -127,6 +139,7 @@ class ConsoleSocket private constructor(
     }
 
     override fun close() {
+        state.ended = true
         runCatching { socket.sendClose(WebSocket.NORMAL_CLOSURE, "").get(timeout.toMillis(), TimeUnit.MILLISECONDS) }
         socket.abort()
     }
@@ -135,6 +148,7 @@ class ConsoleSocket private constructor(
         try {
             socket.sendText(MAPPER.writeValueAsString(frame), true).get()
         } catch (failure: ExecutionException) {
+            state.ended = true
             throw ConsoleSocketLostException("The connection to the server was lost")
         }
     }
@@ -169,7 +183,8 @@ class ConsoleSocket private constructor(
 
         /**
          * Connects to `<baseUrl>/api/console/sock`, sends the hello and waits for the welcome. A refusal throws
-         * [ConsoleSocketRefusedException]. The token is sent in the hello only and appears in no message.
+         * [ConsoleSocketRefusedException]. The token is sent in the hello only and appears in no message. With [resume], the
+         * server replays the log lines after it, or its whole cache for another boot.
          */
         fun open(
             baseUrl: String,
@@ -178,16 +193,19 @@ class ConsoleSocket private constructor(
             http: HttpClient,
             timeout: Duration,
             onLog: (ConsoleLogLine) -> Unit,
+            resume: ConsoleResume? = null,
         ): ConsoleSocket {
             val answers = LinkedBlockingQueue<JsonNode>()
-            val listener = Listener(answers, onLog)
+            val state = Ending()
+            val listener = Listener(answers, state, onLog)
             val uri = URI.create(baseUrl.trimEnd('/').replaceFirst(Regex("^http"), "ws") + "/api/console/sock")
             val socket = try {
                 http.newWebSocketBuilder().connectTimeout(timeout).buildAsync(uri, listener).get(timeout.toMillis(), TimeUnit.MILLISECONDS)
             } catch (failure: Exception) {
                 throw ServerUnreachableException(failure)
             }
-            val hello = mapOf("type" to "hello", "protocols" to listOf(1), "client" to client, "token" to token)
+            val hello = mutableMapOf<String, Any>("type" to "hello", "protocols" to listOf(1), "client" to client, "token" to token)
+            if (resume != null) hello["resume"] = mapOf("boot" to resume.boot, "seq" to resume.seq)
             socket.sendText(MAPPER.writeValueAsString(hello), true)
             val first = answers.poll(timeout.toMillis(), TimeUnit.MILLISECONDS)
             if (first == null || first === CLOSED || first.text("type") != "welcome") {
@@ -204,7 +222,7 @@ class ConsoleSocket private constructor(
                 seq = first.get("seq")?.takeIf { it.isIntegralNumber }?.asLong(),
                 replay = first.text("replay"),
             )
-            return ConsoleSocket(socket, answers, timeout, welcome)
+            return ConsoleSocket(socket, answers, timeout, state, welcome)
         }
 
         private fun refusal(frame: JsonNode): ConsoleSocketRefusedException =
@@ -219,8 +237,21 @@ class ConsoleSocket private constructor(
 
     }
 
+    /** How the connection ended. Written by the listener and by the client side, read by the REPL. */
+    private class Ending {
+        @Volatile
+        var ended = false
+
+        @Volatile
+        var code: Int? = null
+    }
+
     /** Joins the parts of each text frame, hands log frames to [onLog] and queues every other frame as an answer. */
-    private class Listener(private val answers: LinkedBlockingQueue<JsonNode>, private val onLog: (ConsoleLogLine) -> Unit) : WebSocket.Listener {
+    private class Listener(
+        private val answers: LinkedBlockingQueue<JsonNode>,
+        private val state: Ending,
+        private val onLog: (ConsoleLogLine) -> Unit,
+    ) : WebSocket.Listener {
 
         private val buffer = StringBuilder()
 
@@ -250,11 +281,14 @@ class ConsoleSocket private constructor(
         }
 
         override fun onClose(webSocket: WebSocket, statusCode: Int, reason: String): CompletionStage<*>? {
+            state.code = statusCode
+            state.ended = true
             answers.add(CLOSED)
             return CompletableFuture.completedFuture(null)
         }
 
         override fun onError(webSocket: WebSocket, error: Throwable) {
+            state.ended = true
             answers.add(CLOSED)
         }
 

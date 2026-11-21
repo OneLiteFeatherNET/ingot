@@ -154,8 +154,8 @@ fun runCli(
             err.println(USAGE)
             return ExitCode.USAGE
         }
-        val connector = ConsoleConnector { onLog ->
-            ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout) { log -> onLog(if (colour) log else log.copy(text = stripAnsi(log.text))) }
+        val connector = ConsoleConnector { resume, onLog ->
+            ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout, { log -> onLog(if (colour) log else log.copy(text = stripAnsi(log.text))) }, resume)
         }
         val history = ReplHistory.defaultPath(env).takeIf { ReplHistory.prepare(it) }
         if (history == null) err.println("WARNING: the history file cannot be created, so the history of this session is not kept.")
