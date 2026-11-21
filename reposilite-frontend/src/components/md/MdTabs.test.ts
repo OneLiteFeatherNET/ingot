@@ -307,6 +307,90 @@ describe('MdTabs narrow screens', () => {
   })
 })
 
+// jsdom lays nothing out, so every tab reports the offset and width of the TAB_WIDTH geometry, placed one after the
+// other in the order of the tabs. The indicator is not a tab and reports nothing.
+const stubOffsets = () => {
+  const indexOf = (element: HTMLElement) =>
+    Array.from(element.parentElement?.querySelectorAll('[role="tab"]') ?? []).indexOf(element)
+  const offsetLeft = vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (this: HTMLElement) {
+    return Math.max(indexOf(this), 0) * TAB_WIDTH
+  })
+  const offsetWidth = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return indexOf(this) < 0 ? 0 : TAB_WIDTH
+  })
+  restorers.push(() => { offsetLeft.mockRestore(); offsetWidth.mockRestore() })
+}
+
+const indicatorOf = (tabs: VueWrapper) => tabs.find('[data-test="tab-indicator"]')
+
+describe('MdTabs indicator', () => {
+  afterEach(() => {
+    restorers.splice(0).reverse().forEach((restore) => restore())
+  })
+
+  it('draws one indicator inside the tab list, hidden from assistive technology', () => {
+    const tabs = mountTabs()
+
+    const indicators = tabs.findAll('[data-test="tab-indicator"]')
+    expect(indicators, 'the strip has a single indicator that moves, not one per tab').toHaveLength(1)
+    expect(indicators[0].element.parentElement?.getAttribute('role'), 'the indicator scrolls with the tabs').toBe('tablist')
+    expect(indicators[0].attributes('aria-hidden'), 'the selection is announced by aria-selected').toBe('true')
+  })
+
+  it('places the indicator under the selected tab from its offset and width, with no transition on the first paint', async () => {
+    stubOffsets()
+
+    const tabs = mountTabs({ modelValue: 'plugins' })
+    await flushPromises()
+
+    const indicator = indicatorOf(tabs)
+    expect(indicator.attributes('style'), 'the indicator sits under the second tab').toContain('transform: translateX(150px) scaleX(150)')
+    expect(indicator.classes(), 'the first paint does not slide the indicator in').not.toContain('transition-transform')
+  })
+
+  it('slides the indicator to the chosen tab on the motion tokens', async () => {
+    stubOffsets()
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    await flushPromises()
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    const indicator = indicatorOf(tabs)
+    expect(indicator.attributes('style'), 'the indicator moved under the third tab').toContain('transform: translateX(300px) scaleX(150)')
+    expect(indicator.classes(), 'the move is a transform on the short4 and standard decelerate tokens').toEqual(
+      expect.arrayContaining(['transition-transform', 'duration-md-short4', 'ease-md-standard-decelerate']),
+    )
+  })
+
+  it('moves the indicator at once, with no transition, when the visitor asks for reduced motion', async () => {
+    stubOffsets()
+    stubReducedMotion(true)
+    const router = await routerAt('/settings/system-info')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+    await flushPromises()
+
+    await tabsOf(tabs)[2].trigger('click')
+    await flushPromises()
+
+    const indicator = indicatorOf(tabs)
+    expect(indicator.attributes('style'), 'the indicator still lands under the third tab').toContain('transform: translateX(300px) scaleX(150)')
+    expect(indicator.classes(), 'reduced motion swaps the indicator instead of sliding it').not.toContain('transition-transform')
+  })
+
+  it('leaves the bottom border of every tab transparent, so the indicator is the only mark of the selection', () => {
+    const tabs = mountTabs({ modelValue: 'plugins' })
+
+    for (const tab of tabsOf(tabs)) {
+      expect(tab.classes(), `tab "${tab.text()}" keeps its border box and draws no colour in it`).toEqual(
+        expect.arrayContaining(['border-b-2', 'border-transparent']),
+      )
+      expect(tab.classes(), `tab "${tab.text()}" draws no indicator of its own`).not.toContain('border-primary')
+    }
+  })
+})
+
 describe('MdTabs anchors', () => {
   it('names its root md-tabs', () => {
     const tabs = mountTabs()

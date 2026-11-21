@@ -29,6 +29,7 @@
  */
 import { computed, inject, onMounted, ref, useId, watch } from 'vue'
 import { routeLocationKey, routerKey } from 'vue-router'
+import { useTabIndicator } from '../../composables/useTabIndicator'
 
 export interface AppTab {
   key: string
@@ -123,6 +124,17 @@ const showSelectedTab = (behavior: 'auto' | 'smooth') => {
   list.scrollTo?.({ left: list.scrollLeft + offset, behavior })
 }
 
+// One indicator for the whole strip, moved under the selected tab with a transform (design "Indicator slide"). The first
+// paint places it at once. A later choice slides it on the motion tokens, unless the visitor asks for reduced motion,
+// where it is swapped at once like every other transition of the dashboard.
+const indicator = useTabIndicator(
+  selected,
+  () => (selected.value ? buttons.get(selected.value) : undefined),
+  () => props.tabs.map((tab) => buttons.get(tab.key)).filter((tab): tab is HTMLElement => tab !== undefined),
+)
+const indicatorSlides = computed(() => indicator.moved.value && !reducedMotion())
+watch(() => props.tabs.map((tab) => tab.key).join(), () => indicator.refresh(), { flush: 'post' })
+
 onMounted(() => showSelectedTab('auto'))
 watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { flush: 'post' })
 </script>
@@ -136,7 +148,7 @@ watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { fl
       ref="listRef"
       role="tablist"
       :aria-label="label"
-      class="flex flex-nowrap gap-1 overflow-x-auto border-b border-outline-variant pb-px scrollbar-hidden"
+      class="relative flex flex-nowrap gap-1 overflow-x-auto border-b border-outline-variant pb-px scrollbar-hidden"
     >
       <button
         v-for="(tab, index) in tabs"
@@ -149,12 +161,20 @@ watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { fl
         :aria-controls="panelId(tab.key)"
         :tabindex="tab.key === selected ? 0 : -1"
         class="md-focus-ring md-label-large -mb-px min-h-6 min-w-6 shrink-0 border-b-2 px-4 py-2"
-        :class="tab.key === selected ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'"
+        :class="tab.key === selected ? 'border-transparent text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'"
         @click="choose(tab.key)"
         @keydown="onKeydown($event, index)"
       >
         {{ tab.label }}
       </button>
+      <span
+        v-show="indicator.transform.value"
+        data-test="tab-indicator"
+        aria-hidden="true"
+        class="pointer-events-none absolute bottom-0 left-0 h-0.5 w-px origin-left bg-primary"
+        :class="indicatorSlides ? 'transition-transform duration-md-short4 ease-md-standard-decelerate' : ''"
+        :style="{ transform: indicator.transform.value }"
+      />
     </div>
 
     <div
