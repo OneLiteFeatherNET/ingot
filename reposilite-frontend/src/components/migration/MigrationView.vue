@@ -147,10 +147,9 @@ onBeforeUnmount(() => {
             :aria-current="id === current ? 'step' : undefined"
             :aria-disabled="states[id].open ? undefined : 'true'"
             class="md-focus-ring md-label-large inline-flex min-h-6 items-center rounded-corner-small px-3 py-2 no-underline"
-            :class="[
-              id === current ? 'bg-secondary-container text-on-secondary-container' : 'text-primary',
-              states[id].open ? '' : 'opacity-60'
-            ]"
+            :class="id === current
+              ? 'bg-secondary-container text-on-secondary-container'
+              : states[id].open ? 'text-primary' : 'text-on-surface/md-disabled-content'"
           >
             {{ index + 1 }}. {{ STEP_LABELS[id] }}
             <span
