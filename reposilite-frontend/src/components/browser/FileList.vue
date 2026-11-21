@@ -28,6 +28,8 @@ import usePlaceholders from '../../store/placeholders'
 import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -248,23 +250,21 @@ const entryUrl = (file: BrowserFile) =>
       >
         Includes
       </h2>
-      <ul class="mt-3 rounded-corner-medium bg-surface-container-low p-1">
-        <li
+      <MdList class="mt-3 rounded-corner-medium bg-surface-container-low p-1">
+        <MdListItem
           v-for="member in references"
           :key="member"
+          :to="browseLocation(member)"
         >
-          <router-link
-            :to="browseLocation(member)"
-            class="md-state-layer md-focus-ring flex min-h-14 items-center gap-4 rounded-corner-medium px-4 text-on-surface"
-          >
+          <template #leading>
             <BrowserIcon
               name="folder"
               class="text-on-surface-variant"
             />
-            <span class="md-body-large">{{ member }}</span>
-          </router-link>
-        </li>
-      </ul>
+          </template>
+          {{ member }}
+        </MdListItem>
+      </MdList>
       <div
         v-if="canEditMembers"
         class="mt-3"
