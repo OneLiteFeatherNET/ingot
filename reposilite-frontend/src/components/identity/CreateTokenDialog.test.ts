@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import CreateTokenDialog from './CreateTokenDialog.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import type { IdentityTokenApi } from './identityTokens'
 import type { components } from '../../types/api'
 import { setClock, resetClock } from '../../helpers/clock'
@@ -172,6 +173,19 @@ describe('CreateTokenDialog', () => {
       ['Expiry date', field('create-token-expiry-date')],
       ['Description', field('create-token-description')]
     ])).toEqual(['Expires', 'Expiry date', 'Description'])
+  })
+
+  it('titles each group of choices with the legend of a shared fieldset', async () => {
+    await choose('create-token-limit')
+
+    const legends = wrapper.findAllComponents(MdFieldset)
+      .map(group => group.find('legend').text())
+
+    expect(legends, 'access, expiry, artifact limit and actions are shared fieldsets').toEqual([
+      'Access', 'Expires', 'Advanced: limit to artifacts', 'Actions'
+    ])
+    expect([...dialog().querySelectorAll('span')].some(node => node.textContent?.trim() === 'Expires'),
+      'no span stands in for the expiry legend').toBe(false)
   })
 
   it('shows what each access choice allows, beside its radio', () => {
