@@ -59,12 +59,12 @@ const latestRuns = computed((): CleanupRun[] => {
     data-ingot-component="run-history"
   >
     <div class="flex flex-wrap items-end justify-between gap-3">
-      <h3
+      <h2
         id="run-history-title"
         class="md-title-large text-on-surface"
       >
         Latest runs
-      </h3>
+      </h2>
       <RouterLink
         :to="{ name: 'jobs', query: { kind: 'cleanup' } }"
         class="md-label-large text-primary"

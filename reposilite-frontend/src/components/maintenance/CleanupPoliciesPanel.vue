@@ -219,7 +219,7 @@ load()
       class="flex flex-col gap-4"
     >
       <MdSection
-        :level="3"
+        :level="2"
         title="Cleanup policies"
         description="A policy deletes artifacts only when it runs, by hand or on its schedule."
         heading-id="cleanup-policies-title"
@@ -270,9 +270,9 @@ load()
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex min-w-0 flex-col gap-1">
-              <h4 class="font-mono md-title-medium text-on-surface break-all">
+              <h3 class="font-mono md-title-medium text-on-surface break-all">
                 {{ policy.id }}
-              </h4>
+              </h3>
               <p class="md-body-medium text-on-surface-variant">
                 {{ scopeLabel(policy.scope) }}, {{ repositoriesOf(policy) }}, {{ scheduleLabel(policy.schedule) }}
               </p>

@@ -124,12 +124,12 @@ const confirm = () => {
     class="flex flex-col gap-3"
     data-ingot-component="read-only-toggle"
   >
-    <h3
+    <h2
       id="read-only-heading"
       class="md-title-medium text-on-surface"
     >
       Writes
-    </h3>
+    </h2>
     <div class="flex flex-col gap-1 px-1">
       <MdSwitch
         :id="SWITCH_ID"

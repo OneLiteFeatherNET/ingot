@@ -119,7 +119,7 @@ describe('MaintenanceView', () => {
     expect(section.exists(), 'the switch sits in its own section').toBe(true)
     expect(section.text(), 'the section is labelled Writes').toContain('Writes')
     expect(section.find('[role="switch"]').exists(), 'a principal with the maintenance area sees the switch').toBe(true)
-    const storageHeading = wrapper.findAll('h3').find(heading => heading.text().includes('Storage usage'))
+    const storageHeading = wrapper.findAll('h2').find(heading => heading.text().includes('Storage usage'))
     expect(section.element.compareDocumentPosition(storageHeading!.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the section comes before the storage panel').toBeTruthy()
   })
 
@@ -268,5 +268,36 @@ describe('the Settings backup tab', () => {
     const link = shownPanelOf(wrapper).findAll('a').find(anchor => anchor.text().includes('factory reset'))
     expect(link?.text(), 'the sentence names the factory reset on System and support').toBe('To set every setting back to its default, use the factory reset on System and support')
     expect(link?.attributes('href'), 'the link opens the Overview of System and support').toBe('/settings/system-info?tab=overview')
+  })
+})
+
+/*
+ * The frame draws the one h1 of the page, so the maintenance tabs start their outline at level two: each panel title is an h2,
+ * a block inside a panel is an h3, and nothing reaches h4. Dialogs carry their own h2 and are not part of the page outline.
+ */
+const headingLevelsOf = (view: VueWrapper) => view.findAll('h1, h2, h3, h4, h5, h6')
+  .filter(heading => heading.element.closest('[role="dialog"]') === null)
+  .map(heading => Number(heading.element.tagName.slice(1)))
+
+describe('the maintenance page outline', () => {
+  it.each(['storage', 'index', 'cleanup', 'backup'])('starts the %s tab at level two and never skips a level', async (tab) => {
+    await mountAt(`/maintenance?tab=${tab}`)
+
+    const levels = headingLevelsOf(wrapper)
+    expect(levels.length, 'the tab draws headings').toBeGreaterThan(0)
+    expect(levels[0], 'the frame owns the h1, so the first heading of the page body is an h2').toBe(2)
+    expect(Math.max(...levels), 'the maintenance outline stops at h3').toBeLessThanOrEqual(3)
+    levels.forEach((level, index) => {
+      if (index > 0) expect(level - levels[index - 1], `heading ${index + 1} skips a level`).toBeLessThanOrEqual(1)
+    })
+  })
+
+  it('writes no heading below level three in the maintenance sources', () => {
+    const sources = import.meta.glob<string>(['./*.vue', '../dashboard/ReadOnlyToggle.vue'], { query: '?raw', import: 'default', eager: true })
+
+    expect(Object.keys(sources), 'the scan reads the maintenance panels').toContain('./CleanupPoliciesPanel.vue')
+    for (const [file, source] of Object.entries(sources)) {
+      expect(source, `${file} writes an h4 or lower`).not.toMatch(/<h[4-6]\b/)
+    }
   })
 })
