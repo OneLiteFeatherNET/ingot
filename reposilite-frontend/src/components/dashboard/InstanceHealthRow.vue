@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { STATUS } from '../../store/palette'
 import { useSession } from '../../store/session'
 import type { Health, Integration } from './instanceHealth'
 import { describeHealth, integrationsOf, toAnswer } from './instanceHealth'
@@ -45,11 +44,11 @@ const indicator = computed(() => health.value ?? {
   details: []
 })
 
-const DOT_COLORS: Record<string, string> = {
-  up: STATUS.good,
-  down: STATUS.critical,
-  unknown: 'var(--md-sys-color-outline)',
-  pending: 'var(--md-sys-color-outline)'
+const DOT_STATUSES: Record<string, 'good' | 'critical' | 'neutral'> = {
+  up: 'good',
+  down: 'critical',
+  unknown: 'neutral',
+  pending: 'neutral'
 }
 
 const refreshHealth = () =>
@@ -102,7 +101,7 @@ onBeforeUnmount(() => {
     >
       <StatusLabel
         v-if="showLabel"
-        :color="DOT_COLORS[indicator.state]"
+        :status="DOT_STATUSES[indicator.state]"
         class="md-label-large"
       >
         {{ indicator.label }}

@@ -101,6 +101,21 @@ describe('InstanceHealthRow', () => {
     expect(wrapper.text()).toContain('database unreachable')
   })
 
+  it.each([
+    ['healthy', 'bg-success', () => Promise.resolve({ status: 200, data: { status: 'UP' } })],
+    ['unhealthy', 'bg-error', () => Promise.reject(Object.assign(new Error('Request failed'), {
+      response: { status: 503, data: { status: 'DOWN' } }
+    }))],
+    ['unreachable', 'bg-outline', () => Promise.reject(new Error('Network Error'))]
+  ])('draws the %s dot with the %s token class', async (_state, token, health) => {
+    session.client = ref(clientWith({ health }))
+    mountRow()
+    await flushPromises()
+    const dot = wrapper.findComponent({ name: 'StatusLabel' }).find('[aria-hidden="true"]')
+
+    expect(dot.classes(), 'the health state maps to one status of the closed set').toContain(token)
+  })
+
   it('says the health is unknown when the server cannot be reached', async () => {
     session.client = ref(clientWith({
       health: () => Promise.reject(new Error('Network Error'))

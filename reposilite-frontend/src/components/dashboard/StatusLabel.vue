@@ -14,12 +14,31 @@
   ~ limitations under the License.
   -->
 
-<script setup lang="ts">
+<script lang="ts">
 // A status dot in front of its label. Every status on the dashboard uses this one pair, so the
-// dot sits on the same centre line everywhere. The colour is a token string, passed in by the caller.
-defineProps<{
-  color: string
-}>()
+// dot sits on the same centre line everywhere. The caller names a status of a closed set, and the
+// label picks its colour token, so no caller passes a colour of its own. Declared in module scope,
+// because the prop validator below reads it.
+type Status = 'good' | 'warning' | 'critical' | 'neutral'
+
+const DOT_CLASSES: Record<Status, string> = {
+  good: 'bg-success',
+  warning: 'bg-warning',
+  critical: 'bg-error',
+  neutral: 'bg-outline'
+}
+</script>
+
+<script setup lang="ts">
+import type { PropType } from 'vue'
+
+defineProps({
+  status: {
+    type: String as PropType<Status>,
+    required: true,
+    validator: (value: string) => value in DOT_CLASSES
+  }
+})
 </script>
 
 <template>
@@ -33,7 +52,7 @@ defineProps<{
     -->
     <span
       class="relative top-[0.5px] size-2 shrink-0 rounded-full"
-      :style="{ backgroundColor: color }"
+      :class="DOT_CLASSES[status]"
       aria-hidden="true"
     />
     <span><slot /></span>
