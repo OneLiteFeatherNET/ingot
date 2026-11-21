@@ -17,19 +17,22 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import download from 'downloadjs'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import { settingsClockKey } from './settingsExport'
 import MaintenanceView from '../maintenance/MaintenanceView.vue'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+type ConfigurationStore = ReturnType<typeof createConfigurationStore>
+
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMA = {
@@ -51,23 +54,23 @@ const SCHEMA = {
   }
 }
 
-const SERVER = {
+const SERVER: Record<string, unknown> = {
   maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] }
 }
 
 // The encrypted file the server returns for an export. The fixture records the password it was asked with.
 const ENCRYPTED = { format: 'ingot-settings-export', version: 1, ciphertext: 'opaque' }
-const exportRequests = []
+const exportRequests: string[] = []
 
 const fakeClient = () => ({
   settings: {
-    domains: async () => ({ data: Object.keys(SERVER) }),
-    schema: async () => ({ data: SCHEMA }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
-    update: async () => ({ data: {} }),
-    exportSaved: async (password) => {
+    domains: () => Promise.resolve({ data: Object.keys(SERVER) }),
+    schema: () => Promise.resolve({ data: SCHEMA }),
+    fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(SERVER[domain])) as unknown }),
+    update: () => Promise.resolve({ data: {} }),
+    exportSaved: (password: string) => {
       exportRequests.push(password)
-      return { data: ENCRYPTED }
+      return Promise.resolve({ data: ENCRYPTED })
     }
   }
 })
@@ -79,10 +82,10 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountWith = async ({ secretsHidden = false } = {}) => {
-  const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => secretsHidden })
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef, { secretsHidden: () => secretsHidden })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   // The download is an action of the Settings backup tab, so the view is opened at /maintenance?tab=backup.
   const router = namedRouter()
@@ -99,36 +102,36 @@ const mountWith = async ({ secretsHidden = false } = {}) => {
 }
 
 const openMenu = async () => {
-  await wrapper.get('button[aria-haspopup="menu"]').trigger('click')
+  await wrapper!.get('button[aria-haspopup="menu"]').trigger('click')
 }
 
-const choose = async (name) => {
-  const item = wrapper.findAll('[role="menuitem"]').find(entry => entry.text().includes(name))
+const choose = async (name: string) => {
+  const item = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes(name))
   expect(item, `the menu offers "${name}"`).toBeDefined()
-  await item.trigger('click')
+  await item!.trigger('click')
 }
 
-const downloadedJson = () => JSON.parse(download.mock.calls.at(-1)[0])
+const downloadedJson = () => JSON.parse(vi.mocked(download).mock.calls.at(-1)![0] as string) as unknown
 
 // The password dialog is teleported to the body, so its fields are reached through the document.
 const passwordDialog = () => document.getElementById('settings-password')?.closest('form') ?? null
 
-const typeInto = (id, value) => {
-  const input = document.getElementById(id)
+const typeInto = (id: string, value: string) => {
+  const input = document.getElementById(id) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
 }
 
-const fillPassword = async (password) => {
+const fillPassword = async (password: string) => {
   await flushPromises()
   typeInto('settings-password', password)
   typeInto('settings-password-confirmation', password)
   await flushPromises()
-  passwordDialog().dispatchEvent(new Event('submit', { cancelable: true }))
+  passwordDialog()!.dispatchEvent(new Event('submit', { cancelable: true }))
   await flushPromises()
 }
 
-const editFirstRepository = (store) => {
+const editFirstRepository = (store: ConfigurationStore) => {
   store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE' })
 }
 
@@ -174,7 +177,7 @@ describe('Settings backup download', () => {
 
     expect(exportRequests).toEqual(['twelve-chars!'])
     expect(downloadedJson()).toEqual(ENCRYPTED)
-    expect(JSON.stringify(download.mock.calls)).not.toContain('PRIVATE')
+    expect(JSON.stringify(vi.mocked(download).mock.calls)).not.toContain('PRIVATE')
   })
 
   it('names the saved download after the day of the injected clock', async () => {
@@ -184,7 +187,7 @@ describe('Settings backup download', () => {
     await choose('Download saved settings')
     await fillPassword('twelve-chars!')
 
-    expect(download.mock.calls.at(-1)[1]).toBe('ingot-settings-2026-10-15.json')
+    expect(vi.mocked(download).mock.calls.at(-1)![1]).toBe('ingot-settings-2026-10-15.json')
   })
 
   it('does not offer the draft, because the draft is not part of the encrypted file', async () => {
@@ -193,7 +196,7 @@ describe('Settings backup download', () => {
     await flushPromises()
 
     await openMenu()
-    const draftItem = wrapper.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download including unsaved changes'))
+    const draftItem = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download including unsaved changes'))
 
     expect(draftItem?.attributes('disabled')).toBeDefined()
   })
@@ -204,9 +207,9 @@ describe('Settings backup download', () => {
     await flushPromises()
 
     await openMenu()
-    const savedItem = wrapper.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download saved settings'))
+    const savedItem = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download saved settings'))
 
-    expect(savedItem.attributes('disabled')).toBeUndefined()
+    expect(savedItem!.attributes('disabled')).toBeUndefined()
   })
 
   it('says secrets are not included when the server hides them', async () => {
@@ -214,6 +217,6 @@ describe('Settings backup download', () => {
 
     await openMenu()
 
-    expect(wrapper.find('[role="menu"]').text()).toContain('Secrets are not included')
+    expect(wrapper!.find('[role="menu"]').text()).toContain('Secrets are not included')
   })
 })

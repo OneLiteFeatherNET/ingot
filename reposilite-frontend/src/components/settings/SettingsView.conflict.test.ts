@@ -17,10 +17,12 @@
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
+
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
 
 // No timers and no network: the fake server answers from memory and enforces If-Match the way the backend does.
 vi.mock('downloadjs', () => ({ default: vi.fn() }))
@@ -28,7 +30,7 @@ vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: nu
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const SCHEMA = {
@@ -61,35 +63,39 @@ const initialState = () => ({
   }
 })
 
+// The saved maven domain, and one repository of it, as the fake server holds them.
+type Domain = ReturnType<typeof initialState>['maven']
+type Repository = Domain['repositories'][number]
+
 const preconditionFailed = () =>
   Object.assign(new Error('Precondition Failed'), { response: { status: 412, data: {} } })
 
 /* One state per domain, with a tag that moves on every write. A write with a stale tag is refused and changes nothing. */
 const fakeServer = () => {
-  const state = initialState()
+  const state: Record<string, Domain> = initialState()
   let version = 1
   const tagOf = () => `"maven-${version}"`
 
-  const update = vi.fn(async (domain, content, etag) => {
-    if (etag !== undefined && etag !== tagOf()) throw preconditionFailed()
-    state[domain] = JSON.parse(JSON.stringify(content))
+  const update = vi.fn((domain: string, content: Domain, etag?: string) => {
+    if (etag !== undefined && etag !== tagOf()) return Promise.reject(preconditionFailed())
+    state[domain] = JSON.parse(JSON.stringify(content)) as Domain
     version += 1
-    return { data: {} }
+    return Promise.resolve({ data: {} })
   })
 
   return {
     state,
     update,
     /* Another admin saves the domain. */
-    changeElsewhere: (domain, content) => {
-      state[domain] = JSON.parse(JSON.stringify(content))
+    changeElsewhere: (domain: string, content: Domain) => {
+      state[domain] = JSON.parse(JSON.stringify(content)) as Domain
       version += 1
     },
     client: {
       settings: {
-        domains: async () => ({ data: Object.keys(state) }),
-        schema: async () => ({ data: SCHEMA }),
-        fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(state[domain])), headers: { etag: tagOf() } }),
+        domains: () => Promise.resolve({ data: Object.keys(state) }),
+        schema: () => Promise.resolve({ data: SCHEMA }),
+        fetch: (domain: string) => Promise.resolve({ data: JSON.parse(JSON.stringify(state[domain])) as unknown, headers: { etag: tagOf() } }),
         update
       }
     }
@@ -101,11 +107,11 @@ const namedRouter = () => createRouter({
   routes: stubRoutes()
 })
 
-let wrapper
+let wrapper: VueWrapper | undefined
 
 const mountView = async () => {
   const server = fakeServer()
-  const store = createConfigurationStore(ref(server.client), { secretsHidden: () => false })
+  const store = createConfigurationStore(ref(server.client) as unknown as ClientRef, { secretsHidden: () => false })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings' },
@@ -124,9 +130,9 @@ const mountView = async () => {
 const conflictDialog = () => document.querySelector('[role="alertdialog"]')
 const reviewSheet = () => document.querySelector('[data-md-sheet-part="panel"]')?.closest('[role="dialog"]') ?? null
 // A button is found by its text, or by its accessible name when it is an icon button.
-const buttonIn = (root, label) => root && [...root.querySelectorAll('button')]
-  .find(button => button.textContent.trim() === label || button.getAttribute('aria-label') === label)
-const press = async (root, label) => {
+const buttonIn = (root: Element | null, label: string) => root && [...root.querySelectorAll('button')]
+  .find(button => button.textContent?.trim() === label || button.getAttribute('aria-label') === label)
+const press = async (root: Element | null, label: string) => {
   const button = buttonIn(root, label)
   if (!button) throw new Error(`no button labelled "${label}"`)
   button.click()
@@ -134,7 +140,7 @@ const press = async (root, label) => {
 }
 
 /* The draft changes releases to PRIVATE; the server meanwhile has snapshots PUBLIC, so the save below is refused. */
-const conflictingEdit = async ({ server, store }) => {
+const conflictingEdit = async ({ server, store }: Awaited<ReturnType<typeof mountView>>) => {
   store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE', redeployment: false })
   await flushPromises()
   server.changeElsewhere('maven', {
@@ -143,7 +149,7 @@ const conflictingEdit = async ({ server, store }) => {
       { id: 'snapshots', visibility: 'PUBLIC', redeployment: true }
     ]
   })
-  await press(wrapper.element, 'Save')
+  await press(wrapper!.element as Element, 'Save')
 }
 
 afterEach(() => {
@@ -164,8 +170,8 @@ describe('SettingsView conflict dialog', () => {
     await conflictingEdit(context)
 
     expect(conflictDialog(), 'the conflict dialog should be open').not.toBeNull()
-    expect(conflictDialog().textContent).toContain('Settings changed elsewhere')
-    expect(conflictDialog().textContent).toContain('Maven')
+    expect(conflictDialog()!.textContent).toContain('Settings changed elsewhere')
+    expect(conflictDialog()!.textContent).toContain('Maven')
     expect(context.server.update).toHaveBeenLastCalledWith('maven', expect.any(Object), '"maven-1"')
     expect(context.store.conflict.value).toEqual(expect.objectContaining({ kind: 'settings', name: 'maven', reviewed: false }))
   })
@@ -177,8 +183,8 @@ describe('SettingsView conflict dialog', () => {
     await press(conflictDialog(), 'Review')
 
     expect(conflictDialog(), 'the dialog steps aside while the review is open').toBeNull()
-    expect(reviewSheet().textContent).toContain('Stored settings compared')
-    expect(reviewSheet().textContent).toContain('releases')
+    expect(reviewSheet()!.textContent).toContain('Stored settings compared')
+    expect(reviewSheet()!.textContent).toContain('releases')
     expect(context.store.conflictChanges.value.length, 'the review lists the server state against the draft').toBeGreaterThan(0)
     expect(context.store.isDirty('maven'), 'reviewing changes nothing').toBe(true)
     expect(context.server.update, 'reviewing writes nothing').toHaveBeenCalledTimes(1)
@@ -192,7 +198,7 @@ describe('SettingsView conflict dialog', () => {
     await press(reviewSheet(), 'Close')
 
     expect(reviewSheet()).toBeNull()
-    expect(conflictDialog().textContent).toMatch(/\d+ changes? differ/)
+    expect(conflictDialog()!.textContent).toMatch(/\d+ changes? differ/)
   })
 
   it('takes the stored value of one change into the draft from the review, and the list shrinks', async () => {
@@ -203,7 +209,7 @@ describe('SettingsView conflict dialog', () => {
 
     await press(reviewSheet(), 'Use stored')
 
-    expect(context.store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect((context.store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PUBLIC')
     expect(context.store.conflictChanges.value.length).toBeLessThan(before)
     expect(context.server.update, 'taking a stored value writes nothing').toHaveBeenCalledTimes(1)
   })
@@ -227,7 +233,7 @@ describe('SettingsView conflict dialog', () => {
     expect(context.store.conflict.value).toBeNull()
     expect(reviewSheet()).toBeNull()
     expect(conflictDialog()).toBeNull()
-    expect(context.store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect((context.store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PUBLIC')
     expect(context.store.isDirty('maven')).toBe(false)
   })
 
@@ -239,7 +245,7 @@ describe('SettingsView conflict dialog', () => {
 
     expect(context.store.conflict.value).toBeNull()
     expect(conflictDialog()).toBeNull()
-    expect(context.store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect((context.store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PUBLIC')
     expect(context.store.isDirty('maven')).toBe(false)
     expect(context.server.update, 'reload writes nothing').toHaveBeenCalledTimes(1)
   })
@@ -267,7 +273,7 @@ describe('SettingsView conflict dialog', () => {
     expect(conflictDialog()).toBeNull()
     expect(context.store.isDirty('maven')).toBe(true)
 
-    await press(wrapper.element, 'Save')
+    await press(wrapper!.element as Element, 'Save')
 
     expect(context.server.update).toHaveBeenLastCalledWith('maven', expect.any(Object), '"maven-1"')
     expect(conflictDialog()).not.toBeNull()
