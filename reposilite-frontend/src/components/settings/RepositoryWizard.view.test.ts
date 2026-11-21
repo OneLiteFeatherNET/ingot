@@ -897,3 +897,48 @@ describe('RepositoryWizard accessibility', () => {
     expect(focused?.textContent ?? '', 'the summary lists the refused field').toContain('Enter an id.')
   })
 })
+
+// The component and tone a shared alert carries on its root, read from the element a data-test marker names.
+const alertOf = (element: Element | null) => ({
+  component: element?.getAttribute('data-ingot-component'),
+  tone: element?.getAttribute('data-tone'),
+  role: element?.getAttribute('role')
+})
+
+describe('RepositoryWizard problems', () => {
+  it('draws the error summary of a refused step as a shared alert in the error tone', async () => {
+    await mountWizard()
+
+    await next()
+
+    const summary = $('[data-test="error-summary"]')
+    expect(alertOf(summary.firstElementChild), 'the summary is an MdAlert in the error tone that is announced')
+      .toEqual({ component: 'md-alert', tone: 'error', role: 'alert' })
+    expect(summary.textContent, 'the summary keeps its title').toContain('Fix the highlighted fields to continue.')
+    expect(document.activeElement, 'the focus still lands on the summary').toBe(summary)
+  })
+
+  it('draws a failed load of the teams as a shared alert in the error tone, with its Retry', async () => {
+    client.identity.teams.list.mockRejectedValueOnce(new Error('503 unavailable'))
+    await mountWizard()
+    await reachAccessStep()
+
+    const problem = $('[data-test="access-load-error"]')
+    expect(alertOf(problem), 'the failed load is an MdAlert in the error tone that is announced')
+      .toEqual({ component: 'md-alert', tone: 'error', role: 'alert' })
+    expect(problem.textContent, 'the alert names the failure').toContain('Could not load the teams: 503 unavailable')
+    expect(problem.querySelector('[data-test="reload-access"]'), 'the Retry sits in the alert').not.toBeNull()
+  })
+
+  it('draws the failure of a create step as a shared alert in the error tone', async () => {
+    client.identity.teams.setMembers.mockRejectedValueOnce(new Error('412 precondition failed'))
+    await mountWizard()
+    await reachReview({ machine: true })
+
+    await click('#wizard-create')
+
+    const failure = $('[data-step="member"] [data-test="step-failure"]')
+    expect(alertOf(failure), 'the failed step is an MdAlert in the error tone that is announced')
+      .toEqual({ component: 'md-alert', tone: 'error', role: 'alert' })
+  })
+})
