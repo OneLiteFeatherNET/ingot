@@ -22,6 +22,7 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import { useSession } from '../../store/session'
 import { errorMessage } from '../../helpers/toast'
 import usePlaceholders from '../../store/placeholders'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdIconButton from '../md/MdIconButton.vue'
@@ -387,22 +388,23 @@ const onModalUpdate = (open: boolean) => {
         <div
           v-if="attempted && errorList.length > 0"
           ref="errorSummary"
-          role="alert"
           tabindex="-1"
           data-test="error-summary"
-          class="mb-4 flex flex-col gap-1 rounded-corner-medium bg-error-container p-3 text-on-error-container focus:outline-none"
+          class="mb-4 focus:outline-none"
         >
-          <p class="md-title-small">
-            Fix the highlighted fields to continue.
-          </p>
-          <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium">
-            <li
-              v-for="(message, position) in errorList"
-              :key="position"
-            >
-              {{ message }}
-            </li>
-          </ul>
+          <MdAlert
+            tone="error"
+            title="Fix the highlighted fields to continue."
+          >
+            <ul class="m-0 flex list-disc flex-col gap-1 pl-5">
+              <li
+                v-for="(message, position) in errorList"
+                :key="position"
+              >
+                {{ message }}
+              </li>
+            </ul>
+          </MdAlert>
         </div>
         <!-- Type -->
         <div
@@ -781,21 +783,23 @@ const onModalUpdate = (open: boolean) => {
             </MdRadio>
           </fieldset>
 
-          <div
+          <MdAlert
             v-if="accessLoadError"
-            role="alert"
-            class="flex flex-wrap items-center gap-3"
+            data-test="access-load-error"
+            tone="error"
           >
-            <span class="md-body-medium text-error">Could not load the teams: {{ accessLoadError }}</span>
-            <MdButton
-              data-test="reload-access"
-              variant="text"
-              type="button"
-              @click="loadAccessData"
-            >
-              Retry
-            </MdButton>
-          </div>
+            Could not load the teams: {{ accessLoadError }}
+            <template #action>
+              <MdButton
+                data-test="reload-access"
+                variant="text"
+                type="button"
+                @click="loadAccessData"
+              >
+                Retry
+              </MdButton>
+            </template>
+          </MdAlert>
 
           <MdSelect
             v-if="draft.access.mode === 'existing'"
@@ -934,12 +938,12 @@ const onModalUpdate = (open: boolean) => {
                 <span class="md-title-small text-on-surface">{{ action.label }}</span>
                 <span class="md-body-medium text-on-surface-variant">{{ stateText(action.key) }}</span>
                 <template v-if="progress[action.key].state === 'failed'">
-                  <p
-                    role="alert"
-                    class="md-body-medium text-error"
+                  <MdAlert
+                    data-test="step-failure"
+                    tone="error"
                   >
                     {{ failureFor(action.key) }}
-                  </p>
+                  </MdAlert>
                   <p class="md-body-small text-on-surface-variant break-words">
                     {{ progress[action.key].error }}
                   </p>
