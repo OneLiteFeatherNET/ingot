@@ -35,7 +35,7 @@ test.describe('deleting a principal', () => {
       // The menu is opened and its items are chosen with the pointer, as a person does. The menu follows its trigger
       // when the page scrolls, so a scroll that the click causes does not close it.
       const trigger = detail.getByRole('button', { name: `Actions for ${username}`, exact: true })
-      const chooseFromMenu = async (name) => {
+      const chooseFromMenu = async (name: string) => {
         await trigger.click()
         const item = page.getByRole('menuitem', { name, exact: true })
         await expect(item, `the menu offers ${name}`).toBeVisible()

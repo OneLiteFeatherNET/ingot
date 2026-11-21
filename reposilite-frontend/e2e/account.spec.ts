@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 import { ACCOUNT_NAME } from './support/session'
@@ -24,7 +25,14 @@ const WIDTHS = [320, 600, 1440]
 
 const SECTIONS = ['Profile', 'Your access', 'Sign-in and security', 'My tokens']
 
-const accountTrigger = (page) => page.getByRole('button', { name: `Account menu, ${ACCOUNT_NAME}`, exact: true })
+// The box of a rendered region. A region that is not rendered has no box, and the check stops there.
+const regionBox = async (page: Page, name: string) => {
+  const box = await page.getByRole('region', { name, exact: true }).boundingBox()
+  if (box === null) throw new Error(`the ${name} region is not rendered`)
+  return box
+}
+
+const accountTrigger = (page: Page) => page.getByRole('button', { name: `Account menu, ${ACCOUNT_NAME}`, exact: true })
 
 for (const width of WIDTHS) {
   test.describe(`the account page at ${width} pixels`, () => {
@@ -95,11 +103,11 @@ test.describe('the account page at 1920 pixels', () => {
     await page.goto(siteUrl('/account'))
     await expect(page.getByRole('heading', { name: 'Your access', exact: true })).toBeVisible()
 
-    const profile = await page.getByRole('region', { name: 'Profile', exact: true }).boundingBox()
-    const access = await page.getByRole('region', { name: 'Your access', exact: true }).boundingBox()
-    const security = await page.getByRole('region', { name: 'Sign-in and security', exact: true }).boundingBox()
-    const password = await page.getByRole('region', { name: 'Change password', exact: true }).boundingBox()
-    const tokens = await page.getByRole('region', { name: 'My tokens', exact: true }).boundingBox()
+    const profile = await regionBox(page, 'Profile')
+    const access = await regionBox(page, 'Your access')
+    const security = await regionBox(page, 'Sign-in and security')
+    const password = await regionBox(page, 'Change password')
+    const tokens = await regionBox(page, 'My tokens')
 
     expect(security.x + security.width - profile.x, 'the content is wider than the 1536 pixel container step').toBeGreaterThan(1600)
     expect(profile.x < access.x && access.x < security.x, 'three columns, in the order Profile, Your access, Sign-in and security').toBe(true)
