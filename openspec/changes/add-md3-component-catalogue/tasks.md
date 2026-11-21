@@ -30,7 +30,7 @@ Each test below is written, run, seen to fail for the stated reason, and only th
   only one allowed as a deprecated alias, and it is listed), that emits are kebab-case, and that every icon slot is `leading` or
   `trailing`, with `icon` allowed only on the components named in the proposal. Verify: it fails on `MdOverflowMenu`, `CardMenu`
   and `MdChip`.
-- [ ] 2.3 `test(ui)`: in `src/anchors/anchors.test.js`, assert the registry names of the new primitives, that `segmented-control` and
+- [x] 2.3 `test(ui)`: in `src/anchors/anchors.test.js`, assert the registry names of the new primitives, that `segmented-control` and
   `segmented-option` keep their names and point at the moved files with no alias entry, and that `dialog-shell` points at `src/components/md/MdDialog.vue`. Verify: it fails, because the entries do not
   exist yet.
 - [x] 2.4 `test(ui)`: in `src/components/md/MdIcon.test.js`, assert the decorative default (`aria-hidden="true"`), the labelled form,
@@ -85,7 +85,7 @@ Each test below is written, run, seen to fail for the stated reason, and only th
 - [x] 2.21 `test(ui)`: in `src/components/md/MdSection.test.js`, `MdListDetail.test.js`, `MdList.test.js`, `MdDivider.test.js` and
   `MdKeyValueList.test.js`, assert the heading level prop, the list links, buttons and selectable options, the leading and trailing
   slots, the divider inset and label, and the one grid template of the key value rows. Verify: it fails.
-- [ ] 2.22 `test(ui)`: in `src/components/md/MdDataTable.test.js`, `MdTabs.test.js` and `MdDisclosure.test.js`, assert the caption,
+- [x] 2.22 `test(ui)`: in `src/components/md/MdDataTable.test.js`, `MdTabs.test.js` and `MdDisclosure.test.js`, assert the caption,
   `aria-sort` on one column only, `th scope="row"` in the first column, the `tablist` with `aria-selected` on one tab, and the
   disclosure summary with its state layer. Verify: it fails.
 - [x] 2.23 `test(ui)`: in `src/components/md/MdBadge.test.js` and `MdAvatar.test.js`, assert each tone's role classes, the single
@@ -93,7 +93,7 @@ Each test below is written, run, seen to fail for the stated reason, and only th
 - [x] 2.24 `test(ui)`: in `src/components/md/MdLink.test.js`, `MdCode.test.js`, `MdCodeBlock.test.js` and `MdCopyableCode.test.js`,
   assert the external rel and new-tab name, the monospace role, the copy action with its label, and the status in a live region after
   the copy helper succeeds (the helper is replaced by a fake that resolves once). Verify: it fails.
-- [ ] 2.25 `test(ui)`: in `src/helpers/useCombobox.test.js` (pure, no mount) and `src/components/md/MdListbox.test.js`, assert Down and Up
+- [x] 2.25 `test(ui)`: in `src/helpers/useCombobox.test.js` (pure, no mount) and `src/components/md/MdListbox.test.js`, assert Down and Up
   moving the active index with wrap, Home and End, Enter choosing the active option, Escape closing the list, clearing the index
   and keeping the typed text, `aria-activedescendant` following the active option, the filtering of the options, and the listbox
   roles and teleport. Verify: it fails, because the composable does not exist.
@@ -118,7 +118,7 @@ earlier ones.
   2.6 and the text field part of 2.7 pass, the three renderers' tests pass, and the screenshots of the three fields match.
 - [x] 3.3 `refactor(ui)`: add `MdSelect` `width` and `readonly` props (the shell adoption waits as in 3.2). Verify: the select part of
   2.7 passes.
-- [ ] 3.4 `feat(ui)`: add `src/helpers/modifiedClick.js` (pure); add `MdNavigationItem`, whose anchor `md-navigation-item` sits on a
+- [x] 3.4 `feat(ui)`: add `src/helpers/modifiedClick.js` (pure); add `MdNavigationItem`, whose anchor `md-navigation-item` sits on a
   wrapper element with `display: contents` (decided 2026-11-18); build `MdNavigationBar` and `MdNavigationRail` on it, keeping both
   anchors; use the helper in `MdOverflowMenu`. Verify: 2.8 and 2.9 pass, and the navigation
   screenshots match.
@@ -159,7 +159,7 @@ earlier ones.
   `md/MdSegmentedOption.vue`; leave re-exports at the old paths; keep `data-ingot-component="segmented-control"` and
   `"segmented-option"` on the moved elements and update only the `file` of both entries in `src/anchors/registry.json`; add the shape token `corner-segmented` (20px) in `src/styles/md3/shape-elevation-motion.css`. Verify:
   2.26 passes, and the segmented control screenshots match.
-- [ ] 3.20 `refactor(ui)`: rename the `CardMenu` emit to `select-tab` and keep `selectTab` as a deprecated alias for one release,
+- [x] 3.20 `refactor(ui)`: rename the `CardMenu` emit to `select-tab` and keep `selectTab` as a deprecated alias for one release,
   emitted with the same tab (proposal question 2, decided 2026-11-18). The change is not BREAKING. The result of the plugin check in
   task 5.6 is recorded, and it does not change the alias. Verify: 2.27 passes.
 
@@ -185,7 +185,7 @@ earlier ones.
   a pair that differs is reverted and listed in the pull request.
 - [ ] 5.4 A screenshot of each primitive state in light and dark (Playwright, one spec, catalogue states only). Verify: the images
   are attached to the pull request.
-- [ ] 5.5 Run `openspec validate add-md3-component-catalogue --strict` and `grep -rnP '\x{2014}|\x{2013}'` over the change directory and
+- [x] 5.5 Run `openspec validate add-md3-component-catalogue --strict` and `grep -rnP '\x{2014}|\x{2013}'` over the change directory and
   the changed DESIGN.md, the registry and the source files. Verify: the validation passes and the grep prints nothing.
 - [ ] 5.6 Grep `reposilite-frontend/src` and the plugin extension points for `CardMenu` and `selectTab`. Verify: the result is recorded
   in the pull request. The alias of task 3.20 is kept whatever the result is.
