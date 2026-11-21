@@ -20,6 +20,8 @@ import { useRouter } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 
 /*
  * The review behind the "Review public repositories" step. It lists the public repositories and asks
@@ -89,30 +91,34 @@ const follow = (repository: PublicRepository) => {
       </div>
 
       <div class="mt-4 flex flex-col gap-2">
-        <ul
+        <MdList
           v-if="repositories.length > 0"
+          divided
           aria-label="Public repositories"
-          class="flex flex-col gap-2"
         >
-          <li
+          <MdListItem
             v-for="repository in repositories"
             :key="repository.id"
-            class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
           >
-            <div class="flex min-w-0 flex-1 basis-40 flex-col">
-              <span class="md-title-small break-all">{{ repository.id }}</span>
-              <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
-            </div>
-            <MdButton
-              variant="text"
-              :href="hrefOf(repository)"
-              :aria-label="`Change visibility of ${repository.id}`"
-              @click.prevent="follow(repository)"
-            >
-              Change visibility
-            </MdButton>
-          </li>
-        </ul>
+            <span class="flex flex-wrap items-center gap-3">
+              <span class="flex min-w-0 flex-1 basis-40 flex-col">
+                <span
+                  class="md-title-small break-all"
+                  data-test="repository-id"
+                >{{ repository.id }}</span>
+                <span class="md-body-medium text-on-surface-variant">{{ repository.description || 'No description' }}</span>
+              </span>
+              <MdButton
+                variant="text"
+                :href="hrefOf(repository)"
+                :aria-label="`Change visibility of ${repository.id}`"
+                @click.prevent="follow(repository)"
+              >
+                Change visibility
+              </MdButton>
+            </span>
+          </MdListItem>
+        </MdList>
         <p
           v-else
           class="md-body-medium text-on-surface-variant"

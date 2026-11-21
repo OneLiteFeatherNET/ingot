@@ -257,8 +257,7 @@ describe('GettingStartedCard', () => {
   describe('public repository review', () => {
     const reviewStep = () => $('li [data-step-action="public-review"]')?.closest('li')
     const openReview = () => $('[data-step-action="public-review"]')?.click()
-    // The first text of each row is the repository id.
-    const dialogIds = () => [...document.querySelectorAll('[role="dialog"] li')].map(row => row.querySelector('span')?.textContent?.trim())
+    const dialogIds = () => [...document.querySelectorAll('[role="dialog"] [data-test="repository-id"]')].map(id => id.textContent?.trim())
 
     it('is to do with a Review action while a public repository is not yet confirmed', async () => {
       await mountCard()

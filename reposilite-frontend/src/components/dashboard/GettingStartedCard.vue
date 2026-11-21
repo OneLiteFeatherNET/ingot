@@ -24,6 +24,8 @@ import { ADMIN_NODES } from '../../store/nodeAccess'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
 import type { ChecklistItem, FrontendSettings, MavenRepository } from './gettingStarted'
 import {
@@ -160,47 +162,50 @@ onMounted(() => {
         Some steps could not be checked: {{ failure }}
       </MdAlert>
 
-      <ol
+      <MdList
         v-if="loaded"
+        divided
         aria-label="Setup steps"
-        class="flex flex-col gap-2"
       >
-        <li
+        <MdListItem
           v-for="item in items"
           :key="item.key"
-          class="flex flex-wrap items-center gap-3 rounded-corner-medium bg-surface-container p-3"
           :data-state="item.done ? 'done' : 'open'"
         >
-          <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-corner-full"
-            :class="item.done ? 'bg-secondary-container text-on-secondary-container' : 'border border-outline text-on-surface-variant'"
-            aria-hidden="true"
-          >
-            <svg
-              v-if="item.done"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              class="size-5"
+          <template #leading>
+            <span
+              class="flex size-8 items-center justify-center rounded-corner-full"
+              :class="item.done ? 'bg-secondary-container text-on-secondary-container' : 'border border-outline text-on-surface-variant'"
+              aria-hidden="true"
             >
-              <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-            </svg>
+              <svg
+                v-if="item.done"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="size-5"
+              >
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+            </span>
+          </template>
+          <span class="flex flex-wrap items-center gap-3">
+            <span class="flex min-w-0 flex-1 basis-56 flex-col">
+              <span class="md-title-small text-on-surface">{{ item.title }}</span>
+              <span class="md-body-medium text-on-surface-variant">{{ item.description }}</span>
+              <span class="md-label-medium text-on-surface-variant">{{ item.done ? 'Done' : 'To do' }}</span>
+            </span>
+            <MdButton
+              v-if="editsSettings"
+              :data-step-action="item.key"
+              :variant="item.done ? 'text' : 'tonal'"
+              :href="hrefOf(item)"
+              @click.prevent="activate(item)"
+            >
+              {{ item.action.label }}
+            </MdButton>
           </span>
-          <div class="flex min-w-0 flex-1 basis-56 flex-col">
-            <span class="md-title-small text-on-surface">{{ item.title }}</span>
-            <span class="md-body-medium text-on-surface-variant">{{ item.description }}</span>
-            <span class="md-label-medium text-on-surface-variant">{{ item.done ? 'Done' : 'To do' }}</span>
-          </div>
-          <MdButton
-            v-if="editsSettings"
-            :data-step-action="item.key"
-            :variant="item.done ? 'text' : 'tonal'"
-            :href="hrefOf(item)"
-            @click.prevent="activate(item)"
-          >
-            {{ item.action.label }}
-          </MdButton>
-        </li>
-      </ol>
+        </MdListItem>
+      </MdList>
       <p
         v-else-if="!failure"
         class="md-body-medium text-on-surface-variant"
