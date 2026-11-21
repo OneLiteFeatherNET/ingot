@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// The runner entry point: `npm run load -- --topology <t> --profile <p> --scenario <s> [--reference] [--parallelism n]`.
+// The runner entry point: `npm run load -- --topology <t> --profile <p> --scenario <s> [--size <N|T|S|M|L>] [--reference] [--parallelism n]`.
 // The Ingot image tag is read from INGOT_IMAGE_TAG, the remote write endpoint of the metrics store from INGOT_LOADTEST_RW_URL. The namespace is fixed to the load test namespace; the TestRun and
 // the steps refuse any other one before a kubectl call. The effects below call kubectl, helm and docker (for k6 archive).
 
@@ -27,6 +27,7 @@ import { promisify } from 'node:util';
 import { INGOT_RELEASE, K6_IMAGE, LOAD_NAMESPACE, parseRunOptions } from '../lib/config.ts';
 import { remoteWriteUrl, scriptArguments, scriptVariables } from './environment.ts';
 import { labelledNodesCommand } from './nodes.ts';
+import { parseSizeOption, sizeHelmArguments } from './size.ts';
 import { buildTestRun } from './testrun.ts';
 import { runSteps, type RunnerPorts } from './steps.ts';
 
@@ -62,6 +63,8 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
 async function main(argv: readonly string[]): Promise<void> {
   const options = parseRunOptions(argv);
   const reference = argv.includes('--reference');
+  // Without --size the release keeps the chart default resources.
+  const size = parseSizeOption(argv);
   const parallelism = Number(flagValue(argv, '--parallelism') ?? '1');
   if (!Number.isInteger(parallelism) || parallelism < 1) {
     throw new Error(`--parallelism must be a whole number of at least 1, got "${flagValue(argv, '--parallelism')}"`);
@@ -113,7 +116,9 @@ async function main(argv: readonly string[]): Promise<void> {
     }),
     { mode: 0o600 },
   );
-  console.log(`test run ${testId}: ${options.topology}, ${options.profile}, ${options.scenario}, Ingot ${ingotVersion}`);
+  console.log(
+    `test run ${testId}: ${options.topology}, size ${size?.name ?? 'chart default'}, ${options.profile}, ${options.scenario}, Ingot ${ingotVersion}`,
+  );
 
   const ports: RunnerPorts = {
     labelledNodes: async () =>
@@ -128,6 +133,7 @@ async function main(argv: readonly string[]): Promise<void> {
         // A rolling tag such as nightly can resolve to an older image on the node, so a digest pins the exact one.
         ...(ingotDigest ? ['--set', `image.digest=${ingotDigest}`] : []),
         '--set', `envFrom[0].secretRef.name=${credentialsSecret}`,
+        ...(size ? sizeHelmArguments(size) : []),
         '--wait=false',
       ]);
     },
@@ -167,8 +173,8 @@ async function main(argv: readonly string[]): Promise<void> {
       }
       return stage === 'finished';
     },
-    // The record step is `recordStep` of record.ts. The runner does not yet apply a pod size or read the measured outcome,
-    // so a run writes no record until both are wired, rather than a record with a size that was never applied.
+    // The record step is `recordStep` of record.ts. The runner does not yet read the measured outcome, so a run writes no
+    // record until that is wired.
     record: async () => {},
     // Removes everything the run created, each part even when an earlier one failed. The chart keeps its volume on
     // uninstall, so it is deleted by name, which keeps every run on a fresh data directory.
