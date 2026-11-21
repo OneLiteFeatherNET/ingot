@@ -112,6 +112,15 @@ internal class SearchApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `answers 400 with the problem type undeclared-attribute for a filter on an undeclared key`() {
+        val response = get("$base/api/maven/search?attribute=demo.loader:fabric").asJacksonObject(JsonNode::class)
+
+        assertThat(response.status).`as`("status").isEqualTo(400)
+        assertThat(response.body.get("type").asText()).`as`("problem type").isEqualTo("urn:ingot:problem:undeclared-attribute")
+        assertThat(response.body.get("message").asText()).`as`("message").contains("demo.loader")
+    }
+
+    @Test
     fun `answers 400 naming the coordinate that the files request lacks`() {
         val response = get("$base/api/maven/search/files?groupId=com.example&artifactId=app").asJacksonObject(JsonNode::class)
 
