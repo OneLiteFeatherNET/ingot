@@ -11,7 +11,7 @@ merged. Task checkboxes are ticked in a follow-up pull request, never in a code 
 
 ## 2. Measure first
 
-- [ ] 2.1 `ci(heavy)`: record, on a throwaway branch (no pull request), the cold and warm wall clock of
+- [x] 2.1 `ci(heavy)`: record, on a throwaway branch (no pull request), the cold and warm wall clock of
   `Build / Build` and `Coverage (backend)` without integration, the backend compile time, the Gradle cache hit rate, the duration of
   `DCO sign-off` and `OpenAPI breaking changes`, per-test unit timings from the JUnit XML, and a warm amd64-only image build and start.
   Paste the numbers into the pull request of 3.1. Verify: every "not measured" item of `design.md` has a value or a stated reason.
@@ -66,7 +66,7 @@ merged. Task checkboxes are ticked in a follow-up pull request, never in a code 
 
 ## 7. Repository settings (maintainer, not files)
 
-- [ ] 7.1 Create the labels `ci:heavy`, `ci:integration`, `ci:e2e`, `ci:images`, `ci:ha`, `ci:search`, `ci:codeql` with descriptions.
+- [x] 7.1 Create the labels `ci:heavy`, `ci:integration`, `ci:e2e`, `ci:images`, `ci:ha`, `ci:search`, `ci:codeql` with descriptions.
 - [ ] 7.2 After 3.3 and 4.2 are green on main, add `Light checks` and `Heavy tests` to the required checks of "Protect main", and remove
   `Container images` and `Helm chart`. Record the date in the pull request.
 
@@ -78,7 +78,7 @@ Each is opened against `main` after its predecessors merge, with the sections of
 - [x] 8.2 Open `ci(heavy): skip light jobs a pull request cannot affect` (3.2).
 - [x] 8.3 Open `ci(heavy): add the light checks aggregate with a time budget` (3.3).
 - [x] 8.4 Open `ci(build): read and write the gradle build cache in ci` (3.4).
-- [ ] 8.5 Open `ci(build): trial the gradle configuration cache for unit tests` (3.5).
+- [x] 8.5 Open `ci(build): trial the gradle configuration cache for unit tests` (3.5).
 - [x] 8.6 Open `ci(heavy): run unit tests only on pull requests` (3.6), and the pull requests of 3.7 if they are needed, titled
   `ci(heavy): shard the backend unit tests` and `test(backend): tag the slowest unit tests as slow`.
 - [x] 8.7 Open `ci(heavy): decide which heavy jobs a pull request asks for` (4.1).
