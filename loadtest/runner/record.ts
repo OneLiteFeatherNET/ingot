@@ -15,8 +15,10 @@
  */
 // The result record of one run (design D13): one JSON file per topology, size and scenario, under the Ingot version.
 // The record is built and validated without a file system or a clock. The caller hands in the date and the writer, so
-// the unit tests need neither.
+// the unit tests need neither. `fileRecordWriter` is the writer the runner hands in.
 
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import type { Scenario, Topology } from '../lib/config.ts';
 import { sizeByName, type ReferenceSize } from '../lib/sizes.ts';
 import type { RunResult } from './steps.ts';
@@ -99,6 +101,24 @@ export function createRecord(input: RecordInput): ResultRecord {
 }
 
 export type RecordWriter = (path: string, content: string) => Promise<void>;
+
+/**
+ * The writer of the runner: writes a record at its path below the repository root, creating the version folder, and
+ * replaces the record of an earlier run with the same version, topology, size and scenario. Refuses any path that
+ * resolves outside `loadtest/results`, before it creates a folder or a file.
+ */
+export function fileRecordWriter(repositoryRoot: string): RecordWriter {
+  const resultsRoot = resolve(repositoryRoot, RESULTS_DIR);
+  return async (path, content) => {
+    const target = resolve(repositoryRoot, path);
+    const inside = relative(resultsRoot, target);
+    if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
+      throw new Error(`refusing to write the record "${path}": it lies outside ${RESULTS_DIR}`);
+    }
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, content, 'utf8');
+  };
+}
 
 /** Writes the record as one JSON document with a trailing newline, and returns the path it wrote to. */
 export async function writeResultRecord(record: ResultRecord, write: RecordWriter): Promise<string> {

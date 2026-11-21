@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { createRecord, recordStep, writeResultRecord, type RecordInput } from './record.ts';
+import { createRecord, fileRecordWriter, recordStep, writeResultRecord, type RecordInput } from './record.ts';
 
 const input: RecordInput = {
   ingotVersion: '2.0.0',
@@ -170,4 +173,53 @@ test('the record step writes nothing when a completed run has no measurement', a
   await step({ kind: 'completed' });
 
   assert.deepEqual(writer.calls, []);
+});
+
+/** A fresh repository root per test, so no test sees the files of another. */
+function temporaryRoot(): string {
+  return mkdtempSync(join(tmpdir(), 'ingot-record-'));
+}
+
+test('the file writer writes the record under loadtest/results/<version> of the repository root', async () => {
+  const root = temporaryRoot();
+  try {
+    const path = await writeResultRecord(createRecord(input), fileRecordWriter(root));
+
+    const written = readFileSync(join(root, path), 'utf8');
+    assert.equal(path, 'loadtest/results/2.0.0/monolith-S-resolve.json');
+    assert.deepEqual(JSON.parse(written).outcome, { kind: 'rate', rate: 120, p95Ms: 340 });
+    assert.ok(written.endsWith('}\n'), 'the record ends with one newline, as a checked-in file should');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the file writer replaces the record of an earlier run of the same version, topology, size and scenario', async () => {
+  const root = temporaryRoot();
+  try {
+    const writer = fileRecordWriter(root);
+    await writeResultRecord(createRecord(input), writer);
+    const path = await writeResultRecord(
+      createRecord({ ...input, outcome: { kind: 'rate', rate: 150, p95Ms: 300 } }),
+      writer,
+    );
+
+    assert.deepEqual(JSON.parse(readFileSync(join(root, path), 'utf8')).outcome, { kind: 'rate', rate: 150, p95Ms: 300 });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the file writer refuses a path outside the results folder and writes nothing', async () => {
+  const root = temporaryRoot();
+  try {
+    const writer = fileRecordWriter(root);
+
+    await assert.rejects(writer('loadtest/results/../../escape.json', '{}\n'), /outside loadtest\/results/);
+    await assert.rejects(writer('docs/record.json', '{}\n'), /outside loadtest\/results/);
+    assert.equal(existsSync(join(root, 'escape.json')), false, 'a refused record must not be written');
+    assert.equal(existsSync(join(root, 'docs')), false, 'a refused record must not create a folder');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
