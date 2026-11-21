@@ -32,6 +32,9 @@ import {
   setReaderPages,
   readerPages,
   readerPageByRoute,
+  readerPageRedirect,
+  readerRailGroups,
+  barLayout,
   unlistedRoutes
 } from './registry'
 import { ROUTES } from '../router/routes'
@@ -437,5 +440,38 @@ describe('reader pages', () => {
 
   it('accepts the plugin-reader route as one that has no entry of its own', () => {
     expect(unlistedRoutes(['plugin-reader']), 'the reader route is exempt like settings-plugin').toEqual([])
+  })
+
+  it('draws no Plugin pages heading in the rail without a reader page', () => {
+    expect(readerRailGroups(), 'no heading and no entry while the manifest has no page').toEqual([])
+  })
+
+  it('lists the reader pages under the Plugin pages heading of the rail, in manifest order', () => {
+    setReaderPages(readerManifest)
+
+    const groups = readerRailGroups()
+
+    expect(groups.map(group => group.heading), 'one heading, named apart from the Plugins heading of admin pages')
+      .toEqual(['Plugin pages'])
+    expect(groups[0].pages.map(page => page.key), 'the keys of the reader pages, in manifest order')
+      .toEqual(['reader:docs/guides', 'reader:alpha/notes'])
+  })
+
+  it('never puts a reader page in the bottom bar or under More', () => {
+    setReaderPages(readerManifest)
+
+    const { bar, more } = barLayout(canWith(['ingot.admin.*']))
+    const keys = [...bar, ...more.flatMap(group => group.pages)].map(page => page.key)
+
+    expect(keys.filter(key => key.startsWith('reader:')), 'the bar keeps the built-in pages only').toEqual([])
+  })
+
+  it('opens the first page of a plugin for an address without a page id', () => {
+    setReaderPages(readerManifest)
+
+    expect(readerPageRedirect('alpha', undefined), 'the first page of alpha')
+      .toEqual({ name: 'plugin-reader', params: { plugin: 'alpha', page: 'notes' } })
+    expect(readerPageRedirect('alpha', 'notes'), 'an address with a page id stays').toBeNull()
+    expect(readerPageRedirect('unknown', undefined), 'a plugin without a reader page has no target').toBeNull()
   })
 })

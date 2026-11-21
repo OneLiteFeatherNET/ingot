@@ -94,6 +94,9 @@ const ROUTES: AppRoute[] = [
   // A page a server plugin contributed. Placed before the settings entry, which would take the plugin as a collection.
   // Its permission is the area of the page, which the page checks (see IndexPage), so the route needs no node here.
   { name: 'settings-plugin', path: '/settings/plugins/:plugin/:page?', meta: { section: 'settings', manager: true } },
+  // A page a server plugin contributed for readers, open to every visitor. It belongs to Browse, so it carries the
+  // overview meta; IndexPage draws it from the reader manifest and answers an unknown page with not found.
+  { name: 'plugin-reader', path: '/plugins/:plugin/:page?', meta: routeMeta('overview') },
   // The repositories are a page of their own under /settings. Placed before the generic settings route, which would take `repositories` as a domain.
   { name: 'settings-repositories', path: '/settings/repositories', meta: routeMeta('settings') },
   // The list address of the Maven page, which had no page of its own. The Repositories page replaces it, so the address leads there.
@@ -117,4 +120,11 @@ const ROUTES: AppRoute[] = [
   { name: 'not-found', path: '/:pathMatch(.*)*', meta: { section: null } },
 ]
 
-export { ROUTES, dashboardSegments as DASHBOARD_SEGMENTS }
+/*
+ * The top-level segments the server claims only while they are needed, and then only for a browser navigation, so a
+ * repository of the same name keeps answering Maven clients. They are not in dashboard-segments.json, which every
+ * deployment reserves. plugins holds the reader pages, and the backend claims it while a reader page exists.
+ */
+const NAVIGATION_SEGMENTS: readonly string[] = ['plugins']
+
+export { ROUTES, NAVIGATION_SEGMENTS, dashboardSegments as DASHBOARD_SEGMENTS }

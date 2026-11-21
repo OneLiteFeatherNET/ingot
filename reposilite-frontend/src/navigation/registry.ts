@@ -66,6 +66,8 @@
  * - routeMeta(key, childKey?)    the `meta` of a route: section, manager, node or anyNode, signedIn
  * - readerPages()               the plugin pages for readers, in manifest order (see setReaderPages)
  * - readerPageByRoute(plugin, id) the reader page a /plugins/<plugin>/<page> address names, or undefined
+ * - readerRailGroups()          the reader pages under the Plugin pages heading of the rail, empty without a page
+ * - readerPageRedirect(plugin, page) the first reader page of a plugin for an address without a page id, or null
  * - unlistedRoutes(names)        the route names that no entry, child, detail or exempt name covers;
  *                                a route added to the route table without one of these fails the suite
  *
@@ -281,6 +283,27 @@ const readerPages = (): ReaderPage[] => readers.value
 
 const readerPageByRoute = (plugin: string, id: string): ReaderPage | undefined =>
   readers.value.find(page => page.plugin === plugin && page.id === id)
+
+// The heading of the reader pages in the rail. It is not "Plugins", which already heads the admin pages of plugins
+// that name no group, so an administrator never sees two headings of the same name.
+const READER_HEADING = 'Plugin pages'
+
+// The rail key of a reader page: `reader:<plugin>/<id>`, so it never equals the key of a built-in or an admin page.
+const readerKey = (plugin: string, id: string) => `reader:${plugin}/${id}`
+
+// The reader pages in the rail, under their one heading, in manifest order. Empty without a reader page, so the
+// heading is not drawn. A reader page is never in the bottom bar: barLayout reads the built-in pages only.
+const readerRailGroups = (): { heading: string; pages: (ReaderPage & { key: string })[] }[] => (readers.value.length === 0
+  ? []
+  : [{ heading: READER_HEADING, pages: readers.value.map(page => ({ ...page, key: readerKey(page.plugin, page.id) })) }])
+
+// The location a reader address without a page id is replaced with: the first reader page of the plugin.
+// Null when the address already names a page, or the plugin has no reader page.
+const readerPageRedirect = (plugin: string, page: string | undefined): NamedLocation | null => {
+  if (page !== undefined) return null
+  const first = readers.value.find(entry => entry.plugin === plugin)
+  return first ? { name: 'plugin-reader', params: { plugin, page: first.id } } : null
+}
 
 // The permission node that opens a contributed page: the node of its admin area, or the instance admin node for `*`.
 const pageNodeOf = (area: string) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.${area}`)
@@ -712,6 +735,9 @@ export {
   setReaderPages,
   readerPages,
   readerPageByRoute,
+  readerKey,
+  readerRailGroups,
+  readerPageRedirect,
   contributedPages,
   contributedPageByRoute,
   contributedPageNode,
