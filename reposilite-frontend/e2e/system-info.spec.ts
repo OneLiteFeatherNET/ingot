@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 import { analyzeAccessibility } from './support/accessibility'
@@ -24,7 +25,7 @@ import { signInAsAdmin } from './support/session'
 const TABS = ['Overview', 'Plugins', 'Environment', 'Configuration']
 const DOWNLOAD = 'Download support bundle'
 
-const tab = (page, name) => page.getByRole('tab', { name, exact: true })
+const tab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true })
 
 test.describe('system information and support page', () => {
   test.beforeEach(async ({ page }) => {
@@ -79,13 +80,13 @@ test.describe('system information and support page', () => {
   })
 
   test('lays the overview cards out in three columns wide and one column at phone width', async ({ page }) => {
-    const columnsAt = async (width) => {
+    const columnsAt = async (width: number) => {
       await page.setViewportSize({ width, height: 900 })
       await page.goto(siteUrl('/settings/system-info'))
       await expect(page.getByRole('article')).toHaveCount(6)
       const cards = await page.getByRole('article').all()
       const boxes = await Promise.all(cards.map((card) => card.boundingBox()))
-      return new Set(boxes.map((box) => Math.round(box.x))).size
+      return new Set(boxes.map((box) => Math.round(box!.x))).size
     }
 
     expect(await columnsAt(1440), 'three columns at 1440 pixels').toBe(3)
@@ -98,7 +99,7 @@ test.describe('system information and support page', () => {
     await expect(page.getByRole('article')).toHaveCount(6)
 
     const tabList = await page.getByRole('tablist').boundingBox()
-    expect(tabList.width, 'the tab bar runs past the 960 pixel reading measure').toBeGreaterThan(960)
+    expect(tabList!.width, 'the tab bar runs past the 960 pixel reading measure').toBeGreaterThan(960)
 
     const overflowing = await page.getByRole('article').evaluateAll((cards) => cards
       .filter((card) => card.scrollWidth > card.clientWidth)
@@ -124,7 +125,7 @@ test.describe('system information and support page', () => {
     await expect(tab(page, 'Configuration')).toBeInViewport()
     expect(await page.evaluate(() => window.scrollY), 'a deep link does not scroll the page vertically').toBe(0)
 
-    const rows = await Promise.all(TABS.map(async (name) => Math.round((await tab(page, name).boundingBox()).y)))
+    const rows = await Promise.all(TABS.map(async (name) => Math.round((await tab(page, name).boundingBox())!.y)))
     expect(new Set(rows).size, 'every tab sits on the same row').toBe(1)
 
     const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
