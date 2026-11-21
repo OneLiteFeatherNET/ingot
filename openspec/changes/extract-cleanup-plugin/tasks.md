@@ -65,21 +65,21 @@ PR title: `refactor(cleanup): reach the mirror cache and the job claims through 
 
 Group 2 does not start before this group is merged. See design D14.
 
-- [ ] 1b.1 `test(cleanup)`: failing unit tests in `reposilite-backend/src/test/kotlin/net/onelitefeather/ingot/cleanup/`, each with its own
+- [x] 1b.1 `test(cleanup)`: failing unit tests in `reposilite-backend/src/test/kotlin/net/onelitefeather/ingot/cleanup/`, each with its own
   fixture and a `@TempDir`: (a) `CleanupSupportFacade.mirrorCacheEntries` returns the mirror copies that `MavenFacade` records for a
   repository, and an empty map for a repository without mirror copies; (b) two claim stores from `scheduledJobClaims` on one SQLite test
   database grant a key to one of them only, with a fixed `Clock`; (c) the interface carries `@ExperimentalIngotPluginApi` and its name is a
   line of `reposilite-backend/plugin-api-classes.txt`; (d) a source scan of `reposilite-backend/src/main/kotlin/com/reposilite/cleanup/`
   finds neither `mirrorCacheEntries(` on `MavenFacade` nor `SqlScheduledJobClaims`, and `MavenFacade.mirrorCacheEntries` and
   `SqlScheduledJobClaims` are still `internal`, read through Kotlin reflection. Verify: they fail because the interface does not exist.
-- [ ] 1b.2 `refactor(cleanup)`: add `CleanupSupportFacade` in `net.onelitefeather.ingot.cleanup` with `@ExperimentalIngotPluginApi`, list it in
+- [x] 1b.2 `refactor(cleanup)`: add `CleanupSupportFacade` in `net.onelitefeather.ingot.cleanup` with `@ExperimentalIngotPluginApi`, list it in
   `reposilite-backend/plugin-api-classes.txt`, implement it in the core on top of `MavenFacade.mirrorCacheEntries` and `SqlScheduledJobClaims`
   (both stay `internal`), register it in the maven plugin next to `ViewerAccessFacade`, and switch `CleanupPlugin` to
   `facade<CleanupSupportFacade>()`. Verify: the tests of 1b.1 pass;
   `heavy ./gradlew :reposilite-backend:test --tests 'net.onelitefeather.ingot.cleanup.*' --tests 'com.reposilite.cleanup.*' --max-workers=2`
   passes; `heavy ./gradlew :reposilite-backend:pluginApiClosure --max-workers=2` passes;
   `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.cleanup.*' --max-workers=2` passes.
-- [ ] 1b.3 Open the code pull request of this group under
+- [x] 1b.3 Open the code pull request of this group under
   `refactor(cleanup): reach the mirror cache and the job claims through a core interface`, branched from the remote main branch, after its
   tests pass. Verify: the title is a valid Conventional Commit, and `gh pr view` shows no file under `openspec/`.
 
@@ -89,11 +89,11 @@ PR title: `refactor(cleanup): move the cleanup policies into the cleanup-plugin 
 
 This pull request is the single move. The classes must leave the server classpath together, see design D2. Renames dominate the diff.
 
-- [ ] 2.1 `test(cleanup)`: failing test in the core test source set that no class of `com.reposilite.cleanup` is loadable from the server class
+- [x] 2.1 `test(cleanup)`: failing test in the core test source set that no class of `com.reposilite.cleanup` is loadable from the server class
   loader, by `Class.forName` with `initialize = false`, and that the module's resources hold the service entry naming
   `com.reposilite.cleanup.application.CleanupPlugin`. Verify: the first assertion fails on the classes that are still in the server, and the
   second fails because the module does not exist.
-- [ ] 2.2 `build(cleanup)`: add `reposilite-plugins/cleanup-plugin/build.gradle.kts` with `version = "1.0.0" // x-release-please-version`,
+- [x] 2.2 `build(cleanup)`: add `reposilite-plugins/cleanup-plugin/build.gradle.kts` with `version = "1.0.0" // x-release-please-version`,
   `compileOnly` and `testImplementation` on `:reposilite-backend`, a shadow jar `cleanup-plugin.jar` with `Implementation-Version` in its
   manifest, and the Maven publication `net.onelitefeather.ingot:cleanup-plugin`. Include the module in `settings.gradle.kts`. In
   `reposilite-backend/build.gradle.kts` place the module's jar into `embedded-plugins/` of the `shadowJar` with the hook of the prerequisite,
@@ -113,9 +113,9 @@ This pull request is the single move. The classes must leave the server classpat
 - [ ] 2.4 Verify the drop-in path. Start the built server jar with no plugins directory and the default image layout, and check that the cleanup
   routes answer, the `cleanup` domain is listed, and the start log names the embedded copy. Verify: the container images job passes on this pull
   request, including the upgrade rehearsal against the upstream image.
-- [ ] 2.5 Verify: `git diff --stat -M` shows the renames, the pull request names no file under `openspec/`, and its changed lines stay near 400
+- [x] 2.5 Verify: `git diff --stat -M` shows the renames, the pull request names no file under `openspec/`, and its changed lines stay near 400
   with the renames not counted. The pull request description names the prerequisite pull request.
-- [ ] 2.6 `build(cleanup)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
+- [x] 2.6 `build(cleanup)`: the module applies `kapt` with `openapi-annotation-processor`, renames the generated
   `openapi-plugin/openapi-default.json` to `META-INF/ingot/openapi/cleanup.json`, and leaves out its `openapi-plugin/.index` and
   `json-schemes/index` (design D13). The module's resources join the backend integration classpath with its classes (task 2.2). Verify: the
   jar lists `META-INF/ingot/openapi/cleanup.json` and `json-schemes/com.reposilite.cleanup.application.CleanupSettings`; the tests of 1a.2 and
@@ -126,7 +126,7 @@ This pull request is the single move. The classes must leave the server classpat
 
 PR title: `docs(gitbook): describe the cleanup-plugin module and how to take a newer jar`
 
-- [ ] 3.1 `docs(gitbook)`: add the module and the embedded copy to `docs/gitbook/references/architecture/backend-architecture.md` (the plugin
+- [x] 3.1 `docs(gitbook)`: add the module and the embedded copy to `docs/gitbook/references/architecture/backend-architecture.md` (the plugin
   graph and the note on the cleanup plugin), name the owner of the `cleanup` domain in `docs/gitbook/references/settings/settings-domains.md` and
   `docs/gitbook/references/http-api/dashboard-pages.md`, and describe the update path of design D9 and the plugins directory of task 0.5 in
   `docs/gitbook/references/repositories/cleanup-policies.md`. The configuration reference and the environment variables page stay as they are.
@@ -136,13 +136,13 @@ PR title: `docs(gitbook): describe the cleanup-plugin module and how to take a n
 
 PR title: `test(cleanup): cover the replacement of the embedded copy by a newer jar`
 
-- [ ] 4.1 `test(cleanup)`: failing integration tests, with the plugins directory in a `@TempDir`, that a jar with the id `cleanup` and a higher
+- [x] 4.1 `test(cleanup)`: failing integration tests, with the plugins directory in a `@TempDir`, that a jar with the id `cleanup` and a higher
   `Implementation-Version` replaces the embedded copy, that an equal or lower one is ignored, that a jar without a version is ignored, and that each
   case logs one INFO line that names both versions. Verify: they fail until the prerequisite is merged on main, and they pass after it, without
   editing them.
 
 ## 5. Open the code pull requests
 
-- [ ] 5.1 Open the code pull requests in the order of groups 1, 1a, 1b and 2 to 4, each on the remote main branch that holds the previous one and the merged
+- [x] 5.1 Open the code pull requests in the order of groups 1, 1a, 1b and 2 to 4, each on the remote main branch that holds the previous one and the merged
   prerequisite, with the titles named above. Each one is opened only after its tests pass and no file under `openspec/` is in it. Verify: each
   pull request title is a valid Conventional Commit, and `gh pr view` shows the expected title and files.
