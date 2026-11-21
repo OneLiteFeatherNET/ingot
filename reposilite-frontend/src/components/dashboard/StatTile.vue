@@ -98,12 +98,18 @@ const meterValue = computed(() =>
 const meterWidth = computed(() => `${meterValue.value}%`)
 
 // The meter fill is the primary role until the reading is one the operator has to act on,
-// and only then does it turn to a state colour.
-const meterColor = computed(() => {
+// and only then does it turn to a state colour. The colour is a token class of this closed set.
+const METER_CLASSES = {
+  normal: 'bg-primary',
+  warning: 'bg-warning',
+  critical: 'bg-error'
+} as const
+
+const meterClass = computed(() => {
   if (props.ratio === null) return undefined
-  if (props.ratio >= 0.9) return STATUS.critical
-  if (props.ratio >= 0.75) return STATUS.warning
-  return 'var(--md-sys-color-primary)'
+  if (props.ratio >= 0.9) return METER_CLASSES.critical
+  if (props.ratio >= 0.75) return METER_CLASSES.warning
+  return METER_CLASSES.normal
 })
 </script>
 
@@ -159,7 +165,8 @@ const meterColor = computed(() => {
     >
       <div
         class="h-full rounded-corner-full"
-        :style="{ width: meterWidth, backgroundColor: meterColor }"
+        :class="meterClass"
+        :style="{ width: meterWidth }"
       />
     </div>
 
@@ -174,7 +181,7 @@ const meterColor = computed(() => {
       v-if="status"
       class="pt-1.5 md-body-small text-on-surface-variant"
     >
-      <StatusLabel :color="STATUS[status]">
+      <StatusLabel :status="status">
         {{ statusLabel }}
       </StatusLabel>
     </p>
