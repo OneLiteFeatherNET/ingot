@@ -30,17 +30,21 @@ import kotlin.io.path.walk
 enum class Tier { CORE, OFFICIAL, COMMUNITY, EXPERIMENTAL }
 
 // What the check reads from one module under reposilite-plugins/. pluginId and declared are null when no source of the
-// module carries a @Plugin annotation. experimentalOptIn is true when a source opts in to an ExperimentalIngot API.
+// module carries a @Plugin annotation. experimentalOptIn is true when a source opts in to an ExperimentalIngot API. embedded
+// is true when the server jar embeds the module, so the plugin is Core by origin like the built-in plugins.
 data class ModuleCheck(
     val module: String,
     val pluginId: String?,
     val declared: Tier?,
     val experimentalOptIn: Boolean,
+    val embedded: Boolean = false,
 ) {
 
     fun violations(): List<String> = buildList {
         val tierOfModule = declared?.name ?: "no @Plugin class, so no tier"
-        if (experimentalOptIn && declared != Tier.EXPERIMENTAL) {
+        // An embedded module is first-party code shipped inside the server. It may use an experimental API the way the
+        // built-in plugins do, and declaring Experimental would change what a default start shows.
+        if (experimentalOptIn && declared != Tier.EXPERIMENTAL && !embedded) {
             add("$module opts in to an ExperimentalIngot API but declares $tierOfModule. Declare tier = PluginTier.EXPERIMENTAL.")
         }
         if (declared == Tier.EXPERIMENTAL && !experimentalOptIn) {
@@ -60,15 +64,26 @@ object PluginTierCheck {
     private val pluginAnnotation = Regex("""@Plugin\b(?:\s*\(([^)]*)\))?""")
     private val nameArgument = Regex("""\bname\s*=\s*"([^"]*)"""")
     private val tierArgument = Regex("""\btier\s*=\s*(?:PluginTier\.)?(\w+)""")
+    private val embeddedList = Regex("""\bembeddedPluginProjects\b[^=]*=\s*listOf\(([^)]*)\)""")
+    private val pluginProject = Regex("""":reposilite-plugins:([\w.-]+)"""")
     private val bundledCopy = Regex("""/plugins/([\w.-]+\.jar)\s+/app/bundled-plugins/""")
 
-    // Every module of the plugins directory is a subdirectory with a build script, sorted by name.
-    fun scan(pluginsDir: Path): List<ModuleCheck> {
+    // Every module of the plugins directory is a subdirectory with a build script, sorted by name. embeddedModules names
+    // the modules the server jar embeds, see embeddedModules(Path).
+    fun scan(pluginsDir: Path, embeddedModules: Set<String> = emptySet()): List<ModuleCheck> {
         if (!pluginsDir.isDirectory()) return emptyList()
         return pluginsDir.listDirectoryEntries()
             .filter { it.isDirectory() && it.resolve("build.gradle.kts").exists() }
             .sortedBy { it.name }
-            .map(::scanModule)
+            .map { scanModule(it).copy(embedded = it.name in embeddedModules) }
+    }
+
+    // The modules that the server jar embeds, by directory name. The backend build script is read as text: the
+    // embeddedPluginProjects list of :reposilite-plugins: project paths.
+    fun embeddedModules(backendBuildScript: Path): Set<String> {
+        if (!backendBuildScript.isRegularFile()) return emptySet()
+        val list = embeddedList.find(backendBuildScript.readText())?.groupValues?.get(1) ?: return emptySet()
+        return pluginProject.findAll(list).map { it.groupValues[1] }.toSet()
     }
 
     fun violations(checks: List<ModuleCheck>): List<String> = checks.flatMap { it.violations() }
