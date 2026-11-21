@@ -7,10 +7,7 @@
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    // Transition settings, removed in Phase 4 of migrate-dashboard-to-typescript. JavaScript is parsed so that
-    // a .ts file can import it, but it is not checked.
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "strict": true,
     "types": ["vite/client"],
     // OptionalRenderer.vue imports a deep path of @jsonforms/core that points at the package's TypeScript sources,

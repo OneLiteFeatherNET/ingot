@@ -44,10 +44,15 @@ describe('sources scanned by the style gate', () => {
     expect(collectSources(src).map((source) => source.file), 'the .ts module is scanned').toEqual(['src/store/fixture.ts'])
   })
 
-  it('leaves out a TypeScript test and a JavaScript test alike', () => {
+  it('leaves out a TypeScript test', () => {
     write('store/fixture.test.ts', "export const colour = '#3A5F85'\n")
-    write('store/fixture.test.js', "export const colour = '#3A5F85'\n")
 
     expect(collectSources(src), 'tests are not shipped sources').toEqual([])
+  })
+
+  it('does not scan a JavaScript module', () => {
+    write('store/fixture.js', "export const colour = '#3A5F85'\n")
+
+    expect(collectSources(src), 'no .js module is left under src').toEqual([])
   })
 })
