@@ -122,12 +122,12 @@ describe('SnippetsCard surface', () => {
     expect(classes, 'no fill frames the heading row').not.toContain('bg-surface')
   })
 
-  it('sets the snippet text in the md body small role', async () => {
+  it('sets the snippet text in the small code role, the body small size in monospace', async () => {
     await mountCard()
 
     const editor = wrapper!.find('.card-editor')
     expect(editor.exists()).toBe(true)
-    expect(editor.classes()).toContain('md-body-small')
+    expect(editor.classes()).toContain('md-code-small')
     expect(editor.classes()).not.toContain('text-ssm')
   })
 

@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, type PropType } from 'vue'
+import MdCode from '../../md/MdCode.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import ConflictDialog from '../../settings/ConflictDialog.vue'
 import UnsavedChangesBar from '../../settings/UnsavedChangesBar.vue'
@@ -372,19 +373,19 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
           v-for="entry in changes.added"
           :key="`added-${entry.node}`"
         >
-          Add <code class="font-mono">{{ entry.node }}</code> as {{ stateWord(entry.allowed) }}
+          Add <MdCode>{{ entry.node }}</MdCode> as {{ stateWord(entry.allowed) }}
         </li>
         <li
           v-for="entry in changes.removed"
           :key="`removed-${entry.node}`"
         >
-          Remove <code class="font-mono">{{ entry.node }}</code>
+          Remove <MdCode>{{ entry.node }}</MdCode>
         </li>
         <li
           v-for="entry in changes.changed"
           :key="`changed-${entry.node}`"
         >
-          Change <code class="font-mono">{{ entry.node }}</code> from {{ stateWord(entry.from) }} to {{ stateWord(entry.to) }}
+          Change <MdCode>{{ entry.node }}</MdCode> from {{ stateWord(entry.from) }} to {{ stateWord(entry.to) }}
         </li>
       </ul>
       <UnsavedChangesBar

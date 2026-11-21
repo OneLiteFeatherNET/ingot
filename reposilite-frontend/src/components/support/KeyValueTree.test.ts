@@ -72,8 +72,9 @@ describe('KeyValueTree', () => {
     expect(table(wrapper).findAll('[role="cell"]').length, 'one value cell per key, the group row has none').toBe(3)
   })
 
-  it('keeps the keys in a monospace font', () => {
-    expect(table(mountTree()).classes(), 'the table uses the monospace font').toContain('font-mono')
+  it('keeps the keys in the small code role, which is monospace', () => {
+    expect(table(mountTree()).classes(), 'the table uses the code role').toContain('md-code-small')
+    expect(table(mountTree()).classes(), 'no hand-written monospace beside the role').not.toContain('font-mono')
   })
 
   it('wraps a long value inside its column, and keeps a short value whole', () => {

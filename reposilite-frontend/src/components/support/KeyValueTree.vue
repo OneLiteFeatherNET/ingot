@@ -123,7 +123,7 @@ const parts = (text: string) => splitMatch(text, props.query)
     <div
       role="table"
       :aria-label="label"
-      class="grid min-w-0 grid-cols-1 medium:grid-cols-(--grid-md-key-value) gap-x-6 font-mono md-code-small"
+      class="grid min-w-0 grid-cols-1 medium:grid-cols-(--grid-md-key-value) gap-x-6 md-code-small"
     >
       <div
         v-for="row in rows"

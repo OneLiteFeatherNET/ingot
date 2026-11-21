@@ -21,6 +21,7 @@ import { copyToClipboard, selectText } from './copySnippet'
 import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
+import MdCode from '../md/MdCode.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTransition from '../md/MdTransition.vue'
 import BrowserIcon from '../browser/BrowserIcon.vue'
@@ -287,7 +288,7 @@ const selectTab = (tab: string) =>
           v-if="rootPage && !loading"
           class="mb-4 md-body-medium text-on-surface-variant"
         >
-          Replace <code class="font-mono">&lt;repository&gt;</code> with the id of a repository from the list.
+          Replace <MdCode>&lt;repository&gt;</MdCode> with the id of a repository from the list.
           The id in the snippet is a label in your build file, so the instance id works too.
         </p>
         <CardMenu
@@ -333,7 +334,7 @@ const selectTab = (tab: string) =>
                   role="region"
                   tabindex="0"
                   :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
-                  class="md-focus-ring md-scrollbar card-editor max-w-full overflow-x-auto whitespace-pre break-normal pr-12 font-mono md-body-small"
+                  class="md-focus-ring md-scrollbar card-editor max-w-full overflow-x-auto whitespace-pre break-normal pr-12 md-code-small"
                 >
                   <div
                     v-if="loading"
