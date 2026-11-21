@@ -18,6 +18,7 @@
 // gives the upper bound U of the plateau phase.
 
 import type { ObjectThreshold, RampingArrivalRateScenario } from 'k6/options';
+import { MAX_ERROR_RATE } from '../lib/thresholds.ts';
 import { ARRIVAL_TIME_UNIT, arrivalVus } from './arrival.ts';
 
 /** The ramp reaches this rate when no threshold breaks. Provisional: it is set per run through the input. */
@@ -67,16 +68,19 @@ export function breakpointScenario(input: BreakpointInput): BreakpointProfile {
     exec: input.exec,
     ...arrivalVus(ceiling),
   };
+  const abort = { abortOnFail: input.abortOnFail ?? true, delayAbortEval: BREAKPOINT_DELAY_ABORT_EVAL };
   return {
     scenario,
+    // The error rate breaks too: a refused connection is a failed request with a duration near zero, so a server that
+    // stops answering would otherwise keep the p95 low.
     thresholds: {
       http_req_duration: [
         {
           threshold: `p(95)<${input.p95Ms}`,
-          abortOnFail: input.abortOnFail ?? true,
-          delayAbortEval: BREAKPOINT_DELAY_ABORT_EVAL,
+          ...abort,
         },
       ],
+      http_req_failed: [{ threshold: `rate<${MAX_ERROR_RATE}`, ...abort }],
     },
   };
 }
