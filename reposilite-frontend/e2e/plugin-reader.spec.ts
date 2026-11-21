@@ -15,6 +15,7 @@
  */
 
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { siteUrl } from './support/api'
 
 /*
@@ -52,13 +53,13 @@ const LIST = {
 }
 
 // The reader manifest names the page of this test, its source answers the list, and the address answers the document.
-const servePage = async (page) => {
+const servePage = async (page: Page) => {
   await page.route('**/api/frontend/plugin-ui/readers', route => route.fulfill({ json: { version: 1, pages: [PAGE] } }))
   await page.route(`**${SOURCE}*`, route => route.fulfill({ json: LIST }))
   await page.route(siteUrl(PAGE_PATH), async route => route.fulfill({ response: await route.fetch({ url: siteUrl('/') }) }))
 }
 
-const railGroup = (page, name) => page.getByRole('group', { name, exact: true })
+const railGroup = (page: Page, name: string) => page.getByRole('group', { name, exact: true })
 
 test.describe('plugin reader page', () => {
   for (const width of [320, 600, 1440]) {
@@ -75,8 +76,8 @@ test.describe('plugin reader page', () => {
       await expect(page.getByText(LIST.items[0].title), 'first list row').toBeVisible()
       await expect(page.getByRole('heading', { name: /Sign in to open/ }), 'sign in prompt').toHaveCount(0)
       const overflowing = await page.locator('main').evaluate((root) => {
-        const around = []
-        for (let element = root; element; element = element.parentElement) around.push(element)
+        const around: Element[] = []
+        for (let element: Element | null = root; element; element = element.parentElement) around.push(element)
         return [...around, ...root.querySelectorAll('*')]
           .filter(element => element.scrollWidth > element.clientWidth + 1 && element.clientWidth > 0)
           .map(element => `${element.tagName.toLowerCase()} (${element.scrollWidth} > ${element.clientWidth})`)
