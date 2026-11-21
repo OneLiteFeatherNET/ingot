@@ -49,7 +49,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   `CollectionEditor.vue:161`.
 - [x] 2.10 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that the card title is a heading of level two or three.
   Verify: it fails on `SnippetsCard.vue:178`.
-- [ ] 2.11 `test(ui)`: in `src/styles/md3/window-margins.test.js`, read the views of the page list in the design (D2) and assert that no
+- [x] 2.11 `test(ui)`: in `src/styles/md3/window-margins.test.js`, read the views of the page list in the design (D2) and assert that no
   file contains the `container` class outside `MdPage`. Verify: it fails on each file that still writes `container`.
 - [x] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
   `src/components/layout/AdministrationTrail.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
@@ -61,7 +61,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 
 ## 3. Refactor (refactor(ui))
 
-- [ ] 3.1 `refactor(ui)`: move every page container that already renders the same spacing onto `MdPage`, with no
+- [x] 3.1 `refactor(ui)`: move every page container that already renders the same spacing onto `MdPage`, with no
   change of pixels: `DashboardView.vue:37`, `FileBrowserView.vue:208`, `DefaultHeader.vue:37`, `HeaderHero.vue:42`, `NotFoundView.vue:23`,
   `ViewLoadError.vue:27`, `ViewLoading.vue:23`, `IndexPage.vue:378` and `:399`, and `AnalyticsView.vue` (which has none). Verify: the
   before and after screenshots of these pages at 390 and 1280 pixels are identical, pixel for pixel, in light and dark.
@@ -77,14 +77,14 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   listed in design D7. Verify: 2.1 passes.
 - [x] 4.2 `fix(ui)`: set the dark `surface-dim` in `src/styles/md3/color.css` and the seeded path in `src/theme/runtime.js`. Verify: 2.2
   and 2.3 pass.
-- [ ] 4.3 `fix(ui)`: apply the menu, side sheet and floating panel elevations of the surface table: `MdSideSheet.vue:126` to
+- [x] 4.3 `fix(ui)`: apply the menu, side sheet and floating panel elevations of the surface table: `MdSideSheet.vue:126` to
   `shadow-elevation-1`, and the More panel in `IndexPage.vue:517` to `shadow-elevation-2`. `dashboard/PublicRepositoriesDialog.vue:73`
   already matches the dialog row (`surface-container-high`, `shadow-elevation-3`), so it is kept and read as the reference. Verify: the surface test of the element in `src/components/md/MdSideSheet.test.js` passes, and the other
   elevations are read in the screenshots.
-- [ ] 4.4 `fix(ui)`: fix the nested blocks of design D1: `maintenance/CleanupPoliciesPanel.vue:175` and `:228`,
+- [x] 4.4 `fix(ui)`: fix the nested blocks of design D1: `maintenance/CleanupPoliciesPanel.vue:175` and `:228`,
   `maintenance/IndexPanel.vue:170` and `:319`, `audit/AuditEventRow.vue:113` inside `audit/AuditView.vue:149`, and the hand-written cards
   of D7. Verify: the nested-step test of the spec passes for each file, and the contrast values are recorded.
-- [ ] 4.5 `fix(ui)`: draw the content sheet edge in `IndexPage.vue:359-360` with a 1 pixel `outline` border from 600 pixels. Verify: the
+- [x] 4.5 `fix(ui)`: draw the content sheet edge in `IndexPage.vue:359-360` with a 1 pixel `outline` border from 600 pixels. Verify: the
   content sheet requirement passes at 1280 pixels in light and dark.
 - [x] 4.6 `fix(ui)`: `AdministrationFrame.vue`: render `MdPage` and `MdPageHeader`; put the back control in the back
   row (`-ms-3`), below 1240 pixels only; draw the trail with `MdBreadcrumb` inside a new `AdministrationTrail.vue`, with the Overview crumb
@@ -98,7 +98,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [x] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` and `MdPageHeader` with the one `h1`, and its form blocks take the reading measure. Verify: 2.7 passes.
 - [x] 4.10 `fix(ui)`: `TeamsPanel.vue`, `PrincipalsPanel.vue` and `CollectionEditor.vue`: take the inset of `MdListDetail` on both panes
   at every width. Verify: 2.9 passes.
-- [ ] 4.11 `fix(ui)`: the remaining page containers that differ from `MdPage` today: `SearchView.vue:250` (wide, `max-w-none`),
+- [x] 4.11 `fix(ui)`: the remaining page containers that differ from `MdPage` today: `SearchView.vue:250` (wide, `max-w-none`),
   `SiteFooter.vue:31` (centred), `RepositoryOverview.vue:202` (`pb-12` instead of `mb-12`), and the frame's reading branch, removed with 4.6. Verify: 2.11
   passes, and the screenshot of each at 1280 pixels shows the full width page or the aligned result.
 - [x] 4.12 `fix(ui)`: `SnippetsCard.vue:178`: draw the card title as a heading of level two or three. Verify: 2.10 passes.
@@ -108,7 +108,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [x] 5.1 `docs(ui)`: in `reposilite-frontend/DESIGN.md`, add the surface table of design D1, the page shell rules (D2), the page header
   rules (D3), the one trail (D4), the card default (D7) and the dark `surface-dim` (D8), and update "Top app bar" and "Adaptive navigation"
   where they describe the content sheet edge. Verify: the dash grep prints nothing.
-- [ ] 5.2 `docs(gitbook)`: in `docs/gitbook/reference/dashboard-pages.md`, describe the trail and the page header where that page describes
+- [x] 5.2 `docs(gitbook)`: in `docs/gitbook/reference/dashboard-pages.md`, describe the trail and the page header where that page describes
   them, and regenerate `docs/gitbook/reference/dashboard-anchors.md` from the registry, so `administration-breadcrumb` is listed.
   Verify: the anchor reference lists `administration-breadcrumb` as experimental.
 
