@@ -39,18 +39,25 @@ import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.database.SearchFilters.FilterKind
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.CustomFunction
 import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.VarCharColumnType
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.case
 import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.sum
+import org.jetbrains.exposed.v1.core.wrapAsExpression
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -81,7 +88,7 @@ internal class DatabaseArtifactSearchEngine(
 
     override fun search(query: ArtifactSearchQuery, access: SearchAccess): ArtifactSearchPage {
         checkWindow(query.page, query.size)
-        val filters = SearchFilters(query, rows, tables.token)
+        val filters = SearchFilters(query, rows, tables.token, tables.attribute)
         val visible = access.toCondition(rows)
         return readOnly {
             val (groups, total) = if (filters.usesTokenTable) {
@@ -117,7 +124,7 @@ internal class DatabaseArtifactSearchEngine(
     }
 
     override fun facets(query: ArtifactSearchQuery, access: SearchAccess): SearchFacets {
-        val filters = SearchFilters(query, rows, tables.token)
+        val filters = SearchFilters(query, rows, tables.token, tables.attribute)
         val visible = access.toCondition(rows)
         return readOnly {
             SearchFacets(
@@ -126,6 +133,9 @@ internal class DatabaseArtifactSearchEngine(
                 classifier = bucketsOfClassifier(filters.predicate(FilterKind.CLASSIFIER) and visible),
                 origin = buckets(rows.origin, filters.predicate(FilterKind.ORIGIN) and visible),
                 snapshot = buckets(rows.snapshot, filters.predicate(FilterKind.SNAPSHOT) and visible) { it.toString() },
+                attributes = query.attributeFacets.takeIf { it.isNotEmpty() }?.associateWith { key ->
+                    attributeBuckets(key, filters.predicate(exceptAttribute = key) and visible)
+                },
             )
         }
     }
@@ -256,10 +266,11 @@ internal class DatabaseArtifactSearchEngine(
         // tie comes first, as in the default order of 4.3.
         val direction = if (query.order == SearchOrder.DESC) SortOrder.DESC else SortOrder.ASC
         val tieDirection = if (direction == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
+        val order = attributeOrder(query) + listOf(sortKey to direction, g to direction, a to direction, v to tieDirection)
         return rows.select(g, a, v, minGroupId, minArtifactId, minVersion, fileCount, lastModified, size)
             .where { where }
             .groupBy(g, a, v)
-            .orderBy(sortKey to direction, g to direction, a to direction, v to tieDirection)
+            .orderBy(*order.toTypedArray())
             .limit(limit).offset(offset)
             .map { row ->
                 Group(
@@ -341,7 +352,48 @@ internal class DatabaseArtifactSearchEngine(
         }
     }
 
+    /**
+     * The order by the attribute sort of [query], or nothing (search attribute facets, D4). A group sorts by the smallest value
+     * of its files ascending and by the largest descending, each read by a scalar subquery per file on the primary key of
+     * `search_attribute`. Groups without a value come last in both directions; the CASE does that on every vendor, which
+     * `NULLS LAST` would not.
+     */
+    private fun attributeOrder(query: ArtifactSearchQuery): List<Pair<Expression<*>, SortOrder>> {
+        val sort = query.attributeSort ?: return emptyList()
+        val attributes = tables.attribute
+        val aggregate = if (sort.descending) "MAX" else "MIN"
+        val valueType = VarCharColumnType(SearchAttributeTable.VALUE_LENGTH)
+        val ofFile = attributes.select(CustomFunction(aggregate, valueType, attributes.valueLc))
+            .where {
+                (attributes.repository eq rows.repository) and
+                    (attributes.pathHash eq rows.pathHash) and
+                    (attributes.key eq sort.key)
+            }
+        val ofGroup = CustomFunction(aggregate, valueType, wrapAsExpression<String>(ofFile))
+        val missing = case().When(ofGroup.isNull(), intLiteral(1)).Else(intLiteral(0))
+        return listOf(missing to SortOrder.ASC, ofGroup to if (sort.descending) SortOrder.DESC else SortOrder.ASC)
+    }
+
     // ---- facets --------------------------------------------------------------------------------------------------
+
+    /**
+     * The buckets of one attribute key (search attribute facets, D3 and D4): the files per stored value over the rows of
+     * [where], the 20 largest, ties by value. A file that repeats a value counts once for it.
+     */
+    private fun attributeBuckets(key: String, where: Op<Boolean>): List<FacetBucket> {
+        val attributes = tables.attribute
+        val files = rows.id.countDistinct()
+        return attributes
+            .join(rows, JoinType.INNER, additionalConstraint = {
+                (attributes.repository eq rows.repository) and (attributes.pathHash eq rows.pathHash)
+            })
+            .select(attributes.value, files)
+            .where { (attributes.key eq key) and where }
+            .groupBy(attributes.value)
+            .orderBy(files to SortOrder.DESC, attributes.value to SortOrder.ASC)
+            .limit(FACET_BUCKETS)
+            .map { FacetBucket(it[attributes.value], it[files]) }
+    }
 
     /** The buckets of a text column: files per value, the 20 largest, ties by value. */
     private fun buckets(column: Column<String>, where: Op<Boolean>): List<FacetBucket> =

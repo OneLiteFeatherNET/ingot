@@ -55,8 +55,16 @@ internal class DatabaseSearchBackend(
     /** The database commits the rows, the cursor and the counters of a rebuild page together. */
     override val joinsDatabaseTransaction: Boolean = true
 
-    /** The attributes of a row live in `search_attribute` and leave with the row (search document attributes, D6). */
-    override val capabilities: Set<SearchCapability> = setOf(SearchCapability.ATTRIBUTES)
+    /**
+     * The attributes of a row live in `search_attribute` and leave with the row (search document attributes, D6). The engine
+     * filters, counts and sorts by them in the same queries as the fixed filters (search attribute facets, D4).
+     */
+    override val capabilities: Set<SearchCapability> = setOf(
+        SearchCapability.ATTRIBUTES,
+        SearchCapability.ATTRIBUTE_FILTERS,
+        SearchCapability.ATTRIBUTE_FACETS,
+        SearchCapability.ATTRIBUTE_SORT,
+    )
 
     /** The database is the server's own and is open before any plugin runs, so there is nothing to open. */
     override fun open() = Unit
