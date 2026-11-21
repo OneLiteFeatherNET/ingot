@@ -37,6 +37,21 @@ internal object OpenSearchDocument {
     /** The document id: the path hash of the database, so that writing the same file twice replaces one document. */
     fun id(row: IndexRow): String = pathHash(row.file.repository, row.file.path)
 
+    /**
+     * The document of [row] with its plugin [attributes] (search document attributes, D6), each key with its values in the
+     * order given. An empty map writes an empty `attributes` object, so the document replaces the stored attributes.
+     */
+    fun of(row: IndexRow, attributes: Map<String, List<String>>): ObjectNode {
+        val document = of(row)
+        val written = document.putObject("attributes")
+        attributes.forEach { (key, values) ->
+            val array = written.putArray(key)
+            values.forEach { value -> array.add(value) }
+        }
+        return document
+    }
+
+    /** The document of [row] without the `attributes` object, which a partial update leaves as it is stored. */
     fun of(row: IndexRow): ObjectNode {
         val file = row.file
         val document = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.createObjectNode()

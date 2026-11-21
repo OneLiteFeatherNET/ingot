@@ -40,6 +40,7 @@ import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.SamplePage
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.database.pathHash
 import net.onelitefeather.ingot.search.Origin
@@ -92,6 +93,9 @@ internal class OpenSearchSearchBackend(
     /** The cluster cannot commit with the cursor of a rebuild, so the rebuild applies its page first and commits the cursor after. */
     override val joinsDatabaseTransaction: Boolean = false
 
+    /** The index stores the attributes of a row in its document and removes them with it (search document attributes, D6). */
+    override val capabilities: Set<SearchCapability> = setOf(SearchCapability.ATTRIBUTES)
+
     /**
      * Connects to the cluster, creates the physical index and the alias when they are missing, refuses an index that another
      * mapping version wrote. A failure throws with a redacted message, which the core reports.
@@ -106,11 +110,13 @@ internal class OpenSearchSearchBackend(
                 val indices = mapper.readTree(answer.body).fieldNames().asSequence().toList()
                 check(indices.size == 1) { "the alias $alias points to ${indices.size} indices, one is expected" }
                 verifyVersion(indices.single())
+                addAttributeMapping(indices.single())
                 identity = readIdentity(indices.single())
             }
             404 -> {
                 createIndex()
                 verifyVersion(physical)
+                addAttributeMapping(physical)
                 client.read("POST", "/_aliases", mapOf("actions" to listOf(mapOf("add" to mapOf("index" to physical, "alias" to alias)))))
                 identity = readIdentity(physical)
             }
@@ -171,7 +177,7 @@ internal class OpenSearchSearchBackend(
         ids.keys.chunked(LOOKUP_CHUNK).forEach { chunk ->
             val docs = client.read(
                 "POST",
-                "/$alias/_mget?_source_includes=size_bytes,last_modified,sha1,sha256",
+                "/$alias/_mget?_source_includes=size_bytes,last_modified,sha1,sha256,attributes",
                 mapOf("ids" to chunk),
             ).path("docs")
             docs.filter { it.path("found").asBoolean() }.forEach { doc ->
@@ -181,11 +187,18 @@ internal class OpenSearchSearchBackend(
                     lastModified = source.path("last_modified").asLong(),
                     sha1 = source.textOrNull("sha1"),
                     sha256 = source.textOrNull("sha256"),
+                    enricherVersions = enricherVersions(source.path("attributes")),
                 )
             }
         }
         return found
     }
+
+    /** The version of each enricher stored in a `core.enricher.<id>` attribute, by the id of the enricher (design D5). */
+    private fun enricherVersions(attributes: JsonNode): Map<String, String> =
+        attributes.properties()
+            .filter { (key, values) -> key.startsWith(ENRICHER_VERSION_PREFIX) && values.size() == 1 }
+            .associate { (key, values) -> key.removePrefix(ENRICHER_VERSION_PREFIX) to values[0].asText() }
 
     /** Sets the indexed time of the rows that exist. A row removed meanwhile is not an error, as the database touch is not. */
     override fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int {
@@ -354,6 +367,14 @@ internal class OpenSearchSearchBackend(
         }
     }
 
+    /**
+     * Puts the attribute mapping on [index]. It is an addition to mapping version one, so an index created before the attributes
+     * existed takes it in place, and an index that has it already is unchanged.
+     */
+    private fun addAttributeMapping(index: String) {
+        client.read("PUT", "/$index/_mapping", OpenSearchIndexDefinition.attributeMapping())
+    }
+
     /** Refuses an index whose recorded mapping version is not the one this plugin writes (design D3). */
     private fun verifyVersion(index: String) {
         val version = client.read("GET", "/$index/_mapping")
@@ -399,6 +420,7 @@ internal class OpenSearchSearchBackend(
     private companion object {
         const val PAUSED = "the search cluster is not reachable, requests are paused"
         const val LOOKUP_CHUNK = 500
+        const val ENRICHER_VERSION_PREFIX = "core.enricher."
         const val REPOSITORY_LIMIT = 10_000
         val SAMPLE_FIELDS = listOf("repository", "path", "size_bytes", "last_modified", "origin", "source_host")
     }
