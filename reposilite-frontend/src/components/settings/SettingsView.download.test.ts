@@ -103,12 +103,18 @@ const mountWith = async ({ secretsHidden = false } = {}) => {
 
 const openMenu = async () => {
   await wrapper!.get('button[aria-haspopup="menu"]').trigger('click')
+  await flushPromises()
 }
 
+// The download menu is teleported to the body, so its items are read from the document.
+const menuItem = (name: string) =>
+  [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find(entry => entry.textContent?.includes(name))
+
 const choose = async (name: string) => {
-  const item = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes(name))
+  const item = menuItem(name)
   expect(item, `the menu offers "${name}"`).toBeDefined()
-  await item!.trigger('click')
+  item!.click()
+  await flushPromises()
 }
 
 const downloadedJson = () => JSON.parse(vi.mocked(download).mock.calls.at(-1)![0] as string) as unknown
@@ -196,9 +202,9 @@ describe('Settings backup download', () => {
     await flushPromises()
 
     await openMenu()
-    const draftItem = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download including unsaved changes'))
+    const draftItem = menuItem('Download including unsaved changes')
 
-    expect(draftItem?.attributes('disabled')).toBeDefined()
+    expect(draftItem?.getAttribute('aria-disabled'), 'the draft option is marked disabled').toBe('true')
   })
 
   it('keeps the saved download available while the draft has invalid entries', async () => {
@@ -207,9 +213,10 @@ describe('Settings backup download', () => {
     await flushPromises()
 
     await openMenu()
-    const savedItem = wrapper!.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download saved settings'))
+    const savedItem = menuItem('Download saved settings')
 
-    expect(savedItem!.attributes('disabled')).toBeUndefined()
+    expect(savedItem, 'the saved download is offered').toBeDefined()
+    expect(savedItem!.getAttribute('aria-disabled'), 'the saved download can be chosen').toBeNull()
   })
 
   it('says secrets are not included when the server hides them', async () => {
@@ -217,6 +224,6 @@ describe('Settings backup download', () => {
 
     await openMenu()
 
-    expect(wrapper!.find('[role="menu"]').text()).toContain('Secrets are not included')
+    expect(document.querySelector('[role="menu"]')?.textContent).toContain('Secrets are not included')
   })
 })

@@ -60,9 +60,16 @@ withDefaults(defineProps<{
   // The accessible name of the button when a trigger slot is given, such as "Account menu, Alice". Without it the
   // button is named by its content.
   triggerLabel?: string
+  // The variant of the trigger button. A row action stays a text button; a menu that is the main action of a
+  // section, such as a download with options, opens from an outlined button.
+  triggerVariant?: 'text' | 'outlined' | 'tonal'
+  // A disabled trigger, for a menu whose actions have nothing to act on yet.
+  disabled?: boolean
 }>(), {
   triggerClass: '',
-  triggerLabel: ''
+  triggerLabel: '',
+  triggerVariant: 'text',
+  disabled: false
 })
 
 defineSlots<{
@@ -223,8 +230,9 @@ const nameOf = (item: MenuEntry): string | undefined =>
     @focusout="onFocusout"
   >
     <MdButton
-      variant="text"
+      :variant="triggerVariant"
       type="button"
+      :disabled="disabled"
       :class="triggerClass"
       :aria-label="triggerLabel || ($slots.trigger ? undefined : label)"
       aria-haspopup="menu"

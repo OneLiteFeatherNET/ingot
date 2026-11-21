@@ -15,15 +15,16 @@
   -->
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import MdButton from '../md/MdButton.vue'
+import { computed } from 'vue'
+import MdOverflowMenu from '../md/MdOverflowMenu.vue'
+import type { MenuItem } from '../md/types'
 
 /*
  * The download of the settings. The default is the saved state, the last one the server confirmed.
  * The draft, edits included, is offered only when there are unsaved changes, and it is labelled as
  * such, because it is not a backup of what the server holds.
  */
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   disabled?: boolean
   hasUnsaved?: boolean
   canIncludeUnsaved?: boolean
@@ -40,73 +41,48 @@ const emit = defineEmits<{
   draft: []
 }>()
 
-const open = ref(false)
+const items = computed<MenuItem[]>(() => [
+  { value: 'saved', label: 'Download saved settings', supporting: 'The last state the server confirmed.' },
+  ...(props.hasUnsaved
+    ? [{
+        value: 'draft',
+        label: 'Download including unsaved changes',
+        supporting: 'Includes edits that are not saved yet, so it is not a copy of the server state.',
+        disabled: !props.canIncludeUnsaved
+      }]
+    : [])
+])
 
-const choose = (event: 'saved' | 'draft') => {
-  open.value = false
-  if (event === 'saved') emit('saved')
-  else emit('draft')
-}
-
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') open.value = false
-}
-
-// Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
-const onFocusout = (event: FocusEvent) => {
-  if (!(event.currentTarget as Node).contains(event.relatedTarget as Node | null)) open.value = false
+const choose = (value: string) => {
+  if (value === 'saved') emit('saved')
+  else if (value === 'draft') emit('draft')
 }
 </script>
 
 <template>
   <div
-    class="relative shrink-0"
+    class="shrink-0"
     data-ingot-component="settings-download-menu"
-    @keydown="onKeydown"
-    @focusout="onFocusout"
   >
-    <MdButton
-      variant="outlined"
-      type="button"
+    <!-- The shared menu: it is teleported to the body on the menu layer, and owns Escape, the arrow keys and the focus. -->
+    <MdOverflowMenu
+      label="Download options"
+      :items="items"
+      trigger-variant="outlined"
       :disabled="disabled"
-      aria-haspopup="menu"
-      :aria-expanded="open ? 'true' : 'false'"
-      @click="open = !open"
+      @select="choose"
     >
-      Download as JSON
-    </MdButton>
-    <div
-      v-if="open"
-      role="menu"
-      aria-label="Download options"
-      class="absolute right-0 z-20 mt-2 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
-    >
-      <button
-        type="button"
-        role="menuitem"
-        class="md-state-layer relative flex flex-col items-start rounded-corner-small px-3 py-2 text-left text-on-surface"
-        @click="choose('saved')"
-      >
-        <span class="md-label-large">Download saved settings</span>
-        <span class="md-body-small text-on-surface-variant">The last state the server confirmed.</span>
-      </button>
-      <button
-        v-if="hasUnsaved"
-        type="button"
-        role="menuitem"
-        class="md-state-layer relative flex flex-col items-start rounded-corner-small px-3 py-2 text-left text-on-surface disabled:text-on-surface/38"
-        :disabled="!canIncludeUnsaved"
-        @click="choose('draft')"
-      >
-        <span class="md-label-large">Download including unsaved changes</span>
-        <span class="md-body-small text-on-surface-variant">Includes edits that are not saved yet, so it is not a copy of the server state.</span>
-      </button>
-      <p
+      <template #trigger>
+        Download as JSON
+      </template>
+      <template
         v-if="secretsHidden"
-        class="px-3 pt-1 pb-1 md-body-small text-on-surface-variant"
+        #header
       >
-        Secrets are not included. The server hides them, and the file holds ******** in their place.
-      </p>
-    </div>
+        <p class="md-body-small text-on-surface-variant">
+          Secrets are not included. The server hides them, and the file holds ******** in their place.
+        </p>
+      </template>
+    </MdOverflowMenu>
   </div>
 </template>
