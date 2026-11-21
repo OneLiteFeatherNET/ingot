@@ -59,7 +59,8 @@ export default defineEventHandler({
     // Node sets the method of every request it parses, so the fallback is never used.
     const method = req.method ?? 'GET'
     const url = new URL(event.path, 'http://dashboard.local')
-    const route = classify(url.pathname, { segments: state.segments, basePath: state.config.basePath })
+    const navigate = req.headers['sec-fetch-mode'] === 'navigate'
+    const route = classify(url.pathname, { segments: state.segments, basePath: state.config.basePath, navigate })
 
     if (route.kind === 'health') {
       return respond(200, 'ok\n', { 'Content-Type': 'text/plain; charset=utf-8' }, method)

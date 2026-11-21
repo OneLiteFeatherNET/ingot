@@ -17,6 +17,11 @@
 // Decides who answers a request. Dashboard addresses get the document, the bundled assets come from the
 // build, and everything else belongs to the server. Only whole segments match, so a repository named like
 // a dashboard word that continues it (settingsfoo) is proxied.
+//
+// The navigation segments are the dashboard's only for a browser navigation (Sec-Fetch-Mode: navigate).
+// Plugin reader pages live at /plugins/<plugin>/<page>, and a repository named plugins must keep answering
+// Maven and Gradle clients, so every other request to that segment is proxied to the server.
+export const navigationSegments: readonly string[] = ['plugins']
 
 // Returns the path below the base path, or null when the request is outside it.
 function stripBase(pathname: string, basePath: string): string | null {
@@ -36,6 +41,8 @@ function stripBase(pathname: string, basePath: string): string | null {
 export interface RouteOptions {
   segments: readonly string[]
   basePath?: string
+  // True when the request is a browser navigation; only then do the navigation segments get the document.
+  navigate?: boolean
 }
 
 // The answer for one request: the kind decides who serves it, and the path is the part below the base path.
@@ -47,7 +54,7 @@ export type Route =
   | { kind: 'favicon'; path: string }
   | { kind: 'proxy'; path: string }
 
-export function classify(pathname: string, { segments, basePath = '/' }: RouteOptions): Route {
+export function classify(pathname: string, { segments, basePath = '/', navigate = false }: RouteOptions): Route {
   if (pathname === '/healthz') {
     return { kind: 'health' }
   }
@@ -67,7 +74,7 @@ export function classify(pathname: string, { segments, basePath = '/' }: RouteOp
   }
 
   const first = rest.split('/')[1]
-  if (segments.includes(first)) {
+  if (segments.includes(first) || (navigate && navigationSegments.includes(first))) {
     return { kind: 'document', path: rest }
   }
   return { kind: 'proxy', path: rest }

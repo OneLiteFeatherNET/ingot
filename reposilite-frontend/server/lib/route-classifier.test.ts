@@ -87,6 +87,32 @@ describe('route classifier', () => {
     expect(classify(path, root)).toEqual({ kind: 'proxy', path })
   })
 
+  describe('the reader page address', () => {
+    it('answers /plugins/x with the document for a browser navigation', () => {
+      expect(classify('/plugins/x', { ...root, navigate: true }), 'a browser opening a reader page gets the dashboard')
+        .toEqual({ kind: 'document', path: '/plugins/x' })
+    })
+
+    it('proxies /plugins/x for a request that is not a navigation', () => {
+      expect(classify('/plugins/x/1.0/x-1.0.jar', root).kind, 'a Maven client still reaches a repository named plugins')
+        .toBe('proxy')
+    })
+
+    it('proxies the API even for a browser navigation', () => {
+      expect(classify('/api/plugins/x/items', { ...root, navigate: true }))
+        .toEqual({ kind: 'proxy', path: '/api/plugins/x/items' })
+    })
+
+    it('proxies a segment that only starts like plugins, even for a navigation', () => {
+      expect(classify('/pluginsfoo/x', { ...root, navigate: true }).kind, 'a repository named pluginsfoo is proxied').toBe('proxy')
+    })
+
+    it('answers the reader address below a base path for a navigation', () => {
+      expect(classify('/ingot/plugins/x', { segments, basePath: '/ingot/', navigate: true }))
+        .toEqual({ kind: 'document', path: '/plugins/x' })
+    })
+  })
+
   describe('below a base path', () => {
     const sub = { segments, basePath: '/ingot/' }
 
