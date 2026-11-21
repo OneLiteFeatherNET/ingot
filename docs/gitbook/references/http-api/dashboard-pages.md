@@ -45,6 +45,7 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/audit` | `audit` | Audit log. The audit events. The filters are kept in the query string. | Node `ingot.admin.audit`. | Router and Backend |
 | `/settings` and `/settings/:domain` | `settings` | Settings. The shared configuration. Without `:domain` the page is Overview; the optional `:domain` opens that settings domain. When the user sees only one domain, `/settings` is replaced with that domain. | Node `ingot.admin.settings`. | Router (`/settings/:domain?`) and Backend (`/settings`, `/settings/<path>`) |
 | `/settings/plugins/<plugin>/<page>` | `settings-plugin` | A dashboard page a server plugin contributed, drawn from the blocks the plugin registered. See [Plugin API](../plugins/plugin-api.md#dashboard-pages). | The area the plugin gave the page, or the instance admin for `*`. Checked by the dashboard and by the server. | Router and Backend (below `/settings`, so no change is needed in `APP_ROUTES`) |
+| `/plugins/<plugin>` and `/plugins/<plugin>/<page>` | `plugin-reader` | A reader page a server plugin contributed, drawn from the reader manifest (`GET /api/frontend/plugin-ui/readers`). The page names itself in a heading, without the Administration frame, and shows its description and the plugin that provides it. Blocks that write or poll (`form`, `action`, `status`) show an unsupported note and send no request. `/plugins/<plugin>` opens the first reader page of that plugin. A page the manifest does not name shows the not-found view. See [Plugin API](../plugins/plugin-api.md#reader-pages). | Everyone, no sign-in needed. The page never opens the sign-in dialog. | Router (`/plugins/:plugin/:page?`). Backend (`/plugins/<path>`, claimed only while a reader page is registered, not in `APP_ROUTES`). See [The reader segment](#the-reader-segment). |
 | `/settings/repositories` | `settings-repositories` | Administration, Repository, **Repositories**. The table of the repositories of the `maven` domain, and below it the **Maven options** of the domain. `?new=repository` opens the wizard once. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/repositories/:id` | `settings-repository` | Repositories, the page of one repository. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/maven` and `/settings/maven/repositories` | `settings-maven-repositories` | The Maven page is retired. Both addresses redirect to `/settings/repositories`, and `/settings/maven` keeps its query. | Node `ingot.admin.settings`, checked on the Repositories page. | Router. Backend (`/settings/<path>`) |
@@ -61,6 +62,7 @@ Rules for the "Who can open it" column:
 * A session that has no node list falls back to the instance admin flag.
 * The labels of the navigation are defined in `reposilite-frontend/src/navigation/registry.js`. The route names do not change: `overview` is labelled **Browse** and `audit` is labelled **Audit log**. The title of `/account` is **My account**.
 * The rail and the bottom bar show three entries, each only when the visitor may open it: **Browse** (`/`), **Search** and **Administration** (`/settings`). An anonymous visitor sees **Browse** and **Search** only. **Administration** is shown when the visitor may open any Administration page. The bottom bar on a narrow screen has no **More** item.
+* Reader pages are listed in the rail after **Browse** and **Search**, under the heading **Plugin pages**, in the order of the reader manifest, for every visitor, signed in or not. Without a reader page the heading is not drawn. The heading is not **Plugins**, which already heads the admin pages of plugins that name no group. A reader page is never in the bottom bar. On a reader page, its own entry in the rail is the current one.
 
 ### Administration tree
 
@@ -151,6 +153,8 @@ The router runs two guards, in `reposilite-frontend/src/router/create.js` and `r
 
 The `account` route is not an admin route. The sign-in prompt for it comes from the page component `reposilite-frontend/src/pages/IndexPage.vue`, not from the router guard.
 
+The `plugin-reader` route is not an admin route either and asks for no node. Neither guard shows a sign-in prompt on it.
+
 {% hint style="warning" %}
 These guards run in the browser. They decide what the dashboard shows. They do not protect data. The server checks each API call on its own. See [What the server checks](#what-the-server-checks).
 {% endhint %}
@@ -167,6 +171,7 @@ With `defaultFrontend` on, `ResourcesFrontendHandler` (`reposilite-backend/src/m
 | `/index.html` | GET, HEAD | `index.html` |
 | `/assets/<path>` | GET | The bundled asset. |
 | Every pattern in `APP_ROUTES` | GET, HEAD | `index.html`, unless a repository with the same first segment decides otherwise. See [Repository ids that collide with a route](#repository-ids-that-collide-with-a-route). |
+| `/plugins/<path>` | GET, HEAD | `index.html`, only while a plugin has registered a reader page, and with the same hand-over to a repository named `plugins`. See [The reader segment](#the-reader-segment). |
 
 `APP_ROUTES` holds these patterns:
 
@@ -206,6 +211,7 @@ A path can be in the backend list but not in the router. The backend accepts any
 | `/tokens`, `/tokens/{name}` | Yes | Yes (`tokens`, `token-new`, `token`; all redirects) |
 | `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-repositories` and `settings-repository` take the page name `repositories` with an optional id, `settings-entry` takes three, `settings-authentication` redirects `authentication`, `settings-login` redirects `login` to `/access/sso`; without a segment the page shows Overview) |
 | `/access`, `/access/<path>` | Yes | Yes (`access` and eight routes below it; `/access` is forwarded to a page or, on a narrow screen, shows the index of the Access pages) |
+| `/plugins/<path>` | No, claimed at start only while a reader page is registered | Yes (`plugin-reader`) |
 | `/index.html`, `/assets/<path>` | Served, but not in `APP_ROUTES` | No |
 | `/:pathMatch(.*)*` | No | Yes (`not-found`) |
 
@@ -221,6 +227,14 @@ The first segment of each route is a reserved segment: `browse`, `search`, `dash
 | Any other request | The repository. |
 
 At startup the server logs a warning for each repository whose id equals a reserved segment. It does not reject the configuration. The contents of such a repository stay reachable in the dashboard under `/browse/<id>`. For the segments `api` and `assets`, the warning says that GET requests may be answered by the dashboard or the API instead of the repository.
+
+### The reader segment
+
+The segment `plugins` holds the reader pages, `/plugins/<plugin>/<page>`. It is not a reserved segment. The server claims `/plugins/<path>` when it sets up its routes, and only when at least one plugin has registered a reader page by then. An instance without a reader page, or with `INGOT_LOCAL_PLUGINREADERS=false` or `INGOT_LOCAL_PLUGINUI=false`, leaves the segment to a repository named `plugins`, exactly as before.
+
+While the server claims the segment, `DashboardRouteDecision` decides who answers, as for a reserved segment: a repository named `plugins` keeps answering Maven, Gradle and every other request that is not a top-level browser navigation, including HEAD. At startup the server logs one warning when reader pages exist and a repository is named `plugins`. The configuration is not rejected, and the contents of the repository stay reachable in the dashboard under `/browse/plugins`.
+
+The separate dashboard image does not know whether a reader page exists. It answers a request below `/plugins` with the dashboard document only for a browser navigation (`Sec-Fetch-Mode: navigate`), and passes every other request on to the server, so a repository named `plugins` keeps serving its clients. The segment is not in the shared list of dashboard segments (`dashboard-segments.json`), which every deployment reserves.
 
 ## What the server checks
 
