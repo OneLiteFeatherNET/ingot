@@ -21,8 +21,13 @@ import { statusIs } from '../lib/checks.ts';
 import { RESOLVE_FIXTURE_COORDINATE, RESOLVE_REPOSITORY } from './resolve-plan.ts';
 import { seedResolveFixture } from './resolve.ts';
 import { BROWSE_EXPECTED_STATUSES, directoryPath, searchPath } from './remaining-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'search-browse', thresholdFor('search-browse').p95Ms);
 
 export function searchBrowseIteration(): void {
   const query = `${RESOLVE_FIXTURE_COORDINATE.groupId}:${RESOLVE_FIXTURE_COORDINATE.artifactId}`;

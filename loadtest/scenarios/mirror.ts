@@ -22,8 +22,13 @@ import exec from 'k6/execution';
 import http from 'k6/http';
 import { statusIs } from '../lib/checks.ts';
 import { mirrorPath, MIRROR_EXPECTED_STATUSES, mirrorSizeFor } from './mirror-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'mirror', thresholdFor('mirror').p95Ms);
 
 export default function (): void {
   const size = mirrorSizeFor(exec.scenario.iterationInInstance);

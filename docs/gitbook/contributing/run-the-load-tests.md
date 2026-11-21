@@ -11,8 +11,9 @@ This page is for a maintainer who measures Ingot under load. It runs the k6 scen
 - `kubectl` with access to the load test cluster, and `helm`.
 - Docker, used once per run to pack the scenario with `k6 archive` in the pinned k6 image.
 - Node.js and the packages of `loadtest/`, installed with `npm ci` in that folder.
-- The infrastructure of the load test cluster: the k6-operator, the `ingot-loadtest` namespace, the metrics store, PostgreSQL, the object storage bucket, NATS and the node pool that carries the load test label. The infrastructure is not created by this repository.
+- The infrastructure of the load test cluster: the k6-operator, the `ingot-loadtest` namespace, the metrics store, PostgreSQL, the object storage bucket, NATS, and for reference runs the node pool that carries the load test label. The infrastructure is not created by this repository.
 - The Ingot image tag under test, set in `INGOT_IMAGE_TAG`.
+- The Prometheus remote write endpoint of the metrics store, as the load generator reaches it inside the cluster, set in `INGOT_LOADTEST_RW_URL`. The runner refuses to start without it, because k6 would otherwise send its samples nowhere.
 
 The runner refuses any namespace other than `ingot-loadtest` before it calls `kubectl`. Production and staging namespaces are never a valid target.
 
@@ -21,7 +22,7 @@ The runner refuses any namespace other than `ingot-loadtest` before it calls `ku
 Run the runner from `loadtest/` with one topology, one profile and one scenario:
 
 ```sh
-INGOT_IMAGE_TAG=2.0.0 npm run load -- --topology monolith --profile breakpoint --scenario resolve
+INGOT_IMAGE_TAG=2.0.0 INGOT_LOADTEST_RW_URL=<remote write endpoint> npm run load -- --topology monolith --profile breakpoint --scenario resolve
 ```
 
 The runner installs the chart with the topology overlay in `loadtest/topologies/`, waits until every Ingot pod is ready, packs the scenario into a ConfigMap, starts the TestRun, waits for it to finish, writes the result record and uninstalls the release. The uninstall runs even when a step before it failed.
@@ -36,7 +37,17 @@ The options are:
 | `--reference` | flag | off |
 | `--parallelism` | whole number of at least 1 | 1 |
 
-Pass `--reference` only for a published run. A reference run first counts the nodes that carry the load test label and refuses to start when there are fewer than its topology needs, with the number found and the number needed. A run without the flag may share nodes, and its record is marked `reference: false`, so its numbers are never published.
+The runner reads further settings from its environment:
+
+| Variable | Meaning |
+| --- | --- |
+| `INGOT_IMAGE_DIGEST` | Pins the image by digest. Use it with a rolling tag such as `nightly`, which a node may otherwise resolve to an older cached image. |
+| `LOADTEST_CEILING`, `LOADTEST_RAMP_MINUTES` | Ceiling and ramp duration of the breakpoint profile. |
+| `LOADTEST_ABORT_ON_FAIL` | `false` runs the whole breakpoint ramp instead of stopping at the first broken threshold. |
+| `LOADTEST_BREAKPOINT`, `LOADTEST_HOLD_MINUTES` | Breakpoint rate and step hold of the plateau profile. The plateau needs the breakpoint. |
+| `LOADTEST_RATE`, `LOADTEST_SOAK_MINUTES` | Rate and duration of the soak profile. The soak needs the rate. |
+
+Pass `--reference` only for a published run. A reference run first counts the nodes that carry the load test label and refuses to start when there are fewer than its topology needs, with the number found and the number needed. Only a reference run pins the load generator to the labelled nodes. A run without the flag may share nodes, and its record is marked `reference: false`, so its numbers are never published.
 
 ## The profiles
 

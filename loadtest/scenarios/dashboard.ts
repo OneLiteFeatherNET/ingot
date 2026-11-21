@@ -19,8 +19,13 @@ import { check } from 'k6';
 import http from 'k6/http';
 import { statusIs } from '../lib/checks.ts';
 import { DASHBOARD_EXPECTED_STATUSES, LOGIN_PATH, REPOSITORIES_PATH, loginBody } from './remaining-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'dashboard', thresholdFor('dashboard').p95Ms);
 
 export function dashboardIteration(): void {
   const login = http.post(

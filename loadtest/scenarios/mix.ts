@@ -27,6 +27,11 @@ import { type Coordinate, RESOLVE_FIXTURE_COORDINATE } from './resolve-plan.ts';
 import { resolveIteration, seedResolveFixture } from './resolve.ts';
 import { PRIVATE_REPOSITORY } from './remaining-plan.ts';
 import { searchBrowseIteration } from './search-browse.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'mix', thresholdFor('mix').p95Ms);
 
 export function setup(): Coordinate {
   seedResolveFixture(PRIVATE_REPOSITORY);

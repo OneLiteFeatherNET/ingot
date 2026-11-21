@@ -61,3 +61,19 @@ test('breakpointScenario refuses a ceiling that is not a finite number', () => {
 test('breakpointScenario refuses a duration under one minute and names it', () => {
   assert.throws(() => breakpointScenario({ exec: 'mix', p95Ms: 500, minutes: 0 }), /0 minute/);
 });
+
+test('breakpointScenario keeps the threshold but does not abort when abortOnFail is off', () => {
+  const { thresholds } = breakpointScenario({ exec: 'mix', p95Ms: 500, abortOnFail: false });
+
+  assert.deepEqual(thresholds.http_req_duration, [
+    { threshold: 'p(95)<500', abortOnFail: false, delayAbortEval: '30s' },
+  ]);
+});
+
+test('breakpointScenario also breaks on the error rate, because a refused request counts as a fast one', () => {
+  const { thresholds } = breakpointScenario({ exec: 'mix', p95Ms: 500 });
+
+  assert.deepEqual(thresholds['http_req_failed'], [
+    { threshold: 'rate<0.01', abortOnFail: true, delayAbortEval: '30s' },
+  ]);
+});

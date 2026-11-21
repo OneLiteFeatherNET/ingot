@@ -22,8 +22,13 @@ import { statusIs } from '../lib/checks.ts';
 import { RESOLVE_FIXTURE_COORDINATE, artifactBase } from './resolve-plan.ts';
 import { seedResolveFixture } from './resolve.ts';
 import { AUTH_EXPECTED_STATUSES, PRIVATE_REPOSITORY, authRequests } from './remaining-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'auth', thresholdFor('auth').p95Ms);
 
 export function authIteration(): void {
   const path = `${artifactBase(PRIVATE_REPOSITORY, RESOLVE_FIXTURE_COORDINATE)}.pom`;

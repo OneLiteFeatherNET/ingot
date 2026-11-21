@@ -28,6 +28,10 @@ const input: TestRunInput = {
   parallelism: 2,
   configMap: 'lt-abc123-scripts',
   archiveFile: 'resolve.tar',
+  reference: false,
+  credentialsSecret: 'lt-abc123-credentials',
+  remoteWriteUrl: 'http://metrics.example.test/api/v1/push',
+  baseUrl: 'http://ingot-loadtest:8080',
 };
 
 test('the test run is named after the test id in the load test namespace', () => {
@@ -51,11 +55,51 @@ test('the test run uses the k6 image pinned in the config', () => {
   assert.equal(buildTestRun(input).spec.runner.image, K6_IMAGE);
 });
 
-test('the test run schedules the load generator only on labelled load test nodes', () => {
-  assert.deepEqual(buildTestRun(input).spec.runner.nodeSelector, { [LOADTEST_NODE_LABEL]: 'true' });
-  assert.deepEqual(buildTestRun(input).spec.runner.tolerations, [
+test('a reference run schedules the load generator only on labelled load test nodes', () => {
+  const reference = buildTestRun({ ...input, reference: true });
+
+  assert.deepEqual(reference.spec.runner.nodeSelector, { [LOADTEST_NODE_LABEL]: 'true' });
+  assert.deepEqual(reference.spec.runner.tolerations, [
     { key: LOADTEST_NODE_LABEL, operator: 'Exists', effect: 'NoSchedule' },
   ]);
+});
+
+test('a run without --reference may share nodes, so it sets no node selector and no toleration', () => {
+  const runner = buildTestRun(input).spec.runner;
+
+  assert.equal('nodeSelector' in runner, false, 'no node selector');
+  assert.equal('tolerations' in runner, false, 'no toleration');
+});
+
+test('the load generator reads the credentials of the load test user from the run secret', () => {
+  const env = buildTestRun(input).spec.runner.env;
+
+  assert.deepEqual(
+    env.filter((variable) => variable.name.startsWith('LOADTEST_')),
+    [
+      {
+        name: 'LOADTEST_USER',
+        valueFrom: { secretKeyRef: { name: 'lt-abc123-credentials', key: 'LOADTEST_USER' } },
+      },
+      {
+        name: 'LOADTEST_PASSWORD',
+        valueFrom: { secretKeyRef: { name: 'lt-abc123-credentials', key: 'LOADTEST_PASSWORD' } },
+      },
+    ],
+  );
+});
+
+test('the load generator writes to the remote write url and requests the ingot service', () => {
+  const env = buildTestRun(input).spec.runner.env;
+
+  assert.deepEqual(env.find((variable) => variable.name === 'K6_PROMETHEUS_RW_SERVER_URL'), {
+    name: 'K6_PROMETHEUS_RW_SERVER_URL',
+    value: 'http://metrics.example.test/api/v1/push',
+  });
+  assert.deepEqual(env.find((variable) => variable.name === 'BASE_URL'), {
+    name: 'BASE_URL',
+    value: 'http://ingot-loadtest:8080',
+  });
 });
 
 test('the load generator avoids the node of every Ingot pod by hostname', () => {
@@ -78,4 +122,8 @@ test('the test run passes the tags and the output of the runner environment as a
 
 test('the test run refuses a namespace other than the load test namespace', () => {
   assert.throws(() => buildTestRun({ ...input, namespace: 'ingot-production' }), /ingot-production/);
+});
+
+test('the test run is kept after it ends, so the runner reads its stage and the uninstall removes it', () => {
+  assert.equal('cleanup' in buildTestRun(input).spec, false);
 });
