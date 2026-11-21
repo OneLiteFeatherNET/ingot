@@ -67,7 +67,7 @@ const sources = computed<string[]>(() => (answer.value
 
 <template>
   <div data-ingot-component="account-view">
-    <MdPage class="pb-12 pt-7">
+    <MdPage spaced>
       <MdPageHeader
         class="pb-7"
         title="My account"

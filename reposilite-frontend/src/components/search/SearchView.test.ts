@@ -182,7 +182,7 @@ describe('SearchView page shell', () => {
   it('keeps the page spacing on the page root', async () => {
     await mountAt('/search')
 
-    expect(wrapper.classes(), 'the bottom spacing is on the page root').toContain('mb-12')
+    expect(wrapper.classes(), 'the bottom spacing is on the page root').toContain('pb-12')
     expect(wrapper.classes(), 'the top spacing is on the page root').toContain('pt-7')
   })
 

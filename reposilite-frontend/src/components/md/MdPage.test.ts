@@ -69,6 +69,19 @@ describe('MdPage', () => {
     expect(wrapper.classes()).toContain('mx-auto')
   })
 
+  it('draws the page spacing, 28 pixels above and 48 below, when spaced is set', () => {
+    const wrapper = mount(MdPage, { props: { spaced: true } })
+
+    expect(wrapper.classes(), 'the top spacing of a page').toContain('pt-7')
+    expect(wrapper.classes(), 'the bottom spacing of a page').toContain('pb-12')
+  })
+
+  it('adds no vertical spacing without spaced, so a header or a section keeps its own', () => {
+    const wrapper = mount(MdPage)
+
+    expect(wrapper.classes().filter(name => /^(?:p[tby]|m[tby])-/.test(name)), 'no vertical spacing by default').toEqual([])
+  })
+
   it('carries the md-page anchor on the root', () => {
     const wrapper = mount(MdPage)
 

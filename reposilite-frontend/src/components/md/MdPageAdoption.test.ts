@@ -83,3 +83,34 @@ describe('full width views render through MdPage', () => {
     expect(readSource(file), 'the gutter belongs to MdPage, not to the view').not.toMatch(/(?<![:\w-])class="[^"]*(?<![-\w])container(?![-\w])/)
   })
 })
+
+/*
+ * MdPage owns the top and bottom spacing of a page (design D2), so a bottom margin on one page and
+ * a bottom padding on another cannot disagree. A page view asks for it with `spaced` and writes no
+ * vertical spacing utility on the MdPage element itself.
+ */
+const spacedViews = [
+  '../account/AccountView.vue',
+  '../layout/AdministrationFrame.vue',
+  '../search/SearchView.vue',
+  '../browser/FileBrowserView.vue'
+]
+
+describe('pages take their spacing from MdPage', () => {
+  it.each(spacedViews)('%s asks MdPage for the page spacing', (file) => {
+    const pages = [...readSource(file).matchAll(/<MdPage\b[^>]*>/g)].map(match => match[0])
+
+    expect(pages.length, 'the view must render an MdPage element').toBeGreaterThan(0)
+    for (const page of pages) {
+      expect(page, 'the page spacing comes from the spaced prop').toMatch(/\sspaced\b/)
+    }
+  })
+
+  it.each(spacedViews)('%s writes no vertical spacing on the MdPage element', (file) => {
+    const pages = [...readSource(file).matchAll(/<MdPage\b[^>]*>/g)].map(match => match[0])
+
+    for (const page of pages) {
+      expect(page, 'pt-*, pb-* and mb-* belong to MdPage, not to the view').not.toMatch(/(?<![\w-])(?:p[tby]|m[tby])-\d/)
+    }
+  })
+})

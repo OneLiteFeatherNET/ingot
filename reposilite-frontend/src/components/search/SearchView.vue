@@ -262,7 +262,7 @@ const toggleRow = (item: SearchItem) => {
 </script>
 
 <template>
-  <MdPage class="mb-12 pt-7">
+  <MdPage spaced>
     <div data-ingot-component="search-view">
       <h1 class="md-headline-small text-on-surface">
         Search
