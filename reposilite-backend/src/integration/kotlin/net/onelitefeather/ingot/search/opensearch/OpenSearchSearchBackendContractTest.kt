@@ -60,7 +60,7 @@ internal class OpenSearchSearchBackendContractTest : ArtifactSearchBackendContra
      * A backend whose writes are visible to the next read: the fixture calls `_refresh` after each write. Production code never
      * refreshes; the one-second refresh interval makes the writes visible in the running server.
      */
-    private class VisibleAfterWrites(
+    internal class VisibleAfterWrites(
         private val delegate: ArtifactSearchBackend,
         private val refresh: () -> Unit,
     ) : ArtifactSearchBackend by delegate {

@@ -59,12 +59,24 @@ internal object OpenSearchBulk {
 
     /** The action line and, for an upsert, the document line of one bulk action. Null for an action that is not a bulk action. */
     private fun bulkLines(index: String, action: IndexAction): List<String>? = when (action) {
-        is IndexAction.Upsert -> listOf(
-            actionLine("index", index, OpenSearchDocument.id(action.row)),
-            mapper.writeValueAsString(OpenSearchDocument.of(action.row)),
-        )
+        is IndexAction.Upsert -> upsertLines(index, action)
         is IndexAction.RemovePath -> listOf(actionLine("delete", index, pathHash(action.repository, action.path)))
         is IndexAction.RemovePrefix, is IndexAction.Reorigin -> null
+    }
+
+    /**
+     * An upsert with attributes indexes the whole document, so that no older attribute survives. An upsert without them merges
+     * the fields of the row into the stored document, or creates it, and so keeps the stored attributes (search document
+     * attributes, D4).
+     */
+    private fun upsertLines(index: String, action: IndexAction.Upsert): List<String> {
+        val id = OpenSearchDocument.id(action.row)
+        val attributes = action.attributes
+            ?: return listOf(
+                actionLine("update", index, id),
+                mapper.writeValueAsString(mapOf("doc" to OpenSearchDocument.of(action.row), "doc_as_upsert" to true)),
+            )
+        return listOf(actionLine("index", index, id), mapper.writeValueAsString(OpenSearchDocument.of(action.row, attributes)))
     }
 
     private fun actionLine(operation: String, index: String, id: String): String =

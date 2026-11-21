@@ -40,6 +40,9 @@ internal object OpenSearchIndexDefinition {
       "mappings": {
         "dynamic": "strict",
         "_meta": {"ingot_mapping_version": 1},
+        "dynamic_templates": [
+          {"ingot_attributes": {"path_match": "attributes.*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
+        ],
         "properties": {
           "repository": {"type": "keyword"},
           "path": {"type": "keyword"},
@@ -62,7 +65,8 @@ internal object OpenSearchIndexDefinition {
           "indexed_at": {"type": "long"},
           "sha1": {"type": "keyword"},
           "sha256": {"type": "keyword"},
-          "tokens": {"type": "keyword"}
+          "tokens": {"type": "keyword"},
+          "attributes": {"type": "object", "dynamic": true}
         }
       }
     }
@@ -77,6 +81,18 @@ internal object OpenSearchIndexDefinition {
         val definition = template.deepCopy()
         (definition.at("/settings/index") as ObjectNode).put("number_of_replicas", replicas)
         return definition
+    }
+
+    /**
+     * The part of the mapping that stores plugin attributes (search document attributes, D6): the `attributes` object and the
+     * dynamic template that maps each of its keys to a keyword. An index of mapping version one that was created before the
+     * attributes existed takes it as a mapping addition, without a reindex.
+     */
+    fun attributeMapping(): ObjectNode {
+        val mapping = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.createObjectNode()
+        mapping.set<ObjectNode>("dynamic_templates", template.at("/mappings/dynamic_templates").deepCopy())
+        mapping.putObject("properties").set<ObjectNode>("attributes", template.at("/mappings/properties/attributes").deepCopy())
+        return mapping
     }
 
     /** The names of the mapped document fields. */
