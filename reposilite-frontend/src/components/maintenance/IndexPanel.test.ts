@@ -208,16 +208,16 @@ describe('IndexPanel status', () => {
 })
 
 describe('IndexPanel section', () => {
-  it('titles the card with a level 3 MdSection that keeps the heading id of the panel', async () => {
+  it('titles the card with a level 2 MdSection that keeps the heading id of the panel', async () => {
     await mountPanel()
 
     const section = wrapper.findComponent({ name: 'MdSection' }) as VueWrapper
     const heading = wrapper.get('#search-index-title')
 
     expect(section.exists(), 'the card holds the shared section').toBe(true)
-    expect(propsOf(section).level,'the panel sits inside the page, so its section is level 3').toBe(3)
-    expect(heading.element.tagName, 'the title is a level 3 heading').toBe('H3')
-    expect(heading.classes(), 'a level 3 title takes the title-small role').toContain('md-title-small')
+    expect(propsOf(section).level,'the panel is the first level under the h1 of the frame, so its section is level 2').toBe(2)
+    expect(heading.element.tagName, 'the title is a level 2 heading').toBe('H2')
+    expect(heading.classes(), 'a level 2 title takes the title-medium role').toContain('md-title-medium')
   })
 
   it('puts the rebuild and verify actions in the section header', async () => {

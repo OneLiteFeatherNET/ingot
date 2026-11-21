@@ -80,12 +80,12 @@ afterEach(() => {
 })
 
 describe('StorageUsagePanel', () => {
-  it('titles the panel through the shared section header at level 3', async () => {
+  it('titles the panel through the shared section header at level 2, under the h1 of the frame', async () => {
     await mountPanel()
 
     const header = wrapper.get('[data-test="section-header"]')
-    expect(header.get('h3').text()).toBe('Storage usage')
-    expect(header.get('h3').classes(), 'a level 3 title uses md-title-small').toContain('md-title-small')
+    expect(header.get('h2').text()).toBe('Storage usage')
+    expect(header.get('h2').classes(), 'a level 2 title uses md-title-medium').toContain('md-title-medium')
   })
 
   it('loads the storage figures once when it opens', async () => {
