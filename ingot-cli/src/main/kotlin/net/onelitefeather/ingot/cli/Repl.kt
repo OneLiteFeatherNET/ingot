@@ -20,11 +20,11 @@ import org.jline.reader.Candidate
 import org.jline.reader.Completer
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReader
-import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
 import org.jline.terminal.Terminal
 import org.jline.terminal.Terminal.Signal
 import java.io.PrintStream
+import java.nio.file.Path
 
 /** Opens one session on the console socket. Log lines reach [ConsoleConnector.open]'s callback as they arrive. */
 fun interface ConsoleConnector {
@@ -36,6 +36,7 @@ fun interface ConsoleConnector {
  * `complete` frame, and no HTTP request is made while the session runs. `:quit` leaves, and Ctrl-D on an empty line
  * leaves with exit code 0. Ctrl-C discards the line, and while a command runs it stops the wait for its result on the
  * client only and keeps the connection open. A dangerous command asks `[y/N]` on the terminal, and only `y` accepts it.
+ * With [historyFile], the lines are kept there for the next session, except a line that may carry a secret.
  */
 fun runRepl(
     client: IngotClient,
@@ -46,13 +47,14 @@ fun runRepl(
     yes: Boolean,
     out: PrintStream,
     err: PrintStream,
+    historyFile: Path? = null,
 ): Int {
     var socket: ConsoleSocket? = null
     val completer = Completer { _, line, candidates ->
         val completion = runCatching { socket?.complete(line.line(), line.cursor()) }.getOrNull()
         completion?.candidates?.forEach { candidates.add(Candidate(it)) }
     }
-    val reader = LineReaderBuilder.builder().terminal(terminal).completer(completer).build()
+    val reader = buildLineReader(terminal, completer, historyFile)
     val session = try {
         connector.open { log -> showLog(reader, log) }
     } catch (_: ServerUnreachableException) {
