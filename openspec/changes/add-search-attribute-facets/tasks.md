@@ -14,9 +14,9 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 
 ## 2. Declarations (red, then green)
 
-- [ ] 2.1 `test(search)`: failing tests of the registry: a declaration outside the enricher namespace is refused; a key declared by two
+- [x] 2.1 `test(search)`: failing tests of the registry: a declaration outside the enricher namespace is refused; a key declared by two
   enrichers is refused naming both classes; a declared key is in the catalogue with its three flags. Verify: they fail.
-- [ ] 2.2 `feat(search)`: `AttributeDeclaration`, `declaredAttributes` with the empty default, and the catalogue in the registry.
+- [x] 2.2 `feat(search)`: `AttributeDeclaration`, `declaredAttributes` with the empty default, and the catalogue in the registry.
   Verify: the tests of 2.1 pass.
 
 ## 3. Query model and refusals (red, then green)
