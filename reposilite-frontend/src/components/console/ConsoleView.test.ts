@@ -257,6 +257,67 @@ describe('ConsoleView', () => {
       expect(levelCount(wrapper, 'Error'), 'the stderr line and the exit code count as errors').toBe('2')
     })
 
+    describe('confirmation of a dangerous command', () => {
+      const askedToConfirm = async () => {
+        const socket = await welcomed()
+        await sendCommand(wrapper, 'token-revoke ci')
+        const id = socket.frames().at(-1)!.id
+        socket.receive({ type: 'confirm', id, command: 'token-revoke', reason: 'Revoke token' })
+        await flushPromises()
+        return { socket, id }
+      }
+
+      const dialog = () => document.querySelector('[data-ingot-component="console-confirm-dialog"]')?.closest('[role]') ?? null
+
+      it('opens a dialog that names the command and its reason', async () => {
+        await askedToConfirm()
+
+        const text = document.body.textContent ?? ''
+        expect(dialog(), 'a confirm frame opens the dialog').not.toBeNull()
+        expect(text, 'the dialog names the command').toContain('token-revoke')
+        expect(text, 'the dialog gives the reason the server sent').toContain('Revoke token')
+      })
+
+      it('puts the focus on Cancel, so Enter does not run the command', async () => {
+        await askedToConfirm()
+
+        expect(document.activeElement?.textContent?.trim(), 'the safe answer is the default').toBe('Cancel')
+      })
+
+      it('declines the command when Cancel is pressed', async () => {
+        const { socket, id } = await askedToConfirm()
+
+        const cancel = [...document.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Cancel')!
+        cancel.click()
+        await flushPromises()
+
+        expect(socket.frames().at(-1), 'the server learns that the command must not run').toEqual({ type: 'confirm', id, accept: false })
+      })
+
+      it('accepts the command when Run is pressed', async () => {
+        const { socket, id } = await askedToConfirm()
+
+        const run = document.querySelector<HTMLButtonElement>('[data-test="confirm-button"]')!
+        run.click()
+        await flushPromises()
+
+        expect(socket.frames().at(-1), 'the server runs the command once it is accepted').toEqual({ type: 'confirm', id, accept: true })
+        expect(socket.frames().filter(frame => frame.type === 'confirm'), 'one answer per confirmation').toHaveLength(1)
+      })
+
+      it('tells the reader that a declined command did not run', async () => {
+        const { socket, id } = await askedToConfirm()
+        const cancel = [...document.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Cancel')!
+        cancel.click()
+        await flushPromises()
+
+        socket.receive({ type: 'result', id, status: 'FAILED', exitCode: 3, output: [], data: null, node: 'node-a', confirmed: false })
+        await flushPromises()
+
+        expect(wrapper.find('#console').text(), 'the declined command is reported as not run').toContain('did not run')
+      })
+    })
+
     it('reports a command that had no result when the socket dropped as unknown', async () => {
       const socket = await welcomed()
       await sendCommand(wrapper, 'status')

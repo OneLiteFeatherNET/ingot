@@ -64,6 +64,7 @@ function harness() {
     onResult: vi.fn(),
     onError: vi.fn(),
     onUnknown: vi.fn(),
+    onConfirm: vi.fn(),
   }
   const client = new ConsoleSocket({
     url: 'ws://dashboard.example.org/api/console/sock',
@@ -223,6 +224,50 @@ describe('console socket client', () => {
       )
       current().drop()
       expect(listener.onUnknown.mock.calls.map(call => call[0] as string), 'only the first command, still without a result, is unknown').toEqual(['e1'])
+    })
+  })
+
+  describe('confirmation', () => {
+    it('hands a confirm frame of a dangerous command to the page', () => {
+      const { client, listener, current } = readySession()
+      client.execute('token-revoke ci')
+
+      current().receive({ type: 'confirm', id: 'e1', command: 'token-revoke', reason: 'Revoke token' })
+
+      expect(listener.onConfirm, 'the page asks the user before the command runs').toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'e1', command: 'token-revoke', reason: 'Revoke token' }),
+      )
+    })
+
+    it('answers a confirmation with a confirm frame for the same id', () => {
+      const { client, current } = readySession()
+      client.execute('token-revoke ci')
+      current().receive({ type: 'confirm', id: 'e1', command: 'token-revoke', reason: 'Revoke token' })
+
+      expect(client.confirm('e1', false), 'the answer is sent while the socket is ready').toBe(true)
+
+      expect(current().frames().at(-1), 'a declined confirmation tells the server not to run the command').toEqual({ type: 'confirm', id: 'e1', accept: false })
+    })
+
+    it('keeps a confirmed command pending until its result arrives', () => {
+      const { client, listener, current } = readySession()
+      client.execute('token-revoke ci')
+      current().receive({ type: 'confirm', id: 'e1', command: 'token-revoke', reason: 'Revoke token' })
+      client.confirm('e1', true)
+
+      current().drop()
+
+      expect(listener.onUnknown, 'an accepted command without a result may have run').toHaveBeenCalledWith('e1', 'token-revoke ci')
+    })
+
+    it('sends no answer when the socket is not ready', () => {
+      const { client, current } = readySession()
+      client.execute('token-revoke ci')
+      current().receive({ type: 'confirm', id: 'e1', command: 'token-revoke', reason: 'Revoke token' })
+      current().drop()
+
+      expect(client.confirm('e1', true), 'an answer is not queued for a later connection').toBe(false)
+      expect(current().frames().filter(frame => frame.type === 'confirm'), 'nothing is sent on a dropped socket').toHaveLength(0)
     })
   })
 
