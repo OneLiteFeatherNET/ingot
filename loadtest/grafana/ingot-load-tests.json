@@ -17,7 +17,7 @@
         "enable": true,
         "iconColor": "orange",
         "datasource": { "type": "prometheus", "uid": "${datasource}" },
-        "expr": "ingot_load_step_passed{testid=\"$testid\"}",
+        "expr": "k6_ingot_load_step_passed{testid=\"$testid\"}",
         "titleFormat": "Step {{result}}",
         "textFormat": "Step rate {{ingot_load_step_passed}} requests per second"
       }
@@ -125,7 +125,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "max by (topology, scenario) (ingot_load_step_passed{testid=\"$testid\", topology=~\"$topology\", scenario=~\"$scenario\"})",
+          "expr": "max by (topology, scenario) (k6_ingot_load_step_passed{testid=\"$testid\", topology=~\"$topology\", scenario=~\"$scenario\"})",
           "legendFormat": "target {{topology}} {{scenario}}",
           "range": true
         },
@@ -183,7 +183,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (scenario) (rate(k6_http_req_failed_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m])) / sum by (scenario) (rate(k6_http_reqs_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
+          "expr": "sum by (scenario) (rate(k6_http_reqs_total{testid=\"$testid\", scenario=~\"$scenario\", expected_response=\"false\"}[1m])) / sum by (scenario) (rate(k6_http_reqs_total{testid=\"$testid\", scenario=~\"$scenario\"}[1m]))",
           "legendFormat": "{{scenario}}",
           "range": true
         }
@@ -352,7 +352,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "max by (topology, size, scenario) (ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
+          "expr": "max by (topology, size, scenario) (k6_ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
           "format": "table",
           "instant": true,
           "range": false
@@ -372,7 +372,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "max by (topology) (ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
+          "expr": "max by (topology) (k6_ingot_load_step_passed{result=\"pass\", topology=~\"$topology\", size=~\"$size\", scenario=~\"$scenario\"})",
           "legendFormat": "{{topology}}",
           "range": false,
           "instant": true
