@@ -80,9 +80,9 @@ const rejection = (status: number, headers: Record<string, string> = {}) =>
 // The dialog is teleported to the end of the body, so it is queried from the document.
 const dialog = (): HTMLElement => document.querySelector('[role="dialog"]') as HTMLElement
 const field = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement
-const buttonLabels = (): string[] => [...dialog().querySelectorAll<HTMLElement>('button, a')].map(node => node.textContent!.trim())
+const buttonLabels = (): string[] => [...dialog().querySelectorAll<HTMLElement>('button, a')].map(node => node.textContent.trim())
 const buttonByLabel = (label: string): HTMLElement =>
-  [...dialog().querySelectorAll<HTMLElement>('button, a')].find(node => node.textContent!.trim() === label) as HTMLElement
+  [...dialog().querySelectorAll<HTMLElement>('button, a')].find(node => node.textContent.trim() === label) as HTMLElement
 
 const type = (id: string, value: string) => {
   field(id).value = value
@@ -175,7 +175,7 @@ describe('LoginModal', () => {
       await openDialog()
 
       const heading = dialog().querySelector('h2')!
-      expect(heading.textContent!.trim()).toBe('Sign in')
+      expect(heading.textContent.trim()).toBe('Sign in')
       expect(dialog().getAttribute('aria-labelledby'), 'screen readers announce the dialog by its heading')
         .toBe(heading.id)
     })
@@ -290,7 +290,7 @@ describe('LoginModal', () => {
     it('shows one inline message when the server rejects the password', async () => {
       await submitRejected(401)
 
-      expect(helperOf('login-password')?.textContent!.trim(),
+      expect(helperOf('login-password')?.textContent.trim(),
         'the failure is explained in words and linked to the field')
         .toBe('Username or password is incorrect')
     })
@@ -298,7 +298,7 @@ describe('LoginModal', () => {
     it('shows the same message for a disabled account, so it does not reveal that the user exists', async () => {
       await submitRejected(403)
 
-      expect(helperOf('login-password')?.textContent!.trim()).toBe('Username or password is incorrect')
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Username or password is incorrect')
     })
 
     it('moves focus to the password field after a rejection so the message is read out', async () => {
@@ -348,13 +348,13 @@ describe('LoginModal', () => {
     it('says how many minutes to wait, rounded up', async () => {
       await submitLimited({ 'retry-after': '121' })
 
-      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 3 minutes')
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 3 minutes')
     })
 
     it('uses the singular for one minute', async () => {
       await submitLimited({ 'retry-after': '30' })
 
-      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 1 minute')
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 1 minute')
     })
 
     it('disables the submit button while the wait lasts', async () => {
@@ -387,7 +387,7 @@ describe('LoginModal', () => {
       type('login-username', 'alice2')
       await flushPromises()
 
-      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again in 2 minutes')
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 2 minutes')
       expect(submitButton().disabled).toBe(true)
     })
 
@@ -426,7 +426,7 @@ describe('LoginModal', () => {
     it('asks to try again later when the server gives no Retry-After', async () => {
       await submitLimited({})
 
-      expect(helperOf('login-password')?.textContent!.trim()).toBe('Too many attempts, try again later')
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again later')
       expect(submitButton().disabled, 'without a deadline the button cannot be locked').toBe(false)
     })
   })
@@ -544,7 +544,7 @@ describe('LoginModal', () => {
       await openDialog()
 
       expect(dividerOf().getAttribute('aria-hidden')).toBe('true')
-      expect(dividerOf().textContent!.trim()).toBe('or')
+      expect(dividerOf().textContent.trim()).toBe('or')
       expect(
         dividerOf().compareDocumentPosition(buttonByLabel('Continue with Keycloak')) & Node.DOCUMENT_POSITION_FOLLOWING,
         'the divider sits between the form and the SSO buttons'
@@ -640,7 +640,7 @@ describe('LoginModal', () => {
     it('switches to a name and secret form', async () => {
       await switchToToken()
 
-      expect(dialog().querySelector('h2')!.textContent!.trim()).toBe('Sign in with access token')
+      expect(dialog().querySelector('h2')!.textContent.trim()).toBe('Sign in with access token')
       expect(field('login-name').required).toBe(true)
       expect(field('login-secret').type).toBe('password')
       expect(field('login-secret').autocomplete).toBe('current-password')
@@ -665,7 +665,7 @@ describe('LoginModal', () => {
 
       await submit()
 
-      expect(helperOf('login-secret')?.textContent!.trim()).toBe('Name or secret is incorrect')
+      expect(helperOf('login-secret')?.textContent.trim()).toBe('Name or secret is incorrect')
       expect(document.activeElement).toBe(field('login-secret'))
     })
 
@@ -703,7 +703,7 @@ describe('LoginModal', () => {
     it('shows Set up Ingot instead of the sign in form', async () => {
       await openDialog()
 
-      expect(dialog().querySelector('h2')!.textContent!.trim()).toBe('Set up Ingot')
+      expect(dialog().querySelector('h2')!.textContent.trim()).toBe('Set up Ingot')
       expect(field('login-username'), 'the sign in form is not offered during setup').toBeNull()
     })
 
@@ -735,7 +735,7 @@ describe('LoginModal', () => {
       await submit()
 
       expect(actions.completeSetup, 'a mistyped password must not become the admin password').not.toHaveBeenCalled()
-      expect(helperOf('setup-confirm').textContent!.trim()).toBe('Passwords do not match')
+      expect(helperOf('setup-confirm').textContent.trim()).toBe('Passwords do not match')
     })
 
     it('does not submit a password under 12 characters', async () => {
@@ -818,7 +818,7 @@ describe('LoginModal', () => {
 
       await submit()
 
-      expect(dialog().querySelector('[role="alert"]')!.textContent!.trim()).toBe('Setup code is incorrect')
+      expect(dialog().querySelector('[role="alert"]')!.textContent.trim()).toBe('Setup code is incorrect')
     })
   })
 

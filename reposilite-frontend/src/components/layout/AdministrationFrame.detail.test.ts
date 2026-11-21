@@ -47,7 +47,7 @@ const usersGroups = () => [
 const crumbLabel = (crumb: { element: Element }) => {
   const copy = crumb.element.cloneNode(true) as HTMLElement
   copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove())
-  return (copy.textContent as string).trim()
+  return copy.textContent.trim()
 }
 
 const mountDetail = async (props: FrameProps = {}) => {

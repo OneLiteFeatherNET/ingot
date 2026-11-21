@@ -57,7 +57,7 @@ const pageOf = (wrapper: VueWrapper) => wrapper.get('section').element.firstElem
 const crumbLabel = (crumb: { element: Element }) => {
   const copy = crumb.element.cloneNode(true) as HTMLElement
   copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove())
-  return (copy.textContent as string).trim()
+  return copy.textContent.trim()
 }
 
 const mountFrame = async (props: FrameProps, url = '/audit') => {

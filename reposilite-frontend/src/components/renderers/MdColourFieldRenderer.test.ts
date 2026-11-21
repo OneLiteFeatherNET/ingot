@@ -47,8 +47,8 @@ const seed = (data: { value?: string } = {}) => mountColour('seedColor', { type:
 type Seeded = ReturnType<typeof seed>
 
 const lastData = (wrapper: Seeded) => (wrapper.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
-const textInput = (wrapper: Seeded) => wrapper.find('input[type="text"]') as DOMWrapper<HTMLInputElement>
-const picker = (wrapper: Seeded) => wrapper.find('input[type="color"]') as DOMWrapper<HTMLInputElement>
+const textInput = (wrapper: Seeded) => wrapper.find<HTMLInputElement>('input[type="text"]')
+const picker = (wrapper: Seeded) => wrapper.find<HTMLInputElement>('input[type="color"]')
 const clearButton = (wrapper: Seeded) => wrapper.findAll('button').find(button => button.text() === 'Clear') as DOMWrapper<HTMLButtonElement>
 
 describe('MdColourFieldRenderer tester', () => {

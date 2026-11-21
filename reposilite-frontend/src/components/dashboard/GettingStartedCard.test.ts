@@ -111,7 +111,7 @@ const fakeClient = ({ failDomains = false, repositories = DEFAULT_REPOSITORIES }
   } as unknown as StoreClient
 }
 
-const clientRef = (client: StoreClient): ClientRef => ref(client) as unknown as ClientRef
+const clientRef = (client: StoreClient): ClientRef => ref(client)
 
 let wrapper: VueWrapper | undefined
 let router: Router

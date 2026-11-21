@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount, flushPromises, type DOMWrapper } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
@@ -86,7 +86,7 @@ describe('AppearanceSectionRenderer', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="colour-swatch"]').exists()).toBe(true)
-    expect((wrapper.find('input[type="color"]') as DOMWrapper<HTMLInputElement>).element.value).toBe('#006a6a')
+    expect(wrapper.find<HTMLInputElement>('input[type="color"]').element.value).toBe('#006a6a')
   })
 
   it('draws the other fields of the group as before', async () => {
