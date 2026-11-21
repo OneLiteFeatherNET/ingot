@@ -144,14 +144,20 @@ fun runCli(
     val client = IngotClient(url, token, timeout, http)
     val json = config.output == "json" || flags["output"] == "json"
     val yes = flags.containsKey("yes")
+    // The server's colour reaches command output and log lines only when it can show. The CLI's own messages have none.
+    val colour = colourEnabled(stdoutIsTerminal = interactive, env = env)
+    val commandOut = if (colour) out else withoutColour(out)
+    val commandErr = if (colour) err else withoutColour(err)
 
     if (isRepl) {
         val term = terminal() ?: run {
             err.println(USAGE)
             return ExitCode.USAGE
         }
-        val connector = ConsoleConnector { onLog -> ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout, onLog) }
-        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = out, err = err)
+        val connector = ConsoleConnector { onLog ->
+            ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout) { log -> onLog(if (colour) log else log.copy(text = stripAnsi(log.text))) }
+        }
+        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = commandOut, err = commandErr)
     }
 
     val lines = if (commandArguments == listOf("-")) {
@@ -171,7 +177,7 @@ fun runCli(
         interactive = interactive,
         confirm = { command, reason -> askYesNo("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ", err) },
     )
-    return Exec(client, out, err, options).runAll(lines)
+    return Exec(client, commandOut, commandErr, options).runAll(lines)
 }
 
 /** Reads a yes or no answer from the terminal. Anything but `y` or `yes` is no. */
