@@ -20,7 +20,7 @@ import { siteUrl } from './api'
 /*
  * Sign in through the dashboard the way an operator does. The suite signs in with the password account
  * that the setup of this run created (global-setup.ts), because a page session through that form is a
- * cookie session. The access token form is driven by its own test (see sign-in.spec.js).
+ * cookie session. The access token form is driven by its own test (see sign-in.spec.ts).
  */
 
 // The name the account button of the top bar shows for the password account of this run (global-setup.ts).
