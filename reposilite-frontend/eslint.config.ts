@@ -90,7 +90,6 @@ const configs: Linter.Config[] = ([
     files: ['**/*.ts', '**/*.vue'],
     plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
-      // Remaining any needs a reason on the same line and an entry in src/types/any-budget.json.
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },

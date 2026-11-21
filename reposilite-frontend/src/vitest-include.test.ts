@@ -57,8 +57,8 @@ describe('which files the unit run collects', () => {
     expect(await collected(['server/sample.test.ts']), 'the .test.ts file under server').toEqual(['server/sample.test.ts'])
   })
 
-  it('still collects a JavaScript test under src', async () => {
-    expect(await collected(['src/sample.test.js']), 'the .test.js file under src').toEqual(['src/sample.test.js'])
+  it('does not collect a JavaScript test under src', async () => {
+    expect(await collected(['src/sample.test.js']), 'a .test.js file, after the move to TypeScript').toEqual([])
   })
 
   it('collects the TypeScript test of the build config', async () => {

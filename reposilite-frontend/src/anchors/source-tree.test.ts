@@ -37,16 +37,15 @@ const write = (file: string, text: string) => {
 }
 
 describe('source tree read by the anchor selector rule', () => {
-  it('lists TypeScript modules next to JavaScript modules and components', () => {
+  it('lists TypeScript modules and components', () => {
     write('src/store/a.ts', '')
     write('src/store/b.js', '')
     write('src/components/C.vue', '')
     write('src/store/notes.json', '')
 
-    expect(listSourceTree(root), 'every script and component, and nothing else').toEqual([
+    expect(listSourceTree(root), 'every TypeScript module and component, and nothing else').toEqual([
       'src/components/C.vue',
       'src/store/a.ts',
-      'src/store/b.js',
     ])
   })
 })

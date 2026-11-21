@@ -17,7 +17,7 @@
 import { readdirSync, readFileSync, type Dirent } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 
-const SCANNED_EXTENSIONS = ['.vue', '.js', '.ts', '.css']
+const SCANNED_EXTENSIONS = ['.vue', '.ts', '.css']
 
 // The shipped sources under src/, read from disk. Tests and the gate itself are left out, so the gate never scans its
 // own fixtures. Paths are relative to the frontend directory, with forward slashes, so that they match the baselines.
@@ -28,7 +28,6 @@ export function collectSources(srcDir: string): Array<{ file: string; text: stri
     .map((path) => relative(frontendDir, path).split(sep).join('/'))
     .filter((file) => !file.startsWith('src/style-gate/'))
     .filter((file) => SCANNED_EXTENSIONS.some((extension) => file.endsWith(extension)))
-    .filter((file) => !file.endsWith('.test.js'))
     .filter((file) => !file.endsWith('.test.ts'))
     .sort()
     .map((file) => ({ file, text: readFileSync(join(frontendDir, file), 'utf8') }))
