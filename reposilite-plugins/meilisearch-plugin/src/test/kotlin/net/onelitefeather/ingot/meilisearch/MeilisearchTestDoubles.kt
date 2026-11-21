@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.meilisearch
 
+import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.search.backend.BackendLogger
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.SearchBackendContext
@@ -91,6 +92,12 @@ internal class FakeMeilisearch(@Suppress("unused") private val clock: ManualCloc
 
     private var down = false
 
+    /**
+     * The stored attributes of the documents by id, as `POST /documents/fetch` answers them when no route of the test answers it.
+     * A document absent here is answered as missing.
+     */
+    val storedAttributes = mutableMapOf<String, Map<String, List<String>>>()
+
     private fun route(matches: (HttpCall) -> Boolean, answer: (HttpCall) -> HttpAnswer) {
         routes.add(matches to answer)
     }
@@ -104,6 +111,7 @@ internal class FakeMeilisearch(@Suppress("unused") private val clock: ManualCloc
             return task(taskUid)
         }
         return routes.firstOrNull { (matches, _) -> matches(call) }?.second?.invoke(call)
+            ?: fetched(call)
             ?: HttpAnswer(404, emptyMap(), """{"message":"not routed in the fake","code":"not_found"}""")
     }
 
@@ -111,6 +119,17 @@ internal class FakeMeilisearch(@Suppress("unused") private val clock: ManualCloc
         val (status, code) = tasks[uid] ?: return HttpAnswer(404, emptyMap(), "{}")
         val error = code?.let { """,\"error\":{\"code\":\"$it\",\"message\":\"$it\"}""" }.orEmpty()
         return HttpAnswer(200, emptyMap(), """{"uid":$uid,"status":"$status"$error}""".replace("\\", ""))
+    }
+
+    /** The answer of a document fetch by ids from [storedAttributes], or null for any other call. */
+    private fun fetched(call: HttpCall): HttpAnswer? {
+        if (call.method != "POST" || !call.uri.path.endsWith("/documents/fetch")) return null
+        val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+        val ids = mapper.readTree(call.body.orEmpty()).path("ids").map { it.asText() }
+        val results = ids.filter { it in storedAttributes }.map { id ->
+            mapOf("id" to id, "size_bytes" to 10, "last_modified" to 1_000, "attributes" to storedAttributes.getValue(id))
+        }
+        return HttpAnswer(200, emptyMap(), mapper.writeValueAsString(mapOf("results" to results)))
     }
 
     private fun accepted(taskUid: Long): HttpAnswer = HttpAnswer(202, emptyMap(), """{"taskUid":$taskUid,"status":"enqueued"}""")
