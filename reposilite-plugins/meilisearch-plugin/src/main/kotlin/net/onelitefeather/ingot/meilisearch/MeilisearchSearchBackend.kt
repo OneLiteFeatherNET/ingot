@@ -36,6 +36,7 @@ import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.SamplePage
+import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.backend.SampledRow
 import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.database.pathHash
@@ -83,6 +84,9 @@ internal class MeilisearchSearchBackend(
 
     /** A write is a task of the server, so the rebuild cursor is committed after the write, never in the same transaction. */
     override val joinsDatabaseTransaction: Boolean = false
+
+    /** The documents carry the attributes of a row as one object, stored and not yet filterable (search document attributes, D6). */
+    override val capabilities: Set<SearchCapability> = setOf(SearchCapability.ATTRIBUTES)
 
     /**
      * Checks the server version (the minor version this plugin is tested with), creates the index when it is missing, and applies
@@ -132,7 +136,10 @@ internal class MeilisearchSearchBackend(
         return rest.take(limit)
     }
 
-    /** The stored state of the rows of [paths]: a read by document id, so a write whose task succeeded is seen. */
+    /**
+     * The stored state of the rows of [paths], each with the version of every enricher stored in its attributes: a read by document
+     * id, so a write whose task succeeded is seen.
+     */
     override fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow> {
         if (paths.isEmpty()) return emptyMap()
         val ids = paths.associateBy { MeilisearchDocument.id(repository, it) }
@@ -143,7 +150,7 @@ internal class MeilisearchSearchBackend(
                 "/indexes/$index/documents/fetch",
                 mapOf(
                     "ids" to chunk,
-                    "fields" to listOf("id", "size_bytes", "last_modified", "sha1", "sha256"),
+                    "fields" to listOf("id", "size_bytes", "last_modified", "sha1", "sha256", "attributes"),
                     "limit" to chunk.size,
                 ),
             ).path("results")
@@ -154,6 +161,7 @@ internal class MeilisearchSearchBackend(
                     lastModified = doc.path("last_modified").asLong(),
                     sha1 = doc.textOrNull("sha1"),
                     sha256 = doc.textOrNull("sha256"),
+                    enricherVersions = MeilisearchDocument.enricherVersionsOf(doc),
                 )
             }
         }

@@ -159,8 +159,9 @@ internal class MeilisearchWriterTest {
             ),
         )
 
-        // then: the requests reach the server in the order of the actions
-        assertThat(harness.exchange.calls.filter { it.method != "GET" }.map { it.method + " " + it.uri.path.substringAfter("/indexes/ingot-artifacts") })
+        // then: the writes reach the server in the order of the actions (the read of the stored attributes is no write)
+        val writes = harness.exchange.calls.filter { it.method != "GET" && !it.uri.path.endsWith("/documents/fetch") }
+        assertThat(writes.map { it.method + " " + it.uri.path.substringAfter("/indexes/ingot-artifacts") })
             .`as`("write requests in order")
             .containsExactly("POST /documents", "DELETE /documents/${pathHash("releases", "com/example/old/1.0/old-1.0.jar")}", "POST /documents")
     }

@@ -45,7 +45,14 @@ internal class MeilisearchWriter(
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 
-    /** Applies the actions in order. Upserts between two other actions go in one batch of documents, in requests of [batchSize]. */
+    /**
+     * Applies the actions in order. Upserts between two other actions go in one batch of documents, in requests of [batchSize].
+     *
+     * A document write replaces the whole document, so an upsert without attributes carries the attributes its row holds
+     * (search document attributes, D4): those of an earlier upsert of the same batch, or else the stored ones, read for the whole
+     * batch before its first write. A prefix removal may remove rows whose attributes were read, so the writes up to it are awaited
+     * and the attributes of the upserts after it are read again.
+     */
     fun apply(actions: List<IndexAction>) {
         val tasks = mutableListOf<Long>()
         val pending = mutableListOf<ObjectNode>()
@@ -53,18 +60,34 @@ internal class MeilisearchWriter(
             pending.chunked(batchSize).forEach { chunk -> tasks += enqueue("POST", "${documents()}?primaryKey=id", chunk) }
             pending.clear()
         }
-        actions.forEach { action ->
+        var stored = storedAttributes(keepingIds(actions))
+        val written = HashMap<String, Map<String, List<String>>>()
+        actions.forEachIndexed { position, action ->
             when (action) {
-                is IndexAction.Upsert -> pending += MeilisearchDocument.of(action.row)
+                is IndexAction.Upsert -> {
+                    val id = MeilisearchDocument.id(action.row.file.repository, action.row.file.path)
+                    val attributes = action.attributes ?: written[id] ?: stored[id].orEmpty()
+                    written[id] = attributes
+                    pending += MeilisearchDocument.of(action.row, attributes)
+                }
                 is IndexAction.RemovePath -> {
                     flush()
-                    tasks += enqueue("DELETE", "${documents()}/${MeilisearchDocument.id(action.repository, action.path)}", null)
+                    val id = MeilisearchDocument.id(action.repository, action.path)
+                    tasks += enqueue("DELETE", "${documents()}/$id", null)
+                    written[id] = emptyMap()
                 }
                 is IndexAction.RemovePrefix -> {
                     flush()
                     val scope = "repository = ${MeilisearchFilters.quote(action.repository)} AND " +
                         "${MeilisearchFilters.path(PathPredicate.Exact(action.prefix))} AND indexed_at <= ${action.notAfter.toEpochMilli()}"
                     tasks += enqueue("POST", "${documents()}/delete", mapOf("filter" to scope))
+                    val rest = keepingIds(actions.subList(position + 1, actions.size))
+                    if (rest.isNotEmpty()) {
+                        await(tasks)
+                        tasks.clear()
+                        written.clear()
+                        stored = storedAttributes(rest)
+                    }
                 }
                 is IndexAction.Reorigin -> {
                     flush()
@@ -74,6 +97,28 @@ internal class MeilisearchWriter(
         }
         flush()
         await(tasks)
+    }
+
+    /** The document ids of the upserts in [actions] that carry no attributes and so keep the stored ones. */
+    private fun keepingIds(actions: List<IndexAction>): List<String> = actions
+        .filterIsInstance<IndexAction.Upsert>()
+        .filter { it.attributes == null }
+        .map { MeilisearchDocument.id(it.row.file.repository, it.row.file.path) }
+        .distinct()
+
+    /** The stored attributes of the documents of [ids], by id. A document without attributes, or without a document, is absent. */
+    private fun storedAttributes(ids: List<String>): Map<String, Map<String, List<String>>> {
+        val found = HashMap<String, Map<String, List<String>>>()
+        ids.chunked(LOOKUP_CHUNK).forEach { chunk ->
+            client.json(
+                "POST",
+                "${documents()}/fetch",
+                mapOf("ids" to chunk, "fields" to listOf("id", "attributes"), "limit" to chunk.size),
+            ).path("results").forEach { document ->
+                MeilisearchDocument.attributesOf(document)?.let { found[document.path("id").asText()] = it }
+            }
+        }
+        return found
     }
 
     /** Partial updates of existing documents, in batches; awaited like [apply]. */
@@ -160,6 +205,7 @@ internal class MeilisearchWriter(
 
     private companion object {
         const val PAGE = 1000
+        const val LOOKUP_CHUNK = 500
         val POLL_INTERVAL: Duration = Duration.ofMillis(250)
         val BUSY_RETRY_AFTER: Duration = Duration.ofSeconds(10)
     }
