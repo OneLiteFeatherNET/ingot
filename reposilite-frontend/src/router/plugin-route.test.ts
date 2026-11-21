@@ -49,3 +49,24 @@ describe('plugin page address', () => {
     expect(nameOf('/settings/web')).toBe('settings')
   })
 })
+
+describe('reader page address', () => {
+  it('resolves a reader page to the plugin-reader route, with the plugin and the page id as params', () => {
+    const resolved = router.resolve('/plugins/docs/guides')
+
+    expect(resolved.name, 'the reader route').toBe('plugin-reader')
+    expect(resolved.params, 'the plugin and the page id').toEqual({ plugin: 'docs', page: 'guides' })
+  })
+
+  it('resolves a reader address without its page id to the plugin-reader route too', () => {
+    expect(nameOf('/plugins/docs')).toBe('plugin-reader')
+  })
+
+  it('needs no sign in and no permission node for a reader page', () => {
+    const meta = router.resolve('/plugins/docs/guides').meta
+
+    expect(meta.manager, 'a reader page is not a manager page').toBeFalsy()
+    expect(meta.node, 'a reader page names no node').toBeUndefined()
+    expect(meta.signedIn, 'an anonymous visitor may open a reader page').toBeFalsy()
+  })
+})
