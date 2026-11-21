@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 
@@ -22,26 +23,28 @@ import { siteUrl } from './support/api'
 
 const TOLERANCE_PX = 2
 
-const boxOf = (locator) => locator.evaluate((element) => {
+type Edges = { left: number, right: number, top: number, bottom: number }
+
+const boxOf = (locator: Locator): Promise<Edges> => locator.evaluate((element) => {
   const rect = element.getBoundingClientRect()
   return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
 })
 
 // The first line of text of an element is measured as a range, so padding and icons do not count. The helpers run in
 // the page, so each one carries its own copy of the text lookup.
-const textTopOf = (locator) => locator.evaluate((element) => {
+const textTopOf = (locator: Locator) => locator.evaluate((element) => {
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
   let node = walker.nextNode()
-  while (node && node.textContent.trim() === '') node = walker.nextNode()
+  while (node && node.textContent!.trim() === '') node = walker.nextNode()
   const range = document.createRange()
-  range.selectNodeContents(node)
+  range.selectNodeContents(node!)
   return range.getBoundingClientRect().top
 })
 
-const lineCountOfText = (locator) => locator.evaluate((element) => {
+const lineCountOfText = (locator: Locator) => locator.evaluate((element) => {
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
   let node = walker.nextNode()
-  while (node && node.textContent.trim() === '') node = walker.nextNode()
+  while (node && node.textContent!.trim() === '') node = walker.nextNode()
   // The title is not rendered while the card loads, so there is no text to count yet.
   if (!node) return 0
   const range = document.createRange()
@@ -50,23 +53,23 @@ const lineCountOfText = (locator) => locator.evaluate((element) => {
 })
 
 // The outlined box of the filter field, which holds the input, the icons and the outline. Its label sits inside it.
-const fieldBox = (page) => page.getByRole('searchbox', { name: /filter/i }).locator('xpath=ancestor::div[contains(@class, "relative")][1]')
+const fieldBox = (page: Page) => page.getByRole('searchbox', { name: /filter/i }).locator('xpath=ancestor::div[contains(@class, "relative")][1]')
 
-const detailsToggle = (page) => page.locator('[data-ingot-component="snippets-card"] button[aria-expanded]')
-const detailsCard = (page) => page.locator('[data-ingot-component="snippets-card"]')
+const detailsToggle = (page: Page) => page.locator('[data-ingot-component="snippets-card"] button[aria-expanded]')
+const detailsCard = (page: Page) => page.locator('[data-ingot-component="snippets-card"]')
 
 // The action slot of a row, against the width its own buttons take: from the first button to the last one, and
 // nothing when the row renders no button. Below the medium window a slot reserves nothing beyond its buttons.
-const slotAgainstOwnButtons = (rows) => rows.evaluateAll(elements => elements.map((row) => {
-  const slot = row.querySelector('[data-row-actions]')
+const slotAgainstOwnButtons = (rows: Locator) => rows.evaluateAll(elements => elements.map((row) => {
+  const slot = row.querySelector('[data-row-actions]')!
   const buttons = [...slot.querySelectorAll('button, a')].map(button => button.getBoundingClientRect())
   const ownWidth = buttons.length === 0
     ? 0
     : Math.max(...buttons.map(box => box.right)) - Math.min(...buttons.map(box => box.left))
-  return { name: row.querySelector('a').textContent.trim(), slotWidth: slot.getBoundingClientRect().width, ownWidth }
+  return { name: row.querySelector('a')!.textContent.trim(), slotWidth: slot.getBoundingClientRect().width, ownWidth }
 }))
 
-const expectWithin = (box, container, what) => {
+const expectWithin = (box: Edges, container: Edges, what: string) => {
   expect(box.left, `${what}: left edge against the gutter, in px`).toBeGreaterThanOrEqual(container.left - 1)
   expect(box.right, `${what}: right edge against the gutter, in px`).toBeLessThanOrEqual(container.right + 1)
 }
@@ -223,8 +226,8 @@ test.describe('browse layout', () => {
       const rows = page.locator('[data-ingot-component="detailed-list-entry"]')
       await expect(rows, 'one row per uploaded file').toHaveCount(5)
       const sizeRights = await rows.evaluateAll(elements => elements.map((row) => {
-        const size = row.querySelector('.md-label-small')
-        return { name: row.querySelector('a').textContent.trim(), right: size.getBoundingClientRect().right }
+        const size = row.querySelector('.md-label-small')!
+        return { name: row.querySelector('a')!.textContent.trim(), right: size.getBoundingClientRect().right }
       }))
       const reference = sizeRights[0].right
       for (const { name, right } of sizeRights) {
