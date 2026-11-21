@@ -6,9 +6,16 @@ test('the breakpoint profile ramps the scenario and aborts on its p95 limit', ()
   const options = profileOptions({ LOADTEST_PROFILE: 'breakpoint' }, 'resolve', 150);
 
   assert.equal(options.scenarios?.resolve?.executor, 'ramping-arrival-rate');
-  assert.deepEqual(options.thresholds?.http_req_duration, [
-    { threshold: 'p(95)<150', abortOnFail: true, delayAbortEval: '30s' },
+  assert.deepEqual(options.thresholds?.['http_req_duration{phase:ramp}'], [
+    { threshold: 'p(95)<150', abortOnFail: true, delayAbortEval: '150s' },
   ]);
+});
+
+test('the breakpoint profile runs a warm-up scenario before the ramp', () => {
+  const options = profileOptions({ LOADTEST_PROFILE: 'breakpoint' }, 'resolve', 150);
+
+  assert.deepEqual(Object.keys(options.scenarios ?? {}), ['resolve-warmup', 'resolve']);
+  assert.equal(options.scenarios?.['resolve-warmup']?.executor, 'constant-arrival-rate');
 });
 
 test('the breakpoint profile takes its ceiling and ramp minutes from the script variables', () => {
@@ -79,7 +86,7 @@ test('a number variable that is not a number is refused with its name', () => {
 test('the breakpoint profile runs the whole ramp when LOADTEST_ABORT_ON_FAIL is false', () => {
   const options = profileOptions({ LOADTEST_PROFILE: 'breakpoint', LOADTEST_ABORT_ON_FAIL: 'false' }, 'resolve', 150);
 
-  assert.deepEqual(options.thresholds?.http_req_duration, [
-    { threshold: 'p(95)<150', abortOnFail: false, delayAbortEval: '30s' },
+  assert.deepEqual(options.thresholds?.['http_req_duration{phase:ramp}'], [
+    { threshold: 'p(95)<150', abortOnFail: false, delayAbortEval: '150s' },
   ]);
 });
