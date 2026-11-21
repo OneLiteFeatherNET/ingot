@@ -39,7 +39,10 @@ export function profileOptions(env: ScriptVariables, scenario: string, p95Ms: nu
         minutes: optionalNumber(env, 'LOADTEST_RAMP_MINUTES'),
         abortOnFail: env.LOADTEST_ABORT_ON_FAIL !== 'false',
       });
-      return { scenarios: { [scenario]: breakpoint.scenario }, thresholds: breakpoint.thresholds };
+      return {
+        scenarios: { [`${scenario}-warmup`]: breakpoint.warmup, [scenario]: breakpoint.scenario },
+        thresholds: breakpoint.thresholds,
+      };
     }
     case 'plateau': {
       const steps = plateauSteps(

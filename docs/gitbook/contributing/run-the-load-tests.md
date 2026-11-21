@@ -57,6 +57,8 @@ Pass `--reference` only for a published run. A reference run first counts the no
 ## The profiles
 
 - **Breakpoint** ramps the arrival rate up until a step fails or the configured ceiling is reached. It finds an upper bound for the rate. It stops early when a step fails, so it does not hold the cluster for long.
+
+  The ramp starts at 1 request per second after a warm-up of 2 minutes at 5 requests per second. k6 evaluates a threshold over every sample since the start of the run, so without the warm-up the slow first requests of a cold JVM would stay in the p95 and stop the ramp long before the server is saturated. The thresholds that stop the run count only the requests of the ramp, which carry the tag `phase=ramp`, while the warm-up requests carry `phase=warmup`. Read the break rate from the ramp start time, not from the start of the run: subtract the 2 minutes of warm-up from the time the run stopped before you work out the rate the ramp had reached. `breakpointRateAt` in `loadtest/profiles/breakpoint.ts` does this calculation.
 - **Plateau** holds steps at 60, 70, 80, 90 and 100 percent of the breakpoint. Each step is held for 15 minutes by default, and never for less than 10 minutes, because the first minutes include warm-up. A step passes only when every minute of its hold passes the rule below.
 - **Soak** runs the maximum for 2 hours by default, to find leaks and exhausted connection pools.
 
