@@ -17,7 +17,9 @@ package net.onelitefeather.ingot.cli
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.NullNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
@@ -34,6 +36,9 @@ class ConsoleSocketRefusedException(val code: String?, message: String) : Runtim
 
 /** The connection ended before the answer arrived. A command that was sent may or may not have run. */
 class ConsoleSocketLostException(message: String) : RuntimeException(message)
+
+/** The client stopped waiting for a result through [ConsoleSocket.stopWaiting]. The command may still run on the server. */
+class ConsoleWaitStoppedException : RuntimeException("Stopped waiting for the result")
 
 data class ConsoleWelcome(val protocol: Int, val boot: String?, val seq: Long?, val replay: String?)
 
@@ -66,10 +71,34 @@ class ConsoleSocket private constructor(
 
     private val ids = AtomicLong()
 
-    /** Runs [command]. A dangerous command asks [confirm] with the command and the reason, and runs only on true. */
+    /** The id of the `execute` whose result is awaited, or null between commands. */
+    @Volatile
+    private var awaited: String? = null
+
+    /**
+     * Runs [command]. A dangerous command asks [confirm] with the command and the reason, and runs only on true. A call of
+     * [stopWaiting] from another thread ends the wait with [ConsoleWaitStoppedException].
+     */
     fun execute(command: String, confirm: (command: String, reason: String) -> Boolean): ConsoleResult {
         val id = "e" + ids.incrementAndGet()
-        send(mapOf("type" to "execute", "id" to id, "command" to command))
+        awaited = id
+        try {
+            send(mapOf("type" to "execute", "id" to id, "command" to command))
+            return awaitResult(id, confirm)
+        } finally {
+            awaited = null
+        }
+    }
+
+    /**
+     * Ends the wait of [execute] on the client only. Version 1 has no cancel frame, so the command goes on on the server,
+     * and its late answers are skipped by the next wait. Does nothing between commands.
+     */
+    fun stopWaiting() {
+        awaited?.let { answers.add(StopWaiting(it)) }
+    }
+
+    private fun awaitResult(id: String, confirm: (command: String, reason: String) -> Boolean): ConsoleResult {
         while (true) {
             val answer = awaitAnswer(id, null)
             when (answer.text("type")) {
@@ -119,6 +148,10 @@ class ConsoleSocket private constructor(
                 answers.add(CLOSED)
                 throw ConsoleSocketLostException("The connection to the server was lost")
             }
+            if (answer is StopWaiting) {
+                if (answer.id == id) throw ConsoleWaitStoppedException()
+                continue
+            }
             val answerId = answer.text("id")
             if (answerId == null || answerId == id) return answer
         }
@@ -130,6 +163,9 @@ class ConsoleSocket private constructor(
 
         /** Stands in the answer queue once the connection has ended, so that every wait ends too. */
         private val CLOSED: JsonNode = NullNode.instance
+
+        /** Stands in the answer queue when the client stops waiting for the `execute` with [id]. A stale one is skipped. */
+        private class StopWaiting(val id: String) : ObjectNode(JsonNodeFactory.instance)
 
         /**
          * Connects to `<baseUrl>/api/console/sock`, sends the hello and waits for the welcome. A refusal throws
