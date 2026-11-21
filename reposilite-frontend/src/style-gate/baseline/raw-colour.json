@@ -10,11 +10,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/dialog.ts",
-    "match": "color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)",
-    "count": 1
-  },
-  {
     "file": "src/styles/md3/shape-elevation-motion.css",
     "match": "rgb(0 0 0 / 0.15)",
     "count": 1
