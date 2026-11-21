@@ -23,26 +23,26 @@ allowlist if they are plugin-facing.
 
 ## 3. Capability and write rules (red, then green)
 
-- [ ] 3.1 `test(search)`: failing tests with a fake backend: a backend without `ATTRIBUTES` drops the set and counts
+- [x] 3.1 `test(search)`: failing tests with a fake backend: a backend without `ATTRIBUTES` drops the set and counts
   `Skipped("unsupported-backend")`; the write rules of D4 hold for a changed file, a failed enricher, a touch, a reorigin and each delete
   path. Verify: they fail.
-- [ ] 3.2 `feat(search)`: `SearchCapability` and the default `capabilities` member on `ArtifactSearchBackend`, the boundary drop and the
+- [x] 3.2 `feat(search)`: `SearchCapability` and the default `capabilities` member on `ArtifactSearchBackend`, the boundary drop and the
   write rules in `OutboxWorker` and `RebuildService`. Verify: the tests of 3.1 pass and the existing outbox and rebuild tests pass with
   unchanged assertions.
 
 ## 4. Rebuild by enricher version (red, then green)
 
-- [ ] 4.1 `test(search)`: failing tests of D5: an unchanged row with the stored version of every matching enricher is not enriched; an
+- [x] 4.1 `test(search)`: failing tests of D5: an unchanged row with the stored version of every matching enricher is not enriched; an
   unchanged row with no stored version, or another one, is enriched with trigger `REBUILD`; a held row is not enriched. Verify: they
   fail.
-- [ ] 4.2 `feat(search)`: extend `existing` results with the stored `core.enricher.*` keys and the condition in `rowOf`. Verify: the
+- [x] 4.2 `feat(search)`: extend `existing` results with the stored `core.enricher.*` keys and the condition in `rowOf`. Verify: the
   tests of 4.1 pass.
 
 ## 5. Database backend (red, then green)
 
-- [ ] 5.1 `test(search)`: failing contract tests in `src/testFixtures` for the database backend: attributes survive a touch, a reorigin
+- [x] 5.1 `test(search)`: failing contract tests in `src/testFixtures` for the database backend: attributes survive a touch, a reorigin
   and an upsert of the same row only when D4 says so; a delete path removes the child rows in the same transaction. Verify: they fail.
-- [ ] 5.2 `feat(search)`: the table `search_attribute` in `SearchTables.kt`, created by the existing schema setup, and the writes and
+- [x] 5.2 `feat(search)`: the table `search_attribute` in `SearchTables.kt`, created by the existing schema setup, and the writes and
   deletes of D6 in one transaction. Verify: the tests of 5.1 pass and the database contract tests of the earlier changes pass unedited.
 
 ## 6. Elasticsearch and OpenSearch (pull requests of their own, one per module)
@@ -51,11 +51,11 @@ allowlist if they are plugin-facing.
   document field and the declared capability, with the contract tests of group 3 to 5 run against the module. Verify:
   `heavy ./gradlew :elasticsearch-plugin:test --max-workers=2` passes; the integration test uses a Testcontainers instance started
   through `heavy` and removed by its label.
-- [ ] 6.2 The same for `reposilite-plugins/opensearch-plugin`.
+- [x] 6.2 The same for `reposilite-plugins/opensearch-plugin`.
 
 ## 7. Meilisearch (pull request of its own)
 
-- [ ] 7.1 `feat(search)` in `reposilite-plugins/meilisearch-plugin`: the `attributes` document object and the declared capability without
+- [x] 7.1 `feat(search)` in `reposilite-plugins/meilisearch-plugin`: the `attributes` document object and the declared capability without
   filterable settings (those come with `add-search-attribute-facets`). Verify: the contract tests pass against the module.
 
 ## 8. Documentation (pull request of its own)
