@@ -37,6 +37,8 @@ export interface BreakpointInput {
   readonly ceiling?: number;
   /** How long the ramp takes to reach the ceiling, in minutes. */
   readonly minutes?: number;
+  /** Stops the run at the first broken threshold. Off runs the whole ramp, as the first measured run does. */
+  readonly abortOnFail?: boolean;
 }
 
 export interface BreakpointProfile {
@@ -71,7 +73,7 @@ export function breakpointScenario(input: BreakpointInput): BreakpointProfile {
       http_req_duration: [
         {
           threshold: `p(95)<${input.p95Ms}`,
-          abortOnFail: true,
+          abortOnFail: input.abortOnFail ?? true,
           delayAbortEval: BREAKPOINT_DELAY_ABORT_EVAL,
         },
       ],

@@ -22,15 +22,26 @@ import {
   LOADTEST_NODE_LABEL,
   assertLoadNamespace,
 } from '../lib/config.ts';
-import { runnerEnvironment, type RunIdentity } from './environment.ts';
+import { runnerEnvironment, type RunIdentity, type RunTargets } from './environment.ts';
 
-export interface TestRunInput extends RunIdentity {
+export interface TestRunInput extends RunIdentity, RunTargets {
   readonly namespace: string;
+  /** Only a reference run is pinned to the labelled node pool. Any other run may share nodes. */
+  readonly reference: boolean;
+  /** The Secret of the run with the keys LOADTEST_USER and LOADTEST_PASSWORD. */
+  readonly credentialsSecret: string;
   readonly parallelism: number;
   /** The ConfigMap that holds the `k6 archive` file. */
   readonly configMap: string;
   readonly archiveFile: string;
 }
+
+export type RunnerVariable =
+  | { readonly name: string; readonly value: string }
+  | {
+      readonly name: string;
+      readonly valueFrom: { readonly secretKeyRef: { readonly name: string; readonly key: string } };
+    };
 
 export interface TestRunManifest {
   readonly apiVersion: 'k6.io/v1alpha1';
@@ -40,12 +51,11 @@ export interface TestRunManifest {
     readonly parallelism: number;
     readonly script: { readonly configMap: { readonly name: string; readonly file: string } };
     readonly arguments: string;
-    readonly cleanup: 'post';
     readonly runner: {
       readonly image: string;
-      readonly env: readonly { readonly name: string; readonly value: string }[];
-      readonly nodeSelector: Readonly<Record<string, string>>;
-      readonly tolerations: readonly { readonly key: string; readonly operator: 'Exists'; readonly effect: 'NoSchedule' }[];
+      readonly env: readonly RunnerVariable[];
+      readonly nodeSelector?: Readonly<Record<string, string>>;
+      readonly tolerations?: readonly { readonly key: string; readonly operator: 'Exists'; readonly effect: 'NoSchedule' }[];
       readonly affinity: {
         readonly podAntiAffinity: {
           readonly requiredDuringSchedulingIgnoredDuringExecution: readonly {
@@ -60,7 +70,17 @@ export interface TestRunManifest {
 
 export function buildTestRun(input: TestRunInput): TestRunManifest {
   assertLoadNamespace(input.namespace);
-  const environment = runnerEnvironment(input);
+  const environment = runnerEnvironment(input, input);
+  const credential = (name: string): RunnerVariable => ({
+    name,
+    valueFrom: { secretKeyRef: { name: input.credentialsSecret, key: name } },
+  });
+  const placement = input.reference
+    ? {
+        nodeSelector: { [LOADTEST_NODE_LABEL]: 'true' },
+        tolerations: [{ key: LOADTEST_NODE_LABEL, operator: 'Exists' as const, effect: 'NoSchedule' as const }],
+      }
+    : {};
   return {
     apiVersion: 'k6.io/v1alpha1',
     kind: 'TestRun',
@@ -69,12 +89,10 @@ export function buildTestRun(input: TestRunInput): TestRunManifest {
       parallelism: input.parallelism,
       script: { configMap: { name: input.configMap, file: input.archiveFile } },
       arguments: environment.arguments.join(' '),
-      cleanup: 'post',
       runner: {
         image: K6_IMAGE,
-        env: environment.variables,
-        nodeSelector: { [LOADTEST_NODE_LABEL]: 'true' },
-        tolerations: [{ key: LOADTEST_NODE_LABEL, operator: 'Exists', effect: 'NoSchedule' }],
+        env: [...environment.variables, credential('LOADTEST_USER'), credential('LOADTEST_PASSWORD')],
+        ...placement,
         affinity: {
           podAntiAffinity: {
             requiredDuringSchedulingIgnoredDuringExecution: [

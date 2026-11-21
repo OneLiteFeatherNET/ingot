@@ -21,8 +21,13 @@ import http from 'k6/http';
 import { statusIn } from '../lib/checks.ts';
 import { RESOLVE_FIXTURE_COORDINATE, type Coordinate } from './resolve-plan.ts';
 import { MISS_EXPECTED_STATUSES, missPath } from './remaining-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'resolve-miss', thresholdFor('resolve-miss').p95Ms);
 
 export function missIteration(coordinate: Coordinate): void {
   const response = http.get(`${BASE_URL}${missPath(coordinate)}`, {

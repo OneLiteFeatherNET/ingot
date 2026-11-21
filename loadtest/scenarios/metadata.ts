@@ -21,8 +21,13 @@ import { statusIs } from '../lib/checks.ts';
 import { RESOLVE_REPOSITORY, type Coordinate } from './resolve-plan.ts';
 import { seedResolveFixture } from './resolve.ts';
 import { METADATA_EXPECTED_STATUSES, metadataPath } from './remaining-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'metadata', thresholdFor('metadata').p95Ms);
 
 export function metadataIteration(coordinate: Coordinate): void {
   const response = http.get(`${BASE_URL}${metadataPath(RESOLVE_REPOSITORY, coordinate)}`, {

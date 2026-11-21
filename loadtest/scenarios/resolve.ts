@@ -30,8 +30,14 @@ import {
   resolveFixture,
   resolveRequests,
 } from './resolve-plan.ts';
+import { thresholdFor } from '../lib/thresholds.ts';
+import { profileOptions } from '../profiles/options.ts';
 
 const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:8080';
+
+/** The executor of the profile the runner chose, with the p95 limit of this scenario. */
+export const options = profileOptions(__ENV, 'resolve', thresholdFor('resolve').p95Ms);
+
 const FIXTURE_SEED = 42;
 // 200 for a new fixture. 409 means an earlier run with the same seed left identical bytes, and a release repository
 // refuses a redeploy, so the fixture is already in place.
