@@ -20,6 +20,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import TeamLegacyGrants from './TeamLegacyGrants.vue'
 import MdCard from '../md/MdCard.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
 import type { TeamGrant } from './accessTeams'
 
 const GRANTS = (): TeamGrant[] => [
@@ -88,6 +89,35 @@ describe('TeamLegacyGrants', () => {
     expect(cards, 'the grants sit on one card primitive, not on a hand-built container').toHaveLength(1)
     expect(cards[0].props('variant'), 'the tinted panel is the low card').toBe('low')
     expect(cards[0].find('[data-test="legacy-team-grants"]').exists(), 'the collapsible grants are inside the card').toBe(true)
+  })
+
+  it('folds the grants in the shared disclosure inside the card', () => {
+    mountGrants()
+
+    const card = wrapper!.findAllComponents(MdCard)[0]
+    const disclosures = card.findAllComponents(MdDisclosure)
+
+    expect(disclosures, 'the grants fold in one disclosure primitive, not in a hand-built details element').toHaveLength(1)
+    expect(disclosures[0].props('open'), 'the disclosure starts collapsed').toBe(false)
+    expect(disclosures[0].find('summary').text(), 'the disclosure summary names the grants').toBe('Legacy grants (2)')
+  })
+
+  it('keeps the grants element around the disclosure', () => {
+    mountGrants()
+
+    const grants = wrapper!.find('[data-test="legacy-team-grants"]')
+
+    expect(grants.exists(), 'the grants element is still rendered').toBe(true)
+    expect(grants.findAllComponents(MdDisclosure), 'the grants element holds the shared disclosure').toHaveLength(1)
+  })
+
+  it('labels the grant list with the disclosure summary', () => {
+    mountGrants()
+
+    const labelledBy = wrapper!.find('ul').attributes('aria-labelledby')
+
+    expect(labelledBy, 'the grant list names its label').toBeTruthy()
+    expect(wrapper!.find(`summary [id="${labelledBy}"]`).text(), 'the label is the summary text').toBe('Legacy grants (2)')
   })
 
   it('shows nothing for a team without grants', () => {
