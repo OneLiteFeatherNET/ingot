@@ -15,6 +15,8 @@
  */
 
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import type { components } from '../src/types/api'
 import { siteUrl } from './support/api'
 import { signInAsAdmin } from './support/session'
 
@@ -67,16 +69,16 @@ const LIST = {
 }
 
 // The manifest of the server with the page of this test added, so the real plugins of the run stay in it.
-const addPage = async (page) => {
+const addPage = async (page: Page) => {
   await page.route('**/api/frontend/plugin-ui', async (route) => {
     const response = await route.fetch()
-    const manifest = await response.json()
+    const manifest = await response.json() as components['schemas']['PluginUiManifest']
     await route.fulfill({ response, json: { ...manifest, pages: [...(manifest.pages ?? []), PAGE] } })
   })
   await page.route(`**${SOURCE}*`, route => route.fulfill({ json: LIST }))
 }
 
-const openPage = async (page) => {
+const openPage = async (page: Page) => {
   await addPage(page)
   await signInAsAdmin(page)
   await page.goto(siteUrl(`/settings/plugins/${PLUGIN}/${PAGE_ID}`))
@@ -84,8 +86,8 @@ const openPage = async (page) => {
   await expect(page.getByText('Gradle (Kotlin)'), 'code label').toBeVisible()
 }
 
-const pluginPage = (page) => page.locator('[data-ingot-component="plugin-page"]')
-const codeBlock = (page) => page.locator('[data-ingot-component="plugin-block"][data-ingot-block="code"]')
+const pluginPage = (page: Page) => page.locator('[data-ingot-component="plugin-page"]')
+const codeBlock = (page: Page) => page.locator('[data-ingot-component="plugin-block"][data-ingot-block="code"]')
 
 test.describe('plugin browse blocks', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] })
@@ -101,16 +103,16 @@ test.describe('plugin browse blocks', () => {
       // then: neither the plugin page, nor an element around it, nor a block inside it is wider than its own box, so
       // nothing scrolls sideways, whichever element of the layout would hold the scroll
       const overflowing = await pluginPage(page).evaluate((root) => {
-        const around = []
-        for (let element = root; element; element = element.parentElement) around.push(element)
+        const around: Element[] = []
+        for (let element: Element | null = root; element; element = element.parentElement) around.push(element)
         return [...around, ...root.querySelectorAll('*')]
           .filter(element => element.scrollWidth > element.clientWidth + 1 && element.clientWidth > 0)
           .map(element => `${element.tagName.toLowerCase()} (${element.scrollWidth} > ${element.clientWidth})`)
       })
       expect(overflowing, `elements wider than their box at ${width} px`).toEqual([])
       const box = await codeBlock(page).locator('pre').boundingBox()
-      expect(box.x, `left edge of the code box at ${width} px`).toBeGreaterThanOrEqual(0)
-      expect(box.x + box.width, `right edge of the code box at ${width} px`).toBeLessThanOrEqual(width)
+      expect(box!.x, `left edge of the code box at ${width} px`).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width, `right edge of the code box at ${width} px`).toBeLessThanOrEqual(width)
     })
   }
 

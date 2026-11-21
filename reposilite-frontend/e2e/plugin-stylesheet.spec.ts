@@ -17,6 +17,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import type { components } from '../src/types/api'
 import { siteUrl } from './support/api'
 import { buildStylePlugin, PLUGIN_NAME } from './support/plugin-fixture'
 import { resolveJar, startServer } from './support/server'
@@ -40,11 +42,11 @@ const expectedPath = () => {
 const secret = () => randomBytes(24).toString('base64url')
 
 // The brand of the navigation rail, which the fixture restyles. It is found by its accessible name.
-const railBrand = (page) => page.getByRole('link', { name: /, start page$/ })
+const railBrand = (page: Page) => page.getByRole('link', { name: /, start page$/ })
 
-const manifestOf = (page) => page.evaluate(async () => (await fetch('/api/frontend/plugin-ui', { credentials: 'include' })).json())
+const manifestOf = (page: Page) => page.evaluate(async () => (await fetch('/api/frontend/plugin-ui', { credentials: 'include' })).json() as Promise<components['schemas']['PluginUiManifest']>)
 
-const pluginLinksOf = (page) => page.evaluate(() => [...document.head.children]
+const pluginLinksOf = (page: Page) => page.evaluate(() => [...document.head.children]
   .filter(element => element.hasAttribute('data-ingot-plugin-style'))
   .map(element => element.getAttribute('href')))
 
@@ -70,7 +72,7 @@ test.describe('plugin stylesheet on the shared server', () => {
     expect(response.status(), 'status').toBe(200)
     expect(response.headers()['content-type'], 'content type').toBe('text/css; charset=utf-8')
     expect(response.headers()['cache-control'], 'cache policy').toBe('public, max-age=31536000, immutable')
-    expect(response.headers().etag, 'ETag').toBe(`"${expectedPath().split('/').pop().slice(0, 16)}"`)
+    expect(response.headers().etag, 'ETag').toBe(`"${expectedPath().split('/').pop()!.slice(0, 16)}"`)
     expect(await response.text(), 'body').toBe(WRAPPED)
   })
 
@@ -86,7 +88,7 @@ test.describe('plugin stylesheet on the shared server', () => {
       plugin: element.getAttribute('data-ingot-plugin-style'),
       href: element.getAttribute('href'),
     })))
-    const last = head.at(-1)
+    const last = head.at(-1)!
     expect(last.tag, 'last element').toBe('LINK')
     expect(last.rel, 'rel').toBe('stylesheet')
     expect(last.plugin, 'plugin attribute').toBe(PLUGIN_NAME)
@@ -124,8 +126,8 @@ test.describe('plugin stylesheet on the shared server', () => {
 
 test.describe('plugin stylesheet with INGOT_LOCAL_PLUGINSTYLES=false', () => {
   const admin = { username: 'e2e-off-operator', password: secret() }
-  let server
-  let stylePlugin
+  let server: Awaited<ReturnType<typeof startServer>>
+  let stylePlugin: ReturnType<typeof buildStylePlugin>
 
   test.beforeAll(async () => {
     stylePlugin = buildStylePlugin(resolveJar())
