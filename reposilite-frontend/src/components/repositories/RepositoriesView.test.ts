@@ -111,12 +111,12 @@ describe('the repositories table', () => {
     expect(rowOf('releases').find('th').attributes('scope'), 'the name cell is a row header').toBe('row')
   })
 
-  it('sets aria-sort on the sorted column only, and flips it on the second activation', async () => {
+  it('sets aria-sort to a direction on the sorted column only, and flips it on the second activation', async () => {
     await mountPage()
 
     await sortButton('Name').trigger('click')
     expect(headerOf('Name').attributes('aria-sort'), 'the sorted column says ascending').toBe('ascending')
-    expect(headerOf('Type').attributes('aria-sort'), 'an unsorted column carries no aria-sort').toBeUndefined()
+    expect(headerOf('Type').attributes('aria-sort'), 'an unsorted column says none').toBe('none')
 
     await sortButton('Name').trigger('click')
     expect(headerOf('Name').attributes('aria-sort'), 'the second activation sorts descending').toBe('descending')
@@ -275,7 +275,7 @@ describe('the repositories table', () => {
     for (const cell of cells) {
       expect(cell.classes(), `the cell "${cell.text()}" is centred vertically`).toContain('align-middle')
       expect(cell.classes(), `the cell "${cell.text()}" is not top-aligned`).not.toContain('align-top')
-      expect(cell.classes(), `the cell "${cell.text()}" has the row padding`).toEqual(expect.arrayContaining(['px-3', 'py-3']))
+      expect(cell.classes(), `the cell "${cell.text()}" has the shared cell padding`).toEqual(expect.arrayContaining(['px-4', 'py-3']))
     }
   })
 
@@ -317,9 +317,9 @@ describe('the repositories table', () => {
     await mountPage()
 
     const hidden = (label: string) => headerOf(label).classes()
-    expect(hidden('Storage'), 'Storage is the first to go, shown from 2560 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[2560px]:table-cell']))
-    expect(hidden('Version policy'), 'Version policy is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
-    expect(hidden('Visibility'), 'Visibility is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
+    expect(hidden('Storage'), 'Storage is shown from the xlarge window').toEqual(expect.arrayContaining(['hidden', 'xlarge:table-cell']))
+    expect(hidden('Version policy'), 'Version policy is shown from the xlarge window').toEqual(expect.arrayContaining(['hidden', 'xlarge:table-cell']))
+    expect(hidden('Visibility'), 'Visibility is shown from the xlarge window').toEqual(expect.arrayContaining(['hidden', 'xlarge:table-cell']))
     expect(hidden('Write policy'), 'Write policy is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'large:table-cell']))
     expect(hidden('Address'), 'Address is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'large:table-cell']))
     expect(hidden('Name'), 'Name is always shown').not.toContain('hidden')

@@ -185,7 +185,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `rail-brand` | experimental | `src/components/header/RailBrand.vue` | none | none | none |
 | `read-only-toggle` | experimental | `src/components/dashboard/ReadOnlyToggle.vue` | none | `error` | none |
 | `rebuild-index-dialog` | experimental | `src/components/maintenance/RebuildIndexDialog.vue` | none | none | none |
-| `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `header`, `row`, `cell-name`, `empty` | `empty` | none |
+| `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `cell-name`, `empty` | `empty` | none |
 | `repositories-view` | experimental | `src/components/repositories/RepositoriesView.vue` | none | none | none |
 | `repository-access-card` | stable | `src/components/settings/RepositoryAccessCard.vue` | none | `loading` | none |
 | `repository-detail` | experimental | `src/components/repositories/RepositoryDetail.vue` | `header`, `tabs` | `empty`, `loading` | none |

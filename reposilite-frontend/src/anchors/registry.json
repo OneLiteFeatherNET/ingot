@@ -1342,8 +1342,6 @@
       "file": "src/components/repositories/RepositoriesTable.vue",
       "stability": "experimental",
       "parts": [
-        "header",
-        "row",
         "cell-name",
         "empty"
       ],
