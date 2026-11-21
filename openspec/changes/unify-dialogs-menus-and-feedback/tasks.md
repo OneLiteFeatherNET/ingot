@@ -85,7 +85,7 @@ here.
   (its fixed id is at line 98); replace the inline errors (`AddMemberDialog.vue:130` and `:178`, `ConfirmActionDialog.vue:124`,
   `NewMachineDialog.vue:141`, `NewTeamDialog.vue:137`) with `MdAlert`. Delete `identity/DialogShell.vue` in this commit, when
   its last importer is migrated, and leave `dialog-shell` on `MdDialog`.
-- [ ] 5.3 `fix(ui)`: move `PrincipalActionsMenu.vue` onto `MdOverflowMenu` (the disabled and two-line items, the focus ring of the
+- [x] 5.3 `fix(ui)`: move `PrincipalActionsMenu.vue` onto `MdOverflowMenu` (the disabled and two-line items, the focus ring of the
   destructive item without `!text-error`, `PrincipalActionsMenu.vue:201` and `:266`); move `check/ComboboxField.vue:166`,
   `nodes/NodeAddField.vue` (lines 52 to 217, the duplicated keyboard logic) and `TeamParentsCard.vue:317-360` onto `MdListbox` and
   `useCombobox`; move `nodes/NodeTemplateMenu.vue:206-218` from the native `datalist` to `MdListbox`; update
@@ -121,13 +121,13 @@ here.
   `SettingsView.vue:685` and move its rules into utilities or tokens. Verify: the settings tests pass with state assertions, and
   the style gate reports no `<style>` block in `SettingsView.vue`.
 
-- [ ] 5.8 `fix(ui)`: migrate `PublicRepositoriesDialog.vue` (65 to 73) and `ReadOnlyToggle.vue` (155 to 161, the error at 143) to
+- [x] 5.8 `fix(ui)`: migrate `PublicRepositoriesDialog.vue` (65 to 73) and `ReadOnlyToggle.vue` (155 to 161, the error at 143) to
   `MdDialog`; migrate `FailuresSheet.vue` (130 to 142, the `min-[840px]:w-[28rem]` width) to `MdSideSheet` with the `end` side; the
   Retry at `FailuresSheet.vue:173` becomes a tonal `MdButton` in `MdStatePanel`, and the empty state at `:189` uses `MdStatePanel`.
   Replace `ChartCard.vue` Retry (116), empty state (136) and skeleton (`h-[220px]` at lines 76 and 82) with `MdStatePanel` and
   `MdSkeleton`. Replace `GettingStartedCard.vue:144` with `MdAlert`. In `InstanceStatusPanel.vue`, the banners (220 to 269) become
   `MdAlert` and the skeleton (246 to 254) becomes `MdSkeleton`. Verify: 4.5 passes.
-- [ ] 5.9 `fix(ui)`: the state panels of the other dashboard-adjacent views, `console/ConsoleView.vue:231` (Retry) and `:308`
+- [x] 5.9 `fix(ui)`: the state panels of the other dashboard-adjacent views, `console/ConsoleView.vue:231` (Retry) and `:308`
   (empty), `overview/RepositoryOverview.vue:351` (Retry), `search/SearchView.vue:431` and `:451` (Retry), `:467` (empty), and the
   skeleton of `:422` (`h-[88px] animate-pulse`). Verify: the tests of these views pass with state assertions.
 
