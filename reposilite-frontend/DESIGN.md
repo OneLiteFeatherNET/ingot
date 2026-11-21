@@ -952,6 +952,17 @@ The chrome that the field primitives share: the leading and trailing slots at on
 - Do: bind `aria-describedby` and `aria-invalid` on the input from the slot props.
 - Don't: give the shell a box of its own. Its root takes no box, so the wrapping primitive keeps its layout.
 
+### MdFieldset
+
+A titled group of form controls, such as the radio buttons of one choice or the checkboxes of one list. The title is the legend of a native `fieldset`, so assistive technology names the group by it.
+
+- Props: `legend` (required).
+- Slots: `default` (the controls).
+- Events: none.
+- Anchor: `md-fieldset`.
+- Do: set the gap between the controls with a class on the fieldset, such as `gap-2` for a list of checkboxes.
+- Don't: draw a group title as a `span`; a group of controls takes its title from the legend.
+
 ### MdIcon
 
 One icon of the dashboard, drawn from a path or from a glyph of the registry in `icons.js`. It is decorative unless it has a label.

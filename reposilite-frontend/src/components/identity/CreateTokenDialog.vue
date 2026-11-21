@@ -21,6 +21,7 @@ import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
@@ -226,10 +227,7 @@ const submit = async () => {
         />
       </div>
 
-      <fieldset class="flex flex-col border-0 p-0">
-        <legend class="md-title-small mb-2 text-on-surface-variant">
-          Access
-        </legend>
+      <MdFieldset legend="Access">
         <div
           v-for="option in ACCESS_OPTIONS"
           :key="option.key"
@@ -252,10 +250,9 @@ const submit = async () => {
             {{ option.help }}
           </p>
         </div>
-      </fieldset>
+      </MdFieldset>
 
-      <div class="flex flex-col">
-        <span class="md-title-small mb-2 text-on-surface-variant">Expires</span>
+      <MdFieldset legend="Expires">
         <SegmentedControl
           label="Expiry"
           aria-describedby="create-token-expiry-note"
@@ -290,7 +287,7 @@ const submit = async () => {
         >
           {{ expiryNote }}
         </p>
-      </div>
+      </MdFieldset>
 
       <MdTextField
         id="create-token-description"
@@ -300,13 +297,11 @@ const submit = async () => {
         autocomplete="off"
       />
 
-      <fieldset
-        class="flex flex-col gap-4 border-0 p-0"
+      <MdFieldset
+        legend="Advanced: limit to artifacts"
+        class="gap-4"
         data-test="artifact-limit"
       >
-        <legend class="md-title-small mb-2 text-on-surface-variant">
-          Advanced: limit to artifacts
-        </legend>
         <MdCheckbox
           id="create-token-limit"
           v-model="limitOn"
@@ -352,10 +347,10 @@ const submit = async () => {
             spellcheck="false"
             supporting-text="Leave empty for every artifact of the groupId"
           />
-          <fieldset class="flex flex-col gap-2 border-0 p-0">
-            <legend class="md-title-small mb-2 text-on-surface-variant">
-              Actions
-            </legend>
+          <MdFieldset
+            legend="Actions"
+            class="gap-2"
+          >
             <MdCheckbox
               v-for="word in ARTIFACT_ACTIONS"
               :id="`create-token-action-${word}`"
@@ -365,7 +360,7 @@ const submit = async () => {
             >
               {{ word.charAt(0).toUpperCase() + word.slice(1) }}
             </MdCheckbox>
-          </fieldset>
+          </MdFieldset>
           <MdAlert
             v-if="artifactIssues.length > 0"
             tone="error"
@@ -382,7 +377,7 @@ const submit = async () => {
             </ul>
           </MdAlert>
         </template>
-      </fieldset>
+      </MdFieldset>
 
       <MdAlert
         v-if="failure"
