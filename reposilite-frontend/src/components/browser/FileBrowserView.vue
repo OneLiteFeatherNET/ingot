@@ -207,9 +207,9 @@ const toggleCompactMode = () => {
     card stacks above the listing, folded or open alike. From lg the card is always the sidebar on the right, in the
     same column whether it is folded or not, so the listing keeps its width and the toggle keeps its place.
   -->
-  <MdPage class="mb-12">
+  <MdPage spaced>
     <div
-      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
       data-ingot-component="file-browser-view"
     >
       <div class="min-w-0 lg:col-start-2 lg:row-start-1">

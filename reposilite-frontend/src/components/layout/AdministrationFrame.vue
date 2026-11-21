@@ -145,7 +145,10 @@ const sheetOpen = ref(false)
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >
-    <MdPage class="pb-12 pt-7 large:grid large:grid-cols-(--grid-md-side-nav) large:grid-rows-(--grid-md-administration-rows) large:gap-x-10">
+    <MdPage
+      spaced
+      class="large:grid large:grid-cols-(--grid-md-side-nav) large:grid-rows-(--grid-md-administration-rows) large:gap-x-10"
+    >
       <div class="flex flex-col gap-4 pb-6 large:col-start-2 large:row-start-1">
         <!-- The back arrow is alone in its row. Its 48 pixel target is pulled 12 pixels into the gutter, so the glyph starts on the title edge. -->
         <div
