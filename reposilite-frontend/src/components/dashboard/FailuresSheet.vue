@@ -23,6 +23,7 @@ import type { components } from '../../types/api'
 import { copyToClipboard, selectText } from '../card/copySnippet'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
@@ -181,10 +182,12 @@ const clear = () =>
         v-else
         class="m-0 flex list-none flex-col gap-3 p-0"
       >
-        <li
+        <MdCard
           v-for="failure in failures"
           :key="failure.id"
-          class="rounded-corner-medium bg-surface-container-high p-3"
+          as="li"
+          variant="low"
+          tone="high"
         >
           <div class="flex flex-wrap items-baseline gap-x-2 md-body-small text-on-surface-variant">
             <time
@@ -234,7 +237,7 @@ const clear = () =>
               class="max-h-72 overflow-auto rounded-corner-small bg-surface-container-highest p-3 font-mono text-xs leading-5 whitespace-pre text-on-surface"
             >{{ failure.stacktrace }}</pre>
           </div>
-        </li>
+        </MdCard>
       </ol>
 
       <div class="mt-auto flex justify-end border-t border-outline-variant pt-3">
