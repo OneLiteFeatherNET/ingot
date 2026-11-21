@@ -12,6 +12,11 @@ objectStorage:
   existingSecret: ingot-loadtest-s3
 clusterBus:
   url: nats://nats.ingot-loadtest.svc.cluster.local:4222
+# The three replicas cannot share the chart's ReadWriteOnce claim: on a storage class that attaches a volume to one node,
+# the replicas on other nodes never start. The repositories live in the bucket and the settings in PostgreSQL and the
+# shared configuration, so each replica keeps its data directory in an emptyDir, as the scalable overlays do.
+persistence:
+  enabled: false
 # The heap is a share of the container limit of the size the runner applies. This replaces the fixed chart default heap, which
 # would cap every size at the same heap.
 # The runner enables the shared configuration of this overlay, and the chart then sets INGOT_OPTS in env, which wins over
