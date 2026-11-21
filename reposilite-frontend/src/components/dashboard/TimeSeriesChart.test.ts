@@ -20,11 +20,15 @@ import { mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import TimeSeriesChart from './TimeSeriesChart.vue'
 import type { Series } from './seriesSummary'
+import { typescale } from '../md/typescale'
 
 // The option the chart is given. Only the fields the tests read are typed.
 type ChartOption = {
   animation: boolean
-  legend: { show: boolean }
+  legend: { show: boolean, textStyle?: { fontSize: number } }
+  tooltip: { textStyle: { fontSize: number } }
+  xAxis: { axisLabel: { fontSize: number } }
+  yAxis: { axisLabel: { fontSize: number } }
   series: { name: string }[]
 }
 
@@ -107,5 +111,27 @@ describe('TimeSeriesChart legend', () => {
 
     const option = chart.setOption.mock.calls[0][0]
     expect(option.legend.show, 'one series needs no legend').toBe(false)
+  })
+})
+
+describe('TimeSeriesChart text', () => {
+  const instances: Series[] = [
+    { name: 'ingot-0', data: [[Date.UTC(2026, 0, 1), 100]] },
+    { name: 'ingot-1', data: [[Date.UTC(2026, 0, 1), 150]] }
+  ]
+
+  it('sizes the axis labels and the legend at label small of the type scale', () => {
+    wrapper = mount(TimeSeriesChart, { props: { series: instances } })
+
+    const option = chart.setOption.mock.calls[0][0]
+    const sizes = [option.xAxis.axisLabel.fontSize, option.yAxis.axisLabel.fontSize, option.legend.textStyle?.fontSize]
+    expect(sizes, 'the axis labels and the legend use label small').toEqual(Array(3).fill(typescale.labelSmall.size))
+  })
+
+  it('sizes the tooltip text at label medium of the type scale', () => {
+    wrapper = mount(TimeSeriesChart, { props: { series } })
+
+    const option = chart.setOption.mock.calls[0][0]
+    expect(option.tooltip.textStyle.fontSize, 'the tooltip uses label medium').toBe(typescale.labelMedium.size)
   })
 })
