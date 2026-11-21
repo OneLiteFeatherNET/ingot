@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 // The runner entry point: `npm run load -- --topology <t> --profile <p> --scenario <s> [--size <N|T|S|M|L>] [--reference] [--parallelism n]`.
-// The Ingot image tag is read from INGOT_IMAGE_TAG, the remote write endpoint of the metrics store from INGOT_LOADTEST_RW_URL. The namespace is fixed to the load test namespace; the TestRun and
+// The Ingot image tag is read from INGOT_IMAGE_TAG, the remote write endpoint of the metrics store from INGOT_LOADTEST_RW_URL. A run with --size
+// writes its result record, which also needs INGOT_LOADTEST_CPU_MODEL, and reads its outcome from the query API of the metrics store (see
+// measure.ts, INGOT_LOADTEST_QUERY_URL). The namespace is fixed to the load test namespace; the TestRun and
 // the steps refuse any other one before a kubectl call. The effects below call kubectl, helm and docker (for k6 archive).
 
 import { execFile } from 'node:child_process';
@@ -24,8 +26,18 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { INGOT_RELEASE, K6_IMAGE, LOAD_NAMESPACE, parseRunOptions } from '../lib/config.ts';
+import {
+  INGOT_RELEASE,
+  K6_IMAGE,
+  K6_VERSION,
+  LOADTEST_NODE_LABEL,
+  LOAD_NAMESPACE,
+  PLATEAU_DEFAULT_HOLD_MINUTES,
+  parseRunOptions,
+} from '../lib/config.ts';
 import { remoteWriteUrl, scriptArguments, scriptVariables } from './environment.ts';
+import { measureOutcome, metricsQueryUrl, queryRequestUrl } from './measure.ts';
+import { cpuModel, nodeTypeFrom } from './node-type.ts';
 import { labelledNodesCommand } from './nodes.ts';
 import {
   objectStorageConfigMapCommand,
@@ -34,6 +46,7 @@ import {
   sharedConfigurationDocument,
   usesObjectStorage,
 } from './object-storage.ts';
+import { fileRecordWriter, recordStep } from './record.ts';
 import { parseSizeOption, sizeHelmArguments } from './size.ts';
 import { buildTestRun } from './testrun.ts';
 import { runSteps, type RunnerPorts } from './steps.ts';
@@ -83,6 +96,10 @@ async function main(argv: readonly string[]): Promise<void> {
   const ingotDigest = process.env.INGOT_IMAGE_DIGEST;
   const rwUrl = remoteWriteUrl(process.env);
   const profileInputs = scriptVariables(process.env);
+  // Only a run with a reference size writes a record. Its inputs are checked now, not after a run of hours.
+  const recording = size ? { queryUrl: metricsQueryUrl(process.env), cpuModel: cpuModel(process.env) } : undefined;
+  const holdMinutes = Number(profileInputs.LOADTEST_HOLD_MINUTES ?? PLATEAU_DEFAULT_HOLD_MINUTES);
+  const runDate = new Date().toISOString().slice(0, 10);
   const testId = `lt-${Date.now().toString(36)}`;
   const configMap = `${testId}-scripts`;
   // The load test user exists only for this run: the server creates it from --token, and k6 reads it from the Secret.
@@ -126,6 +143,10 @@ async function main(argv: readonly string[]): Promise<void> {
   console.log(
     `test run ${testId}: ${options.topology}, size ${size?.name ?? 'chart default'}, ${options.profile}, ${options.scenario}, Ingot ${ingotVersion}`,
   );
+  if (!recording) {
+    console.log('no --size given: the run keeps the chart default resources and writes no result record');
+  }
+  let appliedAt = Date.now();
 
   const ports: RunnerPorts = {
     labelledNodes: async () =>
@@ -178,6 +199,7 @@ async function main(argv: readonly string[]): Promise<void> {
       ]);
     },
     apply: async () => {
+      appliedAt = Date.now();
       await kubectl(['apply', '-f', manifestPath]);
     },
     finished: async () => {
@@ -191,9 +213,64 @@ async function main(argv: readonly string[]): Promise<void> {
       }
       return stage === 'finished';
     },
-    // The record step is `recordStep` of record.ts. The runner does not yet read the measured outcome, so a run writes no
-    // record until that is wired.
-    record: async () => {},
+    // Writes loadtest/results/<version>/<topology>-<size>-<scenario>.json. The node is the one an Ingot pod ran on, or the
+    // labelled pool of a reference run whose pods were never scheduled.
+    record: async (result) => {
+      if (!size || !recording) {
+        return;
+      }
+      const scheduled = (
+        await kubectl([
+          '-n', LOAD_NAMESPACE, 'get', 'pods', '-l', `app.kubernetes.io/instance=${INGOT_RELEASE}`,
+          '-o', 'jsonpath={.items[*].spec.nodeName}',
+        ])
+      ).split(/\s+/).find((name) => name !== '');
+      const nodeName = scheduled ?? (reference
+        ? (await kubectl(['get', 'nodes', '-l', `${LOADTEST_NODE_LABEL}=true`, '-o', 'jsonpath={.items[0].metadata.name}'])).trim()
+        : '');
+      if (!nodeName) {
+        throw new Error(`no Ingot pod of ${testId} was scheduled, so its record cannot name a node`);
+      }
+      const nodeType = nodeTypeFrom(await kubectl(['get', 'node', nodeName, '-o', 'json']), recording.cpuModel);
+      const writeRecord = fileRecordWriter(join(loadtestRoot, '..'));
+      await recordStep({
+        base: {
+          ingotVersion,
+          topology: options.topology,
+          size: size.name,
+          storage: usesObjectStorage(options.topology) ? 's3' : 'filesystem',
+          nodeType,
+          k6Version: K6_VERSION,
+          date: runDate,
+          reference,
+          scenario: options.scenario,
+        },
+        measure: async () => {
+          const outcome = await measureOutcome(
+            {
+              get: async (path, params) => {
+                const response = await fetch(queryRequestUrl(recording.queryUrl, path, params));
+                const text = await response.text();
+                try {
+                  return JSON.parse(text) as unknown;
+                } catch {
+                  throw new Error(`the metrics store answered ${response.status}: ${text.slice(0, 200)}`);
+                }
+              },
+            },
+            { testId, startMs: appliedAt, endMs: Date.now(), holdMinutes },
+          );
+          if (!outcome) {
+            console.log(`no step of ${testId} passed with a measured latency, so the run writes no result record`);
+          }
+          return outcome;
+        },
+        write: async (path, content) => {
+          await writeRecord(path, content);
+          console.log(`wrote the result record ${path}`);
+        },
+      })(result);
+    },
     // Removes everything the run created, each part even when an earlier one failed. The chart keeps its volume on
     // uninstall, so it is deleted by name, which keeps every run on a fresh data directory.
     uninstall: async () => {
