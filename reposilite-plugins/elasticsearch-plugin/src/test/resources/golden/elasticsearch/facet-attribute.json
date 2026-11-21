@@ -1,0 +1,23 @@
+{
+  "filter": {
+    "bool": {
+      "filter": [
+        {"terms": {"extension": ["jar"]}},
+        {
+          "bool": {
+            "should": [
+              {"term": {"attributes.portal.versions": {"value": "1.21", "case_insensitive": true}}}
+            ],
+            "minimum_should_match": 1
+          }
+        },
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "aggs": {
+    "buckets": {
+      "terms": {"field": "attributes.portal.platforms", "size": 20, "order": [{"_count": "desc"}, {"_key": "asc"}]}
+    }
+  }
+}
