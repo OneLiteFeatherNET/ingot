@@ -94,7 +94,7 @@ builds and passes on its own.
 
 ## 12. End of a window
 
-- [ ] 12.1 `ci(release)`: a `schedule` job in `release-please.yml` that reads the end of life dates from `support-lines.json`, with the
+- [x] 12.1 `ci(release)`: a `schedule` job in `release-please.yml` that reads the end of life dates from `support-lines.json`, with the
   date passed in as a parameter, opens the archiving pull request, and renames the branch to `archive/<line>.x` once that pull
   request is merged. Verify: the tests for the date decision pass, and the job changes nothing before the end of life date.
 
