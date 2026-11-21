@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 import { signInAsAdmin } from './support/session'
@@ -30,7 +31,7 @@ const ADMINISTRATION_PAGES = [
 
 // The links of the Administration side navigation, in order, with the current one marked. The settings domains join
 // the tree when the session's domain list arrives, after the page itself, so the read waits for two of them first.
-const administrationLinks = async (page) => {
+const administrationLinks = async (page: Page) => {
   const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
   await expect(tree.getByRole('link', { name: 'Javadoc', exact: true })).toBeVisible()
   await expect(tree.getByRole('link', { name: 'Audit settings', exact: true })).toBeVisible()
@@ -44,7 +45,7 @@ test.describe('administration navigation', () => {
   test('lists the same Administration entries in the same order on every page', async ({ page }) => {
     await signInAsAdmin(page)
 
-    const listings = {}
+    const listings: Record<string, string[]> = {}
     for (const path of ADMINISTRATION_PAGES) {
       await page.goto(siteUrl(path))
       listings[path] = (await administrationLinks(page)).map(link => link.name)
@@ -72,9 +73,9 @@ test.describe('administration navigation', () => {
 
   // The page is clipped at its sides (the sheet is overflow-x: clip), so the document width alone misses content that is
   // cut off. This also lists every box that ends beyond the window, unless a scroll container around it can reach it.
-  const contentBeyondWindow = (page) => page.evaluate(() => {
+  const contentBeyondWindow = (page: Page) => page.evaluate(() => {
     const window = document.documentElement.clientWidth
-    const reachable = (element) => {
+    const reachable = (element: Element) => {
       for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
         const overflow = getComputedStyle(node).overflowX
         if (overflow === 'auto' || overflow === 'scroll') return true
@@ -98,8 +99,8 @@ test.describe('administration navigation', () => {
       const audit = page.getByRole('link', { name: 'Audit log', exact: true })
       await expect(audit).toBeVisible()
       const box = await audit.boundingBox()
-      expect(box.x, 'the link starts inside the viewport').toBeGreaterThanOrEqual(0)
-      expect(box.x + box.width, 'the link ends inside the viewport').toBeLessThanOrEqual(width)
+      expect(box!.x, 'the link starts inside the viewport').toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width, 'the link ends inside the viewport').toBeLessThanOrEqual(width)
 
       await audit.click()
       await expect(page).toHaveURL(/\/audit$/)
@@ -141,9 +142,9 @@ test.describe('the Overview page of the administration', () => {
 })
 
 // The rail of the window holds the top-level pages. A page change moves the focus to the heading of the page that opens.
-const railLink = (page, name) => page.locator('.fixed.inset-y-0 > nav').getByRole('link', { name, exact: true })
-const pageHeading = (page, name) => page.getByRole('heading', { name, level: 1, exact: true })
-const searchBox = (page) => page.getByRole('searchbox', { name: 'Search by group, artifact or version', exact: true })
+const railLink = (page: Page, name: string) => page.locator('.fixed.inset-y-0 > nav').getByRole('link', { name, exact: true })
+const pageHeading = (page: Page, name: string) => page.getByRole('heading', { name, level: 1, exact: true })
+const searchBox = (page: Page) => page.getByRole('searchbox', { name: 'Search by group, artifact or version', exact: true })
 
 test.describe('focus on a top-level page change', () => {
   test('moves the focus from Browse to the heading of Search', async ({ adminPage: page }) => {
@@ -178,8 +179,8 @@ test.describe('focus on a top-level page change', () => {
 
     await expect(pageHeading(page, 'Search'), 'the heading takes the focus under reduced motion').toBeFocused()
     const transforms = await pageHeading(page, 'Search').evaluate((element) => {
-      const chain = []
-      for (let node = element; node && node.tagName !== 'MAIN'; node = node.parentElement) {
+      const chain: string[] = []
+      for (let node: Element | null = element; node && node.tagName !== 'MAIN'; node = node.parentElement) {
         chain.push(getComputedStyle(node).transform)
       }
       return chain
