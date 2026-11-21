@@ -32,7 +32,7 @@ from the diff of a pull request:
 
 | Change | `Dashboard end-to-end` |
 |---|---|
-| `reposilite-frontend/`, including the end-to-end specs, their harness and fixtures and `playwright.config.js` | runs |
+| `reposilite-frontend/`, including the end-to-end specs, their harness and fixtures and `playwright.config.ts` | runs |
 | The OpenAPI document `docs/openapi/ingot-openapi.json` | runs |
 | Backend HTTP surface: Kotlin files under `reposilite-backend/src/main/kotlin` in a `web/`, `api/` or `frontend/` package, or named `*Endpoint*.kt` or `*Routes.kt`, and `reposilite-backend/src/main/resources/` | runs |
 | Login, sessions, tokens and access checks: `com/reposilite/auth/`, `com/reposilite/token/`, `net/onelitefeather/ingot/identity/` (login, session, authorization), `net/onelitefeather/ingot/search/access/` and `com/reposilite/maven/RepositorySecurityProvider.kt` under `reposilite-backend/src/main/kotlin` | runs |
