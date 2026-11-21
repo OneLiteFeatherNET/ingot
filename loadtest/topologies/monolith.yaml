@@ -12,3 +12,8 @@ objectStorage:
   existingSecret: ingot-loadtest-s3
 clusterBus:
   url: nats://nats.ingot-loadtest.svc.cluster.local:4222
+# The heap is a share of the container limit of the size the runner applies. This replaces the fixed chart default heap, which
+# would cap every size at the same heap.
+env:
+  - name: JAVA_OPTS
+    value: "-XX:MaxRAMPercentage=75"

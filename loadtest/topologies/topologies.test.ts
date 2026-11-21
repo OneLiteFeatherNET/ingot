@@ -123,3 +123,15 @@ test('the scaling series changes only the read replicas against the scalable ove
     assert.equal(overlayText(name).replace(/^(  read:\n    replicas: )\d+$/m, '$1N'), base, `"${name}" differs beyond its read count`);
   }
 });
+
+test('every overlay sizes the heap as a percentage of the memory limit and sets no fixed heap', () => {
+  for (const name of TOPOLOGIES) {
+    const text = overlayText(name);
+    assert.match(
+      text,
+      /^env:\n  - name: JAVA_OPTS\n    value: "-XX:MaxRAMPercentage=75"$/m,
+      `"${name}" does not size the heap as a percentage of the memory limit`,
+    );
+    assert.doesNotMatch(text, /-Xmx/, `"${name}" sets a fixed heap, which overrides the percentage`);
+  }
+});
