@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-import js from "@eslint/js";
+import js from "@eslint/js"
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import type { Linter } from 'eslint'
 
 // Every enabled rule reports as an error. The plugin presets ship some rules as warnings, and the bulk suppressions of
 // ESLint record errors only, so those rules are raised here. A finding that is not in eslint-suppressions.json fails the run.
-const raiseWarning = (value) => {
+const raiseWarning = (value: Linter.RuleEntry<unknown[]> | undefined): Linter.RuleEntry<unknown[]> | undefined => {
   if (Array.isArray(value)) {
     return value[0] === 'warn' || value[0] === 1 ? ['error', ...value.slice(1)] : value
   }
   return value === 'warn' || value === 1 ? 'error' : value
 }
 
-const raiseWarnings = (config) => {
+const raiseWarnings = (config: Linter.Config): Linter.Config => {
   if (!config.rules) {
     return config
   }
@@ -40,7 +41,7 @@ const raiseWarnings = (config) => {
   }
 }
 
-export default [
+const configs: Linter.Config[] = ([
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
@@ -93,4 +94,6 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
-].map(raiseWarnings)
+] satisfies Linter.Config[]).map(raiseWarnings)
+
+export default configs
