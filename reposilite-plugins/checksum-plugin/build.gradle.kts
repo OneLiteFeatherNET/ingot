@@ -48,6 +48,9 @@ configurations.named(contractTest.runtimeOnlyConfigurationName) {
 dependencies {
     // The fixture that boots the server, shared with the other plugin contract tests.
     add(contractTest.implementationConfigurationName, testFixtures(project(":reposilite-backend")))
+    // The shipped server embeds the cleanup plugin, and the cluster plugin depends on its id. The fixture runs the server from
+    // its classes, which embed no jar, so the server loads the cleanup jar from the class path instead.
+    add(contractTest.runtimeOnlyConfigurationName, project(path = ":reposilite-plugins:cleanup-plugin", configuration = "shadow"))
 }
 
 val shadowJar = tasks.named<ShadowJar>("shadowJar")
