@@ -95,6 +95,24 @@ internal object OpenSearchQueries {
     }
 
     /**
+     * The bucket aggregation of the attribute [key] (search attribute facets, D3 and D5): the files per stored value under every
+     * filter of the request except the attribute filter on [key], and the access value.
+     */
+    fun attributeFacet(key: String, query: ArtifactSearchQuery, access: SearchAccess): ObjectNode {
+        val terms = linkedMapOf<String, Any>(
+            "field" to attributeField(key),
+            "size" to FACET_BUCKETS,
+            "order" to listOf(mapOf("_count" to "desc"), mapOf("_key" to "asc")),
+        )
+        return tree(
+            linkedMapOf<String, Any>(
+                "filter" to filterMap(query, access, except = null, exceptAttribute = key),
+                "aggs" to mapOf("buckets" to mapOf("terms" to terms)),
+            ),
+        )
+    }
+
+    /**
      * Whether the request reads the word match (search decision): one of its plain words has parts that the token table holds.
      * The database engine reads the token table in exactly these cases, and the word-only groups exist only then.
      */
@@ -248,14 +266,37 @@ internal object OpenSearchQueries {
         )
     }
 
-    private fun filterMap(query: ArtifactSearchQuery, access: SearchAccess, except: FilterKind?): Map<String, Any> {
+    private fun filterMap(
+        query: ArtifactSearchQuery,
+        access: SearchAccess,
+        except: FilterKind?,
+        exceptAttribute: String? = null,
+    ): Map<String, Any> {
         val text = if (except == FilterKind.TEXT) emptyList() else textClauses(query.q, overall = true)
-        return filterOf(text + others(query, except) + accessClause(access))
+        return filterOf(text + others(query, except, exceptAttribute) + accessClause(access))
     }
 
-    /** The clauses of the request other than its text, in the order of [FilterKind]. A kind without a clause is absent. */
-    private fun others(query: ArtifactSearchQuery, except: FilterKind? = null): List<Map<String, Any>> =
-        parts(query).filterKeys { it != except }.values.flatten()
+    /**
+     * The clauses of the request other than its text, in the order of [FilterKind], then one clause per filtered attribute key
+     * except [exceptAttribute]. A kind without a clause is absent.
+     */
+    private fun others(query: ArtifactSearchQuery, except: FilterKind? = null, exceptAttribute: String? = null): List<Map<String, Any>> =
+        parts(query).filterKeys { it != except }.values.flatten() + attributeClauses(query).filterKeys { it != exceptAttribute }.values
+
+    /**
+     * One clause per filtered attribute key, in the order the keys first appear (search attribute facets, D5): the document holds
+     * one of the values of that key, compared without case, as the database compares the lower-cased values. Two filters on one
+     * key are one OR over their values.
+     */
+    private fun attributeClauses(query: ArtifactSearchQuery): Map<String, Map<String, Any>> =
+        query.attributeFilters.groupBy({ it.key }, { it.values }).mapValues { (key, values) ->
+            val field = attributeField(key)
+            should(
+                values.flatten().distinctBy { it.lowercase(Locale.ROOT) }.map { value ->
+                    mapOf("term" to mapOf(field to mapOf("value" to value, "case_insensitive" to true)))
+                },
+            )
+        }
 
     private fun parts(query: ArtifactSearchQuery): Map<FilterKind, List<Map<String, Any>>> {
         val parts = LinkedHashMap<FilterKind, List<Map<String, Any>>>()
@@ -447,6 +488,9 @@ internal object OpenSearchQueries {
     }
 
     // ---- aggregations -------------------------------------------------------------------------------------------------
+
+    /** The keyword field of an attribute key, as the dynamic template of the index maps it. */
+    private fun attributeField(key: String): String = "attributes.$key"
 
     private fun facetField(kind: FilterKind): String = when (kind) {
         FilterKind.REPOSITORY -> "repository"
