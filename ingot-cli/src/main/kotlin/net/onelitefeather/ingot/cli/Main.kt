@@ -157,7 +157,9 @@ fun runCli(
         val connector = ConsoleConnector { onLog ->
             ConsoleSocket.open(url, token, CLIENT_NAME, http, timeout) { log -> onLog(if (colour) log else log.copy(text = stripAnsi(log.text))) }
         }
-        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = commandOut, err = commandErr)
+        val history = ReplHistory.defaultPath(env).takeIf { ReplHistory.prepare(it) }
+        if (history == null) err.println("WARNING: the history file cannot be created, so the history of this session is not kept.")
+        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = commandOut, err = commandErr, historyFile = history)
     }
 
     val lines = if (commandArguments == listOf("-")) {
