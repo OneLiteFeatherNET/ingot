@@ -27,6 +27,7 @@ The request carries the repository and the path, the parsed coordinates (`file`)
 * `EnrichmentCompleted`, when the enricher finished.
 * `EnrichmentSkipped(reason)`, when the enricher chose not to handle this file.
 * `EnrichmentFailed(reason)`, when it could not handle the file.
+* `EnrichmentAttributes(values)`, when the enricher finished and the index stores `values` with the row. See [Search document attributes](search-document-attributes.md).
 
 A reason is short and never carries file content or a path, because it ends up in the log and in the index status.
 
@@ -92,7 +93,7 @@ A refused enricher is never called. The registry is read once when the index pip
 The core calls the enrichers whose `extensions` contain the extension of the file, at two points:
 
 1. **Changed paths.** When the outbox worker indexes a new or changed file, after it has built the index row and before it writes it. This covers deployments and files a mirror repository caches from its upstream. The trigger is `CHANGED`, and the origin tells a hosted file from a mirrored one.
-2. **Rebuild.** When a rebuild writes a row that is new or whose size or modification time changed. The trigger is `REBUILD`. A row that is unchanged is not enriched, and neither is a row the rebuild holds back for the outbox.
+2. **Rebuild.** When a rebuild writes a row that is new or whose size or modification time changed. The trigger is `REBUILD`. A row the rebuild holds back for the outbox is not enriched. An unchanged row is enriched only on a backend that stores attributes, and only when a matching enricher has no or another version stored on it.
 
 Nothing is called when a file is removed. A file that no enricher matches is not read at all.
 
@@ -121,7 +122,7 @@ Each failure is logged once as a warning with the enricher id, the repository an
 
 ## The rebuild gap
 
-Files that were indexed before the enricher was installed are not enriched until they change, because a rebuild only enriches rows that are new or changed. Re-enriching every file when the version of an enricher changes is planned for a later release.
+On a backend that stores attributes, a rebuild also enriches an unchanged row when a matching enricher has no or another version stored on it, see [Rebuild by enricher version](search-document-attributes.md#rebuild-by-enricher-version). On a backend that does not, files that were indexed before the enricher was installed are not enriched until they change, because a rebuild only enriches rows that are new or changed.
 
 In a cluster, every replica that drains the outbox runs the enrichers it has registered. Install the same plugin jars on every replica.
 
