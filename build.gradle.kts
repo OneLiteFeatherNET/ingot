@@ -223,5 +223,6 @@ tasks.register<CheckPluginTiersTask>("checkPluginTiers") {
     pluginsDirectory.set(layout.projectDirectory.dir("reposilite-plugins"))
     workflowsDirectory.set(layout.projectDirectory.dir(".github/workflows"))
     dockerfile.set(layout.projectDirectory.file("Dockerfile"))
+    backendBuildScript.set(layout.projectDirectory.file("reposilite-backend/build.gradle.kts"))
     tierFile.set(layout.buildDirectory.file("plugin-tiers.json"))
 }

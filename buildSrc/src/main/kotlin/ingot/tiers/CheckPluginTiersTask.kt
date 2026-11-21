@@ -37,6 +37,9 @@ abstract class CheckPluginTiersTask : DefaultTask() {
     @get:Internal
     abstract val dockerfile: RegularFileProperty
 
+    @get:Internal
+    abstract val backendBuildScript: RegularFileProperty
+
     @get:OutputFile
     abstract val tierFile: RegularFileProperty
 
@@ -47,7 +50,8 @@ abstract class CheckPluginTiersTask : DefaultTask() {
 
     @TaskAction
     fun check() {
-        val checks = PluginTierCheck.scan(pluginsDirectory.get().asFile.toPath())
+        val embedded = PluginTierCheck.embeddedModules(backendBuildScript.get().asFile.toPath())
+        val checks = PluginTierCheck.scan(pluginsDirectory.get().asFile.toPath(), embedded)
 
         tierFile.get().asFile.apply {
             parentFile.mkdirs()

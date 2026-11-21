@@ -116,6 +116,41 @@ class PluginTierCheckTest {
     }
 
     @Test
+    fun embeddedModuleMayOptInWithoutExperimentalDeclaration() {
+        val pluginsDir = module(
+            "embedded",
+            """
+            @Plugin(name = "embedded")
+            class Entry {
+                @OptIn(net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi::class)
+                fun load() = Unit
+            }
+            """.trimIndent(),
+        )
+
+        val violations = PluginTierCheck.violations(PluginTierCheck.scan(pluginsDir, embeddedModules = setOf("embedded")))
+
+        assertThat(violations)
+            .describedAs("a module the server embeds is Core by origin, so its opt-in needs no Experimental declaration")
+            .isEmpty()
+    }
+
+    @Test
+    fun embeddedModulesAreReadFromTheBackendBuildScript() {
+        val buildScript = tempDir.resolve("build.gradle.kts")
+        buildScript.writeText(
+            """
+            val embeddedPluginProjects: List<String> = listOf(":reposilite-plugins:cleanup-plugin", ":reposilite-plugins:javadoc-plugin")
+            val other = listOf(":reposilite-plugins:groovy-plugin")
+            """.trimIndent(),
+        )
+
+        assertThat(PluginTierCheck.embeddedModules(buildScript))
+            .describedAs("only the modules of embeddedPluginProjects count as embedded")
+            .containsExactlyInAnyOrder("cleanup-plugin", "javadoc-plugin")
+    }
+
+    @Test
     fun tierFileMapsEachPluginIdToItsLowerCaseTier() {
         val pluginsDir = module(
             "official",
