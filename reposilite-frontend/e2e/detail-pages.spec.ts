@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { siteUrl } from './support/api'
 
@@ -24,15 +25,15 @@ const WIDTHS = [320, 600, 1440]
 
 // The header of the frame: the back row (below 1240 pixels) and the page header with its trail, in one block (design D3
 // of fix-surface-hierarchy-and-page-header).
-const headerLinksTo = (page, path) => page
+const headerLinksTo = (page: Page, path: string) => page
   .locator('section[data-ingot-component="administration-frame"]')
   .locator('div:has(> [data-ingot-component="md-page-header"])')
   .locator(`a[href="${path}"]`)
 
 // Every control named "Back to ..." on the page, as a link or a button. Below 1240 pixels the frame draws one (its arrow);
 // from 1240 pixels the way back is the list crumb, which is named by the list and not by "Back to".
-const backControls = (page) => page.getByRole('link', { name: /^Back to / }).or(page.getByRole('button', { name: /^Back to / }))
-const expectedBackControls = (width) => (width < 1240 ? 1 : 0)
+const backControls = (page: Page) => page.getByRole('link', { name: /^Back to / }).or(page.getByRole('button', { name: /^Back to / }))
+const expectedBackControls = (width: number) => (width < 1240 ? 1 : 0)
 
 for (const width of WIDTHS) {
   test.describe(`a detail page at ${width} pixels`, () => {

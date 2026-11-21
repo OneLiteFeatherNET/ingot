@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { readJob, siteUrl, startIndexRebuild } from './support/api'
 
@@ -25,12 +26,12 @@ import { readJob, siteUrl, startIndexRebuild } from './support/api'
 
 const JOBS_PAGE_SIZE = 50
 
-const runList = (page) => page.getByRole('list', { name: 'Background runs, newest first', exact: true })
-const jobsHeading = (page) => page.getByRole('heading', { name: 'Jobs', level: 2, exact: true })
+const runList = (page: Page) => page.getByRole('list', { name: 'Background runs, newest first', exact: true })
+const jobsHeading = (page: Page) => page.getByRole('heading', { name: 'Jobs', level: 2, exact: true })
 
-const isJobsList = (url) => new URL(url).pathname === '/api/jobs'
+const isJobsList = (url: string | URL) => new URL(url).pathname === '/api/jobs'
 
-const stubRun = (localId, overrides = {}) => ({
+const stubRun = (localId: number, overrides: Record<string, unknown> = {}) => ({
   id: `index:${localId}`,
   source: 'index',
   kind: 'index.rebuild',
@@ -47,7 +48,7 @@ const stubRun = (localId, overrides = {}) => ({
   ...overrides,
 })
 
-const stubPage = (items, nextCursor = null) => ({
+const stubPage = (items: Array<ReturnType<typeof stubRun>>, nextCursor: string | null = null) => ({
   items,
   nextCursor,
   sourceErrors: [],
@@ -82,7 +83,7 @@ test.describe('the Jobs page', () => {
   })
 
   test('adds the next page of runs with Load more', async ({ adminPage: page }) => {
-    const firstPages = []
+    const firstPages: string[] = []
     await page.route(isJobsList, async (route) => {
       const cursor = new URL(route.request().url()).searchParams.get('cursor')
       if (cursor === null) {
