@@ -160,11 +160,6 @@
     "count": 1
   },
   {
-    "file": "src/components/migration/MigrationView.vue",
-    "match": "opacity-60",
-    "count": 1
-  },
-  {
     "file": "src/components/migration/SyncStep.vue",
     "match": "font-normal",
     "count": 2
@@ -178,11 +173,6 @@
     "file": "src/components/renderers/MdColourFieldRenderer.vue",
     "match": "opacity-0",
     "count": 1
-  },
-  {
-    "file": "src/components/search/SearchFilters.vue",
-    "match": "opacity-70",
-    "count": 3
   },
   {
     "file": "src/components/search/SearchView.vue",
@@ -217,11 +207,6 @@
   {
     "file": "src/components/support/SystemInfoView.vue",
     "match": "text-sm",
-    "count": 1
-  },
-  {
-    "file": "src/components/tokens/RepositoryTypeBadge.vue",
-    "match": "opacity-80",
     "count": 1
   },
   {

@@ -52,6 +52,15 @@ describe('the Migration page', () => {
     expect(wrapper.find('[role="status"]').text()).toMatch(/connection/i)
   })
 
+  it('draws a closed step in the disabled content tone, not as a faded link', async () => {
+    const { wrapper } = await mountWith(MigrationView, { props: { step: 'connect' }, at: '/settings/migration/connect' })
+    const closed = wrapper.find('nav[aria-label="Migration steps"] a[aria-disabled="true"]')
+
+    expect(closed.exists(), 'a fresh page has a step that is not open yet').toBe(true)
+    expect(closed.classes(), 'the closed step uses the MD3 disabled content opacity token').toContain('text-on-surface/md-disabled-content')
+    expect(closed.classes().filter(name => name.startsWith('opacity-')), 'no opacity fade on the step').toEqual([])
+  })
+
   it('sends a step the page does not know to the first open step', async () => {
     const { router } = await mountWith(MigrationView, { props: { step: 'nonsense' }, at: '/settings/migration/nonsense' })
 
