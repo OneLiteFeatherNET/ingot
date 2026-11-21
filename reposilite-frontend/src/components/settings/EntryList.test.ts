@@ -45,8 +45,8 @@ const mountList = (props: Record<string, unknown> = {}) => {
   return wrapper
 }
 
-// The row buttons only: the tag chips of an entry are buttons too, and sit beside the row.
-const itemButtons = () => wrapper.findAll('li > button')
+// The row buttons only: the tag chips of an entry are buttons too, and follow the row button.
+const itemButtons = () => wrapper.findAll('li').map(item => item.find('button'))
 const itemIds = () => itemButtons().map(button => button.find('span').text())
 
 afterEach(() => {
@@ -64,6 +64,23 @@ describe('EntryList', () => {
     mountList()
 
     expect(itemButtons()[1].text()).toContain('PRIVATE')
+  })
+
+  it('builds the entries from the shared list, one row per entry', () => {
+    mountList()
+
+    expect(wrapper.findAllComponents({ name: 'MdList' }), 'the entries are one shared list').toHaveLength(1)
+    const rows = wrapper.findAllComponents({ name: 'MdListItem' })
+    expect(rows.map(row => row.find('button').find('span').text()), 'each entry is a shared list row, in order')
+      .toEqual(['releases', 'snapshots', 'mirror-central'])
+  })
+
+  it('stretches the selecting button over the whole row, so a click anywhere on it selects', () => {
+    mountList()
+
+    const button = itemButtons()[0]
+    expect(button.classes(), 'the button covers the row with its ::after').toContain('after:absolute')
+    expect(button.classes(), 'the covered area is the whole row').toContain('after:inset-0')
   })
 
   it('marks only the selected entry as the current one', () => {
