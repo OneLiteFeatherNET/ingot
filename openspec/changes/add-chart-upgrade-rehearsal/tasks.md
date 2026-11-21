@@ -34,7 +34,7 @@ Gradle `--no-daemon --max-workers=2` where Gradle is involved, and kind or Testc
 - [x] 3.3 `test(chart)`: write failing tests for the render of the test hook, one for the default render (no test pod)
   and one for `tests.enabled=true` (one pod with `helm.sh/hook: test`), in `charts/ingot/tests/test_chart.py`. Verify: they
   fail before 3.4.
-- [ ] 3.4 `ci(chart)`: add `charts/ingot/templates/tests/` with the test pod that calls the API with a token, and the value
+- [x] 3.4 `ci(chart)`: add `charts/ingot/templates/tests/` with the test pod that calls the API with a token, and the value
   `tests.enabled` (default `false`) in `charts/ingot/values.yaml` and `charts/ingot/values.schema.json`. Verify: the tests of
   3.3 pass, `charts/ingot/tests/test_equivalence.py` stays green and `helm lint charts/ingot --strict` passes.
 - [ ] 3.5 `docs(chart)`: document `tests.enabled` and `helm test` in `docs/gitbook/how-to/verify-an-upgrade.md`, and the result
