@@ -79,7 +79,19 @@ data class ArtifactSearchQuery(
     val page: Int = 0,
     /** At most 100. */
     val size: Int = 20,
+    /** Filters on declared attributes: an OR over the values of one key, an AND across keys (search attribute facets, D2). */
+    val attributeFilters: List<AttributeFilter> = emptyList(),
+    /** The sort by one declared sortable attribute, or null for none. */
+    val attributeSort: AttributeSort? = null,
+    /** The declared facetable attribute keys whose buckets are counted. */
+    val attributeFacets: Set<String> = emptySet(),
 )
+
+/** A filter on the attribute [key]: a row matches when it holds one of [values], compared lower-cased. */
+data class AttributeFilter(val key: String, val values: List<String>)
+
+/** A sort by the attribute [key]. Rows without a value sort last in both directions. */
+data class AttributeSort(val key: String, val descending: Boolean)
 
 enum class SnapshotFilter { TRUE, FALSE, ALL }
 
@@ -199,8 +211,13 @@ enum class IndexState { READY, BUILDING, MISSING, DEGRADED }
 
 /**
  * A request the engine refuses before it reads anything. The REST layer answers 400 and names [parameter] in the body.
+ * [problemType] is the RFC 9457 problem type of the answer, or null for `about:blank`.
  */
-class InvalidSearchQueryException(val parameter: String, message: String) : IllegalArgumentException(message)
+class InvalidSearchQueryException @JvmOverloads constructor(
+    val parameter: String,
+    message: String,
+    val problemType: String? = null,
+) : IllegalArgumentException(message)
 
 /**
  * A read that the database did not finish inside its statement timeout. The REST layer answers 503 with `Retry-After`

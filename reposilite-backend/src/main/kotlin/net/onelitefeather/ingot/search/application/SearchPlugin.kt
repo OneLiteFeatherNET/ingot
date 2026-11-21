@@ -44,6 +44,7 @@ import net.onelitefeather.ingot.search.api.SearchApiEndpoints
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendRegistrationEvent
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendRegistry
+import net.onelitefeather.ingot.search.backend.AttributeCheckedSearchEngine
 import net.onelitefeather.ingot.search.backend.BackendResolution
 import net.onelitefeather.ingot.search.backend.ClusterBackendAgreement
 import net.onelitefeather.ingot.search.backend.CoreSearchBackendContext
@@ -315,6 +316,9 @@ internal class SearchPlugin : ReposilitePlugin() {
             logger.error("SEARCH | The search backend returned a row the caller may not see, it was dropped: $repository $location")
             runCatching { state.increment(SearchStateKey.ACCESS_MISMATCHES) }
         }
+        // The attribute catalogue is fixed at registration, like the enrichers; the capabilities are read per request.
+        val catalogue = enrichers.catalogue()
+        val attributeChecked = AttributeCheckedSearchEngine(checked, { catalogue }, { backend.capabilities })
         val admin = SearchIndexAdmin(
             runs = runs,
             rebuild = rebuild,
@@ -329,7 +333,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         )
         return LiveParts(
             handle = LiveSearchBackend(
-                checked,
+                attributeChecked,
                 admin,
                 indexStatus = { rowsExist -> statusReader.statusOf(backend, rowsExist) },
                 enrichers = enrichment::counts,

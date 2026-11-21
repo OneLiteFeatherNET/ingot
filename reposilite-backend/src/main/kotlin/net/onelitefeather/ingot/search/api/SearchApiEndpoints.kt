@@ -52,6 +52,8 @@ import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.ArtifactSearchItem
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
+import net.onelitefeather.ingot.search.AttributeFilter
+import net.onelitefeather.ingot.search.AttributeSort
 import net.onelitefeather.ingot.search.IndexState
 import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.InvalidSearchQueryException
@@ -133,10 +135,14 @@ internal class SearchApiEndpoints(
             OpenApiParam(name = "order", description = "asc or desc (default asc)", required = false),
             OpenApiParam(name = "page", description = "0-based page (default 0)", required = false),
             OpenApiParam(name = "size", description = "Groups per page, 1 to 100 (default 20)", required = false),
+            OpenApiParam(name = "attribute", description = "key:value filter on a declared filterable attribute, repeatable; an OR within a key, an AND across keys. At most 4 keys and 16 values per key.", required = false),
+            OpenApiParam(name = "attributeSort", description = "key:asc or key:desc, sorts by one declared sortable attribute; rows without a value sort last", required = false),
+            OpenApiParam(name = "attributeFacets", description = "Comma-separated declared facetable attribute keys to count, at most 8", required = false),
         ],
         responses = [
             OpenApiResponse(status = "200", content = [OpenApiContent(from = ArtifactSearchResponse::class)]),
-            OpenApiResponse(status = "400", description = "Invalid parameter or result window exceeded. The message names the parameter."),
+            OpenApiResponse(status = "400", description = "Invalid parameter or result window exceeded. The message names the parameter. " +
+                "An attribute that is not declared for its use has the problem type urn:ingot:problem:undeclared-attribute, a feature the search backend does not support urn:ingot:problem:unsupported-search-capability."),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "503", description = "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."),
         ]
@@ -349,7 +355,7 @@ internal class SearchApiEndpoints(
     private fun <T> ContextDsl<*>.guarded(block: () -> Result<T, ErrorResponse>): Result<T, ErrorResponse> = try {
         block()
     } catch (refused: InvalidSearchQueryException) {
-        Result.error(BAD_REQUEST.toErrorResponse(refused.message ?: "Invalid search query"))
+        Result.error(BAD_REQUEST.toErrorResponse(refused.message ?: "Invalid search query").also { answer -> refused.problemType?.let { answer.type = it } })
     } catch (unavailable: SearchUnavailableException) {
         ctx.header(RETRY_AFTER, RETRY_AFTER_SECONDS)
         Result.error(SERVICE_UNAVAILABLE.toErrorResponse(unavailable.message ?: "The search timed out, narrow the filters"))
@@ -457,7 +463,43 @@ private fun Context.artifactSearchQuery(): ArtifactSearchQuery = ArtifactSearchQ
     order = parsed("order") { ORDER_VALUES[it.lowercase()] } ?: SearchOrder.ASC,
     page = parsed("page") { it.toIntOrNull() } ?: 0,
     size = parsed("size") { it.toIntOrNull() } ?: DEFAULT_SEARCH_SIZE,
-)
+).withAttributes(attributeParameters(paramList("attribute"), paramList("attributeSort"), paramList("attributeFacets")))
+
+private fun ArtifactSearchQuery.withAttributes(attributes: AttributeParameters): ArtifactSearchQuery =
+    copy(attributeFilters = attributes.filters, attributeSort = attributes.sort, attributeFacets = attributes.facets)
+
+/** The attribute parameters of a search request (search attribute facets, D2). */
+internal data class AttributeParameters(val filters: List<AttributeFilter>, val sort: AttributeSort?, val facets: Set<String>)
+
+/**
+ * Parses `attribute=<key>:<value>` (repeatable; the values of one key form one filter, in the order given),
+ * `attributeSort=<key>:asc|desc` (at most once) and `attributeFacets=<key>,<key>` (repeatable). The key ends at the first colon.
+ * A value that does not parse is a 400 naming its parameter. Whether a key may be used is decided by the engine.
+ */
+internal fun attributeParameters(attribute: List<String>, attributeSort: List<String>, attributeFacets: List<String>): AttributeParameters {
+    val filters = linkedMapOf<String, MutableList<String>>()
+    attribute.forEach { raw ->
+        val (key, value) = keyAndValue(raw) ?: throw InvalidSearchQueryException("attribute", "attribute must be <key>:<value>: $raw")
+        val values = filters.getOrPut(key) { mutableListOf() }
+        if (value !in values) values += value
+    }
+    if (attributeSort.size > 1) throw InvalidSearchQueryException("attributeSort", "attributeSort may be given once")
+    val sort = attributeSort.firstOrNull()?.let { raw ->
+        val (key, direction) = keyAndValue(raw) ?: throw InvalidSearchQueryException("attributeSort", "attributeSort must be <key>:asc or <key>:desc: $raw")
+        val descending = ORDER_VALUES[direction.lowercase()]?.let { it == SearchOrder.DESC }
+            ?: throw InvalidSearchQueryException("attributeSort", "attributeSort must be <key>:asc or <key>:desc: $raw")
+        AttributeSort(key, descending)
+    }
+    val facets = attributeFacets.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.toCollection(linkedSetOf())
+    return AttributeParameters(filters.map { (key, values) -> AttributeFilter(key, values) }, sort, facets)
+}
+
+/** Splits `<key>:<value>` at the first colon; null when either side is empty. */
+private fun keyAndValue(raw: String): Pair<String, String>? {
+    val colon = raw.indexOf(':')
+    if (colon <= 0 || colon == raw.length - 1) return null
+    return raw.substring(0, colon) to raw.substring(colon + 1)
+}
 
 private fun Context.filesQuery(): ArtifactFilesQuery = ArtifactFilesQuery(
     groupId = param("groupId").orEmpty(),
