@@ -10,11 +10,6 @@
     "count": 1
   },
   {
-    "file": "src/components/access/TeamDetail.vue",
-    "match": "grid-cols-[auto_1fr]",
-    "count": 1
-  },
-  {
     "file": "src/components/access/TeamsPanel.vue",
     "match": "expanded:grid-cols-[minmax(0,380px)_minmax(0,1fr)]",
     "count": 1

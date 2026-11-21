@@ -21,6 +21,7 @@ import { createErrorToast, createSuccessToast, errorMessage } from '../../helper
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextArea from '../md/MdTextArea.vue'
@@ -205,6 +206,15 @@ const overwrite = async () => {
 }
 
 const manualCount = computed(() => (detail.value ? manualMembers(detail.value).length : 0))
+
+// The rows of the read view, in order. A missing description or reference reads None.
+const rows = computed(() => detail.value
+  ? [
+      { label: 'Description', value: detail.value.description || 'None' },
+      { label: 'External reference', value: detail.value.externalRef || 'None' },
+      { label: 'Members', value: `${detail.value.members.length} (${manualCount.value} added by hand)` }
+    ]
+  : [])
 </script>
 
 <template>
@@ -315,35 +325,10 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
             </MdButton>
           </div>
         </form>
-        <dl
+        <MdKeyValueList
           v-else
-          class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium"
-        >
-          <dt class="text-on-surface-variant">
-            Description
-          </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="description"
-          >
-            {{ detail.description || 'None' }}
-          </dd>
-          <dt class="text-on-surface-variant">
-            External reference
-          </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="external-ref"
-          >
-            {{ detail.externalRef || 'None' }}
-          </dd>
-          <dt class="text-on-surface-variant">
-            Members
-          </dt>
-          <dd class="m-0 text-on-surface">
-            {{ detail.members.length }} ({{ manualCount }} added by hand)
-          </dd>
-        </dl>
+          :items="rows"
+        />
         <MdButton
           v-if="!editing"
           variant="tonal"
