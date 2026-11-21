@@ -30,7 +30,7 @@ test.describe('sign in and sign out', () => {
     await page.waitForLoadState('networkidle')
 
     // Every API call the page makes from here on, with the status it got.
-    const answers = []
+    const answers: { path: string, status: number }[] = []
     page.on('response', (response) => {
       if (response.url().includes('/api/')) {
         answers.push({ path: new URL(response.url()).pathname, status: response.status() })
