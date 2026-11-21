@@ -403,6 +403,24 @@ describe('InstanceStatusPanel cluster view', () => {
     wrapper.unmount()
   })
 
+  it('draws the this instance and stale labels as shared badges', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: { instances: [member(), member({ id: 'ingot-1', stale: true })] }
+    })
+
+    const items = wrapper.findAll('[data-testid="cluster-instance"]')
+    const local = items[0].findAll('[data-tone]')
+    expect(local.map(badge => badge.text()), 'the local row carries one badge that names it').toEqual(['This instance'])
+    expect(local[0].attributes('data-ingot-component'), 'the local label is an md-badge').toBe('md-badge')
+    expect(local[0].attributes('data-tone'), 'the local badge keeps the secondary container tint').toBe('accent')
+    const stale = items[1].findAll('[data-tone]')
+    expect(stale.map(badge => badge.text()), 'the stale row carries one badge that says so').toEqual(['Stale'])
+    expect(stale[0].attributes('data-ingot-component'), 'the stale label is an md-badge').toBe('md-badge')
+    expect(stale[0].attributes('data-tone'), 'the stale badge is neutral, its meaning is in the word').toBe('neutral')
+    wrapper.unmount()
+  })
+
   it('sums the memory and threads of the instances, and says what the failures count covers', async () => {
     const wrapper = await mountWithStatus({
       ...INSTANCE,
