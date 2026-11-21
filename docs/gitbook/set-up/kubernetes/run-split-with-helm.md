@@ -120,7 +120,7 @@ The health endpoint answers `200`. The `/browse` request must not return the das
 
 The server's readiness probe sends `GET /api/status/ready`, which fails while the database or the storage is unavailable. It uses a 3 second timeout and two failures, from `probes.split.readiness`. The liveness probe stays on `GET /api/status/health`, so a database outage takes the pod out of the load balancer without restarting it.
 
-The split server also has a startup probe on `GET /api/status/health`, with a budget of 150 seconds (`periodSeconds` 5 times `failureThreshold` 30). Liveness waits for it, so a first start that takes longer is not restarted. Set `probes.startup.enabled: false` to turn it off.
+The split server also has a startup probe on `GET /api/status/health`, with a budget of 300 seconds (`periodSeconds` 5 times `failureThreshold` 60). Liveness waits for it, so a first start that takes longer is not restarted. Set `probes.startup.enabled: false` to turn it off.
 
 Split readiness needs an image that ships `/api/status/ready`. The image tags default to the chart's app version, so use a chart release whose app version ships that endpoint. If you pin `image.tag` or `dashboard.image.tag` to an older release, the readiness probe answers `404` and the pod never becomes ready. To keep such an image, set `probes.readinessPath: /api/status/health`. That path does not check the database.
 
