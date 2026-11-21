@@ -18,6 +18,8 @@
 // Step 7: the checklist of the day the clients are switched. Only the verify item is derived from the server; the
 // freeze of Nexus is done in Nexus and is text here, and the two manual ticks are not stored anywhere.
 import { computed, inject, onMounted, ref } from 'vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdButton from '../md/MdButton.vue'
 import MigrationDialog from './MigrationDialog.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -141,111 +143,119 @@ onMounted(() => {
       Switching the clients is the last step. Work through the checklist in order.
     </p>
 
-    <fieldset class="flex flex-col gap-5">
+    <fieldset class="flex flex-col gap-2">
       <legend class="md-title-small text-on-surface">
         Checklist
       </legend>
 
-      <div class="flex flex-col gap-1">
-        <label class="flex items-center gap-2 md-body-large">
-          <input
-            id="migration-cutover-freeze"
-            v-model="freezeDone"
-            type="checkbox"
-          >
-          Freeze Nexus writes
-        </label>
-        <p class="md-body-medium text-on-surface-variant">
-          In Nexus, set each repository you migrate to read-only, so no client writes to it during the switch. Ingot never
-          writes to Nexus, so this is done in Nexus.
-        </p>
-      </div>
+      <MdList divided>
+        <MdListItem>
+          <div class="flex flex-col gap-1">
+            <label class="flex items-center gap-2 md-body-large">
+              <input
+                id="migration-cutover-freeze"
+                v-model="freezeDone"
+                type="checkbox"
+              >
+              Freeze Nexus writes
+            </label>
+            <p class="md-body-medium text-on-surface-variant">
+              In Nexus, set each repository you migrate to read-only, so no client writes to it during the switch. Ingot never
+              writes to Nexus, so this is done in Nexus.
+            </p>
+          </div>
+        </MdListItem>
 
-      <div class="flex flex-col gap-1">
-        <label class="flex items-center gap-2 md-body-large">
-          <input
-            id="migration-cutover-verify"
-            type="checkbox"
-            :checked="verified"
-            disabled
-          >
-          Verify all repositories
-        </label>
-        <p class="md-body-medium text-on-surface-variant">
-          Set by the newest verify job. It is ticked when every repository is VERIFIED, and it cannot be ticked by hand.
-        </p>
-        <ul
-          data-test="blocking"
-          class="list-disc pl-6 md-body-medium text-on-surface"
-        >
-          <li v-if="!verifyFinished">
-            Run the verify job first.
-          </li>
-          <li
-            v-for="row in blocking"
-            :key="row.nexusName"
-          >
-            {{ row.nexusName }} is not verified: {{ repositoryResultText(row.status) }}.
-          </li>
-          <li v-if="verifyFinished && blocking.length === 0">
-            Every repository is verified.
-          </li>
-        </ul>
-        <table
-          v-if="importConflicts.length"
-          class="w-full text-left md-body-medium"
-        >
-          <caption class="md-title-small pb-2 text-left text-on-surface">
-            Conflicts that keep a repository from being verified
-          </caption>
-          <thead>
-            <tr>
-              <th
-                scope="col"
-                class="py-2 pr-4"
+        <MdListItem>
+          <div class="flex flex-col gap-1">
+            <label class="flex items-center gap-2 md-body-large">
+              <input
+                id="migration-cutover-verify"
+                type="checkbox"
+                :checked="verified"
+                disabled
               >
-                Repository
-              </th>
-              <th
-                scope="col"
-                class="py-2"
-              >
-                Path
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="conflict in importConflicts"
-              :key="`${conflict.repository}-${conflict.path}`"
+              Verify all repositories
+            </label>
+            <p class="md-body-medium text-on-surface-variant">
+              Set by the newest verify job. It is ticked when every repository is VERIFIED, and it cannot be ticked by hand.
+            </p>
+            <ul
+              data-test="blocking"
+              class="list-disc pl-6 md-body-medium text-on-surface"
             >
-              <td class="py-2 pr-4">
-                {{ conflict.repository }}
-              </td>
-              <th
-                scope="row"
-                class="py-2 font-normal"
+              <li v-if="!verifyFinished">
+                Run the verify job first.
+              </li>
+              <li
+                v-for="row in blocking"
+                :key="row.nexusName"
               >
-                {{ conflict.path }}
-              </th>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                {{ row.nexusName }} is not verified: {{ repositoryResultText(row.status) }}.
+              </li>
+              <li v-if="verifyFinished && blocking.length === 0">
+                Every repository is verified.
+              </li>
+            </ul>
+            <table
+              v-if="importConflicts.length"
+              class="w-full text-left md-body-medium"
+            >
+              <caption class="md-title-small pb-2 text-left text-on-surface">
+                Conflicts that keep a repository from being verified
+              </caption>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="py-2 pr-4"
+                  >
+                    Repository
+                  </th>
+                  <th
+                    scope="col"
+                    class="py-2"
+                  >
+                    Path
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="conflict in importConflicts"
+                  :key="`${conflict.repository}-${conflict.path}`"
+                >
+                  <td class="py-2 pr-4">
+                    {{ conflict.repository }}
+                  </td>
+                  <th
+                    scope="row"
+                    class="py-2 font-normal"
+                  >
+                    {{ conflict.path }}
+                  </th>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </MdListItem>
 
-      <div class="flex flex-col gap-1">
-        <label class="flex items-center gap-2 md-body-large">
-          <input
-            id="migration-cutover-switch"
-            v-model="switchDone"
-            type="checkbox"
-          >
-          Switch clients
-        </label>
-        <p class="md-body-medium text-on-surface-variant">
-          Point each client at Ingot with the settings below, then tick this item.
-        </p>
-      </div>
+        <MdListItem>
+          <div class="flex flex-col gap-1">
+            <label class="flex items-center gap-2 md-body-large">
+              <input
+                id="migration-cutover-switch"
+                v-model="switchDone"
+                type="checkbox"
+              >
+              Switch clients
+            </label>
+            <p class="md-body-medium text-on-surface-variant">
+              Point each client at Ingot with the settings below, then tick this item.
+            </p>
+          </div>
+        </MdListItem>
+      </MdList>
     </fieldset>
 
     <section
