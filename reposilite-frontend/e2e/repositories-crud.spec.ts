@@ -54,7 +54,7 @@ test.describe('repositories page writes', () => {
     await page.getByRole('textbox', { name: 'Description', exact: true }).fill(EDITED_DESCRIPTION)
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Save', exact: true }), 'the save bar after saving').toBeHidden()
-    await expect.poll(async () => (await readRepository(repository)).description, 'the stored description').toBe(EDITED_DESCRIPTION)
+    await expect.poll(async () => (await readRepository(repository))!.description, 'the stored description').toBe(EDITED_DESCRIPTION)
 
     // Deleting asks for the id, and the removal is a draft until Save as well.
     await page.goto(siteUrl('/settings/repositories'))

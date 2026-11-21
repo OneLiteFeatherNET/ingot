@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './support/fixtures'
 import { deletePrincipal, siteUrl } from './support/api'
 import { createPasswordUser, currentStep, enrolAuthenticator, nextCode, secretOf, totpCode } from './support/second-factor'
@@ -23,7 +24,7 @@ import { createPasswordUser, currentStep, enrolAuthenticator, nextCode, secretOf
 // own, so the shared administrator of the run never gets a factor. The server starts with a settings key
 // (global-setup.ts), which authenticator enrolments need.
 
-const openSignIn = async (page) => {
+const openSignIn = async (page: Page) => {
   await page.goto(siteUrl('/'))
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Sign in' })
@@ -31,21 +32,21 @@ const openSignIn = async (page) => {
   return dialog
 }
 
-const enterPassword = async (page, username, password) => {
+const enterPassword = async (page: Page, username: string, password: string) => {
   const dialog = await openSignIn(page)
   await dialog.getByLabel('Username', { exact: true }).fill(username)
   await dialog.getByLabel('Password', { exact: true }).fill(password)
   await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
 }
 
-const accountButton = (page, username) => page.getByRole('button', { name: `Account menu, ${username}`, exact: true })
+const accountButton = (page: Page, username: string) => page.getByRole('button', { name: `Account menu, ${username}`, exact: true })
 
-const secondStep = (page) => page.getByRole('dialog', { name: 'Two-step verification' })
+const secondStep = (page: Page) => page.getByRole('dialog', { name: 'Two-step verification' })
 
 test.describe('the second factor of a password user', () => {
-  let username
+  let username: string
 
-  test.beforeEach(async ({ seed }) => {
+  test.beforeEach(({ seed }) => {
     username = seed.name('mfa')
   })
 
@@ -67,14 +68,14 @@ test.describe('the second factor of a password user', () => {
     await enrolment.getByRole('button', { name: 'Start', exact: true }).click()
     const address = enrolment.locator('pre')
     await expect(address, 'the dialog shows the otpauth address').toContainText('otpauth://totp/')
-    const secret = secretOf((await address.textContent()).trim())
+    const secret = secretOf((await address.textContent())!.trim())
 
     await enrolment.getByLabel('Code from the app', { exact: true }).fill(totpCode(secret, currentStep()))
     await enrolment.getByRole('button', { name: 'Confirm', exact: true }).click()
 
     const codesDialog = page.getByRole('dialog', { name: 'Your recovery codes' })
     await expect(codesDialog, 'the first factor brings the recovery codes').toBeVisible()
-    const codes = (await codesDialog.locator('pre').textContent()).split('\n').map(code => code.trim()).filter(Boolean)
+    const codes = (await codesDialog.locator('pre').textContent())!.split('\n').map(code => code.trim()).filter(Boolean)
     expect(codes, 'ten recovery codes are shown').toHaveLength(10)
 
     const done = codesDialog.getByRole('button', { name: 'Done', exact: true })
