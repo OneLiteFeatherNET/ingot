@@ -17,7 +17,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import type { Component } from 'vue'
 import MdTabs from './MdTabs.vue'
+import MdTransition from './MdTransition.vue'
 
 // Every test mounts its own tabs, so no test reads the state of another. The address is only read when a test names it.
 const TABS = [
@@ -396,5 +398,67 @@ describe('MdTabs anchors', () => {
     const tabs = mountTabs()
 
     expect(tabs.attributes('data-ingot-component')).toBe('md-tabs')
+  })
+})
+
+// The transitions of the panels, read as components so a test sees the pattern and the direction each one is given.
+const panelTransitionsOf = (tabs: VueWrapper) =>
+  tabs.findAllComponents(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }[]
+
+describe('MdTabs panel motion', () => {
+  it('wraps every panel in the shared-x pattern, with no direction on the first paint', () => {
+    const tabs = mountTabs({ modelValue: 'plugins' })
+
+    const transitions = panelTransitionsOf(tabs)
+
+    expect(transitions.length, 'one transition per panel').toBe(TABS.length)
+    expect(transitions.map((transition) => transition.props('pattern')), 'the panels move on the shared axis').toEqual(['shared-x', 'shared-x', 'shared-x'])
+    expect(transitions.map((transition) => transition.props('direction')), 'nothing moves before a choice').toEqual([0, 0, 0])
+  })
+
+  it('enters from the right when a tab to the right of the current one is chosen', async () => {
+    const tabs = mountTabs({ modelValue: 'overview' })
+
+    await tabs.setProps({ modelValue: 'environment' })
+
+    expect(panelTransitionsOf(tabs).map((transition) => transition.props('direction')), 'overview to environment moves forward').toEqual([1, 1, 1])
+  })
+
+  it('enters from the left when a tab to the left of the current one is chosen', async () => {
+    const tabs = mountTabs({ modelValue: 'environment' })
+
+    await tabs.setProps({ modelValue: 'plugins' })
+
+    expect(panelTransitionsOf(tabs).map((transition) => transition.props('direction')), 'environment to plugins moves back').toEqual([-1, -1, -1])
+  })
+
+  it('takes the direction from the address when the selection follows a query parameter', async () => {
+    const router = await routerAt('/settings/system-info?tab=environment')
+    const tabs = mountTabs({ queryParam: 'tab' }, router)
+
+    await tabsOf(tabs)[0].trigger('click')
+    await flushPromises()
+
+    expect(panelTransitionsOf(tabs).map((transition) => transition.props('direction')), 'environment to overview moves back').toEqual([-1, -1, -1])
+  })
+
+  it('stacks the panels in one grid cell, so a leaving panel does not push the entering one down', () => {
+    const tabs = mountTabs()
+
+    expect(tabs.classes(), 'the root is a one column grid').toEqual(expect.arrayContaining(['grid', 'grid-cols-1']))
+    for (const panel of tabs.findAll('[role="tabpanel"]')) {
+      expect(panel.classes(), `panel ${panel.attributes('id')} sits in the cell under the tab list`).toEqual(
+        expect.arrayContaining(['row-start-2', 'col-start-1']),
+      )
+    }
+  })
+
+  it('keeps every panel in the document and hides the ones not selected with the hidden attribute', () => {
+    const tabs = mountTabs({ modelValue: 'plugins' })
+
+    const panels = tabs.findAll('[role="tabpanel"]')
+
+    expect(panels.map((panel) => panel.attributes('hidden') !== undefined), 'only the Plugins panel is drawn').toEqual([true, false, true])
+    expect(panels.map((panel) => panel.text()), 'every panel keeps its content').toEqual(['panel overview', 'panel plugins', 'panel environment'])
   })
 })

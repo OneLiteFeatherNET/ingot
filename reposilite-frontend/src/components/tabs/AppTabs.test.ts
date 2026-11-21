@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-import { h } from 'vue'
+import { h, type Component } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import AppTabs from './AppTabs.vue'
+import MdTransition from '../md/MdTransition.vue'
 
 // Every test mounts its own tabs with a memory router, so no test reads the address of another.
 const TABS = [
@@ -221,6 +222,21 @@ describe('AppTabs anchors', () => {
     expect(wrapper.attributes('data-ingot-component'), 'plugins select on the app-tabs name').toBe('app-tabs')
     expect(wrapper.find('[role="tablist"]').exists(), 'the tablist is inside the named element').toBe(true)
     expect(wrapper.findAll('[role="tab"]'), 'every tab is inside the named element').toHaveLength(TABS.length)
+  })
+})
+
+describe('AppTabs panel motion', () => {
+  it('passes the selection and its direction through to the panels, with the app-tabs anchor kept on the wrapper', async () => {
+    const { wrapper } = await mountAt('/settings/system-info?tab=plugins')
+
+    await tabsOf(wrapper)[3].trigger('click')
+    await flushPromises()
+
+    const transitions = wrapper.findAllComponents(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }[]
+    expect(transitions.map((transition) => transition.props('pattern')), 'every panel moves on the shared axis').toEqual(Array(TABS.length).fill('shared-x'))
+    expect(transitions.map((transition) => transition.props('direction')), 'plugins to configuration moves forward').toEqual(Array(TABS.length).fill(1))
+    expect(wrapper.find('[role="tabpanel"]:not([hidden])').text(), 'the chosen panel is drawn').toBe('panel configuration')
+    expect(wrapper.attributes('data-ingot-component'), 'plugins still select on the app-tabs name').toBe('app-tabs')
   })
 })
 
