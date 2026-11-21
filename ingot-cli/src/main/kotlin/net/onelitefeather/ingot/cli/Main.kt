@@ -101,9 +101,7 @@ fun runCli(
     }
 
     val config = try {
-        val path = ConfigFile.defaultPath(env)
-        val file = if (Files.exists(path)) ConfigFile.parse(Files.readString(path)) else ConfigFile.parse("")
-        ConfigResolver.resolve(flags, env, file)
+        ConfigResolver.resolve(flags, env, readConfigFile(env))
     } catch (failure: ConfigException) {
         err.println(failure.message)
         return ExitCode.USAGE
@@ -159,7 +157,20 @@ fun runCli(
         }
         val history = ReplHistory.defaultPath(env).takeIf { ReplHistory.prepare(it) }
         if (history == null) err.println("WARNING: the history file cannot be created, so the history of this session is not kept.")
-        return runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = commandOut, err = commandErr, historyFile = history)
+        // `:context <name>` is accepted when the config file resolves with that context. The session then ends, and the
+        // CLI starts again on the same terminal as if --context had been given, so the new context is set up like the first.
+        var next: String? = null
+        val switchContext = { name: String ->
+            try {
+                ConfigResolver.resolve(flags + ("context" to name), env, readConfigFile(env))
+                next = name
+                null
+            } catch (failure: ConfigException) {
+                failure.message
+            }
+        }
+        val exit = runRepl(client, connector, term, config.context ?: url, json = json, yes = yes, out = commandOut, err = commandErr, historyFile = history, switchContext = switchContext)
+        return next?.let { runCli(args + listOf("--context", it), env, stdin, out, err, interactive) { term } } ?: exit
     }
 
     val lines = if (commandArguments == listOf("-")) {
@@ -180,6 +191,11 @@ fun runCli(
         confirm = { command, reason -> askYesNo("Run '$command'${if (reason.isEmpty()) "" else " ($reason)"}? [y/N] ", err) },
     )
     return Exec(client, commandOut, commandErr, options).runAll(lines)
+}
+
+private fun readConfigFile(env: Map<String, String>): ConfigFile {
+    val path = ConfigFile.defaultPath(env)
+    return if (Files.exists(path)) ConfigFile.parse(Files.readString(path)) else ConfigFile.parse("")
 }
 
 /** Reads a yes or no answer from the terminal. Anything but `y` or `yes` is no. */

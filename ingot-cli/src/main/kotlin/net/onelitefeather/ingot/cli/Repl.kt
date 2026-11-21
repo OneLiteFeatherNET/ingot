@@ -45,6 +45,8 @@ fun interface ConsoleConnector {
  * When the connection drops, the REPL reconnects with a backoff ([backoff], waited through [pause]) and resumes the log
  * after the last line it showed. A command that had no result is reported as unknown and never sent again, and a line
  * typed while the connection is down is not sent. A session the server ends with 1008 is not reopened.
+ * `:output` switches between text and JSON. `:context <name>` asks [switchContext], which answers null when it accepts
+ * the switch, and then the session ends with exit code 0, or the reason it refuses.
  */
 fun runRepl(
     client: IngotClient,
@@ -58,7 +60,9 @@ fun runRepl(
     historyFile: Path? = null,
     backoff: Backoff = Backoff(),
     pause: (Duration) -> Unit = { Thread.sleep(it.toMillis()) },
+    switchContext: (name: String) -> String? = { "This session cannot switch contexts." },
 ): Int {
+    var output = json
     lateinit var session: ConsoleSocket
     val completer = Completer { _, line, candidates ->
         val completion = runCatching { session.complete(line.line(), line.cursor()) }.getOrNull()
@@ -99,14 +103,22 @@ fun runRepl(
             }
             when {
                 line.isEmpty() -> continue
-                line == ":quit" -> return ExitCode.OK
-                line.startsWith(":") -> err.println("Unknown builtin ${line.substringBefore(' ')}. Builtins: :quit")
+                line.startsWith(":") -> when (val builtin = parseBuiltin(line)) {
+                    Builtin.Quit -> return ExitCode.OK
+                    is Builtin.Output -> output = builtin.json
+                    is Builtin.Context -> when (val name = builtin.name) {
+                        null -> err.println("Context: $context")
+                        // An accepted switch ends this session, and the caller opens the next one.
+                        else -> switchContext(name)?.let { err.println(it) } ?: return ExitCode.OK
+                    }
+                    is Builtin.Invalid -> err.println(builtin.message)
+                }
                 !session.isOpen -> {
                     err.println("The connection to the server was lost, so '$line' was not sent.")
                     session = recover(session)
                 }
                 else -> {
-                    runLine(session, reader, line, json, yes, out, err)?.let { return it }
+                    runLine(session, reader, line, output, yes, out, err)?.let { return it }
                     if (!session.isOpen) session = recover(session)
                 }
             }
