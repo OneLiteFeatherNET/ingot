@@ -1,0 +1,86 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import SsoProviderDialog from './SsoProviderDialog.vue'
+import { SECRET_PLACEHOLDER, type OidcProvider } from './loginSettings'
+
+const KEYCLOAK: OidcProvider = {
+  id: 'keycloak',
+  enabled: true,
+  label: 'Keycloak',
+  icon: 'KEYCLOAK',
+  issuerUrl: 'https://sso.example.org/realms/ingot',
+  clientId: 'ingot',
+  clientSecret: SECRET_PLACEHOLDER,
+  scopes: 'openid profile email',
+  usernameClaim: 'preferred_username',
+  displayNameClaim: 'name',
+  emailClaim: 'email',
+  groupsClaim: 'groups',
+  allowedEmailDomains: [],
+  autoCreateUsers: true,
+  adminGroups: [],
+  mfaAcrValues: [],
+  mfaAmrValues: []
+}
+
+let wrapper: VueWrapper | undefined
+
+// The modal teleports to the body and mounts its content after a tick, so the test waits for it.
+const openDialog = async (): Promise<void> => {
+  wrapper = mount(SsoProviderDialog, {
+    attachTo: document.body,
+    props: { modelValue: true, provider: KEYCLOAK, takenIds: [], productionUrl: 'http://localhost:3000/' }
+  })
+  await flushPromises()
+}
+
+// The advanced settings are the disclosure that holds the username claim field.
+const advanced = (): HTMLDetailsElement | null =>
+  document.querySelector('#sso-claim-username')?.closest('details') ?? null
+
+describe('SsoProviderDialog advanced settings', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('puts the advanced settings in the shared disclosure', async () => {
+    await openDialog()
+
+    const disclosure = advanced()
+    expect(disclosure, 'the claim fields sit in a disclosure').not.toBeNull()
+    expect(disclosure?.dataset.ingotComponent, 'the advanced settings are an md-disclosure').toBe('md-disclosure')
+    expect(disclosure?.querySelector('summary')?.textContent?.trim(), 'the disclosure is named Advanced').toBe('Advanced')
+  })
+
+  it('starts with the advanced settings closed', async () => {
+    await openDialog()
+
+    expect(advanced()?.open, 'the rarely changed settings wait behind the closed disclosure').toBe(false)
+  })
+
+  it('keeps the four claims and the trusted second factor values in the advanced settings', async () => {
+    await openDialog()
+
+    const disclosure = advanced()
+    for (const id of ['sso-claim-username', 'sso-claim-name', 'sso-claim-email', 'sso-claim-groups', 'sso-mfa-acr', 'sso-mfa-amr']) {
+      expect(disclosure?.querySelector(`#${id}`), `the field ${id} sits in the advanced settings`).not.toBeNull()
+    }
+  })
+})
