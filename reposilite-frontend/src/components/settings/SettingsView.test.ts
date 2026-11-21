@@ -472,8 +472,52 @@ describe('SettingsView while the configuration loads', () => {
       attachTo: document.body
     })
 
-    const loading = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Loading configuration')
-    expect(loading, 'the loading line is drawn before the configuration is loaded').toBeDefined()
-    expect(loading!.classes(), 'a 48 pixel minimum height, the height of the first row of the frame').toContain('min-h-12')
+    const loading = wrapper.find('[data-test="settings-loading"]')
+    expect(loading.exists(), 'the loading line is drawn before the configuration is loaded').toBe(true)
+    expect(loading.classes(), 'a 48 pixel minimum height, the height of the first row of the frame').toContain('min-h-12')
+  })
+
+  it('draws the loading line as the shared state panel in its loading state', () => {
+    wrapper = mount(SettingsView, {
+      props: { selectedTab: 'Settings' },
+      global: {
+        plugins: [namedRouter()],
+        provide: { [configurationStoreKey]: createConfigurationStore(ref(fakeClient()) as unknown as ClientRef) }
+      },
+      attachTo: document.body
+    })
+
+    const loading = wrapper.find('[data-test="settings-loading"]')
+    expect(loading.attributes('data-ingot-component'), 'the loading line is drawn by MdStatePanel').toBe('md-state-panel')
+    expect(loading.attributes('aria-busy'), 'the panel tells assistive technology that the page is busy').toBe('true')
+    expect(loading.text(), 'the panel still says what is loading').toContain('Loading configuration')
+  })
+})
+
+describe('SettingsView when the configuration cannot load', () => {
+  const failingClient = () => ({
+    settings: {
+      domains: () => Promise.reject(new Error('unreachable')),
+      schema: () => Promise.reject(new Error('unreachable')),
+      fetch: () => Promise.reject(new Error('unreachable')),
+      update: () => Promise.resolve({ data: {} })
+    }
+  })
+
+  it('shows the load failure as a shared alert in the error tone', async () => {
+    const store = createConfigurationStore(ref(failingClient()) as unknown as ClientRef)
+    wrapper = mount(SettingsView, {
+      props: { selectedTab: 'Settings' },
+      global: { plugins: [namedRouter()], provide: { [configurationStoreKey]: store } },
+      attachTo: document.body
+    })
+    await store.fetchConfiguration()
+    await flushPromises()
+
+    const alert = wrapper.get('[data-test="settings-load-error"]')
+    expect(alert.attributes('data-tone'), 'the load failure is drawn in the error tone').toBe('error')
+    expect(alert.attributes('role'), 'the failure is announced').toBe('alert')
+    expect(alert.text(), 'the alert names the failure').toContain('Cannot load configuration: unreachable')
+    expect(wrapper.find('[data-test="settings-loading"]').exists(), 'no loading line beside the failure').toBe(false)
   })
 })
