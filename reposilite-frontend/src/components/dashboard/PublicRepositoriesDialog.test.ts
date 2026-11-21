@@ -79,6 +79,17 @@ describe('PublicRepositoriesDialog', () => {
     expect(rows[1], 'the second row names the releases repository').toContain('releases')
   })
 
+  it('draws the repositories as the rows of one divided shared list', async () => {
+    await mountDialog()
+
+    const list = dialog()?.querySelector<HTMLElement>('[aria-label="Public repositories"]')
+    const rows = [...(list?.children ?? [])]
+    expect(list?.dataset.ingotComponent, 'the repositories are an md-list').toBe('md-list')
+    expect(list?.dataset.divided, 'the list draws the rule between the repositories').toBe('true')
+    expect(rows, 'one row per repository').toHaveLength(2)
+    expect(rows.map(row => (row as HTMLElement).dataset.ingotComponent), 'every repository is an md-list-item').toEqual(['md-list-item', 'md-list-item'])
+  })
+
   it('links each row to the visibility setting of its repository', async () => {
     await mountDialog()
 
