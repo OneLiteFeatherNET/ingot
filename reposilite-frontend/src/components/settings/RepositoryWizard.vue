@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, reactive, ref, shallowRef, unref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { VueFinalModal } from 'vue-final-modal'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
 import { errorMessage } from '../../helpers/toast'
@@ -25,6 +24,7 @@ import usePlaceholders from '../../store/placeholders'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
+import MdDialog from '../md/MdDialog.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdRadio from '../md/MdRadio.vue'
 import MdSelect from '../md/MdSelect.vue'
@@ -34,7 +34,6 @@ import CopyIcon from '../icons/CopyIcon.vue'
 import { copyToClipboard } from '../card/copySnippet'
 import { idText } from './collections'
 import { ROLES, roleExplanation } from '../access/accessTeams'
-import { SCRIM_STYLE } from './dialog'
 import { createAccessPorts } from './repositoryAccessPorts'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import {
@@ -111,11 +110,6 @@ const running = ref(false)
 const succeeded = ref(false)
 const copied = ref('')
 const heading = ref<HTMLElement | null>(null)
-// The step title takes the focus when the wizard is drawn open, so Escape reaches the dialog and the step is announced.
-// The title element is mounted with the dialog, so this runs once per opening, after the element is in the document.
-watch(heading, (element) => {
-  if (element && props.modelValue) element.focus()
-})
 
 // The steps follow the chosen type: a hosted repository has storage, a proxy remotes, a group members.
 const steps = computed(() => stepsFor(draft.type))
@@ -324,28 +318,24 @@ const onModalUpdate = (open: boolean) => {
 </script>
 
 <template>
-  <VueFinalModal
+  <MdDialog
     :model-value="modelValue"
-    teleport-to="body"
-    :overlay-style="SCRIM_STYLE"
-    :click-to-close="dismissable"
-    :esc-to-close="dismissable"
-    class="flex min-h-full items-center justify-center max-medium:p-0 medium:p-6"
+    labelledby="wizard-title"
+    size="compact"
+    :dismissable="dismissable"
     @update:model-value="onModalUpdate"
   >
+    <!-- The form fills the full-screen frame below 600px, so the buttons sit at the bottom of a short step. -->
     <form
       id="repository-wizard"
-      class="flex w-full min-w-[280px] flex-col overflow-hidden bg-surface-container-high text-on-surface max-medium:h-dvh max-medium:rounded-none medium:h-auto medium:max-h-[min(44rem,90dvh)] medium:max-w-[560px] medium:rounded-corner-extra-large medium:shadow-elevation-3"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="wizard-title"
+      class="flex min-h-full flex-col"
       novalidate
       data-ingot-component="repository-wizard"
       @submit.prevent="onSubmit"
     >
       <header
         data-ingot-part="header"
-        class="flex flex-col gap-4 px-6 pt-6 max-medium:px-4 max-medium:pt-4"
+        class="flex flex-col gap-4"
       >
         <h2
           id="wizard-title"
@@ -374,17 +364,19 @@ const onModalUpdate = (open: boolean) => {
             >{{ step.label }}</span>
           </li>
         </ol>
+        <!-- The step title carries data-autofocus, so the dialog frame focuses it on open: Escape reaches the dialog and the step is announced. -->
         <h3
           id="wizard-step-title"
           ref="heading"
           tabindex="-1"
+          data-autofocus
           class="md-title-large text-on-surface focus:outline-none"
         >
           {{ steps[stepIndex].label }}
         </h3>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4 max-medium:px-4">
+      <div class="flex-1 py-4">
         <div
           v-if="attempted && errorList.length > 0"
           ref="errorSummary"
@@ -1092,7 +1084,7 @@ const onModalUpdate = (open: boolean) => {
         </div>
       </div>
 
-      <footer class="flex flex-wrap items-center justify-end gap-2 px-6 pb-6 pt-2 max-medium:px-4 max-medium:pb-4">
+      <footer class="flex flex-wrap items-center justify-end gap-2 pt-2">
         <MdButton
           v-if="!succeeded"
           id="wizard-cancel"
@@ -1139,5 +1131,5 @@ const onModalUpdate = (open: boolean) => {
         </MdButton>
       </footer>
     </form>
-  </VueFinalModal>
+  </MdDialog>
 </template>
