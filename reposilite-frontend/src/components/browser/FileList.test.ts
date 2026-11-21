@@ -29,7 +29,9 @@ const { sessionState } = session as unknown as { sessionState: SessionStateMock 
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }))
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+  // The shared list row renders the router's own link, which the router-link stub replaces.
+  RouterLink: (await importOriginal<typeof import('vue-router')>()).RouterLink,
   useRoute: () => ({ path: '/releases/net/example' }),
   useRouter: () => ({ push: routerPush })
 }))
@@ -280,6 +282,16 @@ describe('FileList includes section', () => {
       { name: 'browse', params: { qualifier: ['releases'] } },
       { name: 'browse', params: { qualifier: ['snapshots'] } }
     ])
+  })
+
+  it('builds the references from the shared list, one row per repository', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases', 'snapshots'] })
+
+    expect(wrapper.find('#browser-includes').exists(), 'the includes block is shown').toBe(true)
+    expect(wrapper.findAllComponents({ name: 'MdList' }), 'the references are one shared list').toHaveLength(1)
+    const rows = wrapper.findAllComponents({ name: 'MdListItem' })
+    expect(rows.map(row => row.text()), 'each reference is a shared list row, in order').toEqual(['releases', 'snapshots'])
+    expect(rows.every(row => row.findComponent(RouterLinkStub).exists()), 'each row is a link').toBe(true)
   })
 
   it('titles the references as Includes', () => {
