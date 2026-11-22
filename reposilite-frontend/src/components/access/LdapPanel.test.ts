@@ -164,7 +164,7 @@ describe('LdapPanel', () => {
 
       await save()
 
-      expect(settings.update.mock.calls[0][1].ldap.bindPassword).toBe(SECRET_PLACEHOLDER)
+      expect((settings.update.mock.calls[0][1] as { ldap: { bindPassword: string } }).ldap.bindPassword).toBe(SECRET_PLACEHOLDER)
     })
 
     it('sends a new bind password that was typed', async () => {
@@ -173,7 +173,7 @@ describe('LdapPanel', () => {
 
       await save()
 
-      expect(settings.update.mock.calls[0][1].ldap.bindPassword).toBe('rotated-bind')
+      expect((settings.update.mock.calls[0][1] as { ldap: { bindPassword: string } }).ldap.bindPassword).toBe('rotated-bind')
     })
 
     it('says that the form holds changes that are not saved yet', async () => {
@@ -293,7 +293,7 @@ describe('LdapPanel', () => {
 
       expect(authUpdate).toHaveBeenCalledTimes(1)
       expect(authUpdate.mock.calls[0][0]).toBe('authentication')
-      expect(authUpdate.mock.calls[0][1].ldap.hostname).toBe('ldap2.domain.com')
+      expect((authUpdate.mock.calls[0][1] as { ldap: { hostname: string } }).ldap.hostname).toBe('ldap2.domain.com')
       expect(settings.update, 'the dashboard settings are not written').not.toHaveBeenCalled()
     })
   })

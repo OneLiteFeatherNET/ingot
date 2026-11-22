@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
-import type { Ref } from 'vue'
+import type { Component, Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
@@ -27,6 +27,8 @@ import { setContributions } from '../navigation/registry'
 import type { PluginManifest } from '../navigation/registry'
 import IndexPage from './IndexPage.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
+
+const notFoundView = NotFoundView as Component
 
 // The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
 interface SessionFlags {
@@ -156,7 +158,7 @@ describe('the Migration page in the dashboard', () => {
 
     const { wrapper } = await mountAt('/settings/migration/connect', { nodes: ['ingot.admin.*'] })
 
-    expect(wrapper.findComponent(NotFoundView).exists(), 'the dashboard answers as for an unknown address').toBe(true)
+    expect(wrapper.findComponent(notFoundView).exists(), 'the dashboard answers as for an unknown address').toBe(true)
     expect(wrapper.find('[data-section="migration"]').exists()).toBe(false)
   })
 

@@ -75,7 +75,7 @@ describe('the Maven options section', () => {
   it('takes no focus on mount', async () => {
     await mountPanel()
 
-    expect(wrapper.element.contains(document.activeElement), 'the focus stays where it was').toBe(false)
+    expect((wrapper.element as HTMLElement).contains(document.activeElement), 'the focus stays where it was').toBe(false)
   })
 
   it('writes the option to the draft with the same domain object, so the repositories are kept', async () => {

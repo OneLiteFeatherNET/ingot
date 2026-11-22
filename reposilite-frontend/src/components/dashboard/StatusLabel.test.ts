@@ -25,7 +25,7 @@ const mountLabel = (status: Status = 'good') => mount(StatusLabel, {
   slots: { default: 'Healthy' }
 })
 
-const dotOf = (status: Status) => mountLabel(status).element.firstElementChild as HTMLElement
+const dotOf = (status: Status) => (mountLabel(status).element as HTMLElement).firstElementChild as HTMLElement
 
 // The runtime declaration of the props, where the validator of the status lives.
 const declaredProps = () =>
@@ -33,7 +33,7 @@ const declaredProps = () =>
 
 describe('StatusLabel', () => {
   it('lays the dot and its text on one centre line with the shared gap', () => {
-    const root = mountLabel().element
+    const root = mountLabel().element as HTMLElement
 
     expect(root.tagName).toBe('SPAN')
     expect(root.className.split(' ')).toEqual(expect.arrayContaining(['inline-flex', 'items-center', 'gap-1.5']))
@@ -47,7 +47,7 @@ describe('StatusLabel', () => {
 
   it('places the dot before the text and hides it from assistive technology', () => {
     const wrapper = mountLabel()
-    const [dot, text] = wrapper.element.children
+    const [dot, text] = (wrapper.element as HTMLElement).children
 
     expect(dot.getAttribute('aria-hidden')).toBe('true')
     expect(text.textContent?.trim(), 'the text is what a reader hears').toBe('Healthy')

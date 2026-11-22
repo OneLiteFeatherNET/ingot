@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { markRaw } from 'vue'
+import { markRaw, type Component } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
@@ -25,6 +25,8 @@ import { tester as selectTester } from '../renderers/MdSelectRenderer.vue'
 import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
+
+const membersPicker = RepositoryMembersPicker as Component
 import type { Entry, Mirror } from '../../store/maven/repositoryTypes'
 
 const renderers = markRaw([
@@ -149,7 +151,7 @@ describe('EntryDetail fields by type', () => {
   it('shows a group its members as an ordered list, and neither storage nor the mirrored list', () => {
     mountEntry({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }] })
 
-    expect(wrapper.findComponent(RepositoryMembersPicker).exists()).toBe(true)
+    expect(wrapper.findComponent(membersPicker).exists()).toBe(true)
     expect(form()).not.toContain('Storage provider')
     expect(form()).not.toContain('Mirrored repositories')
   })

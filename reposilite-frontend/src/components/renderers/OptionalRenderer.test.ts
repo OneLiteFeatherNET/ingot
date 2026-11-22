@@ -17,7 +17,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { JsonForms } from '@jsonforms/vue'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
-import type { ControlElement, JsonSchema7 } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, RankedTester } from '@jsonforms/core'
 import { tester as booleanSwitchTester, default as BooleanSwitchRenderer } from './BooleanSwitchRenderer.vue'
 import { tester as optionalTester, default as OptionalRenderer } from './OptionalRenderer.vue'
 import { tester as objectTester, default as ObjectRenderer } from './ObjectRenderer.vue'
@@ -56,7 +56,7 @@ describe('OptionalRenderer', () => {
   it('claims an optional object property above the vanilla rank', () => {
     const control = { type: 'Control', scope: '#/properties/proxiedCredentials' } as ControlElement
 
-    expect(optionalTester(control, schema, { rootSchema: schema, config: undefined })).toBe(2)
+    expect((optionalTester as RankedTester)(control, schema, { rootSchema: schema, config: undefined })).toBe(2)
   })
 
   it('offers no native checkbox for the optional toggle', () => {

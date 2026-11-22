@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
-import type { ComponentPublicInstance, Ref } from 'vue'
+import type { Component, ComponentPublicInstance, Ref } from 'vue'
 import FileBrowserView from './FileBrowserView.vue'
 import BrowserUpload from './FileUpload.vue'
 import MdCard from '../md/MdCard.vue'
@@ -26,6 +26,9 @@ import * as session from '../../store/session'
 type SessionStateMock = { details: Ref<unknown>; client: Ref<unknown>; sessionReady: Ref<boolean>; canWrite: Ref<boolean>; isManager: Ref<boolean> }
 const { sessionState } = session as unknown as { sessionState: SessionStateMock }
 import { DETAILS_COLLAPSED_KEY } from '../card/detailsCollapsed'
+
+// The upload card, typed as a component so that findComponent accepts it.
+const uploadComponent = BrowserUpload as Component
 
 // The session store is replaced per file; each test swaps in its own client below.
 vi.mock('../../store/session', async () => {
@@ -285,7 +288,7 @@ describe('FileBrowserView upload area', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(true)
   })
 
   it('hides the upload for a directory that does not exist', async () => {
@@ -294,7 +297,7 @@ describe('FileBrowserView upload area', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists(), 'nothing can be uploaded into a missing directory').toBe(false)
+    expect(wrapper.findComponent(uploadComponent).exists(), 'nothing can be uploaded into a missing directory').toBe(false)
   })
 })
 
@@ -581,7 +584,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mountAt('central/org/example')
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(false)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(false)
     expect(wrapper.get('[data-test="read-only-explanation"]').text()).toContain('remote repositories')
   })
 
@@ -591,7 +594,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mountAt('all')
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(false)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(false)
     expect(wrapper.get('[data-test="read-only-explanation"]').text()).toContain('no files of its own')
   })
 
@@ -613,7 +616,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mountAt('releases/net/example')
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(true)
     expect(wrapper.find('[data-test="read-only-explanation"]').exists()).toBe(false)
   })
 
@@ -623,7 +626,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mountAt('old/org')
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(true)
   })
 
   it('keeps the upload when the list of repositories cannot be read, since the type is then not known', async () => {
@@ -638,7 +641,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mountAt('releases/net/example')
     await flushPromises()
 
-    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+    expect(wrapper.findComponent(uploadComponent).exists()).toBe(true)
   })
 
   it('offers a manager the edit of a group members, from the Includes section', async () => {

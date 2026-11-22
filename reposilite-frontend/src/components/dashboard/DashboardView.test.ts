@@ -47,7 +47,7 @@ describe('DashboardView', () => {
   it('has no maximum width, so the status and the resources use the full window width', () => {
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.element.classList).toContain('max-w-none')
+    expect((wrapper.element as HTMLElement).classList).toContain('max-w-none')
   })
 
   it('gives the getting started checklist the full content width, with no reading cap that leaves a blank block', () => {

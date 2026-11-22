@@ -99,7 +99,7 @@ describe('ResourceTrends', () => {
     const wrapper = mount(ResourceTrends)
     await flushPromises()
 
-    const grid = Array.from(wrapper.element.classList)
+    const grid = Array.from((wrapper.element as HTMLElement).classList)
     expect(grid, 'two columns from 1024 pixels, as before').toContain('min-[1024px]:grid-cols-2')
     expect(grid, 'no third column: an empty track at 2560 pixels is a visible gap').not.toContain('min-[2560px]:grid-cols-3')
     wrapper.unmount()

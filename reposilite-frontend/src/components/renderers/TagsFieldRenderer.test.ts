@@ -19,7 +19,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
+import type { ControlElement, JsonSchema7, RankedTester, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as tagsTester } from './TagsFieldRenderer.vue'
 import TagsFieldRenderer from './TagsFieldRenderer.vue'
@@ -77,19 +77,19 @@ describe('TagsFieldRenderer tester', () => {
   it('takes a string array named tags, above the array renderer', () => {
     const root = rootWith('tags', stringArray)
 
-    expect(tagsTester(control, root, { rootSchema: root, config: undefined }), 'the tags field outranks the generic list').toBeGreaterThan(arrayTester(control, root, { rootSchema: root, config: undefined }))
+    expect((tagsTester as RankedTester)(control, root, { rootSchema: root, config: undefined }), 'the tags field outranks the generic list').toBeGreaterThan((arrayTester as RankedTester)(control, root, { rootSchema: root, config: undefined }))
   })
 
   it('leaves string arrays with other names to the list', () => {
     const root = rootWith('allowedGroups', stringArray)
 
-    expect(tagsTester({ type: 'Control', scope: '#/properties/allowedGroups' } as ControlElement, root, { rootSchema: root, config: undefined })).toBe(-1)
+    expect((tagsTester as RankedTester)({ type: 'Control', scope: '#/properties/allowedGroups' } as ControlElement, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 
   it('leaves an array of objects named tags to the list', () => {
     const root = rootWith('tags', { type: 'array', items: { type: 'object' } })
 
-    expect(tagsTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
+    expect((tagsTester as RankedTester)(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 })
 
