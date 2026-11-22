@@ -118,6 +118,12 @@ describe('MenuPanel, signed in', () => {
     expect(computeAccessibleName(trigger), 'the visible name is contained in the accessible name').toContain('Alice Example')
   })
 
+  it('insets the account button by 8 pixels so the avatar lines up with the bar', () => {
+    mounted = mountPanel()
+
+    expect(accountTrigger(mounted.wrapper).classes(), 'the dense inset of the button').toEqual(expect.arrayContaining(['px-2']))
+  })
+
   it('gives the name in the bar its full value as title, so a truncated name is still readable', () => {
     mounted = mountPanel()
 

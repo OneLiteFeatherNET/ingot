@@ -272,4 +272,25 @@ describe('MdButton flush-start text variant', () => {
     expect(wrapper.classes(), 'flush start is a text variant only').toContain('pl-6')
     expect(wrapper.classes()).not.toContain('pl-0')
   })
+
+  it('keeps the default inset when no inset is asked for', () => {
+    const wrapper = mount(MdButton, { slots: { default: 'Save' } })
+
+    expect(wrapper.classes(), 'a plain button has the label inset on both sides').toEqual(expect.arrayContaining(['pl-6', 'pr-6']))
+  })
+
+  it('draws a dense inset of 8 pixels on both sides', () => {
+    const wrapper = mount(MdButton, { props: { inset: 'dense' }, slots: { default: 'Save' } })
+
+    expect(wrapper.classes(), 'dense inset').toEqual(expect.arrayContaining(['px-2']))
+    expect(wrapper.classes(), 'no default inset beside the dense one').not.toEqual(expect.arrayContaining(['pr-6']))
+    expect(wrapper.classes(), 'no default leading inset beside the dense one').not.toEqual(expect.arrayContaining(['pl-6']))
+  })
+
+  it('draws no inset when the content fills the button', () => {
+    const wrapper = mount(MdButton, { props: { inset: 'none' }, slots: { default: 'Save' } })
+
+    expect(wrapper.classes(), 'no inset').toEqual(expect.arrayContaining(['px-0']))
+    expect(wrapper.classes(), 'no default inset beside none').not.toEqual(expect.arrayContaining(['pr-6']))
+  })
 })

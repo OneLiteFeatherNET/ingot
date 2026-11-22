@@ -57,6 +57,8 @@ withDefaults(defineProps<{
   items: MenuItem[]
   // Deprecated, kept for one release: classes for the trigger button. Use the `trigger` slot to change the trigger.
   triggerClass?: string
+  // The horizontal inset of the trigger button, see MdButton. `none` for an icon-only trigger.
+  triggerInset?: 'default' | 'dense' | 'none'
   // The accessible name of the button when a trigger slot is given, such as "Account menu, Alice". Without it the
   // button is named by its content.
   triggerLabel?: string
@@ -67,6 +69,7 @@ withDefaults(defineProps<{
   disabled?: boolean
 }>(), {
   triggerClass: '',
+  triggerInset: 'default',
   triggerLabel: '',
   triggerVariant: 'text',
   disabled: false
@@ -233,6 +236,7 @@ const nameOf = (item: MenuEntry): string | undefined =>
       :variant="triggerVariant"
       type="button"
       :disabled="disabled"
+      :inset="triggerInset"
       :class="triggerClass"
       :aria-label="triggerLabel || ($slots.trigger ? undefined : label)"
       aria-haspopup="menu"
