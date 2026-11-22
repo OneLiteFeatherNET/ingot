@@ -86,4 +86,25 @@ describe('MdSection', () => {
 
     expect(wrapper.get('h3').classes(), 'a level 3 title must use md-title-small').toContain('md-title-small')
   })
+
+  it('makes the title programmatically focusable when focusable is set', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members', focusable: true } })
+
+    expect(wrapper.get('h2').attributes('tabindex'), 'a focusable title takes tabindex -1').toBe('-1')
+  })
+
+  it('leaves the title unfocusable by default', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members' } })
+
+    expect(wrapper.get('h2').attributes('tabindex'), 'no tabindex unless focusable').toBeUndefined()
+  })
+
+  it('lets a script move the focus to the title when focusable is set', () => {
+    const wrapper = mount(MdSection, { props: { title: 'Members', level: 3, focusable: true }, attachTo: document.body })
+
+    wrapper.get('h3').element.focus()
+
+    expect(document.activeElement, 'the title holds the focus').toBe(wrapper.get('h3').element)
+    wrapper.unmount()
+  })
 })
