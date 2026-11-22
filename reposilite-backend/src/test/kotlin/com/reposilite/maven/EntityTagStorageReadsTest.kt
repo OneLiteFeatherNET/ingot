@@ -85,6 +85,22 @@ internal class EntityTagStorageReadsTest : MavenSpecification() {
         )
     }
 
+    @Test
+    fun `should tag a checksum file by size and time without any storage call`() {
+        // given: a stored checksum file, which has no checksums of its own
+        val checksum = JAR.resolveSibling("lib-1.0.jar.sha1")
+        val details = store(checksum, SHA1)
+        calls.clear()
+
+        // when: the entity tag of the checksum file is resolved
+        val etag = mavenFacade.findEntityTag(LookupRequest(null, REPOSITORY, checksum), details)
+
+        // then: the size and time tag, without a read for a checksum of the checksum
+        assertThat(etag).describedAs("entity tag of the checksum file")
+            .isEqualTo("\"${details.contentLength.toString(16)}-${details.lastModifiedTime!!.toEpochMilli().toString(16)}\"")
+        assertThat(calls).describedAs("storage calls made for the entity tag of a checksum file").isEmpty()
+    }
+
     private fun store(location: Location, content: String): DocumentInfo {
         val storage = mavenFacade.getRepository(REPOSITORY)!!.storageProvider
         storage.putFile(location, content.byteInputStream())
