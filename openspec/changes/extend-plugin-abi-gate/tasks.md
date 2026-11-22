@@ -36,9 +36,9 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 - [x] 3.2 `test(plugin)`: a unit test of the classification rule of design D3 over a small table: an annotation whose simple name starts with
   `ExperimentalIngot` makes a finding experimental, a package in `ingotExperimentalPackages` does too, and everything else is promised. The
   test is a plain Kotlin test in `reposilite-backend/src/test`, with no class files read from disk.
-- [ ] 3.3 `build(plugin)`: the classification step of D3, which reads the annotations of the new jar with the class-file reader already on the
+- [x] 3.3 `build(plugin)`: the classification step of D3, which reads the annotations of the new jar with the class-file reader already on the
   build classpath, and the two sections of the Markdown report with their counts.
-- [ ] 3.4 `build(plugin)`: the internal filter of design D4. The task `ingotInternalClasses` writes the internal class names with
+- [x] 3.4 `build(plugin)`: the internal filter of design D4. The task `ingotInternalClasses` writes the internal class names with
   `kotlinx-metadata-jvm` (pinned), the comparison excludes them and the members with `$` in their names, and a class whose metadata cannot be
   read is logged and kept. Test first: `InternalClassFilterTest` over metadata of one internal and one public class, from fixtures that are
   compiled in the test, with a temporary directory.
@@ -53,7 +53,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 - [x] 4.2 `ci(plugin)`: add the step `./gradlew --build-cache :reposilite-backend:ingotPluginApiReport` to the job "Plugin API" in
   `.github/workflows/ci.yml`, after the 3.5.28 report, and the section "Ingot plugin API" in `$GITHUB_STEP_SUMMARY` with the counts of each
   group. The step is report-only, and `permissions: contents: read` stays.
-- [ ] 4.3 `docs(plugin)`: the "Compatibility checks" section of `docs/gitbook/references/plugins/plugin-api.md`. The baseline row gets the Ingot
+- [x] 4.3 `docs(plugin)`: the "Compatibility checks" section of `docs/gitbook/references/plugins/plugin-api.md`. The baseline row gets the Ingot
   release, the packages row gets the Ingot packages with their experimental status, the "Not compared" row loses the Ingot packages, and the
   text says where the Ingot report is found.
 
