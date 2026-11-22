@@ -534,7 +534,7 @@ Props:
 
 - `modelValue`: string, for `v-model`
 - `label`: string, required. Rendered as `<label for>` tied to the input
-- `variant`: `'filled'` (default) or `'outlined'`
+- `variant`: `'outlined'` (default) or `'filled'`
 - `supportingText`: string, shown under the field
 - `error`: boolean. Sets `aria-invalid="true"`, switches the field to the error colours,
   and shows `errorText` in place of `supportingText`

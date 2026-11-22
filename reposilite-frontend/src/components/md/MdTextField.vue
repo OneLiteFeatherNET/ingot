@@ -53,7 +53,7 @@ const props = withDefaults(defineProps<{
   readonly?: boolean
 }>(), {
   modelValue: '',
-  variant: 'filled',
+  variant: 'outlined',
   supportingText: '',
   errorText: '',
   id: '',
