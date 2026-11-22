@@ -40,15 +40,14 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   heading is level 4. Verify: it fails, because the renderer emits a fixed level 3 at every depth.
 - [x] 3.4 `fix(ui)`: add the `none` value to the `padding` prop of `MdCard.vue` and the level type classes to the `level` prop
   of `MdSection.vue` (`src/components/md/`). Verify: 3.1 passes.
-- [ ] 3.5 `fix(ui)`: replace hand-built card containers with `MdCard` in `src/components/access/` (LdapPanel, LegacyGrantsPanel,
-  PrincipalDetail, PermissionNodesCard, TeamMembersCard, TeamDetail, TeamParentsCard, TeamLegacyGrants, SsoProvidersPanel,
-  SsoProviderDialog, check/CheckPermissionView), in `src/components/account/` (PasswordCard, ProfileCard), `src/components/audit/`
-  (AuditView, AuditEventRow), `src/components/browser/` (FileUpload, FileBrowserView, FileList), `src/components/dashboard/FailuresSheet.vue`,
-  the maintenance tiles (CleanupPoliciesPanel, IndexPanel), `src/components/plugins/PluginBlock.vue`,
-  `src/components/renderers/ArrayListRenderer.vue`, `src/components/repositories/WritePolicyField.vue`, the settings cards
-  (AccessDomainCard, AppearancePreview, EntryDetail, RepositoryAccessCard, SettingsReviewSheet, SettingsView) and
-  `src/components/identity/TokenList.vue`. Split into one commit per folder group for review. Verify: 3.2 passes and no migrated file
-  carries `rounded-corner-` or `p-` on its card root.
+- [ ] 3.5 `fix(ui)`: re-read against main. Dropped, because they already draw their cards with `MdCard` on main: every file of the
+  original list under `src/components/access/`, `account/`, `browser/`, `plugins/`, `renderers/`, `repositories/` and `identity/`,
+  `audit/AuditView.vue`, `dashboard/FailuresSheet.vue`, the maintenance tiles (`CleanupPoliciesPanel`, `IndexPanel`) and
+  `settings/AccessDomainCard.vue` and `settings/RepositoryAccessCard.vue`. `settings/SettingsView.vue` is dropped too: it holds no hand-built
+  card. What stays: the hand-built containers in `settings/EntryDetail.vue` (the group members box and the danger box),
+  `settings/AppearancePreview.vue`, `settings/SettingsReviewSheet.vue` (the per-section box) and the detail block of
+  `audit/AuditEventRow.vue`, replaced with `MdCard`, one commit per folder group. Verify: 3.2 passes and no migrated file carries
+  `rounded-corner-` or `p-` on its card root.
 - [ ] 3.6 `fix(ui)`: replace the section headers with `MdSection` in `LdapPanel`, `PermissionNodesCard`, `SecurityPanel`,
   `CleanupPoliciesPanel`, `IndexPanel`, `StorageUsagePanel`, `DashboardView`, `AnalyticsView`, `SystemInfoView`, `SyncStep`,
   `VerifyStep`, `RepositoryOverview`, and fix the heading sizes in `SettingsHub`, `SupportView`, `SsoProvidersPanel`,
@@ -184,8 +183,10 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   and that `--breakpoint-*: initial` is declared in `@theme`. Verify: it fails, because the reset is not there yet.
 - [ ] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
   values of `src/styles/md3/typography.css`. Verify: it fails, because the module does not exist.
-- [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert that the anchor `page-footer` appears once, and that the icon lookup returns a
-  value for every entry of the index without a fallback literal. Verify: it fails on the duplicated footer.
+- [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert the two footers by design: the footer inside the sheet from 600 pixels
+  (class `hidden medium:block`) and the footer below the page on narrow windows (class `medium:hidden`), so that exactly one of them is
+  shown at each width; and that the icon lookup returns a value for every entry of the index, with the settings icon as the fallback for
+  the entries of plugin pages. Verify: it fails on a lookup without the fallback.
 - [ ] 7.4 `test(ui)`: in `src/components/md/MdBadge.test.js` and `StatusLabel`'s test, assert that `StatusLabel` takes a status value of
   the closed set and rejects a colour prop. Verify: it fails.
 - [ ] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
@@ -202,8 +203,9 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   shows no important modifier, and `grep -rn "opacity-" src` finds nothing outside the state layers.
 - [ ] 7.8 `fix(ui)`: `StatusLabel` takes a status value of a closed set instead of a colour prop; `StatTile` takes its meter colour as
   classes from a closed set; `TimeSeriesChart` takes its font sizes from `src/components/md/typescale.js`. Verify: 7.2 and 7.4 pass.
-- [ ] 7.9 `fix(ui)`: `IndexPage.vue` (`src/pages/`): draw the footer once (the anchor `page-footer` appears once) and replace the icon lookup
-  (lines 548, 566, 584 of the inventory) with a lookup table keyed by the entry's icon name. Verify: 7.3 passes.
+- [ ] 7.9 `fix(ui)`: `IndexPage.vue` (`src/pages/`): keep the two footers by design (inside the sheet from 600 pixels, below the page on
+  narrow windows) and make the icon lookup a table keyed by the entry's icon name, with the settings icon as the fallback for plugin
+  pages (`SECTION_ICONS[item.key] ?? SECTION_ICONS.settings`), the same in the bar and the rail. Verify: 7.3 passes.
 - [ ] 7.10 `build(ui)`: empty the style gate baseline of `add-ui-style-gate` and remove the allowlist entries that no longer apply. Verify:
   the gate passes with an empty baseline, and `npm test` passes.
 - [ ] 7.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if a name changed in wave 5, and note the window class names in the dashboard
