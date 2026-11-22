@@ -20,6 +20,8 @@ import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdSection from '../md/MdSection.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import CreateTokenDialog from './CreateTokenDialog.vue'
@@ -203,100 +205,101 @@ const lastUsedText = (token: IdentityToken) => {
           Loading tokens...
         </p>
 
-        <ul
+        <MdList
           v-else
-          class="m-0 list-none divide-y divide-outline-variant p-0"
+          divided
         >
-          <li
+          <MdListItem
             v-for="token in tokens"
             :key="token.name"
             data-test="token-row"
-            class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between"
           >
-            <div class="flex min-w-0 flex-1 flex-col gap-2">
-              <div class="flex min-w-0 flex-col">
-                <span class="md-title-medium break-words text-on-surface">{{ token.name }}</span>
-                <span
-                  v-if="token.description"
-                  class="md-body-medium break-words text-on-surface-variant"
-                >
-                  {{ token.description }}
-                </span>
-              </div>
-              <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
-                <div class="contents min-[480px]:flex min-[480px]:flex-col">
-                  <dt>Created</dt>
-                  <dd class="m-0 text-on-surface">
-                    {{ createdDay(token) }}
-                  </dd>
-                </div>
-                <div class="contents min-[480px]:flex min-[480px]:flex-col">
-                  <dt>Expires</dt>
-                  <dd class="m-0 text-on-surface">
-                    {{ token.expiresAt ? expiryDay(token) : 'Never' }}
-                  </dd>
-                </div>
-                <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
-                  <dt>Last used</dt>
-                  <dd
-                    class="m-0 min-w-0 text-on-surface"
-                    data-test="last-used"
-                    :title="lastUsedTitle(token)"
+            <div class="flex flex-col gap-3 py-1 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
+              <div class="flex min-w-0 flex-1 flex-col gap-2">
+                <div class="flex min-w-0 flex-col">
+                  <span class="md-title-medium break-words text-on-surface">{{ token.name }}</span>
+                  <span
+                    v-if="token.description"
+                    class="md-body-medium break-words text-on-surface-variant"
                   >
-                    {{ lastUsedText(token) }}
-                    <span
-                      v-if="token.lastUsedAt && token.lastUsedIp"
-                      class="flex min-w-0 items-baseline gap-1 text-on-surface-variant"
-                      data-test="last-used-ip"
+                    {{ token.description }}
+                  </span>
+                </div>
+                <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
+                  <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                    <dt>Created</dt>
+                    <dd class="m-0 text-on-surface">
+                      {{ createdDay(token) }}
+                    </dd>
+                  </div>
+                  <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                    <dt>Expires</dt>
+                    <dd class="m-0 text-on-surface">
+                      {{ token.expiresAt ? expiryDay(token) : 'Never' }}
+                    </dd>
+                  </div>
+                  <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
+                    <dt>Last used</dt>
+                    <dd
+                      class="m-0 min-w-0 text-on-surface"
+                      data-test="last-used"
+                      :title="lastUsedTitle(token)"
                     >
-                      <span class="shrink-0">from</span>
+                      {{ lastUsedText(token) }}
                       <span
-                        class="min-w-0 truncate font-mono"
-                        data-test="last-used-address"
-                        :title="token.lastUsedIp"
-                      >{{ token.lastUsedIp }}</span>
-                    </span>
-                  </dd>
-                </div>
-              </dl>
-              <div class="flex flex-wrap items-center gap-2">
-                <template v-if="scopeText(token)">
-                  <TokenTag
-                    v-for="scope in scopeText(token)"
-                    :key="scope"
-                    data-test="scope"
+                        v-if="token.lastUsedAt && token.lastUsedIp"
+                        class="flex min-w-0 items-baseline gap-1 text-on-surface-variant"
+                        data-test="last-used-ip"
+                      >
+                        <span class="shrink-0">from</span>
+                        <span
+                          class="min-w-0 truncate font-mono"
+                          data-test="last-used-address"
+                          :title="token.lastUsedIp"
+                        >{{ token.lastUsedIp }}</span>
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+                <div class="flex flex-wrap items-center gap-2">
+                  <template v-if="scopeText(token)">
+                    <TokenTag
+                      v-for="scope in scopeText(token)"
+                      :key="scope"
+                      data-test="scope"
+                    >
+                      {{ scope }}
+                    </TokenTag>
+                  </template>
+                  <span
+                    v-else
+                    class="md-body-small text-on-surface-variant"
                   >
-                    {{ scope }}
-                  </TokenTag>
-                </template>
-                <span
-                  v-else
-                  class="md-body-small text-on-surface-variant"
+                    All rights of your teams
+                  </span>
+                </div>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <MdButton
+                  v-if="api.rotate"
+                  variant="outlined"
+                  :aria-label="`Rotate ${token.name}`"
+                  @click="askRotate(token)"
                 >
-                  All rights of your teams
-                </span>
+                  Rotate
+                </MdButton>
+                <MdButton
+                  variant="text"
+                  error
+                  :aria-label="`Revoke ${token.name}`"
+                  @click="askRevoke(token)"
+                >
+                  Revoke
+                </MdButton>
               </div>
             </div>
-            <div class="flex shrink-0 gap-2">
-              <MdButton
-                v-if="api.rotate"
-                variant="outlined"
-                :aria-label="`Rotate ${token.name}`"
-                @click="askRotate(token)"
-              >
-                Rotate
-              </MdButton>
-              <MdButton
-                variant="text"
-                error
-                :aria-label="`Revoke ${token.name}`"
-                @click="askRevoke(token)"
-              >
-                Revoke
-              </MdButton>
-            </div>
-          </li>
-        </ul>
+          </MdListItem>
+        </MdList>
       </MdSection>
     </MdCard>
 

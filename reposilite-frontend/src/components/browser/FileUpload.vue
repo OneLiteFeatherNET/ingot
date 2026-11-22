@@ -8,6 +8,8 @@ import FileUpload, { type VueUploadItem } from 'vue-upload-component'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
@@ -214,39 +216,43 @@ const uploadFiles = () => {
       class="mt-4"
     >
       <MdCard
-        as="ul"
         variant="low"
         padding="none"
-        class="divide-y divide-outline-variant overflow-hidden"
+        class="overflow-hidden"
         data-test="upload-files"
       >
-        <li
-          v-for="file in files"
-          :key="file.name"
-          class="flex min-h-12 items-center gap-3 px-3 py-2"
-        >
-          <BrowserIcon
-            name="file"
-            class="text-on-surface-variant"
-          />
-          <span class="flex min-w-0 flex-1 flex-col">
-            <span class="truncate md-body-large">{{ file.name }}</span>
-            <span class="md-body-small text-on-surface-variant">{{ statusLabel(file.name ?? '') }}</span>
-            <MdLinearProgress
-              v-if="statusOf(file.name ?? '') === 'uploading'"
-              indeterminate
-              :label="`Uploading ${file.name}`"
-              class="mt-1"
-            />
-          </span>
-          <MdIconButton
-            :aria-label="`Remove ${file.name}`"
-            :disabled="uploading"
-            @click="removeFile(file)"
+        <MdList divided>
+          <MdListItem
+            v-for="file in files"
+            :key="file.name"
+            :lines="2"
+            data-test="upload-file"
           >
-            <BrowserIcon name="close" />
-          </MdIconButton>
-        </li>
+            <span class="flex items-center gap-3">
+              <BrowserIcon
+                name="file"
+                class="text-on-surface-variant"
+              />
+              <span class="flex min-w-0 flex-1 flex-col">
+                <span class="truncate md-body-large">{{ file.name }}</span>
+                <span class="md-body-small text-on-surface-variant">{{ statusLabel(file.name ?? '') }}</span>
+                <MdLinearProgress
+                  v-if="statusOf(file.name ?? '') === 'uploading'"
+                  indeterminate
+                  :label="`Uploading ${file.name}`"
+                  class="mt-1"
+                />
+              </span>
+              <MdIconButton
+                :aria-label="`Remove ${file.name}`"
+                :disabled="uploading"
+                @click="removeFile(file)"
+              >
+                <BrowserIcon name="close" />
+              </MdIconButton>
+            </span>
+          </MdListItem>
+        </MdList>
       </MdCard>
 
       <div class="mt-4 space-y-1">

@@ -338,6 +338,18 @@ describe('InstanceStatusPanel cluster view', () => {
     wrapper.unmount()
   })
 
+  it('draws the instances as a divided md-list', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: { instances: [member(), member({ id: 'ingot-1' })] }
+    })
+
+    const list = wrapper.get('[data-testid="cluster-instances"]')
+    expect(list.attributes('data-divided'), 'the list draws the rule between rows').toBe('true')
+    expect(list.findAll('[data-testid="cluster-instance"] [data-test="list-item-row"]'), 'one md-list-item per instance').toHaveLength(2)
+    wrapper.unmount()
+  })
+
   it('shows no per-instance tiles above the summary, so no figure appears twice', async () => {
     const wrapper = await mountWithStatus({
       ...INSTANCE,

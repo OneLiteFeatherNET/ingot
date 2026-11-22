@@ -27,6 +27,8 @@ import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdKeyValueList from '../md/MdKeyValueList.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdSkeleton from '../md/MdSkeleton.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
@@ -429,41 +431,43 @@ const readOnlyScope = computed(() => {
           :detail="clusterView.health.detail"
         />
       </div>
-      <ul
+      <MdList
+        divided
         data-testid="cluster-instances"
         data-ingot-part="cluster-instances"
         aria-label="Instances in the cluster"
-        class="flex flex-col gap-2"
+        class="overflow-hidden rounded-corner-medium border border-outline-variant"
       >
-        <li
+        <MdListItem
           v-for="row in clusterView.rows"
           :key="row.id"
           data-testid="cluster-instance"
           data-ingot-part="cluster-instance"
-          class="flex flex-col gap-1 rounded-corner-medium border border-outline-variant p-3"
         >
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="md-title-small text-on-surface">{{ row.id }}</span>
-            <MdBadge
-              v-if="row.local"
-              tone="accent"
-            >
-              This instance
-            </MdBadge>
-            <MdBadge v-if="row.stale">
-              Stale
-            </MdBadge>
-            <MdButton
-              v-if="row.local && hasFailures"
-              variant="text"
-              @click="openFailures"
-            >
-              Show failures
-            </MdButton>
+          <div class="flex flex-col gap-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="md-title-small text-on-surface">{{ row.id }}</span>
+              <MdBadge
+                v-if="row.local"
+                tone="accent"
+              >
+                This instance
+              </MdBadge>
+              <MdBadge v-if="row.stale">
+                Stale
+              </MdBadge>
+              <MdButton
+                v-if="row.local && hasFailures"
+                variant="text"
+                @click="openFailures"
+              >
+                Show failures
+              </MdButton>
+            </div>
+            <MdKeyValueList :items="row.figures" />
           </div>
-          <MdKeyValueList :items="row.figures" />
-        </li>
-      </ul>
+        </MdListItem>
+      </MdList>
     </section>
 
     <InstanceHealthRow :show-label="!clusterView" />
