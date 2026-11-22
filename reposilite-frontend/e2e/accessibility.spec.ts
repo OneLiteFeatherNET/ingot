@@ -19,6 +19,12 @@ import { siteUrl } from './support/api'
 import { analyzeAccessibility } from './support/accessibility'
 import { signInAsAdmin } from './support/session'
 
+// axe reads the contrast of what is drawn at the moment it runs. A tab panel or a loaded list that is still fading in is
+// drawn below full opacity, so its text is measured against a blend and fails a contrast it passes once the fade has
+// ended. Under reduced motion every transition of the dashboard ends at once (src/style.css), so the check sees the
+// final colours, the ones a visitor reads.
+test.use({ reducedMotion: 'reduce' })
+
 // The covered pages in the state an operator sees them. The sign in dialog is checked open, on the page it opens from.
 // A page with a known fault carries its marker: the rules that fail today are named, and the issue that tracks them is cited.
 const COVERED_PAGES = [
