@@ -154,7 +154,7 @@ Phase 3 does not change the Dockerfile, the chart or the workflow beyond the typ
 
 ## Phase 4
 
-Phase 4 is a single small pull request, or one per item if the maintainer asks: set `allowJs: false`, `checkJs` removed, `strict` on the tests and node configs, delete `src/types/any-budget.json` and its test once the count is zero, empty `eslint-suppressions.json`, remove the transition comments, and remove the `.js` entries from the `include` patterns. `src/` may keep JavaScript only for the vendored or generated files that cannot be typed, each listed in `design.md` at the time with a reason. Expected: none.
+Phase 4 is split into small pull requests (decided 2026-11-23): one per item below and one per ESLint rule of `eslint-suppressions.json`, as `tasks.md` lists them. The items are: set `allowJs: false`, `checkJs` removed, `strict` on the tests and node configs, delete `src/types/any-budget.json` and its test once the count is zero, empty `eslint-suppressions.json`, remove the transition comments, and remove the `.js` entries from the `include` patterns. `src/` may keep JavaScript only for the vendored or generated files that cannot be typed, each listed in `design.md` at the time with a reason. Expected: none.
 
 ## Risks
 
