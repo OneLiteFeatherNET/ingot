@@ -318,6 +318,26 @@ describe('EntryDetail rules of the type', () => {
   })
 })
 
+describe('EntryDetail errors of the type on the shared alert', () => {
+  it('draws the violations of the type as an error alert', () => {
+    mountEntry({ id: 'central', visibility: 'PUBLIC', type: 'PROXY', proxied: [] })
+
+    const alert = wrapper.get('[data-test="type-violations"]')
+    expect(alert.attributes('data-ingot-component'), 'the violations use MdAlert').toBe('md-alert')
+    expect(alert.attributes('role')).toBe('alert')
+  })
+
+  it('draws a server refusal as an error alert', () => {
+    mountEntry({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }] }, {
+      serverError: 'Not saved: Maven. A group cannot contain itself.'
+    })
+
+    const alert = wrapper.get('[data-test="server-violation"]')
+    expect(alert.attributes('data-ingot-component'), 'the refusal uses MdAlert').toBe('md-alert')
+    expect(alert.attributes('data-tone')).toBe('error')
+  })
+})
+
 describe('EntryDetail group members', () => {
   it('adds a repository to the group at the end and saves it as a reference', async () => {
     mountEntry({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }] })
