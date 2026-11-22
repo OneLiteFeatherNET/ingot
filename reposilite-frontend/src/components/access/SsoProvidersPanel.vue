@@ -22,6 +22,7 @@ import usePlaceholders from '../../store/placeholders'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import ProviderIcon from '../icons/ProviderIcon.vue'
@@ -246,26 +247,19 @@ onMounted(load)
       </section>
     </MdCard>
 
-    <p
+    <MdStatePanel
       v-if="!loaded"
-      role="status"
-      class="md-body-medium text-on-surface-variant"
-    >
-      Loading...
-    </p>
-    <div
+      state="loading"
+      data-test="list-loading"
+    />
+    <MdStatePanel
       v-else-if="loadError"
-      role="alert"
-      class="flex flex-wrap items-center gap-3"
-    >
-      <span class="md-body-medium text-error">Could not load the providers: {{ loadError }}</span>
-      <MdButton
-        variant="text"
-        @click="load()"
-      >
-        Retry
-      </MdButton>
-    </div>
+      state="error"
+      data-test="list-error"
+      title="Could not load the providers"
+      :description="loadError"
+      @retry="load()"
+    />
     <ul
       v-else-if="providers.length > 0"
       class="flex flex-col gap-2"
@@ -314,12 +308,13 @@ onMounted(load)
         </MdButton>
       </li>
     </ul>
-    <p
+    <MdStatePanel
       v-else
-      class="md-body-large text-on-surface-variant"
-    >
-      No provider yet. Add one to let users sign in with it.
-    </p>
+      state="empty"
+      data-test="list-empty"
+      title="No provider yet"
+      description="Add one to let users sign in with it."
+    />
 
     <SsoProviderDialog
       v-model="dialogOpen"
