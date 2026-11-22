@@ -17,6 +17,8 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 import MdCard from '../md/MdCard.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import type { LegacyGrant } from './accessPrincipals'
 
@@ -52,23 +54,25 @@ defineProps({
         These routes come from a migrated access token and still apply. They are read only here.
         Grant permission nodes to replace them.
       </p>
-      <ul
+      <MdList
         v-if="grants.length > 0"
-        class="flex flex-col divide-y divide-outline-variant"
+        divided
       >
-        <li
+        <MdListItem
           v-for="grant in grants"
           :key="grant.path"
+          :lines="1"
           data-test="legacy-grant"
-          class="flex flex-wrap items-center justify-between gap-2 py-2"
         >
-          <span class="min-w-0 break-all md-body-medium text-on-surface">{{ grant.path }}</span>
-          <span class="flex gap-2">
-            <TokenTag v-if="grant.read">Read</TokenTag>
-            <TokenTag v-if="grant.write">Write</TokenTag>
+          <span class="flex flex-wrap items-center justify-between gap-2">
+            <span class="min-w-0 break-all md-body-medium text-on-surface">{{ grant.path }}</span>
+            <span class="flex gap-2">
+              <TokenTag v-if="grant.read">Read</TokenTag>
+              <TokenTag v-if="grant.write">Write</TokenTag>
+            </span>
           </span>
-        </li>
-      </ul>
+        </MdListItem>
+      </MdList>
       <p
         v-else
         class="md-body-medium text-on-surface-variant"
