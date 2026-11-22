@@ -154,7 +154,7 @@ here.
 
 ## 7. fix(ui): cleanup
 
-- [ ] 7.1 `fix(ui)`: remove `SCRIM_STYLE` from `settings/dialog.js` once nothing imports it (last importer: `RepositoryWizard.vue`
+- [x] 7.1 `fix(ui)`: remove `SCRIM_STYLE` from `settings/dialog.js` once nothing imports it (last importer: `RepositoryWizard.vue`
   or `SettingsReviewSheet.vue`, whichever area migrates last), and delete the file if it holds nothing else. Verify:
   `grep -rn SCRIM_STYLE reposilite-frontend/src` finds nothing, and the frontend tests pass.
 - [ ] 7.2 `fix(ui)`: remove any migrated file that the `add-ui-style-gate` baseline still lists, and confirm the baseline has no new
