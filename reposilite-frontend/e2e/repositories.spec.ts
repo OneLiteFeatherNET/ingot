@@ -79,4 +79,32 @@ test.describe('repository page controls', () => {
     await expect(page.getByRole('heading', { name: 'Danger zone', exact: true }), 'the repository has one danger zone, the one that deletes it').toHaveCount(1)
     await expect(page.getByRole('button', { name: 'Factory reset', exact: true }), 'a factory reset belongs to the settings page, not to one repository').toHaveCount(0)
   })
+
+  test('enters the tab panel of a repository from the side of the new tab and keeps the address on the selection', async ({ adminPage: page, seed }) => {
+    const repository = await seed.repository('tab-motion')
+    await page.goto(siteUrl(`/settings/repositories/${repository}`))
+    const tab = (name: string) => page.getByRole('tab', { name, exact: true })
+    await expect(tab('General')).toHaveAttribute('aria-selected', 'true')
+    // Records every motion class a tab panel is given from now on, so the direction is read from the classes the
+    // transition used and no test waits for a time.
+    await page.evaluate(() => {
+      const seen = new Set<string>()
+      ;(window as unknown as { __motionClasses: Set<string> }).__motionClasses = seen
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const name of (record.target as Element).classList) if (name.startsWith('motion-shared-x')) seen.add(name)
+        }
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] })
+    })
+    const classes = () => page.evaluate(() => [...(window as unknown as { __motionClasses: Set<string> }).__motionClasses])
+
+    await tab('Storage').click()
+    await expect(page).toHaveURL(/\?tab=storage$/)
+    await expect.poll(classes, { message: 'a tab to the right enters from the right' }).toContain('motion-shared-x-enter-active')
+    expect(await classes(), 'a forward change uses no backward class').not.toContain('motion-shared-x-back-enter-active')
+
+    await tab('General').click()
+    await expect(page).toHaveURL(/\/settings\/repositories\/[^?]+(\?tab=general)?$/)
+    await expect.poll(classes, { message: 'a tab to the left enters from the left' }).toContain('motion-shared-x-back-enter-active')
+  })
 })
