@@ -19,28 +19,31 @@ import { onBeforeUnmount, onMounted, ref, watch, type WatchSource } from 'vue'
 /**
  * The indicator slide of a tab strip (design.md of add-dashboard-motion, "Indicator slide"). The strip draws one
  * indicator, one pixel wide and pinned to the left edge of the tab list. It is moved under the selected tab and stretched
- * to the tab's width with a transform, so the slide animates transform only and changes the box of no neighbour.
+ * to the tab's width with a transform, so the slide animates transform only and changes the box of no neighbour. An inset
+ * draws the indicator that many pixels in from both edges of the tab.
  */
-export const indicatorTransform = (offset: number, width: number): string => `translateX(${offset}px) scaleX(${width})`
+export const indicatorTransform = (offset: number, width: number, inset = 0): string =>
+  `translateX(${offset + inset}px) scaleX(${Math.max(width - 2 * inset, 0)})`
 
 /**
  * Measures the selected tab whenever the selection changes, and again when a tab changes size (a web font that loads
  * late, a narrower window). `selected` returns the element of the selected tab, which must be laid out against the tab
  * list (the list is the offset parent of its tabs). `tabs` returns every tab, so a change of any width moves the
  * indicator with it. `moved` turns true at the first change of selection: the first paint places the indicator at once,
- * and only a later choice slides it.
+ * and only a later choice slides it. `inset` draws the indicator that many pixels in from both edges of the tab.
  */
 export const useTabIndicator = (
   selection: WatchSource<unknown>,
   selected: () => HTMLElement | undefined,
   tabs: () => HTMLElement[],
+  inset = 0,
 ) => {
   const transform = ref<string>()
   const moved = ref(false)
 
   const measure = () => {
     const tab = selected()
-    transform.value = tab ? indicatorTransform(tab.offsetLeft, tab.offsetWidth) : undefined
+    transform.value = tab ? indicatorTransform(tab.offsetLeft, tab.offsetWidth, inset) : undefined
   }
 
   let observer: ResizeObserver | null = null

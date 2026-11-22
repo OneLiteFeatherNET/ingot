@@ -25,4 +25,12 @@ describe('indicatorTransform', () => {
   it('keeps the first tab at the start of the list', () => {
     expect(indicatorTransform(0, 96), 'a tab at offset 0 is not moved').toBe('translateX(0px) scaleX(96)')
   })
+
+  it('draws the indicator inside the tab by the inset on both sides', () => {
+    expect(indicatorTransform(120, 100, 8), 'the inset moves the start in and takes it off both ends').toBe('translateX(128px) scaleX(84)')
+  })
+
+  it('never draws a negative width when the inset is wider than half the tab', () => {
+    expect(indicatorTransform(0, 10, 8), 'a tab narrower than its insets draws no indicator').toBe('translateX(8px) scaleX(0)')
+  })
 })

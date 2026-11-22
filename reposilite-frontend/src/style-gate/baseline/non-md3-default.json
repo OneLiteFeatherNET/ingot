@@ -60,11 +60,6 @@
     "count": 1
   },
   {
-    "file": "src/components/card/CardMenu.vue",
-    "match": "rounded-t-full",
-    "count": 1
-  },
-  {
     "file": "src/components/card/SnippetsCard.vue",
     "match": "rounded",
     "count": 5

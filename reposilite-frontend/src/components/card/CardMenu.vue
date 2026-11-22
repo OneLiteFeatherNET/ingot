@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { ref, watchEffect, type PropType } from 'vue'
 import type { SnippetConfiguration } from './snippetTypes'
+import { useTabIndicator } from '../../composables/useTabIndicator'
 
 defineProps({
   configurations: {
@@ -40,6 +41,20 @@ watchEffect(() => {
 
 const selectConfiguration = (configuration: SnippetConfiguration) =>
   selectedTab.value = configuration.name
+
+// One indicator for the whole row, moved under the selected tab with a transform (design "Indicator slide"), 8 pixels in
+// from both edges of the tab as before. The first paint places it at once and a later choice slides it on the motion
+// tokens. Reduced motion is the base rule of src/style.css, which makes the slide an instant swap.
+const buttons = new Map<string, HTMLElement>()
+const remember = (name: string, element: unknown) => {
+  if (element instanceof HTMLElement) buttons.set(name, element)
+}
+const indicator = useTabIndicator(
+  selectedTab,
+  () => buttons.get(selectedTab.value),
+  () => [...buttons.values()],
+  8,
+)
 </script>
 
 <!--
@@ -55,10 +70,11 @@ const selectConfiguration = (configuration: SnippetConfiguration) =>
     class="-mx-2 overflow-x-auto border-b border-outline-variant [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     data-ingot-component="card-menu"
   >
-    <div class="flex flex-nowrap">
+    <div class="relative flex flex-nowrap">
       <button
         v-for="configuration in configurations"
         :key="configuration.name"
+        :ref="(element) => remember(configuration.name, element)"
         type="button"
         class="md-state-layer md-focus-ring relative shrink-0 cursor-pointer whitespace-nowrap rounded-t-corner-small px-4 min-h-12 md-title-small transition-colors duration-(--md-sys-motion-duration-short3)"
         :class="configuration.name === selectedTab ? 'text-primary' : 'text-on-surface-variant'"
@@ -66,12 +82,15 @@ const selectConfiguration = (configuration: SnippetConfiguration) =>
         @click="selectConfiguration(configuration)"
       >
         {{ configuration.name }}
-        <span
-          aria-hidden="true"
-          class="absolute inset-x-2 bottom-0 h-0.5 rounded-t-full transition-colors duration-(--md-sys-motion-duration-short3)"
-          :class="configuration.name === selectedTab ? 'bg-primary' : 'bg-transparent'"
-        />
       </button>
+      <span
+        v-show="indicator.transform.value"
+        data-test="tab-indicator"
+        aria-hidden="true"
+        class="pointer-events-none absolute bottom-0 left-0 h-0.5 w-px origin-left bg-primary"
+        :class="indicator.moved.value ? 'transition-transform duration-md-short4 ease-md-standard-decelerate' : ''"
+        :style="{ transform: indicator.transform.value }"
+      />
     </div>
   </div>
 </template>
