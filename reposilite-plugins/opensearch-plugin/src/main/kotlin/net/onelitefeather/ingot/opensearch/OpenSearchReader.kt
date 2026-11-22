@@ -154,10 +154,24 @@ internal class OpenSearchReader(
 
     /** The first [window] groups of [part] in the requested order, sorted by [GroupOrder] in memory. */
     private fun window(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart, window: Long): List<GroupRow> {
+        if (query.attributeSort != null) return attributeWindow(query, access, part, window)
         val rows = client.read("POST", "/$alias/_search", OpenSearchQueries.groupWindow(query, access, part, window.toInt()))
             .path("aggregations").path("groups").path("buckets").map(::groupOf)
         val order = GroupOrder.comparator(query.sort, query.order)
         return rows.sortedWith { a, b -> order.compare(a.key, b.key) }
+    }
+
+    /**
+     * The first [window] groups of [part] in the order of the attribute sort. The cluster sorts the files and gives the GAV keys
+     * of their groups in that order; a second request reads the values of those groups, which are put in the order of the keys.
+     */
+    private fun attributeWindow(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart, window: Long): List<GroupRow> {
+        val keys = client.read("POST", "/$alias/_search", OpenSearchQueries.attributeGroupOrder(query, access, part, window.toInt()))
+            .path("hits").path("hits").mapNotNull { hit -> hit.path("fields").path("gav").firstOrNull()?.asText() }
+        if (keys.isEmpty()) return emptyList()
+        val rows = client.read("POST", "/$alias/_search", OpenSearchQueries.groupRows(query, access, part, keys))
+            .path("aggregations").path("groups").path("buckets").map(::groupOf).associateBy { it.key.gavKey() }
+        return keys.mapNotNull { rows[it] }
     }
 
     private fun groupOf(bucket: JsonNode): GroupRow = GroupRow(
