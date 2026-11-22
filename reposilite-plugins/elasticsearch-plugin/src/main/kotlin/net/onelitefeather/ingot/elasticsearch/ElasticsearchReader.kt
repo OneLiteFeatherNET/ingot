@@ -119,6 +119,9 @@ internal class ElasticsearchReader(
             "snapshot" to FilterKind.SNAPSHOT,
         )
         kinds.forEach { (name, kind) -> aggregations.set<ObjectNode>(name, ElasticsearchQueries.facet(kind, query, access)) }
+        // A key may hold characters an aggregation name may not, so the position of the key names its aggregation.
+        val attributeNames = query.attributeFacets.withIndex().associate { (index, key) -> key to "attribute_$index" }
+        attributeNames.forEach { (key, name) -> aggregations.set<ObjectNode>(name, ElasticsearchQueries.attributeFacet(key, query, access)) }
         val body = mapper.createObjectNode().put("size", 0)
         body.set<ObjectNode>("aggs", aggregations)
         val answer = client.read("POST", "/$alias/_search", body).path("aggregations")
@@ -128,6 +131,7 @@ internal class ElasticsearchReader(
             classifier = buckets(answer, "classifier"),
             origin = buckets(answer, "origin"),
             snapshot = buckets(answer, "snapshot"),
+            attributes = attributeNames.takeIf { it.isNotEmpty() }?.mapValues { (_, name) -> buckets(answer, name) },
         )
     }
 
