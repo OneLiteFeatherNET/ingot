@@ -20,7 +20,7 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { JsonSchema, JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as selectTester, oneOfTester, optionsOf } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
 import { tester as constantTester } from './ConstantRenderer.vue'
@@ -29,11 +29,11 @@ import { tester as oneOfTester2 } from './OneOfRenderer.vue'
 import OneOfRenderer from './OneOfRenderer.vue'
 
 const renderers = markRaw([
-  { tester: selectTester, renderer: MdSelectRenderer },
-  { tester: oneOfTester, renderer: MdSelectRenderer },
-  { tester: constantTester, renderer: ConstantRenderer },
-  { tester: oneOfTester2, renderer: OneOfRenderer },
-  ...vanillaRenderers
+  rendererOf(selectTester, MdSelectRenderer),
+  rendererOf(oneOfTester, MdSelectRenderer),
+  rendererOf(constantTester, ConstantRenderer),
+  rendererOf(oneOfTester2, OneOfRenderer),
+  ...vanilla
 ])
 
 const mountField = (schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {

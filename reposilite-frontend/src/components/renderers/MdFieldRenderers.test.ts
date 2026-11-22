@@ -20,16 +20,16 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 import { tester as selectTester } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
 
 const renderers = markRaw([
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: selectTester, renderer: MdSelectRenderer },
-  ...vanillaRenderers
+  rendererOf(textTester, MdTextFieldRenderer),
+  rendererOf(selectTester, MdSelectRenderer),
+  ...vanilla
 ])
 
 const mountField = (schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
