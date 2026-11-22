@@ -292,4 +292,14 @@ describe('StorageUsagePanel', () => {
     expect(empty.attributes('data-ingot-state'), 'the panel is in the empty state').toBe('empty')
     expect(empty.text()).toBe('No repository has been measured yet.')
   })
+
+  it('lists the repositories in a divided md-list of md-list-items', async () => {
+    session.client = fakeClient()
+    await mountPanel()
+
+    const list = wrapper.get('[aria-label="Storage per repository"]')
+    expect(list.attributes('data-divided'), 'the list draws the rule between rows').toBe('true')
+    expect(list.findAll('li [data-test="list-item-row"]'), 'one list item per repository').toHaveLength(2)
+    expect(list.classes(), 'no hand-built divider').not.toContain('divide-y')
+  })
 })

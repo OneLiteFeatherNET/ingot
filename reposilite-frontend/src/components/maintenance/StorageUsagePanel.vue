@@ -21,6 +21,8 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdSection from '../md/MdSection.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
@@ -158,41 +160,42 @@ onBeforeUnmount(stopPolling)
         description="No repository has been measured yet."
       />
 
-      <ul
+      <MdList
         v-else
-        class="flex flex-col divide-y divide-outline-variant"
+        divided
         aria-label="Storage per repository"
       >
-        <li
+        <MdListItem
           v-for="row in rows"
           :key="row.id"
-          class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
         >
-          <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <span class="font-mono md-title-small text-on-surface">{{ row.id }}</span>
-            <span class="md-body-small text-on-surface-variant">{{ countLabel(row.fileCount, 'file') }}</span>
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <span class="font-mono md-title-small text-on-surface">{{ row.id }}</span>
+              <span class="md-body-small text-on-surface-variant">{{ countLabel(row.fileCount, 'file') }}</span>
+            </div>
+            <p class="md-body-medium text-on-surface">
+              {{ usageLine(row) }}
+            </p>
+            <MdLinearProgress
+              v-if="hasQuota(row) && quotaFraction(row.usedBytes, row.quotaBytes) !== null"
+              :value="quotaFraction(row.usedBytes, row.quotaBytes) ?? undefined"
+              :label="`Usage of ${row.id}`"
+            />
+            <div
+              v-else-if="hasQuota(row)"
+              class="h-1 rounded-corner-full bg-surface-container-highest"
+              aria-hidden="true"
+            />
+            <p
+              v-if="quotaNote(row)"
+              class="md-body-small text-on-surface-variant"
+            >
+              {{ quotaNote(row) }}
+            </p>
           </div>
-          <p class="md-body-medium text-on-surface">
-            {{ usageLine(row) }}
-          </p>
-          <MdLinearProgress
-            v-if="hasQuota(row) && quotaFraction(row.usedBytes, row.quotaBytes) !== null"
-            :value="quotaFraction(row.usedBytes, row.quotaBytes) ?? undefined"
-            :label="`Usage of ${row.id}`"
-          />
-          <div
-            v-else-if="hasQuota(row)"
-            class="h-1 rounded-corner-full bg-surface-container-highest"
-            aria-hidden="true"
-          />
-          <p
-            v-if="quotaNote(row)"
-            class="md-body-small text-on-surface-variant"
-          >
-            {{ quotaNote(row) }}
-          </p>
-        </li>
-      </ul>
+        </MdListItem>
+      </MdList>
     </template>
   </MdCard>
 </template>
