@@ -46,7 +46,7 @@ defineProps<{
     >
       <h2
         id="settings-glance-title"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         At a glance
       </h2>
