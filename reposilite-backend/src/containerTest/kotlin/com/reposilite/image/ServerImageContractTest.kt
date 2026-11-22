@@ -17,6 +17,7 @@
 
 package com.reposilite.image
 
+import java.nio.file.Files
 import java.nio.file.Path
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -87,6 +88,27 @@ class ServerImageContractTest {
                     .describedAs("PUID and PGID were read and then ignored")
                     .isEqualTo("1000:1000")
             }
+        }
+    }
+
+    @Test
+    @DisplayName("a root start adopts a foreign-owned volume while /app/shared-config is mounted read-only")
+    fun `root start tolerates a read only shared configuration mount`(@TempDir directory: Path, @TempDir shared: Path) {
+        // The Helm chart mounts the shared configuration ConfigMap read-only below /app. A recursive chown over /app
+        // reached it, failed with "Read-only file system", and ended the first start with exit code 1.
+        Files.writeString(shared.resolve("configuration.shared.json"), "{}")
+        DataDirectory(directory, ImageUnderTest.server).use { data ->
+            data.chownTo(4242, 4242)
+
+            serverContainer(ImageUnderTest.server, data, environment = mapOf("PUID" to "1000", "PGID" to "1000"))
+                .withFileSystemBind(shared.toString(), "/app/shared-config", BindMode.READ_ONLY)
+                .use { server ->
+                    server.startOrExplain()
+
+                    assertThat(data.ownerOf("configuration.cdn"))
+                        .describedAs("the data directory was not adopted next to a read-only mount")
+                        .isEqualTo("1000:1000")
+                }
         }
     }
 

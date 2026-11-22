@@ -89,6 +89,25 @@ import_extra_ca_certificates() {
 
 import_extra_ca_certificates
 
+# Hands /app to the service account, leaving out anything mounted read-only below it, such as the shared
+# configuration ConfigMap a Kubernetes pod mounts at /app/shared-config. Nothing there can be chowned, and the
+# attempt used to end the start with exit code 1. The server only reads such a mount, so it needs no change.
+chown_app() {
+  set -- /app
+  if [ -r /proc/mounts ]; then
+    while read -r _ mount_point _ mount_options _; do
+      case "$mount_point" in
+        /app/*) case ",$mount_options," in
+          *,ro,*) set -- "$@" -path "$mount_point" -prune -o ;;
+        esac ;;
+      esac
+    done < /proc/mounts
+  fi
+  root=$1
+  shift
+  find "$root" "$@" -exec chown -h reposilite:reposilite {} +
+}
+
 # GH-1762: support for running as non-root user
 
 if [ "$(id -u)" != 0 ]; then
@@ -141,7 +160,7 @@ else
   # GH-2457: skip chown if ownership already matches target UID/GID
   FORCE_CHOWN="${INGOT_FORCE_CHOWN:-$REPOSILITE_FORCE_CHOWN}"
   if [ "$FORCE_CHOWN" = "true" ] || [ "$existing_uid" != "$USER_ID" ] || [ "$existing_gid" != "$GROUP_ID" ]; then
-    chown -R reposilite:reposilite /app
+    chown_app
     chown -R reposilite:reposilite /var/log/reposilite
   fi
 
