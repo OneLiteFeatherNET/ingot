@@ -70,6 +70,32 @@ test.describe('system information and support page', () => {
     await expect(tab(page, 'Overview')).toBeFocused()
   })
 
+  test('enters the tab panel from the side of the new tab and keeps the address on the selection', async ({ page }) => {
+    await page.goto(siteUrl('/settings/system-info'))
+    await expect(tab(page, 'Overview')).toHaveAttribute('aria-selected', 'true')
+    // Records every motion class a tab panel is given from now on, so the direction is read from the classes the
+    // transition used and no test waits for a time.
+    await page.evaluate(() => {
+      const seen = new Set<string>()
+      ;(window as unknown as { __motionClasses: Set<string> }).__motionClasses = seen
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const name of (record.target as Element).classList) if (name.startsWith('motion-shared-x')) seen.add(name)
+        }
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] })
+    })
+    const classes = () => page.evaluate(() => [...(window as unknown as { __motionClasses: Set<string> }).__motionClasses])
+
+    await tab(page, 'Plugins').click()
+    await expect(page).toHaveURL(/\?tab=plugins$/)
+    await expect.poll(classes, { message: 'a tab to the right enters from the right' }).toContain('motion-shared-x-enter-active')
+    expect(await classes(), 'a forward change uses no backward class').not.toContain('motion-shared-x-back-enter-active')
+
+    await tab(page, 'Overview').click()
+    await expect(page).toHaveURL(/\/settings\/system-info(\?tab=overview)?$/)
+    await expect.poll(classes, { message: 'a tab to the left enters from the left' }).toContain('motion-shared-x-back-enter-active')
+  })
+
   test('offers the support bundle download on every tab', async ({ page }) => {
     await page.goto(siteUrl('/settings/system-info'))
 
