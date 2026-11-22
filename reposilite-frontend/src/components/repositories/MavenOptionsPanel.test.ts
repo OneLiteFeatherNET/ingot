@@ -80,7 +80,7 @@ describe('the Maven options section', () => {
 
   it('writes the option to the draft with the same domain object, so the repositories are kept', async () => {
     const { store } = await mountPanel()
-    const before = JSON.parse(JSON.stringify(store.configurations.value.maven.repositories))
+    const before: unknown = JSON.parse(JSON.stringify(store.configurations.value.maven.repositories))
     const setDomainData = vi.spyOn(store, 'setDomainData')
 
     const form = wrapper.findComponent(JsonForms)

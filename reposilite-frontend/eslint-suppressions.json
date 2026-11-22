@@ -530,7 +530,7 @@
   },
   "src/components/repositories/MavenOptionsPanel.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/no-unsafe-call": {
       "count": 1
@@ -625,9 +625,6 @@
   },
   "src/components/settings/settingsDiff.test.ts": {
     "@typescript-eslint/no-unsafe-argument": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     }
   },
