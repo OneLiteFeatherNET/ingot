@@ -263,8 +263,8 @@ internal class UpgradeScenario(
  * are written with the defaults that match the old pool behaviour, so an instance that keeps them behaves as before.
  */
 private val SETTINGS_ADDED_BY_INGOT = setOf(
-    "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "pluginUi", "pluginStyles", "plugins",
-    "databaseMaxLifetime", "databaseConnectionTimeout", "databaseKeepalive",
+    "hideSettingsSecrets", "searchEnabled", "searchEngine", "schemaLockTimeout", "pluginUi", "pluginStyles", "pluginReaders",
+    "plugins", "databaseMaxLifetime", "databaseConnectionTimeout", "databaseKeepalive",
 )
 
 /**
