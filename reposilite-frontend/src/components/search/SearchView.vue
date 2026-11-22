@@ -405,22 +405,24 @@ const toggleRow = (item: SearchItem) => {
               >
                 {{ countText }}
               </p>
-              <MdSelect
-                class="w-44!"
-                label="Sort by"
-                :options="SORT_OPTIONS"
-                :model-value="query.sort"
-                data-test="sort"
-                @update:model-value="go({ sort: $event })"
-              />
-              <MdSelect
-                class="w-40!"
-                label="Order"
-                :options="ORDER_OPTIONS"
-                :model-value="query.order"
-                data-test="order"
-                @update:model-value="go({ order: $event })"
-              />
+              <div class="w-44">
+                <MdSelect
+                  label="Sort by"
+                  :options="SORT_OPTIONS"
+                  :model-value="query.sort"
+                  data-test="sort"
+                  @update:model-value="go({ sort: $event })"
+                />
+              </div>
+              <div class="w-40">
+                <MdSelect
+                  label="Order"
+                  :options="ORDER_OPTIONS"
+                  :model-value="query.order"
+                  data-test="order"
+                  @update:model-value="go({ order: $event })"
+                />
+              </div>
             </div>
 
             <MdCard
