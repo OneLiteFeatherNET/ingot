@@ -131,4 +131,16 @@ describe('the Verify step', () => {
 
     expect(api.createJob).toHaveBeenCalledWith(expect.objectContaining({ password: '${env:NEXUS_PASSWORD}' }))
   })
+
+  it('draws its title as the focusable heading of a section component', async () => {
+    const { wrapper } = await mountWith(VerifyStep, { wizard: wizardWith(), at: '/settings/migration/verify' })
+
+    const heading = wrapper.get('h2')
+    expect(heading.attributes('id')).toBe('migration-verify-title')
+    expect(heading.attributes('tabindex'), 'the wizard moves the focus here when the step changes').toBe('-1')
+    expect(heading.text()).toBe('Verify')
+    expect(wrapper.find('[data-test="section-header"]').exists(), 'the heading comes from MdSection').toBe(true)
+    expect(wrapper.attributes('aria-labelledby')).toBe('migration-verify-title')
+    expect(wrapper.attributes('data-ingot-component')).toBe('verify-step')
+  })
 })
