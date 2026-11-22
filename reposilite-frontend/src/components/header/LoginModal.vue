@@ -641,7 +641,6 @@ const submitLabel = computed(() => {
                 <template #icon>
                   <ProviderIcon
                     :icon="provider.icon ?? undefined"
-                    class="size-6!"
                   />
                 </template>
                 Continue with {{ provider.label }}
