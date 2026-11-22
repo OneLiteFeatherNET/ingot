@@ -43,6 +43,33 @@ tasks.jar {
     enabled = false
 }
 
+// The unit tests run in process. The smoke tests tagged "jar" start the shaded jar as a process of its own, so they run
+// in a task of their own that builds the jar first, and `check` runs both.
+tasks.test {
+    useJUnitPlatform {
+        excludeTags("jar")
+    }
+}
+
+val jarSmokeTest by tasks.registering(Test::class) {
+    group = "verification"
+    description = "Runs the shaded jar with java -jar against a stub server."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform {
+        includeTags("jar")
+    }
+    val shadedJar = tasks.shadowJar.flatMap { it.archiveFile }
+    inputs.file(shadedJar)
+    doFirst {
+        systemProperty("ingot.cli.jar", shadedJar.get().asFile.absolutePath)
+    }
+}
+
+tasks.check {
+    dependsOn(jarSmokeTest)
+}
+
 // The root build gives every subproject a Maven publication of its plain jar, which this project does not build. The
 // cli ships as the jar above and as an image, and it was never published to a Maven repository, so it is left out.
 tasks.withType<AbstractPublishToMaven>().configureEach {

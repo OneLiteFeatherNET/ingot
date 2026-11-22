@@ -148,7 +148,9 @@ fun runCli(
     val commandErr = if (colour) err else withoutColour(err)
 
     if (isRepl) {
-        val term = terminal() ?: run {
+        // JLine falls back to a dumb terminal when standard input and output are pipes, so a terminal object alone does
+        // not mean a user is there. Without one the interactive mode is refused before anything connects.
+        val term = (if (interactive) terminal() else null) ?: run {
             err.println(USAGE)
             return ExitCode.USAGE
         }

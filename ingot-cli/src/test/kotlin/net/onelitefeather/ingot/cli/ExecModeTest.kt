@@ -16,6 +16,7 @@
 package net.onelitefeather.ingot.cli
 
 import org.assertj.core.api.Assertions.assertThat
+import org.jline.terminal.impl.DumbTerminal
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
@@ -168,6 +169,33 @@ internal class ExecModeTest {
             // then: the exit code is 2 and no request was sent
             assertThat(result.exit).isEqualTo(2)
             assertThat(stub.requests).isEmpty()
+        }
+    }
+
+    @Test
+    fun `should print the usage and exit 2 without words when not interactive even though a dumb terminal can be made`() {
+        // given: a server that would answer, and a terminal factory that still returns a terminal, as JLine falls back
+        // to a dumb terminal when standard input and output are pipes
+        StubIngot { answer(0) }.use { stub ->
+            val out = ByteArrayOutputStream()
+            val err = ByteArrayOutputStream()
+            val exit = DumbTerminal("pipe", "dumb", ByteArrayInputStream(ByteArray(0)), ByteArrayOutputStream(), StandardCharsets.UTF_8).use { dumb ->
+                // when: the CLI starts without words and without a terminal
+                runCli(
+                    args = listOf("--url", stub.url),
+                    env = mapOf("INGOT_CONFIG" to config().toString(), "INGOT_TOKEN" to "ci:ci-secret"),
+                    stdin = ByteArrayInputStream(ByteArray(0)),
+                    out = PrintStream(out, true, StandardCharsets.UTF_8),
+                    err = PrintStream(err, true, StandardCharsets.UTF_8),
+                    interactive = false,
+                    terminal = { dumb },
+                )
+            }
+
+            // then: it prints the usage, exits with 2 and opens no session
+            assertThat(exit).describedAs("exit code, stderr: $err").isEqualTo(ExitCode.USAGE)
+            assertThat(err.toString(StandardCharsets.UTF_8)).describedAs("the usage on stderr").contains("Usage: ingot")
+            assertThat(stub.requests).describedAs("no request reaches the server").isEmpty()
         }
     }
 
