@@ -126,9 +126,8 @@ class MavenFacade internal constructor(
         return ENTITY_TAG_CHECKSUMS
             .firstNotNullOfOrNull { checksum ->
                 val location = lookupRequest.gav.resolveSibling("${lookupRequest.gav.getSimpleName()}.${checksum.extension}")
-                if (!repository.storageProvider.exists(location)) {
-                    return@firstNotNullOfOrNull null
-                }
+                // Read directly: a missing checksum fails the read, and a probe first would cost a further round trip per checksum
+                // on a remote storage (on S3 a HEAD, and a listing when the key is missing)
                 repository.storageProvider.getFile(location)
                     .map { stream -> stream.use { it.readNBytes(CHECKSUM_READ_LIMIT).decodeToString() } }
                     .orNull()
