@@ -25,7 +25,7 @@ import MdTransition from '../md/MdTransition.vue'
 type LayoutProps = Partial<InstanceType<typeof SideNavLayout>['$props']>
 
 // The wrapper of the page column, read as a component so the test sees the pattern and the direction it is given.
-const transitionOf = (wrapper: VueWrapper) => wrapper.findComponent(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }
+const transitionOf = (wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>) => wrapper.findComponent(MdTransition as Component) as unknown as { props: (key: 'pattern' | 'direction') => unknown }
 
 const shell = { render: () => null }
 
@@ -73,7 +73,7 @@ describe('SideNavLayout', () => {
       },
       slots: { default: '<p class="page-body">Page body</p>' },
       global: { plugins: [router] }
-    }) as VueWrapper
+    })
   }
 
   it('renders the links of each group as a list, named by the visible heading of that group', async () => {
@@ -260,7 +260,7 @@ describe('SideNavLayout', () => {
 // navigation through the offsetHeight of its element, the window through window.innerHeight and the save bar through
 // its own element; each is restored after the test. The window is 1000 pixels high, so the room is 1000 - 80 - 16 = 904.
 describe('SideNavLayout sticky rule', () => {
-  const mounted: { wrapper: VueWrapper; bar: HTMLElement | null }[] = []
+  const mounted: { wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>; bar: HTMLElement | null }[] = []
   let navHeight = 0
   let barHeight = 0
   let savedInnerHeight: number
@@ -310,13 +310,13 @@ describe('SideNavLayout sticky rule', () => {
       global: { plugins: [router], provide: { [treeObserverKey]: observer.observe } },
       attachTo: document.body
     })
-    const entry: { wrapper: VueWrapper; bar: HTMLElement | null } = { wrapper, bar: null }
+    const entry: { wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>; bar: HTMLElement | null } = { wrapper, bar: null }
     mounted.push(entry)
     await flushPromises()
     return { wrapper, observer, entry }
   }
 
-  const isSticky = (wrapper: VueWrapper) => wrapper.find(SIDE_NAV).classes().includes('sticky')
+  const isSticky = (wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>) => wrapper.find(SIDE_NAV).classes().includes('sticky')
 
   it('has no scroll box of its own while the tree fits', async () => {
     navHeight = 800
@@ -395,7 +395,7 @@ describe('SideNavLayout index rows', () => {
     })
   }
 
-  const row = (wrapper: VueWrapper, label: string) => wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().startsWith(label)) as DOMWrapper<Element>
+  const row = (wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>, label: string) => wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().startsWith(label)) as DOMWrapper<Element>
 
   it('shows the description under the label of a row on narrow widths', async () => {
     const wrapper = await mountRows({ current: undefined, narrow: true })
@@ -446,7 +446,7 @@ const filterGroups = () => [
 
 describe('SideNavLayout find field', () => {
   // Mounted into the document, so focus can be checked. Each test unmounts what it mounted.
-  const mounted: VueWrapper[] = []
+  const mounted: VueWrapper<InstanceType<typeof SideNavLayout>>[] = []
   afterEach(() => mounted.splice(0).forEach(wrapper => wrapper.unmount()))
 
   const mountFilter = async (props: LayoutProps = {}) => {
@@ -463,8 +463,8 @@ describe('SideNavLayout find field', () => {
     return { wrapper, router }
   }
 
-  const field = (wrapper: VueWrapper) => wrapper.get<HTMLInputElement>('input[type="search"]')
-  const announcement = (wrapper: VueWrapper) => wrapper.get('[aria-live="polite"]').text()
+  const field = (wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>) => wrapper.get<HTMLInputElement>('input[type="search"]')
+  const announcement = (wrapper: VueWrapper<InstanceType<typeof SideNavLayout>>) => wrapper.get('[aria-live="polite"]').text()
 
   it('labels the search field Find an administration page', async () => {
     const { wrapper } = await mountFilter({ current: 'users' })

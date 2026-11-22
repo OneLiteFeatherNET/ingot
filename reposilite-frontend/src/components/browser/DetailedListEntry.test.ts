@@ -46,11 +46,11 @@ const mountEntry = (file: BrowserFile = jar) =>
     global: { stubs: { 'router-link': RouterLinkStub } }
   })
 
-const actionsOf = (wrapper: VueWrapper) =>
+const actionsOf = (wrapper: VueWrapper<InstanceType<typeof DetailedListEntry>>) =>
   wrapper.find('[data-row-actions]')
 
 // Each test mounts its own row and nothing else is shared between them.
-const mounted: VueWrapper[] = []
+const mounted: VueWrapper<InstanceType<typeof DetailedListEntry>>[] = []
 const mountRow = (file?: BrowserFile) => {
   const wrapper = mountEntry(file)
   mounted.push(wrapper)
