@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
@@ -82,7 +82,7 @@ const mountStorage = (data: Record<string, unknown>, schema: JsonSchema7 = stora
   return wrapper
 }
 
-const select = () => wrapper!.find('select') as DOMWrapper<HTMLSelectElement>
+const select = () => wrapper!.find<HTMLSelectElement>('select')
 const lastData = () => (wrapper!.emitted('change') as Array<[{ data: { storageProvider: Record<string, unknown> } }]>).at(-1)![0].data.storageProvider
 // The dialog is open while its headline is rendered. The modal root keeps its role until the leave transition ends,
 // and the transition stub of the test utils never ends it, so the root alone does not say that the dialog is open.

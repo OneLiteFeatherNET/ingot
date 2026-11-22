@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount, type DOMWrapper } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
@@ -135,7 +135,7 @@ describe('array of objects', () => {
     const wrapper = mountForm(mirrorSchema, mirrorLayout, { mirrors: [{ link: 'https://jitpack.io' }] })
 
     expect(wrapper.find('details').exists()).toBe(true)
-    expect((wrapper.find('details input') as DOMWrapper<HTMLInputElement>).element.value).toBe('https://jitpack.io')
+    expect(wrapper.find<HTMLInputElement>('details input').element.value).toBe('https://jitpack.io')
   })
 
   it('draws each object item on its own low card', () => {

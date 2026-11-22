@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
@@ -51,7 +51,7 @@ const mountDescription = (data: Record<string, unknown> = {}) => {
   return wrapper
 }
 
-const area = () => wrapper!.find('textarea') as DOMWrapper<HTMLTextAreaElement>
+const area = () => wrapper!.find<HTMLTextAreaElement>('textarea')
 const lastData = () => (wrapper!.emitted('change') as Array<[{ data: Record<string, unknown> }]>).at(-1)![0].data
 
 afterEach(() => {

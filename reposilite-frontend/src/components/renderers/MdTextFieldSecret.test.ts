@@ -149,7 +149,7 @@ describe('MdTextFieldRenderer secrets', () => {
       props: {
         data,
         schema,
-        uischema: { type: 'Control', scope: '#/properties/secretKey', label: 'Field' } as ControlElement,
+        uischema: { type: 'Control', scope: '#/properties/secretKey', label: 'Field' },
         renderers,
         config: { showUnfocusedDescription: true },
         ajv: markRaw(createAjv({ useDefaults: true }))
