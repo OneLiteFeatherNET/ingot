@@ -106,7 +106,7 @@ const mountView = () => {
   const wrapper = mount(FileBrowserView, {
     props: { qualifier: { path: 'releases/net/example', watchable: 0 } },
     global: { stubs: { 'router-link': RouterLinkStub } }
-  })
+  }) as VueWrapper
   mounted.push(wrapper)
   return wrapper
 }
@@ -343,7 +343,7 @@ describe('FileBrowserView group references', () => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }
-    })
+    }) as VueWrapper
     rootMounted.push(wrapper)
     return wrapper
   }
@@ -475,7 +475,7 @@ describe('FileBrowserView repository type in the header', () => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }
-    })
+    }) as VueWrapper
     mounted.push(wrapper)
     return wrapper
   }
@@ -562,7 +562,7 @@ describe('FileBrowserView uploads by repository type', () => {
     const wrapper = mount(FileBrowserView, {
       props: { qualifier: { path, watchable: 0 } },
       global: { stubs: { 'router-link': RouterLinkStub } }
-    })
+    }) as VueWrapper
     mounted.push(wrapper)
     return wrapper
   }

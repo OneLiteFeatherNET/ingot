@@ -118,7 +118,7 @@ const mountAt = async (url: string, { nodes, logged = true }: { nodes?: string[]
   } as AppRouterOptions)
   await router.push(url)
   await router.isReady()
-  const wrapper = mount(IndexPage, { props: { qualifier: QUALIFIER }, global: { plugins: [router] } })
+  const wrapper = mount(IndexPage, { props: { qualifier: QUALIFIER }, global: { plugins: [router] } }) as VueWrapper
   mounted.push(wrapper)
   await flushPromises()
   return { wrapper, router }

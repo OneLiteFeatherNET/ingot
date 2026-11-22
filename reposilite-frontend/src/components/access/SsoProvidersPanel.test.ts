@@ -502,7 +502,7 @@ describe('SsoProvidersPanel', () => {
   describe('public address', () => {
     const preview = () => wrapper.find('[data-test="callback-preview"]').text()
     const savePublic = async () => {
-      buttonIn(wrapper.element, 'Save public address').click()
+      buttonIn(wrapper.element as Element, 'Save public address').click()
       await flushPromises()
     }
 
