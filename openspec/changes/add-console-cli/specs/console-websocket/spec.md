@@ -187,7 +187,7 @@ close the connection with 1008.
 
 ### Requirement: Node identity and command scope
 
-The `welcome` SHALL name the node and the boot of the process. Each descriptor of the command listing SHALL carry a `scope` of `node` or
+The `welcome` SHALL name the boot of the process, and each `result` and `log` frame SHALL name its node. Each descriptor of the command listing SHALL carry a `scope` of `node` or
 `cluster`.
 
 #### Scenario: Per-replica command
