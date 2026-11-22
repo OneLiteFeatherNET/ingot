@@ -26,39 +26,61 @@
  */
 import { ref, watch } from 'vue'
 import MdIcon from './MdIcon.vue'
+import MdTransition from './MdTransition.vue'
 
 const props = withDefaults(defineProps<{ open?: boolean }>(), { open: false })
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
-// The native state drives the chevron, so it also turns when the browser opens the body without a v-model.
-const details = ref<HTMLDetailsElement | null>(null)
-const isOpen = ref(props.open)
-watch(
-  () => props.open,
-  (open) => {
-    isOpen.value = open
-    if (details.value && details.value.open !== open) details.value.open = open
-  },
-)
+// expanded drives the body and the chevron. detailsOpen is the open attribute of the details element: it follows
+// expanded when the body opens, and lags behind it on a close until the leave transition has ended, so the browser does
+// not hide the body while it collapses.
+const expanded = ref(props.open)
+const detailsOpen = ref(props.open)
 
-const onToggle = (event: Event) => {
-  const open = (event.target as HTMLDetailsElement).open
-  isOpen.value = open
+const apply = (open: boolean) => {
+  expanded.value = open
+  if (open) detailsOpen.value = true
+}
+
+watch(() => props.open, apply)
+
+const change = (open: boolean) => {
+  if (open === expanded.value) return
+  apply(open)
   if (open !== props.open) emit('update:open', open)
 }
 
+// The summary is toggled here instead of by the browser, which would close the body at once. Enter and Space on the
+// summary arrive as a click too.
+const onClick = () => change(!expanded.value)
+
+// The browser still toggles the element itself, for example when a find in the page opens the body. The toggle event
+// also arrives, late, for the attribute this component set, which it ignores.
+const onToggle = (event: Event) => {
+  const open = (event.target as HTMLDetailsElement).open
+  if (open === detailsOpen.value) return
+  if (!open) detailsOpen.value = false
+  change(open)
+}
+
+const onAfterLeave = () => {
+  if (!expanded.value) detailsOpen.value = false
+}
+
 const CHEVRON = 'M6 9l6 6 6-6'
-const chevronClass = () => (isOpen.value ? 'rotate-180' : '')
+const chevronClass = () => (expanded.value ? 'rotate-180' : '')
 </script>
 
 <template>
   <details
-    ref="details"
-    :open="open"
+    :open="detailsOpen"
     data-ingot-component="md-disclosure"
     @toggle="onToggle"
   >
-    <summary class="md-state-layer md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary">
+    <summary
+      class="md-state-layer md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary"
+      @click.prevent="onClick"
+    >
       <span><slot name="summary" /></span>
       <MdIcon
         :path="CHEVRON"
@@ -67,8 +89,20 @@ const chevronClass = () => (isOpen.value ? 'rotate-180' : '')
         :class="chevronClass()"
       />
     </summary>
-    <div class="pb-4 text-on-surface-variant">
-      <slot />
-    </div>
+    <MdTransition
+      pattern="expand"
+      @after-leave="onAfterLeave"
+    >
+      <div
+        v-show="expanded"
+        class="expand-rows"
+      >
+        <div class="min-h-0 overflow-hidden">
+          <div class="pb-4 text-on-surface-variant">
+            <slot />
+          </div>
+        </div>
+      </div>
+    </MdTransition>
   </details>
 </template>
