@@ -81,6 +81,7 @@ const {
   sessionExpired,
   command,
   execute,
+  complete,
   confirmation,
   answerConfirmation,
   previousCommand,
@@ -356,6 +357,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
           :disabled="disconnected"
           :supporting-text="disconnected ? 'Reconnect to run commands' : `Type a command or '?' for help`"
           autocomplete="off"
+          @keydown.tab.prevent="complete()"
           @keyup.enter="execute()"
           @keyup.up="previousCommand()"
           @keyup.down="nextCommand()"

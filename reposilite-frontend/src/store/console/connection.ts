@@ -20,7 +20,7 @@ import { createURL } from '../client'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session"
-import { ConsoleSocket, type ConfirmFrame, type ResultFrame, type SocketState } from './socket'
+import { ConsoleSocket, type CompleteFrame, type ConfirmFrame, type ResultFrame, type SocketState } from './socket'
 
 const { client, authMode } = useSession()
 
@@ -112,6 +112,34 @@ export default function useConsole() {
         if (command.value === '') command.value = sent
         createErrorToast(`Command not sent: ${errorMessage(error)}`)
       })
+  }
+
+  // The line and cursor the last completion was asked for. An answer for a line the reader has since changed is dropped.
+  let completing: { id: string; line: string } | null = null
+
+  // Asks the server for the words that complete the line. Over the event stream there is nobody to ask, so nothing happens.
+  const complete = () => {
+    if (!socket || !welcomed) return
+    const line = command.value
+    const id = socket.complete(line, line.length)
+    completing = id === null ? null : { id, line }
+  }
+
+  const commonPrefix = (words: string[]) =>
+    words.reduce((prefix, word) => {
+      let end = 0
+      while (end < prefix.length && end < word.length && prefix[end] === word[end]) end++
+      return prefix.slice(0, end)
+    })
+
+  const applyCompletion = (frame: CompleteFrame) => {
+    if (completing?.id !== frame.id || command.value !== completing.line) return
+    completing = null
+    if (frame.candidates.length === 0) return
+    const { start, end } = frame.replace
+    const word = frame.candidates.length === 1 ? frame.candidates[0] : commonPrefix(frame.candidates)
+    command.value = command.value.slice(0, start) + word + command.value.slice(end)
+    if (frame.candidates.length > 1) onMessage.value?.(frame.candidates.join('  '), 'INFO')
   }
 
   const previousCommand = () =>
@@ -292,6 +320,9 @@ export default function useConsole() {
         },
         onConfirm: frame => {
           if (socket === candidate) confirmation.value = frame
+        },
+        onComplete: frame => {
+          if (socket === candidate) applyCompletion(frame)
         }
       }
     })
@@ -313,6 +344,7 @@ export default function useConsole() {
     onClose,
     command,
     execute,
+    complete,
     confirmation,
     answerConfirmation,
     previousCommand,
