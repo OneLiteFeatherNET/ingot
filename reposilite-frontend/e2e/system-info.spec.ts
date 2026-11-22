@@ -160,6 +160,9 @@ test.describe('system information and support page', () => {
 
   for (const width of [320, 600, 1440]) {
     test(`has no serious or critical violations on each tab at ${width} pixels`, async ({ page }, testInfo) => {
+      // A tab panel fades in, and axe measures its text against a blend until the fade has ended. Reduced motion ends
+      // every transition at once, so the check sees the final colours (see accessibility.spec.ts).
+      await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.setViewportSize({ width, height: 900 })
       await page.goto(siteUrl('/settings/system-info'))
 
