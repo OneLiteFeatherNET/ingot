@@ -45,9 +45,9 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 - [x] 4.3 `test(frontend)` and `feat(frontend)`: the filter in `PluginBlock.vue`: a select sends its value as a query parameter, an empty
   value is not sent, a change resets the cursor, a count is shown only with a `facets` entry, and the text field is debounced by the
   dashboard's own helper (no timer in the test; the helper is replaced by a synchronous one).
-- [ ] 4.4 `test(frontend)`: browser check (Playwright, `--workers=2`) at 320, 600 and 1440 px for a page with a filter, a list and a code
+- [x] 4.4 `test(frontend)`: browser check (Playwright, `--workers=2`) at 320, 600 and 1440 px for a page with a filter, a list and a code
   block: no horizontal page scroll, the copy status region announces "Copied".
-- [ ] 4.5 `docs(frontend)`: the filter in the block table of `plugin-api.md`, and the reserved key `cursor`.
+- [x] 4.5 `docs(frontend)`: the filter in the block table of `plugin-api.md`, and the reserved key `cursor`.
 
 ## 5. Pull request
 
