@@ -22,6 +22,7 @@ import MdButton from '../md/MdButton.vue'
 import MdIcon from '../md/MdIcon.vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import NewMachineDialog from './NewMachineDialog.vue'
@@ -187,26 +188,19 @@ const deleted = (principal: PrincipalSummary) => {
         </MdTextField>
       </div>
 
-      <div
+      <MdStatePanel
         v-if="loadError"
-        role="alert"
-        class="flex flex-wrap items-center gap-3 px-1"
-      >
-        <span class="md-body-medium text-error">Could not load the list: {{ loadError }}</span>
-        <MdButton
-          variant="text"
-          @click="load()"
-        >
-          Retry
-        </MdButton>
-      </div>
-      <p
+        state="error"
+        data-test="list-error"
+        title="Could not load the list"
+        :description="loadError"
+        @retry="load()"
+      />
+      <MdStatePanel
         v-else-if="!loaded"
-        role="status"
-        class="px-1 md-body-medium text-on-surface-variant"
-      >
-        Loading...
-      </p>
+        state="loading"
+        data-test="list-loading"
+      />
       <!--
         A row holds two controls: the link to the principal and its actions menu. A menu button
         inside a link is nested interactive content, so the row is a plain MdListItem rather than
@@ -276,12 +270,12 @@ const deleted = (principal: PrincipalSummary) => {
           </template>
         </MdListItem>
       </MdList>
-      <p
+      <MdStatePanel
         v-else
-        class="px-1 py-4 md-body-medium text-on-surface-variant"
-      >
-        {{ emptyText }}
-      </p>
+        state="empty"
+        data-test="list-empty"
+        :title="emptyText"
+      />
     </div>
 
     <div class="min-w-0 p-4 expanded:p-6">

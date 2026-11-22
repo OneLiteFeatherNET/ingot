@@ -185,7 +185,9 @@ describe('SsoProvidersPanel', () => {
       await mountPanel()
 
       expect(rows()).toHaveLength(0)
-      expect(wrapper.text()).toContain('No provider yet')
+      const panel = wrapper.find('[data-test="list-empty"]')
+      expect(panel.exists(), 'the empty state panel is drawn').toBe(true)
+      expect(panel.text()).toContain('No provider yet')
     })
 
     it('shows the reason and offers a retry when the domain cannot be read', async () => {
@@ -193,12 +195,25 @@ describe('SsoProvidersPanel', () => {
 
       await mountPanel()
 
-      expect(wrapper.find('[role="alert"]').text()).toContain('Could not load the providers')
+      const panel = wrapper.find('[data-test="list-error"]')
+      expect(panel.attributes('data-ingot-state'), 'the error is an error state panel').toBe('error')
+      expect(panel.text()).toContain('Could not load the providers')
       await wrapper.findAll('button').find(button => button.text() === 'Retry')!.trigger('click')
       await flushPromises()
 
       expect(settings.fetch).toHaveBeenCalledTimes(2)
       expect(rows()).toHaveLength(2)
+    })
+
+    it('draws the loading line as a busy state panel', async () => {
+      settings.fetch.mockReturnValue(new Promise(() => undefined))
+
+      await mountPanel()
+
+      const panel = wrapper.find('[data-test="list-loading"]')
+      expect(panel.exists(), 'the loading state panel is drawn').toBe(true)
+      expect(panel.attributes('aria-busy')).toBe('true')
+      expect(wrapper.text()).not.toContain('Loading...')
     })
 
     it('turns a provider off with its switch and writes the list with the tag it was read with', async () => {
