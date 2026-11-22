@@ -59,6 +59,14 @@ export interface ResultFrame {
   [field: string]: unknown
 }
 
+// A dangerous command waits for the user. `command` is the command name only, so its arguments, a secret among them, are
+// never sent back.
+export interface ConfirmFrame {
+  id: string
+  command: string
+  reason: string
+}
+
 export interface ErrorFrame {
   code: string
   message: string
@@ -76,6 +84,8 @@ export interface ConsoleSocketListener {
   onError(frame: ErrorFrame): void
   // An execute that had no result when the socket dropped. It may or may not have run, so it is never sent again.
   onUnknown(id: string, command: string): void
+  // A dangerous command that runs only after the page answers with confirm().
+  onConfirm(frame: ConfirmFrame): void
 }
 
 export interface ConsoleSocketOptions {
@@ -132,6 +142,16 @@ export class ConsoleSocket {
     return id
   }
 
+  // Answers the confirmation of the execute [id]. Returns false when the socket is not ready: an answer is never queued,
+  // because the server drops a waiting command when its connection closes.
+  confirm(id: string, accept: boolean): boolean {
+    if (this.state !== 'ready' || this.socket === null) {
+      return false
+    }
+    this.socket.send(JSON.stringify({ type: 'confirm', id, accept }))
+    return true
+  }
+
   private nextId(): string {
     return this.options.nextId ? this.options.nextId() : `r${++this.counter}`
   }
@@ -182,6 +202,9 @@ export class ConsoleSocket {
       case 'result':
         this.pending.delete(String(frame.id))
         this.options.listener.onResult(frame as ResultFrame)
+        break
+      case 'confirm':
+        this.options.listener.onConfirm(frame as unknown as ConfirmFrame)
         break
       case 'error': {
         const error = frame as unknown as ErrorFrame
