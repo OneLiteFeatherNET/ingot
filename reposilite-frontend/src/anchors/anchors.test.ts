@@ -74,6 +74,12 @@ describe("anchor checks on a single template", () => {
     expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
   })
 
+  it("accepts a root that is a child component carrying the name itself, because the name lands on the element it renders", () => {
+    const source = `<template><MdListItem data-ingot-component="side-nav-layout"><a>x</a></MdListItem></template>`
+
+    expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
+  })
+
   it("accepts a component that renders no element of its own when it carries no name", () => {
     const source = `<template><MdSelect :model-value="value" /></template>`
     const entry = entryFor("md-select-renderer", { ownElement: false })
