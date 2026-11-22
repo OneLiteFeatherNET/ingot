@@ -229,13 +229,42 @@ Starts after all Phase 2 pull requests are merged, except e2e specs that a Phase
 
 ## 4. Phase 4: strict everywhere
 
-Group type: `refactor(ui)`. Starts after all earlier pull requests are merged.
+Group type: `refactor(ui)`. Starts after all earlier pull requests are merged. The maintainer decided (2026-11-23) to split the phase into
+small pull requests, one per item and, for the suppressions, one per ESLint rule. Every pull request is independent of the others
+except 4.3.R, which runs last, and each one leaves `npm run typecheck`, `npm run eslint` and the unit suite green on its own. A pull
+request removes only the suppressions of its own rule from `eslint-suppressions.json` (`npx eslint --prune-suppressions` limited to
+that rule, or by hand), fixes the code instead of suppressing it again, and changes no behaviour. The counts below are those of
+`reposilite-frontend/eslint-suppressions.json` when this split was written; a pull request re-counts before it starts.
 
-- [ ] 4.1 Confirm the count of explicit `any` values under `src/` is zero or only the budgeted reasons, then remove `src/types/any-budget.json` and its test, and reword the remaining `// any:` comments into typed code where the count allows.
-- [ ] 4.2 Set `allowJs: false` in every tsconfig, remove `checkJs` and the transition comments, and confirm `strict: true` in all four files. Run `npm run typecheck`.
-- [ ] 4.3 Empty `eslint-suppressions.json` (`{}`) by fixing or removing each remaining suppression, and remove the `.js` entries from the Vitest, style-gate and anchor patterns that no longer match any file.
-- [ ] 4.4 List any `.js` file left under `src/`, `server/`, `e2e/` or `fake-api/` in the pull request. The expected list is empty; any vendored or generated file needs a sentence of reason and no conversion.
-- [ ] 4.5 Run every gate, plus the full e2e suite and the build comparison against the Phase 0 baseline. Open the pull request `refactor(ui): remove the javascript transition settings`.
+### 4.1 The `any` budget
+
+- [ ] 4.1.1 Confirm the count of explicit `any` values under `src/` is zero or only the budgeted reasons, then remove `src/types/any-budget.json` and its test, and reword the remaining `// any:` comments into typed code where the count allows.
+- [ ] 4.1.2 Open the pull request `refactor(ui): remove the any budget of the dashboard`.
+
+### 4.2 JavaScript settings
+
+- [ ] 4.2.1 Set `allowJs: false` in every tsconfig, remove `checkJs` and the transition comments, and confirm `strict: true` in all four files. Run `npm run typecheck`.
+- [ ] 4.2.2 Open the pull request `refactor(ui): disallow javascript in the dashboard tsconfig files`.
+
+### 4.3 Suppressions, one pull request per rule
+
+Pull request title pattern: `refactor(ui): fix the <rule> findings of the dashboard`. Each pull request also names its rule in the description.
+
+- [ ] 4.3.1 `@typescript-eslint/require-await` (104): drop `async` where nothing is awaited, or return the promise. Open the pull request.
+- [ ] 4.3.2 `@typescript-eslint/no-unsafe-assignment` (147): type the source of each assignment. Open the pull request.
+- [ ] 4.3.3 `@typescript-eslint/no-unsafe-argument` (63): type the argument or its source. Open the pull request.
+- [ ] 4.3.4 `@typescript-eslint/unbound-method` (29): bind the method or use an arrow function. Open the pull request.
+- [ ] 4.3.5 `@typescript-eslint/no-floating-promises` (27): await, return or mark the promise with `void` where fire and forget is intended. Open the pull request.
+- [ ] 4.3.6 `@typescript-eslint/no-unsafe-call` (25) and `@typescript-eslint/no-unsafe-return` (1): type the callee and the return value. Open the pull request.
+- [ ] 4.3.7 `@typescript-eslint/no-base-to-string` (16), `@typescript-eslint/restrict-template-expressions` (6), `@typescript-eslint/prefer-promise-reject-errors` (1) and `@typescript-eslint/await-thenable` (1): the small type-aware rules, one pull request because each is a one-line fix. Open the pull request.
+- [ ] 4.3.8 The `vue/*` template formatting rules (`html-indent` 19, `html-closing-bracket-newline` 7, `max-attributes-per-line` 4, `first-attribute-linebreak` 3, `multiline-html-element-content-newline` 2, `html-self-closing` 2, `html-closing-bracket-spacing` 1): run the formatter on the listed files only. Open the pull request.
+- [ ] 4.3.9 `no-unused-vars` (1), `@typescript-eslint/no-unused-vars` (1) and `vue/no-v-html` (1): remove the variable, or keep `v-html` with a reason beside it if the content is a trusted constant. Open the pull request.
+- [ ] 4.3.R After 4.3.1 to 4.3.9 are merged: confirm `eslint-suppressions.json` is `{}` (delete the leftover keys of any rule not listed above), and remove the `.js` entries from the Vitest, style-gate and anchor patterns that no longer match any file. Open the pull request `refactor(ui): remove the eslint suppressions and javascript patterns`.
+
+### 4.4 Remaining JavaScript and the closing check
+
+- [ ] 4.4.1 List any `.js` file left under `src/`, `server/`, `e2e/` or `fake-api/` in the pull request. The expected list is empty; any vendored or generated file needs a sentence of reason and no conversion.
+- [ ] 4.4.2 Run every gate, plus the full e2e suite and the build comparison against the Phase 0 baseline, with `heavy`. Open the pull request `refactor(ui): confirm the dashboard builds as before the typescript migration`, which changes no file unless a gate finds a difference.
 
 ## 5. Follow-ups (not part of the code pull requests)
 
