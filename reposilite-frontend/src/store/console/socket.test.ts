@@ -65,6 +65,7 @@ function harness() {
     onError: vi.fn(),
     onUnknown: vi.fn(),
     onConfirm: vi.fn(),
+    onComplete: vi.fn(),
   }
   const client = new ConsoleSocket({
     url: 'ws://dashboard.example.org/api/console/sock',
@@ -313,6 +314,34 @@ describe('console socket client', () => {
       expect(h.created.length, 'the first step after a welcome is 1 second, not the 4 seconds of the earlier attempts').toBe(before)
       vi.advanceTimersByTime(1)
       expect(h.created.length).toBe(before + 1)
+    })
+  })
+  describe('completion', () => {
+    it('sends one complete frame with the line and the cursor', () => {
+      const { client, current } = readySession()
+
+      const id = client.complete('sta', 3)
+
+      expect(id, 'a ready socket takes the request').toBe('e1')
+      expect(current().frames().at(-1), 'the frame names the line and the cursor').toEqual({ type: 'complete', id: 'e1', line: 'sta', cursor: 3 })
+    })
+
+    it('sends nothing while the socket is not ready', () => {
+      const { client, current } = harness()
+      client.connect()
+
+      expect(client.complete('sta', 3), 'a completion is not queued').toBeNull()
+      expect(current().frames(), 'no frame went out').toHaveLength(0)
+    })
+
+    it('reports the answer to the listener and keeps the command pending list clean', () => {
+      const { client, listener, current } = readySession()
+      const id = client.complete('sta', 3)
+      current().receive({ type: 'complete', id, replace: { start: 0, end: 3 }, candidates: ['stats', 'status'] })
+
+      expect(listener.onComplete).toHaveBeenCalledWith(expect.objectContaining({ id, replace: { start: 0, end: 3 }, candidates: ['stats', 'status'] }))
+      current().drop()
+      expect(listener.onUnknown, 'a completion is no command that may have run').not.toHaveBeenCalled()
     })
   })
 })

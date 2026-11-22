@@ -257,6 +257,54 @@ describe('ConsoleView', () => {
       expect(levelCount(wrapper, 'Error'), 'the stderr line and the exit code count as errors').toBe('2')
     })
 
+    describe('completion', () => {
+      it('sends no frame while the reader types', async () => {
+        const socket = await welcomed()
+        const before = socket.sent.length
+
+        await wrapper.find('#consoleInput').setValue('sta')
+
+        expect(socket.sent, 'typing is a local matter').toHaveLength(before)
+      })
+
+      it('sends one complete frame on Tab and keeps the focus in the input', async () => {
+        const socket = await welcomed()
+        await wrapper.find('#consoleInput').setValue('sta')
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true, bubbles: true })
+        wrapper.find('#consoleInput').element.dispatchEvent(event)
+        await flushPromises()
+
+        const completes = socket.frames().filter(frame => frame.type === 'complete')
+        expect(completes, 'Tab asks the server once').toHaveLength(1)
+        expect(completes[0], 'the frame holds the line').toMatchObject({ line: 'sta' })
+        expect(event.defaultPrevented, 'Tab does not leave the input').toBe(true)
+      })
+
+      it('puts the only candidate into the input', async () => {
+        const socket = await welcomed()
+        await wrapper.find('#consoleInput').setValue('stat')
+        wrapper.find('#consoleInput').element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true, bubbles: true }))
+        const id = socket.frames().at(-1)!.id
+        socket.receive({ type: 'complete', id, replace: { start: 0, end: 4 }, candidates: ['status'] })
+        await flushPromises()
+
+        expect((wrapper.find('#consoleInput').element as HTMLInputElement).value, 'the candidate replaces the word').toBe('status')
+      })
+
+      it('lists several candidates in the output and completes their common prefix', async () => {
+        const socket = await welcomed()
+        await wrapper.find('#consoleInput').setValue('to')
+        wrapper.find('#consoleInput').element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true, bubbles: true }))
+        const id = socket.frames().at(-1)!.id
+        socket.receive({ type: 'complete', id, replace: { start: 0, end: 2 }, candidates: ['token-generate', 'token-revoke', 'tokens'] })
+        await flushPromises()
+
+        expect((wrapper.find('#consoleInput').element as HTMLInputElement).value, 'the common prefix is filled in').toBe('token')
+        expect(wrapper.find('#console').text(), 'the candidates are shown').toContain('token-generate  token-revoke  tokens')
+      })
+    })
+
     describe('confirmation of a dangerous command', () => {
       const askedToConfirm = async () => {
         const socket = await welcomed()

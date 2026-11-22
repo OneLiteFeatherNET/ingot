@@ -67,6 +67,13 @@ export interface ConfirmFrame {
   reason: string
 }
 
+// The words that may replace the characters from `replace.start` to `replace.end` of the line that was sent.
+export interface CompleteFrame {
+  id: string
+  replace: { start: number; end: number }
+  candidates: string[]
+}
+
 export interface ErrorFrame {
   code: string
   message: string
@@ -86,6 +93,7 @@ export interface ConsoleSocketListener {
   onUnknown(id: string, command: string): void
   // A dangerous command that runs only after the page answers with confirm().
   onConfirm(frame: ConfirmFrame): void
+  onComplete(frame: CompleteFrame): void
 }
 
 export interface ConsoleSocketOptions {
@@ -152,6 +160,17 @@ export class ConsoleSocket {
     return true
   }
 
+  // Asks for the words that complete [line] at [cursor]. Returns the id of the request, or null when the socket is not
+  // ready. A completion is never queued, and it is not a command, so a drop does not report it as unknown.
+  complete(line: string, cursor: number): string | null {
+    if (this.state !== 'ready' || this.socket === null) {
+      return null
+    }
+    const id = this.nextId()
+    this.socket.send(JSON.stringify({ type: 'complete', id, line, cursor }))
+    return id
+  }
+
   private nextId(): string {
     return this.options.nextId ? this.options.nextId() : `r${++this.counter}`
   }
@@ -202,6 +221,9 @@ export class ConsoleSocket {
       case 'result':
         this.pending.delete(String(frame.id))
         this.options.listener.onResult(frame as ResultFrame)
+        break
+      case 'complete':
+        this.options.listener.onComplete(frame as unknown as CompleteFrame)
         break
       case 'confirm':
         this.options.listener.onConfirm(frame as unknown as ConfirmFrame)
