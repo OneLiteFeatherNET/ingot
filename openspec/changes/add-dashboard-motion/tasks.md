@@ -158,15 +158,15 @@ Pull request title: `feat(ui): slide the tab indicator and the tab panel`
 
 Starts after group 4 is merged.
 
-- [ ] 6.1 `test(ui)`: in `src/components/md/MdTabs.test.ts`, assert that the indicator of the selected tab is positioned with a
+- [x] 6.1 `test(ui)`: in `src/components/md/MdTabs.test.ts`, assert that the indicator of the selected tab is positioned with a
   transform from the tab's offset and width, and that the panel passes `shared-x` with the direction of the two tab indexes. Verify:
   it fails, because the indicator changes colour only.
-- [ ] 6.2 `test(ui)`: in `src/components/tabs/AppTabs.test.ts`, assert that the wrapper passes the selection and its direction through
+- [x] 6.2 `test(ui)`: in `src/components/tabs/AppTabs.test.ts`, assert that the wrapper passes the selection and its direction through
   unchanged, and that the `data-ingot-component="app-tabs"` anchor stays on the wrapper. Verify: it fails for the panel direction.
 - [ ] 6.3 `test(ui)`: in `src/components/card/SnippetsCard.test.ts`, assert that the tab panel uses `shared-x` from the tokens, that
   no literal `.1s` or `60px` remains in its `<style>` block, and that its reduced-motion behaviour is unchanged. Verify: it fails,
   because the literal values are there.
-- [ ] 6.4 `test(ui)`: in `src/components/card/CardMenu.test.ts`, assert that the indicator of `CardMenu` slides with a transform and
+- [x] 6.4 `test(ui)`: in `src/components/card/CardMenu.test.ts`, assert that the indicator of `CardMenu` slides with a transform and
   takes the token duration. Verify: it fails, because the indicator changes colour only.
 - [ ] 6.5 `test(ui)`: in `e2e/system-info.spec.js` and `e2e/repositories.spec.js`, assert that the tab panel of the system information
   and of a repository enters from the side of the new tab, and that the `?tab=` address still follows the selection. Verify: it fails
@@ -184,7 +184,7 @@ Pull request title: `feat(ui): animate the height of expanding and collapsing se
 
 Starts after group 5 is merged.
 
-- [ ] 7.1 `test(ui)`: in `src/components/md/MdDisclosure.test.ts`, assert that the content is wrapped in a grid wrapper whose rows
+- [x] 7.1 `test(ui)`: in `src/components/md/MdDisclosure.test.ts`, assert that the content is wrapped in a grid wrapper whose rows
   go from `0fr` to `1fr` on open, that the chevron uses the `short3` token, and that a closing disclosure keeps its `open` attribute
   until the transition has ended, using a fake timer advanced by the token value. Verify: it fails, because the content has no wrapper.
 - [ ] 7.2 `test(ui)`: in `src/components/access/nodes/NodeTreeView.test.ts`, assert that a permission tree row opens with the same
@@ -211,12 +211,12 @@ Pull request title: `feat(ui): fade loaded content over the skeleton and step th
 
 Starts after group 6 is merged.
 
-- [ ] 8.1 `test(ui)`: in `src/components/md/MdStatePanel.test.ts`, assert that when the state changes from `loading` to content the
+- [x] 8.1 `test(ui)`: in `src/components/md/MdStatePanel.test.ts`, assert that when the state changes from `loading` to content the
   skeleton uses `short2` to leave and the content uses `short4` to enter, with no delay of its own, and that the skeleton's own 200
   millisecond delay is unchanged. Verify: it fails, because the content replaces the skeleton at once.
-- [ ] 8.2 `test(ui)`: in `src/components/md/MdSkeleton.test.ts`, assert that the skeleton keeps `motion-safe:animate-skeleton-fade-in`
+- [x] 8.2 `test(ui)`: in `src/components/md/MdSkeleton.test.ts`, assert that the skeleton keeps `motion-safe:animate-skeleton-fade-in`
   and gains no transition of its own. Verify: it passes, and it guards the change against a second delay.
-- [ ] 8.3 `test(ui)`: in `src/components/header/LoginModal.test.ts`, assert that the second step is wrapped in `MdTransition` with
+- [x] 8.3 `test(ui)`: in `src/components/header/LoginModal.test.ts`, assert that the second step is wrapped in `MdTransition` with
   `shared-y`, that its heading still receives focus on entry, and that a failure inside the step keeps the typed codes until they are
   cleared as today. Verify: it fails, because the step has no transition.
 - [ ] 8.4 `test(ui)`: in `src/components/md/MdStatePanel.test.ts`, assert that a list row added after load fades in with `short3`, and
