@@ -9,7 +9,8 @@
 #   frontend=true|false      the frontend coverage job has to run
 #   frontend_only=true|false every relevant path is under reposilite-frontend/, so the backend job
 #                            runs only the tests that serve the dashboard
-#   image=true|false         an input of the container images changed (Dockerfiles, entrypoint, compose files)
+#   image=true|false         an input of the container images changed (Dockerfiles, entrypoint, compose files), or a
+#                            source that defines settings or the container tests themselves (see CONFIG below)
 #   chart=true|false         the Helm chart changed
 #   e2e=true|false           something the dashboard end-to-end tests can see changed (see below)
 #   unit=true|false          code the unit tests compile or serve changed (anything except the chart and image inputs)
@@ -102,6 +103,13 @@ E2E="$E2E"'|^reposilite-backend/src/main/kotlin/(com/reposilite/(auth|token)|net
 E2E="$E2E"'|^reposilite-backend/src/main/kotlin/com/reposilite/maven/RepositorySecurityProvider\.kt$'
 E2E="$E2E"'|^(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradlew|gradlew\.bat)$|^(gradle|buildSrc)/'
 E2E="$E2E"'|^\.github/workflows/heavy\.yml$|^\.github/scripts/(ci_scope\.sh|heavy_gate\.py)$'
+# Sources that decide which settings the server reads or writes, and the container tests that rehearse an upgrade
+# against them (UpgradeScenario compares the settings of the previous image with these). Their change selects the
+# image flag too, although they are not image inputs, because the job behind it is the one that catches a setting
+# that breaks an existing configuration.cdn.
+CONFIG='^(reposilite-backend|reposilite-plugins|reposilite-search-http)/(.*/)?src/main/kotlin/(.*/)?(configuration/|[^/]*(Settings|Configuration)\.kt$)'
+CONFIG="$CONFIG"'|^(reposilite-backend|reposilite-plugins|reposilite-search-http)/(.*/)?src/main/resources/(.*/)?[^/]*\.cdn$'
+CONFIG="$CONFIG"'|^reposilite-backend/src/containerTest/'
 # Paths outside SOURCE that the script can place and that the suite cannot see.
 NO_E2E='^(loadtest|\.github/workflows|\.github/scripts)/'
 
@@ -121,6 +129,7 @@ while IFS= read -r path; do
   fi
   if printf '%s\n' "$path" | grep -qE "$SOURCE"; then
     unit=true
+    if printf '%s\n' "$path" | grep -qE "$CONFIG"; then image=true; fi
     if printf '%s\n' "$path" | grep -qE "$E2E"; then e2e=true; fi
     continue
   fi
