@@ -46,8 +46,39 @@ const sessionExpired = ref(false)
  * The command history belongs to the session, not to the view. The view is mounted each time
  * its tab is opened, and a history created per mount would start empty on every visit.
  */
-const history = ref<string[]>([''])
-const historyIdx = ref(0)
+const HISTORY_KEY = 'ingot.console.history'
+const HISTORY_LIMIT = 500
+
+// The history of this browser tab. sessionStorage is per tab and survives a reload, and the server never sees it.
+const loadHistory = (): string[] => {
+  try {
+    const stored: unknown = JSON.parse(sessionStorage.getItem(HISTORY_KEY) ?? '[]')
+    if (Array.isArray(stored)) return [...stored.filter((line): line is string => typeof line === 'string'), '']
+  } catch {
+    // Storage blocked or unreadable: the history then lives in memory only.
+  }
+  return ['']
+}
+
+const history = ref<string[]>(loadHistory())
+const historyIdx = ref(history.value.length - 1)
+
+// The names and aliases of the commands the listing marks as sensitive, or null while the listing is not known. A line
+// that starts with one of them is kept out of the history. While the listing is unknown nothing is written to the tab
+// storage, because nothing can be told apart yet.
+let sensitiveNames: Set<string> | null = null
+
+const isSensitive = (line: string): boolean =>
+  sensitiveNames?.has(line.trim().split(/\s+/)[0]?.toLowerCase() ?? '') === true
+
+const saveHistory = () => {
+  if (sensitiveNames === null) return
+  try {
+    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history.value.filter(line => line !== '').slice(-HISTORY_LIMIT)))
+  } catch {
+    // The history stays in memory.
+  }
+}
 
 // The socket of protocol 1, from the hello on. Commands use it once the server has welcomed it. Against a server without
 // protocol 1 it is dropped, and the console runs over the event stream and the HTTP execute as before.
@@ -86,8 +117,31 @@ export default function useConsole() {
   const addCommandToHistory = (command: string) => {
     if (history.value[history.value.length - 1] == '')
       history.value.pop()
-    history.value.push(command)
+    if (!isSensitive(command)) history.value.push(command)
     historyIdx.value = history.value.length - 1
+    saveHistory()
+  }
+
+  // Asks the server which commands are sensitive. Lines entered before the answer are checked once it is here.
+  const loadSensitiveNames = (token: { name: string; secret: string }) => {
+    const options: RequestInit = authMode?.value === 'cookie'
+      ? { credentials: 'include' }
+      : { headers: { Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}` } }
+    fetch(createURL('/api/console/commands'), options)
+      .then(response => response.ok ? response.json() : Promise.reject(new Error(String(response.status))))
+      .then((listing: { commands?: { name: string; aliases?: string[]; sensitive?: boolean }[] }) => {
+        sensitiveNames = new Set((listing.commands ?? [])
+          .filter(entry => entry.sensitive === true)
+          .flatMap(entry => [entry.name, ...(entry.aliases ?? [])])
+          .map(name => name.toLowerCase()))
+        history.value = history.value.filter(line => !isSensitive(line))
+        if (history.value.length === 0 || history.value[history.value.length - 1] !== '') history.value.push('')
+        historyIdx.value = history.value.length - 1
+        saveHistory()
+      })
+      .catch(() => {
+        // An older server has no listing, and its history stays in memory.
+      })
   }
 
   const execute = () => {
@@ -262,6 +316,7 @@ export default function useConsole() {
    * stays on the event stream.
    */
   const open = (token: { name: string; secret: string }) => {
+    loadSensitiveNames(token)
     if (authMode?.value === 'cookie') return connect(token)
     status.value = 'connecting'
     failure.value = null
