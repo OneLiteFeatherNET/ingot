@@ -44,6 +44,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
 import java.io.ByteArrayInputStream
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
 
 internal class S3StorageProviderFailureTest {
 
@@ -60,7 +61,10 @@ internal class S3StorageProviderFailureTest {
         private val failure: Throwable,
         private val keys: List<String> = emptyList(),
         private val listFailure: Throwable? = null,
+        private val truncated: Boolean = false,
     ) : S3Client {
+
+        val listRequests = mutableListOf<ListObjectsV2Request>()
 
         override fun serviceName(): String =
             S3Client.SERVICE_NAME
@@ -82,11 +86,14 @@ internal class S3StorageProviderFailureTest {
         override fun deleteObject(request: DeleteObjectRequest): DeleteObjectResponse =
             throw failure
 
-        override fun listObjectsV2(request: ListObjectsV2Request): ListObjectsV2Response =
-            listFailure?.let { throw it } ?: ListObjectsV2Response.builder()
+        override fun listObjectsV2(request: ListObjectsV2Request): ListObjectsV2Response {
+            listRequests += request
+            return listFailure?.let { throw it } ?: ListObjectsV2Response.builder()
                 .contents(keys.filter { it.startsWith(request.prefix().orEmpty()) }.map { S3Object.builder().key(it).size(1).build() })
-                .isTruncated(false)
+                .isTruncated(truncated)
+                .nextContinuationToken(if (truncated) "next" else null)
                 .build()
+        }
 
     }
 
@@ -244,6 +251,39 @@ internal class S3StorageProviderFailureTest {
 
         // then: a server error is returned instead of an exception escaping the provider
         assertThat(assertError(result).status).describedAs("status of a failed upload").isEqualTo(500)
+    }
+
+    @Test
+    fun `probe should read one key of the root instead of listing it fully`() {
+        // given: a bucket whose listing is always truncated, so a full listing would never end
+        val client = StubS3Client(failure = s3Failure(500), keys = listOf(file), truncated = true)
+        val provider = S3StorageProvider(failureFacade = failureFacade, s3 = client, bucket = "test")
+
+        // when: the readiness probe runs
+        val outcome = provider.probe()
+
+        // then: a single request asks for one key and the backend counts as having answered
+        assertThat(outcome).describedAs("outcome of the probe").isEqualTo(ReadinessOutcome.Ok)
+        assertThat(client.listRequests).describedAs("list requests of the probe").hasSize(1)
+        assertThat(client.listRequests.single().maxKeys()).describedAs("max keys of the probe").isEqualTo(1)
+    }
+
+    @Test
+    fun `probe should answer ok for an empty bucket`() {
+        // given: a bucket without keys
+        val provider = providerFailingWith(s3Failure(500))
+
+        // when / then: the backend answered
+        assertThat(provider.probe()).describedAs("outcome for an empty bucket").isEqualTo(ReadinessOutcome.Ok)
+    }
+
+    @Test
+    fun `probe should fail with the listing message when S3 errors`() {
+        // given: a listing that fails on the server side
+        val provider = providerFailingWith(s3Failure(500), listFailure = s3Failure(500))
+
+        // when / then: the probe names the failure
+        assertThat(provider.probe()).describedAs("outcome of a failing listing").isEqualTo(ReadinessOutcome.Failed("Failed to list /"))
     }
 
 }
