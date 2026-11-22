@@ -713,7 +713,7 @@ jobs:
 
       # The base image is read from the FROM line of the run stage, the image that ships.
       # The digest on that line is the one Renovate raises, so the annotation follows the
-      # Dockerfile without a second edit. Both lines must pin the base by digest.
+      # Dockerfile without a second edit. Every one of these lines must pin the base by digest.
       - name: "Read the base images from the Dockerfiles"
         id: base
         run: |
@@ -742,11 +742,14 @@ jobs:
           }
           server_ref="$(run_stage_reference Dockerfile)"
           dashboard_ref="$(run_stage_reference reposilite-frontend/Dockerfile)"
+          cli_ref="$(run_stage_reference ingot-cli/Dockerfile)"
           {
             echo "server_base_name=$(qualify "${server_ref%@*}")"
             echo "server_base_digest=${server_ref#*@}"
             echo "dashboard_base_name=$(qualify "${dashboard_ref%@*}")"
             echo "dashboard_base_digest=${dashboard_ref#*@}"
+            echo "cli_base_name=$(qualify "${cli_ref%@*}")"
+            echo "cli_base_digest=${cli_ref#*@}"
           } >> "$GITHUB_OUTPUT"
 
       # The tags a release moves come from .github/scripts/release_tags.py: X.Y.Z always, X.Y and X only while no higher
@@ -947,6 +950,8 @@ jobs:
             org.opencontainers.image.vendor=OneLiteFeather
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.params.outputs.version }}
+            org.opencontainers.image.base.name=${{ steps.base.outputs.cli_base_name }}
+            org.opencontainers.image.base.digest=${{ steps.base.outputs.cli_base_digest }}
 
       - name: "Build and push the CLI image"
         id: cli
