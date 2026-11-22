@@ -143,6 +143,53 @@ internal object ElasticsearchQueries {
         )
     }
 
+    /**
+     * The GAV keys of the first [window] groups of [part] in the order of the attribute sort of [query] (search attribute
+     * facets, D4). The files collapse onto their group, and each file sorts by its smallest value of the key ascending or its
+     * largest descending, so the file that represents a group carries the value the group sorts by. A file without a value
+     * comes last in both directions, and the ties follow the order of the other sorts.
+     */
+    fun attributeGroupOrder(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart, window: Int): ObjectNode {
+        require(window in 1..MAX_WINDOW) { "the window must be between 1 and $MAX_WINDOW" }
+        val sort = requireNotNull(query.attributeSort) { "the query has no attribute sort" }
+        val direction = if (sort.descending) "desc" else "asc"
+        val attribute = mapOf(
+            attributeField(sort.key) to linkedMapOf(
+                "order" to direction,
+                "mode" to if (sort.descending) "max" else "min",
+                "missing" to "_last",
+                "unmapped_type" to "keyword",
+            ),
+        )
+        return tree(
+            linkedMapOf<String, Any>(
+                "size" to window,
+                "_source" to false,
+                "docvalue_fields" to listOf("gav"),
+                "query" to groupFilter(query, access, part),
+                "collapse" to mapOf("field" to "gav"),
+                "sort" to listOf(
+                    attribute,
+                    mapOf("group_id_lc" to direction),
+                    mapOf("artifact_id_lc" to direction),
+                    mapOf("version_lc" to opposite(direction)),
+                ),
+            ),
+        )
+    }
+
+    /** The values of the groups with the given GAV [keys] over the filters of [part], to put in the order of the attribute sort. */
+    fun groupRows(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart, keys: List<String>): ObjectNode {
+        require(keys.isNotEmpty()) { "at least one GAV key is required" }
+        return tree(
+            linkedMapOf<String, Any>(
+                "size" to 0,
+                "query" to filterOf(listOf(groupFilter(query, access, part), termsOf("gav", keys))),
+                "aggs" to mapOf("groups" to mapOf("terms" to mapOf("field" to "gav", "size" to keys.size), "aggs" to groupAggregations())),
+            ),
+        )
+    }
+
     /** The number of groups of [part], bucketed up to one above the total cap, so the plugin can tell that more exist. */
     fun groupTotal(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart): ObjectNode = tree(
         linkedMapOf<String, Any>(
