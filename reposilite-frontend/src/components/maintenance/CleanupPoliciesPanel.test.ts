@@ -153,6 +153,46 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+describe('CleanupPoliciesPanel states', () => {
+  it('draws a failed load as an error state panel and reads the policies again on Retry', async () => {
+    session.client = fakeClient()
+    session.client.settings.fetch.mockRejectedValueOnce(new Error('Store unavailable'))
+    await mountPanel()
+
+    const panel = wrapper.find('[data-test="policies-error"]')
+    expect(panel.exists(), 'the error is an error state panel').toBe(true)
+    expect(panel.attributes('data-ingot-state')).toBe('error')
+    expect(panel.text()).toContain('Store unavailable')
+
+    await panel.find('button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="policies-error"]').exists(), 'the retry cleared the error').toBe(false)
+    expect(wrapper.text()).toContain('snapshots-weekly')
+  })
+
+  it('draws the loading line as a busy state panel', async () => {
+    session.client = fakeClient()
+    session.client.settings.fetch.mockReturnValue(new Promise(() => undefined))
+    await mountPanel()
+
+    const panel = wrapper.find('[data-test="policies-loading"]')
+    expect(panel.exists(), 'the loading state panel is drawn').toBe(true)
+    expect(panel.attributes('aria-busy')).toBe('true')
+    expect(wrapper.text()).not.toContain('Loading policies')
+  })
+
+  it('draws the empty list as an empty state panel', async () => {
+    session.client = fakeClient({ policies: [] })
+    await mountPanel()
+
+    const panel = wrapper.find('[data-test="policies-empty"]')
+    expect(panel.exists(), 'the empty state panel is drawn').toBe(true)
+    expect(panel.attributes('data-ingot-state')).toBe('empty')
+    expect(panel.text()).toContain('No cleanup policies yet')
+  })
+})
+
 describe('CleanupPoliciesPanel list', () => {
   it('lists every policy with its scope and its schedule', async () => {
     await mountPanel()

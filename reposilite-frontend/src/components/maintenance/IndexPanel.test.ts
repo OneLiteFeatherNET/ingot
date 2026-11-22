@@ -203,7 +203,33 @@ describe('IndexPanel status', () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.reject(httpError(500, 'The index is unreachable'))) })
     await mountPanel()
 
-    expect(wrapper.find('[role="alert"]').text()).toContain('The index is unreachable')
+    const panel = wrapper.get('[data-test="index-error"]')
+    expect(panel.attributes('role'), 'the failure is announced').toBe('alert')
+    expect(panel.attributes('data-ingot-state'), 'the failure is an error state panel').toBe('error')
+    expect(panel.text()).toContain('The index is unreachable')
+  })
+
+  it('reads the status again when Retry is pressed after a failed load', async () => {
+    const searchIndex = vi.fn()
+      .mockRejectedValueOnce(httpError(500, 'The index is unreachable'))
+      .mockResolvedValue({ data: indexBody() })
+    session.client = fakeClient({ searchIndex })
+    await mountPanel()
+
+    await wrapper.get('[data-test="index-error"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="index-error"]').exists(), 'the retry cleared the error').toBe(false)
+    expect(searchIndex).toHaveBeenCalledTimes(2)
+  })
+
+  it('draws the loading line as a busy state panel', async () => {
+    session.client = fakeClient({ searchIndex: vi.fn(() => new Promise(() => undefined)) })
+    await mountPanel()
+
+    const panel = wrapper.get('[data-test="index-loading"]')
+    expect(panel.attributes('aria-busy')).toBe('true')
+    expect(wrapper.text()).not.toContain('Loading the search index')
   })
 })
 
