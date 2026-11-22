@@ -225,6 +225,28 @@ class ScopeFlagsTest(unittest.TestCase):
     def test_dashboard_dockerfile_change_turns_on_the_image_flag(self):
         self.assertIn("image", truthy(["reposilite-frontend/Dockerfile"]))
 
+    def test_local_configuration_change_turns_on_the_image_flag(self):
+        # The upgrade rehearsal compares the settings of the previous image with these, so it has to run.
+        flags = truthy(["reposilite-backend/src/main/kotlin/com/reposilite/configuration/local/LocalConfiguration.kt"])
+        self.assertTrue({"image", "unit"} <= flags)
+        self.assertFalse({"chart", "e2e"} & flags)
+
+    def test_shared_settings_class_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["reposilite-backend/src/main/kotlin/com/reposilite/maven/application/MavenSettings.kt"]))
+
+    def test_plugin_settings_class_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["reposilite-plugins/cleanup-plugin/src/main/kotlin/com/reposilite/cleanup/application/CleanupSettings.kt"]))
+
+    def test_configuration_package_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["reposilite-backend/src/main/kotlin/com/reposilite/configuration/shared/SettingsChanges.kt"]))
+
+    def test_configuration_template_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["reposilite-backend/src/main/resources/configuration.cdn"]))
+
+    def test_container_test_source_change_turns_on_the_image_flag(self):
+        flags = truthy(["reposilite-backend/src/containerTest/kotlin/com/reposilite/image/UpgradeScenario.kt"])
+        self.assertTrue({"image", "unit"} <= flags)
+
     def test_backend_endpoint_turns_on_unit_and_e2e_but_not_image_or_chart(self):
         flags = truthy(["reposilite-backend/src/main/kotlin/com/reposilite/status/StatusEndpoints.kt"])
         self.assertTrue({"unit", "e2e", "backend"} <= flags)
