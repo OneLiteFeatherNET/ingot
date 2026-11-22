@@ -30,6 +30,9 @@
 import { computed, inject, onMounted, ref, useId, watch } from 'vue'
 import { routeLocationKey, routerKey } from 'vue-router'
 import { useTabIndicator } from '../../composables/useTabIndicator'
+import { motionDirection, type MotionDirection } from '../../helpers/motionDirection'
+import { vHidden } from '../../helpers/vHidden'
+import MdTransition from './MdTransition.vue'
 
 export interface AppTab {
   key: string
@@ -135,13 +138,24 @@ const indicator = useTabIndicator(
 const indicatorSlides = computed(() => indicator.moved.value && !reducedMotion())
 watch(() => props.tabs.map((tab) => tab.key).join(), () => indicator.refresh(), { flush: 'post' })
 
+// The panels move on the shared axis X (design "Shared axis X"), with the direction of the two tab indexes: a tab to
+// the right enters from the right. The direction is set before the panels are patched, so the leaving and the entering
+// panel take the same one. The first paint has no direction and no transition.
+const panelDirection = ref<MotionDirection>(0)
+const indexOf = (key: string | undefined) => props.tabs.findIndex((tab) => tab.key === key)
+watch(selected, (to, from) => {
+  const fromIndex = indexOf(from)
+  const toIndex = indexOf(to)
+  panelDirection.value = fromIndex < 0 || toIndex < 0 ? 0 : motionDirection(fromIndex, toIndex)
+})
+
 onMounted(() => showSelectedTab('auto'))
 watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { flush: 'post' })
 </script>
 
 <template>
   <div
-    class="flex flex-col gap-4"
+    class="grid grid-cols-1 gap-4"
     data-ingot-component="md-tabs"
   >
     <div
@@ -177,17 +191,28 @@ watch(selected, () => showSelectedTab(reducedMotion() ? 'auto' : 'smooth'), { fl
       />
     </div>
 
-    <div
+    <!--
+      Every panel stays in the document and the ones not selected carry the hidden attribute, as before. The panels share
+      the grid cell under the tab list, so the leaving panel and the entering one overlap instead of stacking.
+    -->
+    <MdTransition
       v-for="tab in tabs"
-      :id="panelId(tab.key)"
       :key="tab.key"
-      role="tabpanel"
-      tabindex="0"
-      class="md-focus-ring"
-      :aria-labelledby="tabId(tab.key)"
-      :hidden="tab.key !== selected"
+      pattern="shared-x"
+      :direction="panelDirection"
+      mode="default"
+      persisted
     >
-      <slot :tab="tab.key" />
-    </div>
+      <div
+        :id="panelId(tab.key)"
+        v-hidden="tab.key !== selected"
+        role="tabpanel"
+        tabindex="0"
+        class="md-focus-ring col-start-1 row-start-2"
+        :aria-labelledby="tabId(tab.key)"
+      >
+        <slot :tab="tab.key" />
+      </div>
+    </MdTransition>
   </div>
 </template>
