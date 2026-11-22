@@ -25,6 +25,7 @@ import MdDialog from '../md/MdDialog.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSection from '../md/MdSection.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import PencilIcon from '../icons/PencilIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
@@ -113,10 +114,17 @@ async function load() {
     await loadRuns()
     loadError.value = ''
   } catch (error) {
-    loadError.value = `Could not load the cleanup policies: ${errorMessage(error)}`
+    loadError.value = errorMessage(error)
   } finally {
     loaded.value = true
   }
+}
+
+// Retry: the loading panel shows again while the lists are read once more.
+async function reload() {
+  loadError.value = ''
+  loaded.value = false
+  await load()
 }
 
 /*
@@ -234,25 +242,25 @@ load()
         </template>
       </MdSection>
 
-      <p
+      <MdStatePanel
         v-if="loadError"
-        class="md-body-medium text-error"
-        role="alert"
-      >
-        {{ loadError }}
-      </p>
-      <p
+        state="error"
+        data-test="policies-error"
+        title="Could not load the cleanup policies"
+        :description="loadError"
+        @retry="reload()"
+      />
+      <MdStatePanel
         v-else-if="!loaded"
-        class="md-body-medium text-on-surface-variant"
-      >
-        Loading policies…
-      </p>
-      <p
+        state="loading"
+        data-test="policies-loading"
+      />
+      <MdStatePanel
         v-else-if="!policies.length"
-        class="md-body-medium text-on-surface-variant"
-      >
-        No cleanup policies yet. Create one to delete artifacts by rule.
-      </p>
+        state="empty"
+        data-test="policies-empty"
+        description="No cleanup policies yet. Create one to delete artifacts by rule."
+      />
 
       <ul
         v-else

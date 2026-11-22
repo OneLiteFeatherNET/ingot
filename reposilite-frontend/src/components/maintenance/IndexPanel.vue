@@ -24,6 +24,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdSection from '../md/MdSection.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import RebuildIndexDialog from './RebuildIndexDialog.vue'
 import { countLabel, formatDateTime } from './format'
 import {
@@ -141,11 +142,18 @@ async function load() {
     index.value = null
     notAvailable.value = status === 404
     notAllowed.value = status === 403
-    loadError.value = status === 404 || status === 403 ? '' : `Could not load the search index: ${errorMessage(error)}`
+    loadError.value = status === 404 || status === 403 ? '' : errorMessage(error)
   } finally {
     loaded.value = true
     schedulePoll()
   }
+}
+
+// Retry: the loading panel shows again while the status is read once more.
+async function reload() {
+  loadError.value = ''
+  loaded.value = false
+  await load()
 }
 
 // A refused start says why in words. The server's own message is not shown, as it names internals.
@@ -250,19 +258,19 @@ onBeforeUnmount(stopPolling)
       >
         Only managers can see the search index.
       </p>
-      <p
+      <MdStatePanel
         v-else-if="loadError"
-        class="md-body-medium text-error"
-        role="alert"
-      >
-        {{ loadError }}
-      </p>
-      <p
+        state="error"
+        data-test="index-error"
+        title="Could not load the search index"
+        :description="loadError"
+        @retry="reload()"
+      />
+      <MdStatePanel
         v-else-if="!loaded"
-        class="md-body-medium text-on-surface-variant"
-      >
-        Loading the search index…
-      </p>
+        state="loading"
+        data-test="index-loading"
+      />
 
       <template v-if="index">
         <div class="flex flex-col gap-1">
