@@ -154,6 +154,19 @@ describe('MdTextField', () => {
     expect(wrapper.find('input').attributes('style')).toBeUndefined()
   })
 
+  it('draws the outlined variant when no variant is given', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+    expect(wrapper.find('input').classes()).toContain('border-outline')
+  })
+
+  it('still draws the filled variant when it is asked for', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'filled' } })
+
+    expect(wrapper.find('input').classes()).toContain('bg-surface-container-highest')
+    expect(wrapper.find('input').classes()).not.toContain('border-outline')
+  })
+
   it('outlined variant draws the outline border on the input', () => {
     const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
 
@@ -165,7 +178,7 @@ describe('MdTextField', () => {
     // v0_192) sets both focus indicators to 2px. A 1px border in the primary role plus a 1px
     // inset shadow in the same role draws that 2px line.
     it('draws the filled focus active indicator as a 2px primary line', () => {
-      const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+      const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'filled' } })
 
       expect(wrapper.find('input').classes()).toContain('focus:border-primary')
       expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)]')
@@ -205,13 +218,13 @@ describe('MdTextField', () => {
 
   describe('disabled state', () => {
     it('gives the filled container a 4 percent on-surface fill', () => {
-      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+      const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'filled', disabled: true } })
 
       expect(wrapper.find('input').classes()).toContain('disabled:bg-on-surface/4')
     })
 
     it('gives the filled active indicator and the outlined outline 38 and 12 percent on-surface', () => {
-      const filled = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+      const filled = mount(MdTextField, { props: { label: 'Name', variant: 'filled', disabled: true } })
       const outlined = mount(MdTextField, { props: { label: 'Name', variant: 'outlined', disabled: true } })
 
       expect(filled.find('input').classes()).toContain('disabled:border-on-surface/38')
