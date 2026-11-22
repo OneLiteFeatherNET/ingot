@@ -92,7 +92,7 @@ describe('diffSettings', () => {
   it('reports nothing when the draft equals the saved state', () => {
     const saved = { maven: { repositories: [repo('releases', 'PUBLIC')] }, frontend: { title: 'Ingot' } }
 
-    expect(diffSettings(saved, JSON.parse(JSON.stringify(saved)), SCHEMAS)).toEqual([])
+    expect(diffSettings(saved, JSON.parse(JSON.stringify(saved)) as typeof saved, SCHEMAS)).toEqual([])
   })
 
   it('reports a nested field as one change with its path and labels', () => {

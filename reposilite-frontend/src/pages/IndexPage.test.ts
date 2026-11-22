@@ -174,10 +174,11 @@ const mountAt = async (url: string, { manager = false, logged = manager, mustCha
   } as AppRouterOptions)
   await router.push(url)
   await router.isReady()
+  // Asserted as a plain wrapper, so the helpers below take it without an `any` instance.
   const wrapper = mount(IndexPage, {
     props: { qualifier: QUALIFIER },
     global: { plugins: [router] }
-  })
+  }) as VueWrapper
   await flushPromises()
   return { wrapper, router }
 }
@@ -1033,7 +1034,7 @@ describe('IndexPage More panel motion', () => {
   }
 
   // The page is typed loosely by the lint, so the wrapper is named a VueWrapper once here.
-  const mountWithMore = async (): Promise<VueWrapper> => (await mountAt('/', { manager: true })).wrapper as VueWrapper
+  const mountWithMore = async (): Promise<VueWrapper> => (await mountAt('/', { manager: true })).wrapper
 
   const panelTransition = (wrapper: VueWrapper) =>
     wrapper.findAllComponents(MdTransition).find(transition => transition.find('nav[aria-label="More sections"]').exists())
