@@ -202,3 +202,24 @@ test.describe('focus on a top-level page change', () => {
     ).toBe(0)
   })
 })
+
+// A select closes with Escape and gives the focus back to its field, with the motion of the menu pattern and without it.
+// The More panel of the bottom bar is not drawn for the administrator of this run, whose sections all fit in the bar.
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test.describe(`select that opens from its field, motion: ${reducedMotion}`, () => {
+    test('closes the Action select with Escape and returns the focus to the field', async ({ adminPage: page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await page.emulateMedia({ reducedMotion })
+      await page.goto(siteUrl('/audit'))
+      const select = page.getByRole('combobox', { name: 'Action', exact: true })
+
+      await select.click()
+      const options = page.getByRole('listbox')
+      await expect(options, 'the field opens its options').toBeVisible()
+      await page.keyboard.press('Escape')
+
+      await expect(options, 'Escape closes the options').toBeHidden()
+      await expect(select, 'the focus is on the field').toBeFocused()
+    })
+  })
+}
