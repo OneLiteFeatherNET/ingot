@@ -89,6 +89,16 @@ describe('SecurityPanel', () => {
       expect(title!.classes(), 'a level 2 title uses md-title-medium').toContain('md-title-medium')
       expect(wrapper!.findAll('h3, h4').map(heading => heading.text()), 'the panel title is not a deeper heading').not.toContain('Security')
     })
+
+    it('draws the title and its supporting text as an md-section, labelled by the title', async () => {
+      await mountPanel()
+
+      const section = wrapper!.find('section')
+      expect(section.find('[data-test="section-header"]').exists(), 'the panel header is the md-section header').toBe(true)
+      expect(section.attributes('aria-labelledby'), 'the section is named by its heading').toBe('security-title')
+      expect(section.find('h2#security-title').exists(), 'the heading carries the id the section names').toBe(true)
+      expect(wrapper!.find('[data-test="security"]').exists(), 'the panel hook stays').toBe(true)
+    })
   })
 
   describe('tabs', () => {
