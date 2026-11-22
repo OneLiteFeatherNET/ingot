@@ -58,6 +58,16 @@ describe('MdKeyValueList', () => {
     expect(wrapper.findAll('[data-test="key-value-row"]').every(row => row.classes().includes('contents'))).toBe(true)
   })
 
+  it('puts the testId of an item on its value cell as data-test', () => {
+    const wrapper = mount(MdKeyValueList, {
+      props: { items: [{ label: 'Status', value: 'Active', testId: 'status' }, { label: 'Name', value: 'ingot' }] }
+    })
+
+    expect(wrapper.get('[data-test="status"]').element.tagName, 'the value cell carries the hook').toBe('DD')
+    expect(wrapper.get('[data-test="status"]').text()).toBe('Active')
+    expect(wrapper.findAll('dd')[1].attributes('data-test'), 'an item without a testId has no hook').toBeUndefined()
+  })
+
   it('carries the md-key-value-list anchor on its root', () => {
     expect(mount(MdKeyValueList, { props: { items: rows } }).attributes('data-ingot-component')).toBe('md-key-value-list')
   })
