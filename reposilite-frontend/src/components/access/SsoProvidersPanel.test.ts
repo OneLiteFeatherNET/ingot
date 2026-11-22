@@ -375,7 +375,7 @@ describe('SsoProvidersPanel', () => {
       dialogButton('Save').click()
       await flushPromises()
 
-      expect(settings.update.mock.calls[0][1].oidcProviders[0].clientSecret).toBe(SECRET_PLACEHOLDER)
+      expect((settings.update.mock.calls[0][1] as { oidcProviders: Array<{ clientSecret: string }> }).oidcProviders[0].clientSecret).toBe(SECRET_PLACEHOLDER)
     })
 
     it('sends the secret that was typed in place of the placeholder', async () => {
@@ -384,7 +384,7 @@ describe('SsoProvidersPanel', () => {
       dialogButton('Save').click()
       await flushPromises()
 
-      expect(settings.update.mock.calls[0][1].oidcProviders[0].clientSecret).toBe('rotated-secret')
+      expect((settings.update.mock.calls[0][1] as { oidcProviders: Array<{ clientSecret: string }> }).oidcProviders[0].clientSecret).toBe('rotated-secret')
     })
 
     it('does not let the id change, because the callback URL and team links carry it', async () => {

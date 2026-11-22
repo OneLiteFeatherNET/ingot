@@ -19,7 +19,7 @@ import { mount } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
+import type { JsonSchema, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { tester as selectTester, oneOfTester, optionsOf } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
@@ -59,7 +59,7 @@ const providerChoice: JsonSchema7 = {
 
 describe('one-of constant choice', () => {
   it('reads the option labels from the branch titles', () => {
-    expect(optionsOf(providerChoice)).toEqual([
+    expect((optionsOf as (schema?: JsonSchema) => Array<{ value: unknown; label: string }>)(providerChoice)).toEqual([
       { value: 'fs', label: 'Local file system' },
       { value: 's3', label: 'S3 Storage Provider' }
     ])

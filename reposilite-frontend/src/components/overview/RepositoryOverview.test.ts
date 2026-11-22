@@ -564,7 +564,7 @@ describe('RepositoryOverview layout order', () => {
   it('lists the repositories before the snippet card in the reading order', async () => {
     await mountAt('/')
 
-    const [first, second] = wrapper.element.firstElementChild.children
+    const [first, second] = (wrapper.element as HTMLElement).firstElementChild?.children ?? []
     expect(first.tagName, 'the list is the first block, so a narrow screen shows it first').toBe('SECTION')
     expect(second.className, 'the snippet card follows the list').toContain('lg:col-start-2')
   })
@@ -574,7 +574,7 @@ describe('RepositoryOverview width', () => {
   it('keeps the list and the snippet card side by side from 1024 pixels, as before', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.firstElementChild.className, 'the card keeps its column on the right from 1024 pixels').toContain(
+    expect((wrapper.element as HTMLElement).firstElementChild?.className, 'the card keeps its column on the right from 1024 pixels').toContain(
       'min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
     )
   })
@@ -582,7 +582,7 @@ describe('RepositoryOverview width', () => {
   it('keeps the details card at its own width on wide screens, so the list does not stretch with the window', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.firstElementChild.className, 'the card column is the same from 1920 pixels').not.toContain('min-[1920px]:grid-cols-[2fr_1fr]')
+    expect((wrapper.element as HTMLElement).firstElementChild?.className, 'the card column is the same from 1920 pixels').not.toContain('min-[1920px]:grid-cols-[2fr_1fr]')
   })
 
   it('renders its page container through MdPage at the full width, without a container or width class of its own', async () => {
@@ -596,7 +596,7 @@ describe('RepositoryOverview width', () => {
     expect(wrapper.classes(), 'the page shell draws the bottom spacing of the page').toContain('pb-12')
     expect(wrapper.classes(), 'the view writes no bottom margin of its own').not.toContain('mb-12')
     expect((wrapper.element as HTMLElement).firstElementChild?.className, 'the grid inside the page writes no top spacing of its own').not.toMatch(/(?<![\w-])pt-7(?![\w-])/)
-    expect(wrapper.element.firstElementChild.className, 'only the page shell writes the container class').not.toMatch(/(?<![-\w])container(?![-\w])/)
+    expect((wrapper.element as HTMLElement).firstElementChild?.className, 'only the page shell writes the container class').not.toMatch(/(?<![-\w])container(?![-\w])/)
   })
 })
 

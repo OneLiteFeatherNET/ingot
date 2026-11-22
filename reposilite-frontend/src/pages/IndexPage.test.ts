@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ref } from 'vue'
-import type { Ref } from 'vue'
+import type { Component, Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
@@ -27,6 +27,8 @@ import type { AppRouterOptions } from '../router/create'
 import { canUse } from '../store/nodeAccess'
 import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
+
+const pageFooter = PageFooter as Component
 import MdTransition from '../components/md/MdTransition.vue'
 
 // The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
@@ -213,14 +215,14 @@ describe('IndexPage footer and content sheet', () => {
     const sheet = wrapper.find(SHEET)
 
     expect(sheet.exists(), 'the navigation frame has a content sheet').toBe(true)
-    expect(sheet.findAllComponents(PageFooter), 'the sheet closes with the footer').toHaveLength(1)
+    expect(sheet.findAllComponents(pageFooter), 'the sheet closes with the footer').toHaveLength(1)
   })
 
   it('keeps a second footer below the page, outside the sheet, for narrow windows', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    const footers = wrapper.findAllComponents(PageFooter)
-    const outsideSheet = footers.filter(footer => footer.element.closest(SHEET) === null)
+    const footers = wrapper.findAllComponents(pageFooter)
+    const outsideSheet = footers.filter(footer => (footer.element as Element).closest(SHEET) === null)
 
     expect(footers, 'one footer in the sheet and one below the page').toHaveLength(2)
     expect(outsideSheet, 'the page footer sits outside the sheet').toHaveLength(1)
