@@ -128,6 +128,40 @@ describe('TeamsPanel', () => {
     expect(teams.get, 'a missing flag is not looked up').not.toHaveBeenCalled()
   })
 
+  it('draws a failed load as an error state panel and reads the list again on Retry', async () => {
+    teams.list.mockRejectedValueOnce({ message: 'Store unavailable' })
+    await mountPanel()
+
+    const panel = wrapper!.find('[data-test="list-error"]')
+    expect(panel.exists(), 'the error is an error state panel').toBe(true)
+    expect(panel.text()).toContain('Store unavailable')
+
+    await panel.find('button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper!.find('[data-test="list-error"]').exists(), 'the retry cleared the error').toBe(false)
+    expect(names()).toEqual(['developers', 'admins', 'release'])
+  })
+
+  it('draws the loading line as a busy state panel', async () => {
+    teams.list.mockReturnValue(new Promise(() => undefined))
+    await mountPanel()
+
+    const panel = wrapper!.find('[data-test="list-loading"]')
+    expect(panel.exists(), 'the loading state panel is drawn').toBe(true)
+    expect(panel.attributes('aria-busy')).toBe('true')
+    expect(wrapper!.text()).not.toContain('Loading...')
+  })
+
+  it('draws the empty list as an empty state panel', async () => {
+    teams.list.mockResolvedValue({ data: [] })
+    await mountPanel()
+
+    const panel = wrapper!.find('[data-test="list-empty"]')
+    expect(panel.exists(), 'the empty state panel is drawn').toBe(true)
+    expect(panel.text()).toContain('There are no teams yet.')
+  })
+
   it('filters by name', async () => {
     await mountPanel()
 
