@@ -18,6 +18,7 @@
 import { computed, ref, watch } from 'vue'
 import type { JsonFormsRendererRegistryEntry, UISchemaElement, createAjv } from '@jsonforms/core'
 import { JsonForms } from '@jsonforms/vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -376,27 +377,27 @@ const formLayout = computed(() => {
           </MdButton>
         </div>
       </div>
-      <ul
+      <MdAlert
         v-if="violations.length > 0"
+        tone="error"
         data-test="type-violations"
-        role="alert"
-        class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-error"
       >
-        <li
-          v-for="message in violations"
-          :key="message"
-        >
-          {{ message }}
-        </li>
-      </ul>
-      <p
+        <ul class="m-0 flex list-none flex-col gap-1 p-0">
+          <li
+            v-for="message in violations"
+            :key="message"
+          >
+            {{ message }}
+          </li>
+        </ul>
+      </MdAlert>
+      <MdAlert
         v-if="serverError"
+        tone="error"
         data-test="server-violation"
-        role="alert"
-        class="md-body-medium text-error"
       >
         {{ serverError }}
-      </p>
+      </MdAlert>
       <div
         v-if="typeValue === 'GROUP'"
         class="flex flex-col gap-3"
