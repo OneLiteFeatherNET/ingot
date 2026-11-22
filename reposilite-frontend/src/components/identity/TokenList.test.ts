@@ -96,6 +96,14 @@ describe('TokenList', () => {
       expect(rows(wrapper)[0].text()).toContain('my laptop')
     })
 
+    it('draws the tokens as a divided md-list with no hand-built divider', async () => {
+      await mountList()
+
+      expect(wrapper.find('ul[data-divided="true"]').exists(), 'the tokens are a divided md-list').toBe(true)
+      expect(wrapper.findAll('[data-test="token-row"] [data-test="list-item-row"]'), 'one md-list-item per token').toHaveLength(2)
+      expect(wrapper.html(), 'no divide-y utility is left').not.toContain('divide-y')
+    })
+
     it('shows the creation date and the expiry date', async () => {
       await mountList()
 

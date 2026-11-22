@@ -157,6 +157,17 @@ describe('FileUpload cards', () => {
     expect(files!.props('padding'), 'the rows draw their own inset').toBe('none')
   })
 
+  it('lists the selected files as a divided md-list inside the card', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+
+    const files = card('upload-files')!
+
+    expect(files.find('ul[data-divided="true"]').exists(), 'the files are a divided md-list').toBe(true)
+    expect(files.findAll('[data-test="upload-file"] [data-test="list-item-row"]'), 'one md-list-item per file').toHaveLength(1)
+    expect(files.html(), 'no divide-y utility is left').not.toContain('divide-y')
+  })
+
   it('draws the stub POM coordinates on a low card', async () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
