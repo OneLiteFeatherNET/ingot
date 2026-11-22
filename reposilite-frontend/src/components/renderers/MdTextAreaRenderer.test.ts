@@ -20,16 +20,16 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as areaTester } from './MdTextAreaRenderer.vue'
 import MdTextAreaRenderer from './MdTextAreaRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 
 const renderers = markRaw([
-  { tester: areaTester, renderer: MdTextAreaRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  ...vanillaRenderers
+  rendererOf(areaTester, MdTextAreaRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  ...vanilla
 ])
 
 const control: ControlElement = { type: 'Control', scope: '#/properties/description', label: 'Description' }

@@ -20,7 +20,7 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as selectTester } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
 import { tester as constantTester } from './ConstantRenderer.vue'
@@ -58,11 +58,11 @@ const s3: JsonSchema7 = {
 const storageSchema: JsonSchema7 = { type: 'object', properties: { storageProvider: { oneOf: [fileSystem, s3] } } }
 
 const renderers = markRaw([
-  { tester: selectTester, renderer: MdSelectRenderer },
-  { tester: constantTester, renderer: ConstantRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: oneOfTester, renderer: OneOfRenderer },
-  ...vanillaRenderers
+  rendererOf(selectTester, MdSelectRenderer),
+  rendererOf(constantTester, ConstantRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  rendererOf(oneOfTester, OneOfRenderer),
+  ...vanilla
 ])
 
 let wrapper: VueWrapper | undefined

@@ -20,7 +20,7 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { ControlElement, JsonSchema7, RankedTester, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as tagsTester } from './TagsFieldRenderer.vue'
 import TagsFieldRenderer from './TagsFieldRenderer.vue'
 import { tester as arrayTester } from './ArrayListRenderer.vue'
@@ -29,9 +29,9 @@ import ArrayListRenderer from './ArrayListRenderer.vue'
 // The vanilla renderers draw the layout around the control. The tags field and the generic list
 // are the two candidates for the control itself, and the tags field must win.
 const renderers = markRaw([
-  { tester: tagsTester, renderer: TagsFieldRenderer },
-  { tester: arrayTester, renderer: ArrayListRenderer },
-  ...vanillaRenderers
+  rendererOf(tagsTester, TagsFieldRenderer),
+  rendererOf(arrayTester, ArrayListRenderer),
+  ...vanilla
 ])
 
 const tagsSchema: JsonSchema7 = {

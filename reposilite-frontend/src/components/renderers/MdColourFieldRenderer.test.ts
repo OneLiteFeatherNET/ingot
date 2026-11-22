@@ -19,17 +19,17 @@ import { mount, type DOMWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import type { ControlElement, JsonSchema7, RankedTester, UISchemaElement } from '@jsonforms/core'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as colourTester } from './MdColourFieldRenderer.vue'
 import MdColourFieldRenderer from './MdColourFieldRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 
 const renderers = markRaw([
-  { tester: colourTester, renderer: MdColourFieldRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  ...vanillaRenderers
+  rendererOf(colourTester, MdColourFieldRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  ...vanilla
 ])
 
 const mountColour = (name: string, schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
@@ -57,7 +57,7 @@ describe('MdColourFieldRenderer tester', () => {
   const control = (scope: string) => ({ type: 'Control', scope }) as ControlElement
 
   it('takes the colour settings by name, above the text field', () => {
-    const colour = colourTester(control('#/properties/appearance/properties/primaryColor'), schema, context)
+    const colour = (colourTester as RankedTester)(control('#/properties/appearance/properties/primaryColor'), schema, context)
 
     expect(colour, 'a colour field outranks the text field').toBeGreaterThan(textTester(control('#/properties/x'), schema, context))
   })
