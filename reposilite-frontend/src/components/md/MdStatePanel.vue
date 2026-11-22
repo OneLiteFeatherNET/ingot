@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import MdButton from './MdButton.vue'
 import MdSkeleton from './MdSkeleton.vue'
+import MdTransition from './MdTransition.vue'
 
 /*
  * The state of a list, a table or a page that has no content to show: empty, loading or error.
@@ -30,6 +31,10 @@ import MdSkeleton from './MdSkeleton.vue'
  * change through a live region of its own passes announce false, so the change is read once.
  * The container tone draws the error state on the error container, with the text colour that
  * pairs with it, for a banner that sits above content.
+ *
+ * The states change through the fade pattern of MdTransition: the skeleton leaves over short2 and the content enters over
+ * short4, one after the other. The skeleton keeps its own 200 millisecond delay, which is not a transition, and a panel
+ * that is loading on first paint is drawn at once.
  */
 withDefaults(defineProps<{
   state?: 'empty' | 'loading' | 'error'
@@ -47,88 +52,99 @@ withDefaults(defineProps<{
   announce: true
 })
 
+// The attributes of the parent belong on the element that is drawn, not on the transition around it.
+defineOptions({ inheritAttrs: false })
+
 const emit = defineEmits<{
   retry: []
 }>()
 </script>
 
 <template>
-  <div
-    v-if="state === 'loading'"
-    aria-busy="true"
-    data-ingot-state="loading"
-    class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
-    data-ingot-component="md-state-panel"
+  <MdTransition
+    pattern="fade"
+    mode="out-in"
   >
-    <p
-      v-if="title"
-      class="md-title-small m-0"
-    >
-      {{ title }}
-    </p>
-    <div class="flex w-full max-w-sm flex-col gap-3">
-      <MdSkeleton width="full" />
-      <MdSkeleton width="md" />
-      <MdSkeleton width="sm" />
-    </div>
-  </div>
-  <div
-    v-else-if="state === 'error'"
-    :role="announce ? 'alert' : undefined"
-    data-ingot-state="error"
-    :class="tone === 'container' ? 'bg-error-container text-on-error-container' : 'text-on-surface'"
-    class="flex flex-col items-center gap-3 px-6 py-8 text-center"
-    data-ingot-component="md-state-panel"
-  >
-    <p
-      v-if="title"
-      class="md-title-small m-0"
-    >
-      {{ title }}
-    </p>
-    <p
-      v-if="description"
-      class="md-body-medium m-0 text-on-surface-variant"
-    >
-      {{ description }}
-    </p>
     <div
-      v-if="$slots.actions"
-      class="flex flex-wrap items-center justify-center gap-2"
+      v-if="state === 'loading'"
+      aria-busy="true"
+      data-ingot-state="loading"
+      class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
+      v-bind="$attrs"
+      data-ingot-component="md-state-panel"
     >
-      <slot name="actions" />
+      <p
+        v-if="title"
+        class="md-title-small m-0"
+      >
+        {{ title }}
+      </p>
+      <div class="flex w-full max-w-sm flex-col gap-3">
+        <MdSkeleton width="full" />
+        <MdSkeleton width="md" />
+        <MdSkeleton width="sm" />
+      </div>
     </div>
-    <MdButton
+    <div
+      v-else-if="state === 'error'"
+      :role="announce ? 'alert' : undefined"
+      data-ingot-state="error"
+      :class="tone === 'container' ? 'bg-error-container text-on-error-container' : 'text-on-surface'"
+      class="flex flex-col items-center gap-3 px-6 py-8 text-center"
+      v-bind="$attrs"
+      data-ingot-component="md-state-panel"
+    >
+      <p
+        v-if="title"
+        class="md-title-small m-0"
+      >
+        {{ title }}
+      </p>
+      <p
+        v-if="description"
+        class="md-body-medium m-0 text-on-surface-variant"
+      >
+        {{ description }}
+      </p>
+      <div
+        v-if="$slots.actions"
+        class="flex flex-wrap items-center justify-center gap-2"
+      >
+        <slot name="actions" />
+      </div>
+      <MdButton
+        v-else
+        variant="tonal"
+        @click="emit('retry')"
+      >
+        {{ retryLabel }}
+      </MdButton>
+    </div>
+    <div
       v-else
-      variant="tonal"
-      @click="emit('retry')"
+      data-ingot-state="empty"
+      class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
+      v-bind="$attrs"
+      data-ingot-component="md-state-panel"
     >
-      {{ retryLabel }}
-    </MdButton>
-  </div>
-  <div
-    v-else
-    data-ingot-state="empty"
-    class="flex flex-col items-center gap-3 px-6 py-8 text-center text-on-surface"
-    data-ingot-component="md-state-panel"
-  >
-    <p
-      v-if="title"
-      class="md-title-small m-0"
-    >
-      {{ title }}
-    </p>
-    <p
-      v-if="description"
-      class="md-body-medium m-0 text-on-surface-variant"
-    >
-      {{ description }}
-    </p>
-    <div
-      v-if="$slots.actions"
-      class="flex flex-wrap items-center justify-center gap-2"
-    >
-      <slot name="actions" />
+      <p
+        v-if="title"
+        class="md-title-small m-0"
+      >
+        {{ title }}
+      </p>
+      <p
+        v-if="description"
+        class="md-body-medium m-0 text-on-surface-variant"
+      >
+        {{ description }}
+      </p>
+      <div
+        v-if="$slots.actions"
+        class="flex flex-wrap items-center justify-center gap-2"
+      >
+        <slot name="actions" />
+      </div>
     </div>
-  </div>
+  </MdTransition>
 </template>
