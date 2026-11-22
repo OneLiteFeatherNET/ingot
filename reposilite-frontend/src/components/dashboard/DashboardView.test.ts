@@ -74,10 +74,16 @@ describe('DashboardView', () => {
     expect(wrapper.findAll('h2').map(heading => heading.text())).toEqual(['Instance status', 'Resources', 'Traffic'])
   })
 
-  it('draws every section heading in the title large size', () => {
+  it('builds each of the three sections from the shared section component', () => {
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.findAll('h2').map(heading => heading.classes('md-title-large')), 'every section heading has the same size').toEqual([true, true, true])
+    expect(wrapper.findAll('section [data-test="section-header"]'), 'instance status, resources and traffic each draw the md-section header').toHaveLength(3)
+  })
+
+  it('draws every section heading in the level two size of the scale, title medium', () => {
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.findAll('h2').map(heading => heading.classes('md-title-medium')), 'every section heading has the same size').toEqual([true, true, true])
   })
 
   it('draws the getting started card before the sections', () => {

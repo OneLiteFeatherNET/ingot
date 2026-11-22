@@ -20,6 +20,7 @@ import { useRoute } from 'vue-router'
 import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
 import SignInSwitchNotice from './SignInSwitchNotice.vue'
 import AppTabs from '../tabs/AppTabs.vue'
+import MdSection from '../md/MdSection.vue'
 import { mfaWarnings, type MfaSettings } from './loginSettings'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 
@@ -56,73 +57,67 @@ const selected = computed(() => {
 </script>
 
 <template>
-  <section
-    aria-labelledby="security-title"
+  <div
     class="flex flex-col gap-6"
     data-test="security"
     data-ingot-component="security-panel"
   >
-    <div class="flex flex-col gap-1">
-      <h2
-        id="security-title"
-        class="md-title-medium text-on-surface"
-      >
-        Security
-      </h2>
-      <p class="md-body-medium text-on-surface-variant">
-        Limits on repeated failed sign-ins, the rules for new passwords, the length of browser sessions and the second factors that signing in requires.
-      </p>
-    </div>
-
-    <AppTabs
-      :tabs="TABS"
-      label="Sign-in protection sections"
+    <MdSection
+      title="Security"
+      description="Limits on repeated failed sign-ins, the rules for new passwords, the length of browser sessions and the second factors that signing in requires."
+      heading-id="security-title"
+      aria-labelledby="security-title"
     >
-      <template #default="{ tab }">
-        <template v-if="tab === selected">
-          <AuthenticationGroupForm
-            v-if="tab === 'ip'"
-            group="bruteForceProtection"
-            save-label="Save IP address limits"
-          />
-          <template v-else-if="tab === 'accounts'">
-            <SignInSwitchNotice />
+      <AppTabs
+        :tabs="TABS"
+        label="Sign-in protection sections"
+      >
+        <template #default="{ tab }">
+          <template v-if="tab === selected">
             <AuthenticationGroupForm
-              domain="login"
-              :fields="ACCOUNT_FIELDS"
-              save-label="Save account limits"
+              v-if="tab === 'ip'"
+              group="bruteForceProtection"
+              save-label="Save IP address limits"
             />
-          </template>
-          <AuthenticationGroupForm
-            v-else-if="tab === 'passwords'"
-            domain="login"
-            :fields="PASSWORD_FIELDS"
-            save-label="Save password rules"
-          />
-          <AuthenticationGroupForm
-            v-else-if="tab === 'sessions'"
-            domain="login"
-            :fields="SESSION_FIELDS"
-            save-label="Save session limits"
-          />
-          <template v-else-if="tab === 'second-factors'">
-            <p
-              v-for="notice in breakGlassNotices"
-              :key="notice"
-              role="note"
-              data-test="mfa-break-glass-notice"
-              class="md-body-medium text-on-surface-variant"
-            >
-              {{ notice }}
-            </p>
+            <template v-else-if="tab === 'accounts'">
+              <SignInSwitchNotice />
+              <AuthenticationGroupForm
+                domain="login"
+                :fields="ACCOUNT_FIELDS"
+                save-label="Save account limits"
+              />
+            </template>
             <AuthenticationGroupForm
+              v-else-if="tab === 'passwords'"
               domain="login"
-              :fields="MFA_FIELDS"
-              save-label="Save second factor policy"
+              :fields="PASSWORD_FIELDS"
+              save-label="Save password rules"
             />
+            <AuthenticationGroupForm
+              v-else-if="tab === 'sessions'"
+              domain="login"
+              :fields="SESSION_FIELDS"
+              save-label="Save session limits"
+            />
+            <template v-else-if="tab === 'second-factors'">
+              <p
+                v-for="notice in breakGlassNotices"
+                :key="notice"
+                role="note"
+                data-test="mfa-break-glass-notice"
+                class="md-body-medium text-on-surface-variant"
+              >
+                {{ notice }}
+              </p>
+              <AuthenticationGroupForm
+                domain="login"
+                :fields="MFA_FIELDS"
+                save-label="Save second factor policy"
+              />
+            </template>
           </template>
         </template>
-      </template>
-    </AppTabs>
-  </section>
+      </AppTabs>
+    </MdSection>
+  </div>
 </template>
