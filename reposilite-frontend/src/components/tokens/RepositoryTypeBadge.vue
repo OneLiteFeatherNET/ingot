@@ -57,7 +57,7 @@ const TONES: Record<string, string> = {
     <span
       v-if="badge.legacy"
       data-test="legacy-hint"
-      class="md-label-small opacity-80"
+      class="md-label-small"
     >legacy</span>
     <span
       v-if="badge.legacy"

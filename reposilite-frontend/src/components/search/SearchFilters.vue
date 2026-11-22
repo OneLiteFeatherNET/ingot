@@ -166,7 +166,7 @@ const commitBytes = (key: BytesKey) => {
           {{ group.label(option.value) }}
           <span
             v-if="option.count !== null"
-            class="opacity-70"
+            class="md-label-medium"
           >{{ option.count }}</span>
         </MdChip>
       </div>
@@ -199,7 +199,7 @@ const commitBytes = (key: BytesKey) => {
           {{ option.label }}
           <span
             v-if="option.facet && countOf('origin', option.facet) !== null"
-            class="opacity-70"
+            class="md-label-medium"
           >{{ countOf('origin', option.facet) }}</span>
         </MdChip>
       </div>
@@ -226,7 +226,7 @@ const commitBytes = (key: BytesKey) => {
           {{ option.label }}
           <span
             v-if="option.facet && countOf('snapshot', option.facet) !== null"
-            class="opacity-70"
+            class="md-label-medium"
           >{{ countOf('snapshot', option.facet) }}</span>
         </MdChip>
       </div>
