@@ -85,7 +85,7 @@ send an HTTP request for a line.
 
 ### Requirement: REPL editing and history
 
-The REPL SHALL offer line editing, multi-line output and a prompt that shows the node of the server. Its history file SHALL have
+The REPL SHALL offer line editing, multi-line output and a prompt that shows the active context of the configuration. Its history file SHALL have
 owner-only permissions. Lines of a `sensitive` command SHALL NOT be saved to history. Colour SHALL be used only when standard output is a
 terminal and `NO_COLOR` is unset.
 
