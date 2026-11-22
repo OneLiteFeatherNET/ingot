@@ -125,7 +125,7 @@ export function areaOf(file: string): string {
 }
 
 function isTransparent(node: TemplateElement) {
-  return node.tag === "template" || node.tag === "Teleport" || node.tag === "teleport"
+  return node.tag === "template" || node.tag === "Teleport" || node.tag === "teleport" || node.tag === "MdTransition"
 }
 
 function elementsIn(children: TemplateNode[], out: TemplateElement[] = []): TemplateElement[] {
@@ -140,7 +140,7 @@ function elementsIn(children: TemplateNode[], out: TemplateElement[] = []): Temp
 }
 
 // The elements that Vue renders at the top level. A Teleport or a plain template wrapper is looked through, because the
-// element inside it is what reaches the page. A slot renders content of its parent, not an element of its own.
+// element inside it is what reaches the page. MdTransition is looked through for the same reason: it adds no element. A slot renders content of its parent, not an element of its own.
 function rootsIn(children: TemplateNode[]): TemplateElement[] {
   return children
     .filter((node): node is TemplateElement => node.type === NODE_ELEMENT && (node as TemplateElement).tagType !== TAG_SLOT)

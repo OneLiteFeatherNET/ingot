@@ -27,6 +27,7 @@ import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
 import MdButton from '../md/MdButton.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdTransition from '../md/MdTransition.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
 import SegmentedOption from '../tokens/SegmentedOption.vue'
 import ProviderIcon from '../icons/ProviderIcon.vue'
@@ -43,6 +44,9 @@ import { providerLoginHref } from './providerLinks'
  * A password sign in that the server answers with mfaRequired opens a second step in the same dialog.
  * The step offers the methods the server listed: an authenticator code, a recovery code, and a passkey
  * when the browser supports one. No session exists until the second step succeeds.
+ *
+ * The steps swap through the shared axis Y pattern, the old one leaving before the next enters. A field is focused
+ * once the step it belongs to has entered, because during the leave the only fields in the document are the old ones.
  */
 const {
   signInWithPassword,
@@ -210,8 +214,26 @@ const close = () => {
   forgetInput()
 }
 
-// The first field is only in the document once the dialog has opened, so focus waits for that.
-const focusFirst = () => root.value?.querySelector('input')?.focus()
+// The first field is only in the document once the dialog has opened, so focus waits for that. While a step is leaving
+// the only fields are the old ones, so the focus waits for the next step to enter instead.
+const stepLeaving = ref(false)
+let focusWhenEntered = false
+const focusFirst = () => {
+  if (stepLeaving.value) {
+    focusWhenEntered = true
+    return
+  }
+  root.value?.querySelector('input')?.focus()
+}
+const stepLeft = () => {
+  stepLeaving.value = false
+}
+const stepEntered = () => {
+  stepLeaving.value = false
+  if (!focusWhenEntered) return
+  focusWhenEntered = false
+  focusFirst()
+}
 // The opened event comes after the transition. A field the visitor has already clicked into keeps the focus,
 // because moving it then would send what they type to the username field.
 const focusOnOpen = () => {
@@ -411,251 +433,258 @@ const submitLabel = computed(() => {
         </h2>
       </template>
       <div ref="root">
-        <form
-          v-if="mode === 'setup'"
-          :id="formId"
-          class="mt-6 flex flex-col gap-4"
-          @submit.prevent="submit()"
+        <MdTransition
+          pattern="shared-y"
+          @before-leave="stepLeaving = true"
+          @after-leave="stepLeft"
+          @after-enter="stepEntered"
         >
-          <MdTextField
-            id="setup-code"
-            v-model="setupCode"
-            label="Setup code"
-            type="text"
-            autocomplete="off"
-            supporting-text="Find it in the server log"
-            required
-          />
-          <MdTextField
-            id="setup-username"
-            v-model="setupUsername"
-            label="Admin username"
-            type="text"
-            autocomplete="username"
-            required
-          />
-          <MdTextField
-            id="setup-display-name"
-            v-model="setupDisplayName"
-            label="Display name (optional)"
-            type="text"
-            autocomplete="name"
-          />
-          <MdTextField
-            id="setup-password"
-            v-model="setupPassword"
-            label="Password"
-            type="password"
-            autocomplete="new-password"
-            :supporting-text="minimumHint"
-            :error="passwordError"
-            :error-text="minimumError"
-            required
-          />
-          <MdTextField
-            id="setup-confirm"
-            v-model="setupConfirm"
-            label="Confirm password"
-            type="password"
-            autocomplete="new-password"
-            :error="confirmError"
-            error-text="Passwords do not match"
-            required
-          />
-          <p
-            v-if="failure"
-            role="alert"
-            class="md-body-medium text-error"
-          >
-            {{ failure }}
-          </p>
-        </form>
-
-        <form
-          v-else-if="mode === 'token'"
-          :id="formId"
-          class="mt-6 flex flex-col gap-4"
-          @submit.prevent="submit()"
-        >
-          <MdTextField
-            id="login-name"
-            v-model="name"
-            label="Name"
-            type="text"
-            autocomplete="username"
-            required
-            :error="failure !== null"
-          />
-          <MdTextField
-            id="login-secret"
-            v-model="secret"
-            label="Secret"
-            type="password"
-            autocomplete="current-password"
-            required
-            :error="failure !== null"
-            :error-text="failure || ''"
-          />
-        </form>
-
-        <template v-else-if="mode === 'second'">
-          <p class="mt-4 md-body-medium text-on-surface-variant">
-            {{ stepHint }}
-          </p>
-
           <form
-            v-if="hasCodeField"
+            v-if="mode === 'setup'"
             :id="formId"
             class="mt-6 flex flex-col gap-4"
             @submit.prevent="submit()"
           >
             <MdTextField
-              v-if="!showRecovery"
-              id="login-code"
-              v-model="secondCode"
-              label="Authenticator code"
-              type="text"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              required
-              :error="failure !== null"
-            />
-            <MdTextField
-              v-else
-              id="login-recovery-code"
-              v-model="recoveryCode"
-              label="Recovery code"
+              id="setup-code"
+              v-model="setupCode"
+              label="Setup code"
               type="text"
               autocomplete="off"
+              supporting-text="Find it in the server log"
               required
-              :error="failure !== null"
             />
+            <MdTextField
+              id="setup-username"
+              v-model="setupUsername"
+              label="Admin username"
+              type="text"
+              autocomplete="username"
+              required
+            />
+            <MdTextField
+              id="setup-display-name"
+              v-model="setupDisplayName"
+              label="Display name (optional)"
+              type="text"
+              autocomplete="name"
+            />
+            <MdTextField
+              id="setup-password"
+              v-model="setupPassword"
+              label="Password"
+              type="password"
+              autocomplete="new-password"
+              :supporting-text="minimumHint"
+              :error="passwordError"
+              :error-text="minimumError"
+              required
+            />
+            <MdTextField
+              id="setup-confirm"
+              v-model="setupConfirm"
+              label="Confirm password"
+              type="password"
+              autocomplete="new-password"
+              :error="confirmError"
+              error-text="Passwords do not match"
+              required
+            />
+            <p
+              v-if="failure"
+              role="alert"
+              class="md-body-medium text-error"
+            >
+              {{ failure }}
+            </p>
           </form>
 
-          <p
-            v-if="failure"
-            role="alert"
-            class="mt-4 md-body-medium text-error"
-          >
-            {{ failure }}
-          </p>
-
-          <div class="mt-6 flex flex-col gap-2">
-            <MdButton
-              v-if="offersCode && offersRecovery"
-              variant="text"
-              class="self-start"
-              @click="toggleRecovery()"
-            >
-              {{ showRecovery ? 'Use an authenticator code' : 'Use a recovery code' }}
-            </MdButton>
-            <MdButton
-              v-if="offersPasskey"
-              variant="outlined"
-              class="w-full"
-              :disabled="busy || isLocked()"
-              @click="verifyPasskey()"
-            >
-              Use a passkey
-            </MdButton>
-          </div>
-        </template>
-
-        <template v-else>
-          <SegmentedControl
-            v-if="passwordProviders.length > 1"
-            label="Sign in method"
-            class="mt-6 w-full"
-          >
-            <SegmentedOption
-              v-for="provider in passwordProviders"
-              :key="provider.id"
-              :on="provider.id === activeProvider.id"
-              class="flex-1 justify-center"
-              @click="selectProvider(provider.id)"
-            >
-              {{ providerTitle(provider) }}
-            </SegmentedOption>
-          </SegmentedControl>
-
           <form
-            v-if="hasPasswordForm"
+            v-else-if="mode === 'token'"
             :id="formId"
-            class="mt-4 flex flex-col gap-4"
+            class="mt-6 flex flex-col gap-4"
             @submit.prevent="submit()"
           >
             <MdTextField
-              id="login-username"
-              v-model="username"
-              label="Username"
+              id="login-name"
+              v-model="name"
+              label="Name"
               type="text"
               autocomplete="username"
               required
               :error="failure !== null"
             />
             <MdTextField
-              id="login-password"
-              v-model="password"
-              label="Password"
+              id="login-secret"
+              v-model="secret"
+              label="Secret"
               type="password"
               autocomplete="current-password"
               required
-              :error="fieldError()"
-              :error-text="fieldErrorText()"
+              :error="failure !== null"
+              :error-text="failure || ''"
             />
-            <MdButton
-              type="submit"
-              class="w-full"
-              :disabled="busy || isLocked()"
-            >
-              {{ submitLabel }}
-            </MdButton>
           </form>
 
-          <div
-            v-if="hasPasswordForm && ssoProviders.length > 0"
-            data-test="divider"
-            aria-hidden="true"
-            class="mt-6 flex items-center gap-3"
-          >
-            <span class="h-px flex-1 bg-outline-variant" />
-            <span class="md-label-medium text-on-surface-variant">or</span>
-            <span class="h-px flex-1 bg-outline-variant" />
-          </div>
+          <div v-else-if="mode === 'second'">
+            <p class="mt-4 md-body-medium text-on-surface-variant">
+              {{ stepHint }}
+            </p>
 
-          <ul
-            v-if="ssoProviders.length > 0"
-            class="mt-6 flex list-none flex-col gap-2 p-0"
-          >
-            <li
-              v-for="provider in ssoProviders"
-              :key="provider.id"
-              class="flex"
+            <form
+              v-if="hasCodeField"
+              :id="formId"
+              class="mt-6 flex flex-col gap-4"
+              @submit.prevent="submit()"
             >
+              <MdTextField
+                v-if="!showRecovery"
+                id="login-code"
+                v-model="secondCode"
+                label="Authenticator code"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                required
+                :error="failure !== null"
+              />
+              <MdTextField
+                v-else
+                id="login-recovery-code"
+                v-model="recoveryCode"
+                label="Recovery code"
+                type="text"
+                autocomplete="off"
+                required
+                :error="failure !== null"
+              />
+            </form>
+
+            <p
+              v-if="failure"
+              role="alert"
+              class="mt-4 md-body-medium text-error"
+            >
+              {{ failure }}
+            </p>
+
+            <div class="mt-6 flex flex-col gap-2">
               <MdButton
+                v-if="offersCode && offersRecovery"
+                variant="text"
+                class="self-start"
+                @click="toggleRecovery()"
+              >
+                {{ showRecovery ? 'Use an authenticator code' : 'Use a recovery code' }}
+              </MdButton>
+              <MdButton
+                v-if="offersPasskey"
                 variant="outlined"
                 class="w-full"
-                :href="ssoHref(provider)"
-                :disabled="!provider.loginUrl"
+                :disabled="busy || isLocked()"
+                @click="verifyPasskey()"
               >
-                <template #icon>
-                  <ProviderIcon
-                    :icon="provider.icon ?? undefined"
-                  />
-                </template>
-                Continue with {{ provider.label }}
+                Use a passkey
               </MdButton>
-            </li>
-          </ul>
+            </div>
+          </div>
 
-          <p
-            v-if="providersFailed"
-            role="alert"
-            class="mt-4 md-body-medium text-error"
-          >
-            Sign in options could not be loaded
-          </p>
-        </template>
+          <div v-else>
+            <SegmentedControl
+              v-if="passwordProviders.length > 1"
+              label="Sign in method"
+              class="mt-6 w-full"
+            >
+              <SegmentedOption
+                v-for="provider in passwordProviders"
+                :key="provider.id"
+                :on="provider.id === activeProvider.id"
+                class="flex-1 justify-center"
+                @click="selectProvider(provider.id)"
+              >
+                {{ providerTitle(provider) }}
+              </SegmentedOption>
+            </SegmentedControl>
+
+            <form
+              v-if="hasPasswordForm"
+              :id="formId"
+              class="mt-4 flex flex-col gap-4"
+              @submit.prevent="submit()"
+            >
+              <MdTextField
+                id="login-username"
+                v-model="username"
+                label="Username"
+                type="text"
+                autocomplete="username"
+                required
+                :error="failure !== null"
+              />
+              <MdTextField
+                id="login-password"
+                v-model="password"
+                label="Password"
+                type="password"
+                autocomplete="current-password"
+                required
+                :error="fieldError()"
+                :error-text="fieldErrorText()"
+              />
+              <MdButton
+                type="submit"
+                class="w-full"
+                :disabled="busy || isLocked()"
+              >
+                {{ submitLabel }}
+              </MdButton>
+            </form>
+
+            <div
+              v-if="hasPasswordForm && ssoProviders.length > 0"
+              data-test="divider"
+              aria-hidden="true"
+              class="mt-6 flex items-center gap-3"
+            >
+              <span class="h-px flex-1 bg-outline-variant" />
+              <span class="md-label-medium text-on-surface-variant">or</span>
+              <span class="h-px flex-1 bg-outline-variant" />
+            </div>
+
+            <ul
+              v-if="ssoProviders.length > 0"
+              class="mt-6 flex list-none flex-col gap-2 p-0"
+            >
+              <li
+                v-for="provider in ssoProviders"
+                :key="provider.id"
+                class="flex"
+              >
+                <MdButton
+                  variant="outlined"
+                  class="w-full"
+                  :href="ssoHref(provider)"
+                  :disabled="!provider.loginUrl"
+                >
+                  <template #icon>
+                    <ProviderIcon
+                      :icon="provider.icon ?? undefined"
+                    />
+                  </template>
+                  Continue with {{ provider.label }}
+                </MdButton>
+              </li>
+            </ul>
+
+            <p
+              v-if="providersFailed"
+              role="alert"
+              class="mt-4 md-body-medium text-error"
+            >
+              Sign in options could not be loaded
+            </p>
+          </div>
+        </MdTransition>
 
         <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
           <MdButton

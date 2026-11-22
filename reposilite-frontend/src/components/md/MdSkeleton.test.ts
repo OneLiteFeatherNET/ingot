@@ -45,6 +45,12 @@ describe('MdSkeleton', () => {
     expect(wrapper.classes(), 'no unconditional animation may remain').not.toContain('animate-skeleton-fade-in')
   })
 
+  it('adds no transition of its own, so the fade of the panel is the only change when content arrives', () => {
+    const wrapper = mount(MdSkeleton)
+
+    expect(wrapper.classes().filter(name => /(^|:)transition/.test(name)), 'a second transition or delay would stack on the panel fade').toEqual([])
+  })
+
   it('is hidden from assistive technology because it carries no text', () => {
     const wrapper = mount(MdSkeleton)
 

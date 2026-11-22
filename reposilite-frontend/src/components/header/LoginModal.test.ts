@@ -944,6 +944,15 @@ describe('LoginModal', () => {
       expect(field('login-code').value, 'the next attempt starts empty').toBe('')
     })
 
+    it('draws the steps of the dialog through the shared axis Y pattern', async () => {
+      await reachSecondStep(CODE_AND_RECOVERY)
+
+      const steps = wrapper.findAllComponents({ name: 'MdTransition' })
+      expect(steps, 'the steps of the dialog must be wrapped in one transition').toHaveLength(1)
+      expect(steps[0].props('pattern'), 'the second step must enter and leave on the shared axis Y').toBe('shared-y')
+      expect(steps[0].props('appear'), 'the first step of an opened dialog must be drawn at once').toBe(false)
+    })
+
     it('moves focus to the step heading when the second step opens', async () => {
       await reachSecondStep(CODE_AND_RECOVERY)
 

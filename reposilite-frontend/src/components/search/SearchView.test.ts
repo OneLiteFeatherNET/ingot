@@ -553,7 +553,7 @@ describe('SearchView states', () => {
     const client = clientAnswering({ search: () => Promise.resolve({ data: answerPage({ items: [], total: 0 }) }) })
     await mountAt('/search', { client })
 
-    expect(wrapper.find('[data-test="empty"] > div').text(), 'the empty state is the state panel and names the query').toBe('Nothing matches.')
+    expect(wrapper.find('[data-test="empty"] div').text(), 'the empty state is the state panel and names the query').toBe('Nothing matches.')
   })
 
   it('says why nothing was found and which filters were active', async () => {
