@@ -276,7 +276,7 @@ describe('revertChange', () => {
       },
       frontend: { title: 'Ingot 2', appearance: { primaryColour: '#ff0000' } }
     }
-    let current: Record<string, Record<string, unknown>> = JSON.parse(JSON.stringify(draft))
+    let current: Record<string, Record<string, unknown>> = JSON.parse(JSON.stringify(draft)) as Record<string, Record<string, unknown>>
 
     for (let guard = 0; guard < 20; guard++) {
       const changes = diffSettings(saved, current, SCHEMAS)
