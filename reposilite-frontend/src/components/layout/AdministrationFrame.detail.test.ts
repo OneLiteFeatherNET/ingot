@@ -72,7 +72,7 @@ const mountDetail = async (props: FrameProps = {}) => {
 }
 
 // The links of the header column: the back row and the header, not the side navigation beside them.
-const headerLinksTo = (wrapper: VueWrapper, path: string) => [...(wrapper.get('header').element.parentElement as HTMLElement).querySelectorAll('a')]
+const headerLinksTo = (wrapper: VueWrapper<InstanceType<typeof AdministrationFrame>>, path: string) => [...(wrapper.get('header').element.parentElement as HTMLElement).querySelectorAll('a')]
   .filter(link => link.getAttribute('href') === path)
 
 // A detail page names its item in the one heading. Its list is its way back: the back arrow below 1240 pixels, the list

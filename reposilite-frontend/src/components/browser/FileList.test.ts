@@ -76,7 +76,7 @@ const mountList = (props: Record<string, unknown> = {}) =>
     global: { stubs: { 'router-link': RouterLinkStub } }
   })
 
-const buttonWithText = (wrapper: VueWrapper, text: string) =>
+const buttonWithText = (wrapper: VueWrapper<InstanceType<typeof FileList>>, text: string) =>
   wrapper.findAll('button').find(button => button.text() === text)
 
 describe('FileList missing directory', () => {
@@ -175,11 +175,11 @@ const pendingDownload = () => {
   return { promise, settle }
 }
 
-const fileLink = (wrapper: VueWrapper) =>
+const fileLink = (wrapper: VueWrapper<InstanceType<typeof FileList>>) =>
   wrapper.find('a[href$="example-1.0.jar"]')
 
 describe('FileList downloads', () => {
-  let wrapper: VueWrapper | undefined
+  let wrapper: VueWrapper<InstanceType<typeof FileList>> | undefined
 
   beforeEach(() => {
     vi.mocked(download).mockClear()

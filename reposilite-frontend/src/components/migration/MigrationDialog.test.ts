@@ -18,7 +18,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import MigrationDialog from './MigrationDialog.vue'
 
-const mounted: VueWrapper[] = []
+const mounted: VueWrapper<InstanceType<typeof MigrationDialog>>[] = []
 
 afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())

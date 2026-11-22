@@ -29,7 +29,7 @@ describe('HeaderHero', () => {
 })
 
 describe('HeaderHero logo', () => {
-  const logoSource = (wrapper: VueWrapper) => wrapper.find('img').attributes('src')
+  const logoSource = (wrapper: VueWrapper<InstanceType<typeof HeaderHero>>) => wrapper.find('img').attributes('src')
 
   afterEach(() => {
     setAppearance({})
