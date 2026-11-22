@@ -35,6 +35,7 @@ import {
   PLATEAU_DEFAULT_HOLD_MINUTES,
   parseRunOptions,
 } from '../lib/config.ts';
+import { imageHelmArguments } from './image.ts';
 import { remoteWriteUrl, scriptArguments, scriptVariables } from './environment.ts';
 import { measureOutcome, metricsQueryUrl, queryRequestUrl } from './measure.ts';
 import { cpuModel, nodeTypeFrom } from './node-type.ts';
@@ -167,9 +168,7 @@ async function main(argv: readonly string[]): Promise<void> {
         'upgrade', '--install', INGOT_RELEASE, chartPath,
         '--namespace', LOAD_NAMESPACE,
         '--values', join(loadtestRoot, 'topologies', `${options.topology}.yaml`),
-        '--set', `image.tag=${ingotVersion}`,
-        // A rolling tag such as nightly can resolve to an older image on the node, so a digest pins the exact one.
-        ...(ingotDigest ? ['--set', `image.digest=${ingotDigest}`] : []),
+        ...imageHelmArguments(ingotVersion, ingotDigest),
         '--set', `envFrom[0].secretRef.name=${credentialsSecret}`,
         ...(size ? sizeHelmArguments(size) : []),
         ...storageArguments,

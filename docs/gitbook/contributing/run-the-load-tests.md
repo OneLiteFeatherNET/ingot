@@ -12,7 +12,7 @@ This page is for a maintainer who measures Ingot under load. It runs the k6 scen
 - Docker, used once per run to pack the scenario with `k6 archive` in the pinned k6 image.
 - Node.js and the packages of `loadtest/`, installed with `npm ci` in that folder.
 - The infrastructure of the load test cluster: the k6-operator, the `ingot-loadtest` namespace, the metrics store, PostgreSQL, the object storage bucket, NATS, and for reference runs the node pool that carries the load test label. The infrastructure is not created by this repository.
-- The Ingot image tag under test, set in `INGOT_IMAGE_TAG`.
+- The Ingot image tag under test, set in `INGOT_IMAGE_TAG`. Topologies that run the separate dashboard container (split and scalable) pin `ingot-dashboard` to the same tag, so both images are one build.
 - The Prometheus remote write endpoint of the metrics store, as the load generator reaches it inside the cluster, set in `INGOT_LOADTEST_RW_URL`. The runner refuses to start without it, because k6 would otherwise send its samples nowhere.
 
 The runner refuses any namespace other than `ingot-loadtest` before it calls `kubectl`. Production and staging namespaces are never a valid target.
@@ -42,7 +42,7 @@ The runner reads further settings from its environment:
 
 | Variable | Meaning |
 | --- | --- |
-| `INGOT_IMAGE_DIGEST` | Pins the image by digest. Use it with a rolling tag such as `nightly`, which a node may otherwise resolve to an older cached image. |
+| `INGOT_IMAGE_DIGEST` | Pins the server image by digest. The chart has no digest value for the dashboard image, which therefore follows the tag only. Use it with a rolling tag such as `nightly`, which a node may otherwise resolve to an older cached image. |
 | `LOADTEST_CEILING`, `LOADTEST_RAMP_MINUTES` | Ceiling and ramp duration of the breakpoint profile. |
 | `LOADTEST_ABORT_ON_FAIL` | `false` runs the whole breakpoint ramp instead of stopping at the first broken threshold. |
 | `LOADTEST_BREAKPOINT`, `LOADTEST_HOLD_MINUTES` | Breakpoint rate and step hold of the plateau profile. The plateau needs the breakpoint. |
