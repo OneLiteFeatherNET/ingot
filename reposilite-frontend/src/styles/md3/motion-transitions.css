@@ -205,6 +205,11 @@
 }
 
 /* Expand: the height of a section, from zero rows to its full content. The wrapper has display: grid. */
+@utility expand-rows {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
 .motion-expand-enter-active,
 .motion-expand-leave-active {
   transition: grid-template-rows var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
