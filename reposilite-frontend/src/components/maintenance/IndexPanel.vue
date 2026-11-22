@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import { stateLabel as jobStateLabel } from '../jobs/jobs'
 import type { JobRun } from '../jobs/jobs'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdSection from '../md/MdSection.vue'
@@ -251,13 +252,12 @@ onBeforeUnmount(stopPolling)
       >
         Search is turned off on this instance. Set INGOT_LOCAL_SEARCHENABLED to true and restart Ingot to turn it on.
       </p>
-      <p
+      <MdAlert
         v-else-if="notAllowed"
-        class="md-body-medium text-error"
-        role="alert"
+        tone="error"
       >
         Only managers can see the search index.
-      </p>
+      </MdAlert>
       <MdStatePanel
         v-else-if="loadError"
         state="error"
