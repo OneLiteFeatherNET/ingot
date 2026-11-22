@@ -270,7 +270,7 @@ load()
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex min-w-0 flex-col gap-1">
-              <h3 class="font-mono md-title-medium text-on-surface break-all">
+              <h3 class="font-mono md-title-small text-on-surface break-all">
                 {{ policy.id }}
               </h3>
               <p class="md-body-medium text-on-surface-variant">

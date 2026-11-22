@@ -354,7 +354,7 @@ onBeforeUnmount(stopPolling)
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex flex-col gap-1">
-              <h3 class="md-title-medium text-on-surface">
+              <h3 class="md-title-small text-on-surface">
                 {{ runKindLabel(index.activeRun.kind) }} running
               </h3>
               <p class="md-body-small text-on-surface-variant">
@@ -397,7 +397,7 @@ onBeforeUnmount(stopPolling)
           class="flex flex-col gap-2"
           data-verify
         >
-          <h3 class="md-title-medium text-on-surface">
+          <h3 class="md-title-small text-on-surface">
             Last verify
           </h3>
           <p class="md-body-medium text-on-surface">
@@ -421,7 +421,7 @@ onBeforeUnmount(stopPolling)
         </div>
 
         <div class="flex flex-col gap-3">
-          <h3 class="md-title-medium text-on-surface">
+          <h3 class="md-title-small text-on-surface">
             Latest runs
           </h3>
           <ul

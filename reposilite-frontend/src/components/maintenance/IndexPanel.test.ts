@@ -220,6 +220,16 @@ describe('IndexPanel section', () => {
     expect(heading.classes(), 'a level 2 title takes the title-medium role').toContain('md-title-medium')
   })
 
+  it('sets every level 3 heading in the title-small role', async () => {
+    await mountPanel()
+
+    const headings = wrapper.findAll('h3')
+
+    expect(headings.length, 'the panel has level 3 headings').toBeGreaterThan(0)
+    expect(headings.map(heading => heading.classes().includes('md-title-small')), 'each level 3 heading is title-small').toEqual(headings.map(() => true))
+    expect(wrapper.html(), 'no level 3 heading is title-medium').not.toMatch(/<h3[^>]*md-title-medium/)
+  })
+
   it('puts the rebuild and verify actions in the section header', async () => {
     await mountPanel()
 

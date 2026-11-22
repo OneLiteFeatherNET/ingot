@@ -471,7 +471,7 @@ onMounted(() => {
                 <header class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                   <h3
                     :id="`support-plugin-${index}`"
-                    class="md-title-medium min-w-0 wrap-anywhere text-on-surface"
+                    class="md-title-small min-w-0 wrap-anywhere text-on-surface"
                   >
                     {{ plugin.name }}
                   </h3>
@@ -600,7 +600,7 @@ onMounted(() => {
             <div class="flex min-w-0 flex-col gap-1">
               <h2
                 id="system-danger-title"
-                class="md-title-large text-error"
+                class="md-title-medium text-error"
               >
                 Danger zone
               </h2>
