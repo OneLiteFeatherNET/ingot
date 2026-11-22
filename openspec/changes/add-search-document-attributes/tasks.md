@@ -47,7 +47,7 @@ allowlist if they are plugin-facing.
 
 ## 6. Elasticsearch and OpenSearch (pull requests of their own, one per module)
 
-- [ ] 6.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the `attributes.*` dynamic template, the
+- [x] 6.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the `attributes.*` dynamic template, the
   document field and the declared capability, with the contract tests of group 3 to 5 run against the module. Verify:
   `heavy ./gradlew :elasticsearch-plugin:test --max-workers=2` passes; the integration test uses a Testcontainers instance started
   through `heavy` and removed by its label.
