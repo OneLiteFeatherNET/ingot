@@ -669,6 +669,38 @@ describe('LoginModal', () => {
       expect(document.activeElement).toBe(field('login-secret'))
     })
 
+    it('keeps the focus the visitor has put in a field when the access token step has entered', async () => {
+      // The test utils draw a transition without its hooks, so the hooks of the steps are emitted by hand, in the
+      // order the browser fires them: the password step leaves, the visitor clicks into the secret field while the
+      // token step enters, and the enter ends. What they type next must not land in the name field.
+      await openDialog()
+      const steps: VueWrapper = wrapper.findComponent({ name: 'MdTransition' })
+      steps.vm.$emit('before-leave')
+      buttonByLabel('Use an access token instead').click()
+      await flushPromises()
+      steps.vm.$emit('after-leave')
+      field('login-secret').focus()
+
+      steps.vm.$emit('after-enter')
+
+      expect(document.activeElement, 'the field the visitor chose keeps the focus')
+        .toBe(field('login-secret'))
+    })
+
+    it('focuses the first field of the access token step once it has entered', async () => {
+      await openDialog()
+      const steps: VueWrapper = wrapper.findComponent({ name: 'MdTransition' })
+      steps.vm.$emit('before-leave')
+      buttonByLabel('Use an access token instead').click()
+      await flushPromises()
+      steps.vm.$emit('after-leave')
+
+      steps.vm.$emit('after-enter')
+
+      expect(document.activeElement, 'keyboard users must start typing in the name field')
+        .toBe(field('login-name'))
+    })
+
     it('goes back to the providers', async () => {
       await switchToToken()
 

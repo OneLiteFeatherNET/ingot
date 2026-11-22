@@ -232,10 +232,10 @@ const stepEntered = () => {
   stepLeaving.value = false
   if (!focusWhenEntered) return
   focusWhenEntered = false
-  focusFirst()
+  focusOnOpen()
 }
-// The opened event comes after the transition. A field the visitor has already clicked into keeps the focus,
-// because moving it then would send what they type to the username field.
+// The opened event, like the end of a step enter, comes after the transition. A field the visitor has already clicked
+// into keeps the focus, because moving it then would send what they type to the first field.
 const focusOnOpen = () => {
   if (root.value?.contains(document.activeElement)) return
   focusFirst()
