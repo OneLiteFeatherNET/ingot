@@ -18,10 +18,11 @@
 /*
  * Material Design 3 key-value list: rows of a label and its value, as the details of a record. The
  * rows come from `items`, and the default slot adds rows of its own after them, as a term (dt) and a
- * description (dd). Every row sits on the one grid of the list, so the labels line up.
+ * description (dd). An item may carry a testId, which becomes the data-test of its description.
+ * Every row sits on the one grid of the list, so the labels line up.
  */
 withDefaults(defineProps<{
-  items?: { label: string; value: string }[]
+  items?: { label: string; value: string; testId?: string }[]
 }>(), {
   items: () => []
 })
@@ -45,7 +46,10 @@ defineSlots<{
       <dt class="md-label-large text-on-surface-variant">
         {{ item.label }}
       </dt>
-      <dd class="m-0 min-w-0 wrap-break-word md-body-large">
+      <dd
+        class="m-0 min-w-0 wrap-break-word md-body-large"
+        :data-test="item.testId"
+      >
         {{ item.value }}
       </dd>
     </div>
