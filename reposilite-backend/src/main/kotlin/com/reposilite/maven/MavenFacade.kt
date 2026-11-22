@@ -114,12 +114,17 @@ class MavenFacade internal constructor(
     /**
      * The strong entity tag of a stored artifact: its stored checksum (`.sha256`, then `.sha1`, then `.md5`) when there is
      * one, otherwise a tag from its size and modification time. Metadata and other files that are not cached change in
-     * place, so they skip the extra read and use the size and time tag.
+     * place, so they skip the extra read and use the size and time tag. A checksum file has no checksums of its own, so it
+     * skips the reads as well: on S3 each missing checksum costs a request that answers with a body.
      */
     fun findEntityTag(lookupRequest: LookupRequest, details: DocumentInfo): String? {
         val repository = getRepository(lookupRequest.repository)
         val fallback = ConditionalRequests.etag(details.contentLength, details.lastModifiedTime)
-        if (repository == null || !repository.acceptsCachingOf(lookupRequest.gav)) {
+        if (
+            repository == null ||
+            !repository.acceptsCachingOf(lookupRequest.gav) ||
+            repository.isMetadataOrChecksum(lookupRequest.gav)
+        ) {
             return fallback
         }
 
