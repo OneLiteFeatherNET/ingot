@@ -23,6 +23,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdListbox from '../md/MdListbox.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { teamParentsApi } from './nodes/teamParentsApi'
 
@@ -238,29 +239,20 @@ const save = async () => {
         </p>
       </div>
 
-      <p
+      <MdStatePanel
         v-if="status === 'loading'"
+        state="loading"
         data-ingot-state="loading"
-        role="status"
-        class="md-body-medium text-on-surface-variant"
-      >
-        Loading...
-      </p>
-      <div
+        data-test="parents-loading"
+      />
+      <MdStatePanel
         v-else-if="status === 'error'"
-        role="alert"
-        class="flex flex-wrap items-center gap-3"
+        state="error"
+        title="Could not load the parent teams"
+        :description="failure"
         data-test="parents-load-error"
-      >
-        <span class="md-body-medium text-error">Could not load the parent teams: {{ failure }}</span>
-        <MdButton
-          variant="tonal"
-          data-test="parents-retry"
-          @click="load()"
-        >
-          Retry
-        </MdButton>
-      </div>
+        @retry="load()"
+      />
 
       <template v-else>
         <ul
@@ -294,13 +286,12 @@ const save = async () => {
             </button>
           </li>
         </ul>
-        <p
+        <MdStatePanel
           v-else
-          class="md-body-medium text-on-surface-variant"
+          state="empty"
+          title="This team does not inherit from another team."
           data-test="parents-empty"
-        >
-          This team does not inherit from another team.
-        </p>
+        />
 
         <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
           <div class="relative min-w-0 flex-1">

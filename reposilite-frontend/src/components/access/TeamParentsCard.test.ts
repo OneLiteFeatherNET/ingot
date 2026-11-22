@@ -118,13 +118,22 @@ describe('TeamParentsCard', () => {
       expect(chips()).toEqual([])
     })
 
+    it('draws the loading line as a busy state panel', async () => {
+      teams.parents.mockReturnValue(new Promise(() => undefined))
+      await mountCard()
+
+      expect(wrapper.find('[data-test="parents-loading"]').attributes('aria-busy')).toBe('true')
+      expect(wrapper.text()).not.toContain('Loading...')
+    })
+
     it('shows the failure with a retry that reads the parents again', async () => {
       teams.parents.mockRejectedValueOnce(failure(500, 'Store unavailable'))
       await mountCard()
 
       expect(wrapper.find('[data-test="parents-load-error"]').text()).toContain('Store unavailable')
+      expect(wrapper.find('[data-test="parents-load-error"]').attributes('role'), 'the failure is announced').toBe('alert')
 
-      await wrapper.find('[data-test="parents-retry"]').trigger('click')
+      await wrapper.find('[data-test="parents-load-error"] button').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('[data-test="parents-load-error"]').exists()).toBe(false)
