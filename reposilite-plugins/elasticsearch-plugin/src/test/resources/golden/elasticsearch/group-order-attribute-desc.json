@@ -1,0 +1,47 @@
+{
+  "size": 40,
+  "_source": false,
+  "docvalue_fields": [
+    "gav"
+  ],
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "bool": {
+            "should": [
+              {
+                "term": {
+                  "repository": "releases"
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        }
+      ]
+    }
+  },
+  "collapse": {
+    "field": "gav"
+  },
+  "sort": [
+    {
+      "attributes.portal.versions": {
+        "order": "desc",
+        "mode": "max",
+        "missing": "_last",
+        "unmapped_type": "keyword"
+      }
+    },
+    {
+      "group_id_lc": "desc"
+    },
+    {
+      "artifact_id_lc": "desc"
+    },
+    {
+      "version_lc": "asc"
+    }
+  ]
+}
