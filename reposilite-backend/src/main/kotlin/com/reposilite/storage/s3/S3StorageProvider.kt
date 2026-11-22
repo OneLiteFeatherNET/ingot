@@ -33,7 +33,6 @@ import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.SimpleDirectoryInfo
 import com.reposilite.storage.api.UNKNOWN_LENGTH
-import com.reposilite.status.probeListing
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
@@ -168,9 +167,28 @@ class S3StorageProvider(
         (s3 as? CachableS3Client)?.invalidateKeys(keys)
     }
 
-    /** The listing of the root, as every storage without its own probe is read. */
+    /**
+     * One list request for a single key of the root, instead of listing the whole root through every page. The outcomes
+     * match the listing probe: an answer, empty or not, means the backend is reachable, any other failure is reported.
+     */
     override fun probe(): ReadinessOutcome =
-        probeListing()
+        try {
+            s3.listObjectsV2(
+                ListObjectsV2Request.builder()
+                    .bucket(bucket)
+                    .prefix(Location.empty().toBucketDirectoryPrefix())
+                    .delimiter("/")
+                    .maxKeys(1)
+                    .build()
+            )
+            ReadinessOutcome.Ok
+        } catch (exception: S3Exception) {
+            s3Error<Unit>("list /", Location.empty(), exception)
+                .fold({ ReadinessOutcome.Ok }, { error -> if (error.status == NOT_FOUND.code) ReadinessOutcome.NotFoundOk else ReadinessOutcome.Failed(error.message) })
+        } catch (exception: Exception) {
+            failed<Unit>("list /", exception)
+                .fold({ ReadinessOutcome.Ok }, { error -> ReadinessOutcome.Failed(error.message) })
+        }
 
     /** S3 answers every write made through this instance, so the bucket is never a fixed size and no quota is reported. */
     override val reportsUsage: Boolean = false
