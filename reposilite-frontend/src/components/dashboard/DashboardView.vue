@@ -21,6 +21,7 @@ import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
 import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
+import MdSection from '../md/MdSection.vue'
 
 // The status panel reports the cluster it finds in its answer; the trends below draw from it.
 const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
@@ -41,40 +42,30 @@ const cluster = ref<components['schemas']['ClusterStatusResponse'] | null>(null)
   >
     <GettingStartedCard class="mb-6" />
 
-    <section aria-labelledby="instance-status-heading">
-      <h2
-        id="instance-status-heading"
-        class="pb-3 md-title-large text-on-surface"
-      >
-        Instance status
-      </h2>
+    <MdSection
+      title="Instance status"
+      heading-id="instance-status-heading"
+      aria-labelledby="instance-status-heading"
+    >
       <InstanceStatusPanel @cluster="cluster = $event" />
-    </section>
+    </MdSection>
 
-    <section
-      class="pt-6"
+    <MdSection
+      title="Resources"
+      heading-id="resources-heading"
       aria-labelledby="resources-heading"
-    >
-      <h2
-        id="resources-heading"
-        class="pb-3 md-title-large text-on-surface"
-      >
-        Resources
-      </h2>
-      <ResourceTrends :cluster="cluster" />
-    </section>
-
-    <section
       class="pt-6"
-      aria-labelledby="traffic-heading"
     >
-      <h2
-        id="traffic-heading"
-        class="pb-3 md-title-large text-on-surface"
-      >
-        Traffic
-      </h2>
+      <ResourceTrends :cluster="cluster" />
+    </MdSection>
+
+    <MdSection
+      title="Traffic"
+      heading-id="traffic-heading"
+      aria-labelledby="traffic-heading"
+      class="pt-6"
+    >
       <ResolvedRequestsChart />
-    </section>
+    </MdSection>
   </div>
 </template>
