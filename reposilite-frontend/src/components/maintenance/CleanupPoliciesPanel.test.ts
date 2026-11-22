@@ -188,6 +188,15 @@ describe('CleanupPoliciesPanel list', () => {
     expect(policy.classes(), 'not the role of its card').not.toContain('bg-surface-container-low')
   })
 
+  it('sets the policy name as a level 3 heading in the title-small role', async () => {
+    await mountPanel()
+
+    const heading = wrapper.get('[data-policy="snapshots-weekly"] h3')
+
+    expect(heading.classes(), 'a level 3 heading takes the title-small role').toContain('md-title-small')
+    expect(heading.classes(), 'not the level 2 role').not.toContain('md-title-medium')
+  })
+
   it('draws each policy as a shared card list item on the container tone', async () => {
     await mountPanel()
 

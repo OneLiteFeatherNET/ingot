@@ -631,6 +631,27 @@ const cardNamed = (wrapper: Page, name: string) => cardsIn(wrapper).find(card =>
 const valueOf = (card: PanelOf, label: string) =>
   card.findAll('dt').find(term => term.text() === label)?.element.nextElementSibling?.textContent?.trim()
 
+describe('SystemInfoView heading sizes', () => {
+  it('sets the plugin names in the title-small role of a level 3 heading', async () => {
+    const wrapper = await pluginsTab(PLUGINS)
+
+    const names = cardsIn(wrapper).map(card => card.get('h3').classes())
+
+    expect(names.length, 'there are plugin cards').toBeGreaterThan(0)
+    expect(names.every(classes => classes.includes('md-title-small') && !classes.includes('md-title-medium')), 'each plugin name is title-small').toBe(true)
+  })
+
+  it('sets the danger zone heading in the title-medium role of a level 2 heading', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const heading = wrapper.get('#system-danger-title')
+
+    expect(heading.classes(), 'a level 2 heading takes the title-medium role').toContain('md-title-medium')
+    expect(heading.classes(), 'not title-large').not.toContain('md-title-large')
+  })
+})
+
 describe('SystemInfoView plugin cards', () => {
   it('draws the plugins heading through the shared section header, labelling the section', async () => {
     const wrapper = await pluginsTab(PLUGINS)
