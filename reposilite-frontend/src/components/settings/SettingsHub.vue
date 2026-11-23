@@ -50,7 +50,7 @@ defineProps<{
       >
         At a glance
       </h2>
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div class="grid grid-cols-2 gap-3 expanded:grid-cols-3 large:grid-cols-6">
         <StatTile
           v-for="row in glance"
           :key="row.key"

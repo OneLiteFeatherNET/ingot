@@ -130,7 +130,7 @@ const revertLabelOf = (change: SettingsChange): string => {
               <li
                 v-for="change in group.changes"
                 :key="change.id"
-                class="flex flex-col gap-2 rounded-corner-small px-3 py-2 sm:flex-row sm:items-start sm:justify-between"
+                class="flex flex-col gap-2 rounded-corner-small px-3 py-2 medium:flex-row medium:items-start medium:justify-between"
                 :class="{
                   'bg-primary-container text-on-primary-container': change.kind === 'added',
                   'bg-error-container text-on-error-container': change.kind === 'removed'
@@ -156,7 +156,7 @@ const revertLabelOf = (change: SettingsChange): string => {
                 <MdButton
                   variant="text"
                   type="button"
-                  class="shrink-0 self-start sm:self-auto"
+                  class="shrink-0 self-start medium:self-auto"
                   :aria-label="revertLabelOf(change)"
                   @click="emit('revert', change)"
                 >

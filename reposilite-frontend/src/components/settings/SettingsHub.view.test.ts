@@ -110,4 +110,13 @@ describe('SettingsHub content', () => {
 
     expect(wrapper.text()).not.toContain('Sign-in and security live in')
   })
+
+  it('sets the glance grid columns on the expanded and large window classes', async () => {
+    await mountHub()
+
+    const grid = cardsOf()[0].element.parentElement!
+    expect(grid.classList.contains('expanded:grid-cols-3'), 'three columns from 840 pixels').toBe(true)
+    expect(grid.classList.contains('large:grid-cols-6'), 'six columns from 1240 pixels').toBe(true)
+    expect([...grid.classList].filter(name => /^(sm|md|lg|xl|2xl):/.test(name)), 'no default breakpoint prefix').toEqual([])
+  })
 })
