@@ -21,6 +21,7 @@ import { computed, inject, onMounted, ref } from 'vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 import MigrationDialog from './MigrationDialog.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { repositoryResultText } from './jobText'
@@ -40,6 +41,10 @@ const switchDone = ref(false)
 const problem = ref<Problem | null>(null)
 const deleteOpen = ref(false)
 const importConflicts = ref<ConflictRow[]>([])
+const conflictColumns = [
+  { key: 'repository', label: 'Repository' },
+  { key: 'path', label: 'Path' },
+]
 
 const newest = (kind: string): JobView | null => (wizard.state.jobs.filter(job => job.kind === kind).sort((a, b) => b.id - a.id)[0] as JobView | undefined) ?? null
 
@@ -197,46 +202,13 @@ onMounted(() => {
                 Every repository is verified.
               </li>
             </ul>
-            <table
+            <MdDataTable
               v-if="importConflicts.length"
-              class="w-full text-left md-body-medium"
-            >
-              <caption class="md-title-small pb-2 text-left text-on-surface">
-                Conflicts that keep a repository from being verified
-              </caption>
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    class="py-2 pr-4"
-                  >
-                    Repository
-                  </th>
-                  <th
-                    scope="col"
-                    class="py-2"
-                  >
-                    Path
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="conflict in importConflicts"
-                  :key="`${conflict.repository}-${conflict.path}`"
-                >
-                  <td class="py-2 pr-4">
-                    {{ conflict.repository }}
-                  </td>
-                  <th
-                    scope="row"
-                    class="py-2 font-normal"
-                  >
-                    {{ conflict.path }}
-                  </th>
-                </tr>
-              </tbody>
-            </table>
+              caption="Conflicts that keep a repository from being verified"
+              :columns="conflictColumns"
+              :rows="importConflicts"
+              row-header="path"
+            />
           </div>
         </MdListItem>
 

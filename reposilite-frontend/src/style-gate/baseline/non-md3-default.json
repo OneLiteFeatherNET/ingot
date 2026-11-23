@@ -115,11 +115,6 @@
     "count": 1
   },
   {
-    "file": "src/components/migration/CutOverStep.vue",
-    "match": "font-normal",
-    "count": 1
-  },
-  {
     "file": "src/components/migration/DryRunStep.vue",
     "match": "font-medium",
     "count": 1

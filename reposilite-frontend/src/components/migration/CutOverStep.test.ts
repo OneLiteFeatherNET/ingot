@@ -97,6 +97,18 @@ describe('the Cut-over step', () => {
     expect(wrapper.text()).toContain('a/b/c.jar')
   })
 
+  it('lists the conflicts in a captioned table whose row header is the path', async () => {
+    const conflicted = [{ nexusName: 'snapshots', targetName: 'snapshots', type: 'hosted', status: 'CONFLICTED' }]
+    const api = fakeApi({ conflicts: vi.fn(async () => [{ repository: 'snapshots', path: 'a/b/c.jar', detail: 'sha1 differs' }]) })
+    const { wrapper } = await mountWith(CutOverStep, { api, wizard: wizardWith([importJob(), verifyJob(conflicted)]), at: '/settings/migration/cut-over' })
+
+    expect(wrapper.find('table caption').text()).toBe('Conflicts that keep a repository from being verified')
+    expect(wrapper.findAll('thead th').map(cell => cell.text())).toEqual(['Repository', 'Path'])
+    const rowHeader = wrapper.find('tbody th[scope="row"]')
+    expect(rowHeader.text(), 'the path names the row').toBe('a/b/c.jar')
+    expect(wrapper.find('tbody td').text()).toBe('snapshots')
+  })
+
   it('keeps the verify item unticked while no verify job has finished', async () => {
     const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob()]), at: '/settings/migration/cut-over' })
 
