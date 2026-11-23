@@ -435,7 +435,7 @@ const emptyList = computed(() => loaded.value && loadFailure.value === null && f
         <p class="md-body-large text-on-surface-variant">
           Add this address to your authenticator app, then enter the six-digit code it shows.
         </p>
-        <pre class="overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 font-mono md-body-medium break-all whitespace-pre-wrap text-on-surface">{{ seed }}</pre>
+        <pre class="overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 md-code-medium break-all whitespace-pre-wrap text-on-surface">{{ seed }}</pre>
         <MdTextField
           id="second-factor-enrol-code"
           v-model="enrolCode"
@@ -498,7 +498,7 @@ const emptyList = computed(() => loaded.value && loadFailure.value === null && f
       <p class="mt-2 md-body-large text-on-surface-variant">
         Each code signs you in once when the app is not available. They are shown only now.
       </p>
-      <pre class="mt-4 overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 font-mono md-body-medium text-on-surface">{{ recoveryCodes.join('\n') }}</pre>
+      <pre class="mt-4 overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 md-code-medium text-on-surface">{{ recoveryCodes.join('\n') }}</pre>
 
       <div class="mt-4 flex flex-wrap gap-2">
         <MdButton
