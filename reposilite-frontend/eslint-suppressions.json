@@ -1,7 +1,0 @@
-{
-  "src/components/console/ConsoleView.vue": {
-    "vue/multiline-html-element-content-newline": {
-      "count": 2
-    }
-  }
-}
