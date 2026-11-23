@@ -100,7 +100,7 @@ This pull request is the single move. The classes must leave the server classpat
   and add the module's compiled classes to the backend integration classpath, without its service entry, as `storageCachePlugin` is wired
   around line 494. Add `!reposilite-plugins/cleanup-plugin` to `.dockerignore`. Verify:
   `heavy ./gradlew :reposilite-backend:shadowJar --max-workers=2` runs, the module configures, and the jar lists `embedded-plugins/cleanup-plugin.jar`.
-- [ ] 2.3 `refactor(cleanup)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/cleanup/` into the module, the unit
+- [x] 2.3 `refactor(cleanup)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/cleanup/` into the module, the unit
   tests of `reposilite-backend/src/test/kotlin/com/reposilite/cleanup/` into the module's test source set, and the integration tests of
   `reposilite-backend/src/integration/kotlin/com/reposilite/cleanup/` and `WorkerTwoInstanceCleanupIntegrationTest` into its integration source
   set. Remove `CleanupPlugin` from the service entry of `reposilite-backend/src/main/resources/META-INF/services/` and put it in the module's
@@ -110,7 +110,7 @@ This pull request is the single move. The classes must leave the server classpat
   passes; `heavy ./gradlew :reposilite-plugins:cleanup-plugin:test --max-workers=2` passes; `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.cleanup.*' --max-workers=2`
   passes; `SettingsIntegrationTest` passes with only its import changed; the OpenAPI snapshot test passes without `-PrefreshOpenApiSnapshot`; the
   worker test shows `CLEANUP_SCHEDULE` only on the worker; and the backend unit suite compiles.
-- [ ] 2.4 Verify the drop-in path. Start the built server jar with no plugins directory and the default image layout, and check that the cleanup
+- [x] 2.4 Verify the drop-in path. Start the built server jar with no plugins directory and the default image layout, and check that the cleanup
   routes answer, the `cleanup` domain is listed, and the start log names the embedded copy. Verify: the container images job passes on this pull
   request, including the upgrade rehearsal against the upstream image.
 - [x] 2.5 Verify: `git diff --stat -M` shows the renames, the pull request names no file under `openspec/`, and its changed lines stay near 400
