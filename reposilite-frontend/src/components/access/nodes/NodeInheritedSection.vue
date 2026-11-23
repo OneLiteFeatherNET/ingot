@@ -15,8 +15,9 @@
   -->
 
 <script setup lang="ts">
-import { ref, useId, type PropType } from 'vue'
+import { ref, type PropType } from 'vue'
 import MdBadge from '../../md/MdBadge.vue'
+import MdDisclosure from '../../md/MdDisclosure.vue'
 import MdList from '../../md/MdList.vue'
 import MdListItem from '../../md/MdListItem.vue'
 import type { InheritedEntry } from './inheritedNodes'
@@ -24,8 +25,7 @@ import { inheritedSourceLabel, isOverridden } from './nodeList'
 import type { NodeEntry } from './permissionNodesApi'
 
 /*
- * The nodes a subject gets from teams, read only. The section is open to start with and a button
- * collapses it. A node that the subject also holds directly (same node text) is still listed and
+ * The nodes a subject gets from teams, read only. The section is a disclosure, open to start with. A node that the subject also holds directly (same node text) is still listed and
  * is marked as overridden, because the direct node decides first.
  */
 defineProps({
@@ -47,7 +47,6 @@ defineProps({
 })
 
 const open = ref(true)
-const regionId = `inherited-${useId()}`
 </script>
 
 <template>
@@ -56,83 +55,62 @@ const regionId = `inherited-${useId()}`
     data-test="inherited-section"
     data-ingot-component="node-inherited-section"
   >
-    <button
-      type="button"
-      class="md-state-layer md-focus-ring md-touch-target relative inline-flex min-h-10 w-fit items-center gap-2 rounded-corner-medium px-3 md-title-small text-on-surface"
-      :aria-expanded="open ? 'true' : 'false'"
-      :aria-controls="regionId"
-      data-test="inherited-toggle"
-      @click="open = !open"
-    >
-      <svg
-        class="size-6 shrink-0 transition-transform duration-(--md-sys-motion-duration-short3)"
-        :class="open ? '' : '-rotate-90'"
-        viewBox="0 -960 960 960"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <path
-          fill="currentColor"
-          d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z"
-        />
-      </svg>
-      Inherited from teams ({{ inherited.length }})
-    </button>
-    <div
-      v-show="open"
-      :id="regionId"
-      class="flex flex-col gap-2"
-    >
-      <p class="md-body-medium text-on-surface-variant">
-        These nodes come from teams and cannot be changed here. A direct node that matches the same permission decides first.
-      </p>
-      <p
-        v-for="warning in warnings"
-        :key="warning"
-        role="alert"
-        class="md-body-medium text-warning"
-        data-test="inherited-warning"
-      >
-        {{ warning }}
-      </p>
-      <div
-        v-if="inherited.length > 0"
-        class="rounded-corner-medium border border-outline-variant"
-      >
-        <MdList divided>
-          <MdListItem
-            v-for="entry in inherited"
-            :key="`${entry.source}:${entry.subject}:${entry.node}`"
-            data-test="inherited-row"
-            :data-node="entry.node"
-          >
-            <code class="md-code-medium text-on-surface break-all"><template
-              v-for="(part, index) in entry.node.split('.')"
-              :key="index"
-            >{{ part }}<template v-if="index < entry.node.split('.').length - 1">.<wbr></template></template></code>
-            <p
-              class="md-body-small text-on-surface-variant"
-              data-test="inherited-source"
+    <MdDisclosure v-model:open="open">
+      <template #summary>
+        Inherited from teams ({{ inherited.length }})
+      </template>
+      <div class="flex flex-col gap-2">
+        <p class="md-body-medium text-on-surface-variant">
+          These nodes come from teams and cannot be changed here. A direct node that matches the same permission decides first.
+        </p>
+        <p
+          v-for="warning in warnings"
+          :key="warning"
+          role="alert"
+          class="md-body-medium text-warning"
+          data-test="inherited-warning"
+        >
+          {{ warning }}
+        </p>
+        <div
+          v-if="inherited.length > 0"
+          class="rounded-corner-medium border border-outline-variant"
+        >
+          <MdList divided>
+            <MdListItem
+              v-for="entry in inherited"
+              :key="`${entry.source}:${entry.subject}:${entry.node}`"
+              data-test="inherited-row"
+              :data-node="entry.node"
             >
-              {{ inheritedSourceLabel(entry) }}
-            </p>
-            <MdBadge
-              v-if="isOverridden(entry, direct)"
-              class="mt-1"
-              data-test="inherited-overridden"
-            >
-              Overridden by a direct node
-            </MdBadge>
-            <template #trailing>
-              <span
-                class="md-label-large"
-                :class="entry.allowed ? 'text-on-surface' : 'text-error'"
-                data-test="inherited-state"
-              >{{ entry.allowed ? 'Allowed' : 'Denied' }}</span>
-            </template>
-          </MdListItem>
-        </MdList>
+              <code class="md-code-medium text-on-surface break-all"><template
+                v-for="(part, index) in entry.node.split('.')"
+                :key="index"
+              >{{ part }}<template v-if="index < entry.node.split('.').length - 1">.<wbr></template></template></code>
+              <p
+                class="md-body-small text-on-surface-variant"
+                data-test="inherited-source"
+              >
+                {{ inheritedSourceLabel(entry) }}
+              </p>
+              <MdBadge
+                v-if="isOverridden(entry, direct)"
+                class="mt-1"
+                data-test="inherited-overridden"
+              >
+                Overridden by a direct node
+              </MdBadge>
+              <template #trailing>
+                <span
+                  class="md-label-large"
+                  :class="entry.allowed ? 'text-on-surface' : 'text-error'"
+                  data-test="inherited-state"
+                >{{ entry.allowed ? 'Allowed' : 'Denied' }}</span>
+              </template>
+            </MdListItem>
+          </MdList>
+        </div>
       </div>
-    </div>
+    </MdDisclosure>
   </section>
 </template>

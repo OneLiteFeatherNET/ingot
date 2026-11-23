@@ -15,11 +15,6 @@
     "count": 1
   },
   {
-    "file": "src/components/access/nodes/NodeInheritedSection.vue",
-    "match": "<svg",
-    "count": 1
-  },
-  {
     "file": "src/components/access/nodes/NodeRow.vue",
     "match": "<svg",
     "count": 1

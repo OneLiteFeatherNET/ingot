@@ -76,6 +76,30 @@ describe('MdDisclosure content', () => {
   })
 })
 
+describe('MdDisclosure native semantics', () => {
+  it('is a native details element and sets no aria-expanded, because the semantics are native', () => {
+    const wrapper = mountDisclosure()
+
+    expect(wrapper.element instanceof HTMLDetailsElement, 'the root is a native details').toBe(true)
+    expect(wrapper.find('[aria-expanded]').exists(), 'nothing duplicates the native state').toBe(false)
+  })
+
+  it('toggles the open attribute of the details element with the open prop', async () => {
+    const wrapper = mountDisclosure()
+    expect(wrapper.attributes('open'), 'closed has no open attribute').toBeUndefined()
+
+    await wrapper.setProps({ open: true })
+
+    expect(wrapper.attributes('open'), 'open sets the attribute').toBeDefined()
+  })
+
+  it('hides the content while collapsed', () => {
+    const wrapper = mountDisclosure()
+
+    expect(wrapper.find('details > div').isVisible(), 'the body is not visible while collapsed').toBe(false)
+  })
+})
+
 describe('MdDisclosure value', () => {
   it('emits update:open with true when the browser opens the body', async () => {
     const wrapper = mountDisclosure({ open: false })
