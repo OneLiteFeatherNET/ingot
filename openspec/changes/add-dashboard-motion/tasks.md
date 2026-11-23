@@ -191,14 +191,14 @@ Starts after group 5 is merged.
   pattern. Verify: it fails, because the row is a native `details` without motion.
 - [ ] 7.3 `test(ui)`: in `src/components/support/SystemInfoView.test.ts`, assert that the key tree sections open with the pattern, and
   that a section that is open at load has no transition on the first paint. Verify: it fails for the open case.
-- [ ] 7.4 `test(ui)`: in `src/components/renderers/ArrayListRenderer.test.ts` and `src/components/maintenance/RunHistory.test.ts`,
+- [x] 7.4 `test(ui)`: in `src/components/renderers/ArrayListRenderer.test.ts` and `src/components/maintenance/RunHistory.test.ts`,
   assert that their `details` use the pattern. Verify: it fails, as 7.2 does.
 - [x] 7.5 `test(ui)`: in `e2e/system-info.spec.js`, assert that the key tree opens and closes with the height animation, the page does
   not move below the section, and reduced motion opens the section at once. Verify: it fails for the height.
 - [x] 7.6 `feat(ui)`: add the expand pattern to `MdDisclosure.vue`, and to `NodeTreeView.vue`, `SystemInfoView.vue`,
   `ArrayListRenderer.vue`, `RunHistory.vue`, `TeamLegacyGrants.vue` and `SsoProviderDialog.vue`, with the grid wrapper inside each
   `details`. Verify: 7.1 to 7.4 pass.
-- [ ] 7.7 `feat(ui)`: keep the `open` attribute of a closing disclosure until its transition has ended, in the component that owns it.
+- [x] 7.7 `feat(ui)`: keep the `open` attribute of a closing disclosure until its transition has ended, in the component that owns it.
   Verify: 7.1 passes, and a second toggle during the close reopens the section without a flicker.
 - [ ] 7.8 Run the disclosure tests and the system information e2e spec through `heavy`, with `--workers=2`. Verify: they pass, and the
   axe result of the page is clean.
@@ -219,14 +219,14 @@ Starts after group 6 is merged.
 - [x] 8.3 `test(ui)`: in `src/components/header/LoginModal.test.ts`, assert that the second step is wrapped in `MdTransition` with
   `shared-y`, that its heading still receives focus on entry, and that a failure inside the step keeps the typed codes until they are
   cleared as today. Verify: it fails, because the step has no transition.
-- [ ] 8.4 `test(ui)`: in `src/components/md/MdStatePanel.test.ts`, assert that a list row added after load fades in with `short3`, and
+- [x] 8.4 `test(ui)`: in `src/components/md/MdStatePanel.test.ts`, assert that a list row added after load fades in with `short3`, and
   that a removed row is not animated. Verify: it fails, because no row has a transition.
-- [ ] 8.5 `feat(ui)`: apply the content fade in `MdStatePanel.vue`, the `shared-y` step in `LoginModal.vue`, and the row fade in the
+- [x] 8.5 `feat(ui)`: apply the content fade in `MdStatePanel.vue`, the `shared-y` step in `LoginModal.vue`, and the row fade in the
   rows that are added after load (`FileList.vue`, `RepositoriesTable.vue`), without a `TransitionGroup` for removals. Verify: 8.1, 8.3
   and 8.4 pass.
 - [ ] 8.6 Run the state and login tests and the sign-in e2e spec through `heavy`, with `--workers=2`. Verify: they pass, and the
   second-factor flow still focuses its heading.
-- [ ] 8.7 Attach the before and after screenshots of a loading list and of the second step, and open the code pull request
+- [x] 8.7 Attach the before and after screenshots of a loading list and of the second step, and open the code pull request
   `feat(ui): fade loaded content over the skeleton and step the sign-in dialog`. Verify: `gh pr view` shows the exact title.
 
 ## 9. Group 8: documentation
