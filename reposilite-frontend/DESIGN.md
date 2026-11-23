@@ -952,6 +952,17 @@ The chrome that the field primitives share: the leading and trailing slots at on
 - Do: bind `aria-describedby` and `aria-invalid` on the input from the slot props.
 - Don't: give the shell a box of its own. Its root takes no box, so the wrapping primitive keeps its layout.
 
+### MdFieldGrid
+
+The form fields of one group, in one column below the `expanded` window class (840px) and in two columns from it.
+
+- Props: none.
+- Slots: `default` (the fields).
+- Events: none.
+- Anchor: `md-field-grid`.
+- Do: give a field that needs the whole row a `col-span-full` class.
+- Don't: key a form grid to `sm:grid-cols-2`; the window classes decide the columns.
+
 ### MdFieldset
 
 A titled group of form controls, such as the radio buttons of one choice or the checkboxes of one list. The title is the legend of a native `fieldset`, so assistive technology names the group by it.
