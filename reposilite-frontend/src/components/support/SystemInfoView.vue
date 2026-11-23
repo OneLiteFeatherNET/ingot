@@ -517,15 +517,13 @@ onMounted(() => {
             v-else-if="tab === 'environment' && info"
             class="flex flex-col gap-6"
           >
-            <label class="sticky top-(--spacing-md-top-bar) z-md-sticky md-body-medium flex flex-col gap-1 bg-surface py-2 text-on-surface-variant">
-              Filter by key or value
-              <input
-                v-model="filter"
-                type="search"
-                data-ingot-part="filter"
-                class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
-              >
-            </label>
+            <MdTextField
+              v-model="filter"
+              label="Filter by key or value"
+              type="search"
+              data-ingot-part="filter"
+              class="sticky top-(--spacing-md-top-bar) z-md-sticky bg-surface py-2"
+            />
 
             <section
               aria-labelledby="support-environment"
@@ -560,15 +558,13 @@ onMounted(() => {
             v-else-if="tab === 'configuration' && info"
             class="flex flex-col gap-6"
           >
-            <label class="sticky top-(--spacing-md-top-bar) z-md-sticky md-body-medium flex flex-col gap-1 bg-surface py-2 text-on-surface-variant">
-              Filter by key or value
-              <input
-                v-model="filter"
-                type="search"
-                data-ingot-part="filter"
-                class="rounded-corner-small border border-outline bg-surface px-3 py-2 text-on-surface"
-              >
-            </label>
+            <MdTextField
+              v-model="filter"
+              label="Filter by key or value"
+              type="search"
+              data-ingot-part="filter"
+              class="sticky top-(--spacing-md-top-bar) z-md-sticky bg-surface py-2"
+            />
             <MdSection
               title="Configuration"
               heading-id="support-configuration"

@@ -411,3 +411,50 @@ describe('list block', () => {
     expect(wrapper.text()).toContain('Link not shown')
   })
 })
+
+describe('controls of the blocks come from the md primitives', () => {
+  it('draws the text filter as an MdTextField and the select filter as an MdSelect', () => {
+    const wrapper = mountBlock({
+      type: 'filter',
+      controls: [
+        { type: 'text', key: 'q', label: 'Search' },
+        { type: 'select', key: 'kind', label: 'Kind', options: [{ value: 'a', label: 'Alpha' }] },
+      ],
+    })
+
+    expect(wrapper.findComponent({ name: 'MdTextField' }).exists(), 'the text filter is an MdTextField').toBe(true)
+    expect(wrapper.findComponent({ name: 'MdSelect' }).exists(), 'the select filter is an MdSelect').toBe(true)
+  })
+
+  it('writes a picked select option to the filter scope', async () => {
+    const wrapper = mountBlock({
+      type: 'filter',
+      controls: [{ type: 'select', key: 'kind', label: 'Kind', options: [{ value: 'a', label: 'Alpha' }] }],
+    })
+
+    await wrapper.findComponent({ name: 'MdSelect' }).setValue('a')
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'MdSelect' }).props('modelValue'), 'the select shows the picked option').toBe('a')
+  })
+
+  it('draws the buttons of the action block as MdButton', async () => {
+    const wrapper = mountBlock({
+      type: 'action', label: 'Start', method: 'POST', path: '/api/plugins/example/start', confirm: 'Start the job?',
+    })
+    await wrapper.findComponent({ name: 'MdButton' }).trigger('click')
+
+    expect(wrapper.findAllComponents({ name: 'MdButton' }), 'the action, confirm and cancel buttons').toHaveLength(3)
+    expect(wrapper.findAll('button').length, 'no native button is left').toBe(wrapper.findAllComponents({ name: 'MdButton' }).length)
+  })
+
+  it('draws the progress of a status block as MdLinearProgress', async () => {
+    http.get.mockResolvedValue({ data: { state: 'running', message: 'half way', progress: 0.5 } })
+
+    const wrapper = mountBlock({ type: 'status', source: '/api/plugins/example/status' })
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'MdLinearProgress' }).exists(), 'the shared progress bar').toBe(true)
+    expect(wrapper.find('progress').exists(), 'no native progress element').toBe(false)
+  })
+})

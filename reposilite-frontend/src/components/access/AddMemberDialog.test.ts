@@ -51,6 +51,12 @@ describe('AddMemberDialog', () => {
     expect(items.map(item => item.attributes('data-test')), 'every candidate is an MdListItem').toEqual(['candidate', 'candidate'])
   })
 
+  it('draws the checkbox of each candidate as an MdCheckbox', async () => {
+    await open({ principals: PRINCIPALS })
+
+    expect(wrapper!.findAllComponents({ name: 'MdCheckbox' }), 'one MdCheckbox per candidate').toHaveLength(2)
+  })
+
   it('names the checkbox of each candidate by its own label', async () => {
     await open({ principals: PRINCIPALS })
 
