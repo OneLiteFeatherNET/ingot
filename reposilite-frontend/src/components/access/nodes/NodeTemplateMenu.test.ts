@@ -22,7 +22,8 @@ import NodeTemplateMenu from './NodeTemplateMenu.vue'
 
 const TEMPLATES = [
   { id: 'reader', label: 'Reader', nodes: ['ingot.repository.{repository}.read'] },
-  { id: 'admin', label: 'Instance admin', nodes: ['ingot.instance.admin'] }
+  { id: 'admin', label: 'Instance admin', nodes: ['ingot.instance.admin'] },
+  { id: 'broken', label: 'Broken', nodes: ['ingot.repository.{repository}.bogus.extra.parts'] }
 ]
 const CATALOG = [
   { node: 'ingot.repository.releases', kind: 'REPOSITORY' },
@@ -48,6 +49,19 @@ describe('NodeTemplateMenu', () => {
   }
   const repository = () => wrapper!.find('input[role="combobox"]')
   const listbox = () => wrapper!.find('[role="listbox"]')
+
+  it('draws the problem of a filled node through the shared error alert', async () => {
+    mountMenu()
+    await toggle().trigger('click')
+    await wrapper!.findAll('[data-test="template-option"]')[2].trigger('click')
+    await repository().setValue('releases')
+
+    const problem = wrapper!.find('[data-test="template-problem"]')
+
+    expect(problem.exists(), 'the refused node is reported').toBe(true)
+    expect(problem.classes(), 'the problem is drawn on the error container').toContain('bg-error-container')
+    expect(problem.attributes('role'), 'the problem is announced at once').toBe('alert')
+  })
 
   it('announces the open panel on the toggle button', async () => {
     mountMenu()

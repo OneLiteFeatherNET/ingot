@@ -1509,9 +1509,7 @@
       "file": "src/components/settings/RepositoryAccessCard.vue",
       "stability": "stable",
       "parts": [],
-      "states": [
-        "loading"
-      ]
+      "states": []
     },
     {
       "name": "repository-members-picker",

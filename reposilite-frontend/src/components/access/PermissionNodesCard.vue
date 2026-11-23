@@ -18,6 +18,7 @@
 import { computed, onMounted, useId, watch, type PropType } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdSection from '../md/MdSection.vue'
@@ -147,14 +148,13 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
             </MdButton>
           </template>
         </MdStatePanel>
-        <p
+        <MdAlert
           v-else-if="missing"
-          role="alert"
-          class="md-body-medium text-on-surface-variant"
+          tone="error"
           data-test="nodes-missing"
         >
           {{ name }} does not exist (any more).
-        </p>
+        </MdAlert>
         <NodeEditor
           v-else
           :nodes="draft"

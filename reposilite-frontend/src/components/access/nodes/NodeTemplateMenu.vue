@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, ref, useId, type PropType } from 'vue'
+import MdAlert from '../../md/MdAlert.vue'
 import MdButton from '../../md/MdButton.vue'
 import MdListbox from '../../md/MdListbox.vue'
 import MdTextField from '../../md/MdTextField.vue'
@@ -291,14 +292,13 @@ const submit = () => {
         >
           Adds {{ preview }}
         </p>
-        <p
+        <MdAlert
           v-if="nodeError"
-          role="alert"
-          class="md-body-small text-error"
+          tone="error"
           data-test="template-problem"
         >
           {{ nodeError }}
-        </p>
+        </MdAlert>
         <div class="flex justify-end gap-2">
           <MdButton
             variant="text"

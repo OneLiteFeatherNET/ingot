@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdDataTable from '../md/MdDataTable.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdTextField from '../md/MdTextField.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import { ROLES, pathPrefixLabel } from '../access/accessTeams'
@@ -236,30 +237,29 @@ const rows = computed(() => {
         </TokenTag>
       </div>
 
-      <p
+      <MdStatePanel
         v-if="status === 'loading'"
-        data-ingot-state="loading"
+        state="loading"
+        title="Loading who has access"
         data-test="loading"
-        role="status"
-        class="md-body-medium text-on-surface-variant"
-      >
-        Loading...
-      </p>
-      <div
+      />
+      <MdStatePanel
         v-else-if="status === 'error'"
-        role="alert"
-        class="flex flex-wrap items-center gap-3"
+        state="error"
+        title="Could not load who has access"
+        :description="failure"
       >
-        <span class="md-body-medium text-error">Could not load who has access: {{ failure }}</span>
-        <MdButton
-          data-test="retry"
-          variant="tonal"
-          type="button"
-          @click="load"
-        >
-          Retry
-        </MdButton>
-      </div>
+        <template #actions>
+          <MdButton
+            data-test="retry"
+            variant="tonal"
+            type="button"
+            @click="load"
+          >
+            Retry
+          </MdButton>
+        </template>
+      </MdStatePanel>
       <p
         v-else-if="entries.length === 0"
         data-test="empty"
