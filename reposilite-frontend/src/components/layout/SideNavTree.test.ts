@@ -99,4 +99,13 @@ describe('SideNavTree', () => {
 
     expect(wrapper.findAll('hr, [role="separator"]'), 'the divider is decorative, not a separator element').toEqual([])
   })
+
+  it('draws the search input as the shared text field, named by its label', async () => {
+    const wrapper = await mountTree()
+
+    const input = wrapper.get('input[type="search"]')
+
+    expect(input.classes(), 'the field is the text field primitive, which sets the input at 56px').toContain('h-14')
+    expect(wrapper.get(`label[for="${input.attributes('id') ?? ''}"]`).text(), 'a real label names the input').toBe('Find an administration page')
+  })
 })

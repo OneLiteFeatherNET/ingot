@@ -75,11 +75,6 @@
     "count": 1
   },
   {
-    "file": "src/components/layout/SideNavTree.vue",
-    "match": "[&::-webkit-search-cancel-button]:hidden",
-    "count": 1
-  },
-  {
     "file": "src/components/maintenance/DryRunResult.vue",
     "match": "max-h-[60dvh]",
     "count": 1

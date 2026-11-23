@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import MdIconButton from '../md/MdIconButton.vue'
 
 /*
  * The M3 search bar: a search landmark with a 56px pill on the raised surface and no outline. The
@@ -76,15 +77,12 @@ defineExpose({
         @input="onInput"
         @keydown="emit('keydown', $event)"
       >
-      <button
+      <MdIconButton
         v-if="modelValue !== ''"
-        type="button"
-        class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
         aria-label="Clear search"
         @click="emit('update:modelValue', '')"
       >
         <svg
-          class="size-6"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
@@ -92,7 +90,7 @@ defineExpose({
         >
           <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
         </svg>
-      </button>
+      </MdIconButton>
     </div>
     <slot />
   </form>
