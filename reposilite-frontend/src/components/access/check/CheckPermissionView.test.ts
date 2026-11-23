@@ -181,6 +181,7 @@ describe('CheckPermissionView', () => {
       await mountView()
 
       expect(text('empty')).toContain('Pick a principal and a node')
+      expect(wrapper.get('[data-test="empty"]').attributes('data-ingot-state'), 'the empty answer is the shared empty state').toBe('empty')
     })
 
     it('draws the question form on the shared low card', async () => {
@@ -756,6 +757,7 @@ describe('CheckPermissionView', () => {
       await mountView(`/access/check?principal=alice&node=${NODE}`)
 
       expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="loading"]').attributes('aria-busy'), 'the wait is the shared loading state').toBe('true')
       expect(wrapper.find('[data-test="check"]').attributes('disabled'), 'no second check while one runs').toBeDefined()
 
       answer({ data: ALLOWED })

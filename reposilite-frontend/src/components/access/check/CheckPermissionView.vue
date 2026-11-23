@@ -24,6 +24,7 @@ import MdButton from '../../md/MdButton.vue'
 import MdCard from '../../md/MdCard.vue'
 import MdIcon from '../../md/MdIcon.vue'
 import MdSelect from '../../md/MdSelect.vue'
+import MdStatePanel from '../../md/MdStatePanel.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
 import SegmentedOption from '../../tokens/SegmentedOption.vue'
 import { detailOf, filterPrincipals } from '../accessPrincipals'
@@ -546,15 +547,14 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       </form>
     </MdCard>
 
-    <p
+    <MdStatePanel
       v-if="status === 'loading'"
-      data-ingot-state="loading"
+      state="loading"
       role="status"
-      class="md-body-medium text-on-surface-variant"
+      data-ingot-state="loading"
+      title="Checking..."
       data-test="loading"
-    >
-      Checking...
-    </p>
+    />
 
     <div
       v-else-if="result"
@@ -745,17 +745,12 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
       v-else
       variant="low"
     >
-      <div
-        class="flex flex-col gap-1"
+      <MdStatePanel
+        state="empty"
+        title="Pick a principal and a node"
+        description="The answer and the steps behind it appear here."
         data-test="empty"
-      >
-        <p class="md-title-medium text-on-surface">
-          Pick a principal and a node
-        </p>
-        <p class="md-body-medium text-on-surface-variant">
-          The answer and the steps behind it appear here.
-        </p>
-      </div>
+      />
     </MdCard>
   </section>
 </template>
