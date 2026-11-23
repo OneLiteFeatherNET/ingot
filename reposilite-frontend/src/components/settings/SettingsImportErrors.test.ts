@@ -57,6 +57,16 @@ describe('SettingsImportErrors', () => {
     wrapper.unmount()
   })
 
+  it('emphasises the field label with the type scale and not a hand-set weight', () => {
+    const wrapper = mountErrors()
+
+    const label = wrapper.findAll('span').find(node => node.text().startsWith('Repositories > releases > Visibility'))
+    expect(label?.exists(), 'the field label is drawn in its own element').toBe(true)
+    expect(label?.classes(), 'a hand-set weight is not used').not.toContain('font-medium')
+    expect(label?.attributes('class'), 'the weight comes from the label token').toContain('font-(weight:--md-sys-typescale-label-large-weight)')
+    wrapper.unmount()
+  })
+
   it('shows an error about the file itself without a domain heading', () => {
     const wrapper = mountErrors([{ domain: '', label: '', message: 'The file is not valid JSON.' }])
 
