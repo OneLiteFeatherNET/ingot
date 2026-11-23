@@ -195,6 +195,41 @@ describe('InstanceStatusPanel', () => {
     wrapper.unmount()
   })
 
+  it('draws the failures sheet from the trailing edge', async () => {
+    const client = clientWith(() => Promise.resolve({ data: { ...INSTANCE, failuresCount: 1 } }))
+    client.status.failures = vi.fn(() => Promise.resolve({ data: { failures: [] } }))
+    session.client = ref(client)
+    const wrapper = mount(InstanceStatusPanel, { attachTo: document.body })
+    await flushPromises()
+
+    await wrapper.find('[aria-haspopup="dialog"]').trigger('click')
+    await flushPromises()
+
+    const panel = document.querySelector('[role="dialog"] .inset-y-0')
+    expect(panel?.classList, 'the sheet is pinned to the trailing edge').toContain('end-0')
+    wrapper.unmount()
+    document.body.innerHTML = ''
+  })
+
+  it('returns focus to the failures tile when the sheet closes', async () => {
+    const client = clientWith(() => Promise.resolve({ data: { ...INSTANCE, failuresCount: 1 } }))
+    client.status.failures = vi.fn(() => Promise.resolve({ data: { failures: [] } }))
+    session.client = ref(client)
+    const wrapper = mount(InstanceStatusPanel, { attachTo: document.body })
+    await flushPromises()
+    const tile = wrapper.find<HTMLElement>('[aria-haspopup="dialog"]').element
+    tile.focus()
+    await wrapper.find('[aria-haspopup="dialog"]').trigger('click')
+    await flushPromises()
+
+    document.querySelector('[role="dialog"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(document.activeElement, 'focus is back on the tile that opened the sheet').toBe(tile)
+    wrapper.unmount()
+    document.body.innerHTML = ''
+  })
+
   it('leaves the failures tile without any action when nothing has failed', async () => {
     session.client = ref(clientWith(() => Promise.resolve({ data: { ...INSTANCE, failuresCount: 0 } })))
     const wrapper = mount(InstanceStatusPanel)
