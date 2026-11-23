@@ -50,8 +50,8 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `rounded-corner-` or `p-` on its card root.
 - [ ] 3.6 `fix(ui)`: replace the section headers with `MdSection` in `LdapPanel`, `PermissionNodesCard`, `SecurityPanel`,
   `CleanupPoliciesPanel`, `IndexPanel`, `StorageUsagePanel`, `DashboardView`, `AnalyticsView`, `SystemInfoView`, `SyncStep`,
-  `VerifyStep`, `RepositoryOverview`, and fix the heading sizes in `SettingsHub`, `SupportView`, `SsoProvidersPanel`,
-  `SsoProviderDialog` and `AppearancePreview` to the level scale. `SettingsHub` is excluded if `add-administration-overview` has not merged.
+  `VerifyStep`, and fix the heading sizes in `SupportView` to the level scale. The hand-built `h1` to `h3` that already sit on the level
+  scale (`RepositoryOverview`, `SettingsHub`, `SsoProvidersPanel`, `SsoProviderDialog`, `AppearancePreview`) count as done and stay as they are. `SettingsHub` is excluded if `add-administration-overview` has not merged.
   Fix `SectionRenderer` (3.3) and the level 4 heading of `RepositoryAccessCard`. Verify: 3.2 and 3.3 pass.
 - [ ] 3.7 `docs(gitbook)`: not needed in wave 1 unless a registry name is added; if `md-section` or `md-card` is added to the registry,
   run `npm run anchors:doc` and commit `docs/gitbook/reference/dashboard-anchors.md` in the same commit as the registry. Verify:
@@ -69,15 +69,15 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 4.2 `test(ui)`: in `src/components/access/PrincipalsPanel.test.js` and `TeamsPanel.test.js`, assert that exactly one row is selected
   for the route, and that the selection is computed once (a spy on the selection function counts one call per render). Verify: it fails
   on the four copies.
-- [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js` and `EntryList.test.js`, assert that each link row is an `md-navigation-item` link
-  with the current state when its route is open. Verify: it fails.
+- [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js` and `EntryList.test.js`, assert that each link row is an `MdListItem` drawn as a link
+  (stretched link) with `aria-current="page"` when its route is open. Verify: it fails.
 - [x] 4.4 `fix(ui)`: set `aria-current` and the 56 and 48 pixel row heights on the catalogue's `MdListItem`, and draw the divider
   of `MdList` with `divide-y`. Verify: 4.1 passes.
 - [x] 4.5 `fix(ui)`: migrate selectable rows (TeamsPanel, PrincipalsPanel, EntryList, AddMemberDialog) to `MdList` and `MdListItem`,
   and compute the selected key once per list. The `MdListDetail` panes of TeamsPanel, PrincipalsPanel and CollectionEditor are already
   done by `fix-surface-hierarchy-and-page-header` (its task 4.10). Verify: 4.2 passes.
 - [ ] 4.6 `fix(ui)`: migrate link rows (DetailedListEntry, FileList, SettingsAttention, the More panel of `IndexPage`) to
-  `MdNavigationItem`; migrate divided lists (NodeEditor, NodeInheritedSection, FileUpload, RunHistory, StorageUsagePanel,
+  `MdListItem` with a stretched link (`MdNavigationItem` is the bar and rail item and has no row variant); migrate divided lists (NodeEditor, NodeInheritedSection, FileUpload, RunHistory, StorageUsagePanel,
   RepositoryOverview's divider, TokenList, LegacyGrantsPanel, InstanceStatusPanel, GettingStartedCard, PublicRepositoriesDialog) to
   `MdList`; remove the arbitrary `[&>li+li]:after` chain of `FileList`. Verify: 4.3 passes and `grep -rn "li+li" src` finds nothing.
 - [x] 4.7 `fix(ui)`: migrate node rows (NodeRow, NodeInheritedSection), renderer rows (ConstantRenderer, UnsupportedRenderer,
@@ -167,7 +167,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `MdColourFieldRenderer`, `OneOfRenderer`, `TagsFieldRenderer`). Verify: the renderer tests pass and `grep -rn "onInput" src/components/renderers`
   finds the helper only.
 - [ ] 6.11 `fix(ui)`: remove the `<style>` rules of `SettingsView.vue` (read-only inputs and clearance) and move them into the field
-  primitives and utilities; drop the `settings-view` and `settings-save-bar` class hooks. The `settings-view` anchor stays in the registry.
+  primitives and utilities; the `settings-view` and `settings-save-bar` class hooks stay, because `useTreeFits` and the tests read them, and the `settings-view` anchor stays in the registry.
   Verify: 3.2 for SettingsView passes, the read-only input is still drawn in the Playwright screenshot.
 - [x] 6.12 `fix(ui)`: remove the `<style>` rule of `FileUpload.vue` (line 302 of the inventory) after the `vue-upload-component` class is
   confirmed in the rendered drop zone by a Playwright snapshot before and after. Verify: the drop zone looks the same in the snapshot.
@@ -183,9 +183,9 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   and that `--breakpoint-*: initial` is declared in `@theme`. Verify: it fails, because the reset is not there yet.
 - [x] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
   values of `src/styles/md3/typography.css`. Verify: it fails, because the module does not exist.
-- [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert the two footers by design: the footer inside the sheet from 600 pixels
+- [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert the two footers as main draws them: the footer inside the sheet from 600 pixels
   (class `hidden medium:block`) and the footer below the page on narrow windows (class `medium:hidden`), so that exactly one of them is
-  shown at each width; and that the icon lookup returns a value for every entry of the index, with the settings icon as the fallback for
+  shown at each width. The two footers are kept by design and are not merged into one; and that the icon lookup returns a value for every entry of the index, with the settings icon as the fallback for
   the entries of plugin pages. Verify: it fails on a lookup without the fallback.
 - [x] 7.4 `test(ui)`: in `src/components/md/MdBadge.test.js` and `StatusLabel`'s test, assert that `StatusLabel` takes a status value of
   the closed set and rejects a colour prop. Verify: it fails.

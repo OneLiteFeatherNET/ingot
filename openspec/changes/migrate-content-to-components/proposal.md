@@ -83,7 +83,7 @@ No `data-ingot-component` and no `data-ingot-part` is removed or moved off its s
 into one, both names stay: the outer element keeps the name of the wrapper, and the inner element keeps the name of the
 component it replaces. New names are added to `src/anchors/registry.json` only, and `npm run anchors:doc` regenerates
 `docs/gitbook/reference/dashboard-anchors.md` in the same commit. The stable name `settings-view` keeps its registry entry
-(it has no element of its own) and loses only the class hook `settings-view` that the style block used.
+(it has no element of its own) and keeps the class hook `settings-view`, which `useTreeFits` and the tests read.
 
 ### Not BREAKING
 

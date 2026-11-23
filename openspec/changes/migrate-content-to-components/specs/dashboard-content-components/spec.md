@@ -93,15 +93,15 @@ of its rows. No other row SHALL carry the attribute.
 - **WHEN** the Principals list renders its rows
 - **THEN** the selected key is computed once for the list, not once per row
 
-### Requirement: Link rows use the navigation item
+### Requirement: Link rows use the list item
 
-A row that links to another page SHALL be drawn by `MdNavigationItem`, so its hover, focus and current states are the same in every
+A row that links to another page SHALL be drawn by `MdListItem` with a stretched link, so its hover, focus and current states are the same in every
 list of the dashboard.
 
 #### Scenario: Current link row
 
 - **WHEN** the page of a link row is open
-- **THEN** the link row is drawn by `MdNavigationItem` and carries `aria-current="page"`
+- **THEN** the link row is drawn by `MdListItem` as a link and carries `aria-current="page"`
 
 ### Requirement: Key and value pairs and status labels use one component each
 
@@ -246,7 +246,7 @@ opacity utility in place of a token. Font weight and size SHALL come from the ty
 #### Scenario: Settings page without custom rules
 
 - **WHEN** the settings view is rendered with a read-only input
-- **THEN** the read-only look is drawn by a shared field rule, and no rule in the view targets `.settings-view`
+- **THEN** the read-only look is drawn by a shared field rule, and no `<style>` rule in the view targets `.settings-view` (the class hook itself stays)
 
 #### Scenario: Gate baseline empty
 

@@ -86,8 +86,8 @@ inset of 16 pixels, and a state layer from `md-state-layer`. `MdList` draws the 
 Selection: the catalogue's selectable `MdListItem` takes `selected`, and this change makes it set `aria-current="true"`. A list computes its selected key once, in one computed property,
 and passes a boolean per row. The four copies of the test in `PrincipalsPanel` collapse into that one property.
 
-Link rows use `MdNavigationItem` (a router link with the row geometry), so the link, the hover state and the current state are the same
-everywhere. Redundant resets (`m-0`, `p-0`, `list-none` on an `ul` that `MdList` already resets) are removed.
+Link rows use `MdListItem` with a stretched link, so the link, the hover state and the current state are the same
+everywhere. `MdNavigationItem` is the item of the navigation bar and rail and has no row variant, so no row is built from it. Redundant resets (`m-0`, `p-0`, `list-none` on an `ul` that `MdList` already resets) are removed.
 
 `overflow-wrap: anywhere` (`[overflow-wrap:anywhere]`) is replaced by `break-words` on the text element, and only where a value can be
 longer than its column. Long identifiers (repository names, token ids) use `break-all` on the identifier element, not on the row.
@@ -222,7 +222,7 @@ replaces a stable name. `docs/gitbook/reference/dashboard-anchors.md` is regener
 4. Forms and controls. Native controls, buttons, field variant, scaffolding, wizard parts, renderer helper, `FileUpload` and
    `SettingsView` style blocks.
 5. Breakpoints and leftovers. The theme change, the literal widths, the arbitrary values, the `!important` overrides, the opacity
-   fades, the font weights, `StatusLabel`, `StatTile`, `TimeSeriesChart`, the duplicated footer and the icon lookup in `IndexPage`,
+   fades, the font weights, `StatusLabel`, `StatTile`, `TimeSeriesChart`, the icon lookup in `IndexPage` (its two footers are kept by design),
    then the gate baseline.
 
 Each wave is one pull request (resolved 2026-11-18, question 1), merged before the next starts, so that every wave is reviewed against the same main
