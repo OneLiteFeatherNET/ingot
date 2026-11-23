@@ -5,24 +5,24 @@
   >
     <template v-if="delegateUISchema">
       <DispatchRenderer
-          :schema="control.schema"
-          :uischema="delegateUISchema"
-          :path="control.path"
-          :enabled="control.enabled"
-          :renderers="control.renderers"
-          :cells="control.cells"
+        :schema="control.schema"
+        :uischema="delegateUISchema"
+        :path="control.path"
+        :enabled="control.enabled"
+        :renderers="control.renderers"
+        :cells="control.cells"
       />
     </template>
     <template v-else-if="allOfRenderInfos">
       <DispatchRenderer
-          v-for="(allOfRenderInfo, allOfIndex) in allOfRenderInfos"
-          :key="`${control.path}-${allOfIndex}`"
-          :schema="allOfRenderInfo.schema"
-          :uischema="allOfRenderInfo.uischema"
-          :path="control.path"
-          :enabled="control.enabled"
-          :renderers="control.renderers"
-          :cells="control.cells"
+        v-for="(allOfRenderInfo, allOfIndex) in allOfRenderInfos"
+        :key="`${control.path}-${allOfIndex}`"
+        :schema="allOfRenderInfo.schema"
+        :uischema="allOfRenderInfo.uischema"
+        :path="control.path"
+        :enabled="control.enabled"
+        :renderers="control.renderers"
+        :cells="control.cells"
       />
     </template>
   </div>

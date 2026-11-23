@@ -43,7 +43,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   errorMessage: (error: { response?: { data?: { message?: string } }; message?: string } | undefined) =>
-    error?.response?.data?.message ?? error?.message ?? String(error)
+    error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 const ALICE = { id: 7, kind: 'USER', name: 'alice', displayName: 'Alice Example' }
