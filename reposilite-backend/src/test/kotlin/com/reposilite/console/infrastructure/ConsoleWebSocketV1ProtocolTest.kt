@@ -346,13 +346,75 @@ internal class ConsoleWebSocketV1ProtocolTest : AuthenticationSpecification() {
         assertThat(executions).`as`("executions").isEmpty()
     }
 
+    @Test
+    fun `audits an execute with the client product name of the hello`() {
+        // given: a connection whose hello names its client
+        handler.handleMessage(connection, hello(protocols = "[1]", client = "ingot-cli/1.4"))
+
+        // when: the client executes a command
+        handler.handleMessage(connection, execute(id = "e1", command = "probe"))
+
+        // then: the audit event carries the hello client and the websocket channel
+        val event = audits.single()
+        assertThat(event.details["client"]).`as`("audit client").isEqualTo("ingot-cli/1.4")
+        assertThat(event.details["channel"]).`as`("audit channel").isEqualTo("websocket")
+    }
+
+    @Test
+    fun `audits a declined confirm with the client product name of the hello`() {
+        // given: a hello that names its client and a dangerous execute that waits
+        handler.handleMessage(connection, hello(protocols = "[1]", client = "ingot-cli/1.4"))
+        handler.handleMessage(connection, execute(id = "e1", command = "danger-probe"))
+
+        // when: the client declines
+        handler.handleMessage(connection, confirm(id = "e1", accept = false))
+
+        // then: the audit event carries the hello client
+        assertThat(audits.single().details["client"]).`as`("audit client").isEqualTo("ingot-cli/1.4")
+    }
+
+    @Test
+    fun `audits an execute without a hello client with no client`() {
+        // given: a hello without a client
+        welcome()
+
+        // when: the client executes a command
+        handler.handleMessage(connection, execute(id = "e1", command = "probe"))
+
+        // then: the audit client is absent
+        assertThat(audits.single().details["client"]).`as`("audit client").isNull()
+    }
+
+    @Test
+    fun `keeps the token secret out of every frame, audit event and log line of the console flow`() {
+        // given: a recorder of the log lines and a connection that authenticates with the secret
+        val logLines = mutableListOf<String>()
+        journalist.consoleLog.subscribe(from = 0L) { logLines += it.text }
+        handler.handleMessage(connection, hello(protocols = "[1]", client = "ingot-cli/1.4"))
+
+        // when: it runs a plain command, a held sensitive command that is accepted, one that is declined, and a failed token
+        handler.handleMessage(connection, execute(id = "e1", command = "probe"))
+        handler.handleMessage(connection, execute(id = "e2", command = "token-regenerate ci s3cr3t-arg"))
+        handler.handleMessage(connection, confirm(id = "e2", accept = true))
+        handler.handleMessage(connection, execute(id = "e3", command = "token-regenerate ci s3cr3t-arg"))
+        handler.handleMessage(connection, confirm(id = "e3", accept = false))
+        val other = FakeConsoleConnection()
+        handler.handleMessage(other, "{\"type\":\"hello\",\"protocols\":[1],\"token\":\"deploy-bot:wrong-s3cret\"}")
+
+        // then: neither the token secret nor the secret argument appears anywhere
+        val everything = connection.json.toString() + connection.texts + other.json + other.texts + audits + logLines
+        assertThat(everything).`as`("frames, audit events and log lines").doesNotContain("s3cret", "s3cr3t-arg")
+        assertThat(audits).`as`("audit events").hasSize(3)
+    }
+
     private fun welcome() {
         handler.handleMessage(connection, hello(protocols = "[1]"))
         connection.json.clear()
     }
 
-    private fun hello(protocols: String): String =
-        "{\"type\":\"hello\",\"protocols\":$protocols,\"token\":\"deploy-bot:s3cret\"}"
+    private fun hello(protocols: String, client: String? = null): String =
+        "{\"type\":\"hello\",\"protocols\":$protocols,\"token\":\"deploy-bot:s3cret\"" +
+            (client?.let { ",\"client\":\"$it\"" } ?: "") + "}"
 
     private fun execute(id: String, command: String): String =
         "{\"type\":\"execute\",\"id\":\"$id\",\"command\":\"$command\"}"
