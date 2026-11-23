@@ -462,7 +462,7 @@ describe('ConsoleView', () => {
     first.onerror(new Event('error'))
     await flushPromises()
 
-    buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
+    await buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
     await flushPromises()
     FakeEventSource.instances[1].onopen()
     await flushPromises()
@@ -714,7 +714,7 @@ describe('ConsoleView', () => {
     it('opens the sign in dialog when the sign in button is pressed', async () => {
       await expireSession()
 
-      buttonLabelled(wrapper, 'Sign in')!.trigger('click')
+      await buttonLabelled(wrapper, 'Sign in')!.trigger('click')
 
       expect(login.openLogin, 'pressing sign in should ask the header for the sign in dialog').toHaveBeenCalledTimes(1)
     })

@@ -82,7 +82,7 @@ describe('LdapPanel', () => {
   }
 
   const save = async () => {
-    wrapper.find('#ldap-form').trigger('submit')
+    await wrapper.find('#ldap-form').trigger('submit')
     await flushPromises()
   }
 
@@ -288,7 +288,7 @@ describe('LdapPanel', () => {
       const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')!
       await hostname.setValue('ldap2.domain.com')
 
-      wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP')!.trigger('click')
+      await wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP')!.trigger('click')
       await flushPromises()
 
       expect(authUpdate).toHaveBeenCalledTimes(1)
@@ -435,7 +435,7 @@ describe('LdapPanel', () => {
     it('checks the connection alone when no test user is given', async () => {
       await mountPanel()
 
-      buttonNamed(wrapper, 'Test connection').trigger('click')
+      await buttonNamed(wrapper, 'Test connection').trigger('click')
       await flushPromises()
 
       expect(auth.testLdapProvider).toHaveBeenCalledWith({})
@@ -446,7 +446,7 @@ describe('LdapPanel', () => {
       type('ldap-test-username', 'ldapuser')
       type('ldap-test-password', 'ldap-password-12')
 
-      buttonNamed(wrapper, 'Test connection').trigger('click')
+      await buttonNamed(wrapper, 'Test connection').trigger('click')
       await flushPromises()
 
       expect(auth.testLdapProvider).toHaveBeenCalledWith({ username: 'ldapuser', password: 'ldap-password-12' })
@@ -455,7 +455,7 @@ describe('LdapPanel', () => {
     it('shows the user it found and the groups it has', async () => {
       await mountPanel()
 
-      buttonNamed(wrapper, 'Test connection').trigger('click')
+      await buttonNamed(wrapper, 'Test connection').trigger('click')
       await flushPromises()
 
       const result = wrapper.find('[data-test="ldap-test-result"]').text()
@@ -467,7 +467,7 @@ describe('LdapPanel', () => {
       auth.testLdapProvider.mockResolvedValue({ data: { ok: false, error: 'Connection refused' } })
       await mountPanel()
 
-      buttonNamed(wrapper, 'Test connection').trigger('click')
+      await buttonNamed(wrapper, 'Test connection').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('[data-test="ldap-test-result"]').text()).toContain('The test failed: Connection refused')
@@ -477,7 +477,7 @@ describe('LdapPanel', () => {
       auth.testLdapProvider.mockRejectedValue(rejection(503))
       await mountPanel()
 
-      buttonNamed(wrapper, 'Test connection').trigger('click')
+      await buttonNamed(wrapper, 'Test connection').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('[data-test="ldap-test-result"]').text()).toContain('The test failed: Request failed with status 503')
