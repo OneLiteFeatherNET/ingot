@@ -61,7 +61,7 @@ const onKeydown = (event: KeyboardEvent) => {
   <div
     role="radiogroup"
     :aria-label="label"
-    class="flex w-full flex-wrap overflow-hidden rounded-corner-segmented border border-outline sm:flex-nowrap"
+    class="flex w-full flex-wrap overflow-hidden rounded-corner-segmented border border-outline medium:flex-nowrap"
     data-ingot-component="segmented-control"
     @keydown="onKeydown"
   >

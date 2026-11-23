@@ -17,7 +17,7 @@
 <script setup lang="ts">
 /*
  * A table with a caption, a row header and sortable columns. The table scrolls sideways inside a named region when the
- * page is narrow. A column with a priority is hidden below a width: low below the md breakpoint, and medium, expanded,
+ * page is narrow. A column with a priority is hidden below a width: low below the expanded window class (the former Tailwind md, 768px, is now 840px), and medium, expanded,
  * large and xlarge below that window class. A column with priority base or high (the default) shows at every width.
  *
  * Props:
@@ -119,7 +119,7 @@ const CHEVRON = 'M6 9l6 6 6-6'
 const PRIORITY_CLASS: Record<Priority, string> = {
   high: '',
   base: '',
-  low: 'hidden md:table-cell',
+  low: 'hidden expanded:table-cell',
   medium: 'hidden medium:table-cell',
   expanded: 'hidden expanded:table-cell',
   large: 'hidden large:table-cell',
