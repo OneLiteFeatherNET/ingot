@@ -143,6 +143,34 @@ describe('the repositories table on the shared data table', () => {
     expect(shownFrom('Address')).toEqual(['large:table-cell'])
   })
 
+  describe('row fade', () => {
+    const rowNamed = (name: string) => wrapper.findAll('tbody tr').find((row) => row.text().includes(name))!
+
+    it('does not fade the rows of the first draw', async () => {
+      await mountTable()
+
+      expect(wrapper.findAll('tbody tr.motion-row-enter').length, 'no row of the first draw fades').toBe(0)
+    })
+
+    it('fades a row that is added after the first draw', async () => {
+      await mountTable()
+
+      await wrapper.setProps({ rows: [...ROWS, rowOf('docs', 2)] })
+
+      expect(rowNamed('docs').classes(), 'the added row fades in').toContain('motion-row-enter')
+      expect(rowNamed('releases').classes(), 'the row that was there stays plain').not.toContain('motion-row-enter')
+    })
+
+    it('leaves the remaining rows plain when a row is removed', async () => {
+      await mountTable()
+
+      await wrapper.setProps({ rows: [ROWS[1]] })
+
+      expect(wrapper.findAll('tbody tr.motion-row-enter').length, 'a removal animates nothing').toBe(0)
+      expect(wrapper.text(), 'the removed row is gone at once').not.toContain('releases')
+    })
+  })
+
   it('shows the empty text with its anchor when there are no rows', async () => {
     await mountTable({ rows: [], emptyText: 'No repositories match.' })
 

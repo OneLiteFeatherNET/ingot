@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useRowFade } from '../../composables/useRowFade'
 import MdDataTable from '../md/MdDataTable.vue'
 import MdIcon from '../md/MdIcon.vue'
 import MdOverflowMenu from '../md/MdOverflowMenu.vue'
@@ -87,6 +88,9 @@ const onSort = (next: { key: string }) => emit('sort', next.key as SortKey)
 // The table takes plain records; each cell reads its repository back from the row.
 const tableRows = computed(() => props.rows as unknown as Record<string, unknown>[])
 const repositoryOf = (row: Record<string, unknown>) => row as unknown as RepositoryRow
+// A repository that is added after the table was first drawn fades in; the first draw, a sort and a removal do not.
+const { isAdded } = useRowFade(() => props.rows.map((row) => row.route))
+const rowClass = (row: Record<string, unknown>) => (isAdded(repositoryOf(row).route) ? 'motion-row-enter' : undefined)
 // Each row carries the name it shows (the anchor spec: a repository row has data-ingot-repository).
 const ROW_ANCHORS = { 'data-ingot-repository': 'name' }
 
@@ -123,6 +127,7 @@ const onAction = (row: RepositoryRow, value: string) => {
       presorted
       row-key="route"
       :row-attrs="ROW_ANCHORS"
+      :row-class="rowClass"
       @update:model-value="onSort"
     >
       <template #cell="{ row, column }">
