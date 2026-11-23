@@ -115,16 +115,6 @@
     "count": 1
   },
   {
-    "file": "src/components/migration/DryRunStep.vue",
-    "match": "font-medium",
-    "count": 1
-  },
-  {
-    "file": "src/components/migration/DryRunStep.vue",
-    "match": "font-normal",
-    "count": 1
-  },
-  {
     "file": "src/components/migration/SyncStep.vue",
     "match": "font-normal",
     "count": 2

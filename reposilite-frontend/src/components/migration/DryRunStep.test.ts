@@ -113,13 +113,13 @@ describe('the Dry run step', () => {
     await wrapper.find('#migration-dry-run-start').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('table[data-test="report"] caption').exists(), 'the report table has a caption').toBe(true)
+    expect(wrapper.find('[data-test="report"] table caption').exists(), 'the report table has a caption').toBe(true)
     expect(wrapper.text()).toMatch(/2 mapped/i)
     expect(wrapper.text()).toMatch(/1 unsupported/i)
 
     await wrapper.find('#migration-report-status').setValue('UNSUPPORTED')
 
-    const rows = wrapper.findAll('table[data-test="report"] tbody tr')
+    const rows = wrapper.findAll('[data-test="report"] table tbody tr')
     expect(rows).toHaveLength(1)
     expect(rows[0].text()).toContain('nx-admin')
   })
@@ -217,6 +217,6 @@ describe('the Dry run step', () => {
 
     expect(api.createJob).not.toHaveBeenCalled()
     expect(api.report).toHaveBeenCalledWith(7, 'json')
-    expect(wrapper.findAll('table[data-test="report"] tbody tr')).toHaveLength(3)
+    expect(wrapper.findAll('[data-test="report"] table tbody tr')).toHaveLength(3)
   })
 })
