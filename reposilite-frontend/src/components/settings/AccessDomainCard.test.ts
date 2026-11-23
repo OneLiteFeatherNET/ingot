@@ -65,6 +65,17 @@ describe('AccessDomainCard', () => {
     expect(labels).toEqual(['Single sign on', 'LDAP'])
   })
 
+  it('draws each link as an outlined button with a 40 pixel body and a 48 pixel touch target', () => {
+    const links = wrapper!.findAll('li a')
+
+    expect(links.length, 'the domain offers links').toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link.attributes('data-variant'), 'an outlined button').toBe('outlined')
+      expect(link.classes(), 'a 40 pixel body').toContain('h-10')
+      expect(link.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+    }
+  })
+
   it('keeps the access-domain-card anchor on the plain root element of the component', () => {
     expect(wrapper!.attributes('data-ingot-component')).toBe('access-domain-card')
   })

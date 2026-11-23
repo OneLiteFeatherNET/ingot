@@ -120,6 +120,30 @@ describe('MdSnackbar', () => {
     expect(wrapper.find('[role="status"]').exists(), 'the notice must leave after its action').toBe(false)
   })
 
+  it('draws the action as a 40 pixel inverse text button with a 48 pixel touch target', async () => {
+    const wrapper = mountSnackbar()
+    queue.enqueue({ message: 'Deleted', tone: 'success', action: { label: 'Undo', onClick: vi.fn() } })
+    await nextTick()
+
+    const action = wrapper.findAll('button').find(button => button.text() === 'Undo')!
+    expect(action.attributes('data-variant'), 'a text button').toBe('text')
+    expect(action.classes(), 'a 40 pixel body').toContain('h-10')
+    expect(action.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+    expect(action.classes(), 'the old 48 pixel body is gone').not.toContain('min-h-12')
+    expect(action.classes(), 'the inverse colour of a snackbar').toContain('text-inverse-primary')
+  })
+
+  it('draws the close button as a 40 pixel icon button with a 48 pixel touch target', async () => {
+    const wrapper = mountSnackbar()
+    queue.enqueue({ message: 'Signed out', tone: 'info' })
+    await nextTick()
+
+    const close = wrapper.get('button[aria-label="Dismiss notification"]')
+    expect(close.classes(), 'a 40 pixel body').toContain('h-10')
+    expect(close.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+    expect(close.classes(), 'the old 48 pixel body is gone').not.toContain('size-12')
+  })
+
   it('renders no action button when the notice has no action', async () => {
     const wrapper = mountSnackbar()
     queue.enqueue({ message: 'Signed out', tone: 'info' })

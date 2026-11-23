@@ -111,11 +111,6 @@
   },
   {
     "file": "src/components/md/MdSnackbar.vue",
-    "match": "[&>svg]:size-6",
-    "count": 1
-  },
-  {
-    "file": "src/components/md/MdSnackbar.vue",
     "match": "medium:left-[calc(var(--app-rail-width,0px)+1.5rem)]",
     "count": 1
   },

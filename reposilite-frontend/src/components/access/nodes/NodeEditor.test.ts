@@ -398,6 +398,19 @@ describe('NodeEditor', () => {
         .find(option => option.find('span').text() === label)!.trigger('click')
     }
 
+    it('draws each template option with a 40 pixel body and a 48 pixel touch target', async () => {
+      mountEditor()
+      await wrapper.find('[data-test="template-toggle"]').trigger('click')
+
+      const options = wrapper.findAll('[data-test="template-option"]')
+      expect(options.length, 'the menu offers templates').toBeGreaterThan(0)
+      for (const option of options) {
+        expect(option.classes(), 'a 40 pixel body').toContain('min-h-10')
+        expect(option.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+        expect(option.classes(), 'the old 48 pixel body is gone').not.toContain('min-h-12')
+      }
+    })
+
     const fillRepository = async (name: string) => {
       await wrapper.find('[data-test="template-panel"] input').setValue(name)
       await wrapper.find('[data-test="template-apply"]').trigger('click')
@@ -709,6 +722,14 @@ describe('NodeEditor', () => {
   describe('inherited nodes', () => {
     const toggle = () => wrapper.find('[data-test="inherited-toggle"]')
     const region = () => wrapper.find(`[id="${toggle().attributes('aria-controls')}"]`)
+
+    it('draws the toggle with a 40 pixel body and a 48 pixel touch target', () => {
+      mountEditor({ inherited: INHERITED() })
+
+      expect(toggle().classes(), 'a 40 pixel body').toContain('min-h-10')
+      expect(toggle().classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+      expect(toggle().classes(), 'the old 48 pixel body is gone').not.toContain('min-h-12')
+    })
 
     it('shows the source team and the distance of a node from a parent team', () => {
       mountEditor({ inherited: INHERITED() })

@@ -350,6 +350,14 @@ describe('RepositoryOverview no match', () => {
     expect(link!.attributes('href')).toBe('/search?q=guava')
   })
 
+  it('draws the artifact search link as a text button with a 48 pixel touch target', async () => {
+    await mountAt('/?q=guava')
+
+    const link = wrapper.findAll('a').find(anchor => anchor.text() === 'Search artifacts for guava')!
+    expect(link.attributes('data-variant'), 'a text button').toBe('text')
+    expect(link.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+  })
+
   it('keeps Clear filters next to the artifact search link', async () => {
     await mountAt('/?q=guava')
 
