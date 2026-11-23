@@ -22,7 +22,14 @@ import java.time.Instant
 import java.time.ZoneOffset
 
 /** A console socket that records what the handler sends. Equal only to itself, like one real socket. */
-internal class FakeConsoleConnection(override val host: String = "203.0.113.7") : ConsoleConnection {
+internal class FakeConsoleConnection(
+    override val host: String = "203.0.113.7",
+    override val origin: String? = null,
+    override val requestHost: String? = null,
+    private val cookies: Map<String, String> = emptyMap(),
+) : ConsoleConnection {
+
+    override fun cookie(name: String): String? = cookies[name]
 
     val texts = mutableListOf<String>()
     val json = mutableListOf<Any>()
