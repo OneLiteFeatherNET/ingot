@@ -42,7 +42,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
   `kotlinx-metadata-jvm` (pinned), the comparison excludes them and the members with `$` in their names, and a class whose metadata cannot be
   read is logged and kept. Test first: `InternalClassFilterTest` over metadata of one internal and one public class, from fixtures that are
   compiled in the test, with a temporary directory.
-- [ ] 3.5 Verify with a scratch change that is not committed: remove a public method of `com.reposilite.frontend.api.PluginUiRegistrar` and
+- [x] 3.5 Verify with a scratch change that is not committed: remove a public method of `com.reposilite.frontend.api.PluginUiRegistrar` and
   add a method to an `ExperimentalIngotSearchApi` interface. The report must list the first under promised and the second under experimental.
   Record the result in the pull request.
 
