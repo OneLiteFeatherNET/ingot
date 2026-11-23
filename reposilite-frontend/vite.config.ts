@@ -18,6 +18,7 @@ import { defineConfig, type Plugin } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import tailwindcss from "@tailwindcss/vite"
+import type { AtRule } from "postcss"
 import { visualizer } from "rollup-plugin-visualizer"
 
 /*
@@ -28,12 +29,12 @@ import { visualizer } from "rollup-plugin-visualizer"
  * and miss. The base element anchors every such reference at the mount point, whatever the
  * address is. Only the production build carries it: the dev server serves from its root.
  */
-const mountPoint = () => ({
+export const mountPoint = () => ({
   name: 'ingot-mount-point',
   apply: 'build',
   transformIndexHtml: {
     order: 'pre',
-    handler: (html) => html.replace('<head>', '<head>\n    <base href="{{REPOSILITE.BASE_PATH}}" />'),
+    handler: (html: string): string => html.replace('<head>', '<head>\n    <base href="{{REPOSILITE.BASE_PATH}}" />'),
   },
 }) satisfies Plugin
 
@@ -42,14 +43,14 @@ const mountPoint = () => ({
  * element anchors them wherever the image is mounted, and its server fills that element in at start. The
  * placeholders that carry no runtime value are written here, so nothing but the base element is left.
  */
-const dashboardBuild = process.env.INGOT_DASHBOARD_BUILD === "1"
+const dashboardBuild: boolean = process.env.INGOT_DASHBOARD_BUILD === "1"
 
-const dashboardText = () => ({
+export const dashboardText = () => ({
   name: 'ingot-dashboard-text',
   apply: 'build',
   transformIndexHtml: {
     order: 'pre',
-    handler: (html) => html
+    handler: (html: string): string => html
       .replaceAll('{{REPOSILITE.TITLE}}', 'Ingot Repository')
       .replaceAll('{{REPOSILITE.DESCRIPTION}}', 'Maven repository powered by Ingot')
       .replaceAll('{{REPOSILITE.FAVICON}}', 'favicon.png'),
@@ -122,7 +123,7 @@ export default defineConfig({
         {
           postcssPlugin: "internal:charset-removal",
           AtRule: {
-            charset: (atRule) => {
+            charset: (atRule: AtRule) => {
               if (atRule.name === "charset") {
                 atRule.remove()
               }
