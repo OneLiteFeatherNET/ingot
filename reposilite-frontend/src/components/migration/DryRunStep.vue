@@ -20,6 +20,9 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdSelect from '../md/MdSelect.vue'
+import MdTextField from '../md/MdTextField.vue'
 import MdDataTable from '../md/MdDataTable.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -54,6 +57,7 @@ const reportLoaded = ref(false)
 const readReport = ref(false)
 const statusFilter = ref('')
 const textFilter = ref('')
+const statusOptions = [{ value: '', label: 'All statuses' }, ...LOSS_STATUSES.map(status => ({ value: status as string, label: lossStatusText(status) }))]
 
 const watched = useJobWatch({
   api,
@@ -329,40 +333,19 @@ onMounted(() => {
         </div>
 
         <div class="flex flex-wrap items-end gap-4">
-          <div class="flex flex-col gap-1">
-            <label
-              for="migration-report-status"
-              class="md-label-large"
-            >Status</label>
-            <select
-              id="migration-report-status"
-              v-model="statusFilter"
-              class="rounded-corner-extra-small border border-outline bg-surface px-2 py-2"
-            >
-              <option value="">
-                All statuses
-              </option>
-              <option
-                v-for="status in LOSS_STATUSES"
-                :key="status"
-                :value="status"
-              >
-                {{ lossStatusText(status) }}
-              </option>
-            </select>
-          </div>
-          <div class="flex flex-col gap-1">
-            <label
-              for="migration-report-search"
-              class="md-label-large"
-            >Search the report</label>
-            <input
-              id="migration-report-search"
-              v-model="textFilter"
-              type="search"
-              class="rounded-corner-extra-small border border-outline bg-surface px-2 py-2"
-            >
-          </div>
+          <MdSelect
+            id="migration-report-status"
+            v-model="statusFilter"
+            label="Status"
+            width="content"
+            :options="statusOptions"
+          />
+          <MdTextField
+            id="migration-report-search"
+            v-model="textFilter"
+            type="search"
+            label="Search the report"
+          />
           <div class="flex gap-4">
             <a
               class="md-focus-ring text-primary"
@@ -389,24 +372,20 @@ onMounted(() => {
         />
 
         <div class="flex flex-col gap-3">
-          <label class="flex items-center gap-2 md-body-large">
-            <input
-              id="migration-accept-check"
-              v-model="readReport"
-              type="checkbox"
-            >
+          <MdCheckbox
+            id="migration-accept-check"
+            v-model="readReport"
+          >
             I have read the loss report for this mapping
-          </label>
+          </MdCheckbox>
           <div>
-            <button
+            <MdButton
               id="migration-accept-report"
-              type="button"
-              class="md-focus-ring rounded-corner-full bg-primary px-6 py-2.5 md-label-large text-on-primary disabled:bg-on-surface/12 disabled:text-on-surface/38"
               :disabled="!readReport || acceptanceCurrent"
               @click="acceptReport"
             >
               Accept the loss report
-            </button>
+            </MdButton>
           </div>
           <p
             v-if="acceptanceCurrent"

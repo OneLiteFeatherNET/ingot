@@ -20,6 +20,8 @@ import type { MigrationJob } from '../../store/migration/types'
 import CutOverStep from './CutOverStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { fakeApi, mountWith, cleanup } from './testing'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 
 afterEach(cleanup)
 
@@ -197,5 +199,12 @@ describe('the Cut-over step', () => {
     await flushPromises()
 
     expect(document.getElementById('migration-cutover-delete-confirm')!.classList.contains('bg-error'), 'the removal uses the error colour role').toBe(true)
+  })
+
+  it('draws the checklist as a fieldset of checkbox primitives', async () => {
+    const { wrapper } = await mountWith(CutOverStep, { wizard: wizardWith([importJob(), verifyJob(verified)]), at: '/settings/migration/cut-over' })
+
+    expect(wrapper.findAllComponents(MdFieldset).length, 'the checklist is an MdFieldset').toBeGreaterThan(0)
+    expect(wrapper.findAllComponents(MdCheckbox), 'each item is an MdCheckbox').toHaveLength(3)
   })
 })

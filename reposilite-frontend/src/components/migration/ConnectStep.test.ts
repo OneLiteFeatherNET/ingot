@@ -19,6 +19,8 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import ConnectStep from './ConnectStep.vue'
 import { ApiProblem } from '../../store/migration/migrationApi'
 import { fakeApi, mountWith, cleanup, okConnection } from './testing'
+import MdRadio from '../md/MdRadio.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 
 const URL_VALUE = 'https://nexus.example.test'
 const USER = 'importer'
@@ -83,7 +85,7 @@ describe('the Connect step', () => {
 
   it('accepts a secret reference as text and sends it as the password', async () => {
     const { wrapper, api } = await mountWith(ConnectStep)
-    const referenceChoice = wrapper.findAll('label').find(entry => entry.text().includes('Use a secret reference'))
+    const referenceChoice = wrapper.findAllComponents(MdRadio).find(entry => entry.text().includes('Use a secret reference'))
     await referenceChoice!.find('input').setValue(true)
     await fill(wrapper, { password: null })
     await wrapper.find('#migration-connect-reference').setValue('${env:NEXUS_PASSWORD}')
@@ -160,5 +162,13 @@ describe('the Connect step', () => {
 
     expect(api.testConnection, 'no call without the form').not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Enter the Nexus URL')
+  })
+
+  it('draws the password choice as a fieldset of radio primitives', async () => {
+    const { wrapper } = await mountWith(ConnectStep)
+
+    expect(wrapper.findAllComponents(MdFieldset).length, 'the choice is an MdFieldset').toBeGreaterThan(0)
+    expect(wrapper.findAllComponents(MdRadio), 'both choices are MdRadio').toHaveLength(2)
+    expect(wrapper.find('legend').text()).toBe('Password')
   })
 })

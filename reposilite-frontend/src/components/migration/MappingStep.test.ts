@@ -19,6 +19,9 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import MappingStep from './MappingStep.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
 import { mountWith, cleanup, discovery } from './testing'
+import MdRadio from '../md/MdRadio.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 
 afterEach(cleanup)
 
@@ -148,5 +151,13 @@ describe('the Mapping step', () => {
     await flushPromises()
 
     expect(document.getElementById('migration-overwrite-confirm')!.classList.contains('bg-error'), 'the confirmation uses the error colour role').toBe(true)
+  })
+
+  it('draws the conflict policy as radio primitives and the include control as a checkbox primitive', async () => {
+    const { wrapper } = await mountWith(MappingStep, { wizard: discoveredWizard(), at: '/settings/migration/mapping' })
+
+    expect(wrapper.findAllComponents(MdFieldset).length, 'the policy is an MdFieldset').toBeGreaterThan(0)
+    expect(wrapper.findAllComponents(MdRadio).length, 'every policy is an MdRadio').toBeGreaterThanOrEqual(2)
+    expect(wrapper.findAllComponents(MdCheckbox).length, 'every include control is an MdCheckbox').toBeGreaterThanOrEqual(1)
   })
 })
