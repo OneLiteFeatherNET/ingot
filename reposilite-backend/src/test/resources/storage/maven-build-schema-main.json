@@ -145,6 +145,11 @@
                     }
                   },
                   "type" : [ "object", "null" ]
+                },
+                "pathStyleAccess" : {
+                  "type" : [ "boolean", "null" ],
+                  "description" : "Address the bucket as https://host/bucket/key, which most S3-compatible servers such as MinIO need (optional). When unset, the JVM property reposilite.s3.pathStyleAccessEnabled decides",
+                  "title" : "Path Style Access"
                 }
               }
             } ],
