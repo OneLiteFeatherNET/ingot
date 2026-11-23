@@ -52,6 +52,13 @@ describe('RevokeTokenDialog', () => {
     expect(dialog().textContent).toContain('laptop')
   })
 
+  it('emphasises the token name with the type scale and not a hand-set weight', () => {
+    const name = [...dialog().querySelectorAll('span')].find(node => node.textContent?.trim() === 'laptop')
+    expect(name, 'the token name is drawn in its own element').toBeDefined()
+    expect(name?.classList.contains('font-medium'), 'a hand-set weight is not used').toBe(false)
+    expect(name?.className, 'the weight comes from the label token').toContain('font-(weight:--md-sys-typescale-label-large-weight)')
+  })
+
   it('keeps the revoke button disabled until the name is typed', () => {
     expect(revokeButton().disabled, 'nothing is typed yet').toBe(true)
   })

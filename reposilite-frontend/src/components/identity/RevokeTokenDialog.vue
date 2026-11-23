@@ -96,7 +96,7 @@ const revoke = async () => {
       </h2>
     </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
-      Anything that uses <span class="font-medium text-on-surface">{{ token?.name }}</span> stops
+      Anything that uses <span class="font-(weight:--md-sys-typescale-label-large-weight) text-on-surface">{{ token?.name }}</span> stops
       working right away. This cannot be undone.
     </p>
 

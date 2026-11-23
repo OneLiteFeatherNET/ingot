@@ -74,6 +74,13 @@ describe('SecretOnceDialog', () => {
     expect(dialog().textContent).toContain('laptop')
   })
 
+  it('emphasises the token name with the type scale and not a hand-set weight', () => {
+    const name = [...dialog().querySelectorAll('span')].find(node => node.textContent?.trim() === 'laptop')
+    expect(name, 'the token name is drawn in its own element').toBeDefined()
+    expect(name?.classList.contains('font-medium'), 'a hand-set weight is not used').toBe(false)
+    expect(name?.className, 'the weight comes from the label token').toContain('font-(weight:--md-sys-typescale-label-large-weight)')
+  })
+
   it('copies the secret and reports it in a snackbar', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })

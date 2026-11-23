@@ -73,7 +73,7 @@ const groups = computed(() => {
             >
               <span
                 v-if="error.label"
-                class="font-medium"
+                class="font-(weight:--md-sys-typescale-label-large-weight)"
               >{{ error.label }}: </span>{{ error.message }}
             </li>
           </ul>

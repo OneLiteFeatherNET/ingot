@@ -45,6 +45,13 @@ describe('RotateTokenDialog', () => {
     expect(dialog().textContent).toContain('The old secret stops working')
   })
 
+  it('emphasises the token name with the type scale and not a hand-set weight', () => {
+    const name = [...dialog().querySelectorAll('span')].find(node => node.textContent?.trim() === 'laptop')
+    expect(name, 'the token name is drawn in its own element').toBeDefined()
+    expect(name?.classList.contains('font-medium'), 'a hand-set weight is not used').toBe(false)
+    expect(name?.className, 'the weight comes from the label token').toContain('font-(weight:--md-sys-typescale-label-large-weight)')
+  })
+
   it('rotates the token by its name and hands on the new secret', async () => {
     rotateButton().click()
     await flushPromises()

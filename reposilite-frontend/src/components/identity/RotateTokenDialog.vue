@@ -90,7 +90,7 @@ const rotate = async () => {
       </h2>
     </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
-      <span class="font-medium text-on-surface">{{ token?.name }}</span> gets a new secret.
+      <span class="font-(weight:--md-sys-typescale-label-large-weight) text-on-surface">{{ token?.name }}</span> gets a new secret.
       The old secret stops working right away, so update everything that uses it.
     </p>
     <MdAlert
