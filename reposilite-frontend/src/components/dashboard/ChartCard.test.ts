@@ -64,6 +64,17 @@ describe('ChartCard', () => {
     expect(wrapper.findAll('[role="alert"]'), 'the failure should be announced once').toHaveLength(1)
   })
 
+  it('draws the retry as a tonal button inside the error panel', () => {
+    const wrapper = mount(ChartCard, {
+      props: { title: 'Traffic', error: 'Cannot load statistics.' },
+      slots: { default: plot }
+    })
+
+    const retry = wrapper.find('button')
+    expect(retry.attributes('data-variant'), 'the retry is a tonal button').toBe('tonal')
+    expect(retry.element.closest('[role="alert"]'), 'the retry sits in the error state panel').not.toBeNull()
+  })
+
   it('shows a loading panel with no pulse animation while the data is loading', () => {
     const wrapper = mount(ChartCard, {
       props: { title: 'Traffic', loading: true },
