@@ -50,10 +50,12 @@ const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
         :src="logo"
       >
       <div class="flex min-w-0 flex-col items-center gap-3 text-center md:items-start md:text-left">
+        <!-- eslint-disable vue/no-v-html -- the description is markup the operator sets in the instance settings, a trusted constant of the deployment -->
         <div
           class="md-title-large text-on-surface"
           v-html="description"
         />
+        <!-- eslint-enable vue/no-v-html -->
         <a
           v-if="organizationWebsite"
           class="md-focus-ring md-label-large inline-flex min-h-12 items-center gap-2 rounded-corner-small text-primary no-underline hover:underline"

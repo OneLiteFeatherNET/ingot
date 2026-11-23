@@ -20,7 +20,6 @@ import type { Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { DOMWrapper } from '@vue/test-utils'
 import ResourceTrends from './ResourceTrends.vue'
-import type { Series } from './seriesSummary'
 import type { components } from '../../types/api'
 
 type StatusSnapshot = components['schemas']['StatusSnapshot']
