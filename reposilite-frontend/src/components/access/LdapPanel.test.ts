@@ -104,6 +104,17 @@ describe('LdapPanel', () => {
     document.body.innerHTML = ''
   })
 
+  describe('field grids', () => {
+    it('lays its fields out with the shared field grid, not a hand-written grid', async () => {
+      await mountPanel()
+
+      const handWritten = wrapper.findAll('.medium\\:grid-cols-2')
+      const shared = wrapper.findAll('.expanded\\:grid-cols-2')
+      expect(handWritten.length, 'no field group writes its own two column grid').toBe(0)
+      expect(shared.length, 'the four field groups use the shared field grid').toBeGreaterThanOrEqual(4)
+    })
+  })
+
   describe('headings', () => {
     it('titles both sections with level 2 headings in the title-medium role, under the level 1 page heading', async () => {
       await mountPanel()
