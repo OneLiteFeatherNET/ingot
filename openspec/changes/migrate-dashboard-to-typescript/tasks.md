@@ -251,12 +251,12 @@ that rule, or by hand), fixes the code instead of suppressing it again, and chan
 Pull request title pattern: `refactor(ui): fix the <rule> findings of the dashboard`. Each pull request also names its rule in the description.
 
 - [x] 4.3.1 `@typescript-eslint/require-await` (104): drop `async` where nothing is awaited, or return the promise. Open the pull request.
-- [ ] 4.3.2 `@typescript-eslint/no-unsafe-assignment` (147): type the source of each assignment. Open the pull request.
+- [x] 4.3.2 `@typescript-eslint/no-unsafe-assignment` (147): type the source of each assignment. Open the pull request.
 - [x] 4.3.3 `@typescript-eslint/no-unsafe-argument` (63): type the argument or its source. Open the pull request.
 - [x] 4.3.4 `@typescript-eslint/unbound-method` (29): bind the method or use an arrow function. Open the pull request.
 - [x] 4.3.5 `@typescript-eslint/no-floating-promises` (27): await, return or mark the promise with `void` where fire and forget is intended. Open the pull request.
 - [x] 4.3.6 `@typescript-eslint/no-unsafe-call` (25) and `@typescript-eslint/no-unsafe-return` (1): type the callee and the return value. Open the pull request.
-- [ ] 4.3.7 `@typescript-eslint/no-base-to-string` (16), `@typescript-eslint/restrict-template-expressions` (6), `@typescript-eslint/prefer-promise-reject-errors` (1) and `@typescript-eslint/await-thenable` (1): the small type-aware rules, one pull request because each is a one-line fix. Open the pull request.
+- [x] 4.3.7 `@typescript-eslint/no-base-to-string` (16), `@typescript-eslint/restrict-template-expressions` (6), `@typescript-eslint/prefer-promise-reject-errors` (1) and `@typescript-eslint/await-thenable` (1): the small type-aware rules, one pull request because each is a one-line fix. Open the pull request.
 - [ ] 4.3.8 The `vue/*` template formatting rules (`html-indent` 19, `html-closing-bracket-newline` 7, `max-attributes-per-line` 4, `first-attribute-linebreak` 3, `multiline-html-element-content-newline` 2, `html-self-closing` 2, `html-closing-bracket-spacing` 1): run the formatter on the listed files only. Open the pull request.
 - [x] 4.3.9 `no-unused-vars` (1), `@typescript-eslint/no-unused-vars` (1) and `vue/no-v-html` (1): remove the variable, or keep `v-html` with a reason beside it if the content is a trusted constant. Open the pull request.
 - [ ] 4.3.R After 4.3.1 to 4.3.9 are merged: confirm `eslint-suppressions.json` is `{}` (delete the leftover keys of any rule not listed above), and remove the `.js` entries from the Vitest, style-gate and anchor patterns that no longer match any file. Open the pull request `refactor(ui): remove the eslint suppressions and javascript patterns`.
