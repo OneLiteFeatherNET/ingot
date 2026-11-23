@@ -16,10 +16,14 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
-import DeletePolicyDialog from './DeletePolicyDialog.vue'
-import RunNowDialog from './RunNowDialog.vue'
+import type { Component } from 'vue'
+import DeletePolicyDialogSource from './DeletePolicyDialog.vue'
+import RunNowDialogSource from './RunNowDialog.vue'
 
-const dialogs: Array<[string, object, Record<string, unknown>]> = [
+const DeletePolicyDialog = DeletePolicyDialogSource as Component
+const RunNowDialog = RunNowDialogSource as Component
+
+const dialogs: Array<[string, Component, Record<string, unknown>]> = [
   ['DeletePolicyDialog', DeletePolicyDialog, { policyId: 'snapshots-weekly' }],
   ['RunNowDialog', RunNowDialog, { policyId: 'snapshots-weekly', running: false, result: null, error: null }]
 ]
@@ -27,8 +31,8 @@ const dialogs: Array<[string, object, Record<string, unknown>]> = [
 let wrapper: VueWrapper | null = null
 let opener: HTMLButtonElement | null = null
 
-const openDialog = async (component: object, props: Record<string, unknown>) => {
-  wrapper = mount(component, { props: { modelValue: false, ...props }, attachTo: document.body }) as VueWrapper
+const openDialog = async (component: Component, props: Record<string, unknown>) => {
+  wrapper = mount(component, { props: { modelValue: false, ...props }, attachTo: document.body })
   await wrapper.setProps({ modelValue: true })
   await flushPromises()
 }
