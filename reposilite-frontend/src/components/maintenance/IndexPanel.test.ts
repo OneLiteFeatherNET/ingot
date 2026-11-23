@@ -15,9 +15,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type { Component } from 'vue'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import IndexPanel from './IndexPanel.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 
 // The error shape the mocked errorMessage reads: a plain Error, or an HTTP error with a response body.
 type ErrorLike = (Error & { response?: { data?: { message?: string } } }) | undefined
@@ -128,6 +130,12 @@ afterEach(() => {
 })
 
 describe('IndexPanel status', () => {
+  it('lays the facts of the index out in the shared key-value list', async () => {
+    await mountPanel()
+
+    expect(wrapper.findComponent(MdKeyValueList as Component).exists()).toBe(true)
+  })
+
   it('shows the state, the lag, the last full rebuild and the number of rows', async () => {
     await mountPanel()
 
@@ -140,14 +148,14 @@ describe('IndexPanel status', () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.resolve({ data: indexBody({ state: 'DEGRADED', lagSeconds: 420 }) })) })
     await mountPanel()
 
-    expect(wrapper.find('[data-lag]').text()).toContain('7 minutes')
+    expect(wrapper.find('[data-test="lag"]').text()).toContain('7 minutes')
   })
 
   it('says a rebuild has never completed when the status has no last full rebuild', async () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.resolve({ data: indexBody({ state: 'MISSING', lastFullRebuild: null, rows: 0 }) })) })
     await mountPanel()
 
-    expect(wrapper.find('[data-last-rebuild]').text()).toBe('Never')
+    expect(wrapper.find('[data-test="last-rebuild"]').text()).toBe('Never')
   })
 
   it('shows the dead letters of the outbox apart from the pending entries', async () => {
@@ -156,8 +164,8 @@ describe('IndexPanel status', () => {
     })
     await mountPanel()
 
-    expect(wrapper.find('[data-outbox="pending"]').text()).toContain('5')
-    expect(wrapper.find('[data-outbox="dead-letters"]').text()).toContain('2')
+    expect(wrapper.find('[data-test="outbox-pending"]').text()).toContain('5')
+    expect(wrapper.find('[data-test="outbox-dead-letters"]').text()).toContain('2')
   })
 
   it('shows the drift report of the last verify with its percentage and the rows it found', async () => {

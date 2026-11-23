@@ -20,6 +20,7 @@ import { createRouter, createMemoryHistory, type Router, type RouteRecordRaw } f
 import type { Ref } from 'vue'
 import * as sessionModule from '../../store/session'
 import RepositoryOverview from './RepositoryOverview.vue'
+import MdBadge from '../md/MdBadge.vue'
 import { LIST_DETAILS_KEY } from './listDetails'
 
 // The client the page asks for the list, with the mock of its one call.
@@ -723,6 +724,18 @@ describe('RepositoryOverview write policy', () => {
     expect(rowFor('releases').find('[data-test="write-policy"]').text()).toBe('Allow redeploy')
     expect(rowFor('frozen').find('[data-test="write-policy"]').text()).toBe('Read-only')
     expect(rowFor('central').find('[data-test="write-policy"]').exists()).toBe(false)
+  })
+
+  it('draws the write policy of a repository with the shared badge', async () => {
+    await mountAt('/', {
+      answer: answerWith([
+        { id: 'releases', visibility: 'PUBLIC', description: '', tags: [], type: 'hosted', typeExplicit: true, writePolicy: 'ALLOW' }
+      ])
+    })
+    await showDetails()
+
+    const badge = wrapper.findAllComponents(MdBadge).find(candidate => candidate.text() === 'Allow redeploy')
+    expect(badge?.attributes('data-test')).toBe('write-policy')
   })
 })
 

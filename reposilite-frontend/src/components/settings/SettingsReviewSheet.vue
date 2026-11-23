@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
@@ -139,12 +140,9 @@ const revertLabelOf = (change: SettingsChange): string => {
                 <div class="flex min-w-0 flex-col gap-1">
                   <p class="flex flex-wrap items-center gap-2 md-label-large">
                     <span>{{ labelOf(change) }}</span>
-                    <span
-                      v-if="badgeOf(change)"
-                      class="rounded-corner-full border border-current px-2 md-label-small"
-                    >
+                    <MdBadge v-if="badgeOf(change)">
                       {{ badgeOf(change) }}
-                    </span>
+                    </MdBadge>
                   </p>
                   <p
                     v-if="valueOf(change)"

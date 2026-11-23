@@ -20,6 +20,7 @@ import type { AxiosResponse } from 'axios'
 import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
@@ -99,16 +100,8 @@ const providers = computed(() => settings.value.oidcProviders)
 const editingProvider = computed(() => providers.value.find(provider => provider.id === editingId.value) ?? null)
 const takenIds = computed(() => providers.value.map(provider => provider.id).filter(id => id !== editingId.value))
 
-const STATUS_CLASSES: Record<string, string> = {
-  neutral: 'bg-surface-container-highest text-on-surface-variant',
-  success: 'bg-surface-container-highest text-success',
-  error: 'bg-error-container text-on-error-container'
-}
 
-// The classes of a status tone; the tone names the key.
-const classOf = (tone: string): string => STATUS_CLASSES[tone]
-
-const statusOf = (provider: OidcProvider): { tone: string; text: string } => {
+const statusOf = (provider: OidcProvider): { tone: 'neutral' | 'success' | 'error'; text: string } => {
   const result = testResults.value[provider.id]
   if (!result) return { tone: 'neutral', text: 'Not tested' }
   return result.ok ? { tone: 'success', text: 'Connected' } : { tone: 'error', text: 'Test failed' }
@@ -284,13 +277,12 @@ onMounted(load)
             {{ provider.issuerUrl || 'No issuer yet' }}
           </p>
         </div>
-        <span
+        <MdBadge
           data-test="status"
-          class="rounded-corner-small px-2 py-0.5 md-label-medium"
-          :class="classOf(statusOf(provider).tone)"
+          :tone="statusOf(provider).tone"
         >
           {{ statusOf(provider).text }}
-        </span>
+        </MdBadge>
         <div class="flex items-center gap-2">
           <span class="md-label-medium text-on-surface-variant">Enabled</span>
           <MdSwitch

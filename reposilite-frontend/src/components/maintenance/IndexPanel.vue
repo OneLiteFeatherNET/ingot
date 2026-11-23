@@ -24,6 +24,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdSection from '../md/MdSection.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import RebuildIndexDialog from './RebuildIndexDialog.vue'
@@ -100,6 +101,23 @@ const progress = computed(() => {
 const lagText = (seconds: number) => (seconds < 60
   ? countLabel(seconds, 'second')
   : countLabel(Math.floor(seconds / 60), 'minute'))
+
+// The facts of the index, as the rows of the key-value list. The changes not queued show only when there are some.
+const facts = computed(() => {
+  const status = index.value
+  if (!status) return []
+  const rows = [
+    { label: 'Lag behind storage', value: lagText(status.lagSeconds), testId: 'lag' },
+    { label: 'Last full rebuild', value: formatDateTime(status.lastFullRebuild, 'Never'), testId: 'last-rebuild' },
+    { label: 'Indexed files', value: countLabel(status.rows, 'row') },
+    { label: 'Waiting in the outbox', value: countLabel(status.outbox.pending, 'entry', 'entries'), testId: 'outbox-pending' },
+    { label: 'Dead letters', value: countLabel(status.outbox.deadLetters, 'entry', 'entries'), testId: 'outbox-dead-letters' }
+  ]
+  if (status.outbox.droppedEnqueues > 0) {
+    rows.push({ label: 'Changes not queued', value: `${status.outbox.droppedEnqueues} since the last rebuild`, testId: 'outbox-dropped' })
+  }
+  return rows
+})
 
 const percent = (fraction: number) => `${Math.round(fraction * 100)}%`
 
@@ -280,77 +298,10 @@ onBeforeUnmount(stopPolling)
               data-state
             >{{ stateLabel }}</span>
           </p>
-          <dl class="grid grid-cols-1 gap-x-6 gap-y-3 medium:grid-cols-2 md-body-medium">
-            <div class="flex flex-col">
-              <dt class="text-on-surface-variant">
-                Lag behind storage
-              </dt>
-              <dd
-                class="text-on-surface"
-                data-lag
-              >
-                {{ lagText(index.lagSeconds) }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="text-on-surface-variant">
-                Last full rebuild
-              </dt>
-              <dd
-                class="text-on-surface"
-                data-last-rebuild
-              >
-                {{ formatDateTime(index.lastFullRebuild, 'Never') }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="text-on-surface-variant">
-                Indexed files
-              </dt>
-              <dd class="text-on-surface">
-                {{ countLabel(index.rows, 'row') }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="text-on-surface-variant">
-                Waiting in the outbox
-              </dt>
-              <dd
-                class="text-on-surface"
-                data-outbox="pending"
-              >
-                {{ countLabel(index.outbox.pending, 'entry', 'entries') }}
-              </dd>
-            </div>
-            <div class="flex flex-col">
-              <dt class="text-on-surface-variant">
-                Dead letters
-              </dt>
-              <dd
-                class="text-on-surface"
-                data-outbox="dead-letters"
-              >
-                {{ countLabel(index.outbox.deadLetters, 'entry', 'entries') }}
-              </dd>
-              <dd class="md-body-small text-on-surface-variant">
-                Entries that failed too often. A rebuild or a verify repairs their rows.
-              </dd>
-            </div>
-            <div
-              v-if="index.outbox.droppedEnqueues > 0"
-              class="flex flex-col"
-            >
-              <dt class="text-on-surface-variant">
-                Changes not queued
-              </dt>
-              <dd
-                class="text-on-surface"
-                data-outbox="dropped"
-              >
-                {{ index.outbox.droppedEnqueues }} since the last rebuild
-              </dd>
-            </div>
-          </dl>
+          <MdKeyValueList :items="facts" />
+          <p class="md-body-small text-on-surface-variant">
+            Dead letters are entries that failed too often. A rebuild or a verify repairs their rows.
+          </p>
         </div>
 
         <MdCard
