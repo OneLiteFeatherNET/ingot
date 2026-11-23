@@ -94,7 +94,7 @@ describe('AuditEventRow actor', () => {
     const grid = row.find('div.grid')
     expect(grid.classes()).toContain('grid')
     expect(grid.classes(), 'stacked on a phone').toContain('grid-cols-[minmax(0,1fr)]')
-    expect(grid.classes(), 'desktop tracks may shrink to zero').toContain('min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto]')
+    expect(grid.classes(), 'desktop tracks may shrink to zero').toContain('medium:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto]')
   })
 })
 

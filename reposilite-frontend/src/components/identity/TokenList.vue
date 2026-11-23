@@ -214,7 +214,7 @@ const lastUsedText = (token: IdentityToken) => {
             :key="token.name"
             data-test="token-row"
           >
-            <div class="flex flex-col gap-3 py-1 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
+            <div class="flex flex-col gap-3 py-1 medium:flex-row medium:items-start medium:justify-between">
               <div class="flex min-w-0 flex-1 flex-col gap-2">
                 <div class="flex min-w-0 flex-col">
                   <span class="md-title-medium break-words text-on-surface">{{ token.name }}</span>
@@ -225,20 +225,20 @@ const lastUsedText = (token: IdentityToken) => {
                     {{ token.description }}
                   </span>
                 </div>
-                <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
-                  <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant medium:grid-cols-[repeat(3,auto)] medium:justify-start">
+                  <div class="contents medium:flex medium:flex-col">
                     <dt>Created</dt>
                     <dd class="m-0 text-on-surface">
                       {{ createdDay(token) }}
                     </dd>
                   </div>
-                  <div class="contents min-[480px]:flex min-[480px]:flex-col">
+                  <div class="contents medium:flex medium:flex-col">
                     <dt>Expires</dt>
                     <dd class="m-0 text-on-surface">
                       {{ token.expiresAt ? expiryDay(token) : 'Never' }}
                     </dd>
                   </div>
-                  <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
+                  <div class="contents medium:flex medium:min-w-0 medium:flex-col">
                     <dt>Last used</dt>
                     <dd
                       class="m-0 min-w-0 text-on-surface"

@@ -110,7 +110,7 @@ const empty = computed(() => instances.value
 
 <template>
   <div
-    class="grid gap-3 min-[1024px]:grid-cols-2"
+    class="grid gap-3 large:grid-cols-2"
     data-ingot-component="resource-trends"
   >
     <ChartCard
