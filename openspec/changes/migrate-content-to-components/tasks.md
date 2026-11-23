@@ -140,7 +140,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 6.1 `test(ui)`: in `src/components/md/MdFieldGrid.test.js`, `MdFieldset.test.js` and `MdSaveBar.test.js`, assert one column below
   the `expanded` window class and two from it (class per window), that a fieldset draws a `legend` and not a `span` for its title, and that
   the save bar keeps the bottom clearance as a class. Verify: they fail, because the components do not exist.
-- [ ] 6.2 `test(ui)`: in `src/components/renderers/useFieldBinding.test.js`, assert the mapping from JSON Forms props to primitive props for
+- [x] 6.2 `test(ui)`: in `src/components/renderers/useFieldBinding.test.js`, assert the mapping from JSON Forms props to primitive props for
   a text field, a text area, a select, a colour field and a tags field, with plain input objects. Verify: it fails, because the composable
   does not exist.
 - [ ] 6.3 `test(ui)`: in the tests of `CreateTokenDialog`, `PolicyDialog`, `SearchFilters`, `AuditView`, `PasswordCard` and `FileUpload`,
@@ -148,11 +148,11 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   of `DryRunStep` and `SupportView` is an `MdButton`. Verify: it fails on the mixed variants and the hand-built controls.
 - [x] 6.4 `test(ui)`: in `src/components/md/MdTextField.test.js`, assert that the default variant is `outlined` and that a `filled` prop
   still works. Verify: it fails on the current default.
-- [ ] 6.5 `fix(ui)`: change the default of `MdTextField` to `outlined`, add `MdFieldGrid`, `MdFieldset` and `MdSaveBar` to
+- [x] 6.5 `fix(ui)`: change the default of `MdTextField` to `outlined`, add `MdFieldGrid`, `MdFieldset` and `MdSaveBar` to
   `src/components/md/`, each with a registry entry and a DESIGN.md catalogue entry as the catalogue spec requires, and add `src/components/renderers/useFieldBinding.js`. Verify: 6.1, 6.2 and 6.4 pass.
-- [ ] 6.6 `fix(ui)`: migrate the native controls to primitives: `ConnectStep`, `MappingStep`, `CutOverStep`, `DryRunStep` (including its
+- [x] 6.6 `fix(ui)`: migrate the native controls to primitives: `ConnectStep`, `MappingStep`, `CutOverStep`, `DryRunStep` (including its
   filled button), `AddMemberDialog`, `PluginBlock` (its buttons and the native progress), `SupportView`. Verify: 6.3 passes for these files.
-- [ ] 6.7 `fix(ui)`: migrate the buttons and touch targets: `FactoryResetModal` and `ConflictDialog` raw text buttons to `MdButton`,
+- [x] 6.7 `fix(ui)`: migrate the buttons and touch targets: `FactoryResetModal` and `ConflictDialog` raw text buttons to `MdButton`,
   `AccessDomainCard` and `RepositoryOverview` router links as buttons to `MdButton` with `href`, `StatTile`, `SearchBar`, `SearchResultRow`,
   `AdministrationFrame` (icon and text buttons), `SideNavTree` (search input). Visible 48-pixel controls become 40-pixel controls with
   `md-touch-target`: `NodeInheritedSection`, `NodeTemplateMenu`, `AdministrationFrame`, `MdSnackbar`. Verify: the tests of each file pass and
@@ -160,7 +160,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 6.8 `fix(ui)`: move the form scaffolding into the shared components: field grids (LdapPanel and the others), fieldsets (CreateTokenDialog,
   PolicyDialog, SearchFilters), save bars (AuthenticationGroupForm, LdapPanel, UnsavedChangesBar, the `calc` offset of SettingsView). Verify:
   the tests of each file pass.
-- [ ] 6.9 `fix(ui)`: split `RepositoryWizard.vue` into `src/components/settings/wizard/` (`WizardStepIndicator`, `WizardChoiceCard` for the
+- [x] 6.9 `fix(ui)`: split `RepositoryWizard.vue` into `src/components/settings/wizard/` (`WizardStepIndicator`, `WizardChoiceCard` for the
   four copies, `WizardFieldGroup`, `WizardRemoteFields`, `WizardReviewSummary`, `WizardProgressList`). The data flow and the anchor
   `repository-wizard` stay. Verify: `RepositoryWizard.test.js` passes unchanged except for selectors moved to anchors.
 - [ ] 6.10 `fix(ui)`: migrate the six renderers to `useFieldBinding` (`MdTextFieldRenderer`, `MdTextAreaRenderer`, `MdSelectRenderer`,
@@ -178,7 +178,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 7. Wave 5: breakpoints and leftovers
 
-- [ ] 7.1 `test(ui)`: in a new `src/styles/md3/breakpoints.test.js`, read `src/style.css` as text and assert that the four window
+- [x] 7.1 `test(ui)`: in a new `src/styles/md3/breakpoints.test.js`, read `src/style.css` as text and assert that the four window
   classes are declared as `@custom-variant`s at 600, 840, 1240 and 1600 pixels, with `max-medium` and `max-expanded` below the first two,
   and that `--breakpoint-*: initial` is declared in `@theme`. Verify: it fails, because the reset is not there yet.
 - [x] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
@@ -192,7 +192,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
   folder group. Verify: the Playwright layout suite passes at 320, 600, 840, 1280 and 1920 pixels, and each changed threshold is in the
   wave's screenshots on both sides of the threshold.
-- [ ] 7.6 `fix(ui)`: in `src/style.css` `@theme`, add `--breakpoint-*: initial` so that Tailwind's default breakpoints are gone. The
+- [x] 7.6 `fix(ui)`: in `src/style.css` `@theme`, add `--breakpoint-*: initial` so that Tailwind's default breakpoints are gone. The
   window classes stay the `@custom-variant`s that the file already declares, with `large` at 1240 pixels. Do this after 7.5 so that no
   view depends on a default. Verify: 7.1 passes, and the `.container` gutter is still 16 pixels below 600 pixels and 24 pixels from it
   (the `window-margins.test.js` assertions pass).
