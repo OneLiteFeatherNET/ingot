@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import CreateTokenDialog from './CreateTokenDialog.vue'
 import MdFieldset from '../md/MdFieldset.vue'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 import type { IdentityTokenApi } from './identityTokens'
 import type { components } from '../../types/api'
 import { setClock, resetClock } from '../../helpers/clock'
@@ -72,6 +73,10 @@ describe('CreateTokenDialog', () => {
     wrapper.unmount()
     document.body.innerHTML = ''
     resetClock()
+  })
+
+  it('builds its text fields, radio buttons and checkboxes from primitives', () => {
+    expectPrimitiveControls(wrapper, document.body)
   })
 
   it('names the dialog after its heading', () => {

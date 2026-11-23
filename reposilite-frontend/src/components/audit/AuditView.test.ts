@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import download from 'downloadjs'
 import AuditView from './AuditView.vue'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 
 // The client is swapped per test through this holder, as in the token view tests.
 // The holder is set in beforeEach, so the null start is never read.
@@ -143,6 +144,15 @@ describe('AuditView loading', () => {
 
     expect(session.client.audit.list).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('Artifact deployed')
+  })
+})
+
+describe('AuditView controls', () => {
+  it('builds its text fields from primitives', async () => {
+    const wrapper = await mountView()
+
+    expectPrimitiveControls(wrapper as VueWrapper)
+    wrapper.unmount()
   })
 })
 

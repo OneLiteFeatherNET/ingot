@@ -14,17 +14,34 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import MdFieldset from '../md/MdFieldset.vue'
 import SearchFilters from './SearchFilters.vue'
-import { DEFAULT_QUERY } from './searchQuery'
+import { DEFAULT_QUERY, parseSearchQuery } from './searchQuery'
+import type { Facets } from './searchResult'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 
-const facets = { repository: [], extension: [], classifier: [], origin: [], snapshot: [] }
+const emptyFacets = { repository: [], extension: [], classifier: [], origin: [], snapshot: [] }
+
+const facets: Facets = {
+  repository: [{ value: 'releases', count: 4 }],
+  extension: [{ value: 'jar', count: 3 }],
+  classifier: [{ value: 'sources', count: 1 }],
+  origin: [{ value: 'HOSTED', count: 4 }],
+  snapshot: [{ value: 'false', count: 4 }]
+}
+
+let wrapper: VueWrapper | undefined
+
+afterEach(() => {
+  wrapper?.unmount()
+  wrapper = undefined
+})
 
 describe('SearchFilters', () => {
   it('titles each group of filters with the legend of a shared fieldset', () => {
-    const wrapper = mount(SearchFilters, { props: { query: { ...DEFAULT_QUERY }, facets } })
+    const wrapper = mount(SearchFilters, { props: { query: { ...DEFAULT_QUERY }, facets: emptyFacets } })
 
     const legends = wrapper.findAllComponents(MdFieldset).map(group => group.find('legend').text())
 
@@ -32,5 +49,13 @@ describe('SearchFilters', () => {
       'Repository', 'File type', 'Classifier', 'Origin', 'Release or snapshot', 'Coordinates', 'Last modified', 'File size'
     ])
     expect(wrapper.findAll('fieldset'), 'no hand-written fieldset is left').toHaveLength(legends.length)
+  })
+})
+
+describe('SearchFilters controls', () => {
+  it('builds its text fields from primitives', () => {
+    wrapper = mount(SearchFilters, { props: { query: parseSearchQuery(), facets } }) as VueWrapper
+
+    expectPrimitiveControls(wrapper)
   })
 })

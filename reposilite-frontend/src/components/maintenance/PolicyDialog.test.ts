@@ -19,6 +19,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PolicyDialog from './PolicyDialog.vue'
 import MdFieldset from '../md/MdFieldset.vue'
 import type { PolicyPayload } from './policy'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 
 let wrapper!: VueWrapper
 
@@ -53,6 +54,14 @@ const errorText = () => document.querySelector('#policy-form')?.textContent ?? '
 
 afterEach(() => {
   wrapper?.unmount()
+})
+
+describe('PolicyDialog controls', () => {
+  it('builds its text fields from primitives', async () => {
+    await openDialog()
+
+    expectPrimitiveControls(wrapper, document.body)
+  })
 })
 
 describe('PolicyDialog validation', () => {
