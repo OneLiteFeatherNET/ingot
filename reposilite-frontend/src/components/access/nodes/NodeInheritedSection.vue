@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { ref, useId, type PropType } from 'vue'
+import MdBadge from '../../md/MdBadge.vue'
 import MdList from '../../md/MdList.vue'
 import MdListItem from '../../md/MdListItem.vue'
 import type { InheritedEntry } from './inheritedNodes'
@@ -115,11 +116,13 @@ const regionId = `inherited-${useId()}`
             >
               {{ inheritedSourceLabel(entry) }}
             </p>
-            <span
+            <MdBadge
               v-if="isOverridden(entry, direct)"
-              class="mt-1 inline-block rounded-corner-small bg-surface-container-highest px-2 py-1 md-label-small text-on-surface-variant"
+              class="mt-1"
               data-test="inherited-overridden"
-            >Overridden by a direct node</span>
+            >
+              Overridden by a direct node
+            </MdBadge>
             <template #trailing>
               <span
                 class="md-label-large"

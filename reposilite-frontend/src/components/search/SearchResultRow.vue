@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import { RouterLink } from 'vue-router'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { formatDay, formatSize, repositoryLabel } from './searchResult'
@@ -114,26 +115,28 @@ const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
         </button>
 
         <div class="flex flex-wrap items-center gap-2 pl-10 md-body-medium text-on-surface-variant">
-          <span
+          <MdBadge
             v-if="hasNewer"
+            tone="hosted"
             data-test="newer"
-            class="inline-flex h-6 items-center rounded-corner-small bg-tertiary-container px-2 md-label-medium text-on-tertiary-container"
-          >Newer: {{ item.latestVersion }}</span>
-          <span
+          >
+            Newer: {{ item.latestVersion }}
+          </MdBadge>
+          <MdBadge
             v-if="item.snapshot"
             data-test="snapshot"
-            class="inline-flex h-6 items-center rounded-corner-small border border-outline px-2 md-label-medium text-on-surface"
-          >Snapshot</span>
-          <span
+          >
+            Snapshot
+          </MdBadge>
+          <MdBadge
             v-for="repository in item.repositories"
             :key="`${repository.name}:${repository.origin}`"
+            :tone="repository.origin === 'MIRROR' ? 'accent' : 'neutral'"
             data-test="repository"
             :data-origin="repository.origin"
-            class="inline-flex h-6 items-center rounded-corner-small px-2 md-label-medium"
-            :class="repository.origin === 'MIRROR'
-              ? 'bg-secondary-container text-on-secondary-container'
-              : 'border border-outline text-on-surface'"
-          >{{ repositoryLabel(repository) }}</span>
+          >
+            {{ repositoryLabel(repository) }}
+          </MdBadge>
           <span data-test="file-count">{{ fileCount }}</span>
           <span
             v-if="item.lastModified"
