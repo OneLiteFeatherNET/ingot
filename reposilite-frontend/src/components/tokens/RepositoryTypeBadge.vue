@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import MdBadge from '../md/MdBadge.vue'
 import { typeBadgeOf } from '../../store/maven/repositoryTypes'
 
 /*
@@ -36,21 +37,20 @@ const props = defineProps({
 
 const badge = computed(() => typeBadgeOf(props.repository))
 
-const TONES: Record<string, string> = {
-  hosted: 'bg-tertiary-container text-on-tertiary-container',
-  proxy: 'bg-secondary-container text-on-secondary-container',
-  group: 'bg-primary-container text-on-primary-container',
-  mixed: 'border border-outline text-on-surface-variant'
+const TONES: Record<string, 'hosted' | 'proxy' | 'group' | 'mixed'> = {
+  hosted: 'hosted',
+  proxy: 'proxy',
+  group: 'group',
+  mixed: 'mixed'
 }
 </script>
 
 <template>
-  <span
+  <MdBadge
     data-test="type-badge"
     :data-type="badge.key"
     :title="badge.hint || undefined"
-    class="md-label-medium inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-corner-small px-2"
-    :class="TONES[badge.key]"
+    :tone="TONES[badge.key]"
     data-ingot-component="repository-type-badge"
   >
     {{ badge.label }}
@@ -63,5 +63,5 @@ const TONES: Record<string, string> = {
       v-if="badge.legacy"
       class="sr-only"
     >{{ badge.hint }}</span>
-  </span>
+  </MdBadge>
 </template>

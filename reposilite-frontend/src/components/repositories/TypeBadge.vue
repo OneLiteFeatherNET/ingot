@@ -21,17 +21,18 @@
  * "derived", in text, so the difference is not carried by colour alone.
  */
 import type { RepositoryRow } from './repositoryRows'
+import MdBadge from '../md/MdBadge.vue'
 
 defineProps<{
   // The type as rowsOf builds it: { key, label, derived }.
   type: RepositoryRow['type']
 }>()
 
-const TONES: Record<string, string> = {
-  HOSTED: 'bg-tertiary-container text-on-tertiary-container',
-  PROXY: 'bg-secondary-container text-on-secondary-container',
-  GROUP: 'bg-primary-container text-on-primary-container',
-  MIXED: 'border border-outline text-on-surface-variant'
+const TONES: Record<string, 'hosted' | 'proxy' | 'group' | 'mixed'> = {
+  HOSTED: 'hosted',
+  PROXY: 'proxy',
+  GROUP: 'group',
+  MIXED: 'mixed'
 }
 
 const ICONS: Record<string, string> = {
@@ -47,22 +48,23 @@ const ICONS: Record<string, string> = {
     class="inline-flex flex-wrap items-center gap-2"
     data-ingot-component="type-badge"
   >
-    <span
+    <MdBadge
       data-test="type-badge"
       :data-type="type.key"
-      class="md-label-medium inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-corner-small px-2"
-      :class="TONES[type.key]"
+      :tone="TONES[type.key]"
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        class="size-4"
-        aria-hidden="true"
-      >
-        <path :d="ICONS[type.key]" />
-      </svg>
+      <template #leading>
+        <svg
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          class="size-4"
+          aria-hidden="true"
+        >
+          <path :d="ICONS[type.key]" />
+        </svg>
+      </template>
       {{ type.label }}
-    </span>
+    </MdBadge>
     <span
       v-if="type.derived"
       data-test="derived"

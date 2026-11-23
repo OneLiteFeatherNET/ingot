@@ -17,6 +17,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
+import MdBadge from '../md/MdBadge.vue'
 import { diffSettings, type SettingsChange } from './settingsDiff'
 
 const SCHEMAS = {
@@ -157,6 +158,15 @@ describe('SettingsReviewSheet', () => {
 
     expect(sheet().textContent).toContain('Added')
     expect(sheet().textContent).toContain('Removed')
+  })
+
+  it('draws the Added and Removed marks with the shared badge', async () => {
+    mountSheet()
+    await flushPromises()
+
+    const labels = wrapper!.findAllComponents(MdBadge).map(badge => badge.text())
+    expect(labels).toContain('Added')
+    expect(labels).toContain('Removed')
   })
 
   it('reverts the change whose Revert action was pressed', async () => {

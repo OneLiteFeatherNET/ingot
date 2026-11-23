@@ -27,6 +27,7 @@ import { filterRepositories, parseSearch, tagUsage } from '../../store/maven/rep
 import { TYPE_FILTERS, filterByType, typesFromParam } from '../../store/maven/repositoryTypes'
 import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
+import MdBadge from '../md/MdBadge.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdPage from '../md/MdPage.vue'
@@ -493,11 +494,13 @@ const setShowDetails = (value: boolean) => {
                   </svg>
                   {{ badgeOf(repository)?.label }}
                 </span>
-                <span
+                <MdBadge
                   v-if="showDetails && writePolicyLabelOf(repository)"
                   data-test="write-policy"
-                  class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
-                >{{ writePolicyLabelOf(repository) }}</span>
+                  class="self-center"
+                >
+                  {{ writePolicyLabelOf(repository) }}
+                </MdBadge>
                 <RepositoryTypeBadge
                   :repository="repository"
                   class="self-center"

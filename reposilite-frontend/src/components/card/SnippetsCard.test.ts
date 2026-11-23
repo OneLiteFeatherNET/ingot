@@ -22,6 +22,7 @@ import { join } from 'node:path'
 import SnippetsCard from './SnippetsCard.vue'
 import MdTransition from '../md/MdTransition.vue'
 import RepositorySnippet from './RepositorySnippet.vue'
+import ArtifactSnippet from './ArtifactSnippet.vue'
 import MdCopyableCode from '../md/MdCopyableCode.vue'
 import MdCodeBlock from '../md/MdCodeBlock.vue'
 import { DETAILS_COLLAPSED_KEY } from './detailsCollapsed'
@@ -656,5 +657,41 @@ describe('SnippetsCard title level', () => {
 
     expect(wrapper!.find('h1').exists(), 'the card draws no heading of level one').toBe(false)
     expect(wrapper!.find('h2 button').exists(), 'the card title is a heading of level two').toBe(true)
+  })
+})
+
+describe('SnippetsCard snippet anchors', () => {
+  const ARTIFACT = 'releases/eu/cloudnetservice/cloudnet'
+  const ARTIFACT_LEVEL = `<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>eu.cloudnetservice.cloudnet</groupId>
+  <artifactId>cloudnet</artifactId>
+  <versioning><versions><version>3.0.0</version></versions></versioning>
+</metadata>`
+
+  afterEach(() => {
+    content.mockImplementation(() => new Promise(() => {}))
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('carries the repository-snippet anchor on the root of the repository snippet', async () => {
+    content.mockImplementation(() => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404 } })))
+    await mountCard('releases')
+
+    const snippet = wrapper!.findComponent(RepositorySnippet as Component)
+    expect(snippet.exists(), 'a repository path shows the repository snippet').toBe(true)
+    expect(snippet.attributes('data-ingot-component'), 'the anchor is on the snippet root').toBe('repository-snippet')
+    expect(snippet.findComponent(MdCopyableCode as Component).findComponent(MdCodeBlock as Component).exists()).toBe(true)
+  })
+
+  it('carries the artifact-snippet anchor on the root of the artifact snippet', async () => {
+    content.mockImplementation(() => Promise.resolve({ data: ARTIFACT_LEVEL }))
+    await mountCard(ARTIFACT, ['maven-metadata.xml'])
+
+    const snippet = wrapper!.findComponent(ArtifactSnippet as Component)
+    expect(snippet.exists(), 'an artifact path shows the artifact snippet').toBe(true)
+    expect(snippet.attributes('data-ingot-component'), 'the anchor is on the snippet root').toBe('artifact-snippet')
+    expect(snippet.findComponent(MdCopyableCode as Component).findComponent(MdCodeBlock as Component).exists()).toBe(true)
   })
 })

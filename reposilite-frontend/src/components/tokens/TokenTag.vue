@@ -15,6 +15,9 @@
   -->
 
 <script setup lang="ts">
+// A static MD3 badge: a label, not an action, so it is not a chip.
+import MdBadge from '../md/MdBadge.vue'
+
 defineProps({
   /** Reserved for the one property that changes what a token may reach. */
   accent: {
@@ -25,14 +28,10 @@ defineProps({
 </script>
 
 <template>
-  <!-- A static MD3 badge: a label, not an action, so it is not a chip. -->
-  <span
-    class="md-label-small inline-flex items-center whitespace-nowrap rounded-corner-small px-2 py-0.5"
-    :class="accent
-      ? 'bg-tertiary-container text-on-tertiary-container'
-      : 'bg-secondary-container text-on-secondary-container'"
+  <MdBadge
+    :tone="accent ? 'hosted' : 'accent'"
     data-ingot-component="token-tag"
   >
     <slot />
-  </span>
+  </MdBadge>
 </template>

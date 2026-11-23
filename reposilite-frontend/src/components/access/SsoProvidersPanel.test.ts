@@ -20,6 +20,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { siGithub, siKeycloak } from 'simple-icons'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
 import MdCard from '../md/MdCard.vue'
+import MdBadge from '../md/MdBadge.vue'
 import { SECRET_PLACEHOLDER, type LdapSettings, type OidcProvider } from './loginSettings'
 
 const holder = vi.hoisted(() => ({ session: null as null | { client: Ref<unknown> } }))
@@ -177,6 +178,13 @@ describe('SsoProvidersPanel', () => {
       await mountPanel()
 
       expect(rowOf('Keycloak').find('[data-test="status"]').text()).toBe('Not tested')
+    })
+
+    it('draws the status of a provider with the shared badge', async () => {
+      await mountPanel()
+
+      const badge = wrapper!.findAllComponents(MdBadge).find(candidate => candidate.text() === 'Not tested')
+      expect(badge?.attributes('data-test'), 'the status keeps its test hook on the badge').toBe('status')
     })
 
     it('shows an empty state with a prompt to add when no provider exists', async () => {
