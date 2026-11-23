@@ -66,10 +66,10 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 4.1 `test(ui)`: in `src/components/md/MdListItem.test.js`, assert `aria-current="true"` on the selected row only, the 56 pixel and
   48 pixel minimum height classes through a `data-test` on the row, and the divider drawn by the list. Verify: it fails, because the row
   does not take `selected` yet.
-- [ ] 4.2 `test(ui)`: in `src/components/access/PrincipalsPanel.test.js` and `TeamsPanel.test.js`, assert that exactly one row is selected
+- [x] 4.2 `test(ui)`: in `src/components/access/PrincipalsPanel.test.js` and `TeamsPanel.test.js`, assert that exactly one row is selected
   for the route, and that the selection is computed once (a spy on the selection function counts one call per render). Verify: it fails
   on the four copies.
-- [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js`, assert that each link row is an `MdListItem` drawn as a link
+- [x] 4.3 `test(ui)`: in `DetailedListEntry.test.js`, assert that each link row is an `MdListItem` drawn as a link
   (stretched link) with `aria-current="page"` when its route is open; in `EntryList.test.js`, assert that each row is an `MdListItem`
   whose stretched control is a selection button (not a link) with `aria-current="true"` on the selected entry only. Verify: it fails.
 - [x] 4.4 `fix(ui)`: set `aria-current` and the 56 and 48 pixel row heights on the catalogue's `MdListItem`, and draw the divider
