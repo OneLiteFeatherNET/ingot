@@ -96,6 +96,56 @@ test.describe('system information and support page', () => {
     await expect.poll(classes, { message: 'a tab to the left enters from the left' }).toContain('motion-shared-x-back-enter-active')
   })
 
+  // The "What is removed" note is the shared disclosure, on the Overview tab. Its body sits in a grid wrapper that
+  // animates grid-template-rows, so the height is read from the box of that wrapper and no test waits for a time.
+  const note = (page: Page) => page.locator('details').filter({ has: page.getByText('What is removed', { exact: true }) })
+  const noteRows = (page: Page) => note(page).locator('.expand-rows')
+
+  test('opens and closes the support note with a height animation and keeps the page in place', async ({ page }) => {
+    await page.goto(siteUrl('/settings/system-info'))
+    await expect(note(page)).not.toHaveAttribute('open', '')
+    const scrollBefore = await page.evaluate(() => window.scrollY)
+    // Records the expand classes the transition uses from now on, so the animation is read from the classes.
+    await page.evaluate(() => {
+      const seen = new Set<string>()
+      ;(window as unknown as { __motionClasses: Set<string> }).__motionClasses = seen
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const name of (record.target as Element).classList) if (name.startsWith('motion-expand')) seen.add(name)
+        }
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] })
+    })
+    const classes = () => page.evaluate(() => [...(window as unknown as { __motionClasses: Set<string> }).__motionClasses])
+
+    await page.getByText('What is removed', { exact: true }).click()
+    await expect(note(page), 'the note is open').toHaveAttribute('open', '')
+    await expect.poll(classes, { message: 'the body opens with the expand transition' }).toContain('motion-expand-enter-active')
+    await expect.poll(async () => (await noteRows(page).boundingBox())?.height ?? 0, {
+      message: 'the body comes to its full height',
+    }).toBeGreaterThan(0)
+    expect(await page.evaluate(() => window.scrollY), 'opening the note does not scroll the page').toBe(scrollBefore)
+
+    await page.getByText('What is removed', { exact: true }).click()
+    await expect.poll(classes, { message: 'the body closes with the expand transition' }).toContain('motion-expand-leave-active')
+    await expect(note(page), 'the open attribute goes once the transition has ended').not.toHaveAttribute('open', '')
+  })
+
+  test('opens the support note at once under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(siteUrl('/settings/system-info'))
+
+    await page.getByText('What is removed', { exact: true }).click()
+
+    await expect(note(page), 'the note is open').toHaveAttribute('open', '')
+    await expect(noteRows(page), 'the body is drawn').toBeVisible()
+    // Reduced motion shortens the transition to 0.01ms, so the body reaches the height of its content at once.
+    await expect.poll(async () => {
+      const box = await noteRows(page).boundingBox()
+      const full = await noteRows(page).evaluate((element) => element.scrollHeight)
+      return Math.abs((box?.height ?? 0) - full) < 1
+    }, { message: 'the body has its full height with no animation' }).toBe(true)
+  })
+
   test('offers the support bundle download on every tab', async ({ page }) => {
     await page.goto(siteUrl('/settings/system-info'))
 
