@@ -19,7 +19,7 @@ import { useInheritedNodes, type InheritedSource } from './useInheritedNodes'
 import type { TeamNodes } from './inheritedNodes'
 
 vi.mock('../../../helpers/toast', () => ({
-  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 /*

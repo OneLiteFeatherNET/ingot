@@ -471,7 +471,7 @@ describe('RepositoryOverview empty and failing states', () => {
   })
 
   it('keeps the folder listing when the backend does not have the endpoint, as an older backend does', async () => {
-    await mountAt('/', { answer: () => Promise.reject({ response: { status: 404, data: {} } }) })
+    await mountAt('/', { answer: () => Promise.reject(Object.assign(new Error('Not Found'), { response: { status: 404, data: {} } })) })
 
     expect(wrapper.find('[data-test="folder-listing"]').exists()).toBe(true)
     expect(rows()).toHaveLength(0)

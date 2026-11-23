@@ -26,7 +26,7 @@ type ErrorLike = { message?: string; response?: { data?: { message?: string } } 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: ErrorLike | undefined) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike | undefined) => error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 const ALICE: Principal = { name: 'alice', kind: 'USER', displayName: 'Alice Example', disabled: false }

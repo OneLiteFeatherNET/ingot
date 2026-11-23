@@ -645,7 +645,7 @@ describe('IndexPage navigation', () => {
 
     await router.push('/access/users')
     await flushPromises()
-    await router.back()
+    router.back()
     await flushPromises()
 
     expect(shownSection(wrapper), 'the back button must restore the section from the URL').toBe('audit')
