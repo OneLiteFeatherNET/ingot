@@ -135,8 +135,8 @@ so the REPL uses the socket. The decision is numbered 2 and its parts are 2.1 to
 
 > **Status.** The handshake below is the one on `main`. The first revision of this section also described an `auth` object with a
 > `session` scheme, and a `welcome` with `node`, `version`, `listing`, `capabilities` and `identity`. The implementation chose a smaller
-> shape, and this section follows it. The cookie authentication of 2.4 and the liveness pings of 2.9 are not built yet: they stay open as
-> tasks 4.6 and 4.7.
+> shape, and this section follows it. The cookie authentication of 2.4 is not built yet: it stays open as
+> task 4.6. The liveness pings of 2.9 are built, without the pong deadline.
 
 Client to server:
 
@@ -173,7 +173,7 @@ Server to client:
 - The protocol version is fixed by the handshake. Frames carry no version of their own. A client ignores fields it does not know, so
   the server can add fields to version 1 without a new version.
 - An unknown `type` gets an `error` with code `unknown_type` and the request `id`. The connection stays open.
-- Liveness uses WebSocket ping and pong control frames, not JSON.
+- Liveness uses WebSocket ping control frames, not JSON.
 - An inbound frame over 4 KiB gets an `error` with code `too_long` and the connection stays open. A command line over
   `MAX_COMMAND_LENGTH` (1024 characters) gets the same error, as the server refuses it today.
 
@@ -282,8 +282,10 @@ Server to client:
 ### 2.9 Timeouts
 
 - Handshake: no deadline. A silent socket stays open as upstream does (2.2).
-- Liveness: the server sends a WebSocket ping every 20 seconds and closes a connection that has not answered with a pong within 60 seconds.
-  Not built yet, open as task 4.7.
+- Liveness: the server sends a WebSocket ping every 20 seconds to each version 1 socket, drops a socket whose write fails, and closes the
+  socket at session expiry. There is no pong deadline: Javalin 7.2.2 exposes no pong events to the handler (`WsConfig` offers only
+  `onConnect`, `onMessage`, `onBinaryMessage`, `onClose` and `onError`), so the server cannot tell whether a pong arrived. This can be
+  revisited if Javalin exposes pong events.
 - Confirmation: 120 seconds, then declined (2.3).
 - Command: no server-side timeout, because a command such as `settings-reencrypt` may run for a while. The client shows the elapsed time.
   Ctrl-C in the CLI stops the wait for the result and leaves the command running on the server, and the CLI says so. Version 1 has no

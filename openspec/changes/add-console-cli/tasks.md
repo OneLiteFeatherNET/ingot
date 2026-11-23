@@ -61,7 +61,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   next `execute` and closes with 1008; a session closes at its expiry time (fake clock); no frame, error or audit event contains the secret;
   the audit `client` is the hello `client`. Verify: red before 4.8.
 - [ ] 4.7 `test(console)`: failing tests for the listing `scope` (`status` is `node`, a plugin command defaults to `cluster`), for the
-  liveness pings (a client that does not pong within 60 seconds is closed) and for `shutdown` (`error` then 1001). Verify: red before 4.8.
+  liveness pings (a socket whose ping write fails is dropped; there is no pong deadline because Javalin 7.2.2 exposes no pong events) and for `shutdown` (`error` then 1001). Verify: red before 4.8.
 - [ ] 4.8 `feat(console)`: add the version 1 branch beside the legacy branch of `ConsoleWebSocketHandler`, with the bounded queue and one
   writer per connection, the handshake, the timers through an injected scheduler, the sequence numbers in the cached logger, the `scope`
   member of the listing, the `client` in the audit event, and the additive description of the socket frames in
