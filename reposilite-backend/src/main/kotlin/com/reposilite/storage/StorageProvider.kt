@@ -17,9 +17,13 @@
 package com.reposilite.storage
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.badRequestError
+import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.shared.stream.RangedInputStream
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.storage.StorageEntry
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
 import java.time.Duration
@@ -37,6 +41,20 @@ interface StorageProvider {
      */
     fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> =
         getFile(location).map { RangedInputStream(it, offset, length) }
+
+    /**
+     * The content, size and modification time of a file in one call. The default asks [getFileDetails] and then [getFile], as callers
+     * do today, so a provider that does not override it, and every plugin compiled against the older interface, behaves as before. A
+     * remote storage overrides it to answer with one request. The caller closes the content of the returned entry.
+     */
+    @ExperimentalIngotPluginApi
+    fun readEntry(location: Location): Result<StorageEntry, ErrorResponse> =
+        getFileDetails(location).flatMap { details ->
+            when (details) {
+                is DocumentInfo -> getFile(location).map { StorageEntry(it, details.contentLength, details.lastModifiedTime) }
+                else -> getFile(location).flatMap { it.close(); badRequestError<StorageEntry>("$location is not a file") }
+            }
+        }
 
     fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse>
 
