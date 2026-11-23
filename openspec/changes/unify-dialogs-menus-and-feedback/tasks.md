@@ -52,10 +52,10 @@ here.
   assert that two mounted instances have different heading ids (no fixed `new-machine-title`). In `PrincipalActionsMenu.test.js`,
   assert the disabled and two-line items through `MdOverflowMenu` and the focus ring on the destructive item. In
   `check/ComboboxField` and `nodes/NodeTemplateMenu` tests, assert the listbox roles and the keyboard choice. Verify: they fail.
-- [ ] 4.3 `test(ui)`: in the test files of `PolicyDialog`, `RebuildIndexDialog`, `RunNowDialog`, `DeletePolicyDialog` and
+- [x] 4.3 `test(ui)`: in the test files of `PolicyDialog`, `RebuildIndexDialog`, `RunNowDialog`, `DeletePolicyDialog` and
   `CleanupPoliciesPanel`, assert the dialog assertions of D9, the `alertdialog` role on `DeletePolicyDialog`, the cancel button
   focused first on `DeletePolicyDialog` and the filled error confirm named "Delete policy". Verify: they fail.
-- [ ] 4.4 `test(ui)`: in the test files of `ConflictDialog`, `DeleteEntryDialog`, `NewEntryDialog`, `FactoryResetModal`,
+- [x] 4.4 `test(ui)`: in the test files of `ConflictDialog`, `DeleteEntryDialog`, `NewEntryDialog`, `FactoryResetModal`,
   `PasswordDialog` and `RepositoryWizard`, assert the dialog assertions of D9; in `PasswordDialog.test.js` assert that the dialog
   is teleported and focused on open (`PasswordDialog.vue:67` today), and that the password fields are `MdTextField` with
   `type="password"`; in `SettingsReviewSheet` and `SettingsDownloadMenu` tests, assert the `end` side and the menu items. Verify:
