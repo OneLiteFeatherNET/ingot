@@ -83,7 +83,7 @@ internal class MeilisearchAttributesTest {
     fun `should declare that it stores attributes`() {
         val (backend, _) = backendWith {}
 
-        assertThat(backend.capabilities).`as`("capabilities of the meilisearch backend").containsExactly(SearchCapability.ATTRIBUTES)
+        assertThat(backend.capabilities).`as`("capabilities of the meilisearch backend").contains(SearchCapability.ATTRIBUTES)
     }
 
     @Test

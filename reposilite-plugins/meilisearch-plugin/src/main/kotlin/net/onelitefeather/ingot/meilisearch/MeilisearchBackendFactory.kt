@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.meilisearch
 
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendFactory
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
@@ -42,7 +43,9 @@ internal class MeilisearchBackendFactory(
 
     override fun create(context: SearchBackendContext): ArtifactSearchBackend {
         val logger = context.logger()
-        return MeilisearchSearchBackend(settings(logger::warn), context.clock, exchange, SleepingWaiter, logger::info)
+        return MeilisearchSearchBackend(
+            settings(logger::warn), context.clock, exchange, SleepingWaiter, logger::info, context.attributeDeclarations,
+        )
     }
 
     companion object {
