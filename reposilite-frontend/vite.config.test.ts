@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { stripHtmlComments } from './vite.config'
+import { dashboardText, mountPoint, stripHtmlComments } from './vite.config'
 
 const indexHtml = readFileSync(fileURLToPath(new URL('./index.html', import.meta.url)), 'utf8')
 
@@ -79,5 +79,23 @@ describe('stripHtmlComments plugin', () => {
 
   it('removes a comment that sits next to a script element', () => {
     expect(transform('<!-- note --><script>run()</script>')).toBe('<script>run()</script>')
+  })
+})
+
+describe('mountPoint plugin', () => {
+  it('anchors the document at the mount point placeholder right after the head element', () => {
+    const html = mountPoint().transformIndexHtml.handler('<html><head><title>x</title></head></html>')
+    expect(html).toBe('<html><head>\n    <base href="{{REPOSILITE.BASE_PATH}}" /><title>x</title></head></html>')
+  })
+})
+
+describe('dashboardText plugin', () => {
+  it('writes the placeholders that carry no runtime value', () => {
+    const html = dashboardText().transformIndexHtml.handler('{{REPOSILITE.TITLE}}|{{REPOSILITE.DESCRIPTION}}|{{REPOSILITE.FAVICON}}')
+    expect(html).toBe('Ingot Repository|Maven repository powered by Ingot|favicon.png')
+  })
+
+  it('leaves the base path placeholder for the server to fill in', () => {
+    expect(dashboardText().transformIndexHtml.handler('{{REPOSILITE.BASE_PATH}}')).toBe('{{REPOSILITE.BASE_PATH}}')
   })
 })
