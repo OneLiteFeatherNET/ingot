@@ -15,15 +15,15 @@
   -->
 
 <script setup lang="ts">
-import { reactive, type PropType } from 'vue'
-import MdIcon from '../../md/MdIcon.vue'
+import type { PropType } from 'vue'
+import MdDisclosure from '../../md/MdDisclosure.vue'
 import NodeRow from './NodeRow.vue'
 import { containsNode, isWildcard, leafCount, stateBelow, type TreeItem } from './nodeTree'
 import type { NodeEntry } from './permissionNodesApi'
 
 /*
  * The nodes as a tree grouped by dot segment (see nodeTree.ts). A chain with a single child is one
- * row, so a level only appears where the nodes branch. A group is a native details element whose
+ * row, so a level only appears where the nodes branch. A group is an MdDisclosure whose
  * summary shows its path, the number of nodes below it and whether they all allow, all deny or mix.
  * A leaf is one row with its full node, the same row as the list view. Groups start open unless
  * `expandAll` is off (more than 20 nodes and no filter); a group that holds `revealNode` is always
@@ -62,14 +62,6 @@ const emit = defineEmits(['toggle', 'remove'])
 const isOpen = (item: TreeItem<NodeEntry>): boolean =>
   props.expandAll || (props.revealNode !== '' && containsNode(item, props.revealNode))
 
-// The state of each group as the browser reports it, so that the chevron turns with the group.
-const shown = reactive<Record<string, boolean>>({})
-const isShown = (item: TreeItem<NodeEntry>): boolean => shown[item.key] ?? isOpen(item)
-const onGroupToggle = (key: string, event: Event) => {
-  shown[key] = (event.target as HTMLDetailsElement).open
-}
-
-const CHEVRON = 'M9 6l6 6-6 6'
 const STATE_LABEL = { allow: 'All allow', deny: 'All deny', mixed: 'Mixed' }
 const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text-on-surface-variant' }
 </script>
@@ -108,21 +100,12 @@ const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text
           @remove="(node) => emit('remove', node)"
         />
       </template>
-      <details
+      <MdDisclosure
         v-else
+        variant="tree"
         :open="isOpen(item)"
-        @toggle="(event) => onGroupToggle(item.key, event)"
       >
-        <summary
-          class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 bg-surface-container-low px-4 py-2"
-          data-test="tree-summary"
-        >
-          <MdIcon
-            :path="CHEVRON"
-            size="sm"
-            class="shrink-0 text-on-surface-variant transition-transform motion-reduce:transition-none"
-            :class="isShown(item) ? 'rotate-90' : ''"
-          />
+        <template #summary>
           <code class="break-all font-mono md-label-large text-on-surface">{{ item.key }}</code>
           <span class="md-label-medium text-on-surface-variant">{{ leafCount(item) }} nodes</span>
           <span
@@ -130,7 +113,7 @@ const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text
             :class="STATE_CLASS[stateBelow(item)]"
             data-test="tree-state"
           >{{ STATE_LABEL[stateBelow(item)] }}</span>
-        </summary>
+        </template>
         <NodeTreeView
           :items="item.children"
           :readonly="readonly"
@@ -142,7 +125,7 @@ const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text
           @toggle="(node, allowed) => emit('toggle', node, allowed)"
           @remove="(node) => emit('remove', node)"
         />
-      </details>
+      </MdDisclosure>
     </li>
   </ul>
 </template>
