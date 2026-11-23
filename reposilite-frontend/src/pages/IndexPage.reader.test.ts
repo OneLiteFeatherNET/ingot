@@ -204,3 +204,25 @@ describe('the Plugin pages heading of the rail', () => {
     expect(rail(wrapper).find('a[aria-current="page"]').text(), 'the reader page is current').toBe('Questions')
   })
 })
+
+// Entries of plugin pages have no icon of their own, so the lookup falls back to the settings icon.
+describe('the icon of a plugin page entry', () => {
+  it('draws an icon for every entry of the rail, plugin pages included', async () => {
+    setReaderPages(READERS)
+    setContributions(ADMIN_PAGES)
+    const { wrapper } = await mountAt('/', { nodes: ['ingot.admin.*'], logged: true })
+
+    const entries = rail(wrapper).findAll('a').filter(entry => entry.text() !== '')
+    const bare = entries.filter(entry => !entry.find('svg').exists()).map(entry => entry.text())
+    expect(entries.map(entry => entry.text()), 'the plugin pages are listed').toEqual(expect.arrayContaining(['Guides', 'Mirror credentials']))
+    expect(bare, 'no rail entry without an icon').toEqual([])
+  })
+
+  it('draws an icon for every entry of the bottom bar', async () => {
+    const { wrapper } = await mountAt('/', { nodes: ['ingot.admin.*'], logged: true })
+
+    const entries = bar(wrapper).findAll('a, button')
+    const bare = entries.filter(entry => !entry.find('svg').exists()).map(entry => entry.text())
+    expect(bare, 'no bar entry without an icon').toEqual([])
+  })
+})
