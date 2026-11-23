@@ -52,6 +52,13 @@
       "groupSlug": "github-actions"
     },
     {
+      "description": "The server Dockerfile and the CLI Dockerfile (ingot-cli/Dockerfile) use the same eclipse-temurin build and run bases, pinned by tag and digest. One group raises one pull request, so the two images never drift apart.",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["eclipse-temurin"],
+      "groupName": "eclipse-temurin base images",
+      "groupSlug": "eclipse-temurin-base-images"
+    },
+    {
       "description": "docker-compose.yml pins this project's own published image. Its version is owned by the release process, not by Renovate.",
       "matchManagers": ["docker-compose"],
       "matchPackageNames": ["/(^|/)reposilite$/", "/(^|/)ingot$/"],
