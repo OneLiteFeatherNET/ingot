@@ -255,6 +255,20 @@ describe('IndexPanel section', () => {
     expect(heading.classes(), 'a level 2 title takes the title-medium role').toContain('md-title-medium')
   })
 
+  it('draws the last verify and the latest runs as level 3 MdSection groups', async () => {
+    session.client = fakeClient({
+      searchIndex: vi.fn(() => Promise.resolve({
+        data: indexBody({ lastVerify: { runId: 9, at: SECONDS, sampled: 2000, missing: 90, changed: 50, reorigined: 0, removedRepositoryRows: 0, drift: 0.07 } })
+      }))
+    })
+    await mountPanel()
+
+    const sections = wrapper.findAllComponents({ name: 'MdSection' }) as VueWrapper[]
+    const level3 = sections.filter(section => propsOf(section).level === 3).map(section => propsOf(section).title)
+
+    expect(level3, 'both groups of the panel are shared level 3 sections').toEqual(['Last verify', 'Latest runs'])
+  })
+
   it('sets every level 3 heading in the title-small role', async () => {
     await mountPanel()
 
