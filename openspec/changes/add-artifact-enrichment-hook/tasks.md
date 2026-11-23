@@ -17,7 +17,7 @@ Prerequisite: `add-plugin-api-artifact` (group 2 of this change adds the package
 - [x] 2.1 `test(search)`: failing tests of the registry: a matching `apiVersion` registers; another version is refused with a warning
   naming both numbers; a duplicate `id` is refused naming both classes; an `id` outside the pattern is refused; a refused enricher is
   never called. Verify: they fail on the missing types.
-- [ ] 2.2 `feat(search)`: add `net.onelitefeather.ingot.search.enrichment` with `ArtifactEnricher`, `ArtifactEnrichmentRequest`,
+- [x] 2.2 `feat(search)`: add `net.onelitefeather.ingot.search.enrichment` with `ArtifactEnricher`, `ArtifactEnrichmentRequest`,
   `EnrichmentTrigger`, `ArtifactContent`, the sealed `EnrichmentResult` with the top-level `EnrichmentCompleted`, `EnrichmentSkipped` and `EnrichmentFailed` (decision 69), the registration event and the
   registry, marked `@ExperimentalIngotSearchApi`, and add the package and the four types (the sealed result and its three top-level outcomes) to the plugin API allowlist of `add-plugin-api-artifact`.
   Verify: the tests of 2.1 pass and the consumer fixture compiles a sample enricher.
