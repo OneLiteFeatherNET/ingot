@@ -48,7 +48,7 @@ const emit = defineEmits<{
   'update:search': [search: string]
 }>()
 
-const { levels, log, hasLines, logMessage, filter, addSeparator } = useLog()
+const { levels, log, hasLines, logMessage, filter, addSeparator, addTable } = useLog()
 
 // The address and the switches agree. Whenever the address changes, the switches and the
 // filter take its values; whenever a switch or the filter changes, the address is told.
@@ -73,7 +73,7 @@ watch(
 )
 
 const {
-  onOpen, onMessage, onClose, onError,
+  onOpen, onMessage, onData,
   open,
   close,
   status,
@@ -130,11 +130,13 @@ const setupConnection = () => {
       if (following) scrollToEnd()
     })
   }
-  // The connection used to announce itself through three toasts, one of which landed on
-  // the header while the panel below stayed an empty white rectangle. The state belongs
-  // where the reader is already looking, so the panel renders it and the toasts are gone.
-  onError.value = error => console.error(error)
-  onClose.value = () => {}
+  onData.value = table => {
+    const following = atBottom.value
+    addTable(table)
+    nextTick(() => {
+      if (following) scrollToEnd()
+    })
+  }
   const { token } = useSession()
   open(token.value)
 }
@@ -154,7 +156,7 @@ const noLinesMatch = computed(() =>
   status.value === 'open' && hasLines.value && !log.value.some(entry => entry.kind !== 'separator'))
 
 const disconnectedReason = computed(() =>
-  `${failure.value || 'The stream was closed.'} Log output stops until the connection is restored. Anything already printed stays visible below.`
+  `${failure.value || 'The connection was closed.'} Log output stops until the connection is restored. Anything already printed stays visible below.`
 )
 
 const announcement = computed(() => {
@@ -292,8 +294,41 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
             v-for="entry in log"
             :key="entry.id"
           >
+            <div
+              v-if="entry.kind === 'table'"
+              class="overflow-x-auto whitespace-normal py-1 font-sans"
+            >
+              <table class="border-collapse text-left">
+                <thead>
+                  <tr>
+                    <th
+                      v-for="column in entry.columns"
+                      :key="column"
+                      scope="col"
+                      class="px-3 py-1 md-label-medium text-on-surface-variant"
+                    >
+                      {{ column }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(row, rowIndex) in entry.rows"
+                    :key="rowIndex"
+                  >
+                    <td
+                      v-for="(value, columnIndex) in row"
+                      :key="columnIndex"
+                      class="px-3 py-1 md-body-small text-on-surface"
+                    >
+                      {{ value }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <p
-              v-if="entry.kind === 'separator'"
+              v-else-if="entry.kind === 'separator'"
               class="whitespace-normal py-1 font-sans text-on-surface-variant"
             >
               {{ entry.message }}
@@ -356,8 +391,8 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
           label="Console command"
           variant="outlined"
           class="min-w-0 flex-1"
-          :disabled="disconnected"
-          :supporting-text="disconnected ? 'Reconnect to run commands' : `Type a command or '?' for help`"
+          :disabled="disconnected || connecting"
+          :supporting-text="disconnected ? 'Reconnect to run commands' : connecting ? 'Waiting for the connection' : `Type a command or \'?\' for help`"
           autocomplete="off"
           @keydown.tab.prevent="complete()"
           @keyup.enter="execute()"
@@ -368,7 +403,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
           variant="filled"
           aria-label="Send command"
           class="mt-1"
-          :disabled="disconnected || command.trim() === ''"
+          :disabled="disconnected || connecting || command.trim() === ''"
           @click="execute()"
         >
           <svg
