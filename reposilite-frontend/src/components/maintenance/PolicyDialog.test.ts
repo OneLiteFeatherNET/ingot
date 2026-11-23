@@ -17,6 +17,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PolicyDialog from './PolicyDialog.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import type { PolicyPayload } from './policy'
 
 let wrapper!: VueWrapper
@@ -281,6 +282,19 @@ describe('PolicyDialog dialog contract', () => {
     const alert = document.querySelector<HTMLElement>('.vfm [role="alert"]')
     expect(alert?.textContent?.trim(), 'the limit error is announced').toContain('Set at least one of keep latest, older than or not downloaded for.')
     expect(alert?.getAttribute('data-tone'), 'the alert is in the error tone').toBe('error')
+  })
+})
+
+describe('PolicyDialog groups', () => {
+  it('titles each group of fields with the legend of a shared fieldset', async () => {
+    await openDialog()
+
+    const legends = wrapper.findAllComponents(MdFieldset).map(group => group.find('legend').text())
+
+    expect(legends, 'repositories, limits and schedule are shared fieldsets').toEqual([
+      'Repositories', 'Limits. Set at least one.', 'Schedule'
+    ])
+    expect(document.querySelectorAll('#policy-form fieldset'), 'no hand-written fieldset is left').toHaveLength(legends.length)
   })
 })
 
