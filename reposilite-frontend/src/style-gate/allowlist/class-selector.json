@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "file": "src/styles/md3/motion-transitions.css",
+    "match": ".motion-row-enter",
+    "reason": "Fade-in animation of a row that is added to a loaded list. useRowFade puts the class on the row for the length of the animation and takes it off again, so a stylesheet has to name it, like the classes Vue adds to a transition. It is not a transition group, so no Transition hook covers it."
+  }
+]

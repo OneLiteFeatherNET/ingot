@@ -233,3 +233,17 @@
 .motion-fade-leave-to {
   opacity: 0;
 }
+
+/*
+ * Row fade: a row that is added to a loaded list fades in over the short3 token. It is an animation on the row itself,
+ * not a transition group, so a removed row leaves at once and the rows below it move without a transition.
+ */
+@keyframes motion-row-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.motion-row-enter {
+  animation: motion-row-enter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard-decelerate);
+}
