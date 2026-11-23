@@ -180,8 +180,8 @@ describe('PrincipalsPanel', () => {
 
       await rowOf('alice').find('button[aria-haspopup="menu"]').trigger('click')
 
-      expect(rowOf('alice').classes(), 'each row is its own stacking context, so the open one needs a z-index').toContain('z-20')
-      expect(rowOf('bob').classes()).not.toContain('z-20')
+      expect(rowOf('alice').classes(), 'each row is its own stacking context, so the open one needs a z-index').toContain('z-md-sticky')
+      expect(rowOf('bob').classes()).not.toContain('z-md-sticky')
     })
 
     it('puts the row back when the actions menu closes', async () => {
@@ -190,7 +190,7 @@ describe('PrincipalsPanel', () => {
 
       await rowOf('alice').find('button[aria-haspopup="menu"]').trigger('click')
 
-      expect(rowOf('alice').classes()).not.toContain('z-20')
+      expect(rowOf('alice').classes()).not.toContain('z-md-sticky')
     })
 
     it('builds the principal rows from the shared list rows', async () => {

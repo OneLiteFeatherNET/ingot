@@ -1,10 +1,5 @@
 [
   {
-    "file": "src/components/access/PrincipalsPanel.vue",
-    "match": "z-20",
-    "count": 1
-  },
-  {
     "file": "src/components/access/check/CheckPermissionView.vue",
     "match": "z-10",
     "count": 1
@@ -40,24 +35,9 @@
     "count": 1
   },
   {
-    "file": "src/components/browser/FileList.vue",
-    "match": "rounded",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "rounded-full",
-    "count": 1
-  },
-  {
     "file": "src/components/browser/FileUpload.vue",
     "match": "z-10",
     "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": "rounded",
-    "count": 5
   },
   {
     "file": "src/components/dashboard/FailuresSheet.vue",
@@ -67,16 +47,6 @@
   {
     "file": "src/components/dashboard/FailuresSheet.vue",
     "match": "text-xs",
-    "count": 1
-  },
-  {
-    "file": "src/components/dashboard/StatusLabel.vue",
-    "match": "rounded-full",
-    "count": 1
-  },
-  {
-    "file": "src/components/header/DefaultHeader.vue",
-    "match": "z-30",
     "count": 1
   },
   {
@@ -100,11 +70,6 @@
     "count": 1
   },
   {
-    "file": "src/components/md/MdCheckbox.vue",
-    "match": "rounded-full",
-    "count": 1
-  },
-  {
     "file": "src/components/md/MdRadio.vue",
     "match": "opacity-0",
     "count": 1
@@ -123,11 +88,6 @@
     "file": "src/components/support/SystemInfoView.vue",
     "match": "text-sm",
     "count": 1
-  },
-  {
-    "file": "src/pages/IndexPage.vue",
-    "match": "z-20",
-    "count": 3
   },
   {
     "file": "src/pages/IndexPage.vue",

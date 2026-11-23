@@ -219,7 +219,7 @@ const deleted = (principal: PrincipalSummary) => {
           class="md-state-layer"
           :class="[
             row.selected ? 'bg-secondary-container text-on-secondary-container' : '',
-            row.principal.name === menuRow ? 'z-20' : ''
+            row.principal.name === menuRow ? 'z-md-sticky' : ''
           ]"
         >
           <router-link

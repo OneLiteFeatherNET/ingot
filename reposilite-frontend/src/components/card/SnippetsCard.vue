@@ -255,7 +255,7 @@ const selectTab = (tab: string) =>
           >
             <span
               v-if="loading"
-              class="h-5 w-36 rounded bg-surface-container-high skeleton-bars"
+              class="h-5 w-36 rounded-corner-extra-small bg-surface-container-high skeleton-bars"
             />
             <template v-else>
               {{ title }}
@@ -341,19 +341,19 @@ const selectTab = (tab: string) =>
                     class="skeleton-bars space-y-2.5 pt-1"
                   >
                     <div
-                      class="h-3 rounded bg-surface-container-high"
+                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
                       style="width: 80%"
                     />
                     <div
-                      class="h-3 rounded bg-surface-container-high"
+                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
                       style="width: 55%"
                     />
                     <div
-                      class="h-3 rounded bg-surface-container-high"
+                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
                       style="width: 68%"
                     />
                     <div
-                      class="h-3 rounded bg-surface-container-high"
+                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
                       style="width: 40%"
                     />
                   </div>

@@ -202,10 +202,10 @@ const entryUrl = (file: BrowserFile) =>
       >
         <MdListItem v-if="isSkeleton(entry)">
           <template #leading>
-            <span class="block size-6 rounded-full bg-surface-container-high skeleton-bars" />
+            <span class="block size-6 rounded-corner-full bg-surface-container-high skeleton-bars" />
           </template>
           <span
-            class="block h-3.5 rounded bg-surface-container-high skeleton-bars"
+            class="block h-3.5 rounded-corner-extra-small bg-surface-container-high skeleton-bars"
             :style="{ width: skeletonWidths[index % skeletonWidths.length] }"
           />
         </MdListItem>
