@@ -40,10 +40,10 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 
 ## 5. Elasticsearch and OpenSearch (red, then green, one pull request per module)
 
-- [ ] 5.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the filter, the filtered terms aggregation with
+- [x] 5.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the filter, the filtered terms aggregation with
   the access clause, the sort with `missing: _last`, and the declared capabilities, run through the contract tests of group 4. Verify:
   `heavy ./gradlew :elasticsearch-plugin:test --max-workers=2` passes; the Testcontainers instance is removed by its label.
-- [ ] 5.2 The same for `reposilite-plugins/opensearch-plugin`.
+- [x] 5.2 The same for `reposilite-plugins/opensearch-plugin`.
 
 ## 6. Meilisearch (red, then green)
 
