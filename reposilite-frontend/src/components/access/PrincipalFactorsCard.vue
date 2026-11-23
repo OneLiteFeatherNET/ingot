@@ -19,6 +19,7 @@ import { computed, ref, watch, type PropType } from 'vue'
 import type { AxiosResponse } from 'axios'
 import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
+import MdStatePanel from '../md/MdStatePanel.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
@@ -135,13 +136,10 @@ const reset = async () => {
         </p>
       </div>
 
-      <p
+      <MdStatePanel
         v-if="status === 'loading'"
-        role="status"
-        class="m-0 md-body-medium text-on-surface-variant"
-      >
-        Loading...
-      </p>
+        state="loading"
+      />
       <MdAlert
         v-else-if="status === 'error'"
         tone="error"

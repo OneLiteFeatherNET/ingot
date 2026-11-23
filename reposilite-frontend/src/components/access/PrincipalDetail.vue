@@ -23,6 +23,7 @@ import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChip from '../md/MdChip.vue'
 import MdKeyValueList from '../md/MdKeyValueList.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import TokenList from '../identity/TokenList.vue'
 import { instantToDate } from '../../helpers/apiTime'
@@ -164,14 +165,13 @@ const rows = computed(() => {
       data-ingot-state="loading"
       state="loading"
     />
-    <div
+    <MdAlert
       v-else-if="status === 'missing'"
-      role="alert"
-      class="md-body-large text-on-surface-variant"
+      tone="error"
       data-test="missing"
     >
       {{ name }} does not exist (any more).
-    </div>
+    </MdAlert>
     <MdStatePanel
       v-else-if="status === 'error'"
       state="error"

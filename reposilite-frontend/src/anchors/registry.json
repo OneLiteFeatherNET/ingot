@@ -212,9 +212,7 @@
       "file": "src/components/access/nodes/NodeEditor.vue",
       "stability": "experimental",
       "parts": [],
-      "states": [
-        "loading"
-      ]
+      "states": []
     },
     {
       "name": "node-inherited-section",
