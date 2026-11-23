@@ -16,15 +16,19 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
-import ConflictDialog from './ConflictDialog.vue'
-import DeleteEntryDialog from './DeleteEntryDialog.vue'
+import type { Component } from 'vue'
+import ConflictDialogSource from './ConflictDialog.vue'
+import DeleteEntryDialogSource from './DeleteEntryDialog.vue'
+
+const ConflictDialog = ConflictDialogSource as Component
+const DeleteEntryDialog = DeleteEntryDialogSource as Component
 
 const conflict = { kind: 'settings', name: 'maven', title: 'Maven', reviewed: false, server: null }
 
 // Each dialog opens through its own prop and asks to close through its own event.
 type Entry = {
   name: string
-  component: object
+  component: Component
   closed: Record<string, unknown>
   open: Record<string, unknown>
   event: string
@@ -47,7 +51,7 @@ let wrapper: VueWrapper | null = null
 let opener: HTMLButtonElement | null = null
 
 const openDialog = async (entry: Entry) => {
-  wrapper = mount(entry.component, { props: entry.closed, attachTo: document.body }) as VueWrapper
+  wrapper = mount(entry.component, { props: entry.closed, attachTo: document.body })
   await wrapper.setProps(entry.open)
   await flushPromises()
 }
