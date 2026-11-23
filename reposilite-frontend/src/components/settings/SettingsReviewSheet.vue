@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
 import { formatChangeValue, groupChanges } from './settingsDiff'
 import type { ChangeKind, SettingsChange } from './settingsDiff'
@@ -113,10 +114,11 @@ const revertLabelOf = (change: SettingsChange): string => {
           <h3 class="md-title-medium text-on-surface">
             {{ section.title }}
           </h3>
-          <div
+          <MdCard
             v-for="group in section.groups"
             :key="group.key"
-            class="flex flex-col gap-2 rounded-corner-medium border border-outline-variant bg-surface p-3"
+            variant="outlined"
+            class="flex flex-col gap-2"
           >
             <h4
               v-if="group.id !== null"
@@ -162,7 +164,7 @@ const revertLabelOf = (change: SettingsChange): string => {
                 </MdButton>
               </li>
             </ul>
-          </div>
+          </MdCard>
         </section>
       </div>
 

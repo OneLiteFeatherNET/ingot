@@ -91,7 +91,7 @@ describe('SsoProvidersPanel', () => {
 
   // Opens the add dialog and picks a kind, which is what the admin does first.
   const pickKind = async (label: string) => {
-    wrapper.find('[data-test="add-provider"]').trigger('click')
+    await wrapper.find('[data-test="add-provider"]').trigger('click')
     await flushPromises()
     dialogButton(label).click()
     await flushPromises()
@@ -235,7 +235,7 @@ describe('SsoProvidersPanel', () => {
     })
 
     it('opens on the kind picker with one card per kind', async () => {
-      wrapper.find('[data-test="add-provider"]').trigger('click')
+      await wrapper.find('[data-test="add-provider"]').trigger('click')
       await flushPromises()
 
       const kinds = [...dialog().querySelectorAll('button')].map(button => button.textContent?.trim())
@@ -380,7 +380,7 @@ describe('SsoProvidersPanel', () => {
   describe('editing a provider', () => {
     beforeEach(async () => {
       await mountPanel()
-      wrapper.find('[aria-label="Edit Keycloak"]').trigger('click')
+      await wrapper.find('[aria-label="Edit Keycloak"]').trigger('click')
       await flushPromises()
     })
 
@@ -445,7 +445,7 @@ describe('SsoProvidersPanel', () => {
     })
 
     const openKeycloak = async () => {
-      wrapper.find('[aria-label="Edit Keycloak"]').trigger('click')
+      await wrapper.find('[aria-label="Edit Keycloak"]').trigger('click')
       await flushPromises()
     }
 
@@ -530,7 +530,7 @@ describe('SsoProvidersPanel', () => {
     it('builds the callback of a provider from the saved public address', async () => {
       settings.fetch.mockResolvedValue(answer({ oidcProviders: [KEYCLOAK, GITHUB], ldap: LDAP, publicUrl: 'https://repo.example.org' }))
       await mountPanel()
-      wrapper.find('[data-test="add-provider"]').trigger('click')
+      await wrapper.find('[data-test="add-provider"]').trigger('click')
       await flushPromises()
       dialogButton('GitLab').click()
       await flushPromises()

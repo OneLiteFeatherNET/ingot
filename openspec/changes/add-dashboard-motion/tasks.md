@@ -124,27 +124,27 @@ Pull request title: `feat(ui): animate menus, dialogs, sheets and snackbars from
 Starts after `unify-dialogs-menus-and-feedback` and `add-md3-component-catalogue` are merged, because both own the markup of these
 components.
 
-- [ ] 5.1 `test(ui)`: in `src/components/md/MdDialog.test.ts`, assert that the dialog passes the `dialog` pattern to the modal's
+- [x] 5.1 `test(ui)`: in `src/components/md/MdDialog.test.ts`, assert that the dialog passes the `dialog` pattern to the modal's
   overlay and content transitions, and that the transition names come from the pattern and not from literal strings. Verify: it
   fails, because the modal uses the library defaults.
-- [ ] 5.2 `test(ui)`: in `src/components/md/MdSideSheet.test.ts`, assert that the panel passes the `sheet` pattern, that the scrim
+- [x] 5.2 `test(ui)`: in `src/components/md/MdSideSheet.test.ts`, assert that the panel passes the `sheet` pattern, that the scrim
   fades, and that under reduced motion the transition is off, as the existing test states. Verify: it fails for the slide.
-- [ ] 5.3 `test(ui)`: in `src/components/md/MdSnackbar.test.ts`, assert the `snackbar` pattern with `out-in` on replacement, that a
+- [x] 5.3 `test(ui)`: in `src/components/md/MdSnackbar.test.ts`, assert the `snackbar` pattern with `out-in` on replacement, that a
   second message is inserted only after the first has left, and that no two messages are drawn at once. Verify: it fails, because
   there is no mode.
-- [ ] 5.4 `test(ui)`: in `src/components/md/MdOverflowMenu.test.ts` and `src/components/md/MdSelect.test.ts`, assert that the menu
+- [x] 5.4 `test(ui)`: in `src/components/md/MdOverflowMenu.test.ts` and `src/components/md/MdSelect.test.ts`, assert that the menu
   passes the `menu` pattern and that its `transform-origin` class follows the placement above or below the trigger. Verify: it fails,
   because the menu has no transition.
-- [ ] 5.5 `test(ui)`: in `src/components/md/MdListbox.test.ts`, assert that the list passes the `menu` pattern while keeping `v-show`.
+- [x] 5.5 `test(ui)`: in `src/components/md/MdListbox.test.ts`, assert that the list passes the `menu` pattern while keeping `v-show`.
   Verify: it fails, as 5.4 does.
-- [ ] 5.6 `test(ui)`: in `src/components/header/MenuPanel.test.ts`, assert that the "More" panel of the bottom bar passes the `menu`
+- [x] 5.6 `test(ui)`: in `src/components/header/MenuPanel.test.ts`, assert that the "More" panel of the bottom bar passes the `menu`
   pattern with a rise of 8 pixels. Verify: it fails, because the panel mounts with `v-if` and no transition.
 - [ ] 5.7 `test(ui)`: in `e2e/navigation.spec.js`, assert that the "More" panel and a select open and close with Escape, and that focus
   returns to the trigger, under reduced motion too. Verify: it passes today for the focus, and it fails for the transition classes.
-- [ ] 5.8 `feat(ui)`: apply `MdTransition` with the patterns of this group to `MdDialog.vue`, `MdSideSheet.vue`, `MdSnackbar.vue`,
+- [x] 5.8 `feat(ui)`: apply `MdTransition` with the patterns of this group to `MdDialog.vue`, `MdSideSheet.vue`, `MdSnackbar.vue`,
   `MdOverflowMenu.vue`, `MdSelect.vue`, `MdListbox.vue` and the "More" panel in `IndexPage.vue`, and remove the `<style>` block of
   `MdSnackbar.vue` if the catalogue change has not removed it. Verify: 5.1 to 5.6 pass.
-- [ ] 5.9 Before 5.8, read the default transition classes of the installed vue-final-modal and note them in the test of 5.1, so the
+- [x] 5.9 Before 5.8, read the default transition classes of the installed vue-final-modal and note them in the test of 5.1, so the
   test states which default it replaces. Verify: the note names the classes, and the test title names the pattern.
 - [ ] 5.10 Run the component tests of the group and the dialog e2e specs through `heavy`, with `--workers=2`. Verify: they pass, and
   focus is returned to the trigger of every dialog and menu.
@@ -163,15 +163,15 @@ Starts after group 4 is merged.
   it fails, because the indicator changes colour only.
 - [x] 6.2 `test(ui)`: in `src/components/tabs/AppTabs.test.ts`, assert that the wrapper passes the selection and its direction through
   unchanged, and that the `data-ingot-component="app-tabs"` anchor stays on the wrapper. Verify: it fails for the panel direction.
-- [ ] 6.3 `test(ui)`: in `src/components/card/SnippetsCard.test.ts`, assert that the tab panel uses `shared-x` from the tokens, that
+- [x] 6.3 `test(ui)`: in `src/components/card/SnippetsCard.test.ts`, assert that the tab panel uses `shared-x` from the tokens, that
   no literal `.1s` or `60px` remains in its `<style>` block, and that its reduced-motion behaviour is unchanged. Verify: it fails,
   because the literal values are there.
 - [x] 6.4 `test(ui)`: in `src/components/card/CardMenu.test.ts`, assert that the indicator of `CardMenu` slides with a transform and
   takes the token duration. Verify: it fails, because the indicator changes colour only.
-- [ ] 6.5 `test(ui)`: in `e2e/system-info.spec.js` and `e2e/repositories.spec.js`, assert that the tab panel of the system information
+- [x] 6.5 `test(ui)`: in `e2e/system-info.spec.js` and `e2e/repositories.spec.js`, assert that the tab panel of the system information
   and of a repository enters from the side of the new tab, and that the `?tab=` address still follows the selection. Verify: it fails
   for the direction.
-- [ ] 6.6 `feat(ui)`: apply the indicator slide and the `shared-x` panel in `MdTabs.vue`, `CardMenu.vue` and `SnippetsCard.vue`, and
+- [x] 6.6 `feat(ui)`: apply the indicator slide and the `shared-x` panel in `MdTabs.vue`, `CardMenu.vue` and `SnippetsCard.vue`, and
   replace the literal values of `SnippetsCard.vue` with the pattern. Verify: 6.1 to 6.4 pass.
 - [ ] 6.7 Run the tab tests and the e2e specs of the tabs through `heavy`, with `--workers=2`, and the keyboard tests of the tabs
   (Left, Right, Home, End). Verify: they pass, and the roving focus is unchanged.

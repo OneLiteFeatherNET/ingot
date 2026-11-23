@@ -180,6 +180,15 @@ describe('SystemInfoView tabs', () => {
     expect(disclosure.text()).toContain('-Xmx512m')
   })
 
+  it('opens the Java input arguments with the shared disclosure and its expand pattern', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const disclosure = panelsOf(wrapper)[0].find('details')
+    expect(disclosure.attributes('data-ingot-component'), 'the arguments use the shared disclosure').toBe('md-disclosure')
+    expect(disclosure.find('.expand-rows').exists(), 'the arguments sit in the expand wrapper').toBe(true)
+  })
+
   it('shows the filter on Environment and Configuration only', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
@@ -459,11 +468,13 @@ describe('SystemInfoView support action placement', () => {
     expect(header.className, 'the header is not a wrapping row').not.toMatch(/\bflex-wrap\b/)
   })
 
-  it('makes the disclosure summary only as wide as its label, so the focus outline hugs the text', async () => {
+  it('opens the note with the shared disclosure, so it animates its height like every other disclosure', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
 
-    expect(noteOf(wrapper).find('summary').classes(), 'the summary is fit to its content').toContain('w-fit')
+    const note = noteOf(wrapper)
+    expect(note.attributes('data-ingot-component'), 'the note uses the shared disclosure').toBe('md-disclosure')
+    expect(note.find('.expand-rows').exists(), 'the note sits in the expand wrapper').toBe(true)
   })
 })
 

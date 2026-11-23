@@ -106,7 +106,7 @@ const mountAt = async (url: string, { answer = answerWith() }: { answer?: () => 
   sessionState.client.value = clientAnswering(answer)
   sessionState.sessionReady.value = true
   router = createRouter({ history: createMemoryHistory(), routes })
-  router.push(url)
+  await router.push(url)
   await router.isReady()
   wrapper = mount(RepositoryOverview, {
     props: { qualifier: { path: '', watchable: 0 } },
@@ -217,7 +217,7 @@ describe('RepositoryOverview list', () => {
     sessionState.client.value = clientAnswering(answerWith())
     sessionState.sessionReady.value = false
     router = createRouter({ history: createMemoryHistory(), routes })
-    router.push('/')
+    await router.push('/')
     await router.isReady()
     wrapper = mount(RepositoryOverview, {
       props: { qualifier: { path: '', watchable: 0 } },

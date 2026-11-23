@@ -40,10 +40,10 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 
 ## 5. Elasticsearch and OpenSearch (red, then green, one pull request per module)
 
-- [ ] 5.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the filter, the filtered terms aggregation with
+- [x] 5.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the filter, the filtered terms aggregation with
   the access clause, the sort with `missing: _last`, and the declared capabilities, run through the contract tests of group 4. Verify:
   `heavy ./gradlew :elasticsearch-plugin:test --max-workers=2` passes; the Testcontainers instance is removed by its label.
-- [ ] 5.2 The same for `reposilite-plugins/opensearch-plugin`.
+- [x] 5.2 The same for `reposilite-plugins/opensearch-plugin`.
 
 ## 6. Meilisearch (red, then green)
 
@@ -53,15 +53,23 @@ Prerequisite: `add-search-document-attributes` merged, and through it `add-artif
 - [ ] 6.2 `feat(search)` in `reposilite-plugins/meilisearch-plugin`: derive the filterable and sortable settings from the declarations, the
   filter string, `facetDistribution` and the pending state. Verify: the tests of 6.1 pass.
 
-## 7. Documentation (pull request of its own)
+## 7. Facetable key list (red, then green, amendment of decision 267)
 
-- [ ] 7.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` with the parameters, the counting rule, the capability table per
-  backend, the file-count note of Q5 and the `503` of a pending Meilisearch settings change. Verify: the page is linked from the search
-  reference.
+- [ ] 7.1 `test(search)`: failing tests of the key list: only keys declared `facetable` are listed, each with its label; the label defaults
+  to the key; an empty catalogue gives an empty list; the order is by key; the endpoint reads no backend and no attribute value. Verify:
+  they fail.
+- [ ] 7.2 `feat(search)`: the `label` field of `AttributeDeclaration` and the read-only endpoint of D9 in `api/SearchApiEndpoints.kt`.
+  Verify: the tests of 7.1 pass and existing search route tests pass with unchanged assertions.
 
-## 8. Pull requests
+## 8. Documentation (pull request of its own)
 
-- [ ] 8.1 Open the code pull requests in the order of groups 2 to 7, each from a fresh `origin/main` that contains the merged proposal and
+- [ ] 8.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` with the parameters, the counting rule, the capability table per
+  backend, the file-count note of Q5 and the `503` of a pending Meilisearch settings change, and the facetable key list endpoint with its `label`. Verify: the page is linked from the
+  search reference.
+
+## 9. Pull requests
+
+- [ ] 9.1 Open the code pull requests in the order of groups 2 to 8, each from a fresh `origin/main` that contains the merged proposal and
   the merged `add-search-document-attributes`, each small and with no file under `openspec/`. The first one carries the title
   `feat(search): filter and facet on plugin attributes`. The engine pull requests are titled
   `feat(search): filter and facet on plugin attributes in the search engines`, one per module with the modules named in its description,

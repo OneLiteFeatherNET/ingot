@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, ref, type PropType } from 'vue'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
+import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdDialog from '../md/MdDialog.vue'
@@ -146,13 +147,12 @@ const submit = async () => {
         :error="submitted && passwordProblem !== ''"
         :error-text="passwordProblem"
       />
-      <p
+      <MdAlert
         v-if="failure"
-        role="alert"
-        class="md-body-medium text-error"
+        tone="error"
       >
         {{ failure }}
-      </p>
+      </MdAlert>
     </form>
 
     <div class="mt-6 flex justify-end gap-2">

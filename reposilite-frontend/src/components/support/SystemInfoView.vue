@@ -25,6 +25,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
 import MdSection from '../md/MdSection.vue'
 import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
@@ -212,14 +213,14 @@ onMounted(() => {
           A zip with what a maintainer needs to look at this instance: the system information, the local and shared
           configuration, the cluster members, the plugins and the recent log lines of this instance only.
         </p>
-        <details
+        <MdDisclosure
           data-ingot-part="support-note"
           class="md-body-medium max-w-prose text-on-surface-variant"
         >
-          <summary class="md-label-large w-fit cursor-pointer text-on-surface">
+          <template #summary>
             What is removed
-          </summary>
-          <p class="mt-2">
+          </template>
+          <p>
             Secrets are removed or masked before the bundle is built: passwords, access keys, tokens, bus credentials and the
             database user and password. Values of settings that hold a secret are masked, and every log line is scrubbed of
             known secrets and of credentials in headers and URLs.
@@ -228,7 +229,7 @@ onMounted(() => {
             Free text in a log line can still hold something no rule recognises, such as a customer name in a path.
             Read the zip before you attach it to a public issue.
           </p>
-        </details>
+        </MdDisclosure>
         <button
           type="button"
           data-ingot-part="support-action"
@@ -315,10 +316,10 @@ onMounted(() => {
                   {{ info.jvm.threads }}
                 </dd>
               </dl>
-              <details>
-                <summary class="md-label-large cursor-pointer text-on-surface-variant">
+              <MdDisclosure>
+                <template #summary>
                   Input arguments
-                </summary>
+                </template>
                 <ul class="font-mono text-sm">
                   <li
                     v-for="argument in info.jvm.inputArguments"
@@ -327,7 +328,7 @@ onMounted(() => {
                     {{ argument }}
                   </li>
                 </ul>
-              </details>
+              </MdDisclosure>
             </article>
 
             <article

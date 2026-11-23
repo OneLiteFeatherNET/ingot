@@ -155,6 +155,11 @@
                     "title" : "Local Metadata Cache",
                     "description" : "Local metadata cache settings (optional). The default is no caching. NOTE: This cache is local only. If you run multiple instances, they will not share the cache!"
                   } ]
+                },
+                "pathStyleAccess" : {
+                  "type" : [ "boolean", "null" ],
+                  "title" : "Path Style Access",
+                  "description" : "Address the bucket as https://host/bucket/key, which most S3-compatible servers such as MinIO need (optional). When unset, the JVM property reposilite.s3.pathStyleAccessEnabled decides"
                 }
               },
               "title" : "S3 Storage Provider",

@@ -97,7 +97,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   temporary directory: order, contexts, refusal of an inline token, no `--token`, no `REPOSILITE_` fallback.
 - [x] 6.2 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning,
   and a check that no output stream ever contains the secret.
-- [ ] 6.3 `test(cli)`: failing tests for exec mode against a stub HTTP server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines,
+- [x] 6.3 `test(cli)`: failing tests for exec mode against a stub HTTP server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines,
   stdin script with comments, an argument with a space, no prompt in a pipe, stdout holds only command output, and exit `6` when
   `GET /api/console/commands` answers `404`.
 - [x] 6.4 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the

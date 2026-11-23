@@ -39,9 +39,9 @@ PR title: `feat(plugin): show the plugin description in the system information`
 
 PR title: `feat(plugin): show the plugin description on the system information page`
 
-- [ ] 4.1 `feat(plugin)`: write failing component tests for the plugin row with a description (text content, no markup) and without
+- [x] 4.1 `feat(plugin)`: write failing component tests for the plugin row with a description (text content, no markup) and without
   one (no extra element). Verify: they fail before 4.2.
-- [ ] 4.2 `feat(plugin)`: render the description under the plugin name in `SystemInfoView`, with the existing text style and no new
+- [x] 4.2 `feat(plugin)`: render the description under the plugin name in `SystemInfoView`, with the existing text style and no new
   control. Run `npm ci`, the touched tests, `npx vitest run src/anchors src/style-gate/gate.test.ts`, the typecheck, eslint on the
   changed files and `npm run anchors:doc`. Verify: the checks pass, the style gate baseline does not grow, and no Tailwind arbitrary
   value is added.
@@ -57,6 +57,6 @@ PR title: `feat(plugin): read the description of a store catalogue entry`
 
 ## 6. Pull requests
 
-- [ ] 6.1 Open the code pull requests of groups 2 to 5, in that order, each under the title in its heading, from the remote main
+- [x] 6.1 Open the code pull requests of groups 2 to 5, in that order, each under the title in its heading, from the remote main
   branch. Each one is opened only after the one before it is merged, so each stays buildable on its own. Verify: each pull request
   exists with its title, and no pull request contains a file under `openspec/`.

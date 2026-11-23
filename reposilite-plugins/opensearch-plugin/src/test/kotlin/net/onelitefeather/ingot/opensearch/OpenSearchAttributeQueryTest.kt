@@ -25,6 +25,9 @@ import net.onelitefeather.ingot.opensearch.query.FilterKind
 import net.onelitefeather.ingot.opensearch.query.GroupPart
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
 import net.onelitefeather.ingot.search.AttributeFilter
+import net.onelitefeather.ingot.search.AttributeSort
+import net.onelitefeather.ingot.search.gavKeyOf
+import java.util.HexFormat
 import net.onelitefeather.ingot.search.FacetBucket
 import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.RepositoryAccess
@@ -143,15 +146,66 @@ internal class OpenSearchAttributeQueryTest {
     }
 
     @Test
-    fun `should declare attribute filters and facets but not the attribute sort`() {
+    fun `should declare attribute filters, facets and the attribute sort`() {
         // when: the backend is created
         val backend = OpenSearchSearchBackend(OpenSearchSettings.read(environment), clock, sslContext = null, exchange = FakeExchange())
 
-        // then: the core lets filters and facets through, and refuses a sort before the backend sees it
+        // then: the core lets all three attribute queries through
         assertThat(backend.capabilities)
             .`as`("capabilities")
-            .contains(SearchCapability.ATTRIBUTE_FILTERS, SearchCapability.ATTRIBUTE_FACETS)
-            .doesNotContain(SearchCapability.ATTRIBUTE_SORT)
+            .contains(SearchCapability.ATTRIBUTE_FILTERS, SearchCapability.ATTRIBUTE_FACETS, SearchCapability.ATTRIBUTE_SORT)
+    }
+
+    @Test
+    fun `should list the groups in the order the cluster sorted them by the attribute`() {
+        // given: a cluster that sorts the groups beta, alpha, gamma and answers the group buckets in the reverse order
+        val exchange = FakeExchange { call -> sortAnswer(call) }
+        val backend = OpenSearchSearchBackend(OpenSearchSettings.read(environment), clock, sslContext = null, exchange = exchange)
+
+        // when: a page sorted by the attribute is read
+        val page = backend.search(ArtifactSearchQuery(attributeSort = AttributeSort(VERSIONS, descending = false)), access)
+
+        // then: the items follow the order of the sorted hits, not the order of the buckets
+        assertThat(page.items.map { it.artifactId }).`as`("artifacts by attribute").containsExactly("beta", "alpha", "gamma")
+        assertThat(exchange.calls.map { call -> call.body?.let { mapper.readTree(it).has("collapse") } ?: false })
+            .`as`("requests that collapse the files onto their group")
+            .contains(true)
+    }
+
+    /** Answers a sorted read: the hits give the order of the GAV keys, the group buckets come in the opposite order. */
+    private fun sortAnswer(call: HttpCall): HttpAnswer {
+        val body = mapper.readTree(call.body)
+        val answer = mapper.createObjectNode()
+        when {
+            body.has("collapse") -> {
+                val hits = answer.putObject("hits").putArray("hits")
+                sorted.forEach { name -> hits.addObject().putObject("fields").putArray("gav").add(gavOf(name)) }
+            }
+            body.at("/aggs/groups/terms/field").asText() == "gav" -> {
+                val buckets = answer.putObject("aggregations").putObject("groups").putArray("buckets")
+                sorted.reversed().forEach { name -> buckets.add(bucketOf(name)) }
+            }
+            body.has("aggs") && body.path("aggs").has("gavs") -> {
+                val buckets = answer.putObject("aggregations").putObject("gavs").putArray("buckets")
+                sorted.forEach { name ->
+                    val bucket = buckets.addObject().put("key", gavOf(name))
+                    bucket.putObject("repositories").putArray("buckets").addObject().put("key", "releases")
+                        .putObject("origins").putArray("buckets").addObject().put("key", "HOSTED")
+                }
+            }
+        }
+        return HttpAnswer(200, emptyMap(), mapper.writeValueAsString(answer))
+    }
+
+    private fun gavOf(name: String): String = HexFormat.of().formatHex(gavKeyOf("com.example", name, "1.0"))
+
+    private fun bucketOf(name: String): JsonNode {
+        val bucket = mapper.createObjectNode().put("key", gavOf(name)).put("doc_count", 1)
+        listOf("groupLc" to "com.example", "artifactLc" to name, "versionLc" to "1.0", "group" to "com.example", "artifact" to name, "version" to "1.0")
+            .forEach { (field, value) -> bucket.putObject(field).putArray("buckets").addObject().put("key", value) }
+        bucket.putObject("lastModified").put("value", 1L)
+        bucket.putObject("sizeBytes").put("value", 1L)
+        return bucket
     }
 
     /** Answers a facet read: each attribute aggregation with the buckets of the field it counts. */
@@ -183,6 +237,8 @@ internal class OpenSearchAttributeQueryTest {
             .describedAs("the body differs from golden/opensearch/$name.json; actual body: $actual")
             .isEqualTo(expected)
     }
+
+    private val sorted = listOf("beta", "alpha", "gamma")
 
     private companion object {
         const val PLATFORMS = "portal.platforms"

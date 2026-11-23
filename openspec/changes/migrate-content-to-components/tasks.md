@@ -146,7 +146,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 6.3 `test(ui)`: in the tests of `CreateTokenDialog`, `PolicyDialog`, `SearchFilters`, `AuditView`, `PasswordCard` and `FileUpload`,
   assert that every text field has variant `outlined` (the default), that radio buttons and checkboxes are primitives, and that the button
   of `DryRunStep` and `SupportView` is an `MdButton`. Verify: it fails on the mixed variants and the hand-built controls.
-- [ ] 6.4 `test(ui)`: in `src/components/md/MdTextField.test.js`, assert that the default variant is `outlined` and that a `filled` prop
+- [x] 6.4 `test(ui)`: in `src/components/md/MdTextField.test.js`, assert that the default variant is `outlined` and that a `filled` prop
   still works. Verify: it fails on the current default.
 - [ ] 6.5 `fix(ui)`: change the default of `MdTextField` to `outlined`, add `MdFieldGrid`, `MdFieldset` and `MdSaveBar` to
   `src/components/md/`, each with a registry entry and a DESIGN.md catalogue entry as the catalogue spec requires, and add `src/components/renderers/useFieldBinding.js`. Verify: 6.1, 6.2 and 6.4 pass.
@@ -181,13 +181,13 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 7.1 `test(ui)`: in a new `src/styles/md3/breakpoints.test.js`, read `src/style.css` as text and assert that the four window
   classes are declared as `@custom-variant`s at 600, 840, 1240 and 1600 pixels, with `max-medium` and `max-expanded` below the first two,
   and that `--breakpoint-*: initial` is declared in `@theme`. Verify: it fails, because the reset is not there yet.
-- [ ] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
+- [x] 7.2 `test(ui)`: in `src/components/md/typescale.test.js`, assert that the font sizes in `src/components/md/typescale.js` equal the
   values of `src/styles/md3/typography.css`. Verify: it fails, because the module does not exist.
 - [ ] 7.3 `test(ui)`: in `src/pages/IndexPage.test.js`, assert the two footers by design: the footer inside the sheet from 600 pixels
   (class `hidden medium:block`) and the footer below the page on narrow windows (class `medium:hidden`), so that exactly one of them is
   shown at each width; and that the icon lookup returns a value for every entry of the index, with the settings icon as the fallback for
   the entries of plugin pages. Verify: it fails on a lookup without the fallback.
-- [ ] 7.4 `test(ui)`: in `src/components/md/MdBadge.test.js` and `StatusLabel`'s test, assert that `StatusLabel` takes a status value of
+- [x] 7.4 `test(ui)`: in `src/components/md/MdBadge.test.js` and `StatusLabel`'s test, assert that `StatusLabel` takes a status value of
   the closed set and rejects a colour prop. Verify: it fails.
 - [ ] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
   folder group. Verify: the Playwright layout suite passes at 320, 600, 840, 1280 and 1920 pixels, and each changed threshold is in the
@@ -201,7 +201,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `RepositoryTypeBadge`, `opacity-60` in `MigrationView`) and the hand-set font weights (`RevokeTokenDialog`, `RotateTokenDialog`,
   `SecretOnceDialog`, `ResetPasswordDialog`, `SettingsImportErrors`, `SyncStep`) in favour of tokens. Verify: `grep -rnE 'class="[^"]*!' src --include=*.vue`
   shows no important modifier, and `grep -rn "opacity-" src` finds nothing outside the state layers.
-- [ ] 7.8 `fix(ui)`: `StatusLabel` takes a status value of a closed set instead of a colour prop; `StatTile` takes its meter colour as
+- [x] 7.8 `fix(ui)`: `StatusLabel` takes a status value of a closed set instead of a colour prop; `StatTile` takes its meter colour as
   classes from a closed set; `TimeSeriesChart` takes its font sizes from `src/components/md/typescale.js`. Verify: 7.2 and 7.4 pass.
 - [ ] 7.9 `fix(ui)`: `IndexPage.vue` (`src/pages/`): keep the two footers by design (inside the sheet from 600 pixels, below the page on
   narrow windows) and make the icon lookup a table keyed by the entry's icon name, with the settings icon as the fallback for plugin

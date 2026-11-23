@@ -28,7 +28,12 @@ import ConstantRenderer from './ConstantRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 import { tester as oneOfTester } from './OneOfRenderer.vue'
-import OneOfRenderer, { variantIndexOf, defaultValueOf, holdsData } from './OneOfRenderer.vue'
+import OneOfRenderer, { variantIndexOf as variantIndexOfExport, defaultValueOf as defaultValueOfExport, holdsData as holdsDataExport } from './OneOfRenderer.vue'
+
+// Tests only. The helpers exported by a .vue file are not typed for the linter, so their signatures are repeated here.
+const variantIndexOf = variantIndexOfExport as (branches: JsonSchema7[], data: unknown) => number | undefined
+const defaultValueOf = defaultValueOfExport as (branch: JsonSchema7) => unknown
+const holdsData = holdsDataExport as (data: unknown, branch: JsonSchema7) => boolean
 
 /*
  * The storage provider of a repository: the discriminator `type` is a constant in each branch,

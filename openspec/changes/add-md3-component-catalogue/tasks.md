@@ -138,7 +138,7 @@ earlier ones.
   `animate-md-snackbar-enter` and `animate-md-snackbar-leave` tokens that `refactor-md3-token-utilities` defines, and replace
   `z-[1100]` with `z-md-snackbar`; provide the snackbar queue through `provide` and `inject` with `App.vue` as the provider and
   the store as the default instance (proposal question 7). Verify: 2.15 and 2.16 pass, and the snackbar and progress screenshots match.
-- [ ] 3.10 `refactor(ui)`: promote `DialogShell` to `src/components/md/MdDialog.vue` with the anchor `dialog-shell` on the frame, the
+- [x] 3.10 `refactor(ui)`: promote `DialogShell` to `src/components/md/MdDialog.vue` with the anchor `dialog-shell` on the frame, the
   sizes, the role, focus handling and the scrim utility; keep `src/components/identity/DialogShell.vue` as the re-export; update the
   registry `file` of `dialog-shell` (proposal question 1). Verify: 2.3 and 2.17 pass, and the identity dialog screenshots match.
 - [x] 3.11 `refactor(ui)`: add `MdDialogActions`. Verify: 2.18 passes.

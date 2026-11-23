@@ -62,6 +62,8 @@ data class S3StorageProviderSettings(
     val sharedBucket: Boolean = false,
     @get:Doc(title = "Local Metadata Cache", description = "Local metadata cache settings (optional). The default is no caching. NOTE: This cache is local only. If you run multiple instances, they will not share the cache!")
     val metadataCacheSettings: S3MetadataCacheSettings? = null,
+    @get:Doc(title = "Path Style Access", description = "Address the bucket as https://host/bucket/key, which most S3-compatible servers such as MinIO need (optional). When unset, the JVM property reposilite.s3.pathStyleAccessEnabled decides")
+    val pathStyleAccess: Boolean? = null,
 ) : StorageProviderSettings, SharedNamespaceAware, SupportDetails {
 
     /**
@@ -90,6 +92,15 @@ data class S3StorageProviderSettings(
         region.takeIf { it.isNotBlank() }?.let { mapOf("region" to it) }.orEmpty()
 
 }
+
+/**
+ * Path-style addressing: the setting decides when it is set, and the JVM property [propertyValue]
+ * (`reposilite.s3.pathStyleAccessEnabled`) decides when it is not.
+ */
+internal fun S3StorageProviderSettings.resolvePathStyleAccess(
+    propertyValue: String? = System.getProperty("reposilite.s3.pathStyleAccessEnabled"),
+): Boolean =
+    pathStyleAccess ?: (propertyValue == "true")
 
 /** Separates the parts of a namespace key. It cannot occur in an endpoint, a bucket name or a configured prefix. */
 private const val NAMESPACE_SEPARATOR = "\u0000"

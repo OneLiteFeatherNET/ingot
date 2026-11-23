@@ -271,6 +271,9 @@ The `prometheus` plugin (module `reposilite-plugins/prometheus-plugin`) reads th
 | `INGOT_PROMETHEUS_PATH` | `REPOSILITE_PROMETHEUS_PATH` | `reposilite.prometheus.path` | `/metrics` | Path of the metrics endpoint. |
 | `INGOT_PROMETHEUS_USER` | `REPOSILITE_PROMETHEUS_USER` | `reposilite.prometheus.user` | none | User name for the metrics endpoint. Required: without it the plugin throws `Prometheus user is not defined`. |
 | `INGOT_PROMETHEUS_PASSWORD` | `REPOSILITE_PROMETHEUS_PASSWORD` | `reposilite.prometheus.password` | none | Password for the metrics endpoint. Required: without it the plugin throws `Prometheus password is not defined`. |
+| `INGOT_PROMETHEUS_JVM_METRICS` | `REPOSILITE_PROMETHEUS_JVM_METRICS` | `reposilite.prometheus.jvm_metrics` | `true` | Set to `false` to leave the JVM series out of the metrics endpoint. Any other value keeps them, so a typo never removes series. |
+
+The JVM series come from the Prometheus client library and are registered unless the switch above is `false`. They fall into these families, named by their prefix: memory (`jvm_memory_`, `jvm_buffer_pool_`), garbage collection (`jvm_gc_`), threads (`jvm_threads_`), class loading (`jvm_classes_`) and process (`process_`). The exact names depend on the library version. The application series, including `ingot_http_server_request_duration_seconds`, are registered either way.
 
 #### Metrics switch
 

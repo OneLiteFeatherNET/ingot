@@ -313,6 +313,23 @@ const barItems = computed(() => [
 ])
 const barSection = computed(() => (isListed(moreKeys.value, navigationSection.value) ? MORE_KEY : navigationSection.value))
 const moreOpen = ref<boolean>(false)
+const barHost = ref<HTMLElement | null>(null)
+
+// Escape closes the panel and hands the focus back to the More item, whichever of the two held it. The More item is
+// the last one of the bar.
+const closeMoreWithEscape = (): void => {
+  if (!moreOpen.value) return
+  moreOpen.value = false
+  barHost.value?.querySelector<HTMLElement>('li:last-child :is(a, button)')?.focus()
+}
+const closeMoreOnEscape = (event: KeyboardEvent): void => {
+  if (event.key === 'Escape') closeMoreWithEscape()
+}
+watch(moreOpen, open => {
+  if (open) document.addEventListener('keydown', closeMoreOnEscape)
+  else document.removeEventListener('keydown', closeMoreOnEscape)
+})
+onBeforeUnmount(() => document.removeEventListener('keydown', closeMoreOnEscape))
 
 const selectBarItem = (key: string): void => {
   if (key === MORE_KEY) {
@@ -618,7 +635,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
           v-if="moreOpen"
           class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 shadow-elevation-2 medium:hidden"
           data-md-menu-rise
-          @keydown.esc="moreOpen = false"
+          @keydown.esc="closeMoreWithEscape"
         >
           <nav aria-label="More sections">
             <div
@@ -660,7 +677,10 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
           </nav>
         </div>
       </MdTransition>
-      <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden">
+      <div
+        ref="barHost"
+        class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden"
+      >
         <MdNavigationBar
           :items="barItems"
           :model-value="barSection ?? undefined"

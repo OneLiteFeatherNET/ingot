@@ -59,21 +59,21 @@ describe('MdColourFieldRenderer tester', () => {
   it('takes the colour settings by name, above the text field', () => {
     const colour = (colourTester as RankedTester)(control('#/properties/appearance/properties/primaryColor'), schema, context)
 
-    expect(colour, 'a colour field outranks the text field').toBeGreaterThan(textTester(control('#/properties/x'), schema, context))
+    expect(colour, 'a colour field outranks the text field').toBeGreaterThan((textTester as RankedTester)(control('#/properties/x'), schema, context))
   })
 
   it('takes every named colour setting', () => {
     for (const name of ['seedColor', 'primaryColor', 'secondaryColor', 'tertiaryColor', 'errorColor']) {
-      expect(colourTester(control(`#/properties/${name}`), schema, context), name).toBeGreaterThan(-1)
+      expect((colourTester as RankedTester)(control(`#/properties/${name}`), schema, context), name).toBeGreaterThan(-1)
     }
   })
 
   it('takes a string that declares the colour format, whatever its name', () => {
-    expect(colourTester(control('#/properties/accent'), { type: 'string', format: 'color' }, context)).toBeGreaterThan(-1)
+    expect((colourTester as RankedTester)(control('#/properties/accent'), { type: 'string', format: 'color' }, context)).toBeGreaterThan(-1)
   })
 
   it('leaves other strings to the text field', () => {
-    expect(colourTester(control('#/properties/title'), schema, context)).toBe(-1)
+    expect((colourTester as RankedTester)(control('#/properties/title'), schema, context)).toBe(-1)
   })
 })
 

@@ -18,7 +18,6 @@ import com.reposilite.storage.api.toLocation
 import com.reposilite.web.api.HttpServerConfigurationEvent
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
-import io.prometheus.metrics.instrumentation.jvm.JvmMetrics
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.eclipse.jetty.server.handler.StatisticsHandler
 import org.eclipse.jetty.util.thread.QueuedThreadPool
@@ -41,8 +40,11 @@ class PrometheusPlugin : ReposilitePlugin() {
             prometheusPassword = settings.password
         )
 
-        JvmMetrics.builder().register()
-        logger.info("Prometheus | JVM metrics has been initialized.")
+        if (registerJvmMetrics(settings, PrometheusRegistry.defaultRegistry)) {
+            logger.info("Prometheus | JVM metrics has been initialized.")
+        } else {
+            logger.info("Prometheus | JVM metrics are switched off.")
+        }
 
         ReposiliteMetrics.register(facade<StatusFacade>(), facade<FailureFacade>())
 

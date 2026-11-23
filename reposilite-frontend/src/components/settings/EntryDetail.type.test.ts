@@ -165,6 +165,7 @@ describe('EntryDetail switching the type', () => {
     await chooseType('PROXY')
 
     const notice = wrapper.get('[data-test="type-removals"]').text()
+    expect(wrapper.get('[data-test="type-removals"]').attributes('data-ingot-component'), 'the notice is a card').toBe('md-card')
     expect(notice).toContain('Redeployment')
     expect(notice, 'the storage is kept as the cache storage of the proxy').not.toContain('Storage')
     expect(button('Switch and remove')).toBeDefined()

@@ -38,7 +38,8 @@ import java.util.Collections
 
 /**
  * The entity tag of a cached artifact is read from its stored checksum. Every storage call is a network round trip on S3, and a
- * probe for a missing key there costs a HEAD and a listing, so a checksum is read directly: one call per checksum file.
+ * read of a missing key there answers 404 with a body, and a probe through exists costs a listing on top. A checksum is
+ * therefore sized first, which is a bare HEAD, and only read when it is there.
  */
 internal class EntityTagStorageReadsTest : MavenSpecification() {
 
@@ -49,7 +50,7 @@ internal class EntityTagStorageReadsTest : MavenSpecification() {
     override fun repositories() = listOf(RepositorySettings(id = REPOSITORY))
 
     @Test
-    fun `should read each checksum sibling with one storage call and never probe or list`() {
+    fun `should size each checksum sibling first and read only the one that exists`() {
         // given: an artifact with a stored sha1 checksum and no sha256
         val details = store(JAR, "jar bytes")
         store(JAR.resolveSibling("lib-1.0.jar.sha1"), SHA1)
@@ -58,16 +59,17 @@ internal class EntityTagStorageReadsTest : MavenSpecification() {
         // when: the entity tag is resolved
         val etag = mavenFacade.findEntityTag(LookupRequest(null, REPOSITORY, JAR), details)
 
-        // then: the sha1 is the tag, read after one call for the missing sha256 and one for the sha1
+        // then: the sha1 is the tag, after a size probe for the missing sha256 and one for the sha1, and a single read
         assertThat(etag).describedAs("entity tag of the artifact").isEqualTo("\"$SHA1\"")
         assertThat(calls).describedAs("storage calls made for the entity tag").containsExactly(
-            "getFile com/example/lib/1.0/lib-1.0.jar.sha256",
+            "getFileSize com/example/lib/1.0/lib-1.0.jar.sha256",
+            "getFileSize com/example/lib/1.0/lib-1.0.jar.sha1",
             "getFile com/example/lib/1.0/lib-1.0.jar.sha1",
         )
     }
 
     @Test
-    fun `should fall back to the size and time tag after one storage call per checksum when none is stored`() {
+    fun `should fall back to the size and time tag after one size probe per checksum and no read when none is stored`() {
         // given: an artifact without any stored checksum
         val details = store(JAR, "jar bytes")
         calls.clear()
@@ -75,13 +77,13 @@ internal class EntityTagStorageReadsTest : MavenSpecification() {
         // when: the entity tag is resolved
         val etag = mavenFacade.findEntityTag(LookupRequest(null, REPOSITORY, JAR), details)
 
-        // then: the size and time tag, after exactly one read per checksum kind
+        // then: the size and time tag, after exactly one size probe per checksum kind and no body-carrying read
         assertThat(etag).describedAs("entity tag without a checksum")
             .isEqualTo("\"${details.contentLength.toString(16)}-${details.lastModifiedTime!!.toEpochMilli().toString(16)}\"")
         assertThat(calls).describedAs("storage calls made for the entity tag").containsExactly(
-            "getFile com/example/lib/1.0/lib-1.0.jar.sha256",
-            "getFile com/example/lib/1.0/lib-1.0.jar.sha1",
-            "getFile com/example/lib/1.0/lib-1.0.jar.md5",
+            "getFileSize com/example/lib/1.0/lib-1.0.jar.sha256",
+            "getFileSize com/example/lib/1.0/lib-1.0.jar.sha1",
+            "getFileSize com/example/lib/1.0/lib-1.0.jar.md5",
         )
     }
 
@@ -134,6 +136,11 @@ internal class EntityTagStorageReadsTest : MavenSpecification() {
         override fun getFiles(location: Location): Result<List<Location>, ErrorResponse> {
             calls += "getFiles $location"
             return delegate.getFiles(location)
+        }
+
+        override fun getFileSize(location: Location): Result<Long, ErrorResponse> {
+            calls += "getFileSize $location"
+            return delegate.getFileSize(location)
         }
 
         override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> {

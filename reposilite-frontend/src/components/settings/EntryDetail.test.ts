@@ -153,6 +153,14 @@ describe('EntryDetail', () => {
     expect(zone.text()).toContain('Delete repository')
   })
 
+  it('draws the danger zone as an MdCard with the error border', () => {
+    mountDetail()
+
+    const zone = wrapper.get('[data-test="danger-zone"]')
+    expect(zone.attributes('data-ingot-component'), 'the zone is a card').toBe('md-card')
+    expect(zone.classes(), 'the zone keeps the error border').toContain('border-error')
+  })
+
   it('opens the delete confirmation without deleting anything yet', async () => {
     mountDetail()
 

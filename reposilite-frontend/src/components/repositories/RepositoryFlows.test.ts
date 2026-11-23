@@ -77,7 +77,7 @@ const mountList = async ({ address = '/settings/repositories', store }: { addres
 const buttonLabelled = (label: string) => wrapper.findAll('button').find(button => button.text() === label)!
 // The Actions menu of a row is teleported to the body: its items are read from the document.
 const openActionsOf = async (name: string) => {
-  buttonLabelled(`Actions for ${name}`).trigger('click')
+  await buttonLabelled(`Actions for ${name}`).trigger('click')
   await flushPromises()
 }
 const menuItemOf = (label: string) => document.querySelector<HTMLElement>(`[role="menu"] [aria-label="${label}"]`)!

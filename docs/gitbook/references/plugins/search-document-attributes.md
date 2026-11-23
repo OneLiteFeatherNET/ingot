@@ -85,16 +85,16 @@ This rule needs a backend that stores attributes. On a backend without them, an 
 
 ## Backends
 
-A search backend says whether it stores attributes through `capabilities`, a set of `SearchCapability` values on `ArtifactSearchBackend`. The default is empty. `ATTRIBUTES` is the capability of this page. `ATTRIBUTE_FILTERS`, `ATTRIBUTE_FACETS` and `ATTRIBUTE_SORT` are reserved for filtering, faceting and sorting by attributes, which no backend declares yet.
+A search backend says whether it stores attributes through `capabilities`, a set of `SearchCapability` values on `ArtifactSearchBackend`. The default is empty. `ATTRIBUTES` is the capability of this page. `ATTRIBUTE_FILTERS`, `ATTRIBUTE_FACETS` and `ATTRIBUTE_SORT` are the capabilities for filtering, faceting and sorting by attributes. The database backend, OpenSearch and Elasticsearch declare all three. Meilisearch does not declare them yet.
 
-| Backend | `ATTRIBUTES` | How the attributes are stored |
-| --- | --- | --- |
-| Database (H2, SQLite, MariaDB, MySQL, PostgreSQL) | yes | The table `search_attribute`, one row per value with the repository, the path, the key, the position of the value, the value and a lower-cased copy of it. |
-| OpenSearch | yes | An `attributes` object in the document. |
-| Meilisearch | yes | An `attributes` object in the document. |
-| Elasticsearch | not yet | Its support is an open pull request. Until it lands, attributes are dropped as described below. |
-| Lucene | no | The Lucene plugin declares nothing until the pull request that adds the attribute field to its mapping lands. |
-| Backends of other plugins | no, unless they declare it | See [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md). |
+| Backend | `ATTRIBUTES` | `ATTRIBUTE_FILTERS`, `ATTRIBUTE_FACETS`, `ATTRIBUTE_SORT` | How the attributes are stored |
+| --- | --- | --- | --- |
+| Database (H2, SQLite, MariaDB, MySQL, PostgreSQL) | yes | yes | The table `search_attribute`, one row per value with the repository, the path, the key, the position of the value, the value and a lower-cased copy of it. |
+| OpenSearch | yes | yes | An `attributes` object in the document. |
+| Meilisearch | yes | no | An `attributes` object in the document. |
+| Elasticsearch | yes | yes | An `attributes` object in the document. |
+| Lucene | no | no | The Lucene plugin declares nothing until the pull request that adds the attribute field to its mapping lands. |
+| Backends of other plugins | no, unless they declare it | no, unless they declare it | See [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md). |
 
 When the active backend does not declare `ATTRIBUTES`, the server drops the attribute set before it reaches the backend and counts the call as skipped with the reason `unsupported-backend`. The row is written without attributes, exactly as before, and nothing fails. The call shows up in the `skipped` counter of the enricher in the index status. A portal that shows no attributes on such an installation can point there.
 
@@ -106,7 +106,7 @@ The table `search_attribute` is created at start next to the other search tables
 
 The index mapping gains an `attributes` object and the dynamic template `ingot_attributes`, which maps every string under `attributes.*` to a `keyword`. A new enricher therefore needs no mapping change. An index that an earlier build created takes this as a mapping addition when the backend opens it. The mapping version stays `1`, and no reindex is needed.
 
-An upsert that carries attributes indexes the whole document, so no older attribute survives. An upsert without attributes merges the fixed fields into the stored document and keeps the attributes. Elasticsearch behaves the same way once its pull request lands.
+An upsert that carries attributes indexes the whole document, so no older attribute survives. An upsert without attributes merges the fixed fields into the stored document and keeps the attributes.
 
 ### Meilisearch
 

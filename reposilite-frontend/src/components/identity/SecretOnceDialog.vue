@@ -121,7 +121,7 @@ const copySnippet = async (snippet: Snippet) => {
       </h2>
     </template>
     <p class="mt-2 md-body-large text-on-surface-variant">
-      Secret for token <span class="font-medium text-on-surface">{{ tokenName }}</span>
+      Secret for token <span class="font-(weight:--md-sys-typescale-label-large-weight) text-on-surface">{{ tokenName }}</span>
     </p>
 
     <div class="mt-4 flex items-center gap-2">

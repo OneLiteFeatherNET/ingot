@@ -91,14 +91,15 @@ internal class ElasticsearchSearchBackend(
 
     /**
      * The index stores the attributes of a row in its document and removes them with it (search document attributes, D6). The
-     * reader filters and counts by them in the same requests as the fixed filters (search attribute facets, D5). It does not
-     * sort by them: the groups are listed through aggregations, which cannot order a group by its smallest value of a key, so
-     * the core refuses an attribute sort before this backend sees it.
+     * reader filters and counts by them in the same requests as the fixed filters (search attribute facets, D5). It sorts by
+     * them too: the files collapse onto their group and sort by the keyword field, the smallest value of a key ascending and
+     * the largest descending, so the order of the groups is the one of the database backend (D4).
      */
     override val capabilities: Set<SearchCapability> = setOf(
         SearchCapability.ATTRIBUTES,
         SearchCapability.ATTRIBUTE_FILTERS,
         SearchCapability.ATTRIBUTE_FACETS,
+        SearchCapability.ATTRIBUTE_SORT,
     )
 
     /**

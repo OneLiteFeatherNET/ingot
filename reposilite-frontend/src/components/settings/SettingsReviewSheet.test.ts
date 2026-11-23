@@ -110,6 +110,13 @@ afterEach(() => {
 })
 
 describe('SettingsReviewSheet', () => {
+  it('draws each change group as an MdCard', async () => {
+    mountSheet()
+    await flushPromises()
+
+    expect(sheet().querySelectorAll('[data-variant="outlined"]').length, 'every group is a card').toBeGreaterThan(0)
+  })
+
   it('is announced as a labelled dialog', async () => {
     mountSheet()
     await flushPromises()
