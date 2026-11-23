@@ -363,7 +363,7 @@ const setShowDetails = (value: boolean) => {
             v-if="shownTags.length > 0"
             role="group"
             aria-label="Filter by tag"
-            class="-mx-4 -mt-2 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            class="-mx-4 -mt-2 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 scrollbar-hidden"
           >
             <MdChip
               v-for="tag in shownTags"

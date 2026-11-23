@@ -299,3 +299,16 @@ describe('md-scrollbar utility', () => {
     expect(block, 'the WebKit thumb takes the outline variant colour').toMatch(/&::-webkit-scrollbar-thumb\s*\{[^}]*var\(--md-sys-color-outline-variant\)/)
   })
 })
+
+describe('search-cancel-none utility', () => {
+  const start = stylesheet.indexOf('@utility search-cancel-none')
+  const block = blockAt(stylesheet, start)
+
+  it('is defined in the stylesheet', () => {
+    expect(start, 'an @utility search-cancel-none block in src/style.css').toBeGreaterThanOrEqual(0)
+  })
+
+  it('hides the browser clear button of a search input', () => {
+    expect(block, 'the WebKit clear button is hidden').toMatch(/&::-webkit-search-cancel-button\s*\{[^}]*display: none/)
+  })
+})
