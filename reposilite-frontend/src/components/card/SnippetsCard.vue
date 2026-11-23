@@ -15,16 +15,14 @@
   -->
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useId, watch, watchEffect, type PropType } from 'vue'
+import { ref, useId, watch, watchEffect, type PropType } from 'vue'
 import { useSession } from '../../store/session'
-import { copyToClipboard, selectText } from './copySnippet'
 import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
 import MdCode from '../md/MdCode.vue'
-import MdIconButton from '../md/MdIconButton.vue'
+import MdCodeBlock from '../md/MdCodeBlock.vue'
 import MdTransition from '../md/MdTransition.vue'
-import BrowserIcon from '../browser/BrowserIcon.vue'
 import DownIcon from '../icons/DownIcon.vue'
 import CardMenu from './CardMenu.vue'
 import RepositorySnippet from "./RepositorySnippet.vue"
@@ -197,38 +195,6 @@ watch(selectedTab, (to, from) => {
   transitionDirection.value = toIndex - fromIndex < 0 ? -1 : 1
 })
 
-const snippetRef = ref<Array<{ content?: string }>>()
-const codeBlock = ref<HTMLElement>()
-
-// '' (nothing yet), 'copied' or 'selected'. Shown as a status line next to the copy action.
-const copyState = ref('')
-const copyMessage = computed(() => {
-  if (copyState.value === 'copied') return 'Copied'
-  if (copyState.value === 'selected') return 'Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.'
-  return ''
-})
-let resetCopyState: ReturnType<typeof setTimeout> | undefined
-
-const copy = async () => {
-  if (copyState.value === 'copied') return
-
-  const snippet = snippetRef.value?.[0]?.content?.trim() ?? ''
-  if (await copyToClipboard(snippet, navigator.clipboard)) {
-    copyState.value = 'copied'
-    clearTimeout(resetCopyState)
-    resetCopyState = setTimeout(() => {
-      copyState.value = ''
-    }, 2000)
-    return
-  }
-
-  // No clipboard here: select the snippet so the keyboard shortcut finishes the job.
-  selectText(codeBlock.value)
-  copyState.value = 'selected'
-}
-
-onBeforeUnmount(() => clearTimeout(resetCopyState))
-
 const selectTab = (tab: string) =>
   selectedTab.value = tab
 </script>
@@ -304,95 +270,39 @@ const selectTab = (tab: string) =>
             <div
               :key="selectedTab"
             >
-              <!--
-                Padded by the same space on all four sides. The code scrolls sideways inside the padding, so the
-                scrollbar sits above the bottom edge rather than on it.
-              -->
-              <div
-                class="group relative rounded-corner-medium bg-surface-container-highest p-4 text-on-surface"
-                :class="{ 'min-h-29': loading }"
+              <MdCodeBlock
+                v-if="loading"
+                label="Loading snippet"
+                class="min-h-29"
               >
-                <!--
-                  The copy action sits in the top right corner of the code field. It is shown while the field is hovered
-                  or has focus, and on devices without hover it stays shown. It fades rather than leaves the layout or
-                  the tab order, and the code keeps a right padding so the button never covers a line of the snippet.
-                -->
-                <div
-                  v-if="!loading"
-                  class="absolute top-2 right-2 opacity-0 transition-opacity duration-(--md-sys-motion-duration-short3) group-hover:opacity-100 group-focus-within:opacity-100 no-hover:opacity-100"
+                <span class="skeleton-bars block space-y-2.5 pt-1">
+                  <span class="block h-3 w-4/5 rounded-corner-extra-small bg-surface-container-high" />
+                  <span class="block h-3 w-1/2 rounded-corner-extra-small bg-surface-container-high" />
+                  <span class="block h-3 w-2/3 rounded-corner-extra-small bg-surface-container-high" />
+                  <span class="block h-3 w-2/5 rounded-corner-extra-small bg-surface-container-high" />
+                </span>
+              </MdCodeBlock>
+              <template v-else>
+                <template
+                  v-for="entry in configurations"
+                  :key="entry.name"
                 >
-                  <MdIconButton
-                    aria-label="Copy snippet"
-                    @click="copy"
-                  >
-                    <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
-                  </MdIconButton>
-                </div>
-                <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
-                <div
-                  ref="codeBlock"
-                  role="region"
-                  tabindex="0"
-                  :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
-                  class="md-focus-ring md-scrollbar card-editor max-w-full overflow-x-auto whitespace-pre break-normal pr-12 md-code-small"
-                >
-                  <div
-                    v-if="loading"
-                    class="skeleton-bars space-y-2.5 pt-1"
-                  >
-                    <div
-                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
-                      style="width: 80%"
+                  <template v-if="entry.name === selectedTab">
+                    <RepositorySnippet
+                      v-if="data.type === 'repository'"
+                      :configuration="entry"
+                      :data="data"
                     />
-                    <div
-                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
-                      style="width: 55%"
+                    <ArtifactSnippet
+                      v-else-if="data.type === 'artifact'"
+                      :configuration="entry"
+                      :data="data"
                     />
-                    <div
-                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
-                      style="width: 68%"
-                    />
-                    <div
-                      class="h-3 rounded-corner-extra-small bg-surface-container-high"
-                      style="width: 40%"
-                    />
-                  </div>
-                  <template v-else>
-                    <template
-                      v-for="entry in configurations"
-                      :key="entry.name"
-                    >
-                      <template v-if="entry.name === selectedTab">
-                        <RepositorySnippet
-                          v-if="data.type === 'repository'"
-                          ref="snippetRef"
-                          :configuration="entry"
-                          :data="data"
-                        />
-                        <ArtifactSnippet
-                          v-else-if="data.type === 'artifact'"
-                          ref="snippetRef"
-                          :configuration="entry"
-                          :data="data"
-                        />
-                      </template>
-                    </template>
                   </template>
-                </div>
-              </div>
+                </template>
+              </template>
             </div>
           </MdTransition>
-          <!--
-            Below the snippet, so a status line never sits over a line of it. The region is rendered before any
-            outcome, so assistive technology announces the message when it changes.
-          -->
-          <p
-            role="status"
-            class="md-body-small"
-            :class="{ 'mt-2 text-success': copyState === 'copied', 'mt-2 text-on-surface-variant': copyState === 'selected' }"
-          >
-            {{ copyMessage }}
-          </p>
         </div>
       </div>
     </div>

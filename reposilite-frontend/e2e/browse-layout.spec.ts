@@ -185,11 +185,14 @@ test.describe('browse layout', () => {
     await page.goto(siteUrl(`/browse/${group}`))
     const snippet = page.locator('[data-ingot-component="repository-snippet"]').first()
     await expect(snippet, 'the snippet of the group').toBeVisible()
-    expect(await snippet.evaluate(element => getComputedStyle(element).whiteSpace), 'white-space of the snippet').toBe('pre')
-    const brokenTokens = await snippet.evaluate((element) => [...element.querySelectorAll('span')]
-      .filter(span => span.getClientRects().length > 1)
-      .map(span => span.textContent.trim()))
-    expect(brokenTokens, 'tokens broken across lines').toEqual([])
+    const code = snippet.locator('pre')
+    expect(await code.evaluate(element => getComputedStyle(element).whiteSpace), 'white-space of the snippet').toBe('pre')
+    // Every line of the text is one line on screen: no line is broken at the edge of the card.
+    const lines = await code.evaluate(element => ({
+      shown: Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)),
+      written: (element.textContent ?? '').split('\n').length,
+    }))
+    expect(lines.shown, 'lines on screen against lines written').toBe(lines.written)
   })
 
   test('aligns the includes block of a group with the listing at 1440 px', async ({ page, seed }) => {

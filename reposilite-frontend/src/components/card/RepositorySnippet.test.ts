@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import RepositorySnippet from './RepositorySnippet.vue'
+import MdCopyableCode from '../md/MdCopyableCode.vue'
 import type { RepositorySnippetData } from './snippetTypes'
 
 const data: RepositorySnippetData = {
@@ -12,9 +13,11 @@ const data: RepositorySnippetData = {
 
 const render = (lang: string) => mount(RepositorySnippet, { props: { configuration: { name: 'Maven', lang }, data } })
 
+const codeText = (wrapper: ReturnType<typeof render>) => wrapper.find('pre').element.textContent
+
 describe('RepositorySnippet Maven text', () => {
   it('copies the snippet exactly as written: one element per line, no blank line between them', () => {
-    const text = render('xml').find('pre').element.textContent
+    const text = codeText(render('xml'))
 
     expect(text).toBe(
       '<repository>\n' +
@@ -23,60 +26,34 @@ describe('RepositorySnippet Maven text', () => {
       '  <url>http://localhost/releases</url>\n' +
       '</repository>'
     )
-  })
-
-  it('keeps the url on one line, without break opportunities inside it', () => {
-    const pre = render('xml').find('pre').element
-
-    expect(pre.querySelectorAll('wbr'), 'the url is not split into pieces').toHaveLength(0)
-    expect(pre.textContent).toContain('  <url>http://localhost/releases</url>\n')
   })
 })
 
 describe('RepositorySnippet url', () => {
-  it.each(['xml', 'groovy', 'kotlin', 'scala'])('marks the url of the %s snippet as its own element, never broken', (lang) => {
-    const url = render(lang).find('pre').element.querySelector('.snippet-url')!
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('keeps the url of the %s snippet whole on one line', (lang) => {
+    const text = codeText(render(lang))
 
-    expect(url, 'the url is wrapped in its own element').not.toBeNull()
-    expect(url.textContent, 'the wrapped element holds the url and nothing else').toBe('http://localhost/releases')
-    expect(url.classList, 'the url is not allowed to break at any character').not.toContain('wrap-anywhere')
-    expect(url.classList, 'the url is not allowed to wrap').not.toContain('whitespace-normal')
-  })
-
-  it('wraps only the url, so the rest of the snippet keeps its line structure', () => {
-    const pre = render('kotlin').find('pre').element
-
-    expect(pre.querySelectorAll('.snippet-url'), 'exactly one wrapped part for one url').toHaveLength(1)
-    expect(pre.textContent, 'the wrapper adds no character to the copied text').toContain('url = uri("http://localhost/releases")')
-  })
-
-  it('adds no zero-width space and no line break to the copied text', () => {
-    const text = render('xml').find('pre').element.textContent
-
+    expect(text, 'the url is in the text as written').toContain('http://localhost/releases')
     expect(text, 'no zero-width space is copied with the url').not.toMatch(/\u200b/)
-    expect(text).toBe(
-      '<repository>\n' +
-      '  <id>releases-x</id>\n' +
-      '  <name>Ingot Repository</name>\n' +
-      '  <url>http://localhost/releases</url>\n' +
-      '</repository>'
-    )
+  })
+
+  it('writes the Gradle Kotlin url as one call on one line', () => {
+    expect(codeText(render('kotlin'))).toContain('url = uri("http://localhost/releases")')
   })
 })
 
 describe('RepositorySnippet block', () => {
-  // A token is never broken across lines: the block keeps every line whole and the card scrolls sideways instead.
-  it.each(['xml', 'groovy', 'kotlin', 'scala'])('keeps the %s block on whole lines, so long tokens scroll sideways', (lang) => {
-    const pre = render(lang).find('pre').element
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('draws the %s snippet as one copyable code block under the snippet anchor', (lang) => {
+    const wrapper = render(lang)
 
-    expect(pre.classList, 'no token may break at any character').not.toContain('wrap-anywhere')
-    expect(pre.classList, 'the block keeps its lines as they are').toContain('whitespace-pre')
+    expect(wrapper.attributes('data-ingot-component'), 'the anchor stays on the root').toBe('repository-snippet')
+    expect(wrapper.findAllComponents(MdCopyableCode), 'one copyable code block per snippet').toHaveLength(1)
   })
 })
 
 describe('RepositorySnippet Gradle and SBT text', () => {
   it('indents the Gradle Groovy block by four spaces and keeps its url whole', () => {
-    const text = render('groovy').find('pre').element.textContent
+    const text = codeText(render('groovy'))
 
     expect(text).toBe(
       'maven {\n' +
@@ -87,7 +64,7 @@ describe('RepositorySnippet Gradle and SBT text', () => {
   })
 
   it('writes the SBT resolver as one line, the way it is pasted into build.sbt', () => {
-    const text = render('scala').find('pre').element.textContent
+    const text = codeText(render('scala'))
 
     expect(text).toBe('resolvers += "releases-x" at "http://localhost/releases"')
   })

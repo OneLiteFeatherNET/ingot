@@ -21,6 +21,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import SnippetsCard from './SnippetsCard.vue'
 import MdTransition from '../md/MdTransition.vue'
+import RepositorySnippet from './RepositorySnippet.vue'
+import MdCopyableCode from '../md/MdCopyableCode.vue'
+import MdCodeBlock from '../md/MdCodeBlock.vue'
 import { DETAILS_COLLAPSED_KEY } from './detailsCollapsed'
 
 // By default the metadata request never answers, so the card stays in its loading state. A test that
@@ -122,30 +125,18 @@ describe('SnippetsCard surface', () => {
     expect(classes, 'no fill frames the heading row').not.toContain('bg-surface')
   })
 
-  it('sets the snippet text in the small code role, the body small size in monospace', async () => {
+  it('draws each snippet as a copyable code block, which is a code block with a copy action', async () => {
     await mountCard()
 
-    const editor = wrapper!.find('.card-editor')
-    expect(editor.exists()).toBe(true)
-    expect(editor.classes()).toContain('md-code-small')
-    expect(editor.classes()).not.toContain('text-ssm')
+    expect(wrapper!.findAllComponents(MdCopyableCode as Component), 'one snippet is shown at a time').toHaveLength(1)
+    expect(wrapper!.findComponent(MdCopyableCode as Component).findComponent(MdCodeBlock as Component).exists(), 'the snippet is an MdCopyableCode inside an MdCodeBlock').toBe(true)
   })
 
-  it('keeps the copy button out of the scrolling code block', async () => {
+  it('keeps the copy button out of the scrolling code', async () => {
     await mountCard()
 
-    expect(wrapper!.find('.card-editor button[aria-label="Copy snippet"]').exists(), 'the copy button never covers a line of code').toBe(false)
+    expect(wrapper!.find('[role="region"] button[aria-label="Copy snippet"]').exists(), 'the copy button never covers a line of code').toBe(false)
     expect(copyButton().exists(), 'the copy action is still offered').toBe(true)
-  })
-
-  it('draws the snippet as preformatted text that scrolls sideways instead of wrapping', async () => {
-    await mountCard()
-    const editor = wrapper!.find('.card-editor')
-
-    expect(editor.classes(), 'the whitespace of the snippet is kept as written').toContain('whitespace-pre')
-    expect(editor.classes(), 'the snippet is cut by scrolling, not by breaking words').toContain('overflow-x-auto')
-    expect(editor.classes(), 'the snippet keeps its normal word boundaries').toContain('break-normal')
-    expect(editor.classes(), 'no class forces the snippet to wrap').not.toEqual(expect.arrayContaining(['whitespace-pre-wrap', 'break-all', 'break-words']))
   })
 })
 
@@ -299,7 +290,7 @@ describe('SnippetsCard heading', () => {
     await mountCard('')
 
     expect(wrapper!.text(), 'the root page tells the visitor to replace the placeholder').toContain('Replace <repository> with the id of a repository from the list')
-    expect(wrapper!.find('.card-editor').text(), 'the caption is not part of the copied snippet').not.toContain('Replace')
+    expect(wrapper!.findComponent(MdCodeBlock as Component).text(), 'the caption is not part of the copied snippet').not.toContain('Replace')
   })
 
   it('does not say what to replace on a repository path', async () => {
@@ -363,13 +354,13 @@ describe('SnippetsCard snippet text', () => {
     await copyButton().trigger('click')
     await flushPromises()
 
-    expect(wrapper!.find('.card-editor [role="status"]').exists(), 'no status line sits inside the editor').toBe(false)
+    expect(wrapper!.find('[role="region"] [role="status"]').exists(), 'no status line sits inside the scrolling code').toBe(false)
     expect(wrapper!.find('[role="status"]').text()).toBe('Copied')
   })
 })
 
 describe('SnippetsCard snippet box height', () => {
-  const paddedBox = () => wrapper!.find('.card-editor').element.parentElement!
+  const paddedBox = () => wrapper!.findComponent(MdCodeBlock as Component).element as HTMLElement
 
   afterEach(() => {
     wrapper?.unmount()
@@ -379,23 +370,21 @@ describe('SnippetsCard snippet box height', () => {
   it('keeps the minimum height on the code block while the skeleton is shown', async () => {
     await mountCard('releases/com/example')
 
-    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
+    expect(wrapper!.find('.skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
     expect(paddedBox().classList.contains('min-h-29'), 'the skeleton keeps its four bars inside the box').toBe(true)
   })
 
   it('lets the code block hug the loaded snippet instead of keeping the skeleton height', async () => {
     await mountCard('')
 
-    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
+    expect(wrapper!.find('.skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
     expect(paddedBox().classList.contains('min-h-29'), 'a one-line snippet does not get an empty four-line box').toBe(false)
   })
 })
 
 describe('SnippetsCard code block spacing', () => {
   const tabs = ['Maven', 'Gradle Kotlin', 'Gradle Groovy', 'SBT']
-  const codeText = () => wrapper!.find('.card-editor pre').element.textContent ?? ''
-  // The classes of the wrapper that fades the copy button in and out; the button itself is its child.
-  const revealClasses = () => [...copyButton().element.parentElement!.classList]
+  const codeText = () => wrapper!.findComponent(MdCodeBlock as Component).find('pre').element.textContent ?? ''
   const copied = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve())
 
   beforeEach(() => {
@@ -437,44 +426,6 @@ describe('SnippetsCard code block spacing', () => {
     expect(text.length, 'the snippet has text').toBeGreaterThan(0)
     expect(text, 'the first line starts at the top padding').toMatch(/^\S/)
     expect(text, 'the last line ends at the bottom padding').toMatch(/\S$/)
-  })
-
-  it('renders the copy button inside the code field, in its top right corner', async () => {
-    await mountCard('releases')
-
-    const field = wrapper!.find('.card-editor').element.parentElement!
-    expect(field.contains(copyButton().element), 'the copy button is inside the code field').toBe(true)
-    expect(wrapper!.find('.card-editor').element.contains(copyButton().element), 'the copy button is not in the scrolling code').toBe(false)
-    expect(revealClasses(), 'the button is pinned to the top right corner').toEqual(expect.arrayContaining(['absolute', 'right-2', 'top-2']))
-  })
-
-  it('reveals the copy button on hover and focus, and keeps it visible on devices without hover', async () => {
-    await mountCard('releases')
-
-    const field = wrapper!.find('.card-editor').element.parentElement!
-    const reveal = revealClasses()
-    expect(field.classList.contains('group'), 'the code field is the hover and focus group').toBe(true)
-    expect(reveal, 'hidden by an opacity transition by default').toEqual(expect.arrayContaining(['opacity-0', 'transition-opacity']))
-    expect(reveal, 'shown while the code field is hovered').toContain('group-hover:opacity-100')
-    expect(reveal, 'shown while the button or the code has keyboard focus').toContain('group-focus-within:opacity-100')
-    expect(reveal, 'shown all the time where there is no hover').toContain('no-hover:opacity-100')
-    expect(reveal, 'never removed from layout or the tab order').not.toEqual(expect.arrayContaining(['hidden', 'invisible']))
-  })
-
-  it('reserves room on the right of the code, so the button never covers a line of the snippet', async () => {
-    await mountCard('releases')
-
-    expect(wrapper!.find('.card-editor').classes(), 'the code scrolls inside a right padding that fits the button').toContain('pr-12')
-  })
-
-  it('pads the code box equally on every side, with the scroll box inside the padding', async () => {
-    await mountCard('releases')
-
-    const scrollBox = wrapper!.find('.card-editor')
-    const padded = scrollBox.element.parentElement!
-    expect(padded.classList.contains('p-4'), 'the padding is the same on all four sides').toBe(true)
-    expect(scrollBox.classes(), 'the scroll box adds no padding of its own').not.toEqual(expect.arrayContaining(['px-4', 'pb-3', 'pt-1']))
-    expect(scrollBox.classes(), 'the sideways scrollbar sits inside the padded box').toContain('overflow-x-auto')
   })
 })
 
@@ -533,7 +484,7 @@ describe('SnippetsCard metadata probes', () => {
 
     expect(requestedPaths(), 'a plain directory is not probed').toEqual([])
     expect(heading(), 'the repository snippet is shown straight away').toBe('Repository details')
-    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the card does not wait for a request').toBe(false)
+    expect(wrapper!.find('.skeleton-bars').exists(), 'the card does not wait for a request').toBe(false)
   })
 
   it('requests the directory metadata exactly once when the listing contains maven-metadata.xml', async () => {
@@ -586,7 +537,7 @@ describe('SnippetsCard metadata probes', () => {
     await mountCard(VERSION, null)
 
     expect(requestedPaths(), 'nothing is probed before the listing is known').toEqual([])
-    expect(wrapper!.find('.card-editor .skeleton-bars').exists(), 'the card shows its loading state').toBe(true)
+    expect(wrapper!.find('.skeleton-bars').exists(), 'the card shows its loading state').toBe(true)
   })
 
   it('shows the repository snippet for a version directory whose parent has no metadata, logging nothing on 406', async () => {
@@ -679,10 +630,18 @@ describe('SnippetsCard styles', () => {
     expect(source, 'the card source has no <style> element').not.toContain('<style')
   })
 
-  it('gives the snippet region the thin md scrollbar', async () => {
+  it('gives the snippet region the thin md scrollbar through the code block', async () => {
     await mountCard()
 
-    expect(wrapper!.find('.card-editor').classes()).toContain('md-scrollbar')
+    expect(wrapper!.find('[role="region"]').classes()).toContain('md-scrollbar')
+  })
+
+  it('holds the copyable code in the repository snippet', async () => {
+    await mountCard()
+
+    const snippet = wrapper!.findComponent(RepositorySnippet as Component)
+    expect(snippet.exists(), 'the repository snippet root is in the page').toBe(true)
+    expect(snippet.findComponent(MdCopyableCode as Component).exists(), 'the root holds the copyable code').toBe(true)
   })
 })
 
