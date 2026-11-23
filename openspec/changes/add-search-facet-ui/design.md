@@ -30,6 +30,5 @@ and request again without them.
 
 ## Open questions
 
-- **Q1.** The view must learn which keys to ask facets for. `add-search-attribute-facets` has no endpoint that lists declarations. This
-  change needs a read-only list of facetable keys with labels; whether it joins that change or is its own small change is for the
-  maintainer to settle before apply.
+- **Q1.** Settled (maintainer decision 267): the view learns which keys to ask facets for from a read-only list of facetable keys with
+  labels, which joins `add-search-attribute-facets` as an amendment (D9 there, group 7 of its tasks). The view depends on that endpoint.
