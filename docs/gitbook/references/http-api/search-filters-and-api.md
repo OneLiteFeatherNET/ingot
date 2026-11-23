@@ -31,6 +31,7 @@ Artifact search is available from Ingot 1.2.0. It has a public query API, an adm
 | `order` | `asc`, `desc` | Default `asc`. |
 | `page` | integer from 0 | Default 0. |
 | `size` | integer from 1 to 100 | Default 20. |
+| `attribute`, `attributeSort`, `attributeFacets` | see [Search attribute filters and facets](../plugins/search-attribute-facets.md) | Filter, sort and count by the attributes that a plugin declared. Only on a backend that supports them. |
 
 All filters combine with AND. Repeated values of one parameter combine with OR. A filter on a file property, such as the extension or the size, selects files, and an artifact appears when at least one of its files matches. Unknown parameters are ignored.
 
