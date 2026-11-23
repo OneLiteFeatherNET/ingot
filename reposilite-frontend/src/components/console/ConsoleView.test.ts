@@ -167,6 +167,8 @@ describe('ConsoleView', () => {
     FakeWebSocket.instances.length = 0
     FakeWebSocket.speaksVersion1 = false
     vi.stubGlobal('WebSocket', FakeWebSocket)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('the command listing is not answered'))))
+    sessionStorage.clear()
     session.authMode = null
     session.token = ref({ name: 'ops', secret: 'secret' })
     session.client = ref({ auth: { me: vi.fn(() => Promise.resolve()) }, console: { execute: vi.fn() } })
@@ -255,6 +257,58 @@ describe('ConsoleView', () => {
       expect(output, 'the output of the command is shown').toContain('checking')
       expect(output, 'the failure names its exit code').toContain('Exit code 1')
       expect(levelCount(wrapper, 'Error'), 'the stderr line and the exit code count as errors').toBe('2')
+    })
+
+    describe('history', () => {
+      const listing = (commands: { name: string; aliases?: string[]; sensitive: boolean }[]) =>
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: 1, commands: commands.map(command => ({ aliases: [], ...command })) })
+        })))
+
+      const step = async (key: 'up' | 'down') => {
+        await wrapper.find('#consoleInput').trigger(`keyup.${key}`)
+        return (wrapper.find('#consoleInput').element as HTMLInputElement).value
+      }
+
+      it('shows the last command again after the page is reloaded in the same tab', async () => {
+        listing([{ name: 'status', sensitive: false }])
+        await welcomed()
+        await sendCommand(wrapper, 'status')
+        wrapper.unmount()
+        vi.resetModules()
+        FakeWebSocket.instances.length = 0
+
+        await welcomed()
+
+        expect(await step('up'), 'Up shows the command entered before the reload').toBe('status')
+      })
+
+      it('does not show a sensitive command on Up or keep it in the tab storage', async () => {
+        listing([{ name: 'token-generate', sensitive: true }, { name: 'status', sensitive: false }])
+        await welcomed()
+        await sendCommand(wrapper, 'status')
+        await sendCommand(wrapper, 'token-generate ci s3cr3t')
+
+        expect(await step('up'), 'the sensitive line is skipped and the one before it is shown').toBe('status')
+        expect(JSON.stringify({ ...sessionStorage }), 'the tab storage never holds the secret').not.toContain('s3cr3t')
+      })
+
+      it('matches a sensitive command by its alias', async () => {
+        listing([{ name: 'token-generate', aliases: ['tg'], sensitive: true }])
+        await welcomed()
+        await sendCommand(wrapper, 'tg ci s3cr3t')
+
+        expect(JSON.stringify({ ...sessionStorage }), 'an alias is the same command').not.toContain('s3cr3t')
+        expect(await step('up'), 'nothing was kept to step back to').toBe('')
+      })
+
+      it('keeps nothing in the tab storage while the listing of sensitive commands is unknown', async () => {
+        await welcomed()
+        await sendCommand(wrapper, 'status')
+
+        expect(sessionStorage.length, 'without the listing nothing can be told apart, so nothing is written').toBe(0)
+      })
     })
 
     describe('completion', () => {
@@ -408,7 +462,7 @@ describe('ConsoleView', () => {
     first.onerror(new Event('error'))
     await flushPromises()
 
-    buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
+    await buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
     await flushPromises()
     FakeEventSource.instances[1].onopen()
     await flushPromises()
@@ -660,7 +714,7 @@ describe('ConsoleView', () => {
     it('opens the sign in dialog when the sign in button is pressed', async () => {
       await expireSession()
 
-      buttonLabelled(wrapper, 'Sign in')!.trigger('click')
+      await buttonLabelled(wrapper, 'Sign in')!.trigger('click')
 
       expect(login.openLogin, 'pressing sign in should ask the header for the sign in dialog').toHaveBeenCalledTimes(1)
     })

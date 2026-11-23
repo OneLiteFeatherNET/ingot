@@ -133,18 +133,23 @@ so the REPL uses the socket. The decision is numbered 2 and its parts are 2.1 to
 
 ### 2.2 Handshake
 
+> **Status.** The handshake below is the one on `main`. The first revision of this section also described an `auth` object with a
+> `session` scheme, and a `welcome` with `node`, `version`, `listing`, `capabilities` and `identity`. The implementation chose a smaller
+> shape, and this section follows it. The cookie authentication of 2.4 and the liveness pings of 2.9 are not built yet: they stay open as
+> tasks 4.6 and 4.7.
+
 Client to server:
 
 ```json
 {"type": "hello", "protocols": [1], "client": "ingot-cli/1.0.0", "logLevel": "INFO",
- "resume": {"boot": "8f2c1e", "seq": 412}, "auth": {"scheme": "token", "value": "ci-rotation:<secret>"}}
+ "resume": {"boot": "8f2c1e", "seq": 412}, "token": "ci-rotation:<secret>"}
 ```
 
 - `protocols`: the versions the client speaks. The server picks the highest it supports. No common version: `error` with code
   `unsupported_protocol` and `supported: [1]`, then close with 1002.
-- `auth`: optional. `scheme` `token` takes `name:secret`, the string `INGOT_TOKEN` holds. `scheme` `session` takes a session JWT, the
-  value of `Authorization:Session` in the legacy protocol. Without `auth` the session cookie of the upgrade request is used. A browser
-  sends that cookie on its own, so the dashboard sends no secret.
+- `token`: a string `name:secret`, the string `INGOT_TOKEN` holds. The server checks it as the legacy first frame is checked. A session
+  JWT is not accepted in the hello. A hello without `token` is answered with `unauthorized` and closed with 1008, until the cookie
+  authentication of 2.4 is built (task 4.6).
 - `client`: the product and version, at most 64 characters. The server stores it as the audit `client`.
 - `logLevel`: optional. The default is the server's visible threshold. A client can raise it, never lower it below that threshold.
 - `resume`: optional, see 2.6.
@@ -152,13 +157,13 @@ Client to server:
 Server to client:
 
 ```json
-{"type": "welcome", "protocol": 1, "node": "ingot-0", "version": "<server version>", "listing": 1,
- "capabilities": ["execute", "complete", "confirm", "log"], "identity": "ci-rotation", "boot": "8f2c1e", "seq": 418, "replay": "resumed"}
+{"type": "welcome", "protocol": 1, "boot": "8f2c1e", "seq": 418, "replay": "resumed"}
 ```
 
-- `identity` is the token name or the session's user, never the secret. `node` is the instance id of `StructuredExecutionResponse.node`.
-  `boot` is a random id made at process start. `seq` is the last log sequence number at the time of the welcome. `replay` is
-  `resumed` or `full` (2.6).
+- `boot` is a random id made at process start. The `node` of an instance is carried by each `result` and each `log` frame, not by the
+  welcome, and the identity of the caller is not echoed. A client ignores fields it does not know (2.3), so the server may add `node`,
+  `version`, `listing`, `capabilities` or `identity` to the welcome later without a new version. `seq` is the last log sequence number at the time of the welcome. `replay` is
+  `resumed` or `full` (2.6), and is absent when the hello carried no `resume`.
 - The server sets no hello deadline. A version 1 client is announced only by the hello frame itself (2.1), and a socket that sends no hello stays open as it does on upstream, because legacy sockets keep upstream behaviour (drop-in contract, maintainer decision 104). No `timeout` error is sent for a silent socket.
 
 ### 2.3 Envelope
@@ -200,6 +205,9 @@ Server to client:
   data (token names, repository ids) are not completed in version 1 (open question 6).
 
 ### 2.4 Authentication and authorization
+
+> **Status.** The token path is built. The cookie path with the `Origin` check and the close at the expiry of a session are open
+> (task 4.6). Until then a connection without a `token` in its hello is refused.
 
 - A token in the hello (`scheme` `token`) passes the same check as the legacy first message: `ConsoleAuthenticator.authenticate`, which
   includes the brute-force limit and the console area. Nothing new is decided here.
@@ -249,7 +257,8 @@ Server to client:
 - A command runs on the replica that receives the `execute`. The token check, the database and most commands behave the same on every
   replica. The per-replica commands, `level`, `status`, `failures` and `stats` (and `cache`, to be verified per action), act on the
   replica they reach. Each `result` names its `node`. Each descriptor of the listing gets an optional `scope` (`node` or `cluster`).
-  This is additive, so the listing stays at version 1. The REPL shows the `node` of the welcome in its prompt.
+  This is additive, so the listing stays at version 1. The REPL prompt shows the name of the active context of the CLI
+  configuration, and each `result` names its `node`.
 - Log lines: a session shows the lines of its own replica. With the bus and console fan-out (`openspec/specs/cluster-coordination`,
   "Console log fan-out"), it also shows the lines of other replicas, each with its `node`. On the database transport, fan-out needs
   `INGOT_CLUSTER_CONSOLE=true`. Every `log` frame carries `node`, so the client can label a line in either case.
@@ -274,6 +283,7 @@ Server to client:
 
 - Handshake: no deadline. A silent socket stays open as upstream does (2.2).
 - Liveness: the server sends a WebSocket ping every 20 seconds and closes a connection that has not answered with a pong within 60 seconds.
+  Not built yet, open as task 4.7.
 - Confirmation: 120 seconds, then declined (2.3).
 - Command: no server-side timeout, because a command such as `settings-reencrypt` may run for a while. The client shows the elapsed time.
   Ctrl-C in the CLI stops the wait for the result and leaves the command running on the server, and the CLI says so. Version 1 has no

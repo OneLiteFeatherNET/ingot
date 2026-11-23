@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
+import net.onelitefeather.ingot.search.AttributeSort
 import net.onelitefeather.ingot.search.OriginFilter
 import net.onelitefeather.ingot.search.SearchOrder
 import net.onelitefeather.ingot.search.SearchSort
@@ -147,6 +148,18 @@ internal class ElasticsearchQueryGoldenTest {
     fun `should window the groups by the summed size when the request sorts by size`() {
         val query = ArtifactSearchQuery(sort = SearchSort.SIZE, order = SearchOrder.DESC, page = 1, size = 20)
         assertGolden("group-window-size", ElasticsearchQueries.groupWindow(query, access, GroupPart.MAIN, window = 40))
+    }
+
+    @Test
+    fun `should order the groups by the smallest value of an attribute when the sort is ascending`() {
+        val query = ArtifactSearchQuery(attributeSort = AttributeSort("portal.versions", descending = false), page = 1, size = 20)
+        assertGolden("group-order-attribute-asc", ElasticsearchQueries.attributeGroupOrder(query, access, GroupPart.MAIN, window = 40))
+    }
+
+    @Test
+    fun `should order the groups by the largest value of an attribute when the sort is descending`() {
+        val query = ArtifactSearchQuery(attributeSort = AttributeSort("portal.versions", descending = true), page = 1, size = 20)
+        assertGolden("group-order-attribute-desc", ElasticsearchQueries.attributeGroupOrder(query, access, GroupPart.MAIN, window = 40))
     }
 
     @Test

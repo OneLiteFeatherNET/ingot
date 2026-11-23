@@ -1,10 +1,5 @@
 [
   {
-    "file": "src/components/access/PrincipalDetail.vue",
-    "match": "grid-cols-[auto_1fr]",
-    "count": 1
-  },
-  {
     "file": "src/components/access/PrincipalsPanel.vue",
     "match": "expanded:grid-cols-[minmax(0,380px)_minmax(0,1fr)]",
     "count": 1
@@ -72,31 +67,6 @@
   {
     "file": "src/components/browser/FileBrowserView.vue",
     "match": "min-h-[320px]",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "[&>li+li]:after:absolute",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "[&>li+li]:after:bg-outline-variant",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "[&>li+li]:after:h-px",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "[&>li+li]:after:inset-x-4",
-    "count": 1
-  },
-  {
-    "file": "src/components/browser/FileList.vue",
-    "match": "[&>li+li]:after:top-0",
     "count": 1
   },
   {

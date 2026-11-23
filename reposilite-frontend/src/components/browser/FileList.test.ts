@@ -254,19 +254,21 @@ describe('FileList container', () => {
 describe('FileList rows follow the md3 list spec', () => {
   const folder = { name: 'releases', type: 'DIRECTORY' }
 
-  it('separates default rows with an inset divider instead of a full-width rule', () => {
+  it('separates the rows with the divided list of the design system, inset 16px', () => {
     const wrapper = mountList({ files: { list: [jar, folder], error: false } })
     const list = wrapper.find('ul')
+    const rules = wrapper.findAll('[data-test="item-rule"]')
 
-    expect(list.classes(), 'a full-width divide-y rule is not used').not.toContain('divide-y')
-    expect(list.classes(), 'the divider is inset 16px on both sides').toContain('[&>li+li]:after:inset-x-4')
-    expect(list.classes(), 'the divider is 1px tall').toContain('[&>li+li]:after:h-px')
-    expect(list.classes(), 'the divider uses outline-variant').toContain('[&>li+li]:after:bg-outline-variant')
+    expect(list.attributes('data-ingot-component'), 'the listing is an MdList').toBe('md-list')
+    expect(list.attributes('data-divided'), 'the list draws a rule between its rows').toBe('true')
+    expect(rules, 'every row carries its own rule, the first one hidden by the item').toHaveLength(2)
+    expect(rules[0].classes(), 'the rule starts at the 16px inset').toContain('start-md-inset-16')
+    expect(list.classes().join(' '), 'no arbitrary divider chain is left on the list').not.toMatch(/li\+li/)
   })
 
   it('gives skeleton rows the same minimum height as the one-line rows they stand in for', () => {
     const wrapper = mountList({ loading: true, compactMode: true, files: { list: [], error: false } })
-    const skeleton = wrapper.find('ul').findAll('li')[0]
+    const skeleton = wrapper.find('ul').find('[data-test="list-item-row"]')
 
     expect(skeleton.classes(), 'a placeholder one-line row is 56px tall').toContain('min-h-14')
   })
@@ -376,5 +378,44 @@ describe('FileList action slot', () => {
     const rows = wrapper.findAllComponents({ name: 'DetailedListEntry' })
 
     expect(rows.map(row => row.props('actionSlots') as number), 'the xml row offers one action, so each row reserves one').toEqual([1, 1])
+  })
+})
+
+describe('FileList row fade', () => {
+  const second = { name: 'example-2.0.jar', type: 'FILE' as const, contentLength: 4096 }
+  const first = { ...jar, type: 'FILE' as const }
+  const rowOf = (wrapper: VueWrapper<InstanceType<typeof FileList>>, name: string) =>
+    wrapper.findAllComponents({ name: 'DetailedListEntry' }).find(row => row.text().includes(name))!
+
+  it('does not fade the rows of the initial load', () => {
+    const wrapper = mountList({ files: { list: [jar, second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'no row of the initial load carries the fade').toBe(0)
+  })
+
+  it('fades a row that is added after the load', async () => {
+    const wrapper = mountList({ files: { list: [jar], error: false } })
+
+    await wrapper.setProps({ files: { list: [first, second], error: false } })
+
+    expect(rowOf(wrapper, 'example-2.0.jar').classes(), 'the added row carries the fade').toContain('motion-row-enter')
+    expect(rowOf(wrapper, 'example-1.0.jar').classes(), 'the row that was there stays plain').not.toContain('motion-row-enter')
+  })
+
+  it('does not fade the rows that arrive after a skeleton', async () => {
+    const wrapper = mountList({ loading: true, files: { list: [], error: false } })
+
+    await wrapper.setProps({ loading: false, files: { list: [first, second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'a loaded listing does not fade').toBe(0)
+  })
+
+  it('leaves the other rows plain when a row is removed', async () => {
+    const wrapper = mountList({ files: { list: [first, second], error: false } })
+
+    await wrapper.setProps({ files: { list: [second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'a removal animates nothing').toBe(0)
+    expect(wrapper.text(), 'the removed row is gone at once').not.toContain('example-1.0.jar')
   })
 })

@@ -175,7 +175,8 @@ const onAction = (row: RepositoryRow, value: string) => {
           v-else-if="column.key === 'actions'"
           :label="`Actions for ${repositoryOf(row).name}`"
           :items="actionsOf(repositoryOf(row))"
-          trigger-class="!px-0 w-10"
+          trigger-class="w-10"
+          trigger-inset="none"
           @select="(value) => onAction(repositoryOf(row), value)"
         >
           <template #trigger>

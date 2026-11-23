@@ -19,17 +19,17 @@ import { mount, type DOMWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import type { ControlElement, JsonSchema7, RankedTester, UISchemaElement } from '@jsonforms/core'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as colourTester } from './MdColourFieldRenderer.vue'
 import MdColourFieldRenderer from './MdColourFieldRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 
 const renderers = markRaw([
-  { tester: colourTester, renderer: MdColourFieldRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  ...vanillaRenderers
+  rendererOf(colourTester, MdColourFieldRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  ...vanilla
 ])
 
 const mountColour = (name: string, schema: JsonSchema7, data: Record<string, unknown>) => mount(JsonForms, {
@@ -57,23 +57,23 @@ describe('MdColourFieldRenderer tester', () => {
   const control = (scope: string) => ({ type: 'Control', scope }) as ControlElement
 
   it('takes the colour settings by name, above the text field', () => {
-    const colour = colourTester(control('#/properties/appearance/properties/primaryColor'), schema, context)
+    const colour = (colourTester as RankedTester)(control('#/properties/appearance/properties/primaryColor'), schema, context)
 
-    expect(colour, 'a colour field outranks the text field').toBeGreaterThan(textTester(control('#/properties/x'), schema, context))
+    expect(colour, 'a colour field outranks the text field').toBeGreaterThan((textTester as RankedTester)(control('#/properties/x'), schema, context))
   })
 
   it('takes every named colour setting', () => {
     for (const name of ['seedColor', 'primaryColor', 'secondaryColor', 'tertiaryColor', 'errorColor']) {
-      expect(colourTester(control(`#/properties/${name}`), schema, context), name).toBeGreaterThan(-1)
+      expect((colourTester as RankedTester)(control(`#/properties/${name}`), schema, context), name).toBeGreaterThan(-1)
     }
   })
 
   it('takes a string that declares the colour format, whatever its name', () => {
-    expect(colourTester(control('#/properties/accent'), { type: 'string', format: 'color' }, context)).toBeGreaterThan(-1)
+    expect((colourTester as RankedTester)(control('#/properties/accent'), { type: 'string', format: 'color' }, context)).toBeGreaterThan(-1)
   })
 
   it('leaves other strings to the text field', () => {
-    expect(colourTester(control('#/properties/title'), schema, context)).toBe(-1)
+    expect((colourTester as RankedTester)(control('#/properties/title'), schema, context)).toBe(-1)
   })
 })
 

@@ -186,6 +186,15 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="principal-display-name"]').text(), 'the display name row holds the display name').toBe('sdfsdfsdf')
     })
 
+    it('lays out the facts as a shared key and value list', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const list = wrapper.get('dl')
+      expect(list.attributes('data-ingot-component'), 'the facts sit in an md-key-value-list').toBe('md-key-value-list')
+      expect(list.findAll('dt').map(term => term.text()), 'one term per fact, in the order of the card')
+        .toEqual(['Username', 'Display name', 'Status', 'Instance admin', 'Created', 'Last sign-in', 'Teams'])
+    })
+
     it('reads the detail of the named principal', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 

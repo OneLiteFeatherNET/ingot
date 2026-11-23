@@ -388,7 +388,7 @@ const readOnlyScope = computed(() => {
     >
       <h3
         id="cluster-heading"
-        class="md-title-large text-on-surface"
+        class="md-title-medium text-on-surface"
       >
         Cluster
       </h3>

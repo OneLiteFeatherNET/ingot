@@ -160,7 +160,9 @@ internal class SearchPlugin : ReposilitePlugin() {
         // The search lease has its own owner, kept with the data directory, so that a restart keeps the epoch of the index.
         val leaseOwner = SearchLeaseOwner.of(reposilite().parameters.workingDirectory)
         val leases = SqlScheduledJobClaims(wiring.database, wiring.clock, leaseOwner)
-        val context = CoreSearchBackendContext(wiring.clock, wiring.instanceId, wiring.engine, leases = leases) { level, message ->
+        val context = CoreSearchBackendContext(
+            wiring.clock, wiring.instanceId, wiring.engine, leases = leases, attributeDeclarations = enrichers.catalogue().values.toList(),
+        ) { level, message ->
             when (level) {
                 "error" -> logger.error(message)
                 "warn" -> logger.warn(message)

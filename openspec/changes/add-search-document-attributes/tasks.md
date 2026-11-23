@@ -47,7 +47,7 @@ allowlist if they are plugin-facing.
 
 ## 6. Elasticsearch and OpenSearch (pull requests of their own, one per module)
 
-- [ ] 6.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the `attributes.*` dynamic template, the
+- [x] 6.1 `test(search)` then `feat(search)` in `reposilite-plugins/elasticsearch-plugin`: the `attributes.*` dynamic template, the
   document field and the declared capability, with the contract tests of group 3 to 5 run against the module. Verify:
   `heavy ./gradlew :elasticsearch-plugin:test --max-workers=2` passes; the integration test uses a Testcontainers instance started
   through `heavy` and removed by its label.
@@ -60,13 +60,13 @@ allowlist if they are plugin-facing.
 
 ## 8. Documentation (pull request of its own)
 
-- [ ] 8.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` describing the namespaces, the limits, the write rules, the
+- [x] 8.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` describing the namespaces, the limits, the write rules, the
   rebuild rule by version, the capability table per backend and the `attributes=true` parameter. Verify: the page states that Lucene
   declares nothing until its pull request lands.
 
 ## 9. Pull requests
 
-- [ ] 9.1 Open the code pull requests in the order of groups 2 to 8, each from a fresh `origin/main` that contains the merged proposal and
+- [x] 9.1 Open the code pull requests in the order of groups 2 to 8, each from a fresh `origin/main` that contains the merged proposal and
   the merged `add-artifact-enrichment-hook`, each small and with no file under `openspec/`. The first one carries the title
   `feat(search): store plugin attributes with indexed artifacts`. The Elasticsearch and OpenSearch pull requests are
   titled `feat(search): store plugin attributes in elasticsearch and opensearch`, the Meilisearch pull request is titled

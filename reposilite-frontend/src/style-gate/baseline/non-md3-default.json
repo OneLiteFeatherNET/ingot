@@ -85,21 +85,6 @@
     "count": 1
   },
   {
-    "file": "src/components/identity/RevokeTokenDialog.vue",
-    "match": "font-medium",
-    "count": 1
-  },
-  {
-    "file": "src/components/identity/RotateTokenDialog.vue",
-    "match": "font-medium",
-    "count": 1
-  },
-  {
-    "file": "src/components/identity/SecretOnceDialog.vue",
-    "match": "font-medium",
-    "count": 1
-  },
-  {
     "file": "src/components/identity/SecretOnceDialog.vue",
     "match": "text-sm",
     "count": 1
@@ -172,11 +157,6 @@
   {
     "file": "src/components/search/SearchView.vue",
     "match": "z-40",
-    "count": 1
-  },
-  {
-    "file": "src/components/settings/SettingsImportErrors.vue",
-    "match": "font-medium",
     "count": 1
   },
   {

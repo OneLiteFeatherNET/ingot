@@ -64,6 +64,28 @@ and over the rows the viewer may read. A selected value SHALL keep showing its a
 - **WHEN** an anonymous viewer requests a facet and a private repository holds matching rows
 - **THEN** the counts do not include those rows
 
+### Requirement: Facetable key list
+
+The search API SHALL offer a read-only endpoint that lists the keys declared with the `facetable` flag, each with its label, so that a
+client learns which keys it may ask facets for without knowing the plugins. The list SHALL come from the plugin attribute declarations and
+SHALL be empty when no enricher declares a key. The endpoint SHALL NOT read the index, SHALL NOT expose any value of an attribute, and
+SHALL be readable by every viewer who may use the search.
+
+#### Scenario: Declared keys with labels
+
+- **WHEN** an enricher declares `minecraft-portal.loader` as facetable with the label `Loader` and `minecraft-portal.name` as not facetable
+- **THEN** the list contains `minecraft-portal.loader` with the label `Loader` and does not contain `minecraft-portal.name`
+
+#### Scenario: No enricher installed
+
+- **WHEN** the list is requested and no enricher declares an attribute
+- **THEN** the response is `200` with an empty list
+
+#### Scenario: Missing label
+
+- **WHEN** a facetable key is declared without a label
+- **THEN** the list shows the key itself as its label
+
 ### Requirement: Capability refusals
 
 A backend that does not declare the capability needed by a feature of a request SHALL cause the request to be refused before the backend is

@@ -44,6 +44,7 @@ data class AttributeDeclaration(
     val filterable: Boolean,
     val facetable: Boolean,
     val sortable: Boolean,
+    val label: String = key,  // human readable name for the key list of D9
 )
 ```
 
@@ -116,6 +117,17 @@ No change to the access compiler or to `SearchAccess`. The attribute filters and
 the core applies the access check to the returned rows once more, as the search SPI already does (`add-search-backend-registration`, D6).
 The test fixture contains a private repository with rows that match every filter, and asserts that no count and no result includes them.
 
+### D9: the facetable key list
+
+A client such as `add-search-facet-ui` must learn which keys to ask facets for. The registry already holds the catalogue of D1, so the
+search API gains one read-only endpoint, `GET` on the search API path `attributes/facetable` (final path chosen at apply time beside the
+existing search routes in `api/SearchApiEndpoints.kt`), that returns the declarations with `facetable` set as a list of `{ key, label }`.
+The label is the `label` of the declaration and defaults to the key. The answer is built from the catalogue only: no backend call, no
+index read, no attribute value, so it needs no access condition beyond the one that lets a viewer use the search at all. The order is by
+key, so the answer is stable. With no enricher installed the list is empty. It does not depend on a backend capability, because it
+describes declarations, not index content; a client combines it with the backend capabilities it already reads. This answers Q1 of
+`add-search-facet-ui` (maintainer decision 267).
+
 ### D8: compatibility
 
 Requests without `attribute`, `attributeSort` and `attributeFacets` are executed as before, and the response is byte-compatible with the
@@ -129,6 +141,7 @@ previous version, apart from the field order of JSON, which the API does not pro
 | No multi-valued facet | yes | D2 and D3 |
 | No sort by attribute | yes, declared keys only | D2 |
 | No declared capability of a backend for these features | yes, used | D6 |
+| No way to learn the facetable keys | yes | D9 |
 | Full text over descriptions | no | Q1 |
 | Counting projects | no | Q5 |
 

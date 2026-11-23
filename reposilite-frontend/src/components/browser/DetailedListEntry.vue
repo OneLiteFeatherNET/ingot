@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createURL } from '../../store/client'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdListItem from '../md/MdListItem.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { describeEntry, describeSize } from './entryMeta'
@@ -28,9 +29,9 @@ import { actionCountOf, actionSlotClass, canDeleteAt, rowActionsOf } from './row
 import type { BrowserFile, BrowserPath } from './listing'
 
 /*
- * One row of the listing. The row is a list item; its name is the link, stretched over the
- * whole row, and the actions sit above that stretch as buttons of their own. A link inside
- * a link, or a button inside a link, is invalid, so the actions never live in the link.
+ * One row of the listing. The row is a list item whose trailing slot holds the actions; its name
+ * is the link, stretched over the whole row, and the actions sit above that stretch as buttons of
+ * their own. A button inside a link is invalid, so the link is the content of the item, not the item.
  */
 const props = defineProps<{
   file: BrowserFile
@@ -66,6 +67,11 @@ const slotClass = computed(() => actionSlotClass(
 ))
 const meta = computed(() => describeEntry(props.file))
 const size = computed(() => describeSize(props.file))
+
+// A compact row is one line of 56px, so its 48px link is pulled into the padding of the item.
+const linkClass = computed(() =>
+  props.compactMode ? 'gap-2 medium:gap-4 -my-3' : 'gap-4'
+)
 
 // Compact rows put name and size on one line; default rows stack the size and date under the name.
 const textClass = computed(() =>
@@ -106,22 +112,23 @@ const onFileClick = (event: Event) => {
 </script>
 
 <template>
-  <li
-    class="md-state-layer group relative flex items-center rounded-corner-medium transition-colors"
-    :class="compactMode ? 'min-h-14 gap-2 medium:gap-4 px-4' : 'min-h-18 gap-4 px-4 py-2'"
+  <MdListItem
     :aria-busy="busy ? 'true' : undefined"
+    :tight="compactMode"
     data-ingot-component="detailed-list-entry"
   >
+    <template #leading>
+      <BrowserIcon
+        :name="isDirectory ? 'folder' : 'file'"
+        class="text-on-surface-variant"
+      />
+    </template>
     <router-link
       v-if="isDirectory"
       :to="routerLocation"
       class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
-      :class="compactMode ? 'gap-2 medium:gap-4' : 'gap-4'"
+      :class="linkClass"
     >
-      <BrowserIcon
-        name="folder"
-        class="text-on-surface-variant"
-      />
       <span :class="textClass">
         <span
           class="md-body-large truncate"
@@ -143,13 +150,9 @@ const onFileClick = (event: Event) => {
       :href="url"
       target="_blank"
       class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
-      :class="compactMode ? 'gap-2 medium:gap-4' : 'gap-4'"
+      :class="linkClass"
       @click="onFileClick"
     >
-      <BrowserIcon
-        name="file"
-        class="text-on-surface-variant"
-      />
       <span :class="textClass">
         <span
           class="md-body-large truncate"
@@ -172,38 +175,40 @@ const onFileClick = (event: Event) => {
       />
     </a>
 
-    <!--
-      Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
-      user tabs into these buttons, and a touch screen has no hover to reveal them with.
-      The slot is as wide as the widest row of the listing needs, on every row, so the size text
-      right-aligns in one column. A listing without any action reserves no slot at all.
-    -->
-    <div
-      data-row-actions
-      class="relative z-10 flex shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
-      :class="slotClass"
-    >
-      <MdIconButton
-        v-if="canViewContent"
-        :aria-label="`View ${file.name} in a new tab`"
-        @click.stop="openUrl(url)"
+    <template #trailing>
+      <!--
+        Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
+        user tabs into these buttons, and a touch screen has no hover to reveal them with.
+        The slot is as wide as the widest row of the listing needs, on every row, so the size text
+        right-aligns in one column. A listing without any action reserves no slot at all.
+      -->
+      <div
+        data-row-actions
+        class="relative z-10 flex shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+        :class="slotClass"
       >
-        <BrowserIcon name="visibility" />
-      </MdIconButton>
-      <MdIconButton
-        v-if="!isDirectory && canOpenJavadocs"
-        :aria-label="`Open javadoc for ${file.name} in a new tab`"
-        @click.stop="openUrl(getJavaDocsUrl())"
-      >
-        <BrowserIcon name="code" />
-      </MdIconButton>
-      <MdIconButton
-        v-if="canDelete"
-        :aria-label="`Delete ${file.name}`"
-        @click.stop="openDeleteEntryModal(file)"
-      >
-        <BrowserIcon name="delete" />
-      </MdIconButton>
-    </div>
-  </li>
+        <MdIconButton
+          v-if="canViewContent"
+          :aria-label="`View ${file.name} in a new tab`"
+          @click.stop="openUrl(url)"
+        >
+          <BrowserIcon name="visibility" />
+        </MdIconButton>
+        <MdIconButton
+          v-if="!isDirectory && canOpenJavadocs"
+          :aria-label="`Open javadoc for ${file.name} in a new tab`"
+          @click.stop="openUrl(getJavaDocsUrl())"
+        >
+          <BrowserIcon name="code" />
+        </MdIconButton>
+        <MdIconButton
+          v-if="canDelete"
+          :aria-label="`Delete ${file.name}`"
+          @click.stop="openDeleteEntryModal(file)"
+        >
+          <BrowserIcon name="delete" />
+        </MdIconButton>
+      </div>
+    </template>
+  </MdListItem>
 </template>

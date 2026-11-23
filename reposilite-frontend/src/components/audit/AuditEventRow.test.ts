@@ -196,6 +196,7 @@ describe('AuditEventRow details', () => {
     const row = await mountRow({ event: event({ details: { token: 'first' } }), expanded: true })
 
     const details = row.get('#audit-details-7').element as HTMLElement
+    expect(details.getAttribute('data-ingot-component'), 'the details block is a card').toBe('md-card')
     expect(details.classList.contains('bg-surface-container'), 'details block should sit on surface-container').toBe(true)
     expect(details.classList.contains('bg-surface-container-low'), 'details block must not repeat the card role').toBe(false)
   })

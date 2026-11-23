@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { JsonForms } from '@jsonforms/vue'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import type { ControlElement, JsonSchema7, RankedTester } from '@jsonforms/core'
 import { tester as booleanSwitchTester, default as BooleanSwitchRenderer } from './BooleanSwitchRenderer.vue'
 import { tester as optionalTester, default as OptionalRenderer } from './OptionalRenderer.vue'
@@ -43,9 +43,9 @@ const uischema = {
 }
 
 const renderers = [
-  { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
-  { tester: optionalTester, renderer: OptionalRenderer },
-  ...vanillaRenderers
+  rendererOf(booleanSwitchTester, BooleanSwitchRenderer),
+  rendererOf(optionalTester, OptionalRenderer),
+  ...vanilla
 ]
 
 const mountForm = (data = {}) => mount(JsonForms, {
@@ -99,11 +99,11 @@ describe('OptionalRenderer', () => {
 describe('optional object under its switch row', () => {
   // The production set: the section and object renderers decide how the nested fields are drawn.
   const fullRenderers = [
-    { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
-    { tester: optionalTester, renderer: OptionalRenderer },
-    { tester: sectionTester, renderer: SectionRenderer },
-    { tester: objectTester, renderer: ObjectRenderer },
-    ...vanillaRenderers
+    rendererOf(booleanSwitchTester, BooleanSwitchRenderer),
+    rendererOf(optionalTester, OptionalRenderer),
+    rendererOf(sectionTester, SectionRenderer),
+    rendererOf(objectTester, ObjectRenderer),
+    ...vanilla
   ]
   const mountFull = (data = {}) => mount(JsonForms, {
     props: { data, schema, uischema, renderers: fullRenderers }
@@ -163,12 +163,12 @@ describe('nested object inside an array item', () => {
     elements: [{ type: 'Control', scope: '#/properties/mirrors' }]
   }
   const arrayRenderers = [
-    { tester: arrayTester, renderer: ArrayListRenderer },
-    { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
-    { tester: optionalTester, renderer: OptionalRenderer },
-    { tester: sectionTester, renderer: SectionRenderer },
-    { tester: objectTester, renderer: ObjectRenderer },
-    ...vanillaRenderers
+    rendererOf(arrayTester, ArrayListRenderer),
+    rendererOf(booleanSwitchTester, BooleanSwitchRenderer),
+    rendererOf(optionalTester, OptionalRenderer),
+    rendererOf(sectionTester, SectionRenderer),
+    rendererOf(objectTester, ObjectRenderer),
+    ...vanilla
   ]
 
   it('draws the nested heading inside the card with no bordered box in between', () => {

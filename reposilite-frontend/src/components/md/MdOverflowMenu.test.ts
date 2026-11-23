@@ -590,4 +590,10 @@ describe('MdOverflowMenu motion', () => {
     expect(menu().classList.contains('origin-bottom-right'), 'the menu grows from the corner next to the button').toBe(true)
     expect(menu().classList.contains('origin-top-right'), 'no origin of the other placement').toBe(false)
   })
+
+  it('hands the trigger inset to the trigger button', async () => {
+    await mountMenu({ triggerInset: 'none' })
+
+    expect(trigger().classes(), 'the trigger button has no inset').toEqual(expect.arrayContaining(['px-0']))
+  })
 })

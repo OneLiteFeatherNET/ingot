@@ -73,6 +73,7 @@ Unverified at run time. In the code of this release, the usage that the file sys
 | `region` | String | empty | no | Region. See [Region and credentials](#region-and-credentials). |
 | `prefix` | String | empty | no | Prefix for all object keys, for example to share a bucket with other services. Leading and trailing slashes are removed. |
 | `sharedBucket` | Boolean | `false` | no | Puts the objects of each repository under `<prefix>/<repository id>/`, so several repositories can share one bucket. |
+| `pathStyleAccess` | Boolean or null | `null` | no | Uses path-style addresses (`https://host/bucket/key`) for this repository when set. When `null`, the system property `reposilite.s3.pathStyleAccessEnabled` decides. |
 | `metadataCacheSettings` | Object or null | `null` | no | Local cache for object metadata such as the file size. `null` caches nothing. |
 
 Fields of `metadataCacheSettings`:
@@ -111,7 +112,7 @@ These are JVM system properties and have no environment variable form. Pass them
 | `reposilite.s3.use-s3-v4-signer` | `false` | Signs requests with the AWS S3 V4 signer. |
 | `reposilite.s3.skip-bucket-creation` | `false` | Does not create the bucket at start when it does not exist. By default Ingot creates a missing bucket. |
 
-They apply to every S3 repository of the instance. There is no per-repository setting for them.
+They apply to every S3 repository of the instance. `reposilite.s3.pathStyleAccessEnabled` is the fallback of the per-repository `pathStyleAccess` setting: a repository that sets it ignores the property. The other two have no per-repository setting.
 
 ### Upload path
 

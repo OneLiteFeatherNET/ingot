@@ -74,6 +74,12 @@ internal class FakeMeilisearch(@Suppress("unused") private val clock: ManualCloc
 
     fun onDelete(taskUid: Long) = route({ it.method == "DELETE" && it.uri.path.contains("/documents/") }) { accepted(taskUid) }
 
+    /** Answers every search request with the JSON text [answer] builds from the request body. */
+    fun onSearch(answer: (com.fasterxml.jackson.databind.JsonNode) -> String) =
+        route({ it.method == "POST" && it.uri.path.endsWith("/search") }) { call ->
+            HttpAnswer(200, emptyMap(), answer(ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(call.body.orEmpty())))
+        }
+
     fun onTask(uid: Long, status: String, errorCode: String? = null) {
         tasks[uid] = status to errorCode
     }

@@ -39,20 +39,20 @@ chain: this change delegates to the current rules (D2). The switch to the chain 
 
 ## 5. Search access value (red, then green)
 
-- [ ] 5.1 `test(maven)`: failing test that `searchAccess()` equals `SearchAccessCompiler.compile` for the same subject and visibilities, for
+- [x] 5.1 `test(maven)`: failing test that `searchAccess()` equals `SearchAccessCompiler.compile` for the same subject and visibilities, for
   each viewer of group 2. Verify: it fails.
-- [ ] 5.2 `feat(maven)`: the `searchAccess()` method, and the allowlist entries of `SearchAccess`, `RepositoryAccess` and the
+- [x] 5.2 `feat(maven)`: the `searchAccess()` method, and the allowlist entries of `SearchAccess`, `RepositoryAccess` and the
   `PathPredicate` hierarchy, subject to the closure check of `add-plugin-api-artifact`. Verify: the test of 5.1 passes and the closure
   check passes.
 
 ## 6. Documentation (pull request of its own)
 
-- [ ] 6.1 `docs(maven)`: a page under `docs/gitbook/references/plugins/` describing the facade, the four answers, the path rule, the
+- [x] 6.1 `docs(maven)`: a page under `docs/gitbook/references/plugins/` describing the facade, the four answers, the path rule, the
   uniform `false` and the list of what stays internal. Verify: the page links the consumer fixture of `add-plugin-api-artifact`.
 
 ## 7. Pull requests
 
-- [ ] 7.1 Open the code pull requests in the order of groups 2 to 6, each from a fresh `origin/main` that contains the merged proposal and
+- [x] 7.1 Open the code pull requests in the order of groups 2 to 6, each from a fresh `origin/main` that contains the merged proposal and
   the prerequisites named above, each small and with no file under `openspec/`. The first one carries the title
   `feat(maven): expose viewer aware access checks to plugins`, and the documentation pull request is titled `docs(maven): describe viewer aware access checks for
   plugins`. Each pull request body fills `.github/PULL_REQUEST_TEMPLATE.md` and contains no session link.

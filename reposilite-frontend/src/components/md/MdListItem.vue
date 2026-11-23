@@ -30,11 +30,14 @@ const props = withDefaults(defineProps<{
   button?: boolean
   selected?: boolean
   lines?: 1 | 2
+  // Below the medium window (600 px) the slots sit 8 pixels apart instead of 16, so a name keeps its room on a phone.
+  tight?: boolean
 }>(), {
   to: undefined,
   button: false,
   selected: false,
-  lines: 2
+  lines: 2,
+  tight: false
 })
 
 const emit = defineEmits<{
@@ -60,6 +63,9 @@ const isOption = computed(() => Boolean(list?.selectable))
 // A two-line row is at least 56 pixels high, a one-line row at least 48 pixels (design D3).
 const ROW_HEIGHT = { 1: 'min-h-12', 2: 'min-h-14' } as const
 const rowHeight = computed(() => ROW_HEIGHT[props.lines])
+
+// Each class is written out in full, so the compiler finds it in the source.
+const rowGap = computed(() => props.tight ? 'gap-2 medium:gap-4' : 'gap-4')
 
 // Each class is written out in full, so the compiler finds it in the source.
 const RULE_START = { 16: 'start-md-inset-16', 72: 'start-md-inset-72' } as Record<string, string>
@@ -112,8 +118,9 @@ const select = (event?: Event) => {
       v-bind="contentAttrs"
       data-test="list-item-row"
       :class="[
-        'relative flex w-full items-center gap-4 px-4 py-3 text-left no-underline md-body-large',
+        'relative flex w-full items-center px-4 py-3 text-left no-underline md-body-large',
         interactive ? 'md-state-layer md-focus-ring md-touch-target' : '',
+        rowGap,
         rowHeight
       ]"
     >

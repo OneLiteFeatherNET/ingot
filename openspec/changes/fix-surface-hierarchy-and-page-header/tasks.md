@@ -41,8 +41,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   name through its title. Verify: it fails on `RepositoryDetail.vue:200-212`.
 - [x] 2.7 `test(ui)`: in `src/components/account/AccountView.test.js`, assert that the page root is `MdPage` with no `mx-auto` or `max-w-*` class,
   that its form blocks carry the reading measure, and that the page has one `h1`. Verify: it fails on `AccountView.vue:43` and `:47`.
-- [ ] 2.8 `test(ui)`: in `src/components/settings/EntryDetail.test.js`, assert that the back button is in its own row above the `h3` at
-  every width (no `expanded:hidden` on the row that holds the heading). Verify: it fails on `EntryDetail.vue:280`.
+- [ ] 2.8 Dropped, obsolete: `settings/EntryDetail.vue` has no back button on main, so there is no row above the `h3` to assert.
 - [x] 2.9 `test(ui)`: in `src/components/access/TeamsPanel.test.js`, `src/components/access/PrincipalsPanel.test.js` and a new
   `src/components/settings/CollectionEditor.test.js`, assert that the detail pane carries the inset class that `MdListDetail` gives both
   panes, and no `max-expanded:hidden` on the pane's inset. Verify: it fails on `TeamsPanel.vue:196`, `PrincipalsPanel.vue:255` and
@@ -54,7 +53,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [x] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
   `src/components/layout/AdministrationTrail.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
   fails, because the registry has no `administration-breadcrumb` entry.
-- [ ] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
+- [x] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
   edges of the repository detail title and its trail match within 0.5 pixel; at 1920 pixels the page container has no `max-w-*` class and a form block is no wider than 960 pixels; at 390 pixels
   the back control of a detail page does not move the title; at 1280 pixels the same page has no back control. Replace the level 2 "Repositories" heading check at `layout.spec.js:35`
   with level 1. Selectors are roles and accessible names. Verify: they fail against the current build.
@@ -65,9 +64,10 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
   change of pixels: `DashboardView.vue:37`, `FileBrowserView.vue:208`, `DefaultHeader.vue:37`, `HeaderHero.vue:42`, `NotFoundView.vue:23`,
   `ViewLoadError.vue:27`, `ViewLoading.vue:23`, `IndexPage.vue:378` and `:399`, and `AnalyticsView.vue` (which has none). Verify: the
   before and after screenshots of these pages at 390 and 1280 pixels are identical, pixel for pixel, in light and dark.
-- [ ] 3.2 `refactor(ui)`: move the inline page headings onto `MdPageHeader` where the heading keeps its size: `DashboardView.vue:40`,
-  `SearchView.vue:253`, `IndexPage.vue:381` and `:402`, and `RepositoriesView.vue:161-184`. The level changes to one, so the page has
-  one `h1`. Verify: 2.4 (page count) passes for these pages, and the before and after screenshots are identical.
+- [ ] 3.2 `refactor(ui)`: move the inline page headings onto `MdPageHeader` where the heading keeps its size, so the headings keep
+  their size and the before and after screenshots are identical: `DashboardView.vue`, `SearchView.vue:267`, `IndexPage.vue:460` and
+  `RepositoriesView.vue:164`. Where the inline heading differs in size from the `MdPageHeader` title, it stays as it is and the page
+  is left out. The level changes to one, so the page has one `h1`. Verify: 2.4 (page count) passes for these pages, and the screenshots are identical.
 - [x] 3.3 `refactor(ui)`: move `BreadcrumbNavigation.vue` onto `MdBreadcrumb` and keep the `breadcrumb-navigation` anchor on the `nav`.
   Verify: 2.5 passes and the file browser screenshots at 390 and 1280 pixels differ only in the trail's separators.
 
@@ -93,8 +93,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [x] 4.7 `fix(ui)`: `RepositoryDetail.vue`: drop the `header` block with the `h2` (`:200-212`); pass the name to the frame as its title; move
   `data-ingot-part="header"` and `data-ingot-repository` to the type section; turn the "Back to repositories" text button into the frame's
   back control with an `aria-label`; `SettingsView.vue:464-473` passes the title and the back target. Verify: 2.6 and 2.13 pass.
-- [ ] 4.8 `fix(ui)`: `settings/EntryDetail.vue`: move the back button into its own row above the `h3` (`:272-295`), with the same offset as
-  the frame, so the heading stays put at 840 pixels. Verify: 2.8 passes, and `SettingsView.entries.test.js` still passes.
+- [ ] 4.8 Dropped, obsolete: `settings/EntryDetail.vue` has no back button on main, so nothing moves and the heading cannot jump at 840 pixels.
 - [x] 4.9 `fix(ui)`: `AccountView.vue`: render `MdPage` and `MdPageHeader` with the one `h1`, and its form blocks take the reading measure. Verify: 2.7 passes.
 - [x] 4.10 `fix(ui)`: `TeamsPanel.vue`, `PrincipalsPanel.vue` and `CollectionEditor.vue`: take the inset of `MdListDetail` on both panes
   at every width. Verify: 2.9 passes.

@@ -100,6 +100,10 @@ class Repository internal constructor(
     fun acceptsCachingOf(gav: Location): Boolean =
         !redeployment && !repositoryFormat.pathRules.isGeneratedMetadata(gav)
 
+    /** True for metadata and checksum files, which have no stored checksums of their own. */
+    internal fun isMetadataOrChecksum(gav: Location): Boolean =
+        repositoryFormat.pathRules.isMetadataOrChecksum(gav)
+
     fun writeFileChecksums(location: Location, bytes: ByteArray): Result<Unit, ErrorResponse> =
         writeFileChecksums(location, bytes.inputStream())
 

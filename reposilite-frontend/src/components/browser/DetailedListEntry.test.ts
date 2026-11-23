@@ -121,7 +121,7 @@ describe('DetailedListEntry appearance', () => {
     const wrapper = mountWith({ compactMode: true })
 
     expect(wrapper.classes(), 'hover is a state layer, not a solid primary fill').not.toContain('bg-primary')
-    expect(wrapper.classes(), 'the row uses the state layer for hover').toContain('md-state-layer')
+    expect(wrapper.find('a').classes(), 'the link takes the focus ring').toContain('md-focus-ring')
   })
 
   it('shows the size on the same line as the name in compact mode', () => {
@@ -131,6 +131,23 @@ describe('DetailedListEntry appearance', () => {
     expect(size, 'the size is rendered as its own element').toBeDefined()
     expect(size!.element.parentElement!.textContent, 'the size shares the row with the name').toContain('example-1.0.jar')
     expect(size!.classes(), 'the size uses the label-small style').toContain('md-label-small')
+  })
+})
+
+describe('DetailedListEntry as a list item', () => {
+  it('is an MdListItem that keeps the hook of the end to end tests', () => {
+    const wrapper = mountRow()
+
+    expect((wrapper.element as HTMLElement).tagName, 'the row is a list item').toBe('LI')
+    expect(wrapper.attributes('data-ingot-component'), 'the e2e hook is kept').toBe('detailed-list-entry')
+  })
+
+  it('puts the actions in the trailing slot of the item, outside the link', () => {
+    const wrapper = mountRow()
+    const row = wrapper.find('[data-test="list-item-row"]')
+
+    expect(row.find('[data-row-actions]').exists(), 'the actions are the trailing content of the row').toBe(true)
+    expect(wrapper.find('a [data-row-actions]').exists(), 'a button never sits inside the link').toBe(false)
   })
 })
 
@@ -154,6 +171,18 @@ describe('DetailedListEntry md3 list spec', () => {
     return wrapper
   }
 
+  it('keeps the slots 8 pixels apart on a phone in the compact list, so the name keeps its room', () => {
+    const wrapper = mountRow({ compactMode: true })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a compact row narrows the gap below the medium window').toContain('gap-2')
+  })
+
+  it('keeps the slots 16 pixels apart in the default list', () => {
+    const wrapper = mountRow({ compactMode: false })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a default row keeps the wide gap').toContain('gap-4')
+  })
+
   afterEach(() => {
     mounted.splice(0).forEach(wrapper => wrapper.unmount())
   })
@@ -161,18 +190,21 @@ describe('DetailedListEntry md3 list spec', () => {
   it('gives a one-line row a 56px minimum height', () => {
     const wrapper = mountRow({ compactMode: true })
 
-    expect(wrapper.classes(), 'one-line list items are 56px tall').toContain('min-h-14')
+    expect(wrapper.find('[data-test="list-item-row"]').classes(), 'one-line list items are 56px tall').toContain('min-h-14')
   })
 
   it('gives a two-line row a 72px minimum height', () => {
     const wrapper = mountRow({ compactMode: false })
 
-    expect(wrapper.classes(), 'two-line list items are 72px tall').toContain('min-h-18')
+    expect(wrapper.find('a').classes(), 'the 48px link and the 12px padding make a 72px row').toContain('min-h-12')
+    expect(wrapper.find('a').classes(), 'a two-line row does not pull its link into the padding').not.toContain('-my-3')
   })
 
   it('uses 16px horizontal padding in both densities', () => {
-    expect(mountRow({ compactMode: true }).classes(), 'compact rows pad 16px on each side').toContain('px-4')
-    expect(mountRow({ compactMode: false }).classes(), 'default rows pad 16px on each side').toContain('px-4')
+    const rowOf = (compactMode: boolean) => mountRow({ compactMode }).find('[data-test="list-item-row"]')
+
+    expect(rowOf(true).classes(), 'compact rows pad 16px on each side').toContain('px-4')
+    expect(rowOf(false).classes(), 'default rows pad 16px on each side').toContain('px-4')
   })
 
   it('draws a folder icon in the on-surface-variant role, not primary', () => {

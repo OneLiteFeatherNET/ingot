@@ -27,7 +27,7 @@ SHALL only be raised by the page through `logLevel` in the hello. A line from an
 
 #### Scenario: Line from another replica
 
-- **WHEN** a `log` frame arrives with a `node` other than the one in the welcome
+- **WHEN** a `log` frame arrives with a `node` other than the node that answered the last `result`
 - **THEN** the line shows that node
 
 ### Requirement: Completion on Tab

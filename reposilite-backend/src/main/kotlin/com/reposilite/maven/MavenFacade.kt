@@ -114,21 +114,28 @@ class MavenFacade internal constructor(
     /**
      * The strong entity tag of a stored artifact: its stored checksum (`.sha256`, then `.sha1`, then `.md5`) when there is
      * one, otherwise a tag from its size and modification time. Metadata and other files that are not cached change in
-     * place, so they skip the extra read and use the size and time tag.
+     * place, so they skip the extra read and use the size and time tag. A checksum file has no checksums of its own, so it
+     * skips the reads as well. A missing checksum is found with a size probe, which on S3 is a HEAD that answers 404 without a
+     * body, instead of a read whose 404 carries one.
      */
     fun findEntityTag(lookupRequest: LookupRequest, details: DocumentInfo): String? {
         val repository = getRepository(lookupRequest.repository)
         val fallback = ConditionalRequests.etag(details.contentLength, details.lastModifiedTime)
-        if (repository == null || !repository.acceptsCachingOf(lookupRequest.gav)) {
+        if (
+            repository == null ||
+            !repository.acceptsCachingOf(lookupRequest.gav) ||
+            repository.isMetadataOrChecksum(lookupRequest.gav)
+        ) {
             return fallback
         }
 
         return ENTITY_TAG_CHECKSUMS
             .firstNotNullOfOrNull { checksum ->
                 val location = lookupRequest.gav.resolveSibling("${lookupRequest.gav.getSimpleName()}.${checksum.extension}")
-                // Read directly: a missing checksum fails the read, and a probe first would cost a further round trip per checksum
-                // on a remote storage (on S3 a HEAD, and a listing when the key is missing)
-                repository.storageProvider.getFile(location)
+                // Size it first, never exists: that lists the directory when the key is missing. A hit costs one more HEAD.
+                val storage = repository.storageProvider
+                storage.getFileSize(location)
+                    .flatMap { storage.getFile(location) }
                     .map { stream -> stream.use { it.readNBytes(CHECKSUM_READ_LIMIT).decodeToString() } }
                     .orNull()
                     ?.trim()

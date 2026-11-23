@@ -19,8 +19,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { JsonSchema7, Layout, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import type { JsonSchema7, Layout, RankedTester, UISchemaElement } from '@jsonforms/core'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as appearanceTester, default as AppearanceSectionRenderer } from './AppearanceSectionRenderer.vue'
 import { tester as sectionTester, default as SectionRenderer } from './SectionRenderer.vue'
 import { tester as objectTester, default as ObjectRenderer } from './ObjectRenderer.vue'
@@ -28,12 +28,12 @@ import { tester as colourTester, default as MdColourFieldRenderer } from './MdCo
 import { tester as textTester, default as MdTextFieldRenderer } from './MdTextFieldRenderer.vue'
 
 const renderers = markRaw([
-  { tester: appearanceTester, renderer: AppearanceSectionRenderer },
-  { tester: colourTester, renderer: MdColourFieldRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: sectionTester, renderer: SectionRenderer },
-  { tester: objectTester, renderer: ObjectRenderer },
-  ...vanillaRenderers
+  rendererOf(appearanceTester, AppearanceSectionRenderer),
+  rendererOf(colourTester, MdColourFieldRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  rendererOf(sectionTester, SectionRenderer),
+  rendererOf(objectTester, ObjectRenderer),
+  ...vanilla
 ])
 
 const appearanceSchema: JsonSchema7 = {
@@ -67,8 +67,8 @@ describe('AppearanceSectionRenderer', () => {
   it('is used for the Appearance group only', () => {
     const group: Layout = { type: 'Group', elements: [] }
 
-    expect(appearanceTester(group, appearanceSchema, { rootSchema: schema, config: undefined })).toBe(5)
-    expect(appearanceTester(group, { type: 'object', title: 'Maven' }, { rootSchema: schema, config: undefined })).toBe(-1)
+    expect((appearanceTester as RankedTester)(group, appearanceSchema, { rootSchema: schema, config: undefined })).toBe(5)
+    expect((appearanceTester as RankedTester)(group, { type: 'object', title: 'Maven' }, { rootSchema: schema, config: undefined })).toBe(-1)
   })
 
   it('titles the group Appearance and puts the preview under its fields', async () => {

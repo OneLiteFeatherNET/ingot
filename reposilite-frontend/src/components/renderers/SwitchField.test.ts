@@ -35,26 +35,26 @@ describe('SwitchField', () => {
     expect(wrapper.find('[role="switch"]').attributes('aria-checked')).toBe('true')
   })
 
-  it('emits true when an off switch is clicked', () => {
+  it('emits true when an off switch is clicked', async () => {
     const wrapper = mountSwitch({ modelValue: false })
 
-    wrapper.find('[role="switch"]').trigger('click')
+    await wrapper.find('[role="switch"]').trigger('click')
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[true]])
   })
 
-  it('emits false when an on switch is clicked', () => {
+  it('emits false when an on switch is clicked', async () => {
     const wrapper = mountSwitch({ modelValue: true })
 
-    wrapper.find('[role="switch"]').trigger('click')
+    await wrapper.find('[role="switch"]').trigger('click')
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
-  it('does not emit when the switch is disabled', () => {
+  it('does not emit when the switch is disabled', async () => {
     const wrapper = mountSwitch({ modelValue: false, disabled: true })
 
-    wrapper.find('[role="switch"]').trigger('click')
+    await wrapper.find('[role="switch"]').trigger('click')
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })

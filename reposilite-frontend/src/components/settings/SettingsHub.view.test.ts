@@ -79,12 +79,12 @@ describe('SettingsHub At a glance', () => {
     ])
   })
 
-  it('draws the At a glance heading in the title large size of the page sections', async () => {
+  it('draws the At a glance heading in the title medium size of the hub sections', async () => {
     await mountHub()
 
     const heading = wrapper.get('h2')
     expect(heading.text()).toBe('At a glance')
-    expect(heading.classes(), 'the same size as Needs attention and Instance status').toContain('md-title-large')
+    expect(heading.classes(), 'the same size as Needs attention and Cluster').toContain('md-title-medium')
   })
 })
 

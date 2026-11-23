@@ -74,7 +74,7 @@ const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menu"
 // The Actions button is an icon, so its accessible name is its visually hidden text.
 const actionsButton = (name: string) => wrapper.findAll('button').find(button => button.text() === `Actions for ${name}`)!
 const openActions = async (name: string) => {
-  actionsButton(name).trigger('click')
+  await actionsButton(name).trigger('click')
   await flushPromises()
 }
 const statusText = () => wrapper.findAll('[role="status"]').map(region => region.text()).join(' | ')
@@ -138,7 +138,7 @@ describe('the repositories table', () => {
     const input = filterInput()
     expect(wrapper.find(`label[for="${input.attributes('id')}"]`).text(), 'the filter has a label').toBe('Filter repositories')
     input.element.value = 'central'
-    input.trigger('input')
+    await input.trigger('input')
     await flushPromises()
 
     expect(statusText(), 'the count of matches is announced').toContain('1 of 5 repositories shown')
@@ -150,7 +150,7 @@ describe('the repositories table', () => {
 
     const input = filterInput()
     input.element.value = 'tag:team-a'
-    input.trigger('input')
+    await input.trigger('input')
     await flushPromises()
 
     expect(wrapper.findAll('tbody tr').map(row => row.find('th').text()), 'only the tagged repository is listed')

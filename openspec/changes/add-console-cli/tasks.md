@@ -97,7 +97,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   temporary directory: order, contexts, refusal of an inline token, no `--token`, no `REPOSILITE_` fallback.
 - [x] 6.2 `test(cli)`: failing tests for the token sources (env, file, credentials helper as a stub program), the file permission warning,
   and a check that no output stream ever contains the secret.
-- [ ] 6.3 `test(cli)`: failing tests for exec mode against a stub HTTP server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines,
+- [x] 6.3 `test(cli)`: failing tests for exec mode against a stub HTTP server: exit codes `0` to `6`, `--yes`, `--keep-going`, JSON lines,
   stdin script with comments, an argument with a space, no prompt in a pipe, stdout holds only command output, and exit `6` when
   `GET /api/console/commands` answers `404`.
 - [x] 6.4 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
@@ -148,13 +148,13 @@ The reference pages exist on `main` (#454) under `docs/gitbook/references/` and 
 
 - [x] 9.1 `test(docs)`: failing check that every `INGOT_` name in the CLI source appears in `docs/gitbook/references/environment-variables.md`
   or in the CLI reference, and that every link in the changed pages resolves. Verify: red on the names that are not documented yet.
-- [ ] 9.2 `docs(console)`: update `docs/gitbook/references/console-commands.md` with the version 1 protocol (frames, authentication, limits,
+- [x] 9.2 `docs(console)`: update `docs/gitbook/references/console-commands.md` with the version 1 protocol (frames, authentication, limits,
   close codes, reconnect), correct its authorization wording to what the code checks (open question 16), and update the row of
   `/api/console/sock` in `docs/gitbook/references/http-api/http-api.md`. Verify: 9.1 is green for the console page.
-- [ ] 9.3 `docs(console)`: update `docs/gitbook/references/cli.md` and `docs/gitbook/manage/operate/run-the-cli.md` for the REPL on the shared
+- [x] 9.3 `docs(console)`: update `docs/gitbook/references/cli.md` and `docs/gitbook/manage/operate/run-the-cli.md` for the REPL on the shared
   protocol, the exit code `6` against an older server, the `scope` column of the command listing, and the reconnect behaviour. Add every new
   variable to `docs/gitbook/references/environment-variables.md`. Verify: 9.1 is green.
-- [ ] 9.4 Code pull request, title `docs(console): document the websocket protocol and the cli repl`. Same description rules as 4.9.
+- [x] 9.4 Code pull request, title `docs(console): document the websocket protocol and the cli repl`. Same description rules as 4.9.
 
 ## 10. Drop-in check
 

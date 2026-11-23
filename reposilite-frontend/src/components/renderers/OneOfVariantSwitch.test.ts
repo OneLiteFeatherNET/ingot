@@ -20,7 +20,7 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as selectTester } from './MdSelectRenderer.vue'
 import MdSelectRenderer from './MdSelectRenderer.vue'
 import { tester as constantTester } from './ConstantRenderer.vue'
@@ -28,7 +28,12 @@ import ConstantRenderer from './ConstantRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 import { tester as oneOfTester } from './OneOfRenderer.vue'
-import OneOfRenderer, { variantIndexOf, defaultValueOf, holdsData } from './OneOfRenderer.vue'
+import OneOfRenderer, { variantIndexOf as variantIndexOfExport, defaultValueOf as defaultValueOfExport, holdsData as holdsDataExport } from './OneOfRenderer.vue'
+
+// Tests only. The helpers exported by a .vue file are not typed for the linter, so their signatures are repeated here.
+const variantIndexOf = variantIndexOfExport as (branches: JsonSchema7[], data: unknown) => number | undefined
+const defaultValueOf = defaultValueOfExport as (branch: JsonSchema7) => unknown
+const holdsData = holdsDataExport as (data: unknown, branch: JsonSchema7) => boolean
 
 /*
  * The storage provider of a repository: the discriminator `type` is a constant in each branch,
@@ -58,11 +63,11 @@ const s3: JsonSchema7 = {
 const storageSchema: JsonSchema7 = { type: 'object', properties: { storageProvider: { oneOf: [fileSystem, s3] } } }
 
 const renderers = markRaw([
-  { tester: selectTester, renderer: MdSelectRenderer },
-  { tester: constantTester, renderer: ConstantRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: oneOfTester, renderer: OneOfRenderer },
-  ...vanillaRenderers
+  rendererOf(selectTester, MdSelectRenderer),
+  rendererOf(constantTester, ConstantRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  rendererOf(oneOfTester, OneOfRenderer),
+  ...vanilla
 ])
 
 let wrapper: VueWrapper | undefined

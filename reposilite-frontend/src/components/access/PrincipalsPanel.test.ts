@@ -251,6 +251,41 @@ describe('PrincipalsPanel', () => {
       expect(usernames()).toEqual(['bob'])
     })
 
+    it('draws a failed load as an error state panel and reads the list again on Retry', async () => {
+      principals.list.mockRejectedValueOnce({ message: 'Store unavailable' })
+      await mountPanel({ kind: 'USER' })
+
+      const panel = wrapper!.find('[data-test="list-error"]')
+      expect(panel.exists(), 'the error is an error state panel').toBe(true)
+      expect(panel.attributes('data-ingot-state')).toBe('error')
+      expect(panel.text()).toContain('Store unavailable')
+
+      await panel.find('button').trigger('click')
+      await flushPromises()
+
+      expect(wrapper!.find('[data-test="list-error"]').exists(), 'the retry cleared the error').toBe(false)
+      expect(usernames()).toEqual(['admin', 'alice', 'bob'])
+    })
+
+    it('draws the loading line as a busy state panel', async () => {
+      principals.list.mockReturnValue(new Promise(() => undefined))
+      await mountPanel({ kind: 'USER' })
+
+      const panel = wrapper!.find('[data-test="list-loading"]')
+      expect(panel.exists(), 'the loading state panel is drawn').toBe(true)
+      expect(panel.attributes('aria-busy')).toBe('true')
+      expect(wrapper!.text()).not.toContain('Loading...')
+    })
+
+    it('draws the empty list as an empty state panel', async () => {
+      principals.list.mockResolvedValue({ data: [] })
+      await mountPanel({ kind: 'USER' })
+
+      const panel = wrapper!.find('[data-test="list-empty"]')
+      expect(panel.exists(), 'the empty state panel is drawn').toBe(true)
+      expect(panel.text()).toContain('There are no users yet.')
+    })
+
     it('says so when nothing matches the search', async () => {
       await mountPanel({ kind: 'USER' })
 

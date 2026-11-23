@@ -32,18 +32,18 @@ import panda.std.asSuccess
  * the credentials of a token, as the console has always taken them, and the session token of a browser login, the same
  * one the HTTP API accepts from its session cookie.
  */
-internal class ConsoleAuthenticator(
+internal open class ConsoleAuthenticator(
     private val accessTokenFacade: AccessTokenFacade,
     private val authenticationFacade: AuthenticationFacade,
     private val loginFacade: LoginFacade,
 ) {
 
-    fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
+    open fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
         authenticationFacade.authenticateByCredentials(credentials, path = SignInPath.CONSOLE)
             .flatMap { requireConsoleArea(it, credentials.ip) }
 
     /** A session token from a browser login. Fails like a wrong secret when the session is not valid or has no user. */
-    fun authenticateSession(sessionJwt: String, ip: String): Result<AccessTokenDto, ErrorResponse> {
+    open fun authenticateSession(sessionJwt: String, ip: String): Result<AccessTokenDto, ErrorResponse> {
         val identifier = loginFacade.authenticateSession(sessionJwt)
             ?: return unauthorizedError("Invalid or expired session")
         val identity = accessTokenFacade.getAccessTokenById(identifier)
@@ -55,7 +55,7 @@ internal class ConsoleAuthenticator(
      * Whether [identity], authenticated earlier, may still use the console: the token still exists and still has the console
      * area, and [sessionJwt], when it came from a browser login, is still a valid session.
      */
-    fun isStillAuthorized(identity: AccessTokenDto, sessionJwt: String?): Boolean {
+    open fun isStillAuthorized(identity: AccessTokenDto, sessionJwt: String?): Boolean {
         if (sessionJwt != null && loginFacade.authenticateSession(sessionJwt) == null) {
             return false
         }

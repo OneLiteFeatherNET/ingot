@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.search.backend
 
 import com.reposilite.audit.MutableClock
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -117,6 +118,25 @@ internal class CoreSearchBackendContextTest {
         context.logger().warn("the index rejected s3cr3t-token")
 
         assertThat(lines).`as`("log lines of the backend").containsExactly("warn SEARCH | fake | the index rejected ***")
+    }
+
+    @Test
+    fun `the context hands the declared attributes to the backend`() {
+        val declared = listOf(AttributeDeclaration("portal.platforms", filterable = true, facetable = true, sortable = false))
+        val context = CoreSearchBackendContext(
+            clock = MutableClock(Instant.parse("2026-10-16T10:00:00Z")),
+            instanceId = "instance",
+            backendId = "fake",
+            variables = environment::get,
+            attributeDeclarations = declared,
+        ) { _, _ -> }
+
+        assertThat(context.attributeDeclarations).`as`("declarations seen by the backend").isEqualTo(declared)
+    }
+
+    @Test
+    fun `a context without declarations hands none to the backend`() {
+        assertThat(context().attributeDeclarations).`as`("declarations of a context built without any").isEmpty()
     }
 
 }

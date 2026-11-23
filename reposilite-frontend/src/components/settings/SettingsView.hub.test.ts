@@ -231,8 +231,8 @@ describe('the Overview page at /settings', () => {
   it('draws the Overview section headings, Needs attention and At a glance, in one size', async () => {
     await mountAt()
 
-    expect(attention().get('h2').classes(), 'Needs attention').toContain('md-title-large')
-    expect(overview().get('h2').classes(), 'At a glance').toContain('md-title-large')
+    expect(attention().get('h2').classes(), 'Needs attention').toContain('md-title-medium')
+    expect(overview().get('h2').classes(), 'At a glance').toContain('md-title-medium')
   })
 
   it('draws no count before the saved settings have loaded', async () => {

@@ -28,6 +28,8 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
  *
  * `to` makes the button a router link: a plain click moves the router and the link keeps its href.
  * `inverse` draws the button for an inverse surface, such as a snackbar. `error` wins over `inverse`.
+ * `inset` sets the horizontal padding: `dense` is 8 pixels on both sides and `none` is no padding, for a button that
+ * holds an avatar or a lone icon. Without it the button keeps its label inset. It replaces a padding override from outside.
  * `flush-start` removes the leading inset of a `text` button, so its label lines up with the content above it.
  */
 const props = withDefaults(defineProps<{
@@ -39,13 +41,15 @@ const props = withDefaults(defineProps<{
   error?: boolean
   inverse?: boolean
   flushStart?: boolean
+  inset?: 'default' | 'dense' | 'none'
 }>(), {
   variant: 'filled',
   href: undefined,
   to: undefined,
   type: 'button',
   inverse: false,
-  flushStart: false
+  flushStart: false,
+  inset: 'default'
 })
 
 defineSlots<{
@@ -114,6 +118,13 @@ const isError = computed(() => props.error || props.variant === 'error')
 // The leading inset of a text button is removed on request. The other variants keep their inset.
 const flushesStart = computed(() => props.flushStart && resolvedVariant.value === 'text')
 
+// The horizontal padding. A dense or empty inset replaces the label inset on both sides.
+const padding = computed(() => {
+  if (props.inset === 'dense') return 'px-2'
+  if (props.inset === 'none') return 'px-0'
+  return null
+})
+
 const classes = computed(() => {
   const variant = VARIANTS[resolvedVariant.value] ?? VARIANTS.filled
   let tone = variant.base
@@ -121,7 +132,7 @@ const classes = computed(() => {
   else if (isError.value) tone = variant.error
   else if (props.inverse) tone = variant.inverse
   return [
-    'md-state-layer md-focus-ring md-touch-target relative inline-flex h-10 items-center justify-center gap-2 rounded-corner-full pr-6 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
+    'md-state-layer md-focus-ring md-touch-target relative inline-flex h-10 items-center justify-center gap-2 rounded-corner-full md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
     tone
   ]
 })
@@ -132,7 +143,7 @@ const classes = computed(() => {
     :is="element"
     v-bind="attrs"
     :data-variant="variant"
-    :class="[classes, flushesStart ? 'pl-0' : $slots.icon ? 'pl-4' : 'pl-6']"
+    :class="[classes, padding ?? ['pr-6', flushesStart ? 'pl-0' : $slots.icon ? 'pl-4' : 'pl-6']]"
     data-ingot-component="md-button"
   >
     <span

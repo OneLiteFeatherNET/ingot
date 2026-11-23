@@ -24,6 +24,7 @@ internal data class PrometheusSettings(
     val path: String,
     val user: String,
     val password: String,
+    val jvmMetrics: Boolean = true,
 ) {
 
     companion object {
@@ -42,6 +43,7 @@ internal data class PrometheusSettings(
                 path = setting("PATH") ?: "/metrics",
                 user = setting("USER") ?: throw IllegalStateException("Prometheus user is not defined"),
                 password = setting("PASSWORD") ?: throw IllegalStateException("Prometheus password is not defined"),
+                jvmMetrics = setting("JVM_METRICS") != "false",
             )
         }
 

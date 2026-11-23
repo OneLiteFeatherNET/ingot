@@ -163,10 +163,10 @@ describe('SettingsAttention as cards', () => {
     expect(card.find('[data-test="attention-conflict"]').exists(), 'the conflict row is in the card').toBe(true)
   })
 
-  it('draws the heading in the title large size of the page sections', async () => {
+  it('draws the heading in the title medium size of the hub sections', async () => {
     await mountAttention({ rows: [] })
 
-    expect(wrapper.get('h2').classes()).toContain('md-title-large')
+    expect(wrapper.get('h2').classes()).toContain('md-title-medium')
   })
 })
 

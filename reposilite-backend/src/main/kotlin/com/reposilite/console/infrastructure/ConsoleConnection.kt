@@ -24,6 +24,15 @@ internal interface ConsoleConnection {
     /** The address the client connected from, after the forwarded header and the trusted proxies are applied. */
     val host: String
 
+    /** The `Origin` header of the upgrade request, or null when the client sent none. */
+    val origin: String?
+
+    /** The host and port the upgrade request reached, as a trusted proxy forwards it, or null when it names none. */
+    val requestHost: String?
+
+    /** The value of the cookie [name] of the upgrade request, or null when there is none. */
+    fun cookie(name: String): String?
+
     /** Sends one text frame as it is. */
     fun send(text: String)
 

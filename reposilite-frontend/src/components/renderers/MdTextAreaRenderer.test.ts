@@ -19,17 +19,17 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { ControlElement, JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import type { ControlElement, JsonSchema7, RankedTester, UISchemaElement } from '@jsonforms/core'
+import { rendererOf, vanilla } from './testRenderers'
 import { tester as areaTester } from './MdTextAreaRenderer.vue'
 import MdTextAreaRenderer from './MdTextAreaRenderer.vue'
 import { tester as textTester } from './MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from './MdTextFieldRenderer.vue'
 
 const renderers = markRaw([
-  { tester: areaTester, renderer: MdTextAreaRenderer },
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  ...vanillaRenderers
+  rendererOf(areaTester, MdTextAreaRenderer),
+  rendererOf(textTester, MdTextFieldRenderer),
+  ...vanilla
 ])
 
 const control: ControlElement = { type: 'Control', scope: '#/properties/description', label: 'Description' }
@@ -68,19 +68,19 @@ describe('MdTextAreaRenderer tester', () => {
   it('takes a string whose limit is longer than a single line, above the text field', () => {
     const root = rootWith(longText)
 
-    expect(areaTester(control, root, { rootSchema: root, config: undefined }), 'a long text outranks the text field').toBeGreaterThan(textTester(control, root, { rootSchema: root, config: undefined }))
+    expect((areaTester as RankedTester)(control, root, { rootSchema: root, config: undefined }), 'a long text outranks the text field').toBeGreaterThan((textTester as RankedTester)(control, root, { rootSchema: root, config: undefined }))
   })
 
   it('leaves a short string to the text field', () => {
     const root = rootWith(shortText)
 
-    expect(areaTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
+    expect((areaTester as RankedTester)(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 
   it('leaves an enum to the select, whatever its limit', () => {
     const root = rootWith({ type: 'string', enum: ['A'], maxLength: 280 })
 
-    expect(areaTester(control, root, { rootSchema: root, config: undefined })).toBe(-1)
+    expect((areaTester as RankedTester)(control, root, { rootSchema: root, config: undefined })).toBe(-1)
   })
 })
 

@@ -20,13 +20,13 @@ import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
 import type { JsonSchema7, UISchemaElement } from '@jsonforms/core'
-import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
+import { rendererOf, vanilla } from './testRenderers'
 import UnsupportedRenderer, { tester as unsupportedTester } from './UnsupportedRenderer.vue'
 
 // The order the settings view uses: the fallback comes after every renderer that can draw a field.
 const renderers = markRaw([
-  ...vanillaRenderers,
-  { tester: unsupportedTester, renderer: UnsupportedRenderer }
+  ...vanilla,
+  rendererOf(unsupportedTester, UnsupportedRenderer)
 ])
 
 const FALLBACK = 'This section cannot be edited here, use Download as JSON'

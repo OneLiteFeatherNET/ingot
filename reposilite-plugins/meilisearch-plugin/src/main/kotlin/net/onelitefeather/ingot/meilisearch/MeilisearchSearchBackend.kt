@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.meilisearch
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.reposilite.ReposiliteObjectMapper
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.search.ArtifactFilePage
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchPage
@@ -40,6 +41,7 @@ import net.onelitefeather.ingot.search.backend.SearchCapability
 import net.onelitefeather.ingot.search.backend.SampledRow
 import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.database.pathHash
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import net.onelitefeather.ingot.search.http.HttpExchange
 import net.onelitefeather.ingot.search.http.JdkHttpExchange
 import net.onelitefeather.ingot.search.Origin
@@ -53,6 +55,8 @@ import kotlin.random.Random
  * searches ([MeilisearchReader]). Every request goes through one circuit breaker on the clock of the server.
  *
  * [exchange] is null in production, which uses the JDK client. [log] receives the changes of the index settings (open question 6).
+ * [declarations] are the attributes the enrichers declared: they give the filterable and sortable settings of the index (search
+ * attribute facets, D5).
  */
 internal class MeilisearchSearchBackend(
     val settings: MeilisearchSettings,
@@ -60,6 +64,7 @@ internal class MeilisearchSearchBackend(
     exchange: HttpExchange? = null,
     waiter: MeilisearchWaiter = SleepingWaiter,
     private val log: (String) -> Unit = {},
+    private val declarations: List<AttributeDeclaration> = emptyList(),
 ) : ArtifactSearchBackend {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
@@ -85,8 +90,16 @@ internal class MeilisearchSearchBackend(
     /** A write is a task of the server, so the rebuild cursor is committed after the write, never in the same transaction. */
     override val joinsDatabaseTransaction: Boolean = false
 
-    /** The documents carry the attributes of a row as one object, stored and not yet filterable (search document attributes, D6). */
-    override val capabilities: Set<SearchCapability> = setOf(SearchCapability.ATTRIBUTES)
+    /**
+     * The documents carry the attributes of a row as one object (search document attributes, D6), and the declared keys are filterable
+     * and sortable in the settings of the index (search attribute facets, D5).
+     */
+    override val capabilities: Set<SearchCapability> = setOf(
+        SearchCapability.ATTRIBUTES,
+        SearchCapability.ATTRIBUTE_FILTERS,
+        SearchCapability.ATTRIBUTE_FACETS,
+        SearchCapability.ATTRIBUTE_SORT,
+    )
 
     /**
      * Checks the server version (the minor version this plugin is tested with), creates the index when it is missing, and applies
@@ -271,10 +284,10 @@ internal class MeilisearchSearchBackend(
 
     private fun applySettings() {
         val stored = client.json("GET", "/indexes/$index/settings")
-        val changes = MeilisearchIndexSettings.differences(stored)
+        val changes = MeilisearchIndexSettings.differences(stored, declarations)
         if (changes.isEmpty()) return
         changes.forEach { log("settings of index $index changed: ${it.name} from ${it.stored} to ${it.desired}") }
-        val task = client.json("PATCH", "/indexes/$index/settings", MeilisearchIndexSettings.desired).path("taskUid").asLong()
+        val task = client.json("PATCH", "/indexes/$index/settings", MeilisearchIndexSettings.desiredFor(declarations)).path("taskUid").asLong()
         try {
             writer.await(listOf(task))
         } catch (busy: BackendBusyException) {

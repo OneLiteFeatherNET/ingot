@@ -55,6 +55,12 @@ describe('named transition classes', () => {
     expect(css, 'the scrim starts and ends transparent').toMatch(/\.motion-dialog-scrim-enter-from,\s*\.motion-dialog-scrim-leave-to\s*\{\s*opacity: 0;/)
   })
 
+  it('fades an added row over the short3 token, with no leave class for a removed row', () => {
+    expect(css, 'a .motion-row-enter class').toMatch(/\.motion-row-enter\s*\{\s*animation: motion-row-enter var\(--md-sys-motion-duration-short3\)/)
+    expect(css, 'the animation starts transparent').toMatch(/@keyframes motion-row-enter\s*\{\s*from\s*\{\s*opacity: 0;/)
+    expect(css, 'a removed row is not animated').not.toContain('motion-row-leave')
+  })
+
   it('finds a timing declaration in the file', () => {
     expect(timingOf(css).length, 'the transition declarations of the patterns').toBeGreaterThan(0)
   })

@@ -440,7 +440,7 @@ watch(
 
 <template>
   <AdministrationFrame
-    class="settings-view"
+    class="settings-view md-bar-clearance md-readonly-inputs"
     :style="pageClearance"
     :description="settingsCurrent === undefined ? HUB_DESCRIPTION : (settingsCurrent === OVERVIEW_TREE_KEY ? overviewDescription : undefined)"
     :title="detailTitle"
@@ -617,28 +617,3 @@ watch(
     />
   </AdministrationFrame>
 </template>
-
-<!--suppress CssInvalidAtRule -->
-<style>
-@reference "../../style.css";
-/*
- * Read-only inputs look like fields that cannot be typed in. Every rule is scoped to .settings-view,
- * so none of it reaches the header or another view.
- */
-.settings-view input:not([type="checkbox"]):read-only {
-  @apply bg-surface-container text-on-surface-variant;
-}
-
-/*
- * The bottom padding keeps the last card clear of the unsaved-changes bar. On phones the bar sits above
- * the bottom navigation, so that height is added too; the variables are set only while the bar is shown.
- */
-.settings-view {
-  padding-bottom: calc(1rem + var(--settings-clearance, 0px));
-}
-@media (max-width: 599px) {
-  .settings-view {
-    padding-bottom: calc(1rem + var(--settings-clearance, 0px) + var(--settings-nav, 0px) + env(safe-area-inset-bottom, 0px));
-  }
-}
-</style>
