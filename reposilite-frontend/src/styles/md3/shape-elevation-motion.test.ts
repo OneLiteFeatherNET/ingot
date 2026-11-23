@@ -53,8 +53,8 @@ describe('named window size classes', () => {
     })
   }
 
-  it('declares no theme breakpoint, so that Tailwind keeps the width steps of its container', () => {
-    expect(stylesheet, 'no --breakpoint token in src/style.css').not.toMatch(/--breakpoint-/)
+  it('declares no theme breakpoint besides the reset, so that no width step is derived for the container', () => {
+    expect(stylesheet, 'no --breakpoint token but the reset in src/style.css').not.toMatch(/--breakpoint-(?!\*:\s*initial;)/)
   })
 })
 

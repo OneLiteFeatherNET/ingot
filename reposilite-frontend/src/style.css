@@ -112,13 +112,16 @@
  * window class.
  */
 @theme {
+  /* Tailwind's default breakpoints (sm, md, lg, xl, 2xl) are gone: the window classes below are the only ones. */
+  --breakpoint-*: initial;
+
   --md-sys-window-margin-compact: 16px;
   --md-sys-window-margin-medium: 24px;
 }
 
 /*
  * The MD3 window size classes. They are variants and not theme breakpoints on purpose: Tailwind 4 derives the width
- * steps of its built-in container from every --breakpoint token, so theme breakpoints would add width steps at 600,
+ * steps of its built-in container from every breakpoint token, so theme breakpoints would add width steps at 600,
  * 840, 1240 and 1600 pixels to every centred page. medium: is the window from 600px, expanded: from 840px, large: from
  * 1240px and xlarge: from 1600px. max-medium: and max-expanded: are the windows below them.
  */
