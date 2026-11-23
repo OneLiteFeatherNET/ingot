@@ -596,7 +596,7 @@ onMounted(() => {
           <section
             v-if="tab === 'overview' && canEdit"
             aria-labelledby="system-danger-title"
-            class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
+            class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 medium:flex-row medium:items-center medium:justify-between medium:p-6"
           >
             <div class="flex min-w-0 flex-col gap-1">
               <h2

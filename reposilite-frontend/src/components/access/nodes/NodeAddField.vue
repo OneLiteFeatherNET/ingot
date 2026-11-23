@@ -132,7 +132,7 @@ const onFocus = () => {
 
 <template>
   <div
-    class="flex flex-col gap-2 sm:flex-row sm:items-start"
+    class="flex flex-col gap-2 medium:flex-row medium:items-start"
     data-ingot-component="node-add-field"
   >
     <div class="relative min-w-0 flex-1">
@@ -165,7 +165,7 @@ const onFocus = () => {
     </div>
     <MdButton
       variant="tonal"
-      class="shrink-0 self-start sm:mt-2"
+      class="shrink-0 self-start medium:mt-2"
       :disabled="!canAdd"
       data-test="add-node"
       @click="submit"

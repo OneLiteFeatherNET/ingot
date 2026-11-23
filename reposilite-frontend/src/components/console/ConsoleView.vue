@@ -203,8 +203,8 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
 
 <template>
   <div data-ingot-component="console-view">
-    <div class="flex w-full flex-col gap-3 pb-3 xl:flex-row xl:items-start xl:justify-between">
-      <div class="w-full xl:mr-5 xl:w-1/2">
+    <div class="flex w-full flex-col gap-3 pb-3 large:flex-row large:items-start large:justify-between">
+      <div class="w-full large:mr-5 large:w-1/2">
         <MdTextField
           v-model="filter"
           label="Filter log output"
@@ -214,7 +214,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
       <div
         role="group"
         aria-label="Log levels"
-        class="flex w-full flex-row flex-wrap items-center gap-2 xl:w-1/2 xl:justify-end"
+        class="flex w-full flex-row flex-wrap items-center gap-2 large:w-1/2 large:justify-end"
       >
         <MdChip
           v-for="entry in levels"

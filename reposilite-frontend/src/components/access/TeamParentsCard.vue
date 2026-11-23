@@ -293,7 +293,7 @@ const save = async () => {
           data-test="parents-empty"
         />
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div class="flex flex-col gap-2 medium:flex-row medium:items-start">
           <div class="relative min-w-0 flex-1">
             <MdTextField
               :id="inputId"
@@ -323,7 +323,7 @@ const save = async () => {
           </div>
           <MdButton
             variant="outlined"
-            class="shrink-0 self-start sm:mt-2"
+            class="shrink-0 self-start medium:mt-2"
             :disabled="trimmed === ''"
             data-test="add-parent"
             @click="add(text)"

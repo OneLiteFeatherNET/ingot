@@ -225,7 +225,7 @@ const validateDomain = (text: string, existing: string[]) => {
         novalidate
         @submit.prevent="save()"
       >
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 medium:grid-cols-2">
           <MdTextField
             id="sso-id"
             v-model="form.id"
@@ -299,7 +299,7 @@ const validateDomain = (text: string, existing: string[]) => {
           </div>
         </MdCard>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 medium:grid-cols-2">
           <MdTextField
             id="sso-client-id"
             v-model="form.clientId"
@@ -385,7 +385,7 @@ const validateDomain = (text: string, existing: string[]) => {
           <template #summary>
             Advanced
           </template>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid gap-4 medium:grid-cols-2">
             <MdTextField
               id="sso-claim-username"
               v-model="form.usernameClaim"
