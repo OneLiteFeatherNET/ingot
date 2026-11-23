@@ -19,6 +19,7 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SystemInfoView from './SystemInfoView.vue'
+import MdButton from '../md/MdButton.vue'
 import { configurationStoreKey } from '../../store/configuration'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 
@@ -300,6 +301,21 @@ describe('SystemInfoView support action', () => {
 
     expect(buttonNamed(wrapper, DOWNLOAD), 'the download action is drawn').toBeDefined()
     expect(panelsOf(wrapper).some((panel) => panel.text().includes(DOWNLOAD)), 'no tab holds the action').toBe(false)
+  })
+
+  it('draws the download action through the shared button and disables it while the bundle is built', async () => {
+    let finish: (value: unknown) => void = () => {}
+    const bundle = vi.fn(() => new Promise((resolve) => { finish = resolve }))
+    const wrapper = await mountView({ support: { systemInfo: vi.fn(() => Promise.resolve({ data: FIXTURE })), bundle } })
+    await flushPromises()
+
+    const action = wrapper.findAllComponents(MdButton).find((button) => button.text().includes(DOWNLOAD))
+    expect(action, 'the download action is a shared button').toBeDefined()
+    await action!.trigger('click')
+    expect(action!.attributes('disabled'), 'the action is disabled while the bundle is built').toBeDefined()
+    finish({ data: new Blob(['zip']), headers: {} })
+    await flushPromises()
+    expect(action!.attributes('disabled'), 'the action is enabled again').toBeUndefined()
   })
 
   it('keeps the note on what is removed in a disclosure in the header', async () => {
