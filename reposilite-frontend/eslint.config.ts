@@ -78,6 +78,14 @@ const configs: Linter.Config[] = ([
       },
     },
   },
+  // Test doubles and fixtures are async by contract (a mocked API returns a promise); an async function without an await is
+  // intended there.
+  {
+    files: ['**/*.test.ts', 'e2e/**/*.ts'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
   {
     files: ['**/*.vue'],
     languageOptions: {

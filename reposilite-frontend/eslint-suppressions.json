@@ -5,9 +5,6 @@
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
     }
   },
   "src/components/access/NewMachineDialog.test.ts": {
@@ -43,9 +40,6 @@
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     },
-    "@typescript-eslint/require-await": {
-      "count": 4
-    },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
     }
@@ -66,17 +60,11 @@
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 4
     }
   },
   "src/components/access/TeamMembers.test.ts": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 5
     }
   },
   "src/components/access/TeamsPanel.test.ts": {
@@ -98,37 +86,20 @@
   "src/components/access/nodes/NodeEditor.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 4
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
-    }
-  },
-  "src/components/access/nodes/inheritedNodes.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 1
     }
   },
   "src/components/access/nodes/permissionNodesApi.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 5
-    },
     "@typescript-eslint/unbound-method": {
       "count": 4
     }
   },
   "src/components/access/nodes/teamParentsApi.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 4
-    },
     "@typescript-eslint/unbound-method": {
       "count": 3
     }
   },
   "src/components/access/nodes/useInheritedNodes.test.ts": {
     "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    },
-    "@typescript-eslint/require-await": {
       "count": 1
     },
     "@typescript-eslint/restrict-template-expressions": {
@@ -138,9 +109,6 @@
   "src/components/access/nodes/usePermissionNodes.test.ts": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 13
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
@@ -182,9 +150,6 @@
   "src/components/dashboard/GettingStartedCard.test.ts": {
     "@typescript-eslint/no-unsafe-return": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 4
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
@@ -273,46 +238,6 @@
       "count": 1
     }
   },
-  "src/components/migration/ConnectStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 3
-    }
-  },
-  "src/components/migration/CutOverStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 1
-    }
-  },
-  "src/components/migration/DiscoverStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 1
-    }
-  },
-  "src/components/migration/DryRunStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 7
-    }
-  },
-  "src/components/migration/MigrationView.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 3
-    }
-  },
-  "src/components/migration/SyncStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 11
-    }
-  },
-  "src/components/migration/VerifyStep.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 9
-    }
-  },
-  "src/components/migration/accessibility.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 3
-    }
-  },
   "src/components/overview/RepositoryOverview.test.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
@@ -358,9 +283,6 @@
   "src/components/renderers/OneOfVariantSwitch.test.ts": {
     "@typescript-eslint/no-unsafe-call": {
       "count": 14
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
     }
   },
   "src/components/renderers/SwitchField.test.ts": {
@@ -418,9 +340,6 @@
   "src/components/settings/EntryDetail.access.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
     }
   },
   "src/components/settings/EntryDetail.storageVariants.test.ts": {
@@ -438,22 +357,9 @@
       "count": 5
     }
   },
-  "src/components/settings/repositoryAccessPorts.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 9
-    }
-  },
   "src/components/settings/repositoryWizard.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 8
-    },
     "@typescript-eslint/unbound-method": {
       "count": 7
-    }
-  },
-  "src/components/settings/useSettingsDomains.test.ts": {
-    "@typescript-eslint/require-await": {
-      "count": 2
     }
   },
   "src/pages/IndexPage.migration.test.ts": {
@@ -467,9 +373,6 @@
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 2
     }
   }
 }
