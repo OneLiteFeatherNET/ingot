@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 import MdDisclosure from '../../md/MdDisclosure.vue'
+import MdList from '../../md/MdList.vue'
 import NodeRow from './NodeRow.vue'
 import { containsNode, isWildcard, leafCount, stateBelow, type TreeItem } from './nodeTree'
 import type { NodeEntry } from './permissionNodesApi'
@@ -78,15 +79,17 @@ const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text
       :data-key="item.key"
     >
       <template v-if="item.entry">
-        <NodeRow
-          :entry="item.entry"
-          :readonly="readonly"
-          :error="rowErrors[item.entry.node] ?? ''"
-          :wildcard-hint="isWildcard(item.entry.node)"
-          :highlighted="highlighted === item.entry.node"
-          @toggle="(allowed) => emit('toggle', item.entry?.node, allowed)"
-          @remove="emit('remove', item.entry?.node)"
-        />
+        <MdList>
+          <NodeRow
+            :entry="item.entry"
+            :readonly="readonly"
+            :error="rowErrors[item.entry.node] ?? ''"
+            :wildcard-hint="isWildcard(item.entry.node)"
+            :highlighted="highlighted === item.entry.node"
+            @toggle="(allowed) => emit('toggle', item.entry?.node, allowed)"
+            @remove="emit('remove', item.entry?.node)"
+          />
+        </MdList>
         <NodeTreeView
           v-if="item.children.length > 0"
           :items="item.children"

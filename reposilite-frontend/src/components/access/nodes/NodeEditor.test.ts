@@ -87,7 +87,7 @@ describe('NodeEditor', () => {
 
   const input = () => wrapper.find('input[role="combobox"]')
   const rowTexts = () => wrapper.findAll('[data-test="node-row"] code').map(code => code.text())
-  const row = (node: string) => wrapper.find(`[data-test="node-row"] [data-node="${node}"]`)
+  const row = (node: string) => wrapper.find(`[data-test="node-row"][data-node="${node}"]`)
   const buttonNamed = (name: string) => wrapper.findAll('button').find(button => button.text() === name)
   const lastDraft = (): NodeEntry[] => wrapper.emitted<[NodeEntry[]]>('update:nodes')?.at(-1)?.[0] ?? []
   const type = async (text: string) => {

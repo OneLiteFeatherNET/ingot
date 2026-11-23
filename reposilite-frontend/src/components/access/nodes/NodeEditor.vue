@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, type PropType } from 'vue'
 import MdCode from '../../md/MdCode.vue'
+import MdList from '../../md/MdList.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import ConflictDialog from '../../settings/ConflictDialog.vue'
 import UnsavedChangesBar from '../../settings/UnsavedChangesBar.vue'
@@ -315,27 +316,24 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
         class="max-h-md-node-region overflow-y-auto rounded-corner-medium border border-outline-variant"
         data-test="node-region"
       >
-        <ul
+        <MdList
           v-if="view === 'list'"
-          class="flex flex-col divide-y divide-outline-variant"
+          divided
           aria-label="Permission nodes"
           data-test="node-list"
         >
-          <li
+          <NodeRow
             v-for="row in rows"
             :key="row.node"
+            :entry="row"
+            :readonly="readonly"
+            :error="rowErrors[row.node] ?? ''"
+            :highlighted="highlighted === row.node"
             data-test="node-row"
-          >
-            <NodeRow
-              :entry="row"
-              :readonly="readonly"
-              :error="rowErrors[row.node] ?? ''"
-              :highlighted="highlighted === row.node"
-              @toggle="(allowed) => toggle(row.node, allowed)"
-              @remove="remove(row.node)"
-            />
-          </li>
-        </ul>
+            @toggle="(allowed) => toggle(row.node, allowed)"
+            @remove="remove(row.node)"
+          />
+        </MdList>
         <NodeTreeView
           v-else
           :items="tree"
