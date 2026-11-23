@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { h } from 'vue'
+import { h, type Component } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
@@ -61,8 +61,8 @@ const UNNAMED_SERVER = {
 }
 
 const routesOf = () => [
-  { name: 'settings-repositories', path: '/settings/repositories', component: RepositoriesView },
-  { name: 'settings-repository', path: '/settings/repositories/:id', component: RepositoryDetail, props: true }
+  { name: 'settings-repositories', path: '/settings/repositories', component: RepositoriesView as Component },
+  { name: 'settings-repository', path: '/settings/repositories/:id', component: RepositoryDetail as Component, props: true }
 ]
 
 const mountList = async ({ address = '/settings/repositories' } = {}) => {

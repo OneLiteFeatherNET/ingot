@@ -49,7 +49,7 @@ const mountPanel = async ({ schema = schemaWithOption() } = {}) => {
   wrapper = mount(MavenOptionsPanel, {
     global: { provide: { [configurationStoreKey]: store } },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await flushPromises()
   return { store }
 }

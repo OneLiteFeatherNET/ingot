@@ -26,7 +26,7 @@ afterEach(() => {
 
 // The help line of each choice, in the order of the choices: Allow, Allow once, Read only.
 const helpLines = () => {
-  wrapper = mount(WritePolicyField, { props: { modelValue: 'allow', offerReadOnly: true } })
+  wrapper = mount(WritePolicyField, { props: { modelValue: 'allow', offerReadOnly: true } }) as VueWrapper
   return wrapper.findAll('fieldset p').map(line => line.text())
 }
 

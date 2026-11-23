@@ -135,7 +135,7 @@ describe('LoginModal', () => {
     store.setupRequired.value = false
     router = makeRouter()
     await router.push('/')
-    wrapper = mount(LoginModal, { attachTo: document.body, global: { plugins: [router] } })
+    wrapper = mount(LoginModal, { attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
   })
 
   afterEach(() => {

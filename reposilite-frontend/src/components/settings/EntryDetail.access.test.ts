@@ -18,6 +18,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { markRaw, ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
+import type { JsonFormsRendererRegistryEntry } from '@jsonforms/core'
 import { defaultStyles, vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import EntryDetail from './EntryDetail.vue'
@@ -43,7 +44,7 @@ const mountDetail = async (props = {}) => {
       collection,
       id: 'releases',
       entry: { id: 'releases' },
-      renderers: markRaw([...vanillaRenderers]),
+      renderers: markRaw([...(vanillaRenderers as JsonFormsRendererRegistryEntry[])]),
       validator: markRaw(createAjv({ useDefaults: true })),
       ...props
     },

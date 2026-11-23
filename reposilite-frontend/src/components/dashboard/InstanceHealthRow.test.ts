@@ -61,7 +61,7 @@ const clientWith = ({ health, probe }: {
 let wrapper: VueWrapper
 
 const mountRow = () => {
-  wrapper = mount(InstanceHealthRow, { attachTo: document.body })
+  wrapper = mount(InstanceHealthRow, { attachTo: document.body }) as VueWrapper
 }
 
 describe('InstanceHealthRow', () => {
@@ -198,7 +198,7 @@ describe('InstanceHealthRow', () => {
 
   it('leaves the label out when the cluster summary already states the health', async () => {
     session.client = ref(clientWith({}))
-    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } })
+    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } }) as VueWrapper
     await flushPromises()
 
     expect(wrapper.text(), 'the cluster summary is the one health statement, so the row has no Healthy label').not.toContain('Healthy')
@@ -210,7 +210,7 @@ describe('InstanceHealthRow', () => {
         response: { status: 503, data: { status: 'DOWN', details: 'database unreachable' } }
       }))
     }))
-    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } })
+    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } }) as VueWrapper
     await flushPromises()
 
     expect(wrapper.text(), 'the detail the server sends is still shown').toContain('database unreachable')

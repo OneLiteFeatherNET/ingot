@@ -112,7 +112,7 @@ const mountAt = async (url: string, { answer = answerWith() }: { answer?: () => 
     props: { qualifier: { path: '', watchable: 0 } },
     global: { plugins: [router] },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await flushPromises()
   return wrapper
 }
@@ -222,7 +222,7 @@ describe('RepositoryOverview list', () => {
     wrapper = mount(RepositoryOverview, {
       props: { qualifier: { path: '', watchable: 0 } },
       global: { plugins: [router] }
-    })
+    }) as VueWrapper
     await flushPromises()
 
     expect(loadCalls(), 'nothing is asked before the session is known').toHaveLength(0)

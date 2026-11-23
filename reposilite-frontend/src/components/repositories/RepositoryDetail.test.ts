@@ -79,7 +79,7 @@ const mountDetail = async ({ id = 'releases', schema, store, address }: { id?: s
       provide: { [configurationStoreKey]: configuration }
     },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await flushPromises()
   return { wrapper, router, store: configuration }
 }
