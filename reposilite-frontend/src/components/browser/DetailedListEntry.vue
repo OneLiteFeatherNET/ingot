@@ -26,7 +26,7 @@ import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { describeEntry, describeSize } from './entryMeta'
 import { actionCountOf, actionSlotClass, canDeleteAt, rowActionsOf } from './rowActions'
-import type { BrowserFile, BrowserPath } from './listing'
+import type { BrowserFile, BrowserPath, OpenDeleteEntryModal } from './listing'
 
 /*
  * One row of the listing. The row is a list item whose trailing slot holds the actions; its name
@@ -39,7 +39,7 @@ const props = defineProps<{
   url?: string
   // A router location, for a directory: the row is a link into the browser.
   to?: RouteLocationRaw
-  openDeleteEntryModal: (file: BrowserFile) => void
+  openDeleteEntryModal: OpenDeleteEntryModal
   compactMode: boolean
   signedIn?: boolean
   busy?: boolean

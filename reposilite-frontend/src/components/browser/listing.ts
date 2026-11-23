@@ -30,6 +30,9 @@ export type BrowserFile = components['schemas']['FileDetails'] & {
   list?: BrowserFile[]
 }
 
+// What a row calls to ask for the delete dialog of its entry.
+export type OpenDeleteEntryModal = (file: BrowserFile) => void
+
 // The repository or directory being browsed, as the route names it.
 export interface BrowserPath {
   path: string
