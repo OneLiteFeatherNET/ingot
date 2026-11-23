@@ -28,6 +28,7 @@ import TokenTag from '../tokens/TokenTag.vue'
 import NewTeamDialog from './NewTeamDialog.vue'
 import TeamDetail from './TeamDetail.vue'
 import { filterTeams } from './accessTeams'
+import { selectedKey } from './rowSelection'
 import { useTeamList } from './useTeamList'
 
 /*
@@ -60,13 +61,17 @@ onMounted(load)
 const count = (value: number | null | undefined, noun: string) => `${value ?? 0} ${noun}${value === 1 ? '' : 's'}`
 
 // The list decides the selected row here, once, and each row only reads its flag.
-const rows = computed(() => filterTeams(teams.value, query.value).map(team => ({
-  team,
-  admin: isInstanceAdmin(team),
-  counts: `${count(team.memberCount, 'member')}, ${count(team.nodeCount, 'node')}`,
-  to: { name: 'access-team', params: { name: team.name } },
-  selected: team.name === props.name
-})))
+const rows = computed(() => {
+  const visible = filterTeams(teams.value, query.value)
+  const current = selectedKey(visible, team => team.name, props.name)
+  return visible.map(team => ({
+    team,
+    admin: isInstanceAdmin(team),
+    counts: `${count(team.memberCount, 'member')}, ${count(team.nodeCount, 'node')}`,
+    to: { name: 'access-team', params: { name: team.name } },
+    selected: team.name === current
+  }))
+})
 
 const emptyText = computed(() =>
   teams.value.length === 0 ? 'There are no teams yet.' : `Nothing matches "${query.value.trim()}".`)

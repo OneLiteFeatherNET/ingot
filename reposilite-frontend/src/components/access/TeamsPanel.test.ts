@@ -20,6 +20,12 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router, type RouteRecordRaw } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import TeamsPanel from './TeamsPanel.vue'
+import { selectedKey } from './rowSelection'
+
+vi.mock('./rowSelection', async importOriginal => {
+  const actual = await importOriginal<typeof import('./rowSelection')>()
+  return { ...actual, selectedKey: vi.fn(actual.selectedKey) }
+})
 
 const holder = vi.hoisted((): { session: unknown } => ({ session: null }))
 
@@ -209,6 +215,15 @@ describe('TeamsPanel', () => {
     const current = wrapper!.findAll('[data-test="row"] [aria-current="true"]')
     expect(current, 'exactly one row is current').toHaveLength(1)
     expect(current[0].find('[data-test="team-name"]').text(), 'the current row is the open team').toBe('release')
+  })
+
+  it('asks for the selected row once per render of the list', async () => {
+    await mountPanel({ name: 'release' }, '/access/teams/release')
+    vi.mocked(selectedKey).mockClear()
+
+    await wrapper!.find('[data-test="search"]').setValue('a')
+
+    expect(selectedKey, 'one answer per render, whatever the number of rows').toHaveBeenCalledTimes(1)
   })
 
   it('marks no row as current while no team is open', async () => {

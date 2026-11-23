@@ -30,6 +30,7 @@ import NewUserDialog from './NewUserDialog.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalDetail from './PrincipalDetail.vue'
 import { filterPrincipals, seenLabel, usedLabel, type PrincipalKind, type PrincipalSummary } from './accessPrincipals'
+import { selectedKey } from './rowSelection'
 import { usePrincipalList } from './usePrincipalList'
 
 /*
@@ -94,7 +95,10 @@ onMounted(load)
 
 // Everything a row shows comes from its list item, and the list decides the selected row here, once. A machine account counts as used when it last
 // authenticated, which the server records as the last seen time of the principal.
-const rows = computed(() => filterPrincipals(principals.value, query.value).map(principal => {
+const rows = computed(() => {
+  const visible = filterPrincipals(principals.value, query.value)
+  const current = selectedKey(visible, principal => principal.name, props.name)
+  return visible.map(principal => {
   const activity = isMachine.value ? usedLabel(principal.lastSeenAt ?? null) : seenLabel(principal.lastSeenAt ?? null)
   const prefix = isMachine.value ? 'Last used' : 'Last sign-in'
   return {
@@ -106,9 +110,10 @@ const rows = computed(() => filterPrincipals(principals.value, query.value).map(
     // "Last sign-in 3 days ago", or the bare "Never signed in".
     activityText: activity.title ? `${prefix} ${activity.text}` : activity.text,
     to: { name: COPY.value.detail, params: { name: principal.name } },
-    selected: principal.name === props.name
+    selected: principal.name === current
   }
-}))
+  })
+})
 
 const emptyText = computed(() =>
   principals.value.length === 0 ? COPY.value.empty : `Nothing matches "${query.value.trim()}".`)
