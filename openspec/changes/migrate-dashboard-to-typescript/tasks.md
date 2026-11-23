@@ -239,20 +239,20 @@ that rule, or by hand), fixes the code instead of suppressing it again, and chan
 ### 4.1 The `any` budget
 
 - [x] 4.1.1 Confirm the count of explicit `any` values under `src/` is zero or only the budgeted reasons, then remove `src/types/any-budget.json` and its test, and reword the remaining `// any:` comments into typed code where the count allows.
-- [ ] 4.1.2 Open the pull request `refactor(ui): remove the any budget of the dashboard`.
+- [x] 4.1.2 Open the pull request `refactor(ui): remove the any budget of the dashboard`.
 
 ### 4.2 JavaScript settings
 
-- [ ] 4.2.1 Set `allowJs: false` in every tsconfig, remove `checkJs` and the transition comments, and confirm `strict: true` in all four files. Run `npm run typecheck`.
-- [ ] 4.2.2 Open the pull request `refactor(ui): disallow javascript in the dashboard tsconfig files`.
+- [x] 4.2.1 Set `allowJs: false` in every tsconfig, remove `checkJs` and the transition comments, and confirm `strict: true` in all four files. Run `npm run typecheck`.
+- [x] 4.2.2 Open the pull request `refactor(ui): disallow javascript in the dashboard tsconfig files`.
 
 ### 4.3 Suppressions, one pull request per rule
 
 Pull request title pattern: `refactor(ui): fix the <rule> findings of the dashboard`. Each pull request also names its rule in the description.
 
-- [ ] 4.3.1 `@typescript-eslint/require-await` (104): drop `async` where nothing is awaited, or return the promise. Open the pull request.
+- [x] 4.3.1 `@typescript-eslint/require-await` (104): drop `async` where nothing is awaited, or return the promise. Open the pull request.
 - [ ] 4.3.2 `@typescript-eslint/no-unsafe-assignment` (147): type the source of each assignment. Open the pull request.
-- [ ] 4.3.3 `@typescript-eslint/no-unsafe-argument` (63): type the argument or its source. Open the pull request.
+- [x] 4.3.3 `@typescript-eslint/no-unsafe-argument` (63): type the argument or its source. Open the pull request.
 - [x] 4.3.4 `@typescript-eslint/unbound-method` (29): bind the method or use an arrow function. Open the pull request.
 - [x] 4.3.5 `@typescript-eslint/no-floating-promises` (27): await, return or mark the promise with `void` where fire and forget is intended. Open the pull request.
 - [x] 4.3.6 `@typescript-eslint/no-unsafe-call` (25) and `@typescript-eslint/no-unsafe-return` (1): type the callee and the return value. Open the pull request.
@@ -263,7 +263,7 @@ Pull request title pattern: `refactor(ui): fix the <rule> findings of the dashbo
 
 ### 4.4 Remaining JavaScript and the closing check
 
-- [ ] 4.4.1 List any `.js` file left under `src/`, `server/`, `e2e/` or `fake-api/` in the pull request. The expected list is empty; any vendored or generated file needs a sentence of reason and no conversion.
+- [x] 4.4.1 List any `.js` file left under `src/`, `server/`, `e2e/` or `fake-api/` in the pull request. The expected list is empty; any vendored or generated file needs a sentence of reason and no conversion.
 - [ ] 4.4.2 Run every gate, plus the full e2e suite and the build comparison against the Phase 0 baseline, with `heavy`. Open the pull request `refactor(ui): confirm the dashboard builds as before the typescript migration`, which changes no file unless a gate finds a difference.
 
 ## 5. Follow-ups (not part of the code pull requests)
