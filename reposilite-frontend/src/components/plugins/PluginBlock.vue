@@ -31,6 +31,7 @@ import {
   BLOCK_TYPES, READER_REFUSED_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
 } from './pluginBlocks'
 import MdCard from '../md/MdCard.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -99,6 +100,7 @@ const keyValueRows = computed(() => {
 })
 
 const table = computed(() => tableRows(Array.isArray(data.value) ? data.value : []))
+const tableData = computed(() => table.value.shown as Record<string, unknown>[])
 
 // List: the first page at once, then the next page on request. The rows of every page are kept, and the cut is stated.
 const listItems = ref<unknown[]>([])
@@ -320,36 +322,16 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
     </template>
 
     <template v-else-if="block.type === 'table'">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr>
-              <th
-                v-for="column in block.columns"
-                :key="column.key"
-                scope="col"
-                class="md-label-large px-2 py-2"
-              >
-                {{ column.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, index) in table.shown"
-              :key="index"
-            >
-              <td
-                v-for="column in block.columns"
-                :key="column.key"
-                class="md-body-medium px-2 py-2 break-all"
-              >
-                {{ displayValue(row[column.key]) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <MdDataTable
+        :caption="block.label || `${plugin} table`"
+        caption-hidden
+        :columns="block.columns ?? []"
+        :rows="tableData"
+      >
+        <template #cell="{ value }">
+          {{ displayValue(value) }}
+        </template>
+      </MdDataTable>
       <p
         v-if="table.cut"
         class="md-body-small text-on-surface-variant"
