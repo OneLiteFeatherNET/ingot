@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SearchResultRow from './SearchResultRow.vue'
+import MdBadge from '../md/MdBadge.vue'
 import type { SearchItem } from './searchResult'
 
 const shell = { render: () => null }
@@ -45,6 +46,29 @@ describe('SearchResultRow', () => {
     expect(button.attributes('data-variant'), 'the browse link is the shared icon button').toBe('standard')
     expect(button.classes()).toContain('md-touch-target')
     expect(button.attributes('href'), 'it stays a link').toBe('/releases/org/example/tool/1.0.0')
+    wrapper.unmount()
+  })
+
+  it('draws the newer version, the snapshot flag and the repositories as shared badges', () => {
+    const wrapper = mount(SearchResultRow, {
+      props: {
+        item: {
+          ...item(),
+          latestVersion: '2.0.0',
+          snapshot: true,
+          repositories: [
+            { name: 'releases', origin: 'LOCAL' },
+            { name: 'central', origin: 'MIRROR' }
+          ]
+        } as SearchItem
+      },
+      global: { stubs: { RouterLink: true } }
+    })
+
+    const badges = wrapper.findAllComponents(MdBadge)
+
+    expect(badges.map(badge => badge.attributes('data-tone')), 'one badge per label, tinted by its meaning')
+      .toEqual(['hosted', 'neutral', 'neutral', 'accent'])
     wrapper.unmount()
   })
 })

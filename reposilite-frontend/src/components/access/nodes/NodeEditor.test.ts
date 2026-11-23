@@ -16,6 +16,7 @@
 
 // @vitest-environment jsdom
 
+import MdBadge from '../../md/MdBadge.vue'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import NodeEditor from './NodeEditor.vue'
@@ -769,6 +770,13 @@ describe('NodeEditor', () => {
       const rows = wrapper.findAll('[data-test="inherited-row"]')
       expect(rows[0].find('[data-test="inherited-overridden"]').exists(), 'not held directly').toBe(false)
       expect(rows[1].find('[data-test="inherited-overridden"]').exists(), 'held directly').toBe(true)
+    })
+
+    it('draws the overridden marker as a shared badge', () => {
+      mountEditor({ inherited: INHERITED() })
+
+      const badges = wrapper.findAllComponents(MdBadge).filter(badge => badge.attributes('data-test') === 'inherited-overridden')
+      expect(badges.length, 'the marker is an md-badge').toBe(1)
     })
 
     it('is open to start with', () => {
