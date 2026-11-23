@@ -91,7 +91,7 @@ here.
   `useCombobox`; move `nodes/NodeTemplateMenu.vue:206-218` from the native `datalist` to `MdListbox`; update
   `nodes/NodeEditor.test.js:400`, which selects `datalist option`; remove the `z-20` and `z-50` literals of these files.
   Verify: 4.2 passes.
-- [ ] 5.4 `fix(ui)`: state panels in the access area. Failed loads with Retry move to `MdStatePanel` (error, tonal Retry) in
+- [x] 5.4 `fix(ui)`: state panels in the access area. Failed loads with Retry move to `MdStatePanel` (error, tonal Retry) in
   `AuthenticationGroupForm.vue:107`, `LdapPanel.vue:126`, `PrincipalDetail.vue:160`, `PermissionNodesCard.vue:137`,
   `PrincipalsPanel.vue:165`, `TeamsPanel.vue:122`, `TeamDetail.vue:236`, `TeamParentsCard.vue:261` and `SsoProvidersPanel.vue:243`.
   Loading lines (`AuthenticationGroupForm.vue:100`, `LdapPanel.vue:119`, `TeamsPanel.vue:135`, `TeamDetail.vue:220`,
