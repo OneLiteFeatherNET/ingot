@@ -129,7 +129,7 @@ describe('ResetPasswordDialog', () => {
     type('reset-password-confirm', 'a-long-password')
     await submit()
 
-    const alert = dialog().querySelector<HTMLElement>('[data-ingot-component="md-alert"]')
+    const alert = dialog().querySelector<HTMLElement>('[role="alert"][data-tone="error"]')
     expect(alert, 'the refusal must be drawn with the shared alert').not.toBeNull()
     expect(alert!.getAttribute('role'), 'a refusal is announced at once').toBe('alert')
     expect(alert!.textContent).toContain('Password is too common')
