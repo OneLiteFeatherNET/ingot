@@ -20,6 +20,7 @@
 import { computed, inject, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MigrationDialog from './MigrationDialog.vue'
 import { formatBytes } from '../maintenance/format'
@@ -55,6 +56,22 @@ if (wizard.state.discovery && !wizard.state.mapping) {
 
 const rows = computed(() => wizard.state.mapping?.repositories ?? [])
 const policy = computed(() => wizard.state.mapping?.conflictPolicy ?? 'refuse')
+const MAPPING_COLUMNS = [
+  { key: 'nexusName', label: 'Nexus name' },
+  { key: 'format', label: 'Format' },
+  { key: 'size', label: 'Size' },
+  { key: 'targetName', label: 'Target name' },
+  { key: 'included', label: 'Include' },
+]
+const tableRows = computed(() => rows.value.map(row => ({
+  ...row,
+  format: `${row.format} (${row.type})`,
+  size: formatBytes(row.bytes),
+})))
+
+// The cell slot hands over the table row, which is the mapping row plus the two formatted columns.
+const cellRow = (cell: Record<string, unknown>) => cell as unknown as MappingRow
+
 const warnings = computed(() => mappingWarnings(rows.value))
 const warningOf = (nexusName: string) => warnings.value.find(warning => warning.nexusName === nexusName)?.kind ?? null
 
@@ -150,97 +167,47 @@ const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
         </label>
       </fieldset>
 
-      <table
+      <MdDataTable
         data-test="mapping"
-        class="w-full text-left md-body-medium"
+        caption="Repositories to import"
+        :columns="MAPPING_COLUMNS"
+        :rows="tableRows"
+        :row-attrs="{ 'data-row': 'nexusName' }"
       >
-        <caption class="md-title-small pb-2 text-left text-on-surface">
-          Repositories to import
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="py-2 pr-4"
+        <template #cell="{ row: cell, column, value }">
+          <template v-if="column.key === 'targetName'">
+            <MdTextField
+              v-if="cellRow(cell).supported"
+              :id="`migration-target-${rowId(cellRow(cell).nexusName)}`"
+              :label="`Target name for ${cellRow(cell).nexusName}`"
+              variant="outlined"
+              autocomplete="off"
+              :model-value="cellRow(cell).targetName ?? ''"
+              :error="warningOf(cellRow(cell).nexusName) !== null"
+              :error-text="warningOf(cellRow(cell).nexusName) === 'empty' ? 'Enter a target name.' : warningOf(cellRow(cell).nexusName) === 'duplicate' ? 'Shares this name with another included repository.' : ''"
+              @update:model-value="updateRow(cellRow(cell).nexusName, { targetName: $event })"
+            />
+            <span v-else>Excluded: the format is not supported</span>
+          </template>
+          <template v-else-if="column.key === 'included'">
+            <label
+              v-if="cellRow(cell).supported"
+              class="flex items-center gap-2"
             >
-              Nexus name
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Format
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Size
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Target name
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Include
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in rows"
-            :key="row.nexusName"
-            :data-row="row.nexusName"
-          >
-            <th
-              scope="row"
-              class="py-2 pr-4 font-normal"
-            >
-              {{ row.nexusName }}
-            </th>
-            <td class="py-2 pr-4">
-              {{ row.format }} ({{ row.type }})
-            </td>
-            <td class="py-2 pr-4">
-              {{ formatBytes(row.bytes) }}
-            </td>
-            <td class="py-2 pr-4">
-              <template v-if="row.supported">
-                <MdTextField
-                  :id="`migration-target-${rowId(row.nexusName)}`"
-                  :label="`Target name for ${row.nexusName}`"
-                  variant="outlined"
-                  autocomplete="off"
-                  :model-value="row.targetName ?? ''"
-                  :error="warningOf(row.nexusName) !== null"
-                  :error-text="warningOf(row.nexusName) === 'empty' ? 'Enter a target name.' : warningOf(row.nexusName) === 'duplicate' ? 'Shares this name with another included repository.' : ''"
-                  @update:model-value="updateRow(row.nexusName, { targetName: $event })"
-                />
-              </template>
-              <span v-else>Excluded: the format is not supported</span>
-            </td>
-            <td class="py-2 pr-4">
-              <label
-                v-if="row.supported"
-                class="flex items-center gap-2"
+              <input
+                :id="`migration-include-${rowId(cellRow(cell).nexusName)}`"
+                type="checkbox"
+                :checked="cellRow(cell).included"
+                @change="setIncluded(cellRow(cell).nexusName, $event)"
               >
-                <input
-                  :id="`migration-include-${rowId(row.nexusName)}`"
-                  type="checkbox"
-                  :checked="row.included"
-                  @change="setIncluded(row.nexusName, $event)"
-                >
-                Include {{ row.nexusName }}
-              </label>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              Include {{ cellRow(cell).nexusName }}
+            </label>
+          </template>
+          <template v-else>
+            {{ value }}
+          </template>
+        </template>
+      </MdDataTable>
 
       <div>
         <RouterLink

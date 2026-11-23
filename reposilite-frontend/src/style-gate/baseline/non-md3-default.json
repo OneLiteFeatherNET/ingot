@@ -120,22 +120,12 @@
     "count": 1
   },
   {
-    "file": "src/components/migration/DiscoverStep.vue",
-    "match": "font-normal",
-    "count": 2
-  },
-  {
     "file": "src/components/migration/DryRunStep.vue",
     "match": "font-medium",
     "count": 1
   },
   {
     "file": "src/components/migration/DryRunStep.vue",
-    "match": "font-normal",
-    "count": 1
-  },
-  {
-    "file": "src/components/migration/MappingStep.vue",
     "match": "font-normal",
     "count": 1
   },

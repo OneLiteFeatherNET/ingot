@@ -51,6 +51,14 @@ describe('the Mapping step', () => {
     expect(includeBox(wrapper, 'npm-proxy').exists(), 'an excluded repository has no control').toBe(false)
   })
 
+  it('draws the mapping as a data table with the Nexus name as row header', async () => {
+    const { wrapper } = await mountWith(MappingStep, { wizard: discoveredWizard(), at: '/settings/migration/mapping' })
+
+    const region = wrapper.find('[data-test="mapping"]')
+    expect(region.attributes('role'), 'the table sits in a named scroll region').toBe('region')
+    expect(region.find('tbody th[scope="row"]').text()).toBe('releases')
+  })
+
   it('preselects refuse as the conflict policy and holds the mapping in the page', async () => {
     const wizard = discoveredWizard()
     const { wrapper } = await mountWith(MappingStep, { wizard, at: '/settings/migration/mapping' })

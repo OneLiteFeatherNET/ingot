@@ -83,8 +83,10 @@ describe('the Discover step', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    const table = wrapper.find('table[data-test="repositories"]')
+    const table = wrapper.find('[data-test="repositories"]')
+    expect(table.attributes('role'), 'the table sits in a named scroll region').toBe('region')
     expect(table.find('caption').exists(), 'the table has a caption').toBe(true)
+    expect(table.find('tbody th[scope="row"]').text(), 'the repository name is the row header').toBe('releases')
     const row = table.findAll('tbody tr').find(entry => entry.text().includes('releases'))!
     expect(row.text()).toContain('maven2')
     expect(row.text()).toContain('hosted')
@@ -98,7 +100,7 @@ describe('the Discover step', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    const row = wrapper.find('table[data-test="repositories"]').findAll('tbody tr').find(entry => entry.text().includes('npm-proxy'))!
+    const row = wrapper.find('[data-test="repositories"]').findAll('tbody tr').find(entry => entry.text().includes('npm-proxy'))!
     expect(row.text()).toMatch(/excluded/i)
   })
 
@@ -109,7 +111,7 @@ describe('the Discover step', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    const histogram = wrapper.find('table[data-test="formats"]')
+    const histogram = wrapper.find('[data-test="formats"]')
     expect(histogram.find('caption').exists()).toBe(true)
     expect(histogram.text()).toContain('maven2')
     expect(histogram.text()).toContain('124')
