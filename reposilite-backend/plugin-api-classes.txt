@@ -36,3 +36,4 @@ net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistrationEvent
 net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistry
 net.onelitefeather.ingot.plugin.ui.PluginUiReaderPage
+net.onelitefeather.ingot.storage.StorageEntry
