@@ -1591,6 +1591,48 @@
       "states": []
     },
     {
+      "name": "wizard-choice-card",
+      "file": "src/components/settings/wizard/WizardChoiceCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "wizard-field-group",
+      "file": "src/components/settings/wizard/WizardFieldGroup.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "wizard-progress-list",
+      "file": "src/components/settings/wizard/WizardProgressList.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "wizard-remote-fields",
+      "file": "src/components/settings/wizard/WizardRemoteFields.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "wizard-review-summary",
+      "file": "src/components/settings/wizard/WizardReviewSummary.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "wizard-step-indicator",
+      "file": "src/components/settings/wizard/WizardStepIndicator.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "settings-encryption-alert",
       "file": "src/components/support/SettingsEncryptionAlert.vue",
       "stability": "experimental",

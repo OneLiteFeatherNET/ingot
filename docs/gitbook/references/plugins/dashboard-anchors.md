@@ -260,6 +260,12 @@ The dashboard animates a change of page, a menu, a dialog and a few other surfac
 | `verify-step` | experimental | `src/components/migration/VerifyStep.vue` | none | none | none |
 | `view-load-error` | experimental | `src/components/util/ViewLoadError.vue` | none | `error` | none |
 | `view-loading` | experimental | `src/components/util/ViewLoading.vue` | none | `loading` | none |
+| `wizard-choice-card` | experimental | `src/components/settings/wizard/WizardChoiceCard.vue` | none | none | none |
+| `wizard-field-group` | experimental | `src/components/settings/wizard/WizardFieldGroup.vue` | none | none | none |
+| `wizard-progress-list` | experimental | `src/components/settings/wizard/WizardProgressList.vue` | none | none | none |
+| `wizard-remote-fields` | experimental | `src/components/settings/wizard/WizardRemoteFields.vue` | none | none | none |
+| `wizard-review-summary` | experimental | `src/components/settings/wizard/WizardReviewSummary.vue` | none | none | none |
+| `wizard-step-indicator` | experimental | `src/components/settings/wizard/WizardStepIndicator.vue` | none | none | none |
 | `write-policy-field` | experimental | `src/components/repositories/WritePolicyField.vue` | none | none | none |
 | `xml-tag` | experimental | `src/components/card/XmlTag.vue` | none | none | none |
 | `your-access` | experimental | `src/components/account/YourAccess.vue` | none | none | none |
