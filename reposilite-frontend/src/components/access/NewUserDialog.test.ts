@@ -147,7 +147,10 @@ describe('NewUserDialog', () => {
     fill()
     await submit()
 
-    expect(dialog().querySelector<HTMLElement>('[role="alert"]')!.textContent).toContain('The name carol is taken')
+    const alert = dialog().querySelector<HTMLElement>('[data-ingot-component="md-alert"]')
+    expect(alert, 'the refusal must be drawn with the shared alert').not.toBeNull()
+    expect(alert!.getAttribute('role'), 'a refusal is announced at once').toBe('alert')
+    expect(alert!.textContent).toContain('The name carol is taken')
     expect(api.setPassword, 'no password for a user that was not created').not.toHaveBeenCalled()
   })
 
