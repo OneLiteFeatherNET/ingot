@@ -368,6 +368,7 @@ describe('RepositoryAccessCard', () => {
 
     expect(wrapper.get('[data-test="loading"]').attributes('aria-busy'), 'the loading state is drawn as a busy state panel').toBe('true')
     expect(wrapper.get('[data-test="loading"]').text(), 'the loading panel names what loads').toContain('Loading who has access')
+    expect(wrapper.get('[data-test="loading"]').attributes('data-ingot-state'), 'the stable anchor keeps its loading state while the panel draws the skeleton').toBe('loading')
   })
 
   it('shows the error with a retry that asks again', async () => {

@@ -194,7 +194,7 @@ The dashboard animates a change of page, a menu, a dialog and a few other surfac
 | `rebuild-index-dialog` | experimental | `src/components/maintenance/RebuildIndexDialog.vue` | none | none | none |
 | `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `cell-name`, `empty` | `empty` | none |
 | `repositories-view` | experimental | `src/components/repositories/RepositoriesView.vue` | none | none | none |
-| `repository-access-card` | stable | `src/components/settings/RepositoryAccessCard.vue` | none | none | none |
+| `repository-access-card` | stable | `src/components/settings/RepositoryAccessCard.vue` | none | `loading` | none |
 | `repository-detail` | experimental | `src/components/repositories/RepositoryDetail.vue` | `header`, `tabs` | `empty`, `loading` | none |
 | `repository-members-picker` | stable | `src/components/settings/RepositoryMembersPicker.vue` | none | none | none |
 | `repository-overview` | experimental | `src/components/overview/RepositoryOverview.vue` | none | `loading` | none |

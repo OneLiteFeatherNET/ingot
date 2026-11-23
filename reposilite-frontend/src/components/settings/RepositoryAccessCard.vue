@@ -240,6 +240,7 @@ const rows = computed(() => {
       <MdStatePanel
         v-if="status === 'loading'"
         state="loading"
+        data-ingot-state="loading"
         title="Loading who has access"
         data-test="loading"
       />
