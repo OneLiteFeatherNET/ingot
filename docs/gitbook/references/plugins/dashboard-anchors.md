@@ -138,6 +138,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-page` | experimental | `src/components/md/MdPage.vue` | none | none | none |
 | `md-page-header` | experimental | `src/components/md/MdPageHeader.vue` | none | none | none |
 | `md-radio` | experimental | `src/components/md/MdRadio.vue` | none | none | none |
+| `md-save-bar` | experimental | `src/components/md/MdSaveBar.vue` | none | none | none |
 | `md-section` | experimental | `src/components/md/MdSection.vue` | none | none | none |
 | `md-select` | experimental | `src/components/md/MdSelect.vue` | none | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none | none |

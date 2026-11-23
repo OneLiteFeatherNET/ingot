@@ -170,6 +170,11 @@
     "count": 1
   },
   {
+    "file": "src/components/md/MdSaveBar.vue",
+    "match": "max-medium:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]",
+    "count": 1
+  },
+  {
     "file": "src/components/md/MdSnackbar.vue",
     "match": "[&>svg]:size-6",
     "count": 1

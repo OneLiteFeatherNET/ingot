@@ -1074,6 +1074,17 @@ A button that opens a menu of actions on what it names, such as the actions of o
 - Do: keep the destructive item last, after a separator, and mark it with `error`.
 - Don't: use `!` modifiers on an item. They override the focus ring.
 
+### MdSaveBar
+
+The bar of a form with unsaved changes. It sticks to the bottom of its scroll container and, below the `medium` window class, stays above the bottom bar and the safe area.
+
+- Props: none.
+- Slots: `default` (the count of changes and the save and discard buttons).
+- Events: none.
+- Anchor: `md-save-bar`.
+- Do: set the gap above the bar with a class on it, such as `mt-6`.
+- Don't: offset the bar with an inline style or a `<style>` rule; the clearance is a class on the bar.
+
 ### MdSection
 
 A titled group of content on a page. The title is a heading at level 2 for a section of a page, or level 3 for a section inside another one.
