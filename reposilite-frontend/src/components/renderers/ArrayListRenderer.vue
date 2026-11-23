@@ -90,14 +90,14 @@
       >
         <!-- The remove button sits inside the card, so every card spans the same width as the fields. -->
         <div class="flex items-start gap-2">
-          <details
+          <MdDisclosure
             class="min-w-0 flex-1"
             open
           >
-            <summary class="cursor-pointer md-title-medium text-on-surface">
+            <template #summary>
               {{ childLabelForIndex(index) || `${itemLabel} ${index + 1}` }}
-            </summary>
-            <div class="mt-4 flex flex-col gap-4">
+            </template>
+            <div class="flex flex-col gap-4">
               <DispatchRenderer
                 :schema="control.schema"
                 :uischema="childUiSchema"
@@ -107,7 +107,7 @@
                 :cells="control.cells"
               />
             </div>
-          </details>
+          </MdDisclosure>
           <MdIconButton
             class="shrink-0"
             :aria-label="`Remove ${itemLabel.toLowerCase()} ${index + 1}`"
@@ -137,6 +137,7 @@ import { computed, defineComponent } from 'vue'
 import { createEntryValue } from './util'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { descriptionText } from './description'
@@ -163,6 +164,7 @@ export default defineComponent({
     DispatchRenderer,
     MdButton,
     MdCard,
+    MdDisclosure,
     MdIconButton,
     MdTextField
   },

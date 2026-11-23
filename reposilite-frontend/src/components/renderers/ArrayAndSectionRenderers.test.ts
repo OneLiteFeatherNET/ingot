@@ -138,6 +138,13 @@ describe('array of objects', () => {
     expect(wrapper.find<HTMLInputElement>('details input').element.value).toBe('https://jitpack.io')
   })
 
+  it('opens and closes each object item with the height animation of the shared disclosure', () => {
+    const wrapper = mountForm(mirrorSchema, mirrorLayout, { mirrors: [{ link: 'https://jitpack.io' }] })
+
+    expect(wrapper.find('details .expand-rows').exists(), 'the item body sits in the expand wrapper').toBe(true)
+    expect(wrapper.find('details').element.open, 'an item starts open').toBe(true)
+  })
+
   it('draws each object item on its own low card', () => {
     const wrapper = mountForm(mirrorSchema, mirrorLayout, {
       mirrors: [{ link: 'https://jitpack.io' }, { link: 'https://repo.example' }]
