@@ -380,3 +380,42 @@ describe('FileList action slot', () => {
     expect(rows.map(row => row.props('actionSlots') as number), 'the xml row offers one action, so each row reserves one').toEqual([1, 1])
   })
 })
+
+describe('FileList row fade', () => {
+  const second = { name: 'example-2.0.jar', type: 'FILE' as const, contentLength: 4096 }
+  const first = { ...jar, type: 'FILE' as const }
+  const rowOf = (wrapper: VueWrapper<InstanceType<typeof FileList>>, name: string) =>
+    wrapper.findAllComponents({ name: 'DetailedListEntry' }).find(row => row.text().includes(name))!
+
+  it('does not fade the rows of the initial load', () => {
+    const wrapper = mountList({ files: { list: [jar, second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'no row of the initial load carries the fade').toBe(0)
+  })
+
+  it('fades a row that is added after the load', async () => {
+    const wrapper = mountList({ files: { list: [jar], error: false } })
+
+    await wrapper.setProps({ files: { list: [first, second], error: false } })
+
+    expect(rowOf(wrapper, 'example-2.0.jar').classes(), 'the added row carries the fade').toContain('motion-row-enter')
+    expect(rowOf(wrapper, 'example-1.0.jar').classes(), 'the row that was there stays plain').not.toContain('motion-row-enter')
+  })
+
+  it('does not fade the rows that arrive after a skeleton', async () => {
+    const wrapper = mountList({ loading: true, files: { list: [], error: false } })
+
+    await wrapper.setProps({ loading: false, files: { list: [first, second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'a loaded listing does not fade').toBe(0)
+  })
+
+  it('leaves the other rows plain when a row is removed', async () => {
+    const wrapper = mountList({ files: { list: [first, second], error: false } })
+
+    await wrapper.setProps({ files: { list: [second], error: false } })
+
+    expect(wrapper.findAll('.motion-row-enter').length, 'a removal animates nothing').toBe(0)
+    expect(wrapper.text(), 'the removed row is gone at once').not.toContain('example-1.0.jar')
+  })
+})
