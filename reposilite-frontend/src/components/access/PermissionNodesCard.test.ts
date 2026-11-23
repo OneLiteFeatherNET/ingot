@@ -52,7 +52,7 @@ describe('PermissionNodesCard', () => {
     await flushPromises()
   }
 
-  const rowNodes = () => wrapper.findAll('[data-test="node-row"] [data-node]').map(row => row.attributes('data-node'))
+  const rowNodes = () => wrapper.findAll('[data-test="node-row"][data-node]').map(row => row.attributes('data-node'))
   const buttonNamed = (name: string) => wrapper.findAll('button').find(button => button.text() === name)!
   const remove = async (node: string) => {
     await wrapper.find(`button[aria-label="Remove ${node}"]`).trigger('click')
