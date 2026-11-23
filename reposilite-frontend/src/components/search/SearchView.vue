@@ -39,8 +39,8 @@ import {
   toRouteQuery
 } from './searchQuery'
 import type { Order, SearchQuery, Sort } from './searchQuery'
-import { announcement, indexNotice, normalizeFiles, normalizePage, rowKey } from './searchResult'
-import type { Facets, FilesState, SearchItem, SearchPage } from './searchResult'
+import { announcement, indexNotice, normalizeFacetable, normalizeFiles, normalizePage, rowKey } from './searchResult'
+import type { FacetableAttribute, Facets, FilesState, SearchItem, SearchPage } from './searchResult'
 
 /*
  * The search page (spec section 8). The whole query lives in the address, so a search can be linked and
@@ -69,17 +69,24 @@ const ORDER_OPTIONS: { value: Order; label: string }[] = [
 ]
 const EMPTY_FACETS: Facets = { repository: [], extension: [], classifier: [], origin: [], snapshot: [] }
 const SKELETON_ROWS = 5
+// The problem types of an attribute request that the backend cannot answer (search attribute facets, D1 and D6).
+const ATTRIBUTE_REFUSALS = ['urn:ingot:problem:unsupported-search-capability', 'urn:ingot:problem:undeclared-attribute']
 
 // The HTTP answer of a failed request, when the error carries one.
 interface HttpResponse {
   status?: number
-  data?: { message?: string }
+  data?: { message?: string; type?: string }
 }
 const responseOf = (error: unknown): HttpResponse | undefined =>
   (typeof error === 'object' && error !== null && 'response' in error ? (error as { response?: HttpResponse }).response : undefined)
 
 const query = computed(() => parseSearchQuery(route.query))
-const requestQuery = computed(() => toRequestQuery(query.value))
+// The keys the instance can count, read once before the first search. When they cannot be read, or the backend
+// refused attributes, the search is the plain one.
+const facetable = ref<FacetableAttribute[]>([])
+const facetableKnown = ref(false)
+const attributesRefused = ref(false)
+const requestQuery = computed(() => toRequestQuery({ ...query.value, attribute: attributesRefused.value ? [] : query.value.attribute }))
 
 const result = ref<SearchPage | null>(null)
 const loading = ref(true)
@@ -99,6 +106,7 @@ let latestRequest = 0
 
 const items = computed(() => result.value?.items ?? [])
 const facets = computed(() => result.value?.facets ?? EMPTY_FACETS)
+const attributeFacets = computed(() => (attributesRefused.value ? {} : result.value?.attributes ?? {}))
 const notice = computed(() => (result.value ? indexNotice(result.value.indexStatus) : null))
 const canOpenMaintenance = computed(() => can(ADMIN_NODES.maintenance))
 const filterWords = computed(() => activeFilters(query.value))
@@ -109,6 +117,17 @@ const outOfRange = computed(() => result.value !== null && result.value.total > 
 const onlyMirrors = computed(() => query.value.origin === 'mirror')
 const emptyMessage = computed(() => (query.value.q ? `Nothing matches "${query.value.q}".` : 'Nothing matches.'))
 
+const loadFacetable = async () => {
+  try {
+    const { data } = await client.value.maven.facetableAttributes()
+    facetable.value = normalizeFacetable(data)
+  } catch {
+    facetable.value = []
+  } finally {
+    facetableKnown.value = true
+  }
+}
+
 /*
  * Asks for the page the address names, once the session is known and again when it changes, because a
  * sign in can show more repositories. A response that arrives after a newer request has started is dropped.
@@ -118,8 +137,11 @@ const load = async () => {
   const current = ++latestRequest
   loading.value = true
   failure.value = ''
+  if (!facetableKnown.value) await loadFacetable()
+  if (current !== latestRequest) return
   try {
-    const { data } = await client.value.maven.search(requestQuery.value)
+    const facetKeys = attributesRefused.value ? [] : facetable.value.map(entry => entry.key)
+    const { data } = await client.value.maven.search(toRequestQuery({ ...query.value, attribute: attributesRefused.value ? [] : query.value.attribute }, facetKeys))
     if (current !== latestRequest) return
     disabled.value = false
     result.value = normalizePage(data)
@@ -132,6 +154,10 @@ const load = async () => {
     const response = responseOf(error)
     if (response?.status === 404) {
       disabled.value = true
+    } else if (response?.status === 400 && ATTRIBUTE_REFUSALS.includes(response.data?.type ?? '') && !attributesRefused.value) {
+      // The plain search: the attributes leave the address, and the request is made again without them.
+      attributesRefused.value = true
+      await router.replace({ name: route.name, query: toRouteQuery({ ...query.value, attribute: [] }) })
     } else {
       const detail = response?.status === 400 ? response.data?.message : ''
       failure.value = detail || `Cannot search: ${errorMessage(error)}`
@@ -141,7 +167,7 @@ const load = async () => {
   }
 }
 
-watch(() => [requestQuery.value, sessionReady.value, details.value], load, { immediate: true })
+watch(() => [requestQuery.value, attributesRefused.value, sessionReady.value, details.value], load, { immediate: true })
 
 // Back and forward change the address; the box follows it.
 watch(() => query.value.q, (text) => {
@@ -351,6 +377,8 @@ const toggleRow = (item: SearchItem) => {
               <SearchFilters
                 :query="query"
                 :facets="facets"
+                :attributes="attributeFacets"
+                :attribute-labels="facetable"
                 @change="changeFilter"
                 @reset="reset"
               />
