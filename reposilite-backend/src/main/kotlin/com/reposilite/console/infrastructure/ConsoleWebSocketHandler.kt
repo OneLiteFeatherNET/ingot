@@ -113,7 +113,7 @@ private class PendingConfirm(val id: String, val prepared: PreparedCommand, val 
  * A version 1 connection after its hello. Its frames go through [outbox], and [subscriberId] names its log subscription.
  * At most one dangerous command waits for its confirm, and every other execute is busy.
  */
-private class V1Session(val identity: WsIdentity, val outbox: ConsoleV1Outbox, val subscriberId: Int) {
+private class V1Session(val identity: WsIdentity, val outbox: ConsoleV1Outbox, val subscriberId: Int, val client: String? = null) {
 
     private var pending: PendingConfirm? = null
 
@@ -392,7 +392,7 @@ internal class ConsoleWebSocketHandler(
                         outbox.offerLog(LogLine(seq = line.seq, node = line.node ?: nodeId, level = line.level.name, text = line.text))
                     }
                 }
-                val session = V1Session(identity, outbox, subscriberId)
+                val session = V1Session(identity, outbox, subscriberId, hello.text("client"))
                 v1Sessions[connection] = session
                 scheduleLiveness(connection, session)
                 identity.sessionJwt?.let { jwt -> scheduleExpiry(connection, session, jwt) }
@@ -564,7 +564,7 @@ internal class ConsoleWebSocketHandler(
                 actor = AuditActor.named(session.identity.tokenName, session.identity.address),
                 command = pending.prepared.redactedCommand,
                 channel = "websocket",
-                client = null,
+                client = session.client,
                 confirmed = false,
                 exitCode = DECLINED_EXIT_CODE,
             )
@@ -588,7 +588,7 @@ internal class ConsoleWebSocketHandler(
                 actor = AuditActor.named(session.identity.tokenName, session.identity.address),
                 command = prepared.redactedCommand,
                 channel = "websocket",
-                client = null,
+                client = session.client,
                 confirmed = confirmed,
                 exitCode = execution.exitCode,
             )
