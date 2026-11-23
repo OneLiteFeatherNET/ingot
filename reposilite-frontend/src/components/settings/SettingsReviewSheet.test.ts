@@ -252,4 +252,15 @@ describe('SettingsReviewSheet', () => {
     expect(wrapper.emitted('update:open'), 'Escape asks to close').toEqual([[false]])
     expect(document.activeElement, 'the focus is back on the opener').toBe(opener)
   })
+
+  it('lays a change row out on the medium window class, not on the default breakpoints', async () => {
+    mountSheet()
+    await flushPromises()
+
+    const row = sheet().querySelector('li')!
+    expect(row.classList.contains('medium:flex-row'), 'side by side from 600 pixels').toBe(true)
+    expect(row.classList.contains('medium:justify-between')).toBe(true)
+    const defaults = [...sheet().querySelectorAll('*')].flatMap(element => [...element.classList]).filter(name => /^(sm|md|lg|xl|2xl):/.test(name))
+    expect(defaults, 'no default breakpoint prefix in the sheet').toEqual([])
+  })
 })

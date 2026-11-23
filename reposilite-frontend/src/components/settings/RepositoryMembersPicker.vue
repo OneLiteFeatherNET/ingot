@@ -188,7 +188,7 @@ const setCredential = (index: number, field: string, value: unknown) => {
           <div
             v-if="openCredential === index"
             data-test="member-credential-form"
-            class="grid gap-4 sm:grid-cols-2"
+            class="grid gap-4 medium:grid-cols-2"
           >
             <MdTextField
               :id="`${idPrefix}-login-${index}`"

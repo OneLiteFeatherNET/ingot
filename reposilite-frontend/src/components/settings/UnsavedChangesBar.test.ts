@@ -132,4 +132,12 @@ describe('UnsavedChangesBar', () => {
 
     expect(wrapper.emitted('review')).toEqual([[]])
   })
+
+  it('switches layout on the medium and expanded window classes, not on the default breakpoints', () => {
+    const classes = mountBar().classes()
+
+    expect(classes, 'row layout from 600 pixels').toEqual(expect.arrayContaining(['medium:flex-row', 'medium:items-center', 'medium:justify-between']))
+    expect(classes, 'wider padding from 840 pixels').toContain('expanded:px-6')
+    expect(classes.filter(name => /^(sm|md|lg|xl|2xl):/.test(name)), 'no default breakpoint prefix').toEqual([])
+  })
 })

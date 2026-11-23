@@ -185,6 +185,15 @@ describe('RepositoryMembersPicker credentials of the members', () => {
     expect(wrapper.find('#members-login-1').exists()).toBe(false)
   })
 
+  it('puts the credential fields side by side on the medium window class, not on a default breakpoint', async () => {
+    mountWithCredentials({ modelValue: [entry('releases', { authorization: loopback })] })
+    await editButton('releases').trigger('click')
+
+    const form = wrapper.get('[data-test="member-credential-form"]')
+    expect(form.classes(), 'two columns from 600 pixels').toContain('medium:grid-cols-2')
+    expect(form.classes().filter(name => /^(sm|md|lg|xl|2xl):/.test(name)), 'no default breakpoint prefix').toEqual([])
+  })
+
   it('writes a changed login into the credential, and keeps the method and every other key of it', async () => {
     const releases = entry('releases', { store: true, authorization: { ...loopback, extra: 'kept' } })
     mountWithCredentials({ modelValue: [releases, entry('all')] })
