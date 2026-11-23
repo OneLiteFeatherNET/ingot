@@ -123,7 +123,7 @@ describe('toRouteQuery', () => {
   it('round-trips every parameter through the address', () => {
     const state: SearchQuery = {
       q: 'commons lang', groupId: 'org.apache', artifactId: 'lang', version: '3.14.0',
-      repository: ['releases'], extension: ['jar', 'pom'], classifier: ['-', 'sources'],
+      repository: ['releases'], extension: ['jar', 'pom'], classifier: ['-', 'sources'], attribute: ['a.loader:paper'],
       snapshot: 'false', origin: 'hosted', modifiedAfter: '2026-01-01T00:00:00Z',
       modifiedBefore: '2026-06-01T00:00:00Z', sizeMin: '10', sizeMax: '9000',
       sort: 'size', order: 'desc', page: 4, size: 50
@@ -228,5 +228,58 @@ describe('lastPage', () => {
   it('stops at the result window of 10 000 entries', () => {
     expect(lastPage(10001, 20)).toBe(499)
     expect(lastPage(10001, 100)).toBe(99)
+  })
+})
+
+describe('attribute filters', () => {
+  it('reads a repeated attribute parameter as a list of key and value pairs', () => {
+    const state = parseSearchQuery({ attribute: ['minecraft-portal.loader:paper', 'minecraft-portal.loader:folia'] })
+
+    expect(state.attribute).toEqual(['minecraft-portal.loader:paper', 'minecraft-portal.loader:folia'])
+  })
+
+  it('drops an attribute parameter that is not a key and a value', () => {
+    const state = parseSearchQuery({ attribute: ['loader', ':paper', 'loader:', ' ', 'loader:paper', 'loader:paper'] })
+
+    expect(state.attribute).toEqual(['loader:paper'])
+  })
+
+  it('splits at the first colon, so a value may hold colons', () => {
+    const state = parseSearchQuery({ attribute: 'game-version:1.21:rc1' })
+
+    expect(state.attribute).toEqual(['game-version:1.21:rc1'])
+  })
+
+  it('round trips the attributes through the address', () => {
+    const state = { ...DEFAULT_QUERY, attribute: ['a.loader:paper', 'a.version:1.21'] }
+
+    expect(toRouteQuery(state)).toEqual({ attribute: ['a.loader:paper', 'a.version:1.21'] })
+    expect(parseSearchQuery(toRouteQuery(state))).toEqual(state)
+  })
+
+  it('sends each attribute once in the request, like the address', () => {
+    const state = { ...DEFAULT_QUERY, attribute: ['a.loader:paper', 'a.version:1.21'] }
+
+    expect(toRequestQuery(state)).toBe('attribute=a.loader%3Apaper&attribute=a.version%3A1.21')
+  })
+
+  it('asks for the facets of the given keys, at most eight', () => {
+    const keys = ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8', 'k9']
+
+    expect(toRequestQuery(DEFAULT_QUERY, keys)).toBe('attributeFacets=k1%2Ck2%2Ck3%2Ck4%2Ck5%2Ck6%2Ck7%2Ck8')
+  })
+
+  it('asks for no facets when no key is given', () => {
+    expect(toRequestQuery(DEFAULT_QUERY, [])).toBe('')
+  })
+
+  it('clears the attributes with the other filters', () => {
+    const cleared = resetFilters({ ...DEFAULT_QUERY, attribute: ['a.loader:paper'] })
+
+    expect(cleared.attribute).toEqual([])
+  })
+
+  it('names an active attribute filter in words', () => {
+    expect(activeFilters({ ...DEFAULT_QUERY, attribute: ['a.loader:paper'] })).toEqual(['a.loader paper'])
   })
 })
