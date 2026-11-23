@@ -716,7 +716,7 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
               <p class="m-0 flex flex-wrap items-baseline gap-x-3 md-body-medium">
                 <code
                   v-if="step.node"
-                  class="break-all font-mono"
+                  class="break-all md-code-medium"
                   data-test="step-node"
                 >{{ step.node }}</code>
                 <span

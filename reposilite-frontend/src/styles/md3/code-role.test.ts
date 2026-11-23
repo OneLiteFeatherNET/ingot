@@ -24,7 +24,6 @@ import { join, relative } from 'node:path'
 // list only shrinks. Reads the sources from disk and mounts nothing.
 const PENDING: readonly string[] = Object.freeze([
   'src/components/access/check/CheckPermissionView.vue',
-  'src/components/account/SecondFactorsCard.vue',
   'src/components/audit/AuditEventRow.vue',
   'src/components/browser/AdjustmentsModal.vue',
   'src/components/browser/FileUpload.vue',
