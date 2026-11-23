@@ -249,7 +249,7 @@ test.describe('browse layout', () => {
     // The jar and the pom are the names the slot could cut. maven-metadata.xml keeps the view action of its row,
     // which main reserves as well, so its name is not part of this check.
     for (const name of ['demo-1.0.jar', 'demo-1.0.pom']) {
-      const label = page.locator('[data-ingot-component="detailed-list-entry"]').filter({ hasText: name }).locator('.md-body-large')
+      const label = page.locator('[data-ingot-component="detailed-list-entry"]').filter({ hasText: name }).locator('span.md-body-large')
       await expect(label, `the row of ${name}`).toHaveCount(1)
       const shownInFull = await label.evaluate(element => element.scrollWidth <= element.clientWidth)
       expect(shownInFull, `${name} is shown in full at 320 px`).toBe(true)

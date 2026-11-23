@@ -180,7 +180,7 @@ export function inspectTemplate(source: string, file: string): { roots: Template
 }
 
 // The plain elements that carry the name: every plain root element, or, when the component's roots are all other
-// components (a card or a dialog around its content), the first plain element of its template.
+// components (a card or a dialog around its content), the roots that carry the name themselves, or else the first plain element of its template.
 // A plain element is an HTML element, or a <component :is> whose rendered element is an HTML element (a button, a link).
 // A static attribute on such a tag lands on the rendered element, so it is a carrier as well.
 const isPlain = (node: TemplateElement) => node.tagType === TAG_ELEMENT || node.tag === "component"
@@ -188,6 +188,9 @@ const isPlain = (node: TemplateElement) => node.tagType === TAG_ELEMENT || node.
 function carriersOf(roots: TemplateElement[], elements: TemplateElement[]): TemplateElement[] {
   const native = roots.filter(isPlain)
   if (native.length > 0) return native
+  // A root component that carries the name itself passes it to the element it renders (a list item, whose root is its own li).
+  const named = roots.filter((root) => anchorsOf(root).some((anchor) => anchor.attribute === "data-ingot-component"))
+  if (named.length > 0) return named
   return elements.filter(isPlain).slice(0, 1)
 }
 

@@ -182,26 +182,26 @@ const entryUrl = (file: BrowserFile) =>
       :value="deleteModalValue"
       :close="closeDeleteModal"
     />
-    <ul
+    <MdList
       v-if="loading || (files.list?.length ?? 0) > 0"
+      divided
+      :inset="16"
       class="rounded-corner-medium bg-surface-container-low"
-      :class="compactMode ? 'p-1' : 'p-2 [&>li+li]:after:absolute [&>li+li]:after:inset-x-4 [&>li+li]:after:top-0 [&>li+li]:after:h-px [&>li+li]:after:bg-outline-variant'"
+      :class="compactMode ? 'p-1' : 'p-2'"
     >
       <template
         v-for="(entry, index) in displayedEntries"
         :key="isSkeleton(entry) ? `skeleton-${index}` : entry.name"
       >
-        <li
-          v-if="isSkeleton(entry)"
-          class="relative flex items-center gap-4 rounded-corner-medium px-4"
-          :class="compactMode ? 'min-h-14' : 'min-h-18'"
-        >
-          <span class="size-6 shrink-0 rounded-full bg-surface-container-high skeleton-bars" />
+        <MdListItem v-if="isSkeleton(entry)">
+          <template #leading>
+            <span class="block size-6 rounded-full bg-surface-container-high skeleton-bars" />
+          </template>
           <span
-            class="h-3.5 rounded bg-surface-container-high skeleton-bars"
+            class="block h-3.5 rounded bg-surface-container-high skeleton-bars"
             :style="{ width: skeletonWidths[index % skeletonWidths.length] }"
           />
-        </li>
+        </MdListItem>
         <DetailedListEntry
           v-else
           :file="entry"
@@ -216,7 +216,7 @@ const entryUrl = (file: BrowserFile) =>
           @download="downloadHandler"
         />
       </template>
-    </ul>
+    </MdList>
     <div
       v-if="isEmpty && (hiddenCount ?? 0) > 0"
       class="flex flex-col items-start gap-3 px-4 pt-4"
