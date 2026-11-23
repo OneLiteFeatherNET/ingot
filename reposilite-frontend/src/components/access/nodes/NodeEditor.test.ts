@@ -722,15 +722,15 @@ describe('NodeEditor', () => {
   })
 
   describe('inherited nodes', () => {
-    const toggle = () => wrapper.find('[data-test="inherited-toggle"]')
-    const region = () => wrapper.find(`[id="${toggle().attributes('aria-controls')}"]`)
+    const details = () => wrapper.find<HTMLDetailsElement>('[data-test="inherited-section"] details')
+    const summary = () => wrapper.find('[data-test="inherited-section"] summary')
 
-    it('draws the toggle with a 40 pixel body and a 48 pixel touch target', () => {
+    it('is a shared disclosure, so the browser owns the open state', () => {
       mountEditor({ inherited: INHERITED() })
 
-      expect(toggle().classes(), 'a 40 pixel body').toContain('min-h-10')
-      expect(toggle().classes(), 'a 48 pixel hit area').toContain('md-touch-target')
-      expect(toggle().classes(), 'the old 48 pixel body is gone').not.toContain('min-h-12')
+      expect(details().exists(), 'a native details element').toBe(true)
+      expect(summary().text()).toContain('Inherited from teams (2)')
+      expect(summary().attributes('aria-expanded'), 'the semantics are native').toBeUndefined()
     })
 
     it('shows the source team and the distance of a node from a parent team', () => {
@@ -782,26 +782,24 @@ describe('NodeEditor', () => {
     it('is open to start with', () => {
       mountEditor({ inherited: INHERITED() })
 
-      expect(toggle().attributes('aria-expanded')).toBe('true')
-      expect(region().isVisible()).toBe(true)
+      expect(details().element.open).toBe(true)
     })
 
-    it('collapses with its button and reports it through aria-expanded', async () => {
+    it('collapses with its summary', async () => {
       mountEditor({ inherited: INHERITED() })
 
-      await toggle().trigger('click')
+      await summary().trigger('click')
 
-      expect(toggle().attributes('aria-expanded')).toBe('false')
-      expect(region().isVisible()).toBe(false)
+      expect(wrapper.find('[data-test="inherited-section"] details .expand-rows').isVisible(), 'the body collapses').toBe(false)
     })
 
     it('opens again with a second press', async () => {
       mountEditor({ inherited: INHERITED() })
-      await toggle().trigger('click')
+      await summary().trigger('click')
 
-      await toggle().trigger('click')
+      await summary().trigger('click')
 
-      expect(region().isVisible()).toBe(true)
+      expect(details().element.open).toBe(true)
     })
 
     it('is absent when nothing is inherited', () => {
