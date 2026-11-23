@@ -16,6 +16,8 @@
 
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { Component } from 'vue'
+import MdListItem from '../md/MdListItem.vue'
 import SwitchField from './SwitchField.vue'
 
 const mountSwitch = (props = {}) => mount(SwitchField, {
@@ -79,5 +81,18 @@ describe('SwitchField', () => {
   it('shows Enabled for an on switch and Disabled for an off one', () => {
     expect(mountSwitch({ modelValue: true }).text()).toContain('Enabled')
     expect(mountSwitch({ modelValue: false }).text()).toContain('Disabled')
+  })
+
+  it('is one row of the shared list item', () => {
+    const wrapper = mountSwitch()
+
+    expect(wrapper.findComponent(MdListItem as Component).exists()).toBe(true)
+    expect(wrapper.find('ul > li').exists()).toBe(true)
+  })
+
+  it('keeps the error below the row', () => {
+    const wrapper = mountSwitch({ errors: 'is required' })
+
+    expect(wrapper.text()).toContain('is required')
   })
 })
