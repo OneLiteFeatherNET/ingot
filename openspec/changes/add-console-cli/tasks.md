@@ -56,7 +56,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   log frames drops and counts them, and the next delivered frame states `dropped`; a `result` is never dropped; a queue full of results
   closes with 1013 and `slow_consumer`; 1000 lines in the same instant deliver at most 500. Verify: red before 4.8, and each test waits on a
   latch, never on time.
-- [ ] 4.6 `test(console)`: failing tests for authentication: a token in the hello goes through `ConsoleAuthenticator`; a cookie with a
+- [x] 4.6 `test(console)`: failing tests for authentication: a token in the hello goes through `ConsoleAuthenticator`; a cookie with a
   matching `Origin` is accepted and a cookie with another `Origin` closes with 1008; a token revoked after the handshake is refused on the
   next `execute` and closes with 1008; a session closes at its expiry time (fake clock); no frame, error or audit event contains the secret;
   the audit `client` is the hello `client`. Verify: red before 4.8.
@@ -77,13 +77,13 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
 - [x] 5.1 `test(ui)`: failing Vitest tests for the socket client in `reposilite-frontend/src/store/console/`: hello and welcome handling, the
   `resume` with boot and `seq`, de-duplication by `(node, seq)`, an `execute` without a `result` at a drop shows as unknown and is not sent
   again, `busy` is shown, 1008 stops the reconnect, the backoff steps (1 s, doubling, 30 s cap) with fake timers. Verify: red before 5.3.
-- [ ] 5.2 `test(ui)`: failing component tests for `ConsoleView.vue`: Enter sends `execute` and no HTTP request; Tab sends one `complete`;
+- [x] 5.2 `test(ui)`: failing component tests for `ConsoleView.vue`: Enter sends `execute` and no HTTP request; Tab sends one `complete`;
   typing sends no frame; the confirmation dialog defaults to cancel and hides the arguments of a sensitive command; a failed result shows
   exit code 1 and its stderr lines as errors; `data` renders as a table; history stays per tab (a stubbed `sessionStorage`) and skips a
   sensitive line; the level filter runs in the client. Verify: red before 5.3.
 - [x] 5.3 `test(ui)`: failing test that the Nitro socket proxy (`reposilite-frontend/server/lib/console-socket.js`) relays version 1 text frames
   in both directions and forwards the `cookie` and `origin` headers unchanged. Verify: green on the current proxy, which needs no change.
-- [ ] 5.4 `feat(ui)`: replace the HTTP input and the SSE stream of `reposilite-frontend/src/store/console/connection.ts` and
+- [x] 5.4 `feat(ui)`: replace the HTTP input and the SSE stream of `reposilite-frontend/src/store/console/connection.ts` and
   `reposilite-frontend/src/components/console/ConsoleView.vue` with the socket client, completion, the confirmation dialog, structured
   results and the connection state. Keep the ANSI converter and the scroll helpers. Verify: 5.1 to 5.3 are green, the frontend tests and
   build pass, and the dashboard end-to-end tests (`dashboard-e2e-tests`) are updated where they assume SSE.
@@ -128,7 +128,8 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   bare `ingot` without a terminal, to check the entry point. Verify: red before 8.2.
 - [ ] 8.2 `build(cli)`: a runnable shaded jar `ingot-cli-<version>.jar`, a CLI `Dockerfile` with the build stage pinned to
   `--platform=$BUILDPLATFORM`, the JRE base pinned by tag and digest, a non-root user, entrypoint `ingot`. Add the base image to `renovate.json`
-  and the module version to `release-please-config.json`. Verify: 8.1 is green, and the image builds for both architectures locally through
+  (grouped with the server bases, #1344). The CLI version follows the server through the root version marker, so there is no
+  `release-please-config.json` entry. Verify: 8.1 is green, and the image builds for both architectures locally through
   `heavy`, and the REPL starts.
 - [ ] 8.3 Evaluate a GraalVM native binary (open question 4): record build time, size and the reflection configuration cost in the pull
   request description, and only add it if the build sustains it. Verify: the result is written down either way.
