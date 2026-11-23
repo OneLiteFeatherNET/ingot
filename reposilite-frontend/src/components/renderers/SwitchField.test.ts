@@ -16,6 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { Component } from 'vue'
 import MdListItem from '../md/MdListItem.vue'
 import SwitchField from './SwitchField.vue'
 
@@ -85,7 +86,7 @@ describe('SwitchField', () => {
   it('is one row of the shared list item', () => {
     const wrapper = mountSwitch()
 
-    expect(wrapper.findComponent(MdListItem).exists()).toBe(true)
+    expect(wrapper.findComponent(MdListItem as Component).exists()).toBe(true)
     expect(wrapper.find('ul > li').exists()).toBe(true)
   })
 
