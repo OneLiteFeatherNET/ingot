@@ -88,9 +88,20 @@ describe('the Verify step', () => {
     const api = fakeApi({ getJob: vi.fn(async () => finished) })
     const { wrapper } = await mountWith(VerifyStep, { api, wizard: wizardWith({ jobs: [importJob(), finished] }), at: '/settings/migration/verify' })
 
-    const table = wrapper.find('table[data-test="verify"]')
+    const table = wrapper.find('[data-test="verify"]')
     expect(table.text()).toContain('Verified')
     expect(table.text()).toContain('Mismatch')
+  })
+
+  it('draws the result per repository as a data table with the repository as row header', async () => {
+    const finished = verifyJob('COMPLETED', [{ nexusName: 'releases', targetName: 'ingot-releases', type: 'hosted', status: 'VERIFIED' }])
+    const api = fakeApi({ getJob: vi.fn(async () => finished) })
+    const { wrapper } = await mountWith(VerifyStep, { api, wizard: wizardWith({ jobs: [importJob(), finished] }), at: '/settings/migration/verify' })
+
+    const region = wrapper.find('[data-test="verify"]')
+    expect(region.attributes('role'), 'the table sits in a named scroll region').toBe('region')
+    expect(region.attributes('aria-label')).toBe('Result per repository')
+    expect(region.find('tbody th[scope="row"]').text()).toBe('releases')
   })
 
   it('lists the paths that do not match, from the verify job', async () => {
@@ -103,6 +114,20 @@ describe('the Verify step', () => {
 
     expect(api.conflicts).toHaveBeenCalledWith(12)
     expect(wrapper.text()).toContain('org/acme/lib/2.0/lib-2.0.pom')
+  })
+
+  it('draws the mismatching paths as a second data table', async () => {
+    const finished = verifyJob('COMPLETED', [{ nexusName: 'snapshots', targetName: 'snapshots', type: 'hosted', status: 'MISMATCH' }])
+    const api = fakeApi({
+      conflicts: vi.fn(async () => [{ repository: 'snapshots', path: 'org/acme/lib/2.0/lib-2.0.pom', detail: 'checksum differs' }]),
+      getJob: vi.fn(async () => finished),
+    })
+    const { wrapper } = await mountWith(VerifyStep, { api, wizard: wizardWith({ jobs: [importJob(), finished] }), at: '/settings/migration/verify' })
+
+    const mismatches = wrapper.find('[data-test="mismatches"]')
+    expect(mismatches.exists(), 'the mismatch table is present').toBe(true)
+    expect(mismatches.text()).toContain('checksum differs')
+    expect(mismatches.attributes('role'), 'the mismatch table sits in a named scroll region').toBe('region')
   })
 
   it('asks for the password again after a reload before it starts a verify', async () => {

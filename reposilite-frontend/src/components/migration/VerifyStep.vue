@@ -20,6 +20,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 import MdSection from '../md/MdSection.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -59,6 +60,25 @@ const importJob = computed(() => newest('IMPORT'))
 const shown = computed(() => watched.job.value ?? reloaded.value)
 const running = computed(() => shown.value !== null && !isFinished(shown.value))
 const passwordNeeded = computed(() => wizard.state.connection?.passwordMode === 'literal' && wizard.passwords.recall() === null)
+
+const RESULT_COLUMNS = [
+  { key: 'nexusName', label: 'Nexus name' },
+  { key: 'targetName', label: 'Ingot name' },
+  { key: 'result', label: 'Result' },
+]
+const MISMATCH_COLUMNS = [
+  { key: 'repository', label: 'Repository' },
+  { key: 'path', label: 'Path' },
+  { key: 'detail', label: 'Detail' },
+]
+const resultRows = computed(() =>
+  (shown.value?.repositories ?? []).map(repository => ({
+    nexusName: repository.nexusName,
+    targetName: repository.targetName,
+    result: repositoryResultText(repository.status),
+  })),
+)
+const mismatchRows = computed(() => mismatches.value.map(entry => ({ ...entry })))
 
 const loadMismatches = async (id: number) => {
   try {
@@ -174,107 +194,21 @@ onMounted(() => {
         Verify job {{ shown.id }}: {{ statusText(shown.status) }}
       </p>
 
-      <table
+      <MdDataTable
         v-if="shown && shown.repositories?.length"
         data-test="verify"
-        class="w-full text-left md-body-medium"
-      >
-        <caption class="md-title-small pb-2 text-left text-on-surface">
-          Result per repository
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Nexus name
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Ingot name
-            </th>
-            <th
-              scope="col"
-              class="py-2"
-            >
-              Result
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="repository in shown.repositories"
-            :key="repository.nexusName"
-          >
-            <th
-              scope="row"
-              class="py-2 pr-4 font-normal"
-            >
-              {{ repository.nexusName }}
-            </th>
-            <td class="py-2 pr-4">
-              {{ repository.targetName }}
-            </td>
-            <td class="py-2">
-              {{ repositoryResultText(repository.status) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        caption="Result per repository"
+        :columns="RESULT_COLUMNS"
+        :rows="resultRows"
+      />
 
-      <table
+      <MdDataTable
         v-if="mismatches.length"
         data-test="mismatches"
-        class="w-full text-left md-body-medium"
-      >
-        <caption class="md-title-small pb-2 text-left text-on-surface">
-          Paths that do not match
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Repository
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Path
-            </th>
-            <th
-              scope="col"
-              class="py-2"
-            >
-              Detail
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="entry in mismatches"
-            :key="`${entry.repository}-${entry.path}`"
-          >
-            <td class="py-2 pr-4">
-              {{ entry.repository }}
-            </td>
-            <th
-              scope="row"
-              class="py-2 pr-4 font-normal"
-            >
-              {{ entry.path }}
-            </th>
-            <td class="py-2">
-              {{ entry.detail }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        caption="Paths that do not match"
+        :columns="MISMATCH_COLUMNS"
+        :rows="mismatchRows"
+      />
 
       <p v-if="shown && !running">
         <RouterLink
