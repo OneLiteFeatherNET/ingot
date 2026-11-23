@@ -174,7 +174,10 @@ here.
 
 ## 9. Pull request
 
-- [ ] 9.1 Open the code pull request under the title `fix(ui): put dialogs, menus and status messages on shared components`,
-  from the remote main branch that already contains the merged proposal and the merged code of `add-md3-component-catalogue`,
+- [ ] 9.1 Ship the code as small, separately revertable pull requests, each titled `fix(ui): ...` and each branched from the
+  remote main branch that already contains the merged proposal and the merged code of `add-md3-component-catalogue`,
   `add-ui-style-gate` and `refactor-md3-token-utilities`, with no file under `openspec/`. Fill the repository's pull request
-  template, list the changed test expectations, and attach the screenshot sets of 8.2. Resolved 2026-11-18 (maintainer): the title stays as written above.
+  template in each, list the changed test expectations, and attach the screenshot sets of 8.2 to the last of them. Amended
+  2026-11-23 (maintainer prefers small revertable pull requests): the work lands as many small pull requests instead of one
+  pull request titled `fix(ui): put dialogs, menus and status messages on shared components`. Tick this task once sections 1
+  to 8 are done and every pull request of the series is merged.
