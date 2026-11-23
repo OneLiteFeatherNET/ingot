@@ -47,8 +47,8 @@ defineSlots<{
         {{ item.label }}
       </dt>
       <dd
-        class="m-0 min-w-0 wrap-break-word md-body-large"
-        :class="{ 'font-mono': item.mono }"
+        class="m-0 min-w-0 wrap-break-word"
+        :class="item.mono ? 'md-code-medium' : 'md-body-large'"
         :data-test="item.testId"
       >
         {{ item.value }}
