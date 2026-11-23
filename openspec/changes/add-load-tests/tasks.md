@@ -20,7 +20,7 @@ Pull request: `test(load): add the typescript scaffolding for k6 load tests`
 - [x] 1.2 Add `loadtest/lib/config.ts` with the k6 image tag as the single pinned constant, the namespace `ingot-loadtest` and the
   refusal of any other namespace. Verify: the test of 1.1 passes unchanged, and a unit test asserts that the refusal names the
   rejected namespace.
-- [ ] 1.3 Test: `loadtest/lib/artifacts.test.ts` asserts that the same seed yields identical artifact bytes and SHA-1 values on two
+- [x] 1.3 Test: `loadtest/lib/artifacts.test.ts` asserts that the same seed yields identical artifact bytes and SHA-1 values on two
   calls and different bytes for a different seed, and that the 200 MB artifact is produced as chunks and never as one buffer. Then add
   `loadtest/lib/artifacts.ts` with the seeded generator for the sizes 1 KB, 1 MB, 50 MB and 200 MB, `loadtest/lib/auth.ts` and
   `loadtest/lib/checks.ts` for Basic and token headers and the shared checks, and `loadtest/lib/setup.ts`, which creates the fixtures
