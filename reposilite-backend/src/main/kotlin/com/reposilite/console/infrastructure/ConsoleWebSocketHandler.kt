@@ -41,9 +41,12 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.IOException
 import java.net.InetSocketAddress
+import java.net.URI
+import java.net.URISyntaxException
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.nio.channels.ClosedChannelException
+import net.onelitefeather.ingot.identity.session.SessionCookies
 import net.onelitefeather.ingot.web.TrustedProxies
 import java.util.Collections
 import java.util.UUID
@@ -320,7 +323,16 @@ internal class ConsoleWebSocketHandler(
             return
         }
 
-        authenticateContext(connection, AUTHORIZATION_PREFIX + hello.text("token").orEmpty())
+        val token = hello.text("token")?.takeIf { it.isNotEmpty() }
+        val cookie = if (token == null) connection.cookie(SessionCookies.SESSION) else null
+        if (cookie != null && !originNamesHost(connection)) {
+            journalist.logger.info("CLI | refused a cookie hello from ${connection.host}: its Origin does not name the host it reached")
+            connection.sendJson(ErrorFrame(code = "unauthorized", message = "the origin of the request is not this host"))
+            connection.close(CLOSE_POLICY_VIOLATION, "unauthorized")
+            return
+        }
+        val authorization = if (cookie != null) AUTHORIZATION_PREFIX + SESSION_PREFIX + cookie else AUTHORIZATION_PREFIX + token.orEmpty()
+        authenticateContext(connection, authorization)
             .peek { identity ->
                 journalist.logger.info("CLI | ${identity.identifier} accessed remote console (protocol $protocol)")
                 val outbox = scheduler.openFrameOutbox(
@@ -355,6 +367,21 @@ internal class ConsoleWebSocketHandler(
                 connection.sendJson(ErrorFrame(code = "unauthorized", message = it.message))
                 connection.close(CLOSE_POLICY_VIOLATION, "unauthorized")
             }
+    }
+
+    /**
+     * Whether the `Origin` of the upgrade request names the host it reached. A browser sends its cookies on a cross-site
+     * WebSocket too, so a connection that has only a cookie to show has to come from a page of this host.
+     */
+    private fun originNamesHost(connection: ConsoleConnection): Boolean {
+        val origin = connection.origin ?: return false
+        val host = connection.requestHost ?: return false
+        val authority = try {
+            URI(origin).takeIf { it.scheme != null }?.rawAuthority
+        } catch (_: URISyntaxException) {
+            null
+        }
+        return authority != null && authority.equals(host, ignoreCase = true)
     }
 
     /** The level of the log lines a hello asks for. It can raise the visible threshold but never lower it. */
@@ -543,9 +570,19 @@ internal class ConsoleWebSocketHandler(
             ?: "unknown host"
     }
 
+    /** The host the request reached: the forwarded one when a trusted proxy sent it, the `Host` header otherwise. */
+    private fun WsContext.getRequestHost(): String? {
+        val peer = (session.remoteSocketAddress as? InetSocketAddress)?.address?.hostAddress
+        val forwarded = if (trustedProxies.enabled && peer != null && trustedProxies.isTrusted(peer)) header("X-Forwarded-Host") else null
+        return forwarded?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() } ?: header("Host")
+    }
+
     /** A Javalin context as a [ConsoleConnection]. Every callback gets a new context, and contexts of one socket are equal. */
     private inner class JavalinConsoleConnection(private val ctx: WsContext) : ConsoleConnection {
         override val host: String get() = ctx.getHost()
+        override val origin: String? get() = ctx.header("Origin")
+        override val requestHost: String? get() = ctx.getRequestHost()
+        override fun cookie(name: String): String? = ctx.cookie(name)
         override fun send(text: String) = ctx.send(text)
         override fun sendJson(value: Any) = ctx.send(value)
         override fun disconnect() = ctx.session.disconnect()
