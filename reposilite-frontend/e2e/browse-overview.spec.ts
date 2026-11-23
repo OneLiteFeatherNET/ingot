@@ -27,14 +27,18 @@ test.describe('browse overview', () => {
     // The snippet is the block that holds the Maven repository element for this repository.
     const snippet = page.locator('[data-ingot-component="repository-snippet"]').first()
     await expect(snippet, 'the snippet with the repository address').toContainText(`/${repository}`)
-    const url = snippet.locator('.snippet-url').first()
-    expect(await url.evaluate(element => element.getClientRects().length), 'lines the url is broken into').toBe(1)
+    const code = snippet.locator('pre')
+    const lines = await code.evaluate(element => ({
+      shown: Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)),
+      written: (element.textContent ?? '').split('\n').length,
+    }))
+    expect(lines.shown, 'lines on screen against lines written: the url is not broken').toBe(lines.written)
     // The snippet scrolls inside its own region; the page itself never scrolls sideways.
     const pageSideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(pageSideways, 'horizontal overflow of the page in px').toBeLessThanOrEqual(0)
   })
 
-  test('shows the snippet copy button inside the code field only while the field is hovered or focused', async ({ page, seed }) => {
+  test('offers the snippet copy button inside the code field and answers a press in the status line', async ({ page, seed }) => {
     const repository = await seed.repository('copy-hover-snippet')
     await page.goto(siteUrl(`/browse/${repository}`))
 
@@ -42,17 +46,9 @@ test.describe('browse overview', () => {
     const field = page.getByRole('region', { name: /snippet, scrolls sideways/ }).first().locator('..')
     const copy = field.getByRole('button', { name: 'Copy snippet' })
     await expect(copy, 'the copy button inside the code field').toBeVisible()
-    // The button reveals itself through its wrapper, so the wrapper carries the opacity.
-    const reveal = copy.locator('..')
 
-    await expect(reveal, 'hidden while the pointer is elsewhere').toHaveCSS('opacity', '0')
-    await field.hover()
-    await expect(reveal, 'shown while the code field is hovered').toHaveCSS('opacity', '1')
-
-    await page.mouse.move(0, 0)
-    await expect(reveal, 'hidden again once the pointer leaves').toHaveCSS('opacity', '0')
-    await copy.focus()
-    await expect(reveal, 'shown while the button has keyboard focus').toHaveCSS('opacity', '1')
+    await copy.click()
+    await expect(page.getByRole('status').first(), 'the answer to the press, a copy or a selected snippet').not.toBeEmpty()
   })
 
   test('labels the repository filter as a filter of the list', async ({ page }) => {

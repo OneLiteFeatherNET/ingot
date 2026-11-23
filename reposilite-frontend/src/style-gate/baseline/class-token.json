@@ -1,25 +1,5 @@
 [
   {
-    "file": "src/components/card/RepositorySnippet.vue",
-    "match": "snippet-url",
-    "count": 4
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": "card-editor",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": "copied",
-    "count": 1
-  },
-  {
-    "file": "src/components/card/SnippetsCard.vue",
-    "match": "selected",
-    "count": 1
-  },
-  {
     "file": "src/components/maintenance/IndexPanel.vue",
     "match": "current",
     "count": 1
