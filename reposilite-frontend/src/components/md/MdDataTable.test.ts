@@ -320,6 +320,14 @@ describe('MdDataTable for a page that owns its rows', () => {
     expect(wrapper.findAll('tbody tr').map((row) => row.attributes('data-test-name'))).toEqual(['releases', 'snapshots', 'docs'])
   })
 
+  it('adds the classes that rowClass returns for a row, and keeps the classes of the row', () => {
+    const wrapper = mountTable({ rowClass: (row: Record<string, unknown>) => (row.name === 'docs' ? 'marked' : undefined) })
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.map((row) => row.classes().includes('marked')), 'only the row that was named is marked').toEqual([false, false, true])
+    expect(rows[2].classes(), 'the border of the row stays').toContain('border-b')
+  })
+
   it('lets a fill column take the remaining width, so its cells can truncate', () => {
     const wrapper = mountTable({ columns: [COLUMNS[0], { ...COLUMNS[1], fill: true }, COLUMNS[2]] })
 

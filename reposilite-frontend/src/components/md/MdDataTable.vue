@@ -34,6 +34,7 @@
  *               not sort the rows itself (default false)
  *   rowKey      the column key whose value identifies a row, so a row keeps its element when the order changes
  *   rowAttrs    attributes of each row element, as { attribute: column key }: the attribute takes the row's value
+ *   rowClass    a function from a row to the class its row element gets besides its own, or undefined for none
  * A column with fill takes the remaining width, so a cell that truncates its text has a width to truncate to.
  * Emits update:modelValue with the next sort when a sortable header is chosen.
  * Slot cell: { row, column, value }, for a cell that is more than its text.
@@ -71,6 +72,8 @@ const props = withDefaults(
     presorted?: boolean
     rowKey?: string
     rowAttrs?: Record<string, string>
+    // eslint-disable-next-line no-unused-vars -- the parameter of a function type is a name, not a variable
+    rowClass?: (row: Record<string, unknown>) => string | undefined
   }>(),
   {
     modelValue: undefined,
@@ -80,6 +83,7 @@ const props = withDefaults(
     presorted: false,
     rowKey: undefined,
     rowAttrs: undefined,
+    rowClass: undefined,
   },
 )
 
@@ -180,6 +184,7 @@ const headerClass = computed(() => (props.stickyHeader ? 'sticky top-0 z-md-stic
           v-for="(row, index) in sortedRows"
           :key="keyOf(row, index)"
           class="border-b border-outline-variant"
+          :class="rowClass?.(row)"
           data-ingot-part="row"
           v-bind="attrsOf(row)"
         >
