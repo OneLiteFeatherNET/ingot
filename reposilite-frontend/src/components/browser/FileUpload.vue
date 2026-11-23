@@ -267,7 +267,7 @@ const uploadFiles = () => {
       <MdCard
         v-if="stubPomEnabled"
         variant="low"
-        class="mt-3 grid gap-3 sm:grid-cols-3"
+        class="mt-3 grid gap-3 medium:grid-cols-3"
         data-test="stub-pom"
       >
         <MdTextField

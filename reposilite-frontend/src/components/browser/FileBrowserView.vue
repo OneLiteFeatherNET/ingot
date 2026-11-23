@@ -209,10 +209,10 @@ const toggleCompactMode = () => {
   -->
   <MdPage spaced>
     <div
-      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 large:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] large:items-start"
       data-ingot-component="file-browser-view"
     >
-      <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+      <div class="min-w-0 large:col-start-2 large:row-start-1">
         <Card
           :qualifier="qualifier"
           :listing="listedNames"

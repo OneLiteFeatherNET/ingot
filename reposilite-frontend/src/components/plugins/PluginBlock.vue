@@ -443,7 +443,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
 
     <div
       v-else-if="block.type === 'filter'"
-      class="flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+      class="flex flex-col gap-3 medium:flex-row medium:flex-wrap"
     >
       <template
         v-for="(control, index) in controls"

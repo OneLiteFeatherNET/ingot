@@ -234,7 +234,7 @@ const setShowDetails = (value: boolean) => {
     spaced
   >
     <div
-      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+      class="grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 large:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] large:items-start"
       data-ingot-component="repository-overview"
     >
       <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
@@ -545,7 +545,7 @@ const setShowDetails = (value: boolean) => {
         </div>
       </section>
 
-      <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+      <div class="min-w-0 large:col-start-2 large:row-start-1">
         <Card :qualifier="qualifier" />
       </div>
     </div>

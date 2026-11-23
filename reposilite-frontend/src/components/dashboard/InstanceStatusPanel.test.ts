@@ -158,6 +158,20 @@ describe('InstanceStatusPanel', () => {
     wrapper.unmount()
   })
 
+  it('steps the tile grids up on the MD3 window classes, not on default Tailwind breakpoints', async () => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: { ...INSTANCE } })))
+    const wrapper = mount(InstanceStatusPanel)
+    await flushPromises()
+
+    const grids = wrapper.findAll('.grid.grid-cols-2')
+    expect(grids.length, 'the panel draws its tile grids').toBeGreaterThan(0)
+    for (const grid of grids) {
+      expect(grid.classes(), 'three columns from the expanded window class').toContain('expanded:grid-cols-3')
+      expect(grid.classes().filter(name => /^(sm|md|lg|xl):/.test(name)), 'no default Tailwind breakpoint').toEqual([])
+    }
+    wrapper.unmount()
+  })
+
   it('opens the failures sheet from the failures tile when failures are recorded', async () => {
     const failure: Failure = {
       id: 1,

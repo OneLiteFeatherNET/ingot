@@ -80,7 +80,7 @@ const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
     data-test="result"
     data-ingot-component="search-result-row"
   >
-    <div class="flex items-start gap-2 px-2 py-3 sm:px-4">
+    <div class="flex items-start gap-2 px-2 py-3 medium:px-4">
       <div class="flex min-w-0 flex-1 flex-col gap-2">
         <button
           :id="titleId"
@@ -166,7 +166,7 @@ const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
       :id="regionId"
       role="region"
       :aria-labelledby="titleId"
-      class="bg-surface-container-low px-4 py-2 sm:pl-14"
+      class="bg-surface-container-low px-4 py-2 medium:pl-14"
       data-test="files"
     >
       <p

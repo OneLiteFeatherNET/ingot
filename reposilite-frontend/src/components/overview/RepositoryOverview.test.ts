@@ -566,16 +566,16 @@ describe('RepositoryOverview layout order', () => {
 
     const [first, second] = (wrapper.element as HTMLElement).firstElementChild?.children ?? []
     expect(first.tagName, 'the list is the first block, so a narrow screen shows it first').toBe('SECTION')
-    expect(second.className, 'the snippet card follows the list').toContain('lg:col-start-2')
+    expect(second.className, 'the snippet card follows the list').toContain('large:col-start-2')
   })
 })
 
 describe('RepositoryOverview width', () => {
-  it('keeps the list and the snippet card side by side from 1024 pixels, as before', async () => {
+  it('keeps the list and the snippet card side by side from the large window class (1240 pixels)', async () => {
     await mountAt('/')
 
-    expect((wrapper.element as HTMLElement).firstElementChild?.className, 'the card keeps its column on the right from 1024 pixels').toContain(
-      'min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
+    expect((wrapper.element as HTMLElement).firstElementChild?.className, 'the card keeps its column on the right from 840 pixels').toContain(
+      'large:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
     )
   })
 
