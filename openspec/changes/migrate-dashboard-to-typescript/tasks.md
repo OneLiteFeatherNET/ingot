@@ -152,7 +152,7 @@ Starts after #238 (`account`, 2 files) is merged.
 Largest slice. At start, split by file list if it exceeds two working days (rule 8): suggested halves are the `.vue` views and dialogs, and the `.js` helpers with their tests. Record the split here before the second half.
 
 - [x] 2.C10.1 Rename `src/components/settings/` (including `fixtures/routes.js`). Commit the renames only.
-- [ ] 2.C10.2 Add types to the helper modules (domain, collections, import, export, encryption, wizard) first, then the 20 components, and convert the 47 tests. Settings import and export formats do not change; their tests must pass unchanged.
+- [x] 2.C10.2 Add types to the helper modules (domain, collections, import, export, encryption, wizard) first, then the 20 components, and convert the 47 tests. Settings import and export formats do not change; their tests must pass unchanged.
 - [ ] 2.C10.3 Update `DESIGN.md` and the registry `file` fields for moved anchored components. Run the gates, plus the settings-related e2e specs.
 - [ ] 2.C10.4 Open the pull request `refactor(ui): type the settings components`.
 
@@ -222,7 +222,7 @@ Starts after all Phase 2 pull requests are merged, except e2e specs that a Phase
 
 ### 3.S04 configuration and scripts (6 files) - `refactor(ui): type the build and test configuration`
 
-- [ ] 3.S04.1 Rename `vite.config.js`, `vitest.config.js`, `playwright.config.js`, `eslint.config.js`, `nitro.config.mjs`, `scripts/anchors-doc.mjs` and `scripts/generate-api-types.mjs`. Change the `anchors:doc` and `types:api` npm scripts to run the `.ts` files through `tsx`. Commit the renames only.
+- [x] 3.S04.1 Rename `vite.config.js`, `vitest.config.js`, `playwright.config.js`, `eslint.config.js`, `nitro.config.mjs`, `scripts/anchors-doc.mjs` and `scripts/generate-api-types.mjs`. Change the `anchors:doc` and `types:api` npm scripts to run the `.ts` files through `tsx`. Commit the renames only.
 - [ ] 3.S04.2 Add types. The Vite plugins for the mount point and the dashboard placeholders keep their output: `index.html` after `npm run build` is compared byte for byte with the baseline.
 - [ ] 3.S04.3 Run the gates, the build comparison and `npm run anchors:doc`, and confirm the generated doc is unchanged.
 - [ ] 3.S04.4 Open the pull request `refactor(ui): type the build and test configuration`.
@@ -238,7 +238,7 @@ that rule, or by hand), fixes the code instead of suppressing it again, and chan
 
 ### 4.1 The `any` budget
 
-- [ ] 4.1.1 Confirm the count of explicit `any` values under `src/` is zero or only the budgeted reasons, then remove `src/types/any-budget.json` and its test, and reword the remaining `// any:` comments into typed code where the count allows.
+- [x] 4.1.1 Confirm the count of explicit `any` values under `src/` is zero or only the budgeted reasons, then remove `src/types/any-budget.json` and its test, and reword the remaining `// any:` comments into typed code where the count allows.
 - [ ] 4.1.2 Open the pull request `refactor(ui): remove the any budget of the dashboard`.
 
 ### 4.2 JavaScript settings
