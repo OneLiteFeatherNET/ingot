@@ -20,6 +20,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import JobProgress from './JobProgress.vue'
@@ -78,23 +79,37 @@ const statusCounts = computed(() => LOSS_STATUSES.map(status => ({
   count: rows.value.filter(row => row.status === status).length,
 })))
 
-// The Nexus id column sorts from its header button; aria-sort on the header states the order.
-const sortByNexusId = ref<'none' | 'ascending' | 'descending'>('none')
-const toggleSort = () => {
-  sortByNexusId.value = sortByNexusId.value === 'ascending' ? 'descending' : 'ascending'
-}
+const REPORT_COLUMNS = [
+  { key: 'objectType', label: 'Object' },
+  { key: 'nexusId', label: 'Nexus id', sortable: true },
+  { key: 'target', label: 'Ingot target' },
+  { key: 'status', label: 'Status' },
+  { key: 'reason', label: 'Reason' },
+  { key: 'consequence', label: 'Consequence' },
+  { key: 'action', label: 'Action' },
+]
+// Each row takes focus from the blocker links (focusRow), so it carries an id and a tabindex of its own.
+const REPORT_ROW_ATTRS = { id: 'rowId', tabindex: 'rowTabindex' }
 
-const visibleRows = computed(() => {
-  const filtered = rows.value.filter(row => {
-    if (statusFilter.value && row.status !== statusFilter.value) return false
-    const text = textFilter.value.trim().toLowerCase()
-    if (!text) return true
-    return [row.objectType, row.nexusId, row.target, row.reason].some(value => String(value ?? '').toLowerCase().includes(text))
-  })
-  if (sortByNexusId.value === 'none') return filtered
-  const direction = sortByNexusId.value === 'ascending' ? 1 : -1
-  return [...filtered].sort((a, b) => direction * String(a.nexusId).localeCompare(String(b.nexusId)))
-})
+const visibleRows = computed(() => rows.value.filter(row => {
+  if (statusFilter.value && row.status !== statusFilter.value) return false
+  const text = textFilter.value.trim().toLowerCase()
+  if (!text) return true
+  return [row.objectType, row.nexusId, row.target, row.reason].some(value => String(value ?? '').toLowerCase().includes(text))
+}))
+
+// The table sorts these rows itself; the filter above decides which of them it gets.
+const tableRows = computed(() => visibleRows.value.map(row => ({
+  rowId: `migration-report-row-${row.nexusId}`,
+  rowTabindex: '-1',
+  objectType: row.objectType,
+  nexusId: row.nexusId,
+  target: row.target ?? 'None',
+  status: lossStatusText(row.status),
+  reason: row.reason,
+  consequence: row.consequence,
+  action: row.action,
+})))
 
 // A name that is taken comes with the name Ingot proposes instead. Taking the proposal changes the mapping.
 const proposals = computed(() => rows.value.filter(row => /is taken/i.test(row.reason ?? '') && row.target && row.target !== row.nexusId))
@@ -362,102 +377,16 @@ onMounted(() => {
           </div>
         </div>
 
-        <table
+        <MdDataTable
           v-if="reportLoaded"
           data-test="report"
-          class="w-full text-left md-body-medium"
-        >
-          <caption class="md-title-small pb-2 text-left text-on-surface">
-            Loss report: what each object becomes in Ingot
-          </caption>
-          <thead>
-            <tr>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-              >
-                Object
-              </th>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-                :aria-sort="sortByNexusId"
-              >
-                <button
-                  id="migration-sort-nexus-id"
-                  type="button"
-                  class="md-focus-ring text-left font-medium"
-                  @click="toggleSort"
-                >
-                  Nexus id
-                </button>
-              </th>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-              >
-                Ingot target
-              </th>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-              >
-                Status
-              </th>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-              >
-                Reason
-              </th>
-              <th
-                scope="col"
-                class="py-2 pr-4"
-              >
-                Consequence
-              </th>
-              <th
-                scope="col"
-                class="py-2"
-              >
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in visibleRows"
-              :id="`migration-report-row-${row.nexusId}`"
-              :key="`${row.objectType}-${row.nexusId}`"
-              tabindex="-1"
-            >
-              <td class="py-2 pr-4">
-                {{ row.objectType }}
-              </td>
-              <th
-                scope="row"
-                class="py-2 pr-4 font-normal"
-              >
-                {{ row.nexusId }}
-              </th>
-              <td class="py-2 pr-4">
-                {{ row.target ?? 'None' }}
-              </td>
-              <td class="py-2 pr-4">
-                {{ lossStatusText(row.status) }}
-              </td>
-              <td class="py-2 pr-4">
-                {{ row.reason }}
-              </td>
-              <td class="py-2 pr-4">
-                {{ row.consequence }}
-              </td>
-              <td class="py-2">
-                {{ row.action }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          caption="Loss report: what each object becomes in Ingot"
+          :columns="REPORT_COLUMNS"
+          :rows="tableRows"
+          row-header="nexusId"
+          row-key="rowId"
+          :row-attrs="REPORT_ROW_ATTRS"
+        />
 
         <div class="flex flex-col gap-3">
           <label class="flex items-center gap-2 md-body-large">

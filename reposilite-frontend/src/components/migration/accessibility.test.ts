@@ -124,14 +124,16 @@ describe('the tables', () => {
     await wrapper.find('#migration-dry-run-start').trigger('click')
     await flushPromises()
 
-    const header = (wrapper.find('#migration-sort-nexus-id').element as HTMLElement).closest('th')!
-    expect(header.getAttribute('aria-sort')).toBe('none')
+    const sortButton = () => wrapper.findAll('[data-test="report"] thead button').find(button => button.text() === 'Nexus id')!
+    expect(sortButton().element.closest('th')!.getAttribute('aria-sort')).toBe('none')
 
-    await wrapper.find('#migration-sort-nexus-id').trigger('click')
+    await sortButton().trigger('click')
 
-    expect((wrapper.find('#migration-sort-nexus-id').element as HTMLElement).closest('th')!.getAttribute('aria-sort')).toBe('ascending')
-    const firstRow = wrapper.findAll('table[data-test="report"] tbody tr')[0]
+    expect(sortButton().element.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+    const firstRow = wrapper.findAll('[data-test="report"] table tbody tr')[0]
     expect(firstRow.text(), 'ascending puts releases first').toContain('releases')
+    expect(firstRow.findAll('th')[0].attributes('scope'), 'the Nexus id is the row header').toBe('row')
+    expect(firstRow.attributes('tabindex'), 'a row can take focus from the blocker links').toBe('-1')
   })
 })
 
