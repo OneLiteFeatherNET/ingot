@@ -17,6 +17,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import WritePolicyField from './WritePolicyField.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 
 let wrapper: VueWrapper
 
@@ -64,5 +65,13 @@ describe('the write policy card', () => {
     const fieldset = wrapper.get('fieldset').classes()
     expect(fieldset.filter(name => name.startsWith('rounded-') || name.startsWith('bg-') || /^p-\d/.test(name)),
       'the fieldset draws no card of its own').toEqual([])
+  })
+
+  it('is a shared fieldset titled Write policy', () => {
+    wrapper = mount(WritePolicyField, { props: { modelValue: 'allow', offerReadOnly: true } }) as VueWrapper
+
+    const legends = wrapper.findAllComponents(MdFieldset).map(group => group.find('legend').text())
+
+    expect(legends, 'the one group is a shared fieldset').toEqual(['Write policy'])
   })
 })

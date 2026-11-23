@@ -18,6 +18,7 @@
 import { computed, ref, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { activeFilters, dateInputValue, instantFromDateInput, splitAttribute } from './searchQuery'
 import type { SearchQuery } from './searchQuery'
@@ -173,15 +174,12 @@ const commitBytes = (key: BytesKey) => {
     data-test="filters"
     data-ingot-component="search-filters"
   >
-    <fieldset
+    <MdFieldset
       v-for="group in GROUPS"
       :key="group.key"
-      class="m-0 min-w-0 border-0 p-0"
+      :legend="group.title"
       :data-test="`group-${group.key}`"
     >
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        {{ group.title }}
-      </legend>
       <div
         v-if="group.options.length > 0"
         class="flex flex-wrap gap-2"
@@ -209,17 +207,14 @@ const commitBytes = (key: BytesKey) => {
       >
         None in this result.
       </p>
-    </fieldset>
+    </MdFieldset>
 
-    <fieldset
+    <MdFieldset
       v-for="group in ATTRIBUTE_GROUPS"
       :key="group.key"
-      class="m-0 min-w-0 border-0 p-0"
+      :legend="group.title"
       :data-test="`group-attribute-${group.key}`"
     >
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        {{ group.title }}
-      </legend>
       <div class="flex flex-wrap gap-2">
         <MdChip
           v-for="option in group.options"
@@ -235,15 +230,12 @@ const commitBytes = (key: BytesKey) => {
           <span class="md-label-medium">{{ option.count ?? 0 }}</span>
         </MdChip>
       </div>
-    </fieldset>
+    </MdFieldset>
 
-    <fieldset
-      class="m-0 min-w-0 border-0 p-0"
+    <MdFieldset
+      legend="Origin"
       data-test="group-origin"
     >
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        Origin
-      </legend>
       <div class="flex flex-wrap gap-2">
         <MdChip
           v-for="option in ORIGIN_OPTIONS"
@@ -262,15 +254,12 @@ const commitBytes = (key: BytesKey) => {
           >{{ countOf('origin', option.facet) }}</span>
         </MdChip>
       </div>
-    </fieldset>
+    </MdFieldset>
 
-    <fieldset
-      class="m-0 min-w-0 border-0 p-0"
+    <MdFieldset
+      legend="Release or snapshot"
       data-test="group-snapshot"
     >
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        Release or snapshot
-      </legend>
       <div class="flex flex-wrap gap-2">
         <MdChip
           v-for="option in SNAPSHOT_OPTIONS"
@@ -289,16 +278,16 @@ const commitBytes = (key: BytesKey) => {
           >{{ countOf('snapshot', option.facet) }}</span>
         </MdChip>
       </div>
-    </fieldset>
+    </MdFieldset>
 
     <p class="m-0 md-body-small text-on-surface-variant">
       The numbers on the chips count files, not versions.
     </p>
 
-    <fieldset class="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        Coordinates
-      </legend>
+    <MdFieldset
+      legend="Coordinates"
+      class="gap-4"
+    >
       <MdTextField
         v-model="draft.groupId"
         variant="outlined"
@@ -320,12 +309,12 @@ const commitBytes = (key: BytesKey) => {
         data-test="field-version"
         @change="commitText('version')"
       />
-    </fieldset>
+    </MdFieldset>
 
-    <fieldset class="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        Last modified
-      </legend>
+    <MdFieldset
+      legend="Last modified"
+      class="gap-4"
+    >
       <MdTextField
         v-model="draft.modifiedAfter"
         variant="outlined"
@@ -342,12 +331,12 @@ const commitBytes = (key: BytesKey) => {
         data-test="field-modifiedBefore"
         @change="commitDate('modifiedBefore')"
       />
-    </fieldset>
+    </MdFieldset>
 
-    <fieldset class="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
-      <legend class="mb-2 p-0 md-title-small text-on-surface">
-        File size
-      </legend>
+    <MdFieldset
+      legend="File size"
+      class="gap-4"
+    >
       <MdTextField
         v-model="draft.sizeMin"
         variant="outlined"
@@ -368,7 +357,7 @@ const commitBytes = (key: BytesKey) => {
         data-test="field-sizeMax"
         @change="commitBytes('sizeMax')"
       />
-    </fieldset>
+    </MdFieldset>
 
     <MdButton
       v-if="filtersActive"

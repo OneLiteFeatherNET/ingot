@@ -21,6 +21,7 @@ import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdDialogActions from '../md/MdDialogActions.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -149,10 +150,10 @@ const submit = () => {
           </p>
         </div>
 
-        <fieldset class="flex flex-col gap-2">
-          <legend class="md-label-large text-on-surface-variant">
-            Repositories
-          </legend>
+        <MdFieldset
+          legend="Repositories"
+          class="gap-2"
+        >
           <div
             v-if="repositoryOptions.length"
             class="flex flex-wrap gap-2"
@@ -182,7 +183,7 @@ const submit = () => {
           >
             {{ warning }}
           </p>
-        </fieldset>
+        </MdFieldset>
 
         <MdSelect
           id="policy-scope"
@@ -205,10 +206,10 @@ const submit = () => {
           @update:model-value="draft.groupFilter = $event"
         />
 
-        <fieldset class="flex flex-col gap-4">
-          <legend class="md-label-large text-on-surface-variant">
-            Limits. Set at least one.
-          </legend>
+        <MdFieldset
+          legend="Limits. Set at least one."
+          class="gap-4"
+        >
           <MdTextField
             id="policy-keep-latest"
             label="Keep the newest versions"
@@ -257,12 +258,12 @@ const submit = () => {
           >
             {{ shownErrors.retention }}
           </MdAlert>
-        </fieldset>
+        </MdFieldset>
 
-        <fieldset class="flex flex-col gap-3 pt-3">
-          <legend class="md-label-large text-on-surface-variant">
-            Schedule
-          </legend>
+        <MdFieldset
+          legend="Schedule"
+          class="gap-3 pt-3"
+        >
           <MdSelect
             id="policy-schedule"
             label="When to run"
@@ -282,7 +283,7 @@ const submit = () => {
             :error-text="shownErrors.schedule"
             @update:model-value="draft.scheduleTime = $event"
           />
-        </fieldset>
+        </MdFieldset>
       </form>
 
       <MdDialogActions class="mt-7">

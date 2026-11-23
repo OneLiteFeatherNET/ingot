@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import MdCard from '../md/MdCard.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import MdRadio from '../md/MdRadio.vue'
 import { WRITE_CHOICES, type WriteChoice } from './writePolicy'
 
@@ -51,15 +52,15 @@ const choices = computed(() => WRITE_CHOICES
 </script>
 
 <template>
-  <MdCard variant="low">
-    <fieldset
-      class="flex flex-col gap-4"
+  <MdCard
+    variant="low"
+    data-ingot-component="write-policy-field"
+  >
+    <MdFieldset
+      legend="Write policy"
+      class="gap-4"
       data-test="write-policy"
-      data-ingot-component="write-policy-field"
     >
-      <legend class="md-title-medium text-on-surface">
-        Write policy
-      </legend>
       <div
         v-for="choice in choices"
         :key="choice.value"
@@ -81,6 +82,6 @@ const choices = computed(() => WRITE_CHOICES
           {{ choice.help }}
         </p>
       </div>
-    </fieldset>
+    </MdFieldset>
   </MdCard>
 </template>
