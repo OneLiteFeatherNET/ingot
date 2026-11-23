@@ -32,7 +32,7 @@ vi.mock('../../../store/session', () => ({ useSession: () => holder.session }))
 vi.mock('../../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: { response?: { data?: { message?: string } }; message?: string }) => error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 const shell = { render: () => null }

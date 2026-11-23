@@ -50,7 +50,7 @@ vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
   createInfoToast: vi.fn(),
-  errorMessage: (error: unknown) => (error instanceof Error ? error.message : `${error}`)
+  errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error))
 }))
 
 const managerRef = (): Ref<boolean> => {

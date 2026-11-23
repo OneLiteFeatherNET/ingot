@@ -37,7 +37,7 @@ type ErrorLike = { response?: { data?: { message?: string } }; message?: string 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? `${error}`
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 const shell: Component = { render: () => null }
