@@ -423,18 +423,60 @@ to them, in `shape-elevation-motion.css`:
 
 - `animate-md-linear-slide` (1.6s) and `animate-md-linear-slide-reduced` (4s), for the linear
   progress indicator. Under `prefers-reduced-motion` the indicator uses the slower token.
-- `animate-md-snackbar-enter` and `animate-md-snackbar-leave`. The snackbar still runs its own
-  transitions until the component catalogue change rewrites it, so these tokens are not used
-  yet.
+- `animate-md-snackbar-enter` and `animate-md-snackbar-leave`. The snackbar now runs the snackbar
+  pattern below, so these tokens are not used.
 - `animate-skeleton-fade-in` (800ms, with a 200ms delay), for the skeleton bars. Its timing
-  function is `ease-out`; a motion easing token would change the curve.
-- `animate-md-page-enter` (200ms, the standard easing), for the page column of an Administration entry. The page fades in and
-  rises 4 pixels when the entry changes, and a query change keeps the page. `motion-reduce:animate-none` turns it off. The side
-  navigation and the header do not animate.
+  function is `ease-out`; a motion easing token would change the curve. The delay is not a
+  transition.
+
+### Transition patterns
+
+A change of what is on screen runs one of the patterns below. The classes live in
+`src/styles/md3/motion-transitions.css`, one prefix per pattern (`motion-fade-through`,
+`motion-shared-x`, and so on). `MdTransition` wraps a Vue `<Transition>` with the prefix of a
+pattern name and adds no element, and a library transition such as the modal of `MdDialog` takes
+the same names from `src/helpers/motionPattern.ts`. A component never writes a duration or an
+easing of its own: only the `--md-sys-motion-*` tokens appear, and the style gate fails a literal
+duration or a `duration-300` class.
+
+| Pattern | Used for | Enter | Leave | Mode |
+| --- | --- | --- | --- | --- |
+| Fade through | top-level destinations | opacity, `short4` (200ms), `standard-decelerate` | opacity, `short2` (100ms), `standard-accelerate` | `out-in` |
+| Shared axis X | sibling Administration pages, tab panels | opacity and `translateX` from 16px, `short4`, `standard-decelerate` | opacity and `translateX` 16px the other way, `short2`, `standard-accelerate` | `out-in` |
+| Shared axis Y | nested steps such as the second step of the sign-in dialog | opacity and `translateY` from 8px, `short4`, `standard-decelerate` | opacity, `short2`, `standard-accelerate` | `out-in` |
+| Menu from anchor | menus and the select listbox | opacity and `scale` from 0.92 at the anchor edge, `short4`, `standard-decelerate` | opacity, `short3` (150ms), `standard-accelerate` | default |
+| Dialog | scrim and panel | scrim opacity, `short4`. Panel opacity and `scale` from 0.95, `medium1` (250ms), `emphasized-decelerate` | scrim `short3`. Panel `short4`, `emphasized-accelerate` | default |
+| Side sheet | `MdSideSheet` | scrim as the dialog. Panel `translateX` from its edge, `medium2` (300ms), `emphasized-decelerate` | panel `short4`, `emphasized-accelerate` | default |
+| Snackbar | `MdSnackbar` | opacity and `translateY` from 16px, `short4`, `standard-decelerate` | opacity and `translateY` to 16px, `short3`, `standard-accelerate` | `out-in` on replacement |
+| Expand and collapse | disclosures | height `0fr` to `1fr` through `grid-template-rows`, `medium2` (300ms), `standard` | the same in reverse | default |
+| Content fade | loaded content over a skeleton | opacity, `short4`, `standard-decelerate`; the skeleton leaves at `short2` | | |
+| Indicator slide | the selected tab mark | `translateX` and `scaleX` to the selected tab, `short4`, `standard-decelerate` | | |
+
+Totals: a page transition (fade through, shared axis X and Y) is at most 300ms, 100ms out and
+200ms in. The dialog panel runs 250ms and the side sheet 300ms because they are not page
+transitions. A new row in a list fades in over `short3`; a removed row leaves at once.
+
+Rules every pattern keeps:
+
+- Only `transform` and `opacity` animate. The one exception is the height of expand and collapse,
+  through `grid-template-rows` on a wrapper, which moves no neighbour.
+- A transition never changes the box of a neighbour. The side navigation, the header and the top
+  bar keep their place during a page transition.
+- The first paint has no motion: no `appear` on the route content, the disclosures or the dialogs.
+- Focus moves to the new page heading when the page is inserted, not after the transition, so the
+  announcement is not delayed. A navigation started during a leave inserts the latest page only.
+- The Administration page column no longer rises: it takes the shared axis X pattern by tree
+  order, and the side navigation and the header do not animate.
+- A plugin page takes the route transition. Its descriptor may carry the optional `motion` field
+  with the values `route` (the default, also for an absent or unknown value) and `none`. With
+  `none` the page swaps at once and focus still moves to its heading. The dashboard reads the
+  field; the server change `add-plugin-page-motion-option` writes it.
+- The transitions add no element, so every `data-ingot-*` anchor stays on the element it was on.
 
 Reduced motion is one rule, in the `base` layer of `src/style.css`. It shortens every
-animation and transition of the dashboard to 0.01ms, so `md-state-layer` and the linear
-progress animation respect `prefers-reduced-motion` without a rule of their own.
+animation and transition of the dashboard to 0.01ms, so `md-state-layer`, the linear
+progress animation and every pattern above respect `prefers-reduced-motion` without a rule of
+their own, and the swap is instant.
 
 ## API convention
 

@@ -25,6 +25,10 @@ This page lists every stable name that the dashboard puts into the DOM, contract
 
 A `stable` name is part of the contract. It is added in a minor release, and it is renamed or removed only through an alias that lives for one minor release. An `experimental` name may change in any release.
 
+## Transitions
+
+The dashboard animates a change of page, a menu, a dialog and a few other surfaces with Vue transitions. A transition adds no element and moves no attribute: it only adds classes to the element it wraps, which is the existing root of the page or panel. Every name in this page therefore stays on the same element, and a selector that targets a name matches what it matched before. Under `prefers-reduced-motion` every transition is an instant swap.
+
 ## Components
 
 | Name | Stability | Source | Parts | States | Slots |

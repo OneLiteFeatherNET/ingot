@@ -238,6 +238,49 @@ describe('inverse corners of the content sheet', () => {
   }
 })
 
+describe('motion section of DESIGN.md', () => {
+  const design = readFileSync(join(process.cwd(), 'DESIGN.md'), 'utf8')
+  const start = design.indexOf('\n## Motion\n')
+  const end = design.indexOf('\n## ', start + 1)
+  const section = design.slice(start, end)
+
+  it('has a motion section', () => {
+    expect(start, 'a "## Motion" heading in DESIGN.md').toBeGreaterThanOrEqual(0)
+  })
+
+  it.each([
+    'fade through',
+    'shared axis x',
+    'shared axis y',
+    'menu from anchor',
+    'dialog',
+    'side sheet',
+    'snackbar',
+    'expand and collapse',
+    'content fade',
+    'indicator slide',
+  ])('names the %s pattern', (pattern) => {
+    expect(section.toLowerCase(), `the motion section names the ${pattern} pattern of add-dashboard-motion`).toContain(pattern)
+  })
+
+  it('names the transition wrapper and the opt-out field of the plugin page descriptor', () => {
+    expect(section, 'the wrapper that applies the patterns').toContain('MdTransition')
+    expect(section, 'the motion field of the plugin page descriptor').toContain('`motion`')
+    expect(section, 'the default value of the field').toContain('`route`')
+    expect(section, 'the opt-out value of the field').toContain('`none`')
+  })
+
+  it('states the 300 millisecond total of a page transition', () => {
+    expect(section, 'the total of a page transition').toMatch(/300 ?ms|300 milliseconds/)
+  })
+
+  it('no longer describes the removed page rise', () => {
+    const paragraphs = section.split(/\n\s*\n/)
+    const risen = paragraphs.filter((paragraph) => /animate-md-page-enter|rises? 4 pixels|rise class/i.test(paragraph))
+    expect(risen, 'no paragraph of the motion section describes the page rise').toEqual([])
+  })
+})
+
 describe('md-scrollbar utility', () => {
   const start = stylesheet.indexOf('@utility md-scrollbar')
   const block = blockAt(stylesheet, start)
