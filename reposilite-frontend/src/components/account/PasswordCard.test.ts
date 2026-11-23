@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import PasswordCard from './PasswordCard.vue'
 import { useSession } from '../../store/session'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 
 const toast = vi.hoisted(() => ({ success: vi.fn() }))
 
@@ -194,6 +195,12 @@ describe('PasswordCard', () => {
     expect(section.exists(), 'the heading belongs to an MdSection inside the card').toBe(true)
     expect(section.props('level'), 'a section inside the account page is level 3').toBe(3)
     expect(section.find('h3').text()).toBe('Change password')
+  })
+
+  it('builds its text fields from primitives', () => {
+    mountCard()
+
+    expectPrimitiveControls(wrapper)
   })
 
   it('keeps the password card labelled by its section heading', () => {

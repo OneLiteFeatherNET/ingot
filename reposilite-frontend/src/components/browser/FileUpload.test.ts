@@ -19,6 +19,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FileUpload from './FileUpload.vue'
 import MdCard from '../md/MdCard.vue'
+import { expectPrimitiveControls } from '../../helpers/primitiveControls'
 
 // Every deploy stays pending, so a test can look at the form while the upload is in flight.
 const { deploy } = vi.hoisted(() => ({ deploy: { calls: [] as unknown[][] } }))
@@ -99,6 +100,22 @@ describe('FileUpload while an upload is in flight', () => {
     await flushPromises()
 
     expect(wrapper!.text(), 'the file reports its progress').toContain('Uploading')
+  })
+})
+
+describe('FileUpload primitives', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('builds its text fields and checkboxes from primitives', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+    await wrapper!.findAll('input[type="checkbox"]').find(box => (box.element as HTMLInputElement).labels?.[0]?.textContent?.includes('stub POM'))?.setValue(true)
+    await nextTick()
+
+    expectPrimitiveControls(wrapper!)
   })
 })
 
