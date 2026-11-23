@@ -230,15 +230,15 @@ onMounted(() => {
             Read the zip before you attach it to a public issue.
           </p>
         </MdDisclosure>
-        <button
+        <MdButton
           type="button"
           data-ingot-part="support-action"
-          class="md-label-large w-fit rounded-full bg-primary px-6 py-3 text-on-primary disabled:opacity-60"
+          class="w-fit"
           :disabled="busy"
           @click="downloadBundle"
         >
           Download support bundle
-        </button>
+        </MdButton>
       </header>
 
       <AppTabs
