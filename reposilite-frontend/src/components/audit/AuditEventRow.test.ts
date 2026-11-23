@@ -78,7 +78,7 @@ describe('AuditEventRow actor', () => {
     const addressElement = row.find('[data-test="actor-address"]')
     expect(addressElement.attributes('title'), 'full address on hover').toBe(address)
     expect(addressElement.classes(), 'long addresses are cut with an ellipsis').toContain('truncate')
-    expect(addressElement.classes(), 'the address is monospaced').toContain('font-mono')
+    expect(addressElement.classes(), 'the address is in the small code role').toContain('md-code-small')
     expect(addressElement.element.parentElement!.classList.contains('flex'), 'the address line is its own block').toBe(true)
   })
 

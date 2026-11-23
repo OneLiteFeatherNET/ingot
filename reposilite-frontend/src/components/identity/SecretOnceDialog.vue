@@ -132,7 +132,7 @@ const copySnippet = async (snippet: Snippet) => {
         aria-label="Token secret"
         spellcheck="false"
         autocomplete="off"
-        class="md-focus-ring min-w-0 flex-1 rounded-corner-small border border-outline bg-surface-container-highest px-3 py-3 font-mono text-sm text-on-surface"
+        class="md-focus-ring min-w-0 flex-1 rounded-corner-small border border-outline bg-surface-container-highest px-3 py-3 md-code-medium text-on-surface"
         @focus="selectAll"
       >
       <MdButton
@@ -175,7 +175,7 @@ const copySnippet = async (snippet: Snippet) => {
         </div>
         <pre
           :data-snippet="snippet.key"
-          class="mt-1 overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 font-mono text-xs text-on-surface"
+          class="mt-1 overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 md-code-small text-on-surface"
         >{{ snippet.text }}</pre>
       </div>
     </section>

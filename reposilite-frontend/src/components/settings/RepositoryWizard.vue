@@ -876,7 +876,7 @@ const onModalUpdate = (open: boolean) => {
               </p>
               <code
                 data-test="address"
-                class="break-all rounded-corner-small bg-surface-container-lowest p-3 font-mono md-body-small text-on-surface"
+                class="break-all rounded-corner-small bg-surface-container-lowest p-3 md-code-small text-on-surface"
               >{{ addressOf }}</code>
             </section>
 
@@ -912,7 +912,7 @@ const onModalUpdate = (open: boolean) => {
                 </div>
                 <pre
                   :data-snippet="snippet.key"
-                  class="whitespace-pre-wrap break-words rounded-corner-small bg-surface-container-lowest p-3 font-mono md-body-small text-on-surface"
+                  class="whitespace-pre-wrap break-words rounded-corner-small bg-surface-container-lowest p-3 md-code-small text-on-surface"
                 >{{ snippet.text(snippets) }}</pre>
               </div>
             </section>
