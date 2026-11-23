@@ -485,6 +485,17 @@ describe('ConsoleView', () => {
       expect(output.find('img').exists(), 'a log line must never create elements').toBe(false)
     })
 
+    it('renders a log line with exactly its own characters and no template whitespace', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, '  indented \u001b[31mred\u001b[0m tail')
+      await flushPromises()
+
+      const line = wrapper.find('#console p.whitespace-pre')
+      expect(line.element.textContent, 'the line keeps its spacing and gains none from the template').toBe('  indented red tail')
+    })
+
     it('colours a segment with a class instead of an inline style', async () => {
       await mountView()
       const stream = FakeEventSource.instances[0]

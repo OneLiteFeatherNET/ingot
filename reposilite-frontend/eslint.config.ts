@@ -20,8 +20,8 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import type { Linter } from 'eslint'
 
-// Every enabled rule reports as an error. The plugin presets ship some rules as warnings, and the bulk suppressions of
-// ESLint record errors only, so those rules are raised here. A finding that is not in eslint-suppressions.json fails the run.
+// Every enabled rule reports as an error. The plugin presets ship some rules as warnings, and a warning does not fail the
+// run, so those rules are raised here. Any finding fails the run; there is no suppressions file.
 const raiseWarning = (value: Linter.RuleEntry<unknown[]> | undefined): Linter.RuleEntry<unknown[]> | undefined => {
   if (Array.isArray(value)) {
     return value[0] === 'warn' || value[0] === 1 ? ['error', ...value.slice(1)] : value
