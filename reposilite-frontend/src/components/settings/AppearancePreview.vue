@@ -20,6 +20,7 @@ import type { PropType } from 'vue'
 import { COLOUR_PROPERTIES, isColour } from '../../theme/settings'
 import type { RawAppearance } from '../../theme/settings'
 import type { PreviewRoles } from '../../theme/runtime'
+import MdCard from '../md/MdCard.vue'
 
 const ROLES: readonly { key: keyof PreviewRoles; label: string }[] = [
   { key: 'primary', label: 'Primary' },
@@ -44,6 +45,7 @@ const usableColours = (appearance: Record<string, unknown>): RawAppearance => ({
  */
 export default defineComponent({
   name: 'AppearancePreview',
+  components: { MdCard },
   props: {
     appearance: {
       type: Object as PropType<RawAppearance>,
@@ -82,15 +84,17 @@ export default defineComponent({
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
+  <MdCard
+    as="section"
+    variant="low"
+    class="flex flex-col gap-3"
     aria-labelledby="appearance-preview-title"
     data-test="appearance-preview"
-    data-ingot-component="appearance-preview"
   >
     <h3
       id="appearance-preview-title"
       class="md-title-small text-on-surface"
+      data-ingot-component="appearance-preview"
     >
       Preview
     </h3>
@@ -126,5 +130,5 @@ export default defineComponent({
         <span class="md-label-small text-on-surface-variant">{{ swatch.colour }}</span>
       </li>
     </ul>
-  </section>
+  </MdCard>
 </template>

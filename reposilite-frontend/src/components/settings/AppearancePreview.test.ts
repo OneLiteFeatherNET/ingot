@@ -54,6 +54,12 @@ describe('AppearancePreview', () => {
     expect(swatch(wrapper, 'surface')).toBe(generatedLight('#006a6a', 'surface'))
   })
 
+  it('draws the preview as an MdCard', async () => {
+    const wrapper = await mountPreview({ seedColor: '#006a6a' })
+
+    expect(wrapper.get('[data-test="appearance-preview"]').attributes('data-variant'), 'the preview is a low card').toBe('low')
+  })
+
   it('follows the seed as it is edited', async () => {
     const wrapper = await mountPreview({ seedColor: '#006a6a' })
 
