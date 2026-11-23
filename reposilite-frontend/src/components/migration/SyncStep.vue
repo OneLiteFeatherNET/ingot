@@ -20,6 +20,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdSection from '../md/MdSection.vue'
 import MigrationDialog from './MigrationDialog.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -176,18 +177,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-6"
+  <MdSection
+    title="Sync"
+    class="gap-6"
     aria-labelledby="migration-sync-title"
+    heading-id="migration-sync-title"
+    focusable
     data-ingot-component="sync-step"
   >
-    <h2
-      id="migration-sync-title"
-      tabindex="-1"
-      class="md-title-large text-on-surface"
-    >
-      Sync
-    </h2>
     <p class="md-body-large text-on-surface-variant">
       The import creates the repositories in Ingot and copies their content. Nexus is only read.
     </p>
@@ -460,5 +457,5 @@ onMounted(() => {
         </MdButton>
       </template>
     </MigrationDialog>
-  </section>
+  </MdSection>
 </template>

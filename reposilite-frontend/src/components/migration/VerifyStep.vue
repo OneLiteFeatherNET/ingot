@@ -20,6 +20,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdSection from '../md/MdSection.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import JobProgress from './JobProgress.vue'
@@ -108,19 +109,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-6"
+  <MdSection
+    title="Verify"
+    class="gap-6"
     aria-labelledby="migration-verify-title"
+    heading-id="migration-verify-title"
+    focusable
     data-ingot-component="verify-step"
   >
-    <h2
-      id="migration-verify-title"
-      tabindex="-1"
-      class="md-title-large text-on-surface"
-    >
-      Verify
-    </h2>
-
     <p
       v-if="!importJob"
       class="md-body-large text-on-surface-variant"
@@ -294,5 +290,5 @@ onMounted(() => {
       id="migration-verify-problem"
       :problem="problem"
     />
-  </section>
+  </MdSection>
 </template>

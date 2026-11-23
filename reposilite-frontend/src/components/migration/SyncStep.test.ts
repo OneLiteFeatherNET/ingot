@@ -207,4 +207,16 @@ describe('the Sync step', () => {
     expect(whileHidden, 'no read while the tab is hidden').toBe(1)
     expect(api.getJob.mock.calls.length, 'one read at once when shown again').toBe(2)
   })
+
+  it('draws its title as the focusable heading of a section component', async () => {
+    const { wrapper } = await mountWith(SyncStep, { wizard: acceptedWizard(), at: '/settings/migration/sync' })
+
+    const heading = wrapper.get('h2')
+    expect(heading.attributes('id')).toBe('migration-sync-title')
+    expect(heading.attributes('tabindex'), 'the wizard moves the focus here when the step changes').toBe('-1')
+    expect(heading.text()).toBe('Sync')
+    expect(wrapper.find('[data-test="section-header"]').exists(), 'the heading comes from MdSection').toBe(true)
+    expect(wrapper.attributes('aria-labelledby')).toBe('migration-sync-title')
+    expect(wrapper.attributes('data-ingot-component')).toBe('sync-step')
+  })
 })
