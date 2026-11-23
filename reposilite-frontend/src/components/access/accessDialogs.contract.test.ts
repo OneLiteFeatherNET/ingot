@@ -42,7 +42,7 @@ let wrapper: VueWrapper | null = null
 let opener: HTMLButtonElement | null = null
 
 const openDialog = async (component: object, props: Record<string, unknown>) => {
-  wrapper = mount(component, { props: { modelValue: false, ...props }, attachTo: document.body }) as VueWrapper
+  wrapper = mount(component, { props: { modelValue: false, ...props }, attachTo: document.body })
   await wrapper.setProps({ modelValue: true })
   await flushPromises()
 }
@@ -105,7 +105,7 @@ describe('NewMachineDialog heading id', () => {
     wrapper = mount(
       { render: () => h('div', [h(NewMachineDialog, { modelValue: true, api }), h(NewMachineDialog, { modelValue: true, api })]) },
       { attachTo: document.body }
-    ) as VueWrapper
+    )
     await flushPromises()
 
     const ids = [...document.querySelectorAll('[role="dialog"]')].map(element => element.getAttribute('aria-labelledby'))
