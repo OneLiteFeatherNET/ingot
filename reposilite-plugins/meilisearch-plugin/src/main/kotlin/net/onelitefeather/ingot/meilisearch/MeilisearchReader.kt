@@ -26,6 +26,7 @@ import net.onelitefeather.ingot.search.ArtifactSearchItem
 import net.onelitefeather.ingot.search.ArtifactSearchPage
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
 import net.onelitefeather.ingot.search.ArtifactVersions
+import net.onelitefeather.ingot.search.AttributeSort
 import net.onelitefeather.ingot.search.FacetBucket
 import net.onelitefeather.ingot.search.GroupOrder
 import net.onelitefeather.ingot.search.IndexStatus
@@ -42,6 +43,7 @@ import net.onelitefeather.ingot.search.SnapshotFilter
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.util.Locale
 
 /**
  * The reads of the backend (design D6): search groups, facets and files, each one or a few requests to the index. Meilisearch has
@@ -78,12 +80,16 @@ internal class MeilisearchReader(
         }
         // The total is the count of the rows after the in-memory rule of the version prefix, where the server's count cannot apply it.
         val total = if (query.versionPrefix != null) rows.size.toLong() else windowTotal
-        val aggregates = aggregatesOf(rows, query, base, conditions.drop(1), sortsByAggregate(query.sort))
+        val aggregates = aggregatesOf(rows, query, base, conditions.drop(1), sortsByAggregate(query.sort) || attributeSortOf(query) != null)
         val order = GroupOrder.comparator(query.sort, query.order)
+        val attributeSort = query.attributeSort
         // The groups the query is a coordinate prefix of come first, in the order of the database; the word-only groups follow.
         val (main, wordOnly) = rows.partition { row -> isMain(row, words) }
         val sortedBy = { list: List<GroupRow> ->
-            list.sortedWith { a, b -> order.compare(a.key.with(aggregates[a.gav]), b.key.with(aggregates[b.gav])) }
+            list.sortedWith { a, b ->
+                val byAttribute = attributeSort?.let { compareByAttribute(it, aggregates[a.gav]?.attributeValue, aggregates[b.gav]?.attributeValue) } ?: 0
+                if (byAttribute != 0) byAttribute else order.compare(a.key.with(aggregates[a.gav]), b.key.with(aggregates[b.gav]))
+            }
         }
         val sorted = sortedBy(main) + sortedBy(wordOnly)
         val start = query.page * query.size
@@ -129,12 +135,24 @@ internal class MeilisearchReader(
                 .sortedBy { it.value }
                 .toList()
         }
+        // A facet of an attribute counts the files that match every other filter, so a selected value keeps its alternatives.
+        fun attributeBuckets(key: String): List<FacetBucket> {
+            val path = MeilisearchIndexSettings.attributePath(key)
+            val conditions = listOf(base) + all.filter { it.first != attributeScope(key) }.map { it.second } + wordConditions
+            return search(conditions, null, facets = listOf(path), hitsPerPage = 0)
+                .path("facetDistribution").path(path).fields().asSequence()
+                .map { (value, count) -> FacetBucket(value, count.asLong()) }
+                .sortedWith(compareByDescending<FacetBucket> { it.count }.thenBy { it.value })
+                .take(ATTRIBUTE_FACET_BUCKETS)
+                .toList()
+        }
         return SearchFacets(
             repository = buckets("repository"),
             extension = buckets("extension"),
             classifier = buckets("classifier"),
             origin = buckets("origin"),
             snapshot = buckets("snapshot"),
+            attributes = query.attributeFacets.takeIf { it.isNotEmpty() }?.associateWith(::attributeBuckets),
         )
     }
 
@@ -202,7 +220,9 @@ internal class MeilisearchReader(
     ): Map<String, Aggregate> {
         if (rows.isEmpty()) return emptyMap()
         val keys = rows.map { it.gav }.distinct()
-        val files = scan(listOf(base) + conditions + "gav IN ${MeilisearchFilters.inList(keys)}", wholeWindow)
+        val sortKey = attributeSortOf(query)?.key
+        val fields = if (sortKey == null) SCAN_FIELDS else SCAN_FIELDS + "attributes"
+        val files = scan(listOf(base) + conditions + "gav IN ${MeilisearchFilters.inList(keys)}", wholeWindow, fields)
         return files.groupBy { it.path("gav").asText() }.mapValues { (_, group) ->
             val repositories = group.groupBy { it.path("repository").asText() }.map { (name, files) ->
                 val origins = files.map { it.path("origin").asText() }
@@ -214,12 +234,13 @@ internal class MeilisearchReader(
                 lastModified = group.maxOf { it.path("last_modified").asLong(0L) },
                 sizeBytes = group.sumOf { it.path("size_bytes").asLong(0L) },
                 repositories = repositories,
+                attributeValue = attributeSortOf(query)?.let { sort -> extremeValue(group, sort) },
             )
         }
     }
 
     /** Every file of the given filter, read by pages. A window larger than the aggregate limit is refused with a hint. */
-    private fun scan(conditions: List<String>, wholeWindow: Boolean): List<JsonNode> {
+    private fun scan(conditions: List<String>, wholeWindow: Boolean, fields: List<String>): List<JsonNode> {
         val limit = if (wholeWindow) aggregateSortLimit else Int.MAX_VALUE
         val files = mutableListOf<JsonNode>()
         var page = 1
@@ -229,7 +250,7 @@ internal class MeilisearchReader(
                 documentsPath,
                 mapOf(
                     "filter" to conditions.joinToString(" AND "),
-                    "attributesToRetrieve" to SCAN_FIELDS,
+                    "attributesToRetrieve" to fields,
                     "page" to page,
                     "hitsPerPage" to SCAN_PAGE,
                 ),
@@ -338,8 +359,15 @@ internal class MeilisearchReader(
         query.groupId?.let { conditions += "group" to "group_id_lc = ${MeilisearchFilters.quote(it.lowercase())}" }
         query.artifactId?.let { conditions += "artifact" to "artifact_id_lc = ${MeilisearchFilters.quote(it.lowercase())}" }
         query.version?.let { conditions += "version" to "version_lc = ${MeilisearchFilters.quote(it.lowercase())}" }
+        query.attributeFilters.groupBy({ it.key }, { it.values }).forEach { (key, values) ->
+            val wanted = values.flatten().distinctBy { it.lowercase(Locale.ROOT) }
+            conditions += attributeScope(key) to "${MeilisearchIndexSettings.attributePath(key)} IN ${MeilisearchFilters.inList(wanted)}"
+        }
         return conditions
     }
+
+    /** The scope of the filter of an attribute key, which its own facet leaves out. No fixed facet uses this prefix. */
+    private fun attributeScope(key: String): String = "attribute:$key"
 
     private fun originCondition(origin: OriginFilter): List<String> = when (origin) {
         OriginFilter.ALL -> emptyList()
@@ -352,11 +380,32 @@ internal class MeilisearchReader(
     /** Whether the sort reads the aggregates of the whole window: modification and size are sums over the files of a group. */
     private fun sortsByAggregate(sort: SearchSort): Boolean = sort == SearchSort.MODIFIED || sort == SearchSort.SIZE
 
+    private fun attributeSortOf(query: ArtifactSearchQuery): AttributeSort? = query.attributeSort
+
+    /**
+     * The value a group sorts by: the smallest lower-cased value of its files ascending and the largest descending, or null for a group
+     * whose files hold no value of the key (search attribute facets, D4), as the database reads it.
+     */
+    private fun extremeValue(files: List<JsonNode>, sort: AttributeSort): String? {
+        val values = files.flatMap { file -> file.path("attributes").path(sort.key).map { it.asText().lowercase(Locale.ROOT) } }
+        return if (sort.descending) values.maxOrNull() else values.minOrNull()
+    }
+
+    /** The order of two groups by their sort values: the groups without a value come last in both directions. */
+    private fun compareByAttribute(sort: AttributeSort, a: String?, b: String?): Int = when {
+        a == null && b == null -> 0
+        a == null -> 1
+        b == null -> -1
+        sort.descending -> b.compareTo(a)
+        else -> a.compareTo(b)
+    }
+
     private data class Aggregate(
         val fileCount: Long,
         val lastModified: Long,
         val sizeBytes: Long,
         val repositories: List<RepositoryPresence>,
+        val attributeValue: String? = null,
     )
 
     private fun GroupOrder.Key.with(aggregate: Aggregate?): GroupOrder.Key =
@@ -372,6 +421,9 @@ internal class MeilisearchReader(
         /** The distinct groups fetched for one request: the design's window, one above the total cap, so the count is exact. */
         const val WINDOW_FETCH = 10_101
         const val MAX_SEARCH_SIZE = 100
+
+        /** The buckets of one attribute facet, as the database returns them. */
+        const val ATTRIBUTE_FACET_BUCKETS = 20
         const val SCAN_PAGE = 1000
         const val MAX_VERSIONS_PER_ARTIFACT = 5_000
         const val SNAPSHOT_SUFFIX = "-SNAPSHOT"
