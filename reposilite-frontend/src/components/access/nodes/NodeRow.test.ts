@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, type Component } from 'vue'
 import MdList from '../../md/MdList.vue'
 import MdListItem from '../../md/MdListItem.vue'
 import NodeRow from './NodeRow.vue'
@@ -31,7 +31,7 @@ describe('NodeRow', () => {
   it('is a list item of the list it sits in', () => {
     const wrapper = mountRow()
 
-    expect(wrapper.findComponent(MdListItem).exists()).toBe(true)
+    expect(wrapper.findComponent(MdListItem as Component).exists()).toBe(true)
     expect(wrapper.find('ul > li').exists()).toBe(true)
   })
 

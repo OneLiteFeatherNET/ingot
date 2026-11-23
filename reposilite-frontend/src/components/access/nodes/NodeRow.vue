@@ -134,7 +134,6 @@ const emit = defineEmits(['toggle', 'remove'])
           </svg>
         </MdIconButton>
       </template>
-  
     </div>
   </MdListItem>
 </template>
