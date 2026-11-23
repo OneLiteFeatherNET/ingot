@@ -631,13 +631,12 @@ const onModalUpdate = (open: boolean) => {
                 </MdButton>
               </div>
             </div>
-            <p
+            <MdAlert
               v-if="shownErrors.remote0 && draft.upstream.remotes.length === 0"
-              role="alert"
-              class="md-body-small text-error"
+              tone="error"
             >
               {{ shownErrors.remote0 }}
-            </p>
+            </MdAlert>
             <div>
               <MdButton
                 data-test="add-remote"
