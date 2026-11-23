@@ -26,6 +26,7 @@ import type { components } from '../../types/api'
 import AppTabs from '../tabs/AppTabs.vue'
 import MdButton from '../md/MdButton.vue'
 import MdDisclosure from '../md/MdDisclosure.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdSection from '../md/MdSection.vue'
 import MdTextField from '../md/MdTextField.vue'
 import FactoryResetModal from '../settings/FactoryResetModal.vue'
@@ -267,23 +268,15 @@ onMounted(() => {
               >
                 Ingot
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                <dt>Instance</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.instance }}
-                </dd>
-                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.ingot.version }}
-                </dd>
-                <dt>Build time</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.ingot.buildTime }}
-                </dd>
-                <dt>Commit</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.ingot.commit }}
-                </dd>
-                <dt>Generated</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.generatedAt }}
-                </dd>
-              </dl>
+              <MdKeyValueList
+                :items="[
+                  { label: 'Instance', value: String(info.instance) },
+                  { label: 'Version', value: String(info.ingot.version) },
+                  { label: 'Build time', value: String(info.ingot.buildTime) },
+                  { label: 'Commit', value: String(info.ingot.commit) },
+                  { label: 'Generated', value: String(info.generatedAt) },
+                ]"
+              />
             </article>
 
             <article
@@ -296,26 +289,16 @@ onMounted(() => {
               >
                 Java
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                <dt>Vendor</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.vendor }}
-                </dd>
-                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.version }}
-                </dd>
-                <dt>Uptime</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ formatUptime(info.jvm.uptimeMillis) }}
-                </dd>
-                <dt>Heap</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.heapUsedMb.toFixed(1) }} MB used of {{ info.jvm.heapMaxMb }} MB
-                </dd>
-                <dt>Processors</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.processors }}
-                </dd>
-                <dt>Threads</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.jvm.threads }}
-                </dd>
-              </dl>
+              <MdKeyValueList
+                :items="[
+                  { label: 'Vendor', value: String(info.jvm.vendor) },
+                  { label: 'Version', value: String(info.jvm.version) },
+                  { label: 'Uptime', value: String(formatUptime(info.jvm.uptimeMillis)) },
+                  { label: 'Heap', value: `${info.jvm.heapUsedMb.toFixed(1)} MB used of ${info.jvm.heapMaxMb} MB` },
+                  { label: 'Processors', value: String(info.jvm.processors) },
+                  { label: 'Threads', value: String(info.jvm.threads) },
+                ]"
+              />
               <MdDisclosure>
                 <template #summary>
                   Input arguments
@@ -341,20 +324,14 @@ onMounted(() => {
               >
                 Operating system
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                <dt>Name</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.operatingSystem.name }}
-                </dd>
-                <dt>Version</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.operatingSystem.version }}
-                </dd>
-                <dt>Architecture</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.operatingSystem.architecture }}
-                </dd>
-                <dt>Container</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.operatingSystem.container ? 'yes' : 'no' }}
-                </dd>
-              </dl>
+              <MdKeyValueList
+                :items="[
+                  { label: 'Name', value: String(info.operatingSystem.name) },
+                  { label: 'Version', value: String(info.operatingSystem.version) },
+                  { label: 'Architecture', value: String(info.operatingSystem.architecture) },
+                  { label: 'Container', value: info.operatingSystem.container ? 'yes' : 'no' },
+                ]"
+              />
             </article>
 
             <article
@@ -367,14 +344,12 @@ onMounted(() => {
               >
                 Database
               </h2>
-              <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                <dt>Kind</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.database.kind }}
-                </dd>
-                <dt>Endpoint</dt><dd class="min-w-0 wrap-anywhere">
-                  {{ info.database.endpoint ?? 'none' }}
-                </dd>
-              </dl>
+              <MdKeyValueList
+                :items="[
+                  { label: 'Kind', value: String(info.database.kind) },
+                  { label: 'Endpoint', value: info.database.endpoint ?? 'none' },
+                ]"
+              />
             </article>
 
             <article
@@ -414,11 +389,11 @@ onMounted(() => {
                 No cluster bus is configured. This instance runs alone.
               </p>
               <template v-else>
-                <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                  <dt>Bus</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ info.cluster.bus.state }} ({{ info.cluster.bus.transport }}, {{ info.cluster.bus.url }})
-                  </dd>
-                </dl>
+                <MdKeyValueList
+                  :items="[
+                    { label: 'Bus', value: `${info.cluster.bus.state} (${info.cluster.bus.transport}, ${info.cluster.bus.url})` },
+                  ]"
+                />
                 <ul>
                   <li
                     v-for="member in info.cluster.instances"
@@ -489,14 +464,16 @@ onMounted(() => {
                 >
                   {{ plugin.description }}
                 </p>
-                <dl class="grid min-w-0 grid-cols-(--grid-md-key-value) gap-x-6 gap-y-1">
-                  <dt>Origin</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ originLabel(plugin.origin) }}
-                  </dd>
-                  <dt>Depends on</dt><dd class="min-w-0 wrap-anywhere">
-                    {{ plugin.dependencies.length > 0 ? plugin.dependencies.join(', ') : 'None' }}
-                  </dd>
-                  <dt>Settings</dt><dd class="min-w-0 wrap-anywhere">
+                <MdKeyValueList
+                  :items="[
+                    { label: 'Origin', value: originLabel(plugin.origin) },
+                    { label: 'Depends on', value: plugin.dependencies.length > 0 ? plugin.dependencies.join(', ') : 'None' },
+                  ]"
+                >
+                  <dt class="md-label-large text-on-surface-variant">
+                    Settings
+                  </dt>
+                  <dd class="m-0 min-w-0 md-body-large wrap-break-word">
                     <RouterLink
                       v-if="plugin.settingsDomain"
                       :to="`/settings/${plugin.settingsDomain}`"
@@ -508,7 +485,7 @@ onMounted(() => {
                       None
                     </template>
                   </dd>
-                </dl>
+                </MdKeyValueList>
               </article>
             </div>
           </MdSection>
