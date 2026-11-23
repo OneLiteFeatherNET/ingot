@@ -33,6 +33,7 @@ import {
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdDataTable from '../md/MdDataTable.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -100,7 +101,7 @@ const load = async () => {
 
 const keyValueRows = computed(() => {
   const object = data.value && typeof data.value === 'object' && !Array.isArray(data.value) ? data.value : {}
-  return Object.entries(object).map(([key, value]) => ({ key, value: displayValue(value) }))
+  return Object.entries(object).map(([key, value]) => ({ label: key, value: displayValue(value) }))
 })
 
 const table = computed(() => tableRows(Array.isArray(data.value) ? data.value : []))
@@ -311,19 +312,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
     </template>
 
     <template v-else-if="block.type === 'keyValue'">
-      <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
-        <template
-          v-for="row in keyValueRows"
-          :key="row.key"
-        >
-          <dt class="md-label-large text-on-surface-variant">
-            {{ row.key }}
-          </dt>
-          <dd class="md-body-large text-on-surface break-all">
-            {{ row.value }}
-          </dd>
-        </template>
-      </dl>
+      <MdKeyValueList :items="keyValueRows" />
     </template>
 
     <template v-else-if="block.type === 'table'">

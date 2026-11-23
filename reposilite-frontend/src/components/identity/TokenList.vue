@@ -20,6 +20,7 @@ import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
 import MdSection from '../md/MdSection.vue'
@@ -225,23 +226,29 @@ const lastUsedText = (token: IdentityToken) => {
                     {{ token.description }}
                   </span>
                 </div>
-                <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant medium:grid-cols-[repeat(3,auto)] medium:justify-start">
-                  <div class="contents medium:flex medium:flex-col">
-                    <dt>Created</dt>
-                    <dd class="m-0 text-on-surface">
+                <MdKeyValueList>
+                  <div class="contents">
+                    <dt class="md-label-large text-on-surface-variant">
+                      Created
+                    </dt>
+                    <dd class="m-0 min-w-0 md-body-large">
                       {{ createdDay(token) }}
                     </dd>
                   </div>
-                  <div class="contents medium:flex medium:flex-col">
-                    <dt>Expires</dt>
-                    <dd class="m-0 text-on-surface">
+                  <div class="contents">
+                    <dt class="md-label-large text-on-surface-variant">
+                      Expires
+                    </dt>
+                    <dd class="m-0 min-w-0 md-body-large">
                       {{ token.expiresAt ? expiryDay(token) : 'Never' }}
                     </dd>
                   </div>
-                  <div class="contents medium:flex medium:min-w-0 medium:flex-col">
-                    <dt>Last used</dt>
+                  <div class="contents">
+                    <dt class="md-label-large text-on-surface-variant">
+                      Last used
+                    </dt>
                     <dd
-                      class="m-0 min-w-0 text-on-surface"
+                      class="m-0 min-w-0 md-body-large"
                       data-test="last-used"
                       :title="lastUsedTitle(token)"
                     >
@@ -260,7 +267,7 @@ const lastUsedText = (token: IdentityToken) => {
                       </span>
                     </dd>
                   </div>
-                </dl>
+                </MdKeyValueList>
                 <div class="flex flex-wrap items-center gap-2">
                   <template v-if="scopeText(token)">
                     <TokenTag

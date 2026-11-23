@@ -263,6 +263,20 @@ describe('block in a reader page', () => {
   })
 })
 
+describe('key value block', () => {
+  it('draws its rows in the shared key value list', async () => {
+    http.get.mockResolvedValue({ data: { version: '1.0.0' } })
+
+    const wrapper = mountBlock({ type: 'keyValue', source: '/api/plugins/example/info' })
+    await flushPromises()
+
+    const list = wrapper.find('dl')
+    expect(list.classes(), 'the list is the one grid of the key value component').toContain('grid-cols-2')
+    expect(list.find('dt').text()).toBe('version')
+    expect(list.find('dd').text()).toBe('1.0.0')
+  })
+})
+
 describe('code block', () => {
   const clipboardOf = (writeText: ReturnType<typeof vi.fn>) =>
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
