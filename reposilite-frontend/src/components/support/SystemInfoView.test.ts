@@ -189,6 +189,15 @@ describe('SystemInfoView tabs', () => {
     expect(disclosure.find('.expand-rows').exists(), 'the arguments sit in the expand wrapper').toBe(true)
   })
 
+  it('draws the filter of both tabs as an MdTextField', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const panels = panelsOf(wrapper)
+    expect(panels[2].findComponent({ name: 'MdTextField' }).exists(), 'Environment filter is an MdTextField').toBe(true)
+    expect(panels[3].findComponent({ name: 'MdTextField' }).exists(), 'Configuration filter is an MdTextField').toBe(true)
+  })
+
   it('shows the filter on Environment and Configuration only', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()

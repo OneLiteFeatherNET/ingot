@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, type PropType } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdDialog from '../md/MdDialog.vue'
@@ -137,12 +138,9 @@ const submit = () => {
         Could not load the principals: {{ loadError }}
       </MdAlert>
       <!--
-        Each candidate is a plain MdListItem. The label holds the names and chips and stretches
-        over the whole row with its ::after, so a click anywhere on the row ticks the checkbox, as
-        the label that wrapped the row did before. The checkbox follows the label in the source, so
-        it is painted above that stretched area and takes its own clicks, and `order-first` draws it
-        at the start of the row. It is the only focusable element of the row, so the focus order is
-        unchanged.
+        Each candidate is a plain MdListItem holding an MdCheckbox. The names and chips are the
+        label of the checkbox, so a click on them ticks it, and the checkbox is the only focusable
+        element of the row.
       -->
       <MdList
         v-else-if="candidates.length > 0"
@@ -155,27 +153,22 @@ const submit = () => {
           data-test="candidate"
           class="md-state-layer"
         >
-          <span class="flex items-center gap-4">
-            <label
-              :for="checkboxId(index)"
-              class="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 after:absolute after:inset-0"
-            >
+          <MdCheckbox
+            :id="checkboxId(index)"
+            label-gap="loose"
+            :model-value="picked.includes(principal.name)"
+            :value="principal.name"
+            @update:model-value="toggle(principal.name)"
+          >
+            <span class="flex min-w-0 flex-1 flex-col gap-1">
               <span class="md-title-small break-words">{{ principal.displayName || principal.name }}</span>
               <span class="md-body-small text-on-surface-variant break-all">{{ principal.name }}</span>
               <span class="flex flex-wrap gap-2">
                 <TokenTag data-test="kind-chip">{{ principal.kind === 'MACHINE' ? 'Machine' : 'User' }}</TokenTag>
                 <TokenTag v-if="principal.disabled">Disabled</TokenTag>
               </span>
-            </label>
-            <input
-              :id="checkboxId(index)"
-              type="checkbox"
-              class="relative order-first size-5 shrink-0 accent-primary"
-              :checked="picked.includes(principal.name)"
-              :value="principal.name"
-              @change="toggle(principal.name)"
-            >
-          </span>
+            </span>
+          </MdCheckbox>
         </MdListItem>
       </MdList>
       <p

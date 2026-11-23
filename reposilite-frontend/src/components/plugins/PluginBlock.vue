@@ -30,8 +30,12 @@ import {
   displayValue, facetCount, failureText, filterKeyAllowed, linkAllowed, listQuery, listRows, pathAllowed, PLUGIN_FILTER_SCOPE, tableRows,
   BLOCK_TYPES, READER_REFUSED_TYPES, type FilterControlDefinition, type PluginBlockDefinition, type PluginFilterScope,
 } from './pluginBlocks'
+import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdDataTable from '../md/MdDataTable.vue'
+import MdLinearProgress from '../md/MdLinearProgress.vue'
+import MdSelect from '../md/MdSelect.vue'
+import MdTextField from '../md/MdTextField.vue'
 
 const props = defineProps({
   plugin: { type: String, required: true },
@@ -190,13 +194,15 @@ const setValue = (key: string, value: string) => {
     scope.values[key] = value
   }
 }
-const selectValue = (key: string, event: Event) => setValue(key, (event.target as HTMLSelectElement).value)
 const applyText = useDebounceFn(setValue, 300)
-const typeText = (key: string, event: Event) => {
-  const value = (event.target as HTMLInputElement).value
+const typeText = (key: string, value: string) => {
   drafts[key] = value
   applyText(key, value)
 }
+const selectOptions = (control: FilterControlDefinition & { key: string }) => [
+  { value: '', label: 'All' },
+  ...(control.options ?? []).map(option => ({ value: option.value, label: optionLabel(control.key, option) })),
+]
 const controls = computed(() =>
   (props.block?.controls ?? []).filter((control): control is FilterControlDefinition & { key: string } => filterKeyAllowed(control.key)),
 )
@@ -266,13 +272,12 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
         {{ block.label }}
       </p>
       <div class="flex justify-end">
-        <button
-          type="button"
-          class="md-label-large text-primary"
+        <MdButton
+          variant="text"
           @click="copyCode"
         >
           Copy
-        </button>
+        </MdButton>
       </div>
       <pre
         ref="codeText"
@@ -348,13 +353,13 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
         :renderers="renderers"
         @change="({ data }) => (formData = data)"
       />
-      <button
-        type="button"
-        class="md-label-large text-primary"
+      <MdButton
+        variant="text"
+        class="self-start"
         @click="saveForm"
       >
         Save
-      </button>
+      </MdButton>
       <p
         v-if="formMessage"
         role="status"
@@ -431,14 +436,14 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
       >
         Skipped {{ list.skipped }} without a title.
       </p>
-      <button
+      <MdButton
         v-if="listNext && !list.cut"
-        type="button"
-        class="md-label-large text-primary self-start"
+        variant="text"
+        class="self-start"
         @click="loadMore"
       >
         Load more
-      </button>
+      </MdButton>
     </template>
 
     <div
@@ -449,53 +454,30 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
         v-for="(control, index) in controls"
         :key="index"
       >
-        <label
+        <MdTextField
           v-if="control.type === 'text'"
-          class="flex flex-col gap-1"
-        >
-          <span class="md-label-large text-on-surface-variant">{{ control.label }}</span>
-          <input
-            type="text"
-            class="md-body-large rounded-corner-medium bg-surface-container px-3 py-2"
-            :value="drafts[control.key] ?? ''"
-            @input="typeText(control.key, $event)"
-          >
-        </label>
-        <label
+          :label="control.label ?? ''"
+          :model-value="drafts[control.key] ?? ''"
+          @update:model-value="typeText(control.key, $event)"
+        />
+        <MdSelect
           v-else-if="control.type === 'select'"
-          class="flex flex-col gap-1"
-        >
-          <span class="md-label-large text-on-surface-variant">{{ control.label }}</span>
-          <select
-            class="md-body-large rounded-corner-medium bg-surface-container px-3 py-2"
-            :value="scope.values[control.key] ?? ''"
-            @change="selectValue(control.key, $event)"
-          >
-            <option value="">
-              All
-            </option>
-            <option
-              v-for="option in control.options ?? []"
-              :key="option.value"
-              :value="option.value"
-            >
-              {{ optionLabel(control.key, option) }}
-            </option>
-          </select>
-        </label>
+          :label="control.label ?? ''"
+          :model-value="scope.values[control.key] ?? ''"
+          :options="selectOptions(control)"
+          @update:model-value="setValue(control.key, $event)"
+        />
       </template>
     </div>
 
     <template v-else-if="block.type === 'action'">
       <div class="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          class="md-label-large rounded-corner-full px-4 py-2"
-          :class="block.danger ? 'bg-error text-on-error' : 'bg-primary text-on-primary'"
+        <MdButton
+          :variant="block.danger ? 'error' : 'filled'"
           @click="pressAction"
         >
           {{ block.label }}
-        </button>
+        </MdButton>
       </div>
       <MdCard
         v-if="confirming"
@@ -507,21 +489,19 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
           {{ block.confirm }}
         </p>
         <div class="flex gap-3">
-          <button
-            type="button"
+          <MdButton
+            variant="text"
             data-test="confirm"
-            class="md-label-large text-primary"
             @click="runAction"
           >
             Confirm
-          </button>
-          <button
-            type="button"
-            class="md-label-large text-on-surface-variant"
+          </MdButton>
+          <MdButton
+            variant="text"
             @click="confirming = false"
           >
             Cancel
-          </button>
+          </MdButton>
         </div>
       </MdCard>
       <p
@@ -544,11 +524,10 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
         <p class="md-body-large text-on-surface-variant">
           {{ status.message }}
         </p>
-        <progress
+        <MdLinearProgress
           v-if="typeof status.progress === 'number'"
-          class="w-full"
           :value="status.progress"
-          max="1"
+          :label="status.state"
         />
       </div>
     </template>
