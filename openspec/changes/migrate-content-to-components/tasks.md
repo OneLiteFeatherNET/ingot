@@ -83,14 +83,14 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `MdList`; remove the arbitrary `[&>li+li]:after` chain of `FileList`. Verify: 4.3 passes and `grep -rn "li+li" src` finds nothing.
 - [x] 4.7 `fix(ui)`: migrate node rows (NodeRow, NodeInheritedSection), renderer rows (ConstantRenderer, UnsupportedRenderer,
   BooleanSwitchRenderer with one `px-4` inset) and checklist items (CutOverStep) to `MdListItem`. Verify: `npm test` passes for the files touched.
-- [ ] 4.8 `fix(ui)`: migrate the key and value layouts (PrincipalDetail, TeamDetail, CheckPermissionView, ProfileCard, AuditEventRow,
-  InstanceStatusPanel, IndexPanel, PluginBlock, SystemInfoView, SettingsHub, TokenList) to `MdKeyValueList`, the disclosures
+- [x] 4.8 `fix(ui)`: migrate the key and value layouts (PrincipalDetail, TeamDetail, CheckPermissionView, ProfileCard, AuditEventRow,
+  InstanceStatusPanel, IndexPanel, PluginBlock, SystemInfoView, TokenList) to `MdKeyValueList` (`SettingsHub` is a grid of stat tiles with no key and value layout and belongs to `add-administration-overview`, so it stays as it is), the disclosures
   (TeamLegacyGrants, SsoProviderDialog, NodeInheritedSection, RunHistory, ArrayListRenderer) to `MdDisclosure`, and the status labels
   (SsoProvidersPanel, NodeInheritedSection, InstanceStatusPanel, SearchResultRow, RepositoryOverview, SettingsReviewSheet, TypeBadge) to
   `MdBadge`; `TokenTag` and `RepositoryTypeBadge` wrap `MdBadge` and keep their anchors, unless the catalogue change already did so
   (its task 3.16). Verify: the tests of each file pass.
-- [ ] 4.9 `test(ui)`: in `src/components/md/MdDisclosure.test.js`, assert that the disclosure is a native `<details>`, so its `open`
-  attribute toggles (no `aria-expanded`, the semantics are native), the content is hidden while collapsed, and focus stays on the summary. Verify: it fails before 4.8 is applied to `RunHistory`, then passes.
+- [x] 4.9 `test(ui)`: in `src/components/md/MdDisclosure.test.ts`, assert that the disclosure is a native `<details>`, so its `open`
+  attribute toggles (no `aria-expanded`, the semantics are native), the content is hidden while collapsed, and focus stays on the summary. Verify: it passes. (`RunHistory` was migrated to `MdDisclosure` before this test was written, so a red run before 4.8 can no longer be shown.)
 - [x] 4.10 `fix(ui)`: drop the redundant `m-0`, `p-0` and `list-none` resets (TeamsPanel and the ten siblings), and replace
   `[overflow-wrap:anywhere]` with `break-words` or `break-all` on the identifier element (TeamsPanel, TeamMembersCard, TeamParentsCard,
   TeamLegacyGrants, AddMemberDialog, PrincipalsPanel, NodeInheritedSection, MdChipInput, EntryList, RepositoryWizard). Verify: no
