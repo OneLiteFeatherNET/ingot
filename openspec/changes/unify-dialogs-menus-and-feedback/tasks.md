@@ -100,20 +100,20 @@ here.
   `check/CheckPermissionView.vue:628`) use the same empty state. Inline errors (`AuthenticationGroupForm.vue:148` and `:155`,
   `LdapPanel.vue:347`) become `MdAlert`. Verify: the tests of these files pass with state assertions.
 
-- [ ] 5.5 `fix(ui)`: migrate `PolicyDialog.vue` (lines 116 to 120, the `max-w-xl` frame), `RebuildIndexDialog.vue` (71 to 75),
+- [x] 5.5 `fix(ui)`: migrate `PolicyDialog.vue` (lines 116 to 120, the `max-w-xl` frame), `RebuildIndexDialog.vue` (71 to 75),
   `RunNowDialog.vue` (78 to 82), `DeletePolicyDialog.vue` (47 to 55, `alertdialog`) and the preview of
   `CleanupPoliciesPanel.vue` (337 to 348) to `MdDialog`. The preview keeps the 560px cap unless question 1 is answered with the
   alternative; the table scrolls inside the dialog body. Replace the inline errors in the maintenance area and the state panels of
   `StorageUsagePanel.vue` (149 and 163) and `RunHistory.vue` (84) with `MdStatePanel`. Verify: 4.3 passes.
 
-- [ ] 5.6 `fix(ui)`: migrate `ConflictDialog.vue` (49 to 58, own `overlayStyle` at line 39), `DeleteEntryDialog.vue` (89 to 95),
+- [x] 5.6 `fix(ui)`: migrate `ConflictDialog.vue` (49 to 58, own `overlayStyle` at line 39), `DeleteEntryDialog.vue` (89 to 95),
   `NewEntryDialog.vue` (185 to 190; remove the `[--md-field-container:...]` override, `NewEntryDialog.vue:96`), `FactoryResetModal.vue`
   (15 to 49), `PasswordDialog.vue` (92 to 101, the password inputs at 108 to 133 become `MdTextField`, the inline error at 136
   becomes `MdAlert`) and `RepositoryWizard.vue` (the frame at 325 to 340 becomes the compact size below 600 pixels if question 3
   is answered with the default). The wizard's error paragraphs (`role="alert"` at lines 383, 645, 763 and 915) become `MdAlert`
   in one size. Move `SettingsReviewSheet.vue:95` onto `MdSideSheet` with the `end` side. Move `SettingsDownloadMenu.vue` (375 to 401)
   onto `MdOverflowMenu`; remove its `z-20`. Verify: 4.4 passes.
-- [ ] 5.7 `fix(ui)`: status and notices of the settings area. Replace the alerts of `settings/SettingsImportErrors.vue:46` with
+- [x] 5.7 `fix(ui)`: status and notices of the settings area. Replace the alerts of `settings/SettingsImportErrors.vue:46` with
   `MdAlert` in the same radius and spacing as `support/SettingsEncryptionAlert.vue:40`; replace the inline errors of
   `settings/EntryDetail.vue:415` and `:428`, `settings/RepositoryMembersPicker.vue:504` and the empty states of `EntryList.vue:199`,
   `EntryDetail.vue:249` and `CollectionEditor.vue:182` with `MdStatePanel`; replace the notices and the loading line of
