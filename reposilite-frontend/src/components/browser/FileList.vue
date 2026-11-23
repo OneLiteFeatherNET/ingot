@@ -30,6 +30,7 @@ import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
+import MdSection from '../md/MdSection.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRowFade } from '../../composables/useRowFade'
@@ -246,46 +247,42 @@ const entryUrl = (file: BrowserFile) =>
     >
       Directory is empty
     </p>
-    <section
+    <div
       v-if="!loading && !files.error && hasReferences"
       id="browser-includes"
-      aria-labelledby="browser-includes-title"
       class="pt-6"
     >
-      <h2
-        id="browser-includes-title"
-        class="md-title-small text-on-surface-variant"
+      <MdSection
+        title="Includes"
+        heading-id="browser-includes-title"
+        aria-labelledby="browser-includes-title"
       >
-        Includes
-      </h2>
-      <MdList class="mt-3 rounded-corner-medium bg-surface-container-low p-1">
-        <MdListItem
-          v-for="member in references"
-          :key="member"
-          :to="browseLocation(member)"
-        >
-          <template #leading>
-            <BrowserIcon
-              name="folder"
-              class="text-on-surface-variant"
-            />
-          </template>
-          {{ member }}
-        </MdListItem>
-      </MdList>
-      <div
-        v-if="canEditMembers"
-        class="mt-3"
-      >
-        <MdButton
-          variant="tonal"
-          type="button"
-          @click="editMembers"
-        >
-          Edit members
-        </MdButton>
-      </div>
-    </section>
+        <MdList class="rounded-corner-medium bg-surface-container-low p-1">
+          <MdListItem
+            v-for="member in references"
+            :key="member"
+            :to="browseLocation(member)"
+          >
+            <template #leading>
+              <BrowserIcon
+                name="folder"
+                class="text-on-surface-variant"
+              />
+            </template>
+            {{ member }}
+          </MdListItem>
+        </MdList>
+        <div v-if="canEditMembers">
+          <MdButton
+            variant="tonal"
+            type="button"
+            @click="editMembers"
+          >
+            Edit members
+          </MdButton>
+        </div>
+      </MdSection>
+    </div>
     <MdCard
       v-if="!loading && files.error"
       as="section"

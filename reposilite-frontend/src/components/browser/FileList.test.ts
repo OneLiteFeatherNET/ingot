@@ -302,6 +302,16 @@ describe('FileList includes section', () => {
     expect(wrapper.text(), 'the section is named').toContain('Includes')
   })
 
+  it('draws the Includes heading through the shared section at level 2', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'] })
+
+    const section = wrapper.findComponent({ name: 'MdSection' })
+    expect(section.exists(), 'the references sit in an MdSection').toBe(true)
+    expect(section.props('title'), 'the section keeps its title').toBe('Includes')
+    expect(section.props('level'), 'the section stays a level 2 heading').toBe(2)
+    expect(section.find('h2').text(), 'the heading is the section title').toBe('Includes')
+  })
+
   it('shows the references in place of the empty-directory text', () => {
     const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'] })
 

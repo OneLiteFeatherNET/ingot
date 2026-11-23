@@ -187,6 +187,17 @@ describe('SettingsView page', () => {
     expect(wrapper!.get('h2').text()).toBe('Maven')
   })
 
+  it('draws the single domain title through the shared section at level 2', async () => {
+    const store = await loadedStore()
+    store.domains.value = ['maven']
+    await mountSettings({ store })
+
+    const section = wrapper!.findComponent({ name: 'MdSection' })
+    expect(section.exists(), 'the domain title is an MdSection').toBe(true)
+    expect(section.props('title')).toBe('Maven')
+    expect(section.props('level'), 'the section stays a level 2 heading').toBe(2)
+  })
+
   it('does not offer the login domain as a tab, because it is edited under Access', async () => {
     const store = await loadedStore()
     store.domains.value = ['login', 'maven', 'ingot']

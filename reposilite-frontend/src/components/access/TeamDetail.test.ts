@@ -127,6 +127,14 @@ describe('TeamDetail', () => {
         .toEqual(['Everyone who writes code', 'None', '3 (2 added by hand)'])
     })
 
+    it('draws the team name through the shared section at level 2', async () => {
+      await mountDetail('developers')
+
+      const section = wrapper!.findAllComponents({ name: 'MdSection' }).find(candidate => candidate.props('title') === 'developers')
+      expect(section, 'the team name is the title of an MdSection').toBeDefined()
+      expect(section!.props('level'), 'the section stays a level 2 heading').toBe(2)
+    })
+
     it('names the team in the second level heading of the detail', async () => {
       await mountDetail('developers')
 

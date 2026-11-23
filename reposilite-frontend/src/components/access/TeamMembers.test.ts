@@ -87,6 +87,18 @@ describe('TeamDetail members', () => {
     })
   })
 
+  describe('section heading', () => {
+    it('draws the Members heading through the shared section at level 2', () => {
+      const card = wrapper!.find('[data-test="members"]')
+      const section = wrapper!.findAllComponents({ name: 'MdSection' }).find(candidate => card.element.contains(candidate.element as Element))
+
+      expect(section, 'the members card holds an MdSection').toBeDefined()
+      expect(section!.props('title'), 'the section keeps its title').toBe('Members')
+      expect(section!.props('level'), 'the section stays a level 2 heading').toBe(2)
+      expect(section!.find('h2').text()).toBe('Members')
+    })
+  })
+
   describe('rows', () => {
     it('shows every member with the kind of its principal', async () => {
       expect(wrapper!.findAll('[data-test="member"]').map(member => member.find('[data-test="member-name"]').text()))

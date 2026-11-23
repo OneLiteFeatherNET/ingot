@@ -22,6 +22,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdKeyValueList from '../md/MdKeyValueList.vue'
+import MdSection from '../md/MdSection.vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
@@ -245,48 +246,45 @@ const rows = computed(() => detail.value
 
     <template v-else-if="detail">
       <MdCard class="flex flex-col gap-4">
-        <div class="flex flex-wrap items-start justify-between gap-2">
-          <div class="flex min-w-0 flex-col gap-2">
-            <h2 class="m-0 min-w-0 break-words md-title-large text-on-surface">
-              {{ detail.name }}
-            </h2>
-            <div
-              v-if="detail.instanceRole"
-              class="flex flex-wrap items-center gap-2"
-            >
-              <TokenTag
-                accent
-                data-test="admin-badge"
+        <MdSection :title="detail.name">
+          <template #actions>
+            <div class="flex max-w-full flex-wrap items-center gap-2">
+              <router-link
+                v-slot="{ href, navigate }"
+                :to="{ name: 'access-check', query: { principal: detail.name } }"
+                custom
               >
-                Instance admin
-              </TokenTag>
-            </div>
-          </div>
-          <div class="flex max-w-full flex-wrap items-center gap-2">
-            <router-link
-              v-slot="{ href, navigate }"
-              :to="{ name: 'access-check', query: { principal: detail.name } }"
-              custom
-            >
+                <MdButton
+                  variant="tonal"
+                  :href="href"
+                  data-test="check-permission"
+                  @click="navigate"
+                >
+                  Check permission
+                </MdButton>
+              </router-link>
               <MdButton
-                variant="tonal"
-                :href="href"
-                data-test="check-permission"
-                @click="navigate"
+                variant="outlined"
+                error
+                data-test="delete-team"
+                @click="askDelete()"
               >
-                Check permission
+                Delete team
               </MdButton>
-            </router-link>
-            <MdButton
-              variant="outlined"
-              error
-              data-test="delete-team"
-              @click="askDelete()"
+            </div>
+          </template>
+          <div
+            v-if="detail.instanceRole"
+            class="flex flex-wrap items-center gap-2"
+          >
+            <TokenTag
+              accent
+              data-test="admin-badge"
             >
-              Delete team
-            </MdButton>
+              Instance admin
+            </TokenTag>
           </div>
-        </div>
+        </MdSection>
 
         <form
           v-if="editing"

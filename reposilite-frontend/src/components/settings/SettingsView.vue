@@ -25,6 +25,7 @@ import { adminGroups, currentTreeKey, indexRebuildLinkOf, OVERVIEW_TREE_KEY, sec
 import AppTabs from '../tabs/AppTabs.vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdSaveBar from '../md/MdSaveBar.vue'
+import MdSection from '../md/MdSection.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
@@ -139,6 +140,7 @@ const navGroups = computed(() => adminGroups(can, {
 const repositoriesPage = computed(() => route.name === 'settings-repositories')
 const repositoryPage = computed(() => route.name === 'settings-repository')
 const repositoriesRoute = computed(() => repositoriesPage.value || repositoryPage.value)
+const domainTitled = computed(() => tabDomains.value.length <= 1 && !isAccessDomain(activeDomain.value) && !repositoriesRoute.value)
 // One entry of a collection, at /settings/:domain/:collection/:entry, as the props name it. Its page names the entry in the
 // frame heading, as a repository page does, and the list of the collection is its way back.
 const entryPage = computed(() => props.collection !== undefined && props.entry !== undefined)
@@ -489,17 +491,14 @@ watch(
       />
     </template>
     <template v-else-if="activeDomain && canEdit">
-      <div>
-        <h2
-          v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain) && !repositoriesRoute"
-          class="md-title-large text-on-surface"
-        >
-          {{ store.titleOf(activeDomain) }}
-        </h2>
-
+      <component
+        :is="domainTitled ? MdSection : 'div'"
+        v-bind="domainTitled ? { title: store.titleOf(activeDomain) } : {}"
+      >
         <div
           :role="repositoryPage ? undefined : 'tabpanel'"
-          class="mt-6 flex flex-col gap-8"
+          :class="domainTitled ? 'mt-2' : 'mt-6'"
+          class="flex flex-col gap-8"
         >
           <RepositoriesView
             v-if="repositoriesPage"
@@ -570,7 +569,7 @@ watch(
             />
           </template>
         </div>
-      </div>
+      </component>
     </template>
     <MdStatePanel
       v-else-if="!loadError && canEdit"
