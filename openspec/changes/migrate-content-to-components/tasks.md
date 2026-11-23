@@ -157,19 +157,19 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `AdministrationFrame` (icon and text buttons), `SideNavTree` (search input). Visible 48-pixel controls become 40-pixel controls with
   `md-touch-target`: `NodeInheritedSection`, `NodeTemplateMenu`, `AdministrationFrame`, `MdSnackbar`. Verify: the tests of each file pass and
   the Playwright accessibility suite passes at 320 pixels.
-- [ ] 6.8 `fix(ui)`: move the form scaffolding into the shared components: field grids (LdapPanel and the others), fieldsets (CreateTokenDialog,
+- [x] 6.8 `fix(ui)`: move the form scaffolding into the shared components: field grids (LdapPanel and the others), fieldsets (CreateTokenDialog,
   PolicyDialog, SearchFilters), save bars (AuthenticationGroupForm, LdapPanel, UnsavedChangesBar, the `calc` offset of SettingsView). Verify:
   the tests of each file pass.
 - [x] 6.9 `fix(ui)`: split `RepositoryWizard.vue` into `src/components/settings/wizard/` (`WizardStepIndicator`, `WizardChoiceCard` for the
   four copies, `WizardFieldGroup`, `WizardRemoteFields`, `WizardReviewSummary`, `WizardProgressList`). The data flow and the anchor
   `repository-wizard` stay. Verify: `RepositoryWizard.test.js` passes unchanged except for selectors moved to anchors.
-- [ ] 6.10 `fix(ui)`: migrate the six renderers to `useFieldBinding` (`MdTextFieldRenderer`, `MdTextAreaRenderer`, `MdSelectRenderer`,
+- [x] 6.10 `fix(ui)`: migrate the six renderers to `useFieldBinding` (`MdTextFieldRenderer`, `MdTextAreaRenderer`, `MdSelectRenderer`,
   `MdColourFieldRenderer`, `OneOfRenderer`, `TagsFieldRenderer`). Verify: the renderer tests pass and `grep -rn "onInput" src/components/renderers`
   finds the helper only.
 - [ ] 6.11 `fix(ui)`: remove the `<style>` rules of `SettingsView.vue` (read-only inputs and clearance) and move them into the field
   primitives and utilities; drop the `settings-view` and `settings-save-bar` class hooks. The `settings-view` anchor stays in the registry.
   Verify: 3.2 for SettingsView passes, the read-only input is still drawn in the Playwright screenshot.
-- [ ] 6.12 `fix(ui)`: remove the `<style>` rule of `FileUpload.vue` (line 302 of the inventory) after the `vue-upload-component` class is
+- [x] 6.12 `fix(ui)`: remove the `<style>` rule of `FileUpload.vue` (line 302 of the inventory) after the `vue-upload-component` class is
   confirmed in the rendered drop zone by a Playwright snapshot before and after. Verify: the drop zone looks the same in the snapshot.
 - [ ] 6.13 `docs(gitbook)`: regenerate `dashboard-anchors.md` for the new names (`md-field-grid`, `md-fieldset`, `md-save-bar`, the wizard
   parts if they carry names). Verify: `anchors.test.js` passes.
