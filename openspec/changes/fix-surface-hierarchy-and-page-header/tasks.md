@@ -119,10 +119,10 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [ ] 6.2 After the fixes, record the same screenshots and the same contrast table, the bounding-box comparison of the title and the trail
   at 1280 and 1920 pixels, and the high contrast values of `outline` in the `prefers-contrast: more` scheme. Verify: each value of the
   table is at least the value the spec requires.
-- [ ] 6.3 Run `npm test` in `reposilite-frontend` through `heavy`, and the Playwright suites `layout.spec.js`, `navigation.spec.js`,
+- [x] 6.3 Run `npm test` in `reposilite-frontend` through `heavy`, and the Playwright suites `layout.spec.js`, `navigation.spec.js`,
   `accessibility.spec.js`, `browse.spec.js` and `dashboard.spec.js` through `heavy`. Verify: all pass, including the
   `add-ui-style-gate` tests with the baseline entries of the touched files removed and no entry added.
-- [ ] 6.4 Run `openspec validate fix-surface-hierarchy-and-page-header --strict` and the dash grep. Verify: both pass.
+- [x] 6.4 Run `openspec validate fix-surface-hierarchy-and-page-header --strict` and the dash grep. Verify: both pass.
 
 ## 7. Pull request
 
