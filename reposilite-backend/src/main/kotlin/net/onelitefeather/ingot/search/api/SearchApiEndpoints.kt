@@ -66,9 +66,12 @@ import net.onelitefeather.ingot.search.SnapshotFilter
 import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.access.SearchAccessCompiler
 import net.onelitefeather.ingot.search.access.SearchGrantSetTooLargeException
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.SEARCH_BACKEND_RETRY_AFTER_SECONDS
 import net.onelitefeather.ingot.search.backend.SearchBackendState
 import net.onelitefeather.ingot.search.backend.backendUnavailableProblem
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTally
 import net.onelitefeather.ingot.search.application.CancelOutcome
 import net.onelitefeather.ingot.search.application.LastVerifyReport
@@ -167,6 +170,24 @@ internal class SearchApiEndpoints(
                     )
                 }
             }
+        }
+    }
+
+    @OpenApi(
+        tags = ["Search"],
+        path = "/api/maven/search/attributes/facetable",
+        methods = [HttpMethod.GET],
+        summary = "List the attribute keys a search can count",
+        description = "The keys that an artifact enricher declared facetable, each with its label, ordered by key. The list is built from the declarations only: " +
+            "no search backend is asked and no attribute value is read. It is empty when no enricher declares a facetable key.",
+        responses = [
+            OpenApiResponse(status = "200", content = [OpenApiContent(from = FacetableAttributesResponse::class)]),
+            OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
+        ]
+    )
+    private val facetableAttributeKeys = ReposiliteRoute<FacetableAttributesResponse>("/api/maven/search/attributes/facetable", GET) {
+        whenEnabled {
+            response = Result.ok(FacetableAttributesResponse(facetableAttributes(search.attributeCatalogue())))
         }
     }
 
@@ -325,7 +346,7 @@ internal class SearchApiEndpoints(
         }
     }
 
-    override val routes = routes(searchArtifacts, searchFiles, indexStatus, startRebuild, startVerify, cancelRun)
+    override val routes = routes(searchArtifacts, facetableAttributeKeys, searchFiles, indexStatus, startRebuild, startVerify, cancelRun)
 
     /** Runs [block] when search is enabled; otherwise answers 404 without looking at the caller. */
     private fun <R> ContextDsl<R>.whenEnabled(block: () -> Unit) {
@@ -657,3 +678,13 @@ internal data class StartedRunResponse(val runId: Long)
 
 /** The body of a rebuild request. Leaving out [repositories] rebuilds every repository. */
 internal data class RebuildRequest(val repositories: List<String>? = null)
+
+/** One key of the facetable key list: the attribute [key] and the [label] a client shows for it (search attribute facets, D9). */
+internal data class FacetableAttribute(val key: String, val label: String)
+
+internal data class FacetableAttributesResponse(val attributes: List<FacetableAttribute>)
+
+/** The declarations marked facetable, ordered by key. Built from the catalogue only, so it reads no backend and no value. */
+@OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
+internal fun facetableAttributes(catalogue: Collection<AttributeDeclaration>): List<FacetableAttribute> =
+    catalogue.filter { it.facetable }.sortedBy { it.key }.map { FacetableAttribute(it.key, it.label) }
