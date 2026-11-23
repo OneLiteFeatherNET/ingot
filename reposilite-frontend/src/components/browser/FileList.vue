@@ -32,6 +32,7 @@ import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
+import { useRowFade } from '../../composables/useRowFade'
 import { useRouter } from 'vue-router'
 import type { BrowserFile, BrowserPath, DeleteTarget, Listing, ListingFailure } from './listing'
 import type { GlyphName } from './glyphs'
@@ -121,6 +122,12 @@ const displayedEntries = computed<Array<BrowserFile | SkeletonRow>>(() =>
   props.loading
     ? Array.from({ length: skeletonCount.value }, () => ({ __skeleton: true as const }))
     : (props.files.list ?? [])
+)
+
+// Only a file that is added after the listing has loaded fades in; a new listing, a removal or a sort does not.
+const { isAdded } = useRowFade(
+  () => (props.files.list ?? []).map(file => file.name),
+  () => !props.loading
 )
 
 const { client, token, hasPermissionTo } = useSession()
@@ -213,6 +220,7 @@ const entryUrl = (file: BrowserFile) =>
           :action-slots="widestActions"
           :signed-in="signedIn"
           :busy="isDownloading(entry)"
+          :class="{ 'motion-row-enter': isAdded(entry.name) }"
           @download="downloadHandler"
         />
       </template>
