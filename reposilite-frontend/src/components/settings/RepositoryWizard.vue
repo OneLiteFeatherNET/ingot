@@ -26,7 +26,6 @@ import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdDialog from '../md/MdDialog.vue'
 import MdIconButton from '../md/MdIconButton.vue'
-import MdRadio from '../md/MdRadio.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import CopiedIcon from '../icons/CopiedIcon.vue'
@@ -36,6 +35,12 @@ import { idText } from './collections'
 import { ROLES, roleExplanation } from '../access/accessTeams'
 import { createAccessPorts } from './repositoryAccessPorts'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
+import WizardChoiceCard from './wizard/WizardChoiceCard.vue'
+import WizardFieldGroup from './wizard/WizardFieldGroup.vue'
+import WizardProgressList from './wizard/WizardProgressList.vue'
+import WizardRemoteFields from './wizard/WizardRemoteFields.vue'
+import WizardReviewSummary from './wizard/WizardReviewSummary.vue'
+import WizardStepIndicator from './wizard/WizardStepIndicator.vue'
 import {
   ACCESS_MODES,
   MACHINE_SCOPES,
@@ -48,7 +53,6 @@ import {
   createdSoFar,
   emptyDraft,
   emptyRemote,
-  failureNote,
   firstInvalidStep,
   machineNameOf,
   newTeamNameOf,
@@ -64,7 +68,7 @@ import {
   typeLabelOf,
   validateStep
 } from './repositoryWizard'
-import type { ProgressEntry, WizardPorts } from './repositoryWizard'
+import type { ProgressEntry, Remote, WizardPorts } from './repositoryWizard'
 import type { MirrorEntry } from './groupMembers'
 
 /*
@@ -139,9 +143,7 @@ const errorList = computed(() => Object.values(shownErrors.value).filter(message
 const summary = computed(() => summaryRows(draft, entryOptions.value))
 const addRemote = () => draft.upstream.remotes.push(emptyRemote())
 const removeRemote = (index: number) => draft.upstream.remotes.splice(index, 1)
-// The hint of a remote address. It is bound rather than written in the template: the type check of a component's
-// attributes reads the "//" of an address in a plain attribute as the start of a comment, and loses the rest of the template.
-const REMOTE_URL_HINT = 'An http or https address, such as https://repo.example.net/maven.'
+const editRemote = (index: number, field: keyof Remote, value: string) => { draft.upstream.remotes[index][field] = value }
 // The members picker hands back the entries it was given, so each reference is the id of a repository.
 const memberIds = (items: MirrorEntry[]) => items.map(item => item.reference as string)
 const teamOptions = computed(() => [
@@ -252,17 +254,6 @@ const create = async () => {
   if (ok) focusHeading()
 }
 
-const stateText = (key: string) => {
-  const state = progress[key]?.state
-  return state === undefined ? '' : {
-    pending: 'Waiting',
-    running: 'Working',
-    done: 'Done',
-    failed: 'Failed'
-  }[state]
-}
-
-const failureFor = (key: string) => failureNote(key)
 const created = computed(() => (plan.value ? createdSoFar(plan.value.actions, progress) : []))
 
 const snippets = computed(() => {
@@ -343,27 +334,10 @@ const onModalUpdate = (open: boolean) => {
         >
           New repository
         </h2>
-        <ol
-          aria-label="Steps"
-          class="grid gap-2"
-          :style="{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }"
-        >
-          <li
-            v-for="(step, index) in steps"
-            :key="step.key"
-            class="flex min-w-0 flex-col items-center gap-1 text-center"
-            :aria-current="index === stepIndex ? 'step' : undefined"
-          >
-            <span
-              class="flex size-8 items-center justify-center rounded-corner-full md-label-large"
-              :class="index === stepIndex ? 'bg-primary text-on-primary' : index < stepIndex ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-highest text-on-surface-variant'"
-            >{{ index + 1 }}</span>
-            <span
-              class="max-w-full truncate md-label-medium"
-              :class="index === stepIndex ? 'text-on-surface' : 'text-on-surface-variant'"
-            >{{ step.label }}</span>
-          </li>
-        </ol>
+        <WizardStepIndicator
+          :steps="steps"
+          :step-index="stepIndex"
+        />
         <!-- The step title carries data-autofocus, so the dialog frame focuses it on open: Escape reaches the dialog and the step is announced. -->
         <h3
           id="wizard-step-title"
@@ -403,28 +377,19 @@ const onModalUpdate = (open: boolean) => {
           v-if="stepKey === 'type'"
           class="flex flex-col gap-6"
         >
-          <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 md-title-small text-on-surface">
-              What kind of repository this is
-            </legend>
-            <MdRadio
+          <WizardFieldGroup legend="What kind of repository this is">
+            <WizardChoiceCard
               v-for="choice in TYPE_CHOICES"
               :id="`wizard-type-${choice.value.toLowerCase()}`"
               :key="choice.value"
               name="repository-type"
               :value="choice.value"
               :model-value="draft.type"
-              card
-              class="rounded-corner-medium border p-3"
-              :class="draft.type === choice.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
+              :label="choice.label"
+              :who="choice.who"
               @update:model-value="chooseType(draft, $event)"
-            >
-              <span class="flex min-w-0 flex-col gap-0.5">
-                <span class="md-title-small">{{ choice.label }}</span>
-                <span class="md-body-medium">{{ choice.who }}</span>
-              </span>
-            </MdRadio>
-          </fieldset>
+            />
+          </WizardFieldGroup>
         </div>
 
         <!-- Basics -->
@@ -466,26 +431,17 @@ const onModalUpdate = (open: boolean) => {
           v-else-if="stepKey === 'storage'"
           class="flex flex-col gap-6"
         >
-          <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 md-title-small text-on-surface">
-              {{ draft.type === 'PROXY' ? 'Where the cached files are kept' : 'Where the files are kept' }}
-            </legend>
-            <MdRadio
+          <WizardFieldGroup :legend="draft.type === 'PROXY' ? 'Where the cached files are kept' : 'Where the files are kept'">
+            <WizardChoiceCard
               v-for="option in storageVariants"
               :key="option.value"
               v-model="draft.storage.kind"
               name="storage-kind"
               :value="option.value"
-              card
-              class="rounded-corner-medium border p-3"
-              :class="draft.storage.kind === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
-            >
-              <span class="flex min-w-0 flex-col gap-0.5">
-                <span class="md-title-small">{{ option.label }}</span>
-                <span class="md-body-medium">{{ option.who }}</span>
-              </span>
-            </MdRadio>
-          </fieldset>
+              :label="option.label"
+              :who="option.who"
+            />
+          </WizardFieldGroup>
 
           <MdTextField
             v-if="draft.storage.kind === 'fs'"
@@ -580,57 +536,16 @@ const onModalUpdate = (open: boolean) => {
             <p class="md-body-medium text-on-surface-variant">
               The files are fetched from these addresses. Add a login only when a remote needs one.
             </p>
-            <div
+            <WizardRemoteFields
               v-for="(remote, index) in draft.upstream.remotes"
               :key="index"
-              class="flex flex-col gap-4 rounded-corner-medium bg-surface-container p-4"
-            >
-              <MdTextField
-                :id="`wizard-remote-url-${index}`"
-                :model-value="remote.url"
-                :label="`Address ${index + 1}`"
-                variant="outlined"
-                autocomplete="off"
-                inputmode="url"
-                :supporting-text="REMOTE_URL_HINT"
-                :error="Boolean(shownErrors[`remote${index}`])"
-                :error-text="shownErrors[`remote${index}`] ?? ''"
-                @update:model-value="remote.url = $event"
-              />
-              <MdTextField
-                :id="`wizard-remote-login-${index}`"
-                :model-value="remote.login"
-                :label="`Login ${index + 1}`"
-                variant="outlined"
-                autocomplete="off"
-                supporting-text="Optional. The remote's user name."
-                :error="Boolean(shownErrors[`login${index}`])"
-                :error-text="shownErrors[`login${index}`] ?? ''"
-                @update:model-value="remote.login = $event"
-              />
-              <MdTextField
-                :id="`wizard-remote-password-${index}`"
-                :model-value="remote.password"
-                :label="`Password ${index + 1}`"
-                type="password"
-                variant="outlined"
-                autocomplete="new-password"
-                supporting-text="Optional. Masked here and in the settings."
-                :error="Boolean(shownErrors[`password${index}`])"
-                :error-text="shownErrors[`password${index}`] ?? ''"
-                @update:model-value="remote.password = $event"
-              />
-              <div v-if="draft.upstream.remotes.length > 1">
-                <MdButton
-                  variant="text"
-                  type="button"
-                  :aria-label="`Remove address ${index + 1}`"
-                  @click="removeRemote(index)"
-                >
-                  Remove
-                </MdButton>
-              </div>
-            </div>
+              :remote="remote"
+              :index="index"
+              :errors="shownErrors"
+              :removable="draft.upstream.remotes.length > 1"
+              @edit="(field, value) => editRemote(index, field, value)"
+              @remove="removeRemote(index)"
+            />
             <MdAlert
               v-if="shownErrors.remote0 && draft.upstream.remotes.length === 0"
               tone="error"
@@ -727,52 +642,34 @@ const onModalUpdate = (open: boolean) => {
           v-else-if="stepKey === 'access'"
           class="flex flex-col gap-6"
         >
-          <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 md-title-small text-on-surface">
-              Who can read it
-            </legend>
-            <MdRadio
+          <WizardFieldGroup legend="Who can read it">
+            <WizardChoiceCard
               v-for="option in VISIBILITY_OPTIONS"
               :key="option.value"
               v-model="draft.basics.visibility"
               name="visibility"
               :value="option.value"
-              card
-              class="rounded-corner-medium border p-3"
-              :class="draft.basics.visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
-            >
-              <span class="flex min-w-0 flex-col gap-0.5">
-                <span class="md-title-small">{{ option.label }}</span>
-                <span class="md-body-medium">{{ option.who }}</span>
-              </span>
-            </MdRadio>
+              :label="option.label"
+              :who="option.who"
+            />
             <p
               v-if="shownErrors.visibility"
               class="md-body-small text-error"
             >
               {{ shownErrors.visibility }}
             </p>
-          </fieldset>
-          <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 md-title-small text-on-surface">
-              Who gets access to this repository
-            </legend>
-            <MdRadio
+          </WizardFieldGroup>
+          <WizardFieldGroup legend="Who gets access to this repository">
+            <WizardChoiceCard
               v-for="option in ACCESS_MODES"
               :key="option.value"
               v-model="draft.access.mode"
               name="access-mode"
               :value="option.value"
-              card
-              class="rounded-corner-medium border p-3"
-              :class="draft.access.mode === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
-            >
-              <span class="flex min-w-0 flex-col gap-0.5">
-                <span class="md-title-small">{{ option.label }}</span>
-                <span class="md-body-medium">{{ option.who }}</span>
-              </span>
-            </MdRadio>
-          </fieldset>
+              :label="option.label"
+              :who="option.who"
+            />
+          </WizardFieldGroup>
 
           <MdAlert
             v-if="accessLoadError"
@@ -870,20 +767,7 @@ const onModalUpdate = (open: boolean) => {
           class="flex flex-col gap-6"
         >
           <template v-if="!succeeded">
-            <dl class="flex flex-col gap-3 rounded-corner-medium bg-surface-container p-4">
-              <div
-                v-for="row in summary"
-                :key="row.label"
-                class="flex flex-col gap-0.5"
-              >
-                <dt class="md-label-large text-on-surface-variant">
-                  {{ row.label }}
-                </dt>
-                <dd class="m-0 break-words md-body-large text-on-surface">
-                  {{ row.value }}
-                </dd>
-              </div>
-            </dl>
+            <WizardReviewSummary :rows="summary" />
 
             <p
               v-if="unsavedNote && !plan"
@@ -914,61 +798,14 @@ const onModalUpdate = (open: boolean) => {
               </ol>
             </section>
 
-            <ol
+            <WizardProgressList
               v-else
-              aria-label="Progress"
-              class="flex flex-col gap-3"
-            >
-              <li
-                v-for="action in plan.actions"
-                :key="action.key"
-                class="flex flex-col gap-1 rounded-corner-medium bg-surface-container p-4"
-                :data-step="action.key"
-                :data-state="progress[action.key].state"
-              >
-                <span class="md-title-small text-on-surface">{{ action.label }}</span>
-                <span class="md-body-medium text-on-surface-variant">{{ stateText(action.key) }}</span>
-                <template v-if="progress[action.key].state === 'failed'">
-                  <MdAlert
-                    data-test="step-failure"
-                    tone="error"
-                  >
-                    {{ failureFor(action.key) }}
-                  </MdAlert>
-                  <p class="md-body-small text-on-surface-variant break-words">
-                    {{ progress[action.key].error }}
-                  </p>
-                  <div
-                    v-if="created.length > 0"
-                    data-test="created"
-                    class="flex flex-col gap-1"
-                  >
-                    <p class="md-label-large text-on-surface">
-                      Created so far
-                    </p>
-                    <ul class="m-0 flex list-disc flex-col gap-0.5 pl-5 md-body-small text-on-surface-variant">
-                      <li
-                        v-for="line in created"
-                        :key="line"
-                      >
-                        {{ line }}
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <MdButton
-                      data-test="retry"
-                      variant="tonal"
-                      type="button"
-                      :disabled="running"
-                      @click="create"
-                    >
-                      Retry this step
-                    </MdButton>
-                  </div>
-                </template>
-              </li>
-            </ol>
+              :actions="plan.actions"
+              :progress="progress"
+              :created="created"
+              :running="running"
+              @retry="create"
+            />
           </template>
 
           <!-- Success: the one-time secret, and the snippets that use the repository -->
