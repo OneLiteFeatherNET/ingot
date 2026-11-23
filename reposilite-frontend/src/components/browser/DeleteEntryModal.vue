@@ -97,7 +97,7 @@ const scope = computed(() =>
           :id="bodyId"
           class="mt-4 md-body-medium text-on-surface-variant"
         >
-          <p class="break-all font-mono text-on-surface">
+          <p class="break-all md-code-medium text-on-surface">
             {{ fullPath }}
           </p>
           <p class="mt-2">

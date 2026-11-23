@@ -27,7 +27,6 @@ const PENDING: readonly string[] = Object.freeze([
   'src/components/account/SecondFactorsCard.vue',
   'src/components/audit/AuditEventRow.vue',
   'src/components/browser/AdjustmentsModal.vue',
-  'src/components/browser/DeleteEntryModal.vue',
   'src/components/browser/FileUpload.vue',
   'src/components/dashboard/FailuresSheet.vue',
   'src/components/identity/SecretOnceDialog.vue',
