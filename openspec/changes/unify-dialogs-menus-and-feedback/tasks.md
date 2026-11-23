@@ -169,7 +169,7 @@ here.
 - [ ] 8.2 Take before and after screenshots with Playwright at 320, 390, 600, 1280 and 1440 pixels, light and dark, of each dialog
   family (identity, access, maintenance, settings, migration, login), one menu, one combobox and each state panel (error, loading,
   empty). Verify: all sets are present, and they are attached to the pull request, not committed.
-- [ ] 8.3 Run `openspec validate unify-dialogs-menus-and-feedback --strict` and the dash grep over this change. Verify: both pass.
+- [x] 8.3 Run `openspec validate unify-dialogs-menus-and-feedback --strict` and the dash grep over this change. Verify: both pass.
 
 
 ## 9. Pull request
