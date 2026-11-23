@@ -329,6 +329,15 @@ describe('CheckPermissionView', () => {
         .toEqual(['User', 'alice', NODE, '0'])
     })
 
+    it('draws the summary in the shared key value list', async () => {
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      const list = wrapper.find('[data-test="summary"]')
+
+      expect(list.classes(), 'the summary is the one grid of the key value component').toContain('grid-cols-2')
+      expect(list.findAll('dt').map(term => term.text())).toEqual(['Source', 'Subject', 'Node', 'Depth', 'Deciding node', 'Kind'])
+    })
+
     it('shows None for the facts a default decision does not have', async () => {
       identity.check.mockResolvedValue({ data: DENIED })
 

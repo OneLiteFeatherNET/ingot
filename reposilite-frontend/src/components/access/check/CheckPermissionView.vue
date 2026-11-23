@@ -23,6 +23,7 @@ import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
 import MdCard from '../../md/MdCard.vue'
 import MdIcon from '../../md/MdIcon.vue'
+import MdKeyValueList from '../../md/MdKeyValueList.vue'
 import MdSelect from '../../md/MdSelect.vue'
 import MdStatePanel from '../../md/MdStatePanel.vue'
 import SegmentedControl from '../../tokens/SegmentedControl.vue'
@@ -173,6 +174,14 @@ const tokenOptions = computed(() => {
 const steps = computed(() => traceSteps(result.value?.trace))
 const summary = computed(() => decisionSummary(result.value?.decision))
 const summaryKind = computed(() => kindLabel(summary.value.decidingKind))
+const summaryItems = computed(() => [
+  { label: 'Source', value: summary.value.sourceLabel, testId: 'summary-source' },
+  { label: 'Subject', value: summary.value.subject ?? 'None', testId: 'summary-subject' },
+  { label: 'Node', value: summary.value.node ?? 'None', testId: 'summary-node', mono: true },
+  { label: 'Depth', value: String(summary.value.depth ?? 'None'), testId: 'summary-depth' },
+  { label: 'Deciding node', value: summary.value.decidingNode ?? 'None', testId: 'summary-deciding-node', mono: true },
+  { label: 'Kind', value: summaryKind.value, testId: 'summary-deciding-kind' }
+])
 const allowed = computed(() => result.value?.allowed === true)
 
 const loadPrincipals = async () => {
@@ -603,65 +612,11 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
         </div>
       </div>
 
-      <dl
-        class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-corner-large bg-surface-container-low px-4 py-4 md-body-medium"
+      <MdKeyValueList
+        class="rounded-corner-large bg-surface-container-low p-4"
         data-test="summary"
-      >
-        <dt class="text-on-surface-variant">
-          Source
-        </dt>
-        <dd
-          class="m-0 text-on-surface"
-          data-test="summary-source"
-        >
-          {{ summary.sourceLabel }}
-        </dd>
-        <dt class="text-on-surface-variant">
-          Subject
-        </dt>
-        <dd
-          class="m-0 break-words text-on-surface"
-          data-test="summary-subject"
-        >
-          {{ summary.subject ?? 'None' }}
-        </dd>
-        <dt class="text-on-surface-variant">
-          Node
-        </dt>
-        <dd
-          class="m-0 break-all font-mono text-on-surface"
-          data-test="summary-node"
-        >
-          {{ summary.node ?? 'None' }}
-        </dd>
-        <dt class="text-on-surface-variant">
-          Depth
-        </dt>
-        <dd
-          class="m-0 text-on-surface"
-          data-test="summary-depth"
-        >
-          {{ summary.depth ?? 'None' }}
-        </dd>
-        <dt class="text-on-surface-variant">
-          Deciding node
-        </dt>
-        <dd
-          class="m-0 break-all font-mono text-on-surface"
-          data-test="summary-deciding-node"
-        >
-          {{ summary.decidingNode ?? 'None' }}
-        </dd>
-        <dt class="text-on-surface-variant">
-          Kind
-        </dt>
-        <dd
-          class="m-0 text-on-surface"
-          data-test="summary-deciding-kind"
-        >
-          {{ summaryKind }}
-        </dd>
-      </dl>
+        :items="summaryItems"
+      />
       <p
         v-if="summary.explanation"
         class="m-0 md-body-large text-on-surface"

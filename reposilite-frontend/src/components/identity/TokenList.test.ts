@@ -113,6 +113,15 @@ describe('TokenList', () => {
       expect(text).toContain('2027-01-02')
     })
 
+    it('draws the dates in the shared key value list', async () => {
+      await mountList()
+
+      const list = rows(wrapper)[0].find('dl')
+
+      expect(list.classes(), 'the list is the one grid of the key value component').toContain('grid-cols-2')
+      expect(list.findAll('dt').map(term => term.text())).toEqual(['Created', 'Expires', 'Last used'])
+    })
+
     it('shows the last use as a relative time with the exact time in a tooltip', async () => {
       await mountList()
 
