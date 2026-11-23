@@ -69,7 +69,7 @@ defineExpose({
       <input
         ref="input"
         type="search"
-        class="md-embedded-input min-w-0 flex-1 md-body-large text-on-surface placeholder:text-on-surface-variant [&::-webkit-search-cancel-button]:hidden"
+        class="md-embedded-input min-w-0 flex-1 md-body-large text-on-surface placeholder:text-on-surface-variant search-cancel-none"
         :aria-label="label"
         :placeholder="label"
         autocomplete="off"

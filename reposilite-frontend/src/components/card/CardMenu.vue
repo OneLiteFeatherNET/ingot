@@ -67,7 +67,7 @@ const indicator = useTabIndicator(
 <template>
   <div
     id="card-menu"
-    class="-mx-2 overflow-x-auto border-b border-outline-variant [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    class="-mx-2 overflow-x-auto border-b border-outline-variant scrollbar-hidden"
     data-ingot-component="card-menu"
   >
     <div class="relative flex flex-nowrap">

@@ -284,6 +284,15 @@
 }
 
 /*
+ * Hides the clear button the browser draws inside a search input, for a field that offers its own.
+ */
+@utility search-cancel-none {
+  &::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
+/*
  * A thin scrollbar for a block that scrolls sideways, such as a code sample: a six pixel bar in the outline variant
  * colour on a transparent track. Only an element that opts in gets it; every other scrollbar is the browser default.
  */
