@@ -83,6 +83,41 @@ describe('table block', () => {
   })
 })
 
+describe('table block on the shared data table', () => {
+  const mountTable = async (label?: string) => {
+    http.get.mockResolvedValue({ data: [{ name: 'alpha', size: '3' }] })
+    const wrapper = mountBlock({
+      type: 'table',
+      label,
+      source: '/api/plugins/example/items',
+      columns: [{ key: 'name', label: 'Name' }, { key: 'size', label: 'Size' }],
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  it('names the table by its block title in a caption that only screen readers see', async () => {
+    const wrapper = await mountTable('Installed items')
+
+    const caption = wrapper.find('caption')
+    expect(caption.text()).toBe('Installed items')
+    expect(caption.classes(), 'the caption is visually hidden').toContain('sr-only')
+  })
+
+  it('names a table without a title after its plugin', async () => {
+    const wrapper = await mountTable()
+
+    expect(wrapper.find('caption').text()).toBe('example table')
+  })
+
+  it('makes the first column the row header of each row', async () => {
+    const wrapper = await mountTable('Installed items')
+
+    expect(wrapper.find('tbody th[scope="row"]').text()).toBe('alpha')
+    expect(wrapper.findAll('tbody td').map(cell => cell.text())).toEqual(['3'])
+  })
+})
+
 describe('action block', () => {
   it('asks for the confirm text before it sends anything', async () => {
     http.request.mockResolvedValue({ data: {} })
