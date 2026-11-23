@@ -62,8 +62,9 @@ Pull request: `test(load): add the remaining function scenarios`
   credential cache can be read per scheme.
 - [x] 3.5 Add `loadtest/scenarios/search-browse.ts` (search API and directory listings) and `loadtest/scenarios/dashboard.ts` (login and
   repository list).
-- [ ] 3.6 Extend `loadtest/scenarios/mix.ts` to all eight function scenarios with the weights of group 2. Test: the weights sum to 1 and
-  every scenario is in the mix.
+- [x] 3.6 Extend `loadtest/scenarios/mix.ts` to the seven function scenarios other than `mirror`, with placeholder weights that the
+  maintainer sets. Test: the weights sum to 1 and every scenario present is in the mix. `mirror` joins the mix only after its live check
+  (task 5.3) passes, as stated in 3.3.
 - [x] 3.7 Open the pull request `test(load): add the remaining function scenarios` on the branch of 2.5, with the template filled.
   Verify with `gh pr view --json title,body,files`.
 
