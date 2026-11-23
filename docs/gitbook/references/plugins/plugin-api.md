@@ -407,6 +407,7 @@ The page opens at `/settings/plugins/<plugin>/<page>` and is listed in the menu 
 | `group` | `Repository`, `Security`, `System` or `Support`. Default `System`. |
 | `area` | The admin area that opens the page: `settings`, `users`, `teams`, `tokens`, `maintenance`, `audit`, `console` or `dashboard`, or `*` for the full instance administrator. |
 | `blocks` | 1 to 30 blocks, drawn in order. |
+| `motion` | Optional. `route` (the default) or `none`. The dashboard moves a page in with the same transition as its own pages; `none` swaps the page at once, and focus still moves to its heading. An absent or unknown value is `route`. The dashboard reads the field. The server change `add-plugin-page-motion-option` adds it to `PluginUiPage`, so the server does not accept it yet. |
 
 The value of `group` stays the same, and the dashboard shows each group under the heading in this table. A page declared with `Security` is therefore listed under **Access**, and one declared with `Support` under **Monitoring and support**. A value outside the four is refused by the server.
 

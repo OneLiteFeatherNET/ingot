@@ -51,6 +51,8 @@ Every component of the dashboard carries a stable name in the DOM. The names are
 
 A name marked `stable` is part of the contract. It keeps working across minor releases, and when it is renamed the old name stays for one minor release as `data-ingot-component-alias`. A name marked `experimental` may change in any release. Build against `stable` names first.
 
+The dashboard animates page changes, menus and dialogs, and those transitions add no element and keep every name on the element it was on, so a selector keeps matching. A plugin page takes the same page transition as the dashboard's own pages. A page descriptor may carry the optional `motion` field: `route` (the default) uses the transition, and `none` swaps the page at once while focus still moves to its heading. The field is read by the dashboard and is written by the server change `add-plugin-page-motion-option`. Reduced motion makes every transition instant. See [Page fields](../../references/plugins/plugin-api.md#page-fields).
+
 The names do not change how anything looks or behaves. They are there so that a stylesheet, a test or a tool can find a part of the dashboard without depending on its utility classes, which change with every restyle.
 
 ## Ship a stylesheet
