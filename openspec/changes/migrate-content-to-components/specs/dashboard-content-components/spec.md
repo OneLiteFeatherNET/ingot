@@ -103,6 +103,11 @@ list of the dashboard.
 - **WHEN** the page of a link row is open
 - **THEN** the link row is drawn by `MdListItem` as a link and carries `aria-current="page"`
 
+#### Scenario: Selection row in the settings entry list
+
+- **WHEN** an entry of the settings entry list is selected
+- **THEN** its row is drawn by `MdListItem` with a selection button (not a link) and carries `aria-current="true"`
+
 ### Requirement: Key and value pairs and status labels use one component each
 
 A list of label and value pairs SHALL be drawn by `MdKeyValueList`, and a status label SHALL be drawn by `MdBadge`. A view SHALL NOT
