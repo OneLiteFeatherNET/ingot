@@ -236,7 +236,7 @@ Tests select by `data-test` or by the anchor name, never by a utility class. New
 - `MdDataTable.sort.test.js`: the pure `sortRows` function, with plain arrays, both directions and a stable order for equal keys.
 - `MdDataTable.test.js`: `aria-sort` on the sorted header only, the button inside the header, and the hidden class per priority.
 - `MdListItem.test.js` and `MdList.test.js`: `aria-current` on the selected row only, one selected key for the list.
-- `MdDisclosure.test.js`: `aria-expanded` toggles, the content is hidden while collapsed, and the control keeps focus.
+- `MdDisclosure.test.js`: the native `<details>` `open` attribute toggles (no `aria-expanded`), the content is hidden while collapsed, and the summary keeps focus.
 - `MdCard.test.js` (extended): `padding="none"` removes the padding.
 - `useFieldBinding.test.js`: the mapping from JSON Forms props to primitive props, with plain input.
 - `breakpoints.test.js`: the theme names and the `initial` reset, read from `style.css` source.

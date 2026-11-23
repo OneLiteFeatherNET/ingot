@@ -69,8 +69,9 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 4.2 `test(ui)`: in `src/components/access/PrincipalsPanel.test.js` and `TeamsPanel.test.js`, assert that exactly one row is selected
   for the route, and that the selection is computed once (a spy on the selection function counts one call per render). Verify: it fails
   on the four copies.
-- [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js` and `EntryList.test.js`, assert that each link row is an `MdListItem` drawn as a link
-  (stretched link) with `aria-current="page"` when its route is open. Verify: it fails.
+- [ ] 4.3 `test(ui)`: in `DetailedListEntry.test.js`, assert that each link row is an `MdListItem` drawn as a link
+  (stretched link) with `aria-current="page"` when its route is open; in `EntryList.test.js`, assert that each row is an `MdListItem`
+  whose stretched control is a selection button (not a link) with `aria-current="true"` on the selected entry only. Verify: it fails.
 - [x] 4.4 `fix(ui)`: set `aria-current` and the 56 and 48 pixel row heights on the catalogue's `MdListItem`, and draw the divider
   of `MdList` with `divide-y`. Verify: 4.1 passes.
 - [x] 4.5 `fix(ui)`: migrate selectable rows (TeamsPanel, PrincipalsPanel, EntryList, AddMemberDialog) to `MdList` and `MdListItem`,
@@ -88,8 +89,8 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   (SsoProvidersPanel, NodeInheritedSection, InstanceStatusPanel, SearchResultRow, RepositoryOverview, SettingsReviewSheet, TypeBadge) to
   `MdBadge`; `TokenTag` and `RepositoryTypeBadge` wrap `MdBadge` and keep their anchors, unless the catalogue change already did so
   (its task 3.16). Verify: the tests of each file pass.
-- [ ] 4.9 `test(ui)`: in `src/components/md/MdDisclosure.test.js`, assert that `aria-expanded` toggles, the content is hidden while
-  collapsed, and focus stays on the control. Verify: it fails before 4.8 is applied to `RunHistory`, then passes.
+- [ ] 4.9 `test(ui)`: in `src/components/md/MdDisclosure.test.js`, assert that the disclosure is a native `<details>`, so its `open`
+  attribute toggles (no `aria-expanded`, the semantics are native), the content is hidden while collapsed, and focus stays on the summary. Verify: it fails before 4.8 is applied to `RunHistory`, then passes.
 - [x] 4.10 `fix(ui)`: drop the redundant `m-0`, `p-0` and `list-none` resets (TeamsPanel and the ten siblings), and replace
   `[overflow-wrap:anywhere]` with `break-words` or `break-all` on the identifier element (TeamsPanel, TeamMembersCard, TeamParentsCard,
   TeamLegacyGrants, AddMemberDialog, PrincipalsPanel, NodeInheritedSection, MdChipInput, EntryList, RepositoryWizard). Verify: no
