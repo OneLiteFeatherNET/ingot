@@ -20,6 +20,7 @@
 import { computed, inject, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdDataTable from '../md/MdDataTable.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { formatBytes, countLabel } from '../maintenance/format'
@@ -47,6 +48,35 @@ const discovered = computed(() => wizard.state.discovery as DiscoveredNexus | nu
 const repositories = computed<DiscoveredRepository[]>(() => discovered.value?.repositories ?? [])
 const formats = computed(() => Object.entries(discovered.value?.formats ?? {})
   .map(([format, totals]) => ({ format, ...totals })))
+
+const REPOSITORY_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'format', label: 'Format' },
+  { key: 'type', label: 'Type' },
+  { key: 'components', label: 'Components' },
+  { key: 'size', label: 'Size' },
+  { key: 'status', label: 'Status' },
+]
+const FORMAT_COLUMNS = [
+  { key: 'format', label: 'Format' },
+  { key: 'repositories', label: 'Repositories' },
+  { key: 'components', label: 'Components' },
+  { key: 'size', label: 'Size' },
+]
+const repositoryRows = computed(() => repositories.value.map(repository => ({
+  name: repository.name,
+  format: repository.format,
+  type: repository.type,
+  components: repository.components,
+  size: formatBytes(repository.bytes),
+  status: repository.supported ? 'Can be imported' : 'Excluded: the format is not supported',
+})))
+const formatRows = computed(() => formats.value.map(entry => ({
+  format: entry.format,
+  repositories: countLabel(entry.repositories, 'repository'),
+  components: entry.components,
+  size: formatBytes(entry.bytes),
+})))
 
 const submit = async () => {
   if (!connection.value) return
@@ -134,142 +164,19 @@ const submit = async () => {
     </form>
 
     <template v-if="wizard.state.discovery">
-      <table
+      <MdDataTable
         data-test="repositories"
-        class="w-full text-left md-body-medium"
-      >
-        <caption class="md-title-small pb-2 text-left text-on-surface">
-          Repositories in Nexus
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Name
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Format
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Type
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Components
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Size
-            </th>
-            <th
-              scope="col"
-              class="py-2"
-            >
-              Status
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="repository in repositories"
-            :key="repository.name"
-          >
-            <th
-              scope="row"
-              class="py-2 pr-4 font-normal"
-            >
-              {{ repository.name }}
-            </th>
-            <td class="py-2 pr-4">
-              {{ repository.format }}
-            </td>
-            <td class="py-2 pr-4">
-              {{ repository.type }}
-            </td>
-            <td class="py-2 pr-4">
-              {{ repository.components }}
-            </td>
-            <td class="py-2 pr-4">
-              {{ formatBytes(repository.bytes) }}
-            </td>
-            <td class="py-2">
-              <span v-if="repository.supported">Can be imported</span>
-              <span v-else>Excluded: the format is not supported</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        caption="Repositories in Nexus"
+        :columns="REPOSITORY_COLUMNS"
+        :rows="repositoryRows"
+      />
 
-      <table
+      <MdDataTable
         data-test="formats"
-        class="w-full text-left md-body-medium"
-      >
-        <caption class="md-title-small pb-2 text-left text-on-surface">
-          Formats
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Format
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Repositories
-            </th>
-            <th
-              scope="col"
-              class="py-2 pr-4"
-            >
-              Components
-            </th>
-            <th
-              scope="col"
-              class="py-2"
-            >
-              Size
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="entry in formats"
-            :key="entry.format"
-          >
-            <th
-              scope="row"
-              class="py-2 pr-4 font-normal"
-            >
-              {{ entry.format }}
-            </th>
-            <td class="py-2 pr-4">
-              {{ countLabel(entry.repositories, 'repository') }}
-            </td>
-            <td class="py-2 pr-4">
-              {{ entry.components }}
-            </td>
-            <td class="py-2">
-              {{ formatBytes(entry.bytes) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        caption="Formats"
+        :columns="FORMAT_COLUMNS"
+        :rows="formatRows"
+      />
     </template>
   </section>
 </template>
