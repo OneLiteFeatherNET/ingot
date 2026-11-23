@@ -23,8 +23,14 @@ import { setClock, resetClock } from '../../helpers/clock'
 import type { PrincipalKind } from './accessPrincipals'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
+import { selectedKey } from './rowSelection'
 
 // The API sends an Instant as epoch seconds: the fixtures carry the same number.
+vi.mock('./rowSelection', async importOriginal => {
+  const actual = await importOriginal<typeof import('./rowSelection')>()
+  return { ...actual, selectedKey: vi.fn(actual.selectedKey) }
+})
+
 const wireInstant = (iso: string) => Date.parse(iso) / 1000
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
@@ -217,6 +223,15 @@ describe('PrincipalsPanel', () => {
       expect(current[0].element.tagName, 'the link carries the state, so it is announced with the link').toBe('A')
       expect(current[0].attributes('aria-current'), 'the open user is the current item').toBe('true')
       expect(current[0].find('[data-test="username"]').text(), 'the current link is the open user').toBe('alice')
+    })
+
+    it('asks for the selected row once per render of the list', async () => {
+      await mountPanel({ kind: 'USER', name: 'alice' }, '/access/users/alice')
+      vi.mocked(selectedKey).mockClear()
+
+      await wrapper!.find('[data-test="search"]').setValue('a')
+
+      expect(selectedKey, 'one answer per render, whatever the number of rows').toHaveBeenCalledTimes(1)
     })
 
     it('draws the selected container on the row of the open user only', async () => {
