@@ -105,7 +105,7 @@ const submit = async () => {
     </h2>
     <p class="mt-2 md-body-large text-on-surface-variant">
       Set a new password for
-      <span class="font-medium text-on-surface">{{ principal?.name }}</span>.
+      <span class="font-(weight:--md-sys-typescale-label-large-weight) text-on-surface">{{ principal?.name }}</span>.
       They must change it the next time they sign in.
     </p>
 

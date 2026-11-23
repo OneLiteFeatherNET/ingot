@@ -352,7 +352,7 @@ onMounted(() => {
           >
             <th
               scope="row"
-              class="py-2 pr-4 font-normal"
+              class="py-2 pr-4 font-(weight:--md-sys-typescale-body-medium-weight)"
             >
               {{ repository.nexusName }}
             </th>
@@ -406,7 +406,7 @@ onMounted(() => {
             </td>
             <th
               scope="row"
-              class="py-2 pr-4 font-normal"
+              class="py-2 pr-4 font-(weight:--md-sys-typescale-body-medium-weight)"
             >
               {{ conflict.path }}
             </th>
