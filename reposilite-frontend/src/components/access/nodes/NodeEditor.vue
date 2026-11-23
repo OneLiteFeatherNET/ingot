@@ -219,7 +219,7 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
 
       <div
         v-if="nodes.length > 0"
-        class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+        class="flex flex-col gap-3 medium:flex-row medium:items-start medium:justify-between"
       >
         <MdTextField
           v-model="query"
@@ -228,12 +228,12 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
           type="search"
           autocomplete="off"
           spellcheck="false"
-          class="sm:max-w-sm"
+          class="medium:max-w-sm"
         />
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div class="flex flex-col gap-3 medium:flex-row medium:items-start">
           <div
             v-if="!readonly"
-            class="w-full sm:w-56"
+            class="w-full medium:w-56"
           >
             <SegmentedControl label="Filter by state">
               <SegmentedOption
@@ -259,7 +259,7 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
               </SegmentedOption>
             </SegmentedControl>
           </div>
-          <div class="w-full sm:w-48">
+          <div class="w-full medium:w-48">
             <SegmentedControl label="View">
               <SegmentedOption
                 :on="view === 'list'"

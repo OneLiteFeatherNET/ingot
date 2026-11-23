@@ -280,7 +280,7 @@ onBeforeUnmount(stopPolling)
               data-state
             >{{ stateLabel }}</span>
           </p>
-          <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 md-body-medium">
+          <dl class="grid grid-cols-1 gap-x-6 gap-y-3 medium:grid-cols-2 md-body-medium">
             <div class="flex flex-col">
               <dt class="text-on-surface-variant">
                 Lag behind storage
@@ -433,7 +433,7 @@ onBeforeUnmount(stopPolling)
             Latest runs
           </h3>
           <ul
-            class="grid gap-3 sm:grid-cols-2"
+            class="grid gap-3 medium:grid-cols-2"
             aria-label="Latest index runs"
           >
             <MdCard
