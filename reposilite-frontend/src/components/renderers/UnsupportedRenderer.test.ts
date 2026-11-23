@@ -56,4 +56,13 @@ describe('unsupported schema fallback', () => {
     expect(wrapper.find('input').element.value).toBe('value')
     expect(wrapper.text()).not.toContain(FALLBACK)
   })
+
+  it('draws the fallback as a list row of the shared list, with no inset of its own', () => {
+    const wrapper = mountField({ type: 'null' })
+
+    const row = wrapper.find('[data-test="unsupported-field"]')
+    expect(row.element.tagName, 'the fallback is a list item').toBe('LI')
+    expect(row.element.closest('ul'), 'the row sits in a list').not.toBeNull()
+    expect(row.classes(), 'no hand-written inset on the row').not.toContain('pl-4')
+  })
 })

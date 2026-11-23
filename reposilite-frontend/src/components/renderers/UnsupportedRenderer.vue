@@ -15,18 +15,18 @@
   -->
 
 <template>
-  <div
+  <MdList
     v-if="control.visible"
-    class="flex min-h-14 flex-col justify-center gap-0.5 py-2 pl-4"
-    data-test="unsupported-field"
     data-ingot-component="unsupported-renderer"
   >
-    <span class="md-body-large text-on-surface">{{ control.label }}</span>
-    <span
-      role="note"
-      class="md-body-medium text-on-surface-variant"
-    >{{ message }}</span>
-  </div>
+    <MdListItem data-test="unsupported-field">
+      <span class="block md-body-large text-on-surface">{{ control.label }}</span>
+      <span
+        role="note"
+        class="block md-body-medium text-on-surface-variant"
+      >{{ message }}</span>
+    </MdListItem>
+  </MdList>
 </template>
 
 <script lang="ts">
@@ -35,6 +35,8 @@ import type {ControlElement} from '@jsonforms/core'
 import {rendererProps, useJsonFormsControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
 import {defineComponent} from 'vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 
 /*
  * The last resort for a control. A schema node that no other renderer can draw used to render as nothing,
@@ -48,6 +50,7 @@ export const MESSAGE = 'This section cannot be edited here, use Download as JSON
 
 export default defineComponent({
   name: 'UnsupportedRenderer',
+  components: {MdList, MdListItem},
   props: rendererProps<ControlElement>(),
   setup(props) {
     return {

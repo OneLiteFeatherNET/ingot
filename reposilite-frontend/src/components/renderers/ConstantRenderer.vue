@@ -1,14 +1,16 @@
 <template>
-  <div
+  <MdList
     v-if="control.visible"
-    :id="`${control.id}-input`"
-    class="flex min-h-14 flex-col justify-center gap-0.5 py-2 pl-4"
-    data-test="constant-row"
     data-ingot-component="constant-renderer"
   >
-    <span class="md-body-large text-on-surface">{{ control.label }}</span>
-    <span class="md-body-medium text-on-surface-variant">{{ displayValue }}</span>
-  </div>
+    <MdListItem
+      :id="`${control.id}-input`"
+      data-test="constant-row"
+    >
+      <span class="block md-body-large text-on-surface">{{ control.label }}</span>
+      <span class="block md-body-medium text-on-surface-variant">{{ displayValue }}</span>
+    </MdListItem>
+  </MdList>
 </template>
 
 <script lang="ts">
@@ -17,6 +19,8 @@ import type {ControlElement} from '@jsonforms/core'
 import {rendererProps, useJsonFormsControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
 import {computed, defineComponent} from 'vue'
+import MdList from '../md/MdList.vue'
+import MdListItem from '../md/MdListItem.vue'
 
 /*
  * A constant is not an input: its value is fixed by the schema, so there is nothing to type or
@@ -27,6 +31,7 @@ export const tester = rankWith(4, and(isControl, schemaMatches(schema => 'const'
 
 export default defineComponent({
   name: 'ConstantRenderer',
+  components: {MdList, MdListItem},
   props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
