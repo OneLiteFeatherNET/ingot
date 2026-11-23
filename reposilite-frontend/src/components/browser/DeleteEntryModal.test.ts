@@ -83,8 +83,8 @@ describe('DeleteEntryModal', () => {
     const overlay = document.querySelector('.vfm__overlay')
 
     expect(overlay, 'the modal paints an overlay').not.toBeNull()
-    expect(overlay!.classList.contains('bg-scrim/md-scrim!'), 'the overlay uses the md3 scrim at 32%').toBe(true)
-    expect(overlay!.classList.contains('bg-scrim/40!'), 'the old 40% scrim is gone').toBe(false)
+    expect(overlay!.classList.contains('bg-scrim/md-scrim'), 'the overlay uses the md3 scrim at 32%').toBe(true)
+    expect(overlay!.classList.contains('bg-scrim/40'), 'the old 40% scrim is gone').toBe(false)
   })
 
   it('states that deleting a file cannot be undone', async () => {

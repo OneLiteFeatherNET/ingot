@@ -279,7 +279,7 @@ describe('MdDialog', () => {
     await mountDialog()
 
     const overlay = document.querySelector<HTMLElement>('.vfm__overlay')
-    expect(overlay?.classList.contains('bg-scrim/md-scrim!'), 'the overlay carries the important bg-scrim/md-scrim utility').toBe(true)
+    expect(overlay?.classList.contains('bg-scrim/md-scrim'), 'the overlay carries the bg-scrim/md-scrim utility').toBe(true)
     expect(overlay!.getAttribute('style') ?? '', 'the overlay has no color-mix inline style').not.toContain('color-mix')
   })
 })
