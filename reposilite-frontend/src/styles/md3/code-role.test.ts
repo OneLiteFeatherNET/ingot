@@ -23,21 +23,11 @@ import { join, relative } from 'node:path'
 // the font-mono class beside a body role. The files below still write font-mono and are migrated one by one; the
 // list only shrinks. Reads the sources from disk and mounts nothing.
 const PENDING: readonly string[] = Object.freeze([
-  'src/components/access/check/CheckPermissionView.vue',
-  'src/components/audit/AuditEventRow.vue',
   'src/components/browser/AdjustmentsModal.vue',
   'src/components/browser/FileUpload.vue',
   'src/components/dashboard/FailuresSheet.vue',
-  'src/components/identity/SecretOnceDialog.vue',
-  'src/components/identity/TokenList.vue',
   'src/components/maintenance/CleanupPoliciesPanel.vue',
-  'src/components/maintenance/IndexPanel.vue',
-  'src/components/maintenance/RunHistory.vue',
-  'src/components/maintenance/StorageUsagePanel.vue',
-  'src/components/access/nodes/NodeTreeView.vue',
   'src/components/md/MdListbox.vue',
-  'src/components/settings/RepositoryWizard.vue',
-  'src/components/support/SystemInfoView.vue',
 ])
 
 const SOURCE_ROOT = join(process.cwd(), 'src')

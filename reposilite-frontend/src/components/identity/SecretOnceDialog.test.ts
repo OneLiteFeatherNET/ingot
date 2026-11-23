@@ -59,7 +59,7 @@ describe('SecretOnceDialog', () => {
     const input = dialog().querySelector('input[readonly]') as HTMLInputElement
 
     expect(input.value).toBe(SECRET)
-    expect(input.className, 'a secret is easier to compare in a monospace face').toContain('font-mono')
+    expect(input.className, 'a secret is easier to compare in a monospace face').toContain('md-code-medium')
   })
 
   it('warns that the secret will not be shown again', () => {

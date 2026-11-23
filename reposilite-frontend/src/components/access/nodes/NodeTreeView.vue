@@ -109,7 +109,7 @@ const STATE_CLASS = { allow: 'text-on-surface', deny: 'text-error', mixed: 'text
         :open="isOpen(item)"
       >
         <template #summary>
-          <code class="break-all font-mono md-label-large text-on-surface">{{ item.key }}</code>
+          <code class="break-all md-code-medium text-on-surface">{{ item.key }}</code>
           <span class="md-label-medium text-on-surface-variant">{{ leafCount(item) }} nodes</span>
           <span
             class="md-label-medium"

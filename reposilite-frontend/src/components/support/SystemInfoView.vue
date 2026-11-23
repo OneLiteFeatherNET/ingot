@@ -320,7 +320,7 @@ onMounted(() => {
                 <template #summary>
                   Input arguments
                 </template>
-                <ul class="font-mono text-sm">
+                <ul class="md-code-medium">
                   <li
                     v-for="argument in info.jvm.inputArguments"
                     :key="argument"

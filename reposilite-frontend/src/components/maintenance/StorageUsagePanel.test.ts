@@ -67,7 +67,7 @@ const mountPanel = async (props = {}) => {
   return wrapper
 }
 
-const rowOf = (id: string): DOMWrapper<Element> => wrapper.findAll('li').find(item => item.find('.font-mono').exists() && item.find('.font-mono').text() === id)!
+const rowOf = (id: string): DOMWrapper<Element> => wrapper.findAll('li').find(item => item.find('.md-code-medium').exists() && item.find('.md-code-medium').text() === id)!
 
 const buttonNamed = (text: string) => wrapper.findAll('button').find(button => button.text() === text)!
 

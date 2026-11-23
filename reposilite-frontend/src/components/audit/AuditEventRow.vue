@@ -71,7 +71,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
         >
           <span class="shrink-0">from</span>
           <span
-            class="min-w-0 truncate font-mono"
+            class="min-w-0 truncate md-code-small"
             :title="event.actorAddress"
             data-test="actor-address"
           >{{ event.actorAddress }}</span>

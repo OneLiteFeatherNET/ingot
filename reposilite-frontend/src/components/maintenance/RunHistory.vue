@@ -93,7 +93,7 @@ const latestRuns = computed((): CleanupRun[] => {
       >
         <div class="flex flex-col gap-2">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <span class="font-mono md-title-small text-on-surface">{{ run.policyId }}</span>
+            <span class="md-code-medium text-on-surface">{{ run.policyId }}</span>
             <span
               class="md-label-large"
               :class="STATUS_CLASS[run.status] ?? 'text-on-surface-variant'"

@@ -592,12 +592,12 @@ onBeforeUnmount(() => clearTimeout(pathTimer))
           <p class="md-body-large break-words">
             <code
               v-if="checked.node"
-              class="font-mono"
+              class="md-code-medium"
               data-test="verdict-node"
             >{{ checked.node }}</code>
             <template v-else>
               <code
-                class="break-all font-mono"
+                class="break-all md-code-medium"
                 data-test="verdict-path"
               >{{ checked.repository }}/{{ checked.path }}</code>
               (<span data-test="verdict-action">{{ checked.action }}</span>)
