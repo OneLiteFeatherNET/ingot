@@ -86,6 +86,9 @@ private val SUPPORTED_PROTOCOLS = setOf(PROTOCOL_VERSION)
 /** How long a dangerous command waits for its confirm before it is declined. */
 private val CONFIRM_DEADLINE: Duration = Duration.ofSeconds(120)
 
+/** How often the server pings a version 1 connection, so a proxy in front never sees it idle. */
+private val PING_INTERVAL: Duration = Duration.ofSeconds(20)
+
 /** The largest version 1 frame, in UTF-8 bytes. */
 private const val MAX_FRAME_BYTES = 4096
 
@@ -114,6 +117,24 @@ private class V1Session(val identity: WsIdentity, val outbox: ConsoleV1Outbox, v
 
     private var pending: PendingConfirm? = null
 
+    /** True once the session is released or closed, so a timer that is already running starts nothing new. */
+    @Volatile
+    var closed: Boolean = false
+        private set
+
+    private var liveness: ConsoleTimer? = null
+    private var expiry: ConsoleTimer? = null
+
+    @Synchronized
+    fun trackLiveness(timer: ConsoleTimer) {
+        liveness = timer
+    }
+
+    @Synchronized
+    fun trackExpiry(timer: ConsoleTimer) {
+        expiry = timer
+    }
+
     @Synchronized
     fun isBusy(): Boolean = pending != null
 
@@ -134,8 +155,11 @@ private class V1Session(val identity: WsIdentity, val outbox: ConsoleV1Outbox, v
     /** Drops the pending command without running it, when the connection is released. */
     @Synchronized
     fun dropAll() {
+        closed = true
         pending?.deadline?.cancel()
         pending = null
+        liveness?.cancel()
+        expiry?.cancel()
     }
 
 }
@@ -360,7 +384,10 @@ internal class ConsoleWebSocketHandler(
                         outbox.offerLog(LogLine(seq = line.seq, node = line.node ?: nodeId, level = line.level.name, text = line.text))
                     }
                 }
-                v1Sessions[connection] = V1Session(identity, outbox, subscriberId)
+                val session = V1Session(identity, outbox, subscriberId)
+                v1Sessions[connection] = session
+                scheduleLiveness(connection, session)
+                identity.sessionJwt?.let { jwt -> scheduleExpiry(connection, session, jwt) }
             }
             .onError {
                 journalist.logger.info("CLI | ${it.message} (${it.status})")
@@ -382,6 +409,43 @@ internal class ConsoleWebSocketHandler(
             null
         }
         return authority != null && authority.equals(host, ignoreCase = true)
+    }
+
+    /**
+     * Pings every [PING_INTERVAL]. A proxy in front of the server closes a connection that stays silent, and a ping that cannot
+     * be written drops the connection of a client that is gone. The web server does not hand its pongs to the handler, so the
+     * server cannot tell a client that never answers from one that does.
+     */
+    private fun scheduleLiveness(connection: ConsoleConnection, session: V1Session) {
+        session.trackLiveness(
+            scheduler.schedule(PING_INTERVAL) {
+                if (session.closed) {
+                    return@schedule
+                }
+                try {
+                    connection.ping()
+                } catch (failure: Exception) {
+                    handleSendFailure(connection, session.identity.identifier, failure)
+                    return@schedule
+                }
+                scheduleLiveness(connection, session)
+            }
+        )
+    }
+
+    /** Closes the connection with 1008 when the browser session it authenticated with reaches its expiry time. */
+    private fun scheduleExpiry(connection: ConsoleConnection, session: V1Session, sessionJwt: String) {
+        val expiresAt = consoleAuthenticator.sessionExpiry(sessionJwt) ?: return
+        val delay = Duration.between(scheduler.clock.instant(), expiresAt).coerceAtLeast(Duration.ZERO)
+        session.trackExpiry(
+            scheduler.schedule(delay) {
+                if (session.closed) {
+                    return@schedule
+                }
+                journalist.logger.info("CLI | the session of ${session.identity.identifier} expired")
+                closeSession(connection, session, CLOSE_POLICY_VIOLATION, ErrorFrame(code = "unauthorized", message = "the session has expired"))
+            }
+        )
     }
 
     /** The level of the log lines a hello asks for. It can raise the visible threshold but never lower it. */
@@ -585,6 +649,7 @@ internal class ConsoleWebSocketHandler(
         override fun cookie(name: String): String? = ctx.cookie(name)
         override fun send(text: String) = ctx.send(text)
         override fun sendJson(value: Any) = ctx.send(value)
+        override fun ping() = ctx.sendPing()
         override fun disconnect() = ctx.session.disconnect()
         override fun close(code: Int, reason: String) {
             ctx.closeSession(code, reason)

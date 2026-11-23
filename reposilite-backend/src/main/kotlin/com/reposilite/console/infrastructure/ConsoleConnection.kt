@@ -39,6 +39,9 @@ internal interface ConsoleConnection {
     /** Sends [value] as one JSON text frame. */
     fun sendJson(value: Any)
 
+    /** Sends a WebSocket ping control frame. */
+    fun ping()
+
     /** Drops the connection without a close handshake. */
     fun disconnect()
 

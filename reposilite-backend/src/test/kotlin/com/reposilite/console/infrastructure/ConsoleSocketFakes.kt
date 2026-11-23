@@ -27,12 +27,15 @@ internal class FakeConsoleConnection(
     override val origin: String? = null,
     override val requestHost: String? = null,
     private val cookies: Map<String, String> = emptyMap(),
+    private val failPing: Boolean = false,
 ) : ConsoleConnection {
 
     override fun cookie(name: String): String? = cookies[name]
 
     val texts = mutableListOf<String>()
     val json = mutableListOf<Any>()
+    var pings = 0
+        private set
     var disconnected = false
         private set
     var closeCode: Int? = null
@@ -46,6 +49,13 @@ internal class FakeConsoleConnection(
 
     override fun sendJson(value: Any) {
         json += value
+    }
+
+    override fun ping() {
+        pings++
+        if (failPing) {
+            throw java.io.IOException("the socket is gone")
+        }
     }
 
     override fun disconnect() {

@@ -26,6 +26,7 @@ import com.reposilite.token.api.AccessTokenDto
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import panda.std.Result
 import panda.std.asSuccess
+import java.time.Instant
 
 /**
  * Decides who may open the remote console. Two ways in end at the same check, the instance admin role:
@@ -50,6 +51,10 @@ internal open class ConsoleAuthenticator(
             ?: return unauthorizedError("Invalid or expired session")
         return requireConsoleArea(identity, ip)
     }
+
+    /** The time [sessionJwt] stops being valid, or null when it is not a valid session. */
+    open fun sessionExpiry(sessionJwt: String): Instant? =
+        loginFacade.verifySession(sessionJwt)?.expiresAt
 
     /**
      * Whether [identity], authenticated earlier, may still use the console: the token still exists and still has the console
