@@ -187,15 +187,15 @@ Starts after group 5 is merged.
 - [x] 7.1 `test(ui)`: in `src/components/md/MdDisclosure.test.ts`, assert that the content is wrapped in a grid wrapper whose rows
   go from `0fr` to `1fr` on open, that the chevron uses the `short3` token, and that a closing disclosure keeps its `open` attribute
   until the transition has ended, using a fake timer advanced by the token value. Verify: it fails, because the content has no wrapper.
-- [ ] 7.2 `test(ui)`: in `src/components/access/nodes/NodeTreeView.test.ts`, assert that a permission tree row opens with the same
+- [x] 7.2 `test(ui)`: in `src/components/access/nodes/NodeTreeView.test.ts`, assert that a permission tree row opens with the same
   pattern. Verify: it fails, because the row is a native `details` without motion.
 - [ ] 7.3 `test(ui)`: in `src/components/support/SystemInfoView.test.ts`, assert that the key tree sections open with the pattern, and
   that a section that is open at load has no transition on the first paint. Verify: it fails for the open case.
 - [ ] 7.4 `test(ui)`: in `src/components/renderers/ArrayListRenderer.test.ts` and `src/components/maintenance/RunHistory.test.ts`,
   assert that their `details` use the pattern. Verify: it fails, as 7.2 does.
-- [ ] 7.5 `test(ui)`: in `e2e/system-info.spec.js`, assert that the key tree opens and closes with the height animation, the page does
+- [x] 7.5 `test(ui)`: in `e2e/system-info.spec.js`, assert that the key tree opens and closes with the height animation, the page does
   not move below the section, and reduced motion opens the section at once. Verify: it fails for the height.
-- [ ] 7.6 `feat(ui)`: add the expand pattern to `MdDisclosure.vue`, and to `NodeTreeView.vue`, `SystemInfoView.vue`,
+- [x] 7.6 `feat(ui)`: add the expand pattern to `MdDisclosure.vue`, and to `NodeTreeView.vue`, `SystemInfoView.vue`,
   `ArrayListRenderer.vue`, `RunHistory.vue`, `TeamLegacyGrants.vue` and `SsoProviderDialog.vue`, with the grid wrapper inside each
   `details`. Verify: 7.1 to 7.4 pass.
 - [ ] 7.7 `feat(ui)`: keep the `open` attribute of a closing disclosure until its transition has ended, in the component that owns it.
