@@ -257,9 +257,9 @@ Pull request title pattern: `refactor(ui): fix the <rule> findings of the dashbo
 - [x] 4.3.5 `@typescript-eslint/no-floating-promises` (27): await, return or mark the promise with `void` where fire and forget is intended. Open the pull request.
 - [x] 4.3.6 `@typescript-eslint/no-unsafe-call` (25) and `@typescript-eslint/no-unsafe-return` (1): type the callee and the return value. Open the pull request.
 - [x] 4.3.7 `@typescript-eslint/no-base-to-string` (16), `@typescript-eslint/restrict-template-expressions` (6), `@typescript-eslint/prefer-promise-reject-errors` (1) and `@typescript-eslint/await-thenable` (1): the small type-aware rules, one pull request because each is a one-line fix. Open the pull request.
-- [ ] 4.3.8 The `vue/*` template formatting rules (`html-indent` 19, `html-closing-bracket-newline` 7, `max-attributes-per-line` 4, `first-attribute-linebreak` 3, `multiline-html-element-content-newline` 2, `html-self-closing` 2, `html-closing-bracket-spacing` 1): run the formatter on the listed files only. Open the pull request.
+- [x] 4.3.8 The `vue/*` template formatting rules (`html-indent` 19, `html-closing-bracket-newline` 7, `max-attributes-per-line` 4, `first-attribute-linebreak` 3, `multiline-html-element-content-newline` 2, `html-self-closing` 2, `html-closing-bracket-spacing` 1): run the formatter on the listed files only. Open the pull request.
 - [x] 4.3.9 `no-unused-vars` (1), `@typescript-eslint/no-unused-vars` (1) and `vue/no-v-html` (1): remove the variable, or keep `v-html` with a reason beside it if the content is a trusted constant. Open the pull request.
-- [ ] 4.3.R After 4.3.1 to 4.3.9 are merged: confirm `eslint-suppressions.json` is `{}` (delete the leftover keys of any rule not listed above), and remove the `.js` entries from the Vitest, style-gate and anchor patterns that no longer match any file. Open the pull request `refactor(ui): remove the eslint suppressions and javascript patterns`.
+- [x] 4.3.R After 4.3.1 to 4.3.9 are merged: confirm `eslint-suppressions.json` is `{}` (delete the leftover keys of any rule not listed above), and remove the `.js` entries from the Vitest, style-gate and anchor patterns that no longer match any file. Open the pull request `refactor(ui): remove the eslint suppressions and javascript patterns`.
 
 ### 4.4 Remaining JavaScript and the closing check
 
