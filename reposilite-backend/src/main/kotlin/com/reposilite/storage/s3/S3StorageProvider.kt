@@ -38,7 +38,9 @@ import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.NOT_FOUND
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.StorageEntry
 import net.onelitefeather.ingot.storage.capability.ClusterBus
 import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
 import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
@@ -355,6 +357,28 @@ class S3StorageProvider(
             notFoundError("File not found: $location")
         } catch (exception: S3Exception) {
             // A bare 404 carries no NoSuchKey body, so it is only recognised by its status code
+            s3Error("read $location", location, exception)
+        } catch (exception: Exception) {
+            failed("read $location", exception)
+        }
+
+    /** One GET answers the content, and its response headers carry the size and the modification time, so no HEAD is sent. */
+    @OptIn(ExperimentalIngotPluginApi::class)
+    override fun readEntry(location: Location): Result<StorageEntry, ErrorResponse> =
+        try {
+            val request = GetObjectRequest.builder()
+            request.bucket(bucket)
+            request.key(location.toBucketKey())
+            val response = s3.getObject(request.build())
+            val headers = response.response()
+            StorageEntry(
+                content = response,
+                size = headers.contentLength() ?: UNKNOWN_LENGTH,
+                lastModified = headers.lastModified(),
+            ).asSuccess()
+        } catch (_: NoSuchKeyException) {
+            notFoundError("File not found: $location")
+        } catch (exception: S3Exception) {
             s3Error("read $location", location, exception)
         } catch (exception: Exception) {
             failed("read $location", exception)
