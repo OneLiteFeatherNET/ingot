@@ -366,3 +366,23 @@ describe('MdDataTable for a page that owns its rows', () => {
     expect(headers(wrapper)[0].find('button').classes()).toEqual(expect.arrayContaining(['min-h-6', 'min-w-6']))
   })
 })
+
+describe('MdDataTable row header column', () => {
+  it('makes the column named by rowHeader the row header, in its own position', () => {
+    const wrapper = mountTable({ rowHeader: 'type' })
+
+    const firstRow = wrapper.findAll('tbody tr')[0]
+
+    expect(firstRow.findAll('th').map((cell) => cell.text()), 'the row header').toEqual(['maven'])
+    expect(firstRow.findAll('th')[0].attributes('scope')).toBe('row')
+    expect(firstRow.findAll('td').map((cell) => cell.text()), 'the other cells').toEqual(['releases', '30'])
+    expect(firstRow.element.children[1].tagName, 'the row header keeps its place in the row').toBe('TH')
+  })
+
+  it('keeps the first column as the row header without the prop', () => {
+    const wrapper = mountTable()
+
+    expect(wrapper.findAll('tbody tr')[0].element.children[0].tagName).toBe('TH')
+  })
+})
+
