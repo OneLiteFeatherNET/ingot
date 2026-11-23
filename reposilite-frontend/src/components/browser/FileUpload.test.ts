@@ -216,4 +216,13 @@ describe('FileUpload keyboard access', () => {
 
     expect(hiddenInput().tabIndex, 'the input must not take a focus stop without a visible focus ring').toBe(-1)
   })
+
+  it('stretches the drop zone over the full width through a utility class', async () => {
+    await mountUpload()
+
+    const zone = wrapper!.find('.file-uploads')
+
+    expect(zone.exists(), 'the library renders the drop zone root').toBe(true)
+    expect(zone.classes(), 'the width comes from a utility, not from a global style block').toContain('w-full')
+  })
 })

@@ -1,10 +1,5 @@
 [
   {
-    "file": "src/components/browser/FileUpload.vue",
-    "match": ".file-uploads",
-    "count": 1
-  },
-  {
     "file": "src/helpers/useTreeFits.ts",
     "match": ".settings-save-bar",
     "count": 1
