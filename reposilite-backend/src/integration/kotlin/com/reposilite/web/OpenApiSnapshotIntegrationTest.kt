@@ -83,6 +83,28 @@ internal class OpenApiSnapshotIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `console socket describes both protocols and the frames of version 1`() {
+        // given: the OpenAPI document the server serves
+        val document = MAPPER.readTree(Unirest.get("$base/openapi").asString().body)
+
+        // when: the description of the socket route is read
+        val description = document.path("paths").path("/api/console/sock").path("patch").path("description").asText()
+
+        // then: it names the legacy protocol, the hello that opens version 1 and the frames of the session
+        assertThat(description)
+            .describedAs("description of /api/console/sock")
+            .contains("Authorization:")
+            .contains("hello")
+            .contains("welcome")
+            .contains("execute")
+            .contains("result")
+            .contains("confirm")
+            .contains("complete")
+            .contains("log")
+            .contains("error")
+    }
+
+    @Test
     fun `own security status describes its 200 answer`() {
         // given: the OpenAPI document the server serves
         val document = MAPPER.readTree(Unirest.get("$base/openapi").asString().body)

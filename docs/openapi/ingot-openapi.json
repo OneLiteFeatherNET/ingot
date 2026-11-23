@@ -4227,6 +4227,7 @@
     },
     "/api/console/sock" : {
       "patch" : {
+        "description" : "WebSocket upgrade. Two protocols share the path, and the first message decides. A message that starts with 'Authorization:' opens the legacy protocol: raw log lines, 'keep-alive' echoed, a command line gets no answer frame. A JSON object with type 'hello' opens version 1, where every message is a JSON frame. Client frames: hello (protocols, token, client, logLevel, resume), execute (id, command, confirm), confirm (id, accept), complete (id, line, cursor). Server frames: welcome (protocol, boot, seq, replay), log (seq, node, level, text, dropped), result (id, status, exitCode, output, data, node, confirmed), confirm (id, command, reason), complete (id, replace, candidates), error (code, message, id, retryable, supported). The frames are described in the console commands reference.",
         "responses" : { },
         "tags" : [ "Console" ]
       }
