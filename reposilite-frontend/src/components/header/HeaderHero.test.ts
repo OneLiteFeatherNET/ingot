@@ -28,6 +28,17 @@ describe('HeaderHero', () => {
   })
 })
 
+describe('HeaderHero window classes', () => {
+  it('lays the logo beside the text from the medium window class', () => {
+    const classes = mount(HeaderHero).find('img').element.parentElement!.className.split(/\s+/)
+
+    expect(classes, 'a row from the medium window class').toContain('medium:flex-row')
+    expect(classes, 'the narrow padding below the medium window class').toContain('max-medium:py-6')
+    expect(classes, 'no default Tailwind breakpoint').not.toContain('md:flex-row')
+    expect(classes, 'no default Tailwind max breakpoint').not.toContain('max-sm:py-6')
+  })
+})
+
 describe('HeaderHero logo', () => {
   const logoSource = (wrapper: VueWrapper<InstanceType<typeof HeaderHero>>) => wrapper.find('img').attributes('src')
 

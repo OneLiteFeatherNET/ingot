@@ -341,17 +341,17 @@ const toggleRow = (item: SearchItem) => {
           Some repositories are hidden from visitors who are not signed in. Sign in to see more results.
         </p>
 
-        <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] lg:items-start">
+        <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 expanded:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] expanded:items-start">
           <!-- Below 1024px the filters are a modal sheet; from there on they are a column beside the results. -->
           <div
-            :class="sheetOpen ? 'fixed inset-0 z-40 flex flex-col bg-surface lg:static lg:z-auto lg:bg-transparent' : 'hidden lg:block'"
+            :class="sheetOpen ? 'fixed inset-0 z-40 flex flex-col bg-surface expanded:static expanded:z-auto expanded:bg-transparent' : 'hidden expanded:block'"
             :role="sheetOpen ? 'dialog' : undefined"
             :aria-modal="sheetOpen ? 'true' : undefined"
             :aria-labelledby="filtersTitleId"
             data-test="filter-panel"
             @keydown.esc="toggleSheet(false)"
           >
-            <div class="flex items-center justify-between px-4 pt-4 lg:hidden">
+            <div class="flex items-center justify-between px-4 pt-4 expanded:hidden">
               <h2
                 :id="filtersTitleId"
                 class="md-title-large text-on-surface"
@@ -373,7 +373,7 @@ const toggleRow = (item: SearchItem) => {
             >
               Filters
             </h2>
-            <div class="flex-1 overflow-y-auto p-4 lg:overflow-visible lg:p-0">
+            <div class="flex-1 overflow-y-auto p-4 expanded:overflow-visible expanded:p-0">
               <SearchFilters
                 :query="query"
                 :facets="facets"
@@ -383,7 +383,7 @@ const toggleRow = (item: SearchItem) => {
                 @reset="reset"
               />
             </div>
-            <div class="p-4 lg:hidden">
+            <div class="p-4 expanded:hidden">
               <MdButton
                 variant="filled"
                 class="w-full"
@@ -418,7 +418,7 @@ const toggleRow = (item: SearchItem) => {
               <MdButton
                 ref="filterButton"
                 variant="outlined"
-                class="lg:hidden"
+                class="expanded:hidden"
                 aria-haspopup="dialog"
                 :aria-expanded="String(sheetOpen)"
                 data-test="open-filters"

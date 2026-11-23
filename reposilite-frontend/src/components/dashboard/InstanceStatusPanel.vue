@@ -272,7 +272,7 @@ const readOnlyScope = computed(() => {
     role="status"
     aria-busy="true"
     aria-label="Loading instance status"
-    class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+    class="grid grid-cols-2 gap-3 medium:grid-cols-3 large:grid-cols-5"
     data-ingot-component="instance-status-panel"
   >
     <MdCard
@@ -320,7 +320,7 @@ const readOnlyScope = computed(() => {
       </p>
     </MdAlert>
 
-    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <div class="grid grid-cols-2 gap-3 medium:grid-cols-3 large:grid-cols-6">
       <StatTile
         data-testid="read-only-card"
         label="Read-only mode"
@@ -339,7 +339,7 @@ const readOnlyScope = computed(() => {
 
     <div
       v-if="!clusterView"
-      class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+      class="grid grid-cols-2 gap-3 medium:grid-cols-3 large:grid-cols-5"
     >
       <StatTile
         label="Used memory"
@@ -395,7 +395,7 @@ const readOnlyScope = computed(() => {
       <div
         data-testid="cluster-summary"
         data-ingot-part="cluster-summary"
-        class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+        class="grid grid-cols-2 gap-3 medium:grid-cols-3 large:grid-cols-6"
       >
         <StatTile
           label="Cluster memory"

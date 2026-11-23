@@ -401,7 +401,7 @@ describe('FileBrowserView group references', () => {
 
 describe('FileBrowserView details layout', () => {
   // The side-by-side grid of the wide layout, as the view class names it.
-  const SIDE_BY_SIDE = 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
+  const SIDE_BY_SIDE = 'expanded:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
 
   // The view starts with a comment, so its root is a fragment: the grid is found inside the page container of MdPage.
   const layoutGrid = (wrapper: VueWrapper) => {

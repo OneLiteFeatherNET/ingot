@@ -198,6 +198,16 @@ describe('SearchView page shell', () => {
   })
 })
 
+describe('SearchView window classes', () => {
+  it('puts the filters beside the results from the expanded window class', async () => {
+    await mountAt('/search')
+
+    const grid = wrapper.find('.grid')
+    expect(grid.classes(), 'two columns from the expanded window class').toContain('expanded:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]')
+    expect(grid.classes(), 'no default Tailwind breakpoint').not.toContain('lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]')
+  })
+})
+
 describe('SearchView request and address', () => {
   it('builds the request from the address', async () => {
     const client = await mountAt('/search?q=commons&origin=mirror&extension=jar&extension=pom&sort=size&order=desc&page=2')
