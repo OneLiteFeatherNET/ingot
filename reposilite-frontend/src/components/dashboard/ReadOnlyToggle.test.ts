@@ -55,7 +55,7 @@ const CONSEQUENCE = 'Every upload, deploy and delete is refused with 503 on ever
 let wrapper: VueWrapper
 
 const mountToggle = () => {
-  wrapper = mount(ReadOnlyToggle, { attachTo: document.body })
+  wrapper = mount(ReadOnlyToggle, { attachTo: document.body }) as VueWrapper
 }
 
 const dialog = () => document.querySelector('[role="dialog"]')

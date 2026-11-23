@@ -15,9 +15,10 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { markRaw } from 'vue'
+import { markRaw, type Component } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
+import type { JsonFormsRendererRegistryEntry, RankedTester } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from '../renderers/MdTextFieldRenderer.vue'
@@ -30,9 +31,9 @@ import type { Entry } from '../../store/maven/repositoryTypes'
 import mavenSchema from './fixtures/maven.schema.json'
 
 const renderers = markRaw([
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: selectTester, renderer: MdSelectRenderer },
-  ...vanillaRenderers
+  { tester: textTester as RankedTester, renderer: MdTextFieldRenderer as Component },
+  { tester: selectTester as RankedTester, renderer: MdSelectRenderer as Component },
+  ...(vanillaRenderers as JsonFormsRendererRegistryEntry[])
 ])
 
 const collection = {
@@ -207,7 +208,7 @@ describe('EntryDetail tag suggestions', () => {
         id: 'releases',
         entry: { id: 'releases', tags: ['team-core'] },
         otherTags: ['ci', 'internal'],
-        renderers: markRaw([{ tester: tagsTester, renderer: TagsFieldRenderer }, ...vanillaRenderers]),
+        renderers: markRaw([{ tester: tagsTester as RankedTester, renderer: TagsFieldRenderer as Component }, ...(vanillaRenderers as JsonFormsRendererRegistryEntry[])]),
         validator: markRaw(createAjv({ useDefaults: true }))
       },
       global: { provide: { styles: defaultStyles } },

@@ -58,7 +58,7 @@ const mountPage = async ({ schema, fields }: { schema?: RepositorySchema; fields
       provide: { [configurationStoreKey]: store }
     },
     attachTo: document.body
-  })
+  }) as VueWrapper
   await flushPromises()
   return { wrapper, router, store }
 }

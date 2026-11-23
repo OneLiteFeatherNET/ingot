@@ -110,7 +110,7 @@ const mountAt = async (url: string, { nodes, logged = true }: { nodes?: string[]
   session.mustChange = ref(false)
   const router = createAppRouter({
     history: createMemoryHistory(),
-    component: IndexPage,
+    component: IndexPage as Component,
     whenSessionKnown: () => Promise.resolve(),
     isManager: () => session.isManager!.value,
     can: (node) => session.can!(node),

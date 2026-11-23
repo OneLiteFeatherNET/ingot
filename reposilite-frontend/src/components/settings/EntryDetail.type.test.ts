@@ -18,6 +18,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { markRaw, type Component } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createAjv } from '@jsonforms/core'
+import type { JsonFormsRendererRegistryEntry, RankedTester } from '@jsonforms/core'
 import { vanillaRenderers, defaultStyles } from '@dzikoysk/vue-vanilla'
 import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from '../renderers/MdTextFieldRenderer.vue'
@@ -30,9 +31,9 @@ const membersPicker = RepositoryMembersPicker as Component
 import type { Entry, Mirror } from '../../store/maven/repositoryTypes'
 
 const renderers = markRaw([
-  { tester: textTester, renderer: MdTextFieldRenderer },
-  { tester: selectTester, renderer: MdSelectRenderer },
-  ...vanillaRenderers
+  { tester: textTester as RankedTester, renderer: MdTextFieldRenderer as Component },
+  { tester: selectTester as RankedTester, renderer: MdSelectRenderer as Component },
+  ...(vanillaRenderers as JsonFormsRendererRegistryEntry[])
 ])
 
 // The maven repository item as the server describes it, with the fields of each type.
