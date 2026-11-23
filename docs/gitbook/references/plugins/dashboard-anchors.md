@@ -119,6 +119,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-dialog-actions` | experimental | `src/components/md/MdDialogActions.vue` | none | none | none |
 | `md-disclosure` | experimental | `src/components/md/MdDisclosure.vue` | none | none | none |
 | `md-divider` | experimental | `src/components/md/MdDivider.vue` | none | none | none |
+| `md-field-grid` | experimental | `src/components/md/MdFieldGrid.vue` | none | none | none |
 | `md-field-shell` | experimental | `src/components/md/MdFieldShell.vue` | none | none | none |
 | `md-fieldset` | experimental | `src/components/md/MdFieldset.vue` | none | none | none |
 | `md-icon` | experimental | `src/components/md/MdIcon.vue` | none | none | none |

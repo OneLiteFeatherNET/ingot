@@ -890,6 +890,13 @@
       "states": []
     },
     {
+      "name": "md-field-grid",
+      "file": "src/components/md/MdFieldGrid.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-fieldset",
       "file": "src/components/md/MdFieldset.vue",
       "stability": "experimental",
