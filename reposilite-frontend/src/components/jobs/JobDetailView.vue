@@ -95,7 +95,7 @@ watch(() => props.id, load)
       >
         {{ run.label }}
       </h2>
-      <dl class="grid gap-3 sm:grid-cols-2">
+      <dl class="grid gap-3 medium:grid-cols-2">
         <div class="flex flex-col">
           <dt class="md-label-large text-on-surface-variant">
             State

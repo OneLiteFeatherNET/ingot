@@ -139,6 +139,25 @@ describe('JobsView paging', () => {
   })
 })
 
+describe('Jobs pages window classes', () => {
+  it('lays the filters out in three columns from the medium window class on the list', async () => {
+    const { wrapper } = await mountAt('/settings/jobs')
+
+    const classes = wrapper.find('#jobs-kind').element.closest('.grid')!.className.split(/\s+/)
+    expect(classes, 'three columns from the medium window class').toContain('medium:grid-cols-3')
+    expect(classes, 'no default Tailwind breakpoint').not.toContain('sm:grid-cols-3')
+  })
+
+  it('lays the facts out in two columns from the medium window class on the detail', async () => {
+    wrapper = mount(JobDetailView, { props: { id: 'index:412' }, global: { stubs: { RouterLink: RouterLinkStub } } }) as VueWrapper
+    await flushPromises()
+
+    const classes = wrapper.find('dl').classes()
+    expect(classes, 'two columns from the medium window class').toContain('medium:grid-cols-2')
+    expect(classes, 'no default Tailwind breakpoint').not.toContain('sm:grid-cols-2')
+  })
+})
+
 describe('JobDetailView failures', () => {
   it('lists the failures of a run and notes that more exist', async () => {
     session.client = fakeClient({

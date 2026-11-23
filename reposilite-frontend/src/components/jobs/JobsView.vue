@@ -126,7 +126,7 @@ watch(filtersKey, reload)
       </MdButton>
     </div>
 
-    <div class="grid gap-3 sm:grid-cols-3">
+    <div class="grid gap-3 medium:grid-cols-3">
       <MdSelect
         id="jobs-kind"
         label="Kind"
