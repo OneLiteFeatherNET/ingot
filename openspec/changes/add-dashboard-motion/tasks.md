@@ -189,7 +189,7 @@ Starts after group 5 is merged.
   until the transition has ended, using a fake timer advanced by the token value. Verify: it fails, because the content has no wrapper.
 - [x] 7.2 `test(ui)`: in `src/components/access/nodes/NodeTreeView.test.ts`, assert that a permission tree row opens with the same
   pattern. Verify: it fails, because the row is a native `details` without motion.
-- [ ] 7.3 `test(ui)`: in `src/components/support/SystemInfoView.test.ts`, assert that the key tree sections open with the pattern, and
+- [x] 7.3 `test(ui)`: in `src/components/support/SystemInfoView.test.ts`, assert that the key tree sections open with the pattern, and
   that a section that is open at load has no transition on the first paint. Verify: it fails for the open case.
 - [x] 7.4 `test(ui)`: in `src/components/renderers/ArrayListRenderer.test.ts` and `src/components/maintenance/RunHistory.test.ts`,
   assert that their `details` use the pattern. Verify: it fails, as 7.2 does.
