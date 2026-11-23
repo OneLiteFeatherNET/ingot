@@ -76,7 +76,7 @@ const FRONTEND_SCHEMA = {
   properties: { title: { type: 'string' }, organizationLogo: { type: 'string' } }
 }
 
-const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const DEFAULT_REPOSITORIES: RepositoryFixture[] = [
   { id: 'releases', visibility: 'PUBLIC', description: 'Release artifacts' },
