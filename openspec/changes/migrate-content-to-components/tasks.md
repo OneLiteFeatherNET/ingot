@@ -146,7 +146,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 6.3 `test(ui)`: in the tests of `CreateTokenDialog`, `PolicyDialog`, `SearchFilters`, `AuditView`, `PasswordCard` and `FileUpload`,
   assert that every text field has variant `outlined` (the default), that radio buttons and checkboxes are primitives, and that the button
   of `DryRunStep` and `SupportView` is an `MdButton`. Verify: it fails on the mixed variants and the hand-built controls.
-- [ ] 6.4 `test(ui)`: in `src/components/md/MdTextField.test.js`, assert that the default variant is `outlined` and that a `filled` prop
+- [x] 6.4 `test(ui)`: in `src/components/md/MdTextField.test.js`, assert that the default variant is `outlined` and that a `filled` prop
   still works. Verify: it fails on the current default.
 - [ ] 6.5 `fix(ui)`: change the default of `MdTextField` to `outlined`, add `MdFieldGrid`, `MdFieldset` and `MdSaveBar` to
   `src/components/md/`, each with a registry entry and a DESIGN.md catalogue entry as the catalogue spec requires, and add `src/components/renderers/useFieldBinding.js`. Verify: 6.1, 6.2 and 6.4 pass.
