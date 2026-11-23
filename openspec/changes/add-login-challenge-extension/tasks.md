@@ -25,7 +25,7 @@ Depends on pull request 1 of `add-login-protection` (per-account throttle), merg
   the optional `challenge` member (`ChallengeResponse`) of `LoginRequest`, and the `ChallengeRequest` answer of the login `429`.
   Verify: 1.1 passes, `gate-plugin-abi` reports only additive changes, and the OpenAPI snapshot changes only by the optional
   `challenge` member and the `ChallengeRequest` alternative of the `429`.
-- [ ] 1.3 `docs(identity)`: document the interface for plugin authors in `docs/gitbook/`, with the statement that Ingot ships no
+- [x] 1.3 `docs(identity)`: document the interface for plugin authors in `docs/gitbook/`, with the statement that Ingot ships no
   provider and calls no third-party service. Verify: the page says so in its first paragraph.
 
 ## 2. Open the pull request
