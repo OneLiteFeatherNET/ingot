@@ -400,14 +400,12 @@ onBeforeUnmount(stopPolling)
           </ul>
         </MdCard>
 
-        <div
+        <MdSection
           v-if="index.lastVerify"
-          class="flex flex-col gap-2"
+          :level="3"
+          title="Last verify"
           data-verify
         >
-          <h3 class="md-title-small text-on-surface">
-            Last verify
-          </h3>
           <p class="md-body-medium text-on-surface">
             Drift {{ percent(index.lastVerify.drift) }} in a sample of {{ countLabel(index.lastVerify.sampled, 'row') }}:
             {{ countLabel(index.lastVerify.missing, 'row') }} missing from storage,
@@ -426,12 +424,12 @@ onBeforeUnmount(stopPolling)
           >
             Drift is above {{ Math.round(DEGRADED_ABOVE * 100) }} percent. Start a rebuild to repair the index.
           </p>
-        </div>
+        </MdSection>
 
-        <div class="flex flex-col gap-3">
-          <h3 class="md-title-small text-on-surface">
-            Latest runs
-          </h3>
+        <MdSection
+          :level="3"
+          title="Latest runs"
+        >
           <ul
             class="grid gap-3 medium:grid-cols-2"
             aria-label="Latest index runs"
@@ -466,7 +464,7 @@ onBeforeUnmount(stopPolling)
           >
             All runs
           </RouterLink>
-        </div>
+        </MdSection>
       </template>
 
       <p
