@@ -44,7 +44,7 @@ Pull request title: `feat(ui): add the motion primitives for dashboard transitio
   Verify: 2.2, 2.3 and 2.5 pass.
 - [x] 2.8 `test(ui)`: in `src/components/md/MdTransition.test.ts`, assert with a stubbed `matchMedia` that under reduced motion the
   wrapper renders the same slot with no motion class of its own. Then make it pass in `MdTransition.vue`. Verify: 2.4 passes.
-- [ ] 2.9 Run `npm test` for the new files through `heavy`, targeted, and the style gate. Verify: the gate passes, and the gate
+- [x] 2.9 Run `npm test` for the new files through `heavy`, targeted, and the style gate. Verify: the gate passes, and the gate
   scan of the new file finds no literal duration.
 - [x] 2.10 Open the code pull request `feat(ui): add the motion primitives for dashboard transitions`, with the template body and the
   recording. Verify: `gh pr view -R OneLiteFeatherNET/ingot` shows the exact title, and the body has no em or en dash.
@@ -84,7 +84,7 @@ Starts after group 1 is merged.
   3.5 pass.
 - [x] 3.11 `feat(ui)`: read the optional `motion` field of the plugin page descriptor in `PluginPageView.vue`, with `route` as the
   default and `none` as the opt-out. Verify: 3.4 passes.
-- [ ] 3.12 Run the layout and navigation e2e specs through `heavy`, with `--workers=2`, and the accessibility spec for the pages of the
+- [x] 3.12 Run the layout and navigation e2e specs through `heavy`, with `--workers=2`, and the accessibility spec for the pages of the
   change. Verify: they pass, and the axe result of each page is clean.
 - [x] 3.13 Attach the before and after screenshots and the recording of the fade, and open the code pull request `feat(ui): fade
   between top-level pages and move focus to the heading`. Verify: `gh pr view -R OneLiteFeatherNET/ingot` shows the exact title.
@@ -111,7 +111,7 @@ its `animate-md-page-enter` rise.
   `src/styles/md3/shape-elevation-motion.css` if nothing else uses them. Verify: 4.1 to 4.4 pass.
 - [x] 4.6 Scope check: this group changes the page column and, if unused, the keyframes only. The `DESIGN.md` entry is updated in
   group 8. Verify: the diff of this group has no file under `docs/`.
-- [ ] 4.7 Run the layout e2e spec through `heavy`, with `--workers=2`, and the unit tests of the layout. Verify: they pass, and the
+- [x] 4.7 Run the layout e2e spec through `heavy`, with `--workers=2`, and the unit tests of the layout. Verify: they pass, and the
   axe result of each Administration page is clean.
 - [x] 4.8 Attach the before and after screenshots at 320, 600 and 1440 pixels, and the recording of the entry change, and open the code
   pull request `feat(ui): slide administration pages by their order in the tree`. Verify: `gh pr view -R OneLiteFeatherNET/ingot`
@@ -173,7 +173,7 @@ Starts after group 4 is merged.
   for the direction.
 - [x] 6.6 `feat(ui)`: apply the indicator slide and the `shared-x` panel in `MdTabs.vue`, `CardMenu.vue` and `SnippetsCard.vue`, and
   replace the literal values of `SnippetsCard.vue` with the pattern. Verify: 6.1 to 6.4 pass.
-- [ ] 6.7 Run the tab tests and the e2e specs of the tabs through `heavy`, with `--workers=2`, and the keyboard tests of the tabs
+- [x] 6.7 Run the tab tests and the e2e specs of the tabs through `heavy`, with `--workers=2`, and the keyboard tests of the tabs
   (Left, Right, Home, End). Verify: they pass, and the roving focus is unchanged.
 - [ ] 6.8 Attach the before and after screenshots and a recording of a tab change in light and dark, and open the code pull request
   `feat(ui): slide the tab indicator and the tab panel`. Verify: `gh pr view` shows the exact title.
