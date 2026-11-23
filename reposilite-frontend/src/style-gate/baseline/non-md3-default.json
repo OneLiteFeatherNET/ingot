@@ -145,11 +145,6 @@
     "count": 2
   },
   {
-    "file": "src/components/migration/VerifyStep.vue",
-    "match": "font-normal",
-    "count": 2
-  },
-  {
     "file": "src/components/renderers/MdColourFieldRenderer.vue",
     "match": "opacity-0",
     "count": 1
