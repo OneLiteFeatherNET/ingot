@@ -55,6 +55,7 @@ import net.onelitefeather.ingot.search.backend.SearchBackendState
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistrationEvent
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnricherRegistry
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentExecutor
 import net.onelitefeather.ingot.search.enrichment.ArtifactEnrichmentPipeline
 import net.onelitefeather.ingot.search.enrichment.artifactEnrichmentPool
@@ -145,6 +146,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             enabled = true,
             live = { started.get()?.live },
             backend = { started.get()?.runtime?.status() ?: BackendStatus.starting(engine) },
+            attributes = { started.get()?.catalogue.orEmpty() },
         )
     }
 
@@ -200,7 +202,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             gate.submit(SingletonJob.SEARCH_OUTBOX) { schedulePolling(live.worker, runtime, stopped, live.paused) }
             gate.submit(SingletonJob.SEARCH_REBUILD) { scheduleRuns(live.rebuild, live.verify, live.sweep, runtime) }
         }
-        return Started(runtime, live?.handle)
+        return Started(runtime, live?.handle, enrichers.catalogue().values.toList())
     }
 
     /** The backend of the configured id and the reason when there is none: a refused, missing or failing factory. */
@@ -407,7 +409,7 @@ internal class SearchPlugin : ReposilitePlugin() {
     )
 
     /** The result of the start: the runtime for the routes and the poller, and the live backend when one is installed. */
-    private class Started(val runtime: SearchBackendRuntime, val live: LiveSearchBackend?)
+    private class Started(val runtime: SearchBackendRuntime, val live: LiveSearchBackend?, val catalogue: List<AttributeDeclaration>)
 
     private companion object {
         const val SCHEDULER_TICK_SECONDS = 30L

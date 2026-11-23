@@ -61,7 +61,8 @@ interface ArtifactEnricher {
 
 /**
  * One attribute key an [ArtifactEnricher] declares, with what a search may do with it: [filterable] in a filter, [facetable] as a
- * facet with counts per value, [sortable] as the sort of the results.
+ * facet with counts per value, [sortable] as the sort of the results. [label] is the human readable name that the facetable key
+ * list shows (search attribute facets, D9); it defaults to the key.
  */
 @ExperimentalIngotSearchApi
 @ExperimentalIngotPluginApi
@@ -70,6 +71,7 @@ data class AttributeDeclaration(
     val filterable: Boolean,
     val facetable: Boolean,
     val sortable: Boolean,
+    val label: String = key,
 )
 
 /** The stored file an enricher is called for. Built by the core only. */

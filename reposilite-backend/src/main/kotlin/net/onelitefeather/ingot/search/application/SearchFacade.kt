@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.repository.index.ArtifactIndexSinkProvider
 import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.backend.SearchBackendState
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import net.onelitefeather.ingot.search.enrichment.EnrichmentTally
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 
@@ -39,6 +40,8 @@ class SearchFacade internal constructor(
     private val live: () -> LiveSearchBackend? = { null },
     /** The state of the backend of this replica, read per request. */
     internal val backend: () -> BackendStatus = { BackendStatus.NOT_CONFIGURED },
+    /** The attribute declarations of the registered enrichers (search attribute facets, D1); empty before the start. */
+    private val attributes: () -> List<AttributeDeclaration> = { emptyList() },
 ) : Facade, ArtifactIndexSinkProvider {
 
     val engine: ArtifactSearchEngine?
@@ -50,6 +53,8 @@ class SearchFacade internal constructor(
 
     /** The live run with its cursor, counters and lease holder, the last 20 runs, and the last full rebuild. */
     fun indexRuns(): IndexRunStatus = runStatus()
+
+    internal fun attributeCatalogue(): List<AttributeDeclaration> = attributes()
 
     internal fun liveBackend(): LiveSearchBackend? = live()
 
