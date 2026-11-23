@@ -20,6 +20,7 @@ import MdDialog from '../md/MdDialog.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChipInput from '../md/MdChipInput.vue'
+import MdFieldGrid from '../md/MdFieldGrid.vue'
 import MdDisclosure from '../md/MdDisclosure.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSwitch from '../md/MdSwitch.vue'
@@ -225,7 +226,7 @@ const validateDomain = (text: string, existing: string[]) => {
         novalidate
         @submit.prevent="save()"
       >
-        <div class="grid gap-4 medium:grid-cols-2">
+        <MdFieldGrid>
           <MdTextField
             id="sso-id"
             v-model="form.id"
@@ -247,7 +248,7 @@ const validateDomain = (text: string, existing: string[]) => {
             :error-text="errorOf('label')"
             required
           />
-        </div>
+        </MdFieldGrid>
 
         <MdTextField
           id="sso-issuer"
@@ -299,7 +300,7 @@ const validateDomain = (text: string, existing: string[]) => {
           </div>
         </MdCard>
 
-        <div class="grid gap-4 medium:grid-cols-2">
+        <MdFieldGrid>
           <MdTextField
             id="sso-client-id"
             v-model="form.clientId"
@@ -323,7 +324,7 @@ const validateDomain = (text: string, existing: string[]) => {
             :error-text="errorOf('clientSecret')"
             :required="githubEndpoints"
           />
-        </div>
+        </MdFieldGrid>
 
         <MdChipInput
           id="sso-scopes"
@@ -385,7 +386,7 @@ const validateDomain = (text: string, existing: string[]) => {
           <template #summary>
             Advanced
           </template>
-          <div class="grid gap-4 medium:grid-cols-2">
+          <MdFieldGrid>
             <MdTextField
               id="sso-claim-username"
               v-model="form.usernameClaim"
@@ -414,7 +415,7 @@ const validateDomain = (text: string, existing: string[]) => {
               type="text"
               autocomplete="off"
             />
-          </div>
+          </MdFieldGrid>
           <!-- A login the provider has already verified with a second factor counts as one, so the policy does not ask again. -->
           <div class="mt-4 flex flex-col gap-4">
             <MdChipInput

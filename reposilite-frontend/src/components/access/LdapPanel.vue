@@ -23,6 +23,7 @@ import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChipInput from '../md/MdChipInput.vue'
+import MdFieldGrid from '../md/MdFieldGrid.vue'
 import MdSection from '../md/MdSection.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
@@ -189,7 +190,7 @@ onMounted(load)
           <p class="md-body-medium text-on-surface-variant">
             The service account the server uses to search. Leave both empty to search anonymously.
           </p>
-          <div class="grid gap-4 medium:grid-cols-2">
+          <MdFieldGrid>
             <MdTextField
               id="ldap-bind-dn"
               v-model="form.bindDn"
@@ -207,7 +208,7 @@ onMounted(load)
               :error="errorOf('bindPassword') !== ''"
               :error-text="errorOf('bindPassword')"
             />
-          </div>
+          </MdFieldGrid>
         </MdSection>
 
         <MdSection
@@ -216,7 +217,7 @@ onMounted(load)
           heading-id="ldap-users-title"
           aria-labelledby="ldap-users-title"
         >
-          <div class="grid gap-4 medium:grid-cols-2">
+          <MdFieldGrid>
             <MdTextField
               id="ldap-user-base"
               v-model="form.userBaseDn"
@@ -260,7 +261,7 @@ onMounted(load)
               type="text"
               autocomplete="off"
             />
-          </div>
+          </MdFieldGrid>
           <MdSwitch
             id="ldap-create-users"
             v-model="form.autoCreateUsers"
@@ -279,7 +280,7 @@ onMounted(load)
             A team whose external reference is <code>ldap:&lt;group&gt;</code> is synced from the groups
             of this directory: its members follow the group, and they cannot be removed by hand.
           </p>
-          <div class="grid gap-4 medium:grid-cols-2">
+          <MdFieldGrid>
             <MdTextField
               id="ldap-group-base"
               v-model="form.groupBaseDn"
@@ -304,7 +305,7 @@ onMounted(load)
               type="text"
               autocomplete="off"
             />
-          </div>
+          </MdFieldGrid>
           <MdChipInput
             id="ldap-admin-groups"
             v-model="form.adminGroups"
@@ -351,7 +352,7 @@ onMounted(load)
             ? 'Save your changes first. The test reads the saved directory.'
             : 'Connects with the saved settings. A user name and password also check that the user signs in.'"
         >
-          <div class="grid gap-4 medium:grid-cols-2">
+          <MdFieldGrid>
             <MdTextField
               id="ldap-test-username"
               v-model="testUsername"
@@ -366,7 +367,7 @@ onMounted(load)
               type="password"
               autocomplete="off"
             />
-          </div>
+          </MdFieldGrid>
           <div class="flex flex-wrap items-center gap-3">
             <MdButton
               variant="outlined"

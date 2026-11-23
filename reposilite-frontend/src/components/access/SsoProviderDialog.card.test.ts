@@ -76,3 +76,17 @@ describe('SsoProviderDialog register card', () => {
     expect(section?.querySelector('[aria-label="Copy callback URL"]'), 'the copy button sits in the card').not.toBeNull()
   })
 })
+
+describe('SsoProviderDialog field grids', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('lays its fields out with the shared field grid, not a hand-written grid', async () => {
+    await openDialog()
+
+    expect(document.querySelectorAll('.medium\\:grid-cols-2').length, 'no field group writes its own two column grid').toBe(0)
+    expect(document.querySelectorAll('.expanded\\:grid-cols-2').length, 'the field groups use the shared field grid').toBeGreaterThanOrEqual(1)
+  })
+})

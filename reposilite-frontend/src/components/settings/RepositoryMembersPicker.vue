@@ -19,6 +19,7 @@
 import { computed, ref } from 'vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdFieldGrid from '../md/MdFieldGrid.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -185,10 +186,9 @@ const setCredential = (index: number, field: string, value: unknown) => {
               {{ openCredential === index ? 'Done' : 'Edit credential' }}
             </MdButton>
           </div>
-          <div
+          <MdFieldGrid
             v-if="openCredential === index"
             data-test="member-credential-form"
-            class="grid gap-4 medium:grid-cols-2"
           >
             <MdTextField
               :id="`${idPrefix}-login-${index}`"
@@ -207,7 +207,7 @@ const setCredential = (index: number, field: string, value: unknown) => {
               supporting-text="A stored password shows as ********. Type a new value to replace it."
               @update:model-value="setCredential(index, 'password', $event)"
             />
-          </div>
+          </MdFieldGrid>
         </div>
       </li>
     </ol>
