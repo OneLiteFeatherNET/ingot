@@ -115,6 +115,19 @@ describe('TeamDetail members', () => {
     })
   })
 
+  describe('empty state', () => {
+    it('says so when the team has no members yet', async () => {
+      wrapper?.unmount()
+      installClient(holder, makeTeamsApi({ ...TEAM, members: [], memberCount: 0 }))
+      wrapper = await mountTeamDetail()
+
+      const card = wrapper.get('[data-test="members"]')
+      expect(card.text(), 'the card says the team is empty').toContain('This team has no members yet.')
+      expect(card.findAll('[data-test="member"]'), 'no member row is drawn').toHaveLength(0)
+      expect(card.find('[data-test="add-member"]').exists(), 'members can still be added').toBe(true)
+    })
+  })
+
   describe('removing a member', () => {
     const askRemove = async (name: string) => {
       await row(name).find('[data-test="remove-member"]').trigger('click')

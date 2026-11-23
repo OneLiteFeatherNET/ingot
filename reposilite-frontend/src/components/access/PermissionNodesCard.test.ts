@@ -142,6 +142,8 @@ describe('PermissionNodesCard', () => {
       await mountCard()
 
       expect(wrapper.find('[data-test="nodes-error"]').text()).toContain('Store unavailable')
+      expect(wrapper.find('[data-test="nodes-error"]').attributes('role'), 'the failure is announced').toBe('alert')
+      expect(wrapper.find('[data-test="nodes-retry"]').classes(), 'Retry is a tonal button').toContain('bg-secondary-container')
 
       await wrapper.find('[data-test="nodes-retry"]').trigger('click')
       await flushPromises()
