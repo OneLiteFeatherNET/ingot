@@ -95,7 +95,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `[overflow-wrap:anywhere]` with `break-words` or `break-all` on the identifier element (TeamsPanel, TeamMembersCard, TeamParentsCard,
   TeamLegacyGrants, AddMemberDialog, PrincipalsPanel, NodeInheritedSection, MdChipInput, EntryList, RepositoryWizard). Verify: no
   `overflow-wrap` arbitrary value remains in `src`.
-- [ ] 4.11 `docs(gitbook)`: regenerate `docs/gitbook/reference/dashboard-anchors.md` with `npm run anchors:doc` if a name was added in
+- [x] 4.11 `docs(gitbook)`: regenerate `docs/gitbook/reference/dashboard-anchors.md` with `npm run anchors:doc` if a name was added in
   wave 2. Verify: `anchors.test.js` passes.
 - [ ] 4.12 Wave 2 screenshots (no commit), at the same widths as 3.8, attached to the wave 2 pull request.
 - [ ] 4.13 Open the wave 2 pull request under the title `fix(ui): build lists and rows from shared components`.
@@ -112,7 +112,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 5.3 `test(ui)`: in `src/components/repositories/RepositoriesTable.test.js`, assert the four sortable headers sort the rows, the
   actions cell has the shared cell padding, and the anchors `repositories-table` and `repositories-view` both resolve. Verify: it fails
   on the hand-built table.
-- [ ] 5.4 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that each snippet is an `MdCopyableCode` inside an
+- [x] 5.4 `test(ui)`: in `src/components/card/SnippetsCard.test.js`, assert that each snippet is an `MdCopyableCode` inside an
   `MdCodeBlock`, that the anchors `repository-snippet` and `artifact-snippet` match the snippet roots, and that the component source has no
   `<style` element. Verify: it fails, because the `<style>` block is still there.
 - [x] 5.5 `fix(ui)`: add `src/components/md/MdDataTable.sort.js` and use it, with the window-class priorities, in the catalogue's
@@ -122,7 +122,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 5.7 `fix(ui)`: migrate the dry-run and migration tables (`src/components/maintenance/DryRunResult.vue`, the migration `DiscoverStep`,
   `MappingStep`, `CutOverStep` with its row header in column 2, `DryRunStep` with its hand-built select, search and sort button, `SyncStep`,
   `VerifyStep`, `PluginBlock`) to `MdDataTable`. Verify: the tests of each file pass.
-- [ ] 5.8 `fix(ui)`: migrate `SnippetsCard.vue` to the code primitives, drop its `<style>` block and the app-wide scrollbar rule, and the
+- [x] 5.8 `fix(ui)`: migrate `SnippetsCard.vue` to the code primitives, drop its `<style>` block and the app-wide scrollbar rule, and the
   nested `px-2` insets (lines 174, 181 and 211 of the inventory). Verify: 5.4 passes.
 - [ ] 5.9 `fix(ui)`: migrate `RepositorySnippet.vue` (four identical `pre` elements to one `MdCodeBlock` with `MdCopyableCode` rows),
   `ArtifactSnippet.vue`, `FailuresSheet.vue` (`text-xs leading-5` to `md-label-medium`), `SecretOnceDialog.vue` (`text-sm`, `text-xs`),
@@ -132,7 +132,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [x] 5.10 `fix(ui)`: add `@utility md-scrollbar` (the thin scrollbar of the removed app-wide rule, from colour tokens) to
   `src/style.css`, and use it only where a code block needs it. Verify: the
   scrollbar of a page without code is the browser default in the Playwright screenshot.
-- [ ] 5.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if wave 3 added a name. Verify: `anchors.test.js` passes.
+- [x] 5.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if wave 3 added a name. Verify: `anchors.test.js` passes.
 - [ ] 5.12 Wave 3 screenshots (no commit), including a page with a scrollbar before and after the removal of the app-wide rule.
 - [ ] 5.13 Open the wave 3 pull request under the title `fix(ui): build tables and code samples from shared components`.
 
@@ -172,7 +172,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   Verify: 3.2 for SettingsView passes, the read-only input is still drawn in the Playwright screenshot.
 - [x] 6.12 `fix(ui)`: remove the `<style>` rule of `FileUpload.vue` (line 302 of the inventory) after the `vue-upload-component` class is
   confirmed in the rendered drop zone by a Playwright snapshot before and after. Verify: the drop zone looks the same in the snapshot.
-- [ ] 6.13 `docs(gitbook)`: regenerate `dashboard-anchors.md` for the new names (`md-field-grid`, `md-fieldset`, `md-save-bar`, the wizard
+- [x] 6.13 `docs(gitbook)`: regenerate `dashboard-anchors.md` for the new names (`md-field-grid`, `md-fieldset`, `md-save-bar`, the wizard
   parts if they carry names). Verify: `anchors.test.js` passes.
 - [ ] 6.14 Wave 4 screenshots (no commit), including the touch target of a 40-pixel control at 390 pixels.
 - [ ] 6.15 Open the wave 4 pull request under the title `fix(ui): build forms and controls from shared components`.
@@ -209,7 +209,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   pages (`SECTION_ICONS[item.key] ?? SECTION_ICONS.settings`), the same in the bar and the rail. Verify: 7.3 passes.
 - [ ] 7.10 `build(ui)`: empty the style gate baseline of `add-ui-style-gate` and remove the allowlist entries that no longer apply. Verify:
   the gate passes with an empty baseline, and `npm test` passes.
-- [ ] 7.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if a name changed in wave 5, and note the window class names in the dashboard
+- [x] 7.11 `docs(gitbook)`: regenerate `dashboard-anchors.md` if a name changed in wave 5, and note the window class names in the dashboard
   reference if that page lists breakpoints. Verify: `anchors.test.js` passes and the dash grep prints nothing.
 - [ ] 7.12 Wave 5 screenshots (no commit): before and after at 320, 600 and 1440 pixels, and at each side of every changed threshold.
 - [ ] 7.13 Open the wave 5 pull request under the title `fix(ui): use md3 window classes only and empty the style gate`, with the list of
