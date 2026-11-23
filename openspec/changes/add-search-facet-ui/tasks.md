@@ -7,17 +7,17 @@ Prerequisite: `add-search-attribute-facets` code merged, and Q1 of the design se
 
 ## 1. Proposal
 
-- [ ] 1.1 `docs(openspec)`: propose `add-search-facet-ui`. Verify: `openspec validate add-search-facet-ui --strict --no-interactive` passes.
+- [x] 1.1 `docs(openspec)`: propose `add-search-facet-ui`. Verify: `openspec validate add-search-facet-ui --strict --no-interactive` passes.
 
 ## 2. Query and address (red, then green)
 
-- [ ] 2.1 `test(ui)`: failing tests of the `attribute` parameter round trip between address and request. Verify: they fail.
-- [ ] 2.2 `feat(ui)`: the parsing in `searchQuery.ts`. Verify: the tests of 2.1 pass.
+- [x] 2.1 `test(ui)`: failing tests of the `attribute` parameter round trip between address and request. Verify: they fail.
+- [x] 2.2 `feat(ui)`: the parsing in `searchQuery.ts`. Verify: the tests of 2.1 pass.
 
 ## 3. Filter groups (red, then green)
 
-- [ ] 3.1 `test(ui)`: failing component tests for the groups, the zero-count chosen value and the refusal fallback. Verify: they fail.
-- [ ] 3.2 `feat(ui)`: the groups in `SearchFilters.vue` and the fallback in `SearchView.vue`. Verify: the tests of 3.1 pass and the existing
+- [x] 3.1 `test(ui)`: failing component tests for the groups, the zero-count chosen value and the refusal fallback. Verify: they fail.
+- [x] 3.2 `feat(ui)`: the groups in `SearchFilters.vue` and the fallback in `SearchView.vue`. Verify: the tests of 3.1 pass and the existing
   search tests pass unedited.
 
 ## 4. Open the code pull request
