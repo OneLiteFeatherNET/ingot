@@ -22,6 +22,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChip from '../md/MdChip.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import TokenList from '../identity/TokenList.vue'
 import { instantToDate } from '../../helpers/apiTime'
@@ -138,6 +139,19 @@ const createdText = computed(() => {
   return date ? formatDate(date) : 'Unknown'
 })
 const admin = computed(() => isInstanceAdmin(detail.value))
+
+// The plain facts, in order. The last sign-in (it carries a title) and the teams (chips) follow as slot rows.
+const rows = computed(() => {
+  const current = detail.value
+  if (!current) return []
+  return [
+    { label: isMachine.value ? 'Name' : 'Username', value: current.name, testId: 'username' },
+    { label: 'Display name', value: current.displayName || 'None', testId: 'principal-display-name' },
+    { label: 'Status', value: current.disabled ? 'Disabled' : 'Active', testId: 'status' },
+    ...(isMachine.value ? [] : [{ label: 'Instance admin', value: admin.value ? 'Yes' : 'No', testId: 'instance-admin' }]),
+    { label: 'Created', value: createdText.value }
+  ]
+})
 </script>
 
 <template>
@@ -224,65 +238,21 @@ const admin = computed(() => isInstanceAdmin(detail.value))
           </div>
         </div>
 
-        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">
-          <dt class="text-on-surface-variant">
-            {{ isMachine ? 'Name' : 'Username' }}
-          </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="username"
-          >
-            {{ detail.name }}
-          </dd>
-          <dt class="text-on-surface-variant">
-            Display name
-          </dt>
-          <dd
-            class="m-0 min-w-0 break-words text-on-surface"
-            data-test="principal-display-name"
-          >
-            {{ detail.displayName || 'None' }}
-          </dd>
-          <dt class="text-on-surface-variant">
-            Status
-          </dt>
-          <dd
-            class="m-0 text-on-surface"
-            data-test="status"
-          >
-            {{ detail.disabled ? 'Disabled' : 'Active' }}
-          </dd>
-          <template v-if="!isMachine">
-            <dt class="text-on-surface-variant">
-              Instance admin
-            </dt>
-            <dd
-              class="m-0 text-on-surface"
-              data-test="instance-admin"
-            >
-              {{ admin ? 'Yes' : 'No' }}
-            </dd>
-          </template>
-          <dt class="text-on-surface-variant">
-            Created
-          </dt>
-          <dd class="m-0 text-on-surface">
-            {{ createdText }}
-          </dd>
-          <dt class="text-on-surface-variant">
+        <MdKeyValueList :items="rows">
+          <dt class="md-label-large text-on-surface-variant">
             {{ isMachine ? 'Last used' : 'Last sign-in' }}
           </dt>
           <dd
-            class="m-0 text-on-surface"
+            class="m-0 min-w-0 md-body-large"
             data-test="last-activity"
             :title="isMachine ? used.title : seen.title"
           >
             {{ isMachine ? used.text : seen.text }}
           </dd>
-          <dt class="text-on-surface-variant">
+          <dt class="md-label-large text-on-surface-variant">
             Teams
           </dt>
-          <dd class="m-0 flex min-w-0 flex-wrap items-center gap-2 text-on-surface">
+          <dd class="m-0 flex min-w-0 flex-wrap items-center gap-2 md-body-large">
             <template v-if="detail.teams.length > 0">
               <router-link
                 v-for="team in detail.teams"
@@ -307,7 +277,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
               No teams
             </span>
           </dd>
-        </dl>
+        </MdKeyValueList>
       </MdCard>
 
       <PrincipalFactorsCard
