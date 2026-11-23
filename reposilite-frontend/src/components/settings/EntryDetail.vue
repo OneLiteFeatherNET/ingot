@@ -20,6 +20,7 @@ import type { JsonFormsRendererRegistryEntry, UISchemaElement, createAjv } from 
 import { JsonForms } from '@jsonforms/vue'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
@@ -315,12 +316,14 @@ const formLayout = computed(() => {
       >
         {{ typeNotice }}
       </p>
-      <div
+      <MdCard
         v-if="pendingType !== null"
+        tone="high"
+        edge="none"
         data-test="type-removals"
         role="group"
         aria-labelledby="entry-type-removals-title"
-        class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-high p-4"
+        class="flex flex-col gap-3"
       >
         <h3
           id="entry-type-removals-title"
@@ -376,7 +379,7 @@ const formLayout = computed(() => {
             {{ keepLabel }}
           </MdButton>
         </div>
-      </div>
+      </MdCard>
       <MdAlert
         v-if="violations.length > 0"
         tone="error"
@@ -447,11 +450,14 @@ const formLayout = computed(() => {
       :repository="idText(entry)"
     />
 
-    <section
+    <MdCard
       v-if="shows('danger')"
+      as="section"
+      variant="outlined"
+      tone="danger"
       data-test="danger-zone"
       aria-labelledby="entry-danger-title"
-      class="flex flex-col gap-3 rounded-corner-medium border border-error p-4"
+      class="flex flex-col gap-3"
     >
       <h3
         id="entry-danger-title"
@@ -481,7 +487,7 @@ const formLayout = computed(() => {
           Delete {{ collection.noun }}
         </MdButton>
       </div>
-    </section>
+    </MdCard>
 
     <DeleteEntryDialog
       v-if="shows('danger')"
