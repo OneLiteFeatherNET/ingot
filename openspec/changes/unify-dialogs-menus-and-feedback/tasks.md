@@ -47,7 +47,7 @@ here.
   `SecretOnceDialog.test.js`, add the dialog assertions of D9 (labelledby, initial focus, focus return, Escape, one filled button)
   where they are missing, and assert `data-ingot-state="error"` on the rotation error. Verify: they fail on the missing
   attribute and on the hand-built heading.
-- [ ] 4.2 `test(ui)`: in the test files of `AddMemberDialog`, `ConfirmActionDialog`, `NewMachineDialog`, `NewTeamDialog`,
+- [x] 4.2 `test(ui)`: in the test files of `AddMemberDialog`, `ConfirmActionDialog`, `NewMachineDialog`, `NewTeamDialog`,
   `NewUserDialog`, `ResetPasswordDialog` and `SsoProviderDialog`, assert the dialog assertions of D9; in `NewMachineDialog.test.js`
   assert that two mounted instances have different heading ids (no fixed `new-machine-title`). In `PrincipalActionsMenu.test.js`,
   assert the disabled and two-line items through `MdOverflowMenu` and the focus ring on the destructive item. In
@@ -60,7 +60,7 @@ here.
   is teleported and focused on open (`PasswordDialog.vue:67` today), and that the password fields are `MdTextField` with
   `type="password"`; in `SettingsReviewSheet` and `SettingsDownloadMenu` tests, assert the `end` side and the menu items. Verify:
   they fail.
-- [ ] 4.5 `test(ui)`: in the test files of `PublicRepositoriesDialog`, `ReadOnlyToggle`, `FailuresSheet`, `ChartCard`,
+- [x] 4.5 `test(ui)`: in the test files of `PublicRepositoriesDialog`, `ReadOnlyToggle`, `FailuresSheet`, `ChartCard`,
   `GettingStartedCard` and `InstanceStatusPanel`, assert the dialog assertions of D9 for the dialogs, the `end` side and the sheet
   focus return for `FailuresSheet`, the error state attribute on `ReadOnlyToggle`, `GettingStartedCard` and the Retry of
   `ChartCard` and `FailuresSheet`. Verify: they fail.
