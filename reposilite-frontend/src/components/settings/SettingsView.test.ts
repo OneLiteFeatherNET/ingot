@@ -301,6 +301,19 @@ describe('SettingsView collections', () => {
 const visibilitySelect = () => wrapper!.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
 
 describe('SettingsView unsaved changes', () => {
+  it('draws the action bar inside the shared save bar, with no bar before the first edit', async () => {
+    await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
+    expect(wrapper!.findComponent({ name: 'MdSaveBar' }).exists(), 'no bar without changes').toBe(false)
+
+    await visibilitySelect().setValue('PRIVATE')
+    await flushPromises()
+
+    const bar = wrapper!.findComponent({ name: 'MdSaveBar' })
+    expect(bar.exists(), 'the bar must be an MdSaveBar').toBe(true)
+    expect(bar.text(), 'the bar holds the count of changes').toContain('1 unsaved change')
+    expect(bar.classes(), 'the hook that the tree layout measures stays').toContain('settings-save-bar')
+  })
+
   it('counts an edit in the action bar and drops it when the edit is discarded', async () => {
     const { store } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
 

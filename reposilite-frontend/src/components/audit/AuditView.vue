@@ -7,6 +7,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdChip from '../md/MdChip.vue'
+import MdFieldGrid from '../md/MdFieldGrid.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -225,9 +226,9 @@ const countText = computed(() => {
         </MdChip>
       </div>
 
-      <div
+      <MdFieldGrid
         v-if="filters.range === 'custom'"
-        class="grid gap-3 border-b border-outline-variant px-4 py-4 medium:grid-cols-2"
+        class="gap-3 border-b border-outline-variant px-4 py-4"
       >
         <MdTextField
           :model-value="isoToLocalInput(filters.from)"
@@ -243,7 +244,7 @@ const countText = computed(() => {
           type="datetime-local"
           @update:model-value="(value) => setCustomBound('to', value)"
         />
-      </div>
+      </MdFieldGrid>
 
       <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <p

@@ -24,6 +24,7 @@ import { useSession } from '../../store/session'
 import { adminGroups, currentTreeKey, indexRebuildLinkOf, OVERVIEW_TREE_KEY, sectionTabsOf, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import AppTabs from '../tabs/AppTabs.vue'
 import MdAlert from '../md/MdAlert.vue'
+import MdSaveBar from '../md/MdSaveBar.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
@@ -290,6 +291,8 @@ const onDomainChange = (domain: string, event: JsonFormsChangeEvent) => {
  * bottom navigation, which the bar sits above. The height is measured, because a wrapped line adds to it.
  */
 const barElement = ref<HTMLElement | null>(null)
+// The bar is a component, so its element is read from the instance the template ref hands over.
+const setBar = (instance: unknown) => { barElement.value = (instance as { $el?: HTMLElement } | null)?.$el ?? null }
 const barHeight = ref(0)
 const barObserver = typeof ResizeObserver === 'undefined'
   ? null
@@ -577,10 +580,10 @@ watch(
       class="mt-6 min-h-12"
     />
 
-    <div
+    <MdSaveBar
       v-if="hasUnsavedChanges"
-      ref="barElement"
-      class="settings-save-bar sticky bottom-0 z-10 mt-6 max-medium:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
+      :ref="setBar"
+      class="settings-save-bar mt-6"
     >
       <UnsavedChangesBar
         :count="countOfChanges"
@@ -592,7 +595,7 @@ watch(
         @review="reviewOpen = true"
         @show-error="showFirstError"
       />
-    </div>
+    </MdSaveBar>
 
     <SettingsReviewSheet
       :open="sheetOpen"

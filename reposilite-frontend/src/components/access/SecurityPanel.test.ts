@@ -292,6 +292,15 @@ describe('SecurityPanel', () => {
 
       expect(wrapper!.text()).toContain('You have unsaved changes.')
     })
+
+    it('draws the save button inside the shared save bar', async () => {
+      await mountPanel()
+
+      const bar = wrapper!.findComponent({ name: 'MdSaveBar' })
+
+      expect(bar.exists(), 'the form must draw its save bar through MdSaveBar').toBe(true)
+      expect(bar.find('button').text(), 'the save button sits in the bar').toContain('Save')
+    })
   })
 
   describe('settings that only the environment sets', () => {
