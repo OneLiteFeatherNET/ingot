@@ -197,13 +197,14 @@ The `welcome` SHALL name the boot of the process, and each `result` and `log` fr
 
 ### Requirement: Liveness and shutdown
 
-The server SHALL send a WebSocket ping every 20 seconds, and SHALL close a connection that does not answer with a pong within 60 seconds.
+The server SHALL send a WebSocket ping every 20 seconds to each version 1 connection and SHALL drop a connection whose write fails.
+There is no pong deadline, because the server framework exposes no pong events to the handler.
 When the server stops, each open version 1 connection SHALL receive an `error` with the code `shutdown` and SHALL be closed with 1001.
 
-#### Scenario: Silent client
+#### Scenario: Failed ping write
 
-- **WHEN** a connected client does not answer pings for 60 seconds
-- **THEN** the connection is closed
+- **WHEN** a ping cannot be written to a connected client
+- **THEN** the connection is dropped
 
 #### Scenario: Server shutdown
 
