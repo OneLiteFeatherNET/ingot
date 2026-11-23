@@ -1016,6 +1016,13 @@
       "states": []
     },
     {
+      "name": "md-save-bar",
+      "file": "src/components/md/MdSaveBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-section",
       "file": "src/components/md/MdSection.vue",
       "stability": "experimental",
