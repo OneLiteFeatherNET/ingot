@@ -24,7 +24,8 @@
  *   caption     the visible caption, and the name of the scroll region
  *   columns     { key, label, sortable?, priority? }, the priority being high (the default), low, base, medium,
  *               expanded, large or xlarge
- *   rows        one object per row, keyed by the column keys. The first column is the row header (th scope row).
+ *   rows        one object per row, keyed by the column keys.
+ *   rowHeader   the key of the column that is the row header (th scope row), in its own position. Default: the first column.
  *   modelValue  the sort, { key, direction } with direction ascending or descending (v-model). Without it the table
  *               keeps the sort itself.
  *   captionHidden  the caption stays in the DOM for screen readers but is visually hidden (default false)
@@ -71,6 +72,7 @@ const props = withDefaults(
     label?: string
     presorted?: boolean
     rowKey?: string
+    rowHeader?: string
     rowAttrs?: Record<string, string>
     // eslint-disable-next-line no-unused-vars -- the parameter of a function type is a name, not a variable
     rowClass?: (row: Record<string, unknown>) => string | undefined
@@ -82,6 +84,7 @@ const props = withDefaults(
     label: undefined,
     presorted: false,
     rowKey: undefined,
+    rowHeader: undefined,
     rowAttrs: undefined,
     rowClass: undefined,
   },
@@ -128,6 +131,7 @@ const chevronClass = (column: Column) => (ariaSort(column) === 'descending' ? 'r
 const ALIGN_CLASS: Record<Align, string> = { start: 'text-start', end: 'text-end', center: 'text-center' }
 const alignClass = (column?: Column) => ALIGN_CLASS[column?.align ?? 'start']
 const fillClass = (column?: Column) => (column?.fill ? 'w-full max-w-0' : '')
+const isRowHeader = (column: Column) => column.key === (props.rowHeader ?? props.columns[0]?.key)
 const keyOf = (row: Record<string, unknown>, index: number) => (props.rowKey ? String(row[props.rowKey]) : index)
 const attrsOf = (row: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(props.rowAttrs ?? {}).map(([attribute, key]) => [attribute, String(row[key])]))
@@ -188,26 +192,17 @@ const headerClass = computed(() => (props.stickyHeader ? 'sticky top-0 z-md-stic
           data-ingot-part="row"
           v-bind="attrsOf(row)"
         >
-          <th
-            v-if="columns[0]"
-            scope="row"
-            class="md-body-medium px-4 py-3 align-middle text-on-surface"
-            :class="[alignClass(columns[0]), fillClass(columns[0])]"
-          >
-            <slot
-              name="cell"
-              :row="row"
-              :column="columns[0]"
-              :value="row[columns[0].key]"
-            >
-              {{ row[columns[0].key] }}
-            </slot>
-          </th>
-          <td
-            v-for="column in columns.slice(1)"
+          <component
+            :is="isRowHeader(column) ? 'th' : 'td'"
+            v-for="column in columns"
             :key="column.key"
-            class="md-body-medium px-4 py-3 align-middle text-on-surface-variant"
-            :class="[priorityClass(column), alignClass(column), fillClass(column)]"
+            :scope="isRowHeader(column) ? 'row' : undefined"
+            class="md-body-medium px-4 py-3 align-middle"
+            :class="[
+              isRowHeader(column) ? 'text-on-surface' : ['text-on-surface-variant', priorityClass(column)],
+              alignClass(column),
+              fillClass(column),
+            ]"
           >
             <slot
               name="cell"
@@ -217,7 +212,7 @@ const headerClass = computed(() => (props.stickyHeader ? 'sticky top-0 z-md-stic
             >
               {{ row[column.key] }}
             </slot>
-          </td>
+          </component>
         </tr>
         <tr
           v-if="sortedRows.length === 0 && $slots.empty"
