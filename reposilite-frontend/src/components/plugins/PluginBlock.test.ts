@@ -21,11 +21,16 @@ import PluginBlock from './PluginBlock.vue'
 import MdCard from '../md/MdCard.vue'
 import type { PluginBlockDefinition } from './pluginBlocks'
 
+// The mocks are plain properties of one object, so tests reach them without going through axios methods.
+const http = vi.hoisted(() => ({
+  get: vi.fn<typeof axios.get>(),
+  request: vi.fn<typeof axios.request>(),
+  post: vi.fn<typeof axios.post>(),
+}))
+
 vi.mock('axios', () => ({
   default: {
-    get: vi.fn(),
-    request: vi.fn(),
-    post: vi.fn(),
+    ...http,
     interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
   },
 }))
@@ -56,7 +61,7 @@ describe('plugin blocks draw text, never markup', () => {
   })
 
   it('shows markup in a table cell as plain characters', async () => {
-    vi.mocked(axios.get).mockResolvedValue({ data: [{ name: '<b>bold</b>' }] })
+    http.get.mockResolvedValue({ data: [{ name: '<b>bold</b>' }] })
 
     const wrapper = mountBlock({ type: 'table', source: '/api/plugins/example/items', columns: [{ key: 'name', label: 'Name' }] })
     await flushPromises()
@@ -68,7 +73,7 @@ describe('plugin blocks draw text, never markup', () => {
 
 describe('table block', () => {
   it('shows at most 500 rows and says how many it cut', async () => {
-    vi.mocked(axios.get).mockResolvedValue({ data: rows(600) })
+    http.get.mockResolvedValue({ data: rows(600) })
 
     const wrapper = mountBlock({ type: 'table', source: '/api/plugins/example/items', columns: [{ key: 'name', label: 'Name' }] })
     await flushPromises()
@@ -80,7 +85,7 @@ describe('table block', () => {
 
 describe('action block', () => {
   it('asks for the confirm text before it sends anything', async () => {
-    vi.mocked(axios.request).mockResolvedValue({ data: {} })
+    http.request.mockResolvedValue({ data: {} })
 
     const wrapper = mountBlock({
       type: 'action',
@@ -92,7 +97,7 @@ describe('action block', () => {
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.text()).toContain('Start the job?')
-    expect(axios.request).not.toHaveBeenCalled()
+    expect(http.request).not.toHaveBeenCalled()
   })
 
   it('asks for the confirm text on the shared card, one surface step above the block', async () => {
@@ -114,7 +119,7 @@ describe('action block', () => {
   })
 
   it('sends the write with the CSRF header once the confirm text is accepted', async () => {
-    vi.mocked(axios.request).mockResolvedValue({ data: {} })
+    http.request.mockResolvedValue({ data: {} })
 
     const wrapper = mountBlock({
       type: 'action',
@@ -127,8 +132,8 @@ describe('action block', () => {
     await wrapper.find('[data-test="confirm"]').trigger('click')
     await flushPromises()
 
-    expect(axios.request).toHaveBeenCalledTimes(1)
-    const config = vi.mocked(axios.request).mock.calls[0][0]
+    expect(http.request).toHaveBeenCalledTimes(1)
+    const config = http.request.mock.calls[0][0]
     expect(config.method).toBe('POST')
     expect(config.url).toContain('/api/plugins/example/start')
     expect(config.headers?.['X-CSRF-Token']).toBe('token-1')
@@ -140,7 +145,7 @@ describe('prefix of the data paths', () => {
     const wrapper = mountBlock({ type: 'keyValue', source: '/api/tokens' })
     await flushPromises()
 
-    expect(axios.get).not.toHaveBeenCalled()
+    expect(http.get).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('/api/tokens')
   })
 
@@ -154,7 +159,7 @@ describe('prefix of the data paths', () => {
     })
     await flushPromises()
 
-    expect(axios.request).not.toHaveBeenCalled()
+    expect(http.request).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('/api/tokens')
   })
 })
@@ -162,22 +167,22 @@ describe('prefix of the data paths', () => {
 describe('status block', () => {
   it('polls at the refresh interval and stops while the page is hidden', async () => {
     vi.useFakeTimers()
-    vi.mocked(axios.get).mockResolvedValue({ data: { state: 'running', message: 'half way', progress: 0.5 } })
+    http.get.mockResolvedValue({ data: { state: 'running', message: 'half way', progress: 0.5 } })
 
     mountBlock({ type: 'status', source: '/api/plugins/example/status', refreshSeconds: 5 })
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledTimes(1)
+    expect(http.get).toHaveBeenCalledTimes(1)
 
     vi.advanceTimersByTime(5000)
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledTimes(2)
+    expect(http.get).toHaveBeenCalledTimes(2)
 
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
     await flushPromises()
     vi.advanceTimersByTime(20000)
     await flushPromises()
-    expect(axios.get, 'requests while the page is hidden').toHaveBeenCalledTimes(2)
+    expect(http.get, 'requests while the page is hidden').toHaveBeenCalledTimes(2)
 
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })
@@ -201,20 +206,20 @@ describe('block in a reader page', () => {
 
   for (const block of WRITING_BLOCKS) {
     it(`shows the unsupported note for a ${block.type} block and sends no request`, async () => {
-      vi.mocked(axios).get.mockResolvedValue({ data: {} })
+      http.get.mockResolvedValue({ data: {} })
 
       const wrapper = mountReaderBlock(block)
       await flushPromises()
 
       expect(wrapper.text(), `the ${block.type} block is not drawn for readers`).toContain(`Unsupported block: ${block.type}`)
       expect(wrapper.find('button').exists(), `no control of the ${block.type} block`).toBe(false)
-      expect(vi.mocked(axios).get.mock.calls, `no read for the ${block.type} block`).toEqual([])
-      expect(vi.mocked(axios).request.mock.calls, `no write for the ${block.type} block`).toEqual([])
+      expect(http.get.mock.calls, `no read for the ${block.type} block`).toEqual([])
+      expect(http.request.mock.calls, `no write for the ${block.type} block`).toEqual([])
     })
   }
 
   it('still draws a reading block for readers', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { version: '1.0.0' } })
+    http.get.mockResolvedValue({ data: { version: '1.0.0' } })
 
     const wrapper = mountReaderBlock({ type: 'keyValue', source: '/api/plugins/example/info' })
     await flushPromises()
@@ -286,7 +291,7 @@ describe('list block', () => {
   const LIST_SOURCE = '/api/plugins/example/items'
 
   it('draws a row with its title, subtitle and chips as characters', async () => {
-    vi.mocked(axios).get.mockResolvedValue({
+    http.get.mockResolvedValue({
       data: { items: [{ title: '<b>bold</b>', subtitle: 'a line', chips: ['paper', '1.21'] }], next: null },
     })
 
@@ -300,7 +305,7 @@ describe('list block', () => {
   })
 
   it('shows at most 100 rows and says how many items it cut', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { items: items(120), next: 'page-2' } })
+    http.get.mockResolvedValue({ data: { items: items(120), next: 'page-2' } })
 
     const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
     await flushPromises()
@@ -311,7 +316,7 @@ describe('list block', () => {
   })
 
   it('says how many items without a title it did not show', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'kept' }, { subtitle: 'untitled' }], next: null } })
+    http.get.mockResolvedValue({ data: { items: [{ title: 'kept' }, { subtitle: 'untitled' }], next: null } })
 
     const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
     await flushPromises()
@@ -321,7 +326,7 @@ describe('list block', () => {
   })
 
   it('shows the empty state when the source answers no items', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { items: [], next: null } })
+    http.get.mockResolvedValue({ data: { items: [], next: null } })
 
     const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
     await flushPromises()
@@ -330,7 +335,7 @@ describe('list block', () => {
   })
 
   it('sends the cursor of the next page with the load more control and appends the rows', async () => {
-    vi.mocked(axios).get
+    http.get
       .mockResolvedValueOnce({ data: { items: [{ title: 'first' }], next: 'page-2' } })
       .mockResolvedValueOnce({ data: { items: [{ title: 'second' }], next: null } })
 
@@ -339,13 +344,13 @@ describe('list block', () => {
     await wrapper.findAll('button').find(button => button.text() === 'Load more')!.trigger('click')
     await flushPromises()
 
-    expect(vi.mocked(axios).get.mock.calls[1][1]?.params, 'the query of the second request').toEqual({ cursor: 'page-2' })
+    expect(http.get.mock.calls[1][1]?.params, 'the query of the second request').toEqual({ cursor: 'page-2' })
     expect(wrapper.text(), 'the rows after the second page').toContain('first')
     expect(wrapper.text()).toContain('second')
   })
 
   it('draws no load more control when the response has no next cursor', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'only' }], next: null } })
+    http.get.mockResolvedValue({ data: { items: [{ title: 'only' }], next: null } })
 
     const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
     await flushPromises()
@@ -357,12 +362,12 @@ describe('list block', () => {
     const wrapper = mountBlock({ type: 'list', source: '/api/tokens' })
     await flushPromises()
 
-    expect(vi.mocked(axios).get.mock.calls, 'requests made').toHaveLength(0)
+    expect(http.get.mock.calls, 'requests made').toHaveLength(0)
     expect(wrapper.text()).toContain('/api/tokens')
   })
 
   it('draws a refused row link as a note and no link', async () => {
-    vi.mocked(axios).get.mockResolvedValue({ data: { items: [{ title: 'bad', href: 'javascript:alert(1)' }], next: null } })
+    http.get.mockResolvedValue({ data: { items: [{ title: 'bad', href: 'javascript:alert(1)' }], next: null } })
 
     const wrapper = mountBlock({ type: 'list', source: LIST_SOURCE })
     await flushPromises()

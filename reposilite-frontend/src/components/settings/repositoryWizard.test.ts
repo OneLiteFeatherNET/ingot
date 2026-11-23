@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, type Mock } from 'vitest'
 import {
   STEPS,
   TYPE_CHOICES,
@@ -65,6 +65,9 @@ const draftFor = (id: string) => {
 }
 
 // Every port records its name, so a test can read the order in which the sequence ran.
+// The ports as properties holding mocks, so a test can assert on them without reading a method off the port object.
+type RecordingPorts = { [K in keyof WizardPorts]: Mock<WizardPorts[K]> }
+
 const recordingPorts = (overrides: Partial<WizardPorts> = {}) => {
   const calls: string[] = []
   const ports: WizardPorts = {
@@ -77,7 +80,7 @@ const recordingPorts = (overrides: Partial<WizardPorts> = {}) => {
     createMachineToken: vi.fn(async (machine: string, scopes: string[]) => { calls.push(`createMachineToken:${machine}:${scopes.join('+')}`); return 'secret-1' }),
     ...overrides
   }
-  return { ports, calls }
+  return { ports: ports as RecordingPorts, calls }
 }
 
 describe('basics step', () => {

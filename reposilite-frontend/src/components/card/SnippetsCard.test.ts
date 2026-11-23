@@ -249,8 +249,8 @@ describe('SnippetsCard collapsible details', () => {
     const refuse = (key: string) => {
       if (key === DETAILS_COLLAPSED_KEY) throw new DOMException('blocked', 'SecurityError')
     }
-    const realGet = Storage.prototype.getItem
-    const realSet = Storage.prototype.setItem
+    const realGet = Object.getOwnPropertyDescriptor(Storage.prototype, 'getItem')?.value as (this: Storage, key: string) => string | null
+    const realSet = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')?.value as (this: Storage, key: string, value: string) => void
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) { refuse(key); return realGet.call(this, key) })
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) { refuse(key); return realSet.call(this, key, value) })
 
