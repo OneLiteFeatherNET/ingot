@@ -267,6 +267,15 @@ describe('AuditView filters', () => {
     expect(inputs).toHaveLength(2)
     expect((inputs[0].element as HTMLInputElement).value).not.toBe('')
   })
+
+  it('lays the custom range fields out in the shared field grid', async () => {
+    const wrapper = await mountView({ query: { range: 'custom', from: '2026-10-01T00:00:00.000Z' } })
+
+    const grid = wrapper.findComponent({ name: 'MdFieldGrid' })
+
+    expect(grid.exists(), 'the custom range must sit in an MdFieldGrid').toBe(true)
+    expect(grid.findAll('input[type="datetime-local"]'), 'both bounds are in the grid').toHaveLength(2)
+  })
 })
 
 describe('AuditView export', () => {

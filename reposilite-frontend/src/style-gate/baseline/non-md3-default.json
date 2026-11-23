@@ -120,11 +120,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/SettingsView.vue",
-    "match": "z-10",
-    "count": 1
-  },
-  {
     "file": "src/components/support/SystemInfoView.vue",
     "match": "disabled:opacity-60",
     "count": 1

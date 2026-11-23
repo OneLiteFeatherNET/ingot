@@ -22,6 +22,7 @@ import { entryLayout, type SettingsSchema } from '../settings/collections'
 import { nestedUischemas } from '../settings/nestedLayouts'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdSaveBar from '../md/MdSaveBar.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 
 /*
@@ -143,7 +144,7 @@ onMounted(() => {
         @change="onChange"
       />
 
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant pt-4">
+      <MdSaveBar class="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant pt-4">
         <p
           v-if="dirty"
           class="md-body-medium text-on-surface-variant"
@@ -169,7 +170,7 @@ onMounted(() => {
         >
           {{ saving ? 'Saving...' : saveLabel }}
         </MdButton>
-      </div>
+      </MdSaveBar>
     </template>
   </div>
 </template>

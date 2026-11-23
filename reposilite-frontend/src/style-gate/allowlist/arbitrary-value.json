@@ -5,11 +5,6 @@
     "reason": "Safe-area inset inside calc() until the safe-area token replaces it (proposal question 2). The token change removes this entry."
   },
   {
-    "file": "src/components/settings/SettingsView.vue",
-    "match": "max-medium:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]",
-    "reason": "Safe-area inset inside calc() until the safe-area token replaces it (proposal question 2). The token change removes this entry."
-  },
-  {
     "file": "src/pages/IndexPage.vue",
     "match": "bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))]",
     "reason": "Safe-area inset inside calc() until the safe-area token replaces it (proposal question 2). The token change removes this entry."
