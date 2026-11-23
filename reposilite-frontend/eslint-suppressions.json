@@ -4,21 +4,6 @@
       "count": 1
     }
   },
-  "src/components/access/NewMachineDialog.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
-  "src/components/access/NewTeamDialog.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
-  "src/components/access/NewUserDialog.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
   "src/components/access/PrincipalActionsMenu.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
@@ -29,28 +14,8 @@
       "count": 1
     }
   },
-  "src/components/access/PrincipalsPanel.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
-  "src/components/access/ResetPasswordDialog.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
   "src/components/access/SsoProvidersPanel.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "src/components/access/TeamMembers.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
-  "src/components/access/TeamsPanel.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
       "count": 1
     }
   },

@@ -28,7 +28,7 @@ vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: { response?: { data?: { message?: string } }, message?: string } | undefined) => error?.response?.data?.message ?? error?.message ?? String(error)
+  errorMessage: (error: { response?: { data?: { message?: string } }, message?: string } | undefined) => error?.response?.data?.message ?? error?.message ?? String(error?.message)
 }))
 
 const shell = { render: () => null }
