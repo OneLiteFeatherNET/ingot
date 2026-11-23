@@ -13,3 +13,4 @@ These pages document what a plugin can use and how plugins are distributed.
 * [Viewer access checks](viewer-access-checks.md)
 * [Artifact enrichment](artifact-enrichment.md)
 * [Search document attributes](search-document-attributes.md)
+* [Search attribute filters and facets](search-attribute-facets.md)
