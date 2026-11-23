@@ -35,6 +35,11 @@ import org.junit.jupiter.api.extension.Extension
 import org.junit.jupiter.api.extension.ExtensionContext
 import kong.unirest.core.Unirest.get
 import kong.unirest.core.Unirest.put
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.WebSocket
+import java.net.http.WebSocketHandshakeException
+import java.util.concurrent.TimeUnit
 
 /**
  * An instance started with the deploy target `worker` answers the probes and nothing else that serves repositories or the
@@ -116,6 +121,34 @@ internal class WorkerRoutingTest : ReposiliteSpecification() {
         val response = get("$base/").asString()
 
         assertThat(response.status).describedAs("status of GET / on target worker").isEqualTo(404)
+    }
+
+    @Test
+    fun `should not upgrade the console websocket path on the worker`() {
+        val socketUri = URI.create("${base.replace("http", "ws")}/api/console/sock")
+
+        val failure = runCatching {
+            HttpClient.newHttpClient()
+                .newWebSocketBuilder()
+                .buildAsync(socketUri, object : WebSocket.Listener {})
+                .get(10, TimeUnit.SECONDS)
+                .abort()
+        }.exceptionOrNull()
+
+        val cause = generateSequence(failure) { it.cause }.filterIsInstance<WebSocketHandshakeException>().firstOrNull()
+        assertThat(cause)
+            .describedAs("the websocket handshake on /api/console/sock is refused on target worker, failure was $failure")
+            .isNotNull()
+        assertThat(cause!!.response.statusCode())
+            .describedAs("status of the websocket handshake on /api/console/sock on target worker")
+            .isEqualTo(404)
+    }
+
+    @Test
+    fun `should answer 404 for the console log stream on the worker`() {
+        val response = get("$base/api/console/log").asString()
+
+        assertThat(response.status).describedAs("status of GET /api/console/log on target worker").isEqualTo(404)
     }
 
     /** Reads the artifact through the facade, because the worker serves no repository over HTTP to read it back. */
