@@ -23,7 +23,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 - [ ] 2.2 Record the start counts in the wave 1 pull request description: files with `rounded-corner-medium` or `rounded-corner-large`
   outside `src/components/md/`, files with `<style`, files with `sm:`, `md:`, `lg:` or `xl:`, files with `font-mono`, and the
   `data-ingot-component` count. Verify: the counts match the design (60, 7, 15/5/3/2, 24, 177), or the difference is explained.
-- [ ] 2.3 Grep `docs/gitbook/` and `src/` for the class names and hooks this change removes (`settings-view`, `settings-save-bar`,
+- [x] 2.3 Grep `docs/gitbook/` and `src/` for the class names and hooks this change removes (`settings-view`, `settings-save-bar`,
   `settings-hub`, `repository-snippet`, `artifact-snippet`, `vue-upload-component`, `font-mono`). Verify: no documented plugin example
   uses a removed class; the result is recorded in the proposal's Not BREAKING paragraph, and any hit makes the change BREAKING.
 
@@ -137,7 +137,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
 
 ## 6. Wave 4: forms and controls
 
-- [ ] 6.1 `test(ui)`: in `src/components/md/MdFieldGrid.test.js`, `MdFieldset.test.js` and `MdSaveBar.test.js`, assert one column below
+- [x] 6.1 `test(ui)`: in `src/components/md/MdFieldGrid.test.js`, `MdFieldset.test.js` and `MdSaveBar.test.js`, assert one column below
   the `expanded` window class and two from it (class per window), that a fieldset draws a `legend` and not a `span` for its title, and that
   the save bar keeps the bottom clearance as a class. Verify: they fail, because the components do not exist.
 - [ ] 6.2 `test(ui)`: in `src/components/renderers/useFieldBinding.test.js`, assert the mapping from JSON Forms props to primitive props for
