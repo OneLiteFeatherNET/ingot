@@ -60,13 +60,13 @@ allowlist if they are plugin-facing.
 
 ## 8. Documentation (pull request of its own)
 
-- [ ] 8.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` describing the namespaces, the limits, the write rules, the
+- [x] 8.1 `docs(search)`: a page under `docs/gitbook/references/plugins/` describing the namespaces, the limits, the write rules, the
   rebuild rule by version, the capability table per backend and the `attributes=true` parameter. Verify: the page states that Lucene
   declares nothing until its pull request lands.
 
 ## 9. Pull requests
 
-- [ ] 9.1 Open the code pull requests in the order of groups 2 to 8, each from a fresh `origin/main` that contains the merged proposal and
+- [x] 9.1 Open the code pull requests in the order of groups 2 to 8, each from a fresh `origin/main` that contains the merged proposal and
   the merged `add-artifact-enrichment-hook`, each small and with no file under `openspec/`. The first one carries the title
   `feat(search): store plugin attributes with indexed artifacts`. The Elasticsearch and OpenSearch pull requests are
   titled `feat(search): store plugin attributes in elasticsearch and opensearch`, the Meilisearch pull request is titled
