@@ -24,7 +24,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn() }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: toast.success,
   errorMessage: (error: { response?: { data?: { message?: string } }; message?: string } | undefined) =>
-    error?.response?.data?.message ?? error?.message ?? String(error)
+    error?.response?.data?.message ?? error?.message ?? JSON.stringify(error)
 }))
 
 describe('PasswordCard', () => {

@@ -25,7 +25,7 @@ const wireInstant = (iso: string) => Date.parse(iso) / 1000
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: { message?: string } | undefined) => error?.message ?? String(error)
+  errorMessage: (error: { message?: string } | undefined) => error?.message ?? JSON.stringify(error)
 }))
 
 const LAPTOP = {

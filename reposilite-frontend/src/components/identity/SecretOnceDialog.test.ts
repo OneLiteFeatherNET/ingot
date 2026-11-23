@@ -23,7 +23,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: toast.success,
   createErrorToast: toast.error,
-  errorMessage: (error: { message?: string } | undefined) => error?.message ?? String(error)
+  errorMessage: (error: { message?: string } | undefined) => error?.message ?? JSON.stringify(error)
 }))
 
 const SECRET = 'ingot_a1b2c3_0123456789abcdef'
