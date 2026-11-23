@@ -24,7 +24,7 @@ type ErrorLike = { response?: { data?: { message?: string } }, message?: string 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? String(error)
+  errorMessage: (error: ErrorLike) => error?.response?.data?.message ?? error?.message ?? String(error?.message)
 }))
 
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]')!
