@@ -95,9 +95,12 @@ internal class MavenEndpoints(
     )
     fun findFile(ctx: Context, identifier: AccessTokenIdentifier?, repository: String, gav: Location): Result<Unit, ErrorResponse> {
         val request = LookupRequest(accessToken = identifier, repository = repository, gav = gav)
-        val allDetails = mavenFacade.findDetails(request)
+        // A plain GET of a whole file reads details and content in one call; any other request, or a failed read, takes the regular lookup
+        val entry = request.takeIf { readsInOneRequest(ctx) }
+            ?.let { mavenFacade.findFileInOneRead(it) }
+            ?.takeIf { it.isOk }
 
-        return allDetails.flatMap { details ->
+        val served = entry?.flatMap { document -> serveDocument(ctx, request, document.document, document.content) } ?: mavenFacade.findDetails(request).flatMap { details ->
             when (details) {
                 is DocumentInfo -> serveDocument(ctx, request, details)
                 is DirectoryInfo -> {
@@ -116,7 +119,8 @@ internal class MavenEndpoints(
                     throw IllegalStateException("Expected file details, but got $details")
             }
         }
-        .onError {
+
+        return served.onError {
             if (ctx.path().startsWith("/api/")) {
                 // No repository is called "api": this is a request for an API route that does not exist
                 ctx.error(it)
@@ -147,7 +151,12 @@ internal class MavenEndpoints(
      * Ranges are served from the repository's own storage. A file that is not stored yet (a first fetch through a
      * proxy) is answered with the whole body. A ranged answer carries its own Content-Length for the stored bytes.
      */
-    private fun serveDocument(ctx: Context, request: LookupRequest, details: DocumentInfo): Result<Unit, ErrorResponse> {
+    private fun readsInOneRequest(ctx: Context): Boolean =
+        ctx.method() == HandlerType.GET &&
+            !mavenFacade.redirectsDownloads() &&
+            listOf("Range", "If-None-Match", "If-Modified-Since", "If-Range").none { ctx.header(it) != null }
+
+    private fun serveDocument(ctx: Context, request: LookupRequest, details: DocumentInfo, content: InputStream? = null): Result<Unit, ErrorResponse> {
         // Runs after the read check of findFile, so the presigned URL is given only to a caller who could read the file.
         // With INGOT_S3_PRESIGNED_REDIRECTS off, or for any file the rule excludes, this answers null and nothing changes.
         val conditional = listOf("Range", "If-None-Match", "If-Modified-Since", "If-Range").any { ctx.header(it) != null }
@@ -215,7 +224,7 @@ internal class MavenEndpoints(
 
         return when (ctx.method()) {
             HEAD_METHOD -> Result.ok<Unit, ErrorResponse>(Unit).also { writeHeaders() }
-            else -> mavenFacade.findData(request).map { data ->
+            else -> (content?.let { Result.ok<InputStream, ErrorResponse>(it) } ?: mavenFacade.findData(request)).map { data ->
                 ctx.result(data)
                 writeHeaders()
             }
