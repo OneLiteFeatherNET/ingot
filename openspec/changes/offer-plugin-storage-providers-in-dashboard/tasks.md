@@ -51,7 +51,7 @@ real Google Cloud Storage or Azure jars, which keeps the tests fast and independ
 - [x] 3.1 `test(storage)`: failing test that a saved block of a type that the served list does not offer is kept as an
   `UnresolvedStorageProviderSettings` and written back unchanged on an unrelated save (D7). Verify: it fails if the write path
   rewrites the type; if it already passes, record that in the commit body and keep the test.
-- [ ] 3.2 `feat(storage)`: only if 3.1 fails, make the save path keep the raw block. Verify: the test passes and the saved bytes of a
+- [x] 3.2 `feat(storage)`: only if 3.1 fails, make the save path keep the raw block. Verify: the test passes and the saved bytes of a
   built-in repository are unchanged, checked by the existing configuration round-trip tests.
 
 ## 4. Dashboard and wizard (frontend, red, then green)
