@@ -153,7 +153,7 @@ Largest slice. At start, split by file list if it exceeds two working days (rule
 
 - [x] 2.C10.1 Rename `src/components/settings/` (including `fixtures/routes.js`). Commit the renames only.
 - [x] 2.C10.2 Add types to the helper modules (domain, collections, import, export, encryption, wizard) first, then the 20 components, and convert the 47 tests. Settings import and export formats do not change; their tests must pass unchanged.
-- [ ] 2.C10.3 Update `DESIGN.md` and the registry `file` fields for moved anchored components. Run the gates, plus the settings-related e2e specs.
+- [x] 2.C10.3 Update `DESIGN.md` and the registry `file` fields for moved anchored components. Run the gates, plus the settings-related e2e specs.
 - [ ] 2.C10.4 Open the pull request `refactor(ui): type the settings components`.
 
 ### 2.C11 schema renderers (35 files) - `refactor(ui): type the schema renderers`
@@ -217,7 +217,7 @@ Starts after all Phase 2 pull requests are merged, except e2e specs that a Phase
 
 - [x] 3.S03.1 Rename `e2e/*.spec.js` (13) and `e2e/support/` (8). Commit the renames only. Also rename every `e2e/` spec that a Phase 2 slice has not yet converted, listed in the pull request.
 - [x] 3.S03.2 Add types, using the Playwright types. `test.fail(true, '<change>')` markers keep their text.
-- [ ] 3.S03.3 Run the full e2e suite once with `heavy npm run e2e -- --workers=2`, not the smoke set alone, because this slice touches every spec.
+- [x] 3.S03.3 Run the full e2e suite once with `heavy npm run e2e -- --workers=2`, not the smoke set alone, because this slice touches every spec.
 - [ ] 3.S03.4 Open the pull request `refactor(ui): type the e2e suite`.
 
 ### 3.S04 configuration and scripts (6 files) - `refactor(ui): type the build and test configuration`
