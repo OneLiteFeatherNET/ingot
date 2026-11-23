@@ -154,6 +154,7 @@ describe('TeamDetail', () => {
       await mountDetail('ghosts')
 
       expect(wrapper!.find('[data-test="missing"]').text()).toContain('ghosts does not exist')
+      expect(wrapper!.find('[data-test="missing"]').attributes('role'), 'the missing notice is an alert').toBe('alert')
     })
 
     it('shows no instance admin chip for a team without the role', async () => {

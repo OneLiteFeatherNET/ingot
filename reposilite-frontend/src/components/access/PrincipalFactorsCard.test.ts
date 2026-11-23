@@ -52,6 +52,13 @@ describe('PrincipalFactorsCard', () => {
     await flushPromises()
   }
 
+  it('shows the loading factors as a loading state panel', async () => {
+    api.list.mockReturnValue(new Promise(() => {}))
+    await mountCard()
+
+    expect(wrapper.find('[aria-busy="true"]').exists(), 'the loading line is a busy state panel').toBe(true)
+  })
+
   const countRows = (): string[] =>
     wrapper.findAll('[data-test="factor-count"]').map(row => row.text().replace(/\s+/g, ' ').trim())
 

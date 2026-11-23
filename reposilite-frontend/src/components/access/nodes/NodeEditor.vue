@@ -16,8 +16,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, type PropType } from 'vue'
+import MdAlert from '../../md/MdAlert.vue'
 import MdCode from '../../md/MdCode.vue'
 import MdList from '../../md/MdList.vue'
+import MdStatePanel from '../../md/MdStatePanel.vue'
 import MdTextField from '../../md/MdTextField.vue'
 import ConflictDialog from '../../settings/ConflictDialog.vue'
 import UnsavedChangesBar from '../../settings/UnsavedChangesBar.vue'
@@ -182,15 +184,11 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
     data-test="node-editor"
     data-ingot-component="node-editor"
   >
-    <p
+    <MdStatePanel
       v-if="loading"
-      data-ingot-state="loading"
-      role="status"
-      class="md-body-large text-on-surface-variant"
+      state="loading"
       data-test="nodes-loading"
-    >
-      Loading permission nodes
-    </p>
+    />
 
     <template v-else>
       <template v-if="!readonly">
@@ -208,14 +206,14 @@ const stateWord = (allowed: boolean): string => (allowed ? 'Allow' : 'Deny')
         />
       </template>
 
-      <p
+      <MdAlert
         v-if="formError"
-        role="alert"
-        class="whitespace-pre-line md-body-medium text-error"
+        tone="error"
+        class="whitespace-pre-line"
         data-test="form-error"
       >
         {{ formError }}
-      </p>
+      </MdAlert>
 
       <div
         v-if="nodes.length > 0"

@@ -368,6 +368,7 @@ describe('PrincipalDetail', () => {
       await mountDetail({ name: 'ghost', kind: 'USER' })
 
       expect(wrapper.find('[data-test="missing"]').text()).toContain('ghost')
+      expect(wrapper.find('[data-test="missing"]').attributes('role'), 'the missing notice is an alert').toBe('alert')
     })
 
   })

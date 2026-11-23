@@ -370,6 +370,7 @@ describe('NodeEditor', () => {
       mountEditor({ formError: 'Nodes must be a list' })
 
       expect(wrapper.find('[role="alert"]').text()).toBe('Nodes must be a list')
+      expect(wrapper.find('[data-test="form-error"]').attributes('data-tone'), 'the form error is an error alert').toBe('error')
     })
   })
 
@@ -880,10 +881,10 @@ describe('NodeEditor', () => {
   })
 
   describe('states', () => {
-    it('shows a loading status instead of the rows', () => {
+    it('shows a loading state panel instead of the rows', () => {
       mountEditor({ loading: true })
 
-      expect(wrapper.find('[data-test="nodes-loading"]').attributes('role')).toBe('status')
+      expect(wrapper.find('[data-test="nodes-loading"]').attributes('aria-busy'), 'the loading line is a busy state panel').toBe('true')
       expect(wrapper.find('[data-test="node-list"]').exists()).toBe(false)
     })
 

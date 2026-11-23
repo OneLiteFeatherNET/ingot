@@ -22,6 +22,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import MdKeyValueList from '../md/MdKeyValueList.vue'
+import MdAlert from '../md/MdAlert.vue'
 import MdStatePanel from '../md/MdStatePanel.vue'
 import MdSwitch from '../md/MdSwitch.vue'
 import MdTextArea from '../md/MdTextArea.vue'
@@ -227,14 +228,13 @@ const rows = computed(() => detail.value
       data-ingot-state="loading"
       state="loading"
     />
-    <div
+    <MdAlert
       v-else-if="status === 'missing'"
-      role="alert"
-      class="md-body-large text-on-surface-variant"
+      tone="error"
       data-test="missing"
     >
       {{ name }} does not exist (any more).
-    </div>
+    </MdAlert>
     <MdStatePanel
       v-else-if="status === 'error'"
       state="error"

@@ -165,7 +165,7 @@ The dashboard animates a change of page, a menu, a dialog and a few other surfac
 | `new-team-dialog` | experimental | `src/components/access/NewTeamDialog.vue` | none | none | none |
 | `new-user-dialog` | experimental | `src/components/access/NewUserDialog.vue` | none | none | none |
 | `node-add-field` | experimental | `src/components/access/nodes/NodeAddField.vue` | none | none | none |
-| `node-editor` | experimental | `src/components/access/nodes/NodeEditor.vue` | none | `loading` | none |
+| `node-editor` | experimental | `src/components/access/nodes/NodeEditor.vue` | none | none | none |
 | `node-inherited-section` | experimental | `src/components/access/nodes/NodeInheritedSection.vue` | none | none | none |
 | `node-row` | experimental | `src/components/access/nodes/NodeRow.vue` | none | `error` | none |
 | `node-template-menu` | experimental | `src/components/access/nodes/NodeTemplateMenu.vue` | none | none | none |
