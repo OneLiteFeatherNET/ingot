@@ -203,8 +203,10 @@ test.describe('focus on a top-level page change', () => {
   })
 })
 
-// A select closes with Escape and gives the focus back to its field, with the motion of the menu pattern and without it.
-// The More panel of the bottom bar is not drawn for the administrator of this run, whose sections all fit in the bar.
+// A select opens and closes with the menu pattern, closes with Escape and gives the focus back to its field, with the
+// motion and without it. The More panel of the bottom bar shares the pattern and its Escape rule, but no session of this
+// run reaches it: the registry puts only three pages in the bar, so nothing is left over for the More item, and its
+// behaviour is asserted in src/pages/IndexPage.more.test.ts.
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test.describe(`select that opens from its field, motion: ${reducedMotion}`, () => {
     test('closes the Action select with Escape and returns the focus to the field', async ({ adminPage: page }) => {
@@ -212,13 +214,27 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await page.emulateMedia({ reducedMotion })
       await page.goto(siteUrl('/audit'))
       const select = page.getByRole('combobox', { name: 'Action', exact: true })
+      // Records the menu classes the transition uses from now on, so the pattern is read from the classes. Vue sets them
+      // under reduced motion too: only their duration is cut short.
+      await page.evaluate(() => {
+        const seen = new Set<string>()
+        ;(window as unknown as { __motionClasses: Set<string> }).__motionClasses = seen
+        new MutationObserver((records) => {
+          for (const record of records) {
+            for (const name of (record.target as Element).classList) if (name.startsWith('motion-menu')) seen.add(name)
+          }
+        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] })
+      })
+      const classes = () => page.evaluate(() => [...(window as unknown as { __motionClasses: Set<string> }).__motionClasses])
 
       await select.click()
       const options = page.getByRole('listbox')
       await expect(options, 'the field opens its options').toBeVisible()
+      await expect.poll(classes, { message: 'the options open with the menu transition' }).toContain('motion-menu-enter-active')
       await page.keyboard.press('Escape')
 
       await expect(options, 'Escape closes the options').toBeHidden()
+      await expect.poll(classes, { message: 'the options close with the menu transition' }).toContain('motion-menu-leave-active')
       await expect(select, 'the focus is on the field').toBeFocused()
     })
   })
