@@ -61,7 +61,7 @@
   },
   {
     "file": "src/components/browser/FileBrowserView.vue",
-    "match": "expanded:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
+    "match": "large:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
     "count": 1
   },
   {
@@ -211,7 +211,7 @@
   },
   {
     "file": "src/components/overview/RepositoryOverview.vue",
-    "match": "expanded:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
+    "match": "large:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
     "count": 1
   },
   {
@@ -236,7 +236,7 @@
   },
   {
     "file": "src/components/search/SearchView.vue",
-    "match": "expanded:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]",
+    "match": "large:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]",
     "count": 1
   },
   {

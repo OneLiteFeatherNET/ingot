@@ -42,14 +42,14 @@ const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
     -->
     <MdPage
       centred
-      class="max-w-none flex flex-col items-center gap-6 py-10 medium:flex-row medium:items-center medium:gap-10 max-medium:py-6"
+      class="max-w-none flex flex-col items-center gap-6 py-10 expanded:flex-row expanded:items-center expanded:gap-10 max-medium:py-6"
     >
       <img
-        class="size-32 shrink-0 rounded-corner-full border-2 border-outline-variant medium:size-40"
+        class="size-32 shrink-0 rounded-corner-full border-2 border-outline-variant expanded:size-40"
         alt=""
         :src="logo"
       >
-      <div class="flex min-w-0 flex-col items-center gap-3 text-center medium:items-start medium:text-left">
+      <div class="flex min-w-0 flex-col items-center gap-3 text-center expanded:items-start expanded:text-left">
         <!-- eslint-disable vue/no-v-html -- the description is markup the operator sets in the instance settings, a trusted constant of the deployment -->
         <div
           class="md-title-large text-on-surface"

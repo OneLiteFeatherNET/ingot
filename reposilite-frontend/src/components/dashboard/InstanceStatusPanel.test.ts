@@ -166,7 +166,7 @@ describe('InstanceStatusPanel', () => {
     const grids = wrapper.findAll('.grid.grid-cols-2')
     expect(grids.length, 'the panel draws its tile grids').toBeGreaterThan(0)
     for (const grid of grids) {
-      expect(grid.classes(), 'three columns from the medium window class').toContain('medium:grid-cols-3')
+      expect(grid.classes(), 'three columns from the expanded window class').toContain('expanded:grid-cols-3')
       expect(grid.classes().filter(name => /^(sm|md|lg|xl):/.test(name)), 'no default Tailwind breakpoint').toEqual([])
     }
     wrapper.unmount()
