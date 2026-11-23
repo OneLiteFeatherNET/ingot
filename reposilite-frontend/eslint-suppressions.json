@@ -82,16 +82,6 @@
       "count": 4
     }
   },
-  "src/components/access/nodes/permissionNodesApi.test.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 4
-    }
-  },
-  "src/components/access/nodes/teamParentsApi.test.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 3
-    }
-  },
   "src/components/access/nodes/useInheritedNodes.test.ts": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
@@ -121,11 +111,6 @@
   "src/components/browser/DetailedListEntry.vue": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "src/components/card/SnippetsCard.test.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 2
     }
   },
   "src/components/console/ConsoleView.test.ts": {
@@ -234,11 +219,6 @@
       "count": 1
     }
   },
-  "src/components/plugins/PluginBlock.test.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 13
-    }
-  },
   "src/components/renderers/AllOfRenderer.vue": {
     "vue/html-indent": {
       "count": 14
@@ -297,11 +277,6 @@
   "src/components/settings/EntryDetail.type.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 5
-    }
-  },
-  "src/components/settings/repositoryWizard.test.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 7
     }
   },
   "src/pages/IndexPage.migration.test.ts": {

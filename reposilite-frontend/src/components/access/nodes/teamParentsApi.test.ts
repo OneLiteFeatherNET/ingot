@@ -35,13 +35,16 @@ const makeClient = () => ({
       get: vi.fn(async () => answer({ nodes: [{ node: 'ingot.admin.users', allowed: true }] }, '"n1"'))
     }
   }
-}) as unknown as TeamsClient
+})
+
+// The fake keeps its mock functions typed; the api sees it as the client it stands in for.
+const parentsApi = (client: ReturnType<typeof makeClient>) => teamParentsApi(client as unknown as TeamsClient)
 
 describe('teamParentsApi', () => {
   it('loads the parents of a team with the entity tag of the answer', async () => {
     const client = makeClient()
 
-    const result = await teamParentsApi(client).parents('ops')
+    const result = await parentsApi(client).parents('ops')
 
     expect(client.identity.teams.parents).toHaveBeenCalledWith('ops')
     expect(result).toEqual({ parents: ['developers'], etag: '"p4"' })
@@ -50,20 +53,20 @@ describe('teamParentsApi', () => {
   it('sends the list and the entity tag when it saves the parents', async () => {
     const client = makeClient()
 
-    const result = await teamParentsApi(client).setParents('ops', ['developers', 'staff'], '"p4"')
+    const result = await parentsApi(client).setParents('ops', ['developers', 'staff'], '"p4"')
 
     expect(client.identity.teams.setParents).toHaveBeenCalledWith('ops', ['developers', 'staff'], '"p4"')
     expect(result).toEqual({ parents: ['developers', 'staff'], etag: '"p5"' })
   })
 
   it('lists the names of all teams', async () => {
-    expect(await teamParentsApi(makeClient()).teamNames()).toEqual(['ops', 'developers'])
+    expect(await parentsApi(makeClient()).teamNames()).toEqual(['ops', 'developers'])
   })
 
   it('reads the nodes and the parents of a team for the walk', async () => {
     const client = makeClient()
 
-    const team = await teamParentsApi(client).team('ops')
+    const team = await parentsApi(client).team('ops')
 
     expect(client.identity.nodes.get).toHaveBeenCalledWith('teams', 'ops')
     expect(team).toEqual({ nodes: [{ node: 'ingot.admin.users', allowed: true }], parents: ['developers'] })

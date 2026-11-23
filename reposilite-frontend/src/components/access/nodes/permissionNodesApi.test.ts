@@ -34,13 +34,16 @@ const makeClient = (overrides = {}) => ({
       ...overrides
     }
   }
-}) as unknown as NodesClient
+})
+
+// The fake keeps its mock functions typed; the api sees it as the client it stands in for.
+const nodesApi = (client: ReturnType<typeof makeClient>) => permissionNodesApi(client as unknown as NodesClient)
 
 describe('permissionNodesApi', () => {
   it('loads the nodes of a principal with the entity tag of the answer', async () => {
     const client = makeClient()
 
-    const result = await permissionNodesApi(client).load('principal', 'alice')
+    const result = await nodesApi(client).load('principal', 'alice')
 
     expect(client.identity.nodes.get).toHaveBeenCalledWith('principals', 'alice')
     expect(result).toEqual({ nodes: [{ node: 'ingot.admin.users', allowed: true }], etag: '"4"' })
@@ -49,7 +52,7 @@ describe('permissionNodesApi', () => {
   it('loads the nodes of a team from the teams collection', async () => {
     const client = makeClient()
 
-    await permissionNodesApi(client).load('team', 'developers')
+    await nodesApi(client).load('team', 'developers')
 
     expect(client.identity.nodes.get).toHaveBeenCalledWith('teams', 'developers')
   })
@@ -57,7 +60,7 @@ describe('permissionNodesApi', () => {
   it('gives a null entity tag when the answer carries none', async () => {
     const client = makeClient({ get: vi.fn(async () => answer({ nodes: [] }, null)) })
 
-    const result = await permissionNodesApi(client).load('team', 'developers')
+    const result = await nodesApi(client).load('team', 'developers')
 
     expect(result.etag).toBeNull()
   })
@@ -66,7 +69,7 @@ describe('permissionNodesApi', () => {
     const client = makeClient()
     const rows = [{ node: 'ingot.admin.users', allowed: false, extra: 'dropped' }]
 
-    await permissionNodesApi(client).save('principal', 'alice', rows, '"4"')
+    await nodesApi(client).save('principal', 'alice', rows, '"4"')
 
     expect(client.identity.nodes.set).toHaveBeenCalledWith(
       'principals',
@@ -79,26 +82,26 @@ describe('permissionNodesApi', () => {
   it('returns the saved nodes and the new entity tag', async () => {
     const client = makeClient()
 
-    const result = await permissionNodesApi(client).save('team', 'ops', [{ node: '*', allowed: true }], '"4"')
+    const result = await nodesApi(client).save('team', 'ops', [{ node: '*', allowed: true }], '"4"')
 
     expect(result).toEqual({ nodes: [{ node: '*', allowed: true }], etag: '"5"' })
   })
 
   it('rejects a subject kind it does not know', async () => {
-    await expect(permissionNodesApi(makeClient()).load('robot', 'x')).rejects.toThrow('Unknown subject kind: robot')
+    await expect(nodesApi(makeClient()).load('robot', 'x')).rejects.toThrow('Unknown subject kind: robot')
   })
 
   it('reads the catalog with the prefix', async () => {
     const client = makeClient()
 
-    const result = await permissionNodesApi(client).catalog('ingot.')
+    const result = await nodesApi(client).catalog('ingot.')
 
     expect(client.identity.nodes.catalog).toHaveBeenCalledWith('ingot.')
     expect(result).toEqual([{ node: '*', description: 'Everything', kind: 'WILDCARD' }])
   })
 
   it('reads the templates', async () => {
-    const result = await permissionNodesApi(makeClient()).templates()
+    const result = await nodesApi(makeClient()).templates()
 
     expect(result).toEqual([{ id: 'read', label: 'Read', nodes: ['x'] }])
   })
