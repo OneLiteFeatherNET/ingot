@@ -53,7 +53,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 - [x] 2.12 `test(ui)`: in `src/anchors/anchors.test.js`, assert that `administration-breadcrumb` is registered with the file
   `src/components/layout/AdministrationTrail.vue` and that the `header` part of `repository-detail` is still registered. Verify: it
   fails, because the registry has no `administration-breadcrumb` entry.
-- [ ] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
+- [x] 2.13 `test(ui)`: in `e2e/layout.spec.js`, add cases: one `h1` per page at 320 and 1440 pixels; at 1280 and 1920 pixels the left
   edges of the repository detail title and its trail match within 0.5 pixel; at 1920 pixels the page container has no `max-w-*` class and a form block is no wider than 960 pixels; at 390 pixels
   the back control of a detail page does not move the title; at 1280 pixels the same page has no back control. Replace the level 2 "Repositories" heading check at `layout.spec.js:35`
   with level 1. Selectors are roles and accessible names. Verify: they fail against the current build.
