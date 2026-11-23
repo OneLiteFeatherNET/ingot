@@ -31,7 +31,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 - [x] 4.1 `test(ui)`: failing tests for `SecondFactorsCard` (list, rename, remove, the authenticator enrolment with the seed
   shown once and confirmed by a code, the passkey enrolment, the recovery codes dialog with copy and download actions and the confirmation check box, and
   no seed after the dialog closes), built with an injected `api` object like `PasswordCard`. Verify: the tests fail before 4.2.
-- [ ] 4.2 `feat(ui)`: add `SecondFactorsCard` into the `Sign-in and security` section of the account page. Depends on
+- [x] 4.2 `feat(ui)`: add `SecondFactorsCard` into the `Sign-in and security` section of the account page. Depends on
   `rework-account-menu-and-profile` being merged; if it is not, this task waits. Verify: 4.1 passes and `AccountView.test.js`
   still passes.
 
@@ -45,10 +45,10 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 ## 6. Administration controls
 
-- [ ] 6.1 `test(ui)`: failing tests for the factor summary on the user page, the reset action shown only to instance admins,
+- [x] 6.1 `test(ui)`: failing tests for the factor summary on the user page, the reset action shown only to instance admins,
   the confirmation that names the user and says that their sessions end, and the `login.mfa` and `mfaAcrValues`/`mfaAmrValues` fields and the break-glass
   warning in `components/access/loginSettings.js`. Verify: the tests fail before 6.2.
-- [ ] 6.2 `feat(ui)`: add the reset action and the summary on the user page, and the new fields to the login settings form.
+- [x] 6.2 `feat(ui)`: add the reset action and the summary on the user page, and the new fields to the login settings form.
   Verify: 6.1 passes and the existing login settings tests still pass.
 
 ## 7. Errors and end-to-end
@@ -56,7 +56,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 - [x] 7.1 `test(ui)`: failing tests that map `step_up_required`, `mfa_enrolment_required` and the `409` enrolment answer to
   their messages. Verify: the tests fail before 7.2.
 - [x] 7.2 `feat(ui)`: add the error mapping. Verify: 7.1 passes.
-- [ ] 7.3 `test(e2e)`: end-to-end scenario in the existing dashboard end-to-end suite: sign in with an authenticator code and
+- [x] 7.3 `test(e2e)`: end-to-end scenario in the existing dashboard end-to-end suite: sign in with an authenticator code and
   enrol a recovery code set. The end-to-end server starts with `INGOT_SETTINGS_KEY` set, so that enrolment is testable. Verify: the scenario passes in CI through the
   existing workflow. Passkey ceremonies are covered
   by the helper tests, not by the browser test.
