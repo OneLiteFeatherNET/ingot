@@ -35,6 +35,8 @@ The filters sit beside the results. Each filter shows the values that match the 
 * **Last modified**: **On or after** and **Before**.
 * **File size**: **At least (bytes)** and **At most (bytes)**.
 
+Plugins can add filters of their own. When an installed plugin declares attributes that the search may count, such as the platforms or game versions of a plugin file, the page shows one more filter for each of them, titled with the name the plugin gave it. Choosing several values of one filter shows files that match any of them, and choosing values of different filters shows files that match all of them. A chosen value stays in the list with a count of zero when no file matches it any more, so you can clear it. The choice is kept in the address as `attribute=<key>:<value>`. If the instance cannot count attributes, for example because the search backend does not support it, the filters are left out and the search works as before. Read [Search attribute filters and facets](../references/plugins/search-attribute-facets.md) for how a plugin declares them.
+
 The text, date and size fields apply when you leave them or press Enter. **Reset filters** clears every filter.
 
 Use the **Sort by** select to order the results by group id, artifact id, version, last modified or size. Use the **Order** select to choose ascending or descending.
@@ -68,5 +70,6 @@ A proxy repository only lists the artifacts it has fetched at least once. An art
 
 ## Related
 
+* [Search attribute filters and facets](../references/plugins/search-attribute-facets.md) describes what a plugin declares for the plugin filters.
 * [Search filters and API](../references/http-api/search-filters-and-api.md) lists every parameter.
 * [Rebuild the search index](../configure/search/rebuild-search-index.md) explains what an administrator does when the index is out of date.
