@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotPluginApi::class)
+
 package net.onelitefeather.ingot.search.backend
 
 import com.reposilite.plugin.api.Event
 import com.reposilite.scheduling.ScheduledJobClaims
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import java.time.Clock
 
 /**
@@ -77,6 +81,13 @@ interface SearchBackendContext {
      * core has none to give, and a backend that needs one then refuses to open. A context that does not override it has none.
      */
     val leases: ScheduledJobClaims? get() = null
+
+    /**
+     * The attributes the enrichers declared, with their three flags. A backend that must prepare itself for a filter, a facet or a
+     * sort (a settings list of a search server, say) reads them here when it is created. The list is fixed at registration. A
+     * context that does not override it declares none.
+     */
+    val attributeDeclarations: List<AttributeDeclaration> get() = emptyList()
 
 }
 

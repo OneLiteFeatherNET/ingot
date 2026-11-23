@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalIngotSearchApi::class)
+@file:OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 
 package net.onelitefeather.ingot.search.backend
 
+import net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi
 import com.reposilite.scheduling.ScheduledJobClaims
+import net.onelitefeather.ingot.search.enrichment.AttributeDeclaration
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
@@ -36,6 +38,7 @@ internal class CoreSearchBackendContext(
     private val backendId: String,
     private val variables: (String) -> String? = { System.getenv(it) },
     override val leases: ScheduledJobClaims? = null,
+    override val attributeDeclarations: List<AttributeDeclaration> = emptyList(),
     private val sink: (level: String, message: String) -> Unit,
 ) : SearchBackendContext {
 
