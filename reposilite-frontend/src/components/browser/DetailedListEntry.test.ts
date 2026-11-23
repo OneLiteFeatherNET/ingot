@@ -15,7 +15,8 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import type { BrowserFile } from './listing'
 import prettyBytes from 'pretty-bytes'
 import DetailedListEntry from './DetailedListEntry.vue'
@@ -309,5 +310,63 @@ describe('DetailedListEntry actions slot', () => {
     const names = actionsOf(wrapper).findAll('button').map(button => button.attributes('aria-label'))
 
     expect(names, 'the xml row offers view and delete').toEqual(['View maven-metadata.xml in a new tab', 'Delete maven-metadata.xml'])
+  })
+})
+
+describe('DetailedListEntry as a link row', () => {
+  const folder = { name: 'releases', type: 'DIRECTORY' as const }
+  const shell = { render: () => null }
+
+  // The real router decides what is current, as in the browser page: the stub would not set aria-current.
+  const mountAt = async (url: string) => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/:path(.*)*', component: shell }]
+    })
+    await router.push(url)
+    await router.isReady()
+    const wrapper = mount(DetailedListEntry, {
+      props: {
+        file: folder,
+        qualifier: { path: 'releases' },
+        to: '/releases/net',
+        openDeleteEntryModal: () => {},
+        compactMode: false
+      },
+      global: { plugins: [router] }
+    })
+    await flushPromises()
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('draws a directory row as an MdListItem holding a link', async () => {
+    const wrapper = await mountAt('/')
+
+    expect(wrapper.findComponent({ name: 'MdListItem' }).exists(), 'the row is the shared list item').toBe(true)
+    expect(wrapper.find('a').attributes('href'), 'the row opens the directory').toBe('/releases/net')
+  })
+
+  it('stretches the link over the whole row, so a click anywhere on it follows the link', async () => {
+    const link = (await mountAt('/')).find('a')
+
+    expect(link.classes(), 'the link covers the row with its ::after').toContain('after:absolute')
+    expect(link.classes(), 'the covered area is the whole row').toContain('after:inset-0')
+  })
+
+  it('marks the link as the current page when its route is open', async () => {
+    const wrapper = await mountAt('/releases/net')
+
+    expect(wrapper.find('a').attributes('aria-current'), 'the open directory is announced as the current page').toBe('page')
+  })
+
+  it('leaves aria-current off while another route is open', async () => {
+    const wrapper = await mountAt('/snapshots')
+
+    expect(wrapper.find('a').attributes('aria-current'), 'a row that is not open is not current').toBeUndefined()
   })
 })

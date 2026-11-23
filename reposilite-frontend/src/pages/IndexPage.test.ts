@@ -229,6 +229,40 @@ describe('IndexPage footer and content sheet', () => {
     expect(outsideSheet, 'the page footer sits outside the sheet').toHaveLength(1)
   })
 
+  it('shows the footer of the sheet from 600 pixels and hides it below', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const classes = wrapper.find(SHEET).findComponent(pageFooter).classes()
+
+    expect(classes, 'hidden below the medium window').toContain('hidden')
+    expect(classes, 'shown from the medium window').toContain('medium:block')
+  })
+
+  it('shows the footer below the page on narrow windows only', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const outside = wrapper.findAllComponents(pageFooter).find(footer => (footer.element as Element).closest(SHEET) === null)!
+
+    expect(outside.classes(), 'hidden from the medium window').toContain('medium:hidden')
+    expect(outside.classes(), 'not hidden below it').not.toContain('hidden')
+  })
+
+  it('shows exactly one footer at each window width, the two being complementary', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const footers = wrapper.findAllComponents(pageFooter)
+    const inSheet = footers.find(footer => (footer.element as Element).closest(SHEET) !== null)!.classes()
+    const below = footers.find(footer => (footer.element as Element).closest(SHEET) === null)!.classes()
+    const shownBelowMedium = [inSheet, below].filter(classes => !classes.includes('hidden'))
+    const shownFromMedium = [inSheet, below].filter(classes => !classes.includes('medium:hidden'))
+
+    expect(footers, 'the two footers are kept by design').toHaveLength(2)
+    expect(shownBelowMedium, 'one footer below 600 pixels').toHaveLength(1)
+    expect(shownFromMedium, 'one footer from 600 pixels').toHaveLength(1)
+    expect(shownBelowMedium[0], 'the footer below the page serves narrow windows').toBe(below)
+    expect(shownFromMedium[0], 'the footer of the sheet serves wide windows').toBe(inSheet)
+  })
+
   it('makes the sheet at least as tall as the window below the top bar', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
