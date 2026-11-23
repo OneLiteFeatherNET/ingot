@@ -82,7 +82,7 @@ describe('SsoProvidersPanel', () => {
   let auth: { testOidcProvider: Mock }
 
   const mountPanel = async () => {
-    wrapper = mount(SsoProvidersPanel, { attachTo: document.body })
+    wrapper = mount(SsoProvidersPanel, { attachTo: document.body }) as VueWrapper
     await flushPromises()
   }
 

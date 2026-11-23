@@ -70,7 +70,7 @@ describe('PrincipalActionsMenu', () => {
       props: { principal: ALICE, api, ...props },
       attachTo: document.body,
       global: realTransition ? { stubs: { transition: false } } : {}
-    })
+    }) as VueWrapper
     await flushPromises()
   }
 

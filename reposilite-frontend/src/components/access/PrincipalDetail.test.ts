@@ -105,7 +105,7 @@ describe('PrincipalDetail', () => {
 
   const mountDetail = async (props: { name: string; kind: 'USER' | 'MACHINE' }) => {
     router = await makeRouter()
-    wrapper = mount(PrincipalDetail, { props, attachTo: document.body, global: { plugins: [router] } })
+    wrapper = mount(PrincipalDetail, { props, attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
     await flushPromises()
   }
 

@@ -184,8 +184,8 @@ describe('ConsoleView', () => {
   // Settles the hello before the test goes on: a server without protocol 1 has refused it by then, and the view has
   // opened the event stream in its place.
   const mountView = async () => {
-    const { default: ConsoleView } = await import('./ConsoleView.vue')
-    wrapper = mount(ConsoleView, { attachTo: document.body })
+    const { default: ConsoleView } = await import('./ConsoleView.vue') as { default: Component }
+    wrapper = mount(ConsoleView, { attachTo: document.body }) as VueWrapper
     await flushPromises()
     return wrapper
   }
@@ -558,7 +558,7 @@ describe('ConsoleView', () => {
       Object.defineProperty(panel, 'scrollTop', {
         configurable: true,
         get: () => position,
-        set: (value) => { position = value }
+        set: (value: number) => { position = value }
       })
       Object.defineProperty(panel, 'scrollHeight', { configurable: true, value: height })
       Object.defineProperty(panel, 'clientHeight', { configurable: true, value: view })
@@ -731,8 +731,8 @@ describe('ConsoleView', () => {
 
   describe('address', () => {
     const mountWith = async (props: { level?: string; search?: string } = {}) => {
-      const { default: ConsoleView } = await import('./ConsoleView.vue')
-      wrapper = mount(ConsoleView, { props, attachTo: document.body })
+      const { default: ConsoleView } = await import('./ConsoleView.vue') as { default: Component }
+      wrapper = mount(ConsoleView, { props, attachTo: document.body }) as VueWrapper
       return wrapper
     }
 
