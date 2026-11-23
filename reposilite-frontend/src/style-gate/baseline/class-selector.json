@@ -5,11 +5,6 @@
     "count": 1
   },
   {
-    "file": "src/components/settings/SettingsView.vue",
-    "match": ".settings-view",
-    "count": 3
-  },
-  {
     "file": "src/helpers/useTreeFits.ts",
     "match": ".settings-save-bar",
     "count": 1
