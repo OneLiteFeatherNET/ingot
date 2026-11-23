@@ -168,7 +168,7 @@ Starts after group 4 is merged.
   because the literal values are there.
 - [x] 6.4 `test(ui)`: in `src/components/card/CardMenu.test.ts`, assert that the indicator of `CardMenu` slides with a transform and
   takes the token duration. Verify: it fails, because the indicator changes colour only.
-- [ ] 6.5 `test(ui)`: in `e2e/system-info.spec.js` and `e2e/repositories.spec.js`, assert that the tab panel of the system information
+- [x] 6.5 `test(ui)`: in `e2e/system-info.spec.js` and `e2e/repositories.spec.js`, assert that the tab panel of the system information
   and of a repository enters from the side of the new tab, and that the `?tab=` address still follows the selection. Verify: it fails
   for the direction.
 - [ ] 6.6 `feat(ui)`: apply the indicator slide and the `shared-x` panel in `MdTabs.vue`, `CardMenu.vue` and `SnippetsCard.vue`, and
