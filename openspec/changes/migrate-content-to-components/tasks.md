@@ -118,7 +118,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `MdDataTable.vue`. Verify: 5.1 and 5.2 pass.
 - [x] 5.6 `fix(ui)`: migrate `src/components/repositories/RepositoriesTable.vue` to `MdDataTable` inside the `repositories-table`
   component; drop the `min-w-[40rem]` literal and the per-width column classes in favour of priorities. Verify: 5.3 passes.
-- [ ] 5.7 `fix(ui)`: migrate the dry-run and migration tables (`src/components/maintenance/DryRunResult.vue`, the migration `DiscoverStep`,
+- [x] 5.7 `fix(ui)`: migrate the dry-run and migration tables (`src/components/maintenance/DryRunResult.vue`, the migration `DiscoverStep`,
   `MappingStep`, `CutOverStep` with its row header in column 2, `DryRunStep` with its hand-built select, search and sort button, `SyncStep`,
   `VerifyStep`, `PluginBlock`) to `MdDataTable`. Verify: the tests of each file pass.
 - [ ] 5.8 `fix(ui)`: migrate `SnippetsCard.vue` to the code primitives, drop its `<style>` block and the app-wide scrollbar rule, and the
@@ -189,7 +189,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   the entries of plugin pages. Verify: it fails on a lookup without the fallback.
 - [x] 7.4 `test(ui)`: in `src/components/md/MdBadge.test.js` and `StatusLabel`'s test, assert that `StatusLabel` takes a status value of
   the closed set and rejects a colour prop. Verify: it fails.
-- [ ] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
+- [x] 7.5 `fix(ui)`: replace the breakpoints by the window classes in the order of the mapping table of `design.md` (D7), one commit per
   folder group. Verify: the Playwright layout suite passes at 320, 600, 840, 1280 and 1920 pixels, and each changed threshold is in the
   wave's screenshots on both sides of the threshold.
 - [ ] 7.6 `fix(ui)`: in `src/style.css` `@theme`, add `--breakpoint-*: initial` so that Tailwind's default breakpoints are gone. The
