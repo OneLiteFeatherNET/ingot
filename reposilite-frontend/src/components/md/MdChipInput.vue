@@ -145,8 +145,8 @@ const addSuggestion = (suggestion: string) => {
 
 // The classes are spelled out in full so that Tailwind finds them in this file.
 const FIELD = {
-  default: 'border-outline focus-within:border-primary focus-within:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]',
-  error: 'border-error shadow-[inset_0_0_0_1px_var(--md-sys-color-error)]',
+  default: 'border-outline focus-within:border-primary focus-within:shadow-md-field-focus',
+  error: 'border-error shadow-md-field-error',
   disabled: 'border-on-surface/12'
 }
 const fieldClass = computed(() => {

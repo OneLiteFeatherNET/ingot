@@ -181,14 +181,14 @@ describe('MdTextField', () => {
       const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'filled' } })
 
       expect(wrapper.find('input').classes()).toContain('focus:border-primary')
-      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)]')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-md-field-underline-focus')
     })
 
     it('draws the outlined focus outline as a 2px primary line', () => {
       const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
 
       expect(wrapper.find('input').classes()).toContain('focus:border-primary')
-      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-md-field-focus')
     })
   })
 

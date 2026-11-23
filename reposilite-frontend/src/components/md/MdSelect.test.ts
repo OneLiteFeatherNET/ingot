@@ -516,7 +516,7 @@ describe('MdSelect', () => {
 
       expect(focusVariants(combobox(wrapper).element)).toEqual([
         'focus:border-primary',
-        'focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]'
+        'focus:shadow-md-field-focus'
       ])
     })
 

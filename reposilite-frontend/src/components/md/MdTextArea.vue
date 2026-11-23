@@ -108,8 +108,8 @@ onBeforeUnmount(() => observer?.disconnect())
 // The classes are spelled out in full so that Tailwind finds them in this file. The outline, the focus
 // indicator and the notch match MdTextField: a 1px outline that becomes 2px primary on focus.
 const FIELD = {
-  default: 'border-outline focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]',
-  error: 'border-error shadow-[inset_0_0_0_1px_var(--md-sys-color-error)]',
+  default: 'border-outline focus:border-primary focus:shadow-md-field-focus',
+  error: 'border-error shadow-md-field-error',
   disabled: 'border-on-surface/12 text-on-surface/38'
 }
 const fieldClass = computed(() => {
