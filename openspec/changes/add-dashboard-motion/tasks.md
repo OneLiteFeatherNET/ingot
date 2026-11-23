@@ -235,18 +235,18 @@ Pull request title: `feat(ui): document the dashboard motion contract and the pl
 
 Starts after group 7 is merged.
 
-- [ ] 9.1 `test(ui)`: in `src/style.test.ts`, assert that `reposilite-frontend/DESIGN.md` names every pattern of the change and the
+- [x] 9.1 `test(ui)`: in `src/style.test.ts`, assert that `reposilite-frontend/DESIGN.md` names every pattern of the change and the
   `motion` field of the plugin page descriptor, and that no paragraph of the motion section still describes the removed page rise.
   Verify: it fails, because the section describes the rise.
-- [ ] 9.2 Rewrite the `DESIGN.md` motion section from the pattern map of `design.md`, with the token names, the totals and the
+- [x] 9.2 Rewrite the `DESIGN.md` motion section from the pattern map of `design.md`, with the token names, the totals and the
   reduced-motion rule. The commit keeps the type `feat(ui)` of this change. Verify: 9.1 passes.
-- [ ] 9.3 `feat(ui)`: update `docs/gitbook/references/plugins/dashboard-anchors.md` with the note that the transitions add no element
+- [x] 9.3 `feat(ui)`: update `docs/gitbook/references/plugins/dashboard-anchors.md` with the note that the transitions add no element
   and keep the anchors, and `docs/gitbook/manage/plugins/extend-the-dashboard-from-a-plugin.md` with the `motion` field, its values
   and the default. Verify: the pages name the field, and the dash grep prints nothing.
-- [ ] 9.4 `feat(ui)`: update the reference of the page descriptor, if one exists under `docs/gitbook/`, and state that the field is
+- [x] 9.4 `feat(ui)`: update the reference of the page descriptor, if one exists under `docs/gitbook/`, and state that the field is
   read by the dashboard and written by the server change `add-plugin-page-motion-option`. Verify: the reference matches the field
   name in the code.
-- [ ] 9.5 Open the code pull request `feat(ui): document the dashboard motion contract and the plugin opt-out`. Verify: `gh pr view`
+- [x] 9.5 Open the code pull request `feat(ui): document the dashboard motion contract and the plugin opt-out`. Verify: `gh pr view`
   shows the exact title, and the body has no em or en dash.
 
 ## 10. Open the code pull requests
