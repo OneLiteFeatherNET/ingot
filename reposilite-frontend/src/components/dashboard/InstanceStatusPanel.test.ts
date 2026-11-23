@@ -715,7 +715,7 @@ describe('InstanceStatusPanel read-only banner', () => {
       }
     })
 
-    expect(wrapper.find('#cluster-heading').classes(), 'the cluster heading is in the title large size').toContain('md-title-large')
+    expect(wrapper.find('#cluster-heading').classes(), 'the cluster heading is in the title medium size').toContain('md-title-medium')
     wrapper.unmount()
   })
 })
