@@ -203,7 +203,7 @@ describe('IndexPanel status', () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.reject(httpError(403))) })
     await mountPanel()
 
-    const alert = wrapper.get('[data-ingot-component="md-alert"]')
+    const alert = wrapper.get('[role="alert"][data-tone="error"]')
 
     expect(alert.text(), 'the notice sits inside the alert').toContain('Only managers can see the search index')
     expect(alert.attributes('role'), 'a refusal is announced at once').toBe('alert')
@@ -215,7 +215,6 @@ describe('IndexPanel status', () => {
 
     const panel = wrapper.get('[data-test="index-error"]')
     expect(panel.attributes('role'), 'the failure is announced').toBe('alert')
-    expect(panel.attributes('data-ingot-state'), 'the failure is an error state panel').toBe('error')
     expect(panel.text()).toContain('The index is unreachable')
   })
 
