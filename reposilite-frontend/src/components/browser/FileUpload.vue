@@ -170,7 +170,7 @@ const uploadFiles = () => {
     <FileUpload
       ref="upload"
       v-model="files"
-      class="mt-3 block cursor-pointer rounded-corner-large border border-dashed border-outline bg-surface-container-low px-6 py-8 text-center transition-colors duration-(--md-sys-motion-duration-short3) hover:bg-surface-container-high"
+      class="mt-3 block w-full cursor-pointer rounded-corner-large border border-dashed border-outline bg-surface-container-low px-6 py-8 text-center transition-colors duration-(--md-sys-motion-duration-short3) hover:bg-surface-container-high"
       post-action="/upload/post"
       :multiple="true"
       :drop="true"
@@ -319,9 +319,3 @@ const uploadFiles = () => {
     </div>
   </section>
 </template>
-
-<style>
-.file-uploads {
-  display: block !important;
-}
-</style>
