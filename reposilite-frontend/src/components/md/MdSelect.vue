@@ -121,8 +121,8 @@ const activeDescendant = computed(() => (isOpen.value && active.value >= 0 ? opt
 // why the field is no longer a <select>. The error field is drawn in the error role, focused or not,
 // and the disabled field in on-surface at 12% and 38%.
 const FIELD_CLASS = {
-  default: 'border-outline text-on-surface focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]',
-  error: 'border-error text-on-surface shadow-[inset_0_0_0_1px_var(--md-sys-color-error)]',
+  default: 'border-outline text-on-surface focus:border-primary focus:shadow-md-field-focus',
+  error: 'border-error text-on-surface shadow-md-field-error',
   disabled: 'border-on-surface/12 text-on-surface/38'
 }
 

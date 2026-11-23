@@ -374,6 +374,12 @@
   --shadow-elevation-4: var(--md-sys-elevation-level4);
   --shadow-elevation-5: var(--md-sys-elevation-level5);
 
+  /* The one-pixel field edge that replaces a border on focus and in error, so the field does not shift by a pixel. */
+  --shadow-md-field-focus: inset 0 0 0 1px var(--md-sys-color-primary);
+  --shadow-md-field-error: inset 0 0 0 1px var(--md-sys-color-error);
+  --shadow-md-field-underline-focus: inset 0 -1px 0 0 var(--md-sys-color-primary);
+  --shadow-md-field-underline-error: inset 0 -1px 0 0 var(--md-sys-color-error);
+
   --ease-md-standard: var(--md-sys-motion-easing-standard);
   --ease-md-standard-decelerate: var(--md-sys-motion-easing-standard-decelerate);
   --ease-md-standard-accelerate: var(--md-sys-motion-easing-standard-accelerate);

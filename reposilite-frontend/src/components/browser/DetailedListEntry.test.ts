@@ -84,7 +84,7 @@ describe('DetailedListEntry row actions', () => {
   it('reveals the row actions on touch screens without a hover', () => {
     const wrapper = mountRow()
 
-    expect(actionsOf(wrapper).classes(), 'coarse pointers have no hover, so the actions stay visible').toContain('[@media(pointer:coarse)]:opacity-100')
+    expect(actionsOf(wrapper).classes(), 'coarse pointers have no hover, so the actions stay visible').toContain('no-hover:opacity-100')
   })
 })
 

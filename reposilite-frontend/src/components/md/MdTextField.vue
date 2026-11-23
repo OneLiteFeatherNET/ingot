@@ -85,12 +85,12 @@ const helperText = computed(() => (props.error ? props.errorText : props.support
 // from props in the script, because they are not after the input in the DOM.
 const FIELD = {
   filled: {
-    default: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-on-surface-variant outline-none focus:border-primary focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)] disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38',
-    error: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-error outline-none shadow-[inset_0_-1px_0_0_var(--md-sys-color-error)] disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38 disabled:shadow-none'
+    default: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-on-surface-variant outline-none focus:border-primary focus:shadow-md-field-underline-focus disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38',
+    error: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-error outline-none shadow-md-field-underline-error disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38 disabled:shadow-none'
   },
   outlined: {
-    default: 'h-14 w-full rounded-corner-extra-small border border-outline bg-transparent md-body-large text-on-surface outline-none focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)] disabled:border-on-surface/12 disabled:text-on-surface/38',
-    error: 'h-14 w-full rounded-corner-extra-small border border-error bg-transparent md-body-large text-on-surface outline-none shadow-[inset_0_0_0_1px_var(--md-sys-color-error)] disabled:border-on-surface/12 disabled:text-on-surface/38 disabled:shadow-none'
+    default: 'h-14 w-full rounded-corner-extra-small border border-outline bg-transparent md-body-large text-on-surface outline-none focus:border-primary focus:shadow-md-field-focus disabled:border-on-surface/12 disabled:text-on-surface/38',
+    error: 'h-14 w-full rounded-corner-extra-small border border-error bg-transparent md-body-large text-on-surface outline-none shadow-md-field-error disabled:border-on-surface/12 disabled:text-on-surface/38 disabled:shadow-none'
   }
 }
 
