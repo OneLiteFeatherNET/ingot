@@ -19,7 +19,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import { createAjv } from '@jsonforms/core'
-import type { JsonSchema7, Layout, UISchemaElement } from '@jsonforms/core'
+import type { JsonSchema7, Layout, RankedTester, UISchemaElement } from '@jsonforms/core'
 import { rendererOf, vanilla } from './testRenderers'
 import { tester as appearanceTester, default as AppearanceSectionRenderer } from './AppearanceSectionRenderer.vue'
 import { tester as sectionTester, default as SectionRenderer } from './SectionRenderer.vue'
@@ -67,8 +67,8 @@ describe('AppearanceSectionRenderer', () => {
   it('is used for the Appearance group only', () => {
     const group: Layout = { type: 'Group', elements: [] }
 
-    expect(appearanceTester(group, appearanceSchema, { rootSchema: schema, config: undefined })).toBe(5)
-    expect(appearanceTester(group, { type: 'object', title: 'Maven' }, { rootSchema: schema, config: undefined })).toBe(-1)
+    expect((appearanceTester as RankedTester)(group, appearanceSchema, { rootSchema: schema, config: undefined })).toBe(5)
+    expect((appearanceTester as RankedTester)(group, { type: 'object', title: 'Maven' }, { rootSchema: schema, config: undefined })).toBe(-1)
   })
 
   it('titles the group Appearance and puts the preview under its fields', async () => {

@@ -148,9 +148,6 @@
     }
   },
   "src/components/dashboard/GettingStartedCard.test.ts": {
-    "@typescript-eslint/no-unsafe-return": {
-      "count": 1
-    },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 1
     }
@@ -256,32 +253,6 @@
   },
   "src/components/renderers/AllOfRenderer.vue": {
     "vue/html-indent": {
-      "count": 14
-    }
-  },
-  "src/components/renderers/AppearanceSectionRenderer.test.ts": {
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 2
-    }
-  },
-  "src/components/renderers/MdColourFieldRenderer.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 4
-    }
-  },
-  "src/components/renderers/MdTextAreaRenderer.test.ts": {
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 4
-    }
-  },
-  "src/components/renderers/OneOfVariantSwitch.test.ts": {
-    "@typescript-eslint/no-unsafe-call": {
       "count": 14
     }
   },
