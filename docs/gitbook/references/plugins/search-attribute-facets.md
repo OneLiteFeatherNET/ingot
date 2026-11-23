@@ -15,7 +15,7 @@ An enricher lists the keys that may be queried in `declaredAttributes`, each wit
 ```kotlin
 @OptIn(ExperimentalIngotSearchApi::class, ExperimentalIngotPluginApi::class)
 override val declaredAttributes = listOf(
-    AttributeDeclaration("jar-header.platforms", filterable = true, facetable = true, sortable = false),
+    AttributeDeclaration("jar-header.platforms", filterable = true, facetable = true, sortable = false, label = "Platforms"),
     AttributeDeclaration("jar-header.versions", filterable = true, facetable = true, sortable = true),
 )
 ```
@@ -23,6 +23,7 @@ override val declaredAttributes = listOf(
 * A key must be in the namespace of the enricher, as for the attributes themselves. A declaration outside it is refused with a warning, and so is a key that another enricher already declared; the warning names both classes.
 * An undeclared key cannot be filtered, counted or sorted. The default is an empty list, so nothing is queryable until a plugin says so.
 * A request that uses a key without the matching flag is refused. It is never answered with an empty list.
+* `label` is the human readable name that the [facetable key list](#the-facetable-key-list) shows. It is optional and defaults to the key.
 
 ## Request parameters
 
@@ -35,6 +36,16 @@ All parameters are optional and can be repeated. They are added to the [search r
 | `attributeFacets` | `<key>,<key>` | The keys whose buckets are returned, at most 8. |
 
 The response gains `facets.attributes`, a map from each requested key to a list of `{ value, count }` buckets, at most 20 per key, the largest first and ties by value. The field is absent unless `attributeFacets` was given.
+
+## The facetable key list
+
+A client that shows facets has to know which keys it may ask for. `GET /api/maven/search/attributes/facetable` answers with the keys declared `facetable`, each with its label, ordered by key:
+
+```json
+{ "attributes": [ { "key": "jar-header.platforms", "label": "Platforms" } ] }
+```
+
+The list is built from the declarations only. No search backend is asked and no attribute value is read, so it does not depend on the capabilities of a backend and is available while a backend starts. It is empty when no plugin declares a facetable key, and it answers `404` while search is turned off, like every search route. A client combines it with the capabilities of the backend to decide what to offer.
 
 ## The counting rule
 
