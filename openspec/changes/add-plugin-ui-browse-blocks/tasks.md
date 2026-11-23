@@ -53,7 +53,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 
 - [x] 5.1 Open code pull requests 1 and 2 under the titles `feat(frontend): accept code and link blocks in plugin pages` and
   `feat(frontend): accept list blocks in plugin pages`, each from a branch of the remote main branch, each with no file under `openspec/`.
-- [ ] 5.2 Open code pull request 3, last, under the title `feat(frontend): add list, code, filter and link blocks to plugin pages`. Read
+- [x] 5.2 Open code pull request 3, last, under the title `feat(frontend): add list, code, filter and link blocks to plugin pages`. Read
   `.github/PULL_REQUEST_TEMPLATE.md` and fill its sections (type `feat`). The description tells the story of a reader who wants a
   plugin's snippet, copies it with one click and finds the download on the same host. It carries no session link and no attribution line.
   Verify: `gh pr view --json title` shows the exact title, the commit-style hook accepts the title and every commit, and the body has no em
